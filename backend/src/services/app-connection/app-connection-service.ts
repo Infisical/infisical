@@ -70,6 +70,7 @@ import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
+import { ValidateAlibabaCloudConnectionCredentialsSchema } from "./alibaba-cloud";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
@@ -197,7 +198,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
   [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema,
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
-  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema
+  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
+  [AppConnection.AlibabaCloud]: ValidateAlibabaCloudConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

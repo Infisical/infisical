@@ -176,6 +176,11 @@ import {
   WindmillConnectionMethod
 } from "./windmill";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
+import {
+  AlibabaCloudConnectionMethod,
+  getAlibabaCloudConnectionListItem,
+  validateAlibabaCloudConnectionCredentials
+} from "./alibaba-cloud";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
@@ -250,7 +255,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDbtConnectionListItem(),
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
-    getCircleCIConnectionListItem()
+    getCircleCIConnectionListItem(),
+    getAlibabaCloudConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -390,7 +396,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Dbt]: validateDbtConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AlibabaCloud]: validateAlibabaCloudConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -471,6 +478,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OctopusDeployConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
       return "API Key";
+    case AlibabaCloudConnectionMethod.AccessKey:
+      return "Access Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
     case SupabaseConnectionMethod.AccessToken:
@@ -556,7 +565,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Dbt]: platformManagedCredentialsNotSupported,
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
-  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported
+  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.AlibabaCloud]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

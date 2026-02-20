@@ -95,6 +95,12 @@ import {
   TValidateCircleCIConnectionCredentialsSchema
 } from "./circleci";
 import {
+  TAlibabaCloudConnection,
+  TAlibabaCloudConnectionConfig,
+  TAlibabaCloudConnectionInput,
+  TValidateAlibabaCloudConnectionCredentialsSchema
+} from "./alibaba-cloud";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -345,6 +351,7 @@ export type TAppConnection = { id: string } & (
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
+  | TAlibabaCloudConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -402,6 +409,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
+  | TAlibabaCloudConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -476,7 +484,8 @@ export type TAppConnectionConfig =
   | TDbtConnectionConfig
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
-  | TCircleCIConnectionConfig;
+  | TCircleCIConnectionConfig
+  | TAlibabaCloudConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -528,7 +537,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDbtConnectionCredentialsSchema
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
-  | TValidateCircleCIConnectionCredentialsSchema;
+  | TValidateCircleCIConnectionCredentialsSchema
+  | TValidateAlibabaCloudConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
