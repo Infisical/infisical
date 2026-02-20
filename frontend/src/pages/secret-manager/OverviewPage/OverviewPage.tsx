@@ -1579,6 +1579,7 @@ export const OverviewPage = () => {
                                 <SecretImportTableRow
                                   key={`overview-import-${imp.id}`}
                                   index={idx}
+                                  secretImport={imp}
                                   importEnvSlug={imp.importEnv.slug}
                                   importEnvName={imp.importEnv.name}
                                   importPath={imp.importPath}

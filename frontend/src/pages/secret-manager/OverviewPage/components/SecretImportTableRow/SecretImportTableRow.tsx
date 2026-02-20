@@ -68,6 +68,7 @@ type Props = {
   onDelete: (secretImport: TSecretImport) => void;
   importedSecrets: ImportedSecretData[];
   index: number;
+  secretImport?: TSecretImport;
 };
 
 export const SecretImportTableRow = ({
@@ -82,7 +83,8 @@ export const SecretImportTableRow = ({
   searchFilter,
   onDelete,
   importedSecrets,
-  index
+  index,
+  secretImport
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const { currentProject } = useProject();
@@ -93,7 +95,7 @@ export const SecretImportTableRow = ({
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
   const singleEnvImport = isSingleEnvView
-    ? getSecretImportByEnv(importEnvSlug, importPath, singleEnvSlug)
+    ? (secretImport ?? getSecretImportByEnv(importEnvSlug, importPath, singleEnvSlug))
     : undefined;
 
   const {
