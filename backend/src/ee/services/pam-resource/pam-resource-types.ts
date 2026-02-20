@@ -49,7 +49,8 @@ import {
   TWindowsAccount,
   TWindowsAccountCredentials,
   TWindowsResource,
-  TWindowsResourceConnectionDetails
+  TWindowsResourceConnectionDetails,
+  TWindowsResourceMetadata
 } from "./windows-server/windows-server-resource-types";
 
 // Resource types
@@ -71,7 +72,7 @@ export type TPamResourceConnectionDetails =
   | TRedisResourceConnectionDetails
   | TWindowsResourceConnectionDetails
   | TActiveDirectoryResourceConnectionDetails;
-export type TPamResourceMetadata = TSSHResourceMetadata;
+export type TPamResourceMetadata = TSSHResourceMetadata | TWindowsResourceMetadata;
 
 // Account types
 export type TPamAccount =
@@ -125,13 +126,17 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
   currentCredentials: C
 ) => Promise<C>;
 
-export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C extends TPamAccountCredentials> = (
+export type TPamResourceFactory<
+  T extends TPamResourceConnectionDetails,
+  C extends TPamAccountCredentials,
+  M extends TPamResourceMetadata
+> = (
   resourceType: PamResource,
   connectionDetails: T,
   gatewayId: string | null | undefined,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   projectId: string | null | undefined,
-  resourceMetadata?: TPamResourceMetadata
+  resourceMetadata?: M
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;

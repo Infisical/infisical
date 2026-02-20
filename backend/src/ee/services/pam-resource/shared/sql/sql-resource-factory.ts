@@ -13,7 +13,8 @@ import { PamResource } from "../../pam-resource-enums";
 import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
-  TPamResourceFactoryValidateAccountCredentials
+  TPamResourceFactoryValidateAccountCredentials,
+  TPamResourceMetadata
 } from "../../pam-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "./sql-resource-types";
 
@@ -230,12 +231,11 @@ export const executeWithGateway = async <T>(
   );
 };
 
-export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetails, TSqlAccountCredentials> = (
-  resourceType,
-  connectionDetails,
-  gatewayId,
-  gatewayV2Service
-) => {
+export const sqlResourceFactory: TPamResourceFactory<
+  TSqlResourceConnectionDetails,
+  TSqlAccountCredentials,
+  TPamResourceMetadata
+> = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {
       throw new BadRequestError({ message: "Gateway ID is required" });

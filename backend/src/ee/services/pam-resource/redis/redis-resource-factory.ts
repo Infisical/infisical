@@ -10,7 +10,8 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
-  TPamResourceFactoryValidateAccountCredentials
+  TPamResourceFactoryValidateAccountCredentials,
+  TPamResourceMetadata
 } from "../pam-resource-types";
 import { TRedisAccountCredentials, TRedisResourceConnectionDetails } from "./redis-resource-types";
 
@@ -184,12 +185,11 @@ export const executeWithGateway = async <T>(
   );
 };
 
-export const redisResourceFactory: TPamResourceFactory<TRedisResourceConnectionDetails, TRedisAccountCredentials> = (
-  resourceType,
-  connectionDetails,
-  gatewayId,
-  gatewayV2Service
-) => {
+export const redisResourceFactory: TPamResourceFactory<
+  TRedisResourceConnectionDetails,
+  TRedisAccountCredentials,
+  TPamResourceMetadata
+> = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {
       throw new BadRequestError({ message: "Gateway ID is required" });

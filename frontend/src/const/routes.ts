@@ -381,6 +381,14 @@ export const ROUTE_PATHS = Object.freeze({
     PamAccountAccessPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access",
       "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access"
+    ),
+    DiscoveryPage: setRoute(
+      "/organizations/$orgId/projects/pam/$projectId/discovery",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/"
+    ),
+    PamDiscoveryByIDPage: setRoute(
+      "/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId"
     )
   },
   Public: {

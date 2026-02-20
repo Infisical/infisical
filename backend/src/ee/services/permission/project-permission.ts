@@ -246,6 +246,14 @@ export enum ProjectPermissionPamSessionActions {
   // Terminate = "terminate"
 }
 
+export enum ProjectPermissionPamDiscoveryActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  RunScan = "run-scan"
+}
+
 export enum ProjectPermissionMcpEndpointActions {
   Read = "read",
   Create = "create",
@@ -321,6 +329,7 @@ export enum ProjectPermissionSub {
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
+  PamDiscovery = "pam-discovery",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
   ApprovalRequests = "approval-requests",
@@ -557,6 +566,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.PamAccounts | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
   | [
       ProjectPermissionMcpEndpointActions,
       ProjectPermissionSub.McpEndpoints | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
@@ -1244,6 +1254,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.PamSessions).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamSessionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.PamDiscovery).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamDiscoveryActions).describe(
       "Describe what action an entity can take."
     )
   }),
