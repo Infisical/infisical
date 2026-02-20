@@ -43,13 +43,7 @@
           {
             "group": "Platform Reference",
             "pages": [
-              {
-                "group": "Organization",
-                "pages": [
-                  "documentation/platform/organization",
-                  "documentation/platform/sub-organizations"
-                ]
-              },
+              "documentation/platform/organization",
               {
                 "group": "Projects",
                 "pages": [
@@ -340,6 +334,7 @@
               "self-hosting/guides/replication",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
+              "self-hosting/guides/releases",
               "self-hosting/configuration/requirements",
               {
                 "group": "Guides",

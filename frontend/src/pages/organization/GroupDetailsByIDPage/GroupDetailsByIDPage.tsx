@@ -42,6 +42,8 @@ const Page = () => {
 
   const { isSubOrganization, currentOrg } = useOrganization();
 
+  const canEditGroup = Boolean(data && currentOrg && data.group.orgId === currentOrg.id);
+
   const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -51,7 +53,8 @@ const Page = () => {
 
   const onDeleteGroupSubmit = async ({ name, id }: { name: string; id: string }) => {
     await deleteMutateAsync({
-      id
+      id,
+      organizationId: currentOrg?.id
     });
     createNotification({
       text: `Successfully deleted the ${name} group`,
@@ -74,6 +77,8 @@ const Page = () => {
         <Spinner />
       </div>
     );
+
+  const isLinkedGroup = data && currentOrg ? data.group.orgId !== currentOrg.id : false;
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
@@ -114,26 +119,28 @@ const Page = () => {
                 >
                   Copy Group ID
                 </UnstableDropdownMenuItem>
-                <OrgPermissionCan
-                  I={OrgPermissionGroupActions.Edit}
-                  a={OrgPermissionSubjects.Groups}
-                >
-                  {(isAllowed) => (
-                    <UnstableDropdownMenuItem
-                      isDisabled={!isAllowed}
-                      onClick={() => {
-                        handlePopUpOpen("groupCreateUpdate", {
-                          groupId,
-                          name: data.group.name,
-                          slug: data.group.slug,
-                          role: data.group.roleId || data.group.role
-                        });
-                      }}
-                    >
-                      Edit Group
-                    </UnstableDropdownMenuItem>
-                  )}
-                </OrgPermissionCan>
+                {canEditGroup && (
+                  <OrgPermissionCan
+                    I={OrgPermissionGroupActions.Edit}
+                    a={OrgPermissionSubjects.Groups}
+                  >
+                    {(isAllowed) => (
+                      <UnstableDropdownMenuItem
+                        isDisabled={!isAllowed}
+                        onClick={() => {
+                          handlePopUpOpen("groupCreateUpdate", {
+                            groupId,
+                            name: data.group.name,
+                            slug: data.group.slug,
+                            role: data.group.roleId || data.group.role
+                          });
+                        }}
+                      >
+                        Edit Group
+                      </UnstableDropdownMenuItem>
+                    )}
+                  </OrgPermissionCan>
+                )}
                 <OrgPermissionCan
                   I={OrgPermissionGroupActions.Delete}
                   a={OrgPermissionSubjects.Groups}
@@ -145,11 +152,12 @@ const Page = () => {
                       onClick={() => {
                         handlePopUpOpen("deleteGroup", {
                           id: groupId,
-                          name: data.group.name
+                          name: data.group.name,
+                          isLinkedGroup
                         });
                       }}
                     >
-                      Delete Group
+                      {isLinkedGroup ? "Unlink Group" : "Delete Group"}
                     </UnstableDropdownMenuItem>
                   )}
                 </OrgPermissionCan>
@@ -157,10 +165,22 @@ const Page = () => {
             </UnstableDropdownMenu>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
-            <GroupDetailsSection groupId={groupId} handlePopUpOpen={handlePopUpOpen} />
+            <GroupDetailsSection
+              groupId={groupId}
+              handlePopUpOpen={handlePopUpOpen}
+              canEditGroup={canEditGroup}
+            />
             <div className="flex flex-1 flex-col gap-y-5">
-              <GroupMembersSection groupId={groupId} groupSlug={data.group.slug} />
-              <GroupProjectsSection groupId={groupId} groupSlug={data.group.slug} />
+              <GroupMembersSection
+                groupId={groupId}
+                groupSlug={data.group.slug}
+                isLinkedGroup={isLinkedGroup}
+              />
+              <GroupProjectsSection
+                groupId={groupId}
+                groupSlug={data.group.slug}
+                hideAddToProject={isLinkedGroup}
+              />
             </div>
           </div>
         </>
@@ -172,9 +192,15 @@ const Page = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure you want to delete the group named ${
-          (popUp?.deleteGroup?.data as { name: string })?.name || ""
-        }?`}
+        title={
+          (popUp?.deleteGroup?.data as { isLinkedGroup?: boolean })?.isLinkedGroup
+            ? `Are you sure you want to unlink the group "${
+                (popUp?.deleteGroup?.data as { name: string })?.name || ""
+              }" from this sub-organization?`
+            : `Are you sure you want to delete the group named ${
+                (popUp?.deleteGroup?.data as { name: string })?.name || ""
+              }?`
+        }
         onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>

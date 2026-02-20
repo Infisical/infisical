@@ -216,7 +216,7 @@ export const secretRotationV2ServiceFactory = ({
   }: {
     secretKeys: string[];
     folderId: string;
-    tx: Knex;
+    tx?: Knex;
     secretPath: string;
   }) => {
     if (new Set(secretKeys).size !== secretKeys.length) {
@@ -233,7 +233,7 @@ export const secretRotationV2ServiceFactory = ({
         [`${TableName.SecretV2}.folderId` as "folderId"]: folderId,
         [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared
       },
-      { tx }
+      tx ? { tx } : undefined
     );
 
     if (conflictingSecrets.length) {
@@ -522,8 +522,8 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service
     );
 
-    // even though we have a db constraint we want to check before any rotation of credentials is attempted
-    // to prevent creation failure after external credentials have been modified
+    // Perform ALL validation checks BEFORE rotating credentials on the external system.
+    // Check 1: Ensure no rotation with the same name exists at this path
     const conflictingRotation = await secretRotationV2DAL.findOne({
       name: payload.name,
       folderId: folder.id
@@ -533,6 +533,14 @@ export const secretRotationV2ServiceFactory = ({
       throw new BadRequestError({
         message: `A Secret Rotation with the name "${payload.name}" already exists at the secret path "${secretPath}"`
       });
+
+    // Check 2: Ensure no secrets with the mapped names already exist at this path
+    // We do this check outside the transaction to fail fast before any credential rotation
+    await $throwOnConflictingSecrets({
+      secretPath,
+      secretKeys: Object.values(secretsMapping),
+      folderId: folder.id
+    });
 
     try {
       const currentTime = new Date();
@@ -548,6 +556,7 @@ export const secretRotationV2ServiceFactory = ({
         return secretRotationV2DAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
 
+          // We repeat the check here to handle race conditions
           await $throwOnConflictingSecrets({
             secretPath,
             secretKeys: Object.values(secretsMapping),
