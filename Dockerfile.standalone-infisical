@@ -138,6 +138,10 @@ RUN apt-get update && apt-get install -y \
     freetds-dev \
     wget \
     openssh-client \
+    opensc \
+    libpcsclite1 \
+    pcscd \
+    pcsc-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Oracle Instant Client for OracleDB mTLS wallet support
