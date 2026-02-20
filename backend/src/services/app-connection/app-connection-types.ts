@@ -65,6 +65,12 @@ import {
   TValidateAzureDevOpsConnectionCredentialsSchema
 } from "./azure-devops/azure-devops-types";
 import {
+  TAzureDnsConnection,
+  TAzureDnsConnectionConfig,
+  TAzureDnsConnectionInput,
+  TValidateAzureDnsConnectionCredentialsSchema
+} from "./azure-dns/azure-dns-connection-types";
+import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
@@ -328,6 +334,7 @@ export type TAppConnection = { id: string } & (
   | TCloudflareConnection
   | TBitbucketConnection
   | TDNSMadeEasyConnection
+  | TAzureDnsConnection
   | TZabbixConnection
   | TRailwayConnection
   | TChecklyConnection
@@ -385,6 +392,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
   | TDNSMadeEasyConnectionInput
+  | TAzureDnsConnectionInput
   | TZabbixConnectionInput
   | TRailwayConnectionInput
   | TChecklyConnectionInput
@@ -460,6 +468,7 @@ export type TAppConnectionConfig =
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
   | TDNSMadeEasyConnectionConfig
+  | TAzureDnsConnectionConfig
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
@@ -512,6 +521,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
   | TValidateDNSMadeEasyConnectionCredentialsSchema
+  | TValidateAzureDnsConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema

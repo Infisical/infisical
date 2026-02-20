@@ -16,6 +16,7 @@ import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
+import { AzureDNSConnectionForm } from "./AzureDNSConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
@@ -158,6 +159,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
     case AppConnection.DNSMadeEasy:
       return <DNSMadeEasyConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.AzureDNS:
+      return <AzureDNSConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Bitbucket:
       return <BitbucketConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Zabbix:
@@ -332,6 +335,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.DNSMadeEasy:
       return <DNSMadeEasyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.AzureDNS:
+      return <AzureDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Bitbucket:
       return <BitbucketConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Zabbix:
