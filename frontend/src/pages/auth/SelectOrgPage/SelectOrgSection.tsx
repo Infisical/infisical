@@ -287,7 +287,12 @@ export const SelectOrganizationSection = () => {
     } else {
       setIsInitialOrgCheckLoading(false);
     }
-  }, [organizations.isPending, organizations.data, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
+  }, [
+    organizations.isPending,
+    organizations.data,
+    orgsWithSubOrgs.isPending,
+    orgsWithSubOrgs.data
+  ]);
 
   useEffect(() => {
     if (mfaPending && defaultSelectedOrg) {
@@ -306,6 +311,128 @@ export const SelectOrganizationSection = () => {
       handleSelectOrganization(defaultSelectedOrg);
     }
   }, [defaultSelectedOrg, mfaPending]);
+
+  const renderListContent = () => {
+    if (orgsWithSubOrgs.isPending) {
+      return (
+        <div className="flex justify-center py-6">
+          <Spinner size="sm" />
+        </div>
+      );
+    }
+
+    if (selectedRootOrg) {
+      return (
+        <div className="space-y-2">
+          {/* Root org login row */}
+          <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
+            <div className="flex flex-col items-start">
+              <p className="truncate">{selectedRootOrg.name}</p>
+              <p className="text-xs text-mineshaft-400">Root organization</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleLoginById(selectedRootOrg.id)}
+              aria-label="Login to root organization"
+              className="text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500"
+            >
+              <FontAwesomeIcon icon={faArrowRight} />
+            </button>
+          </div>
+
+          {/* Sub-org rows */}
+          {filteredSubOrgs.length === 0 ? (
+            <p className="py-4 text-center text-sm text-mineshaft-400">
+              No sub-organizations found
+            </p>
+          ) : (
+            filteredSubOrgs.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => handleLoginById(sub.id)}
+                className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
+              >
+                <p className="truncate">{sub.name}</p>
+                <FontAwesomeIcon
+                  icon={faArrowRight}
+                  className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
+                />
+              </button>
+            ))
+          )}
+        </div>
+      );
+    }
+
+    if (filteredOrgs.length === 0) {
+      return <p className="py-4 text-center text-sm text-mineshaft-400">No organizations found</p>;
+    }
+
+    const isSearching = !!searchTerm.trim();
+    return (
+      <div className="space-y-2">
+        {filteredOrgs.map((org) => {
+          const hasSubOrgs = org.subOrganizations.length > 0;
+          return (
+            <div key={org.id}>
+              <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
+                <div className="flex flex-col items-start">
+                  <p className="truncate transition-colors">{org.name}</p>
+                  {hasSubOrgs && !isSearching && (
+                    <p className="text-xs text-mineshaft-400">
+                      {org.subOrganizations.length} sub-organization
+                      {org.subOrganizations.length !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleLoginById(org.id)}
+                    aria-label="Login"
+                    className="text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500"
+                  >
+                    <FontAwesomeIcon icon={faArrowRight} />
+                  </button>
+                  {hasSubOrgs && !isSearching && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRootOrg(org)}
+                      aria-label="View sub-organizations"
+                      className="flex size-5 shrink-0 items-center justify-center text-mineshaft-400 transition-colors hover:text-gray-200"
+                    >
+                      <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Auto-expand sub-orgs when searching */}
+              {isSearching && hasSubOrgs && (
+                <div className="mx-2 mt-1 space-y-1">
+                  {org.subOrganizations.map((sub) => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => handleLoginById(sub.id)}
+                      className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
+                    >
+                      <p className="truncate">{sub.name}</p>
+                      <FontAwesomeIcon
+                        icon={faArrowRight}
+                        className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   if (
     userLoading ||
@@ -369,7 +496,9 @@ export const SelectOrganizationSection = () => {
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."}
+                placeholder={
+                  selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
+                }
                 leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
                 className="h-10"
               />
@@ -395,122 +524,7 @@ export const SelectOrganizationSection = () => {
               </div>
             )}
 
-            <div className="max-h-96 overflow-y-auto p-2 thin-scrollbar">
-              {orgsWithSubOrgs.isPending ? (
-                <div className="flex justify-center py-6">
-                  <Spinner size="sm" />
-                </div>
-              ) : selectedRootOrg ? (
-                /* Drill-down: root org + its sub-orgs */
-                <div className="space-y-2">
-                  {/* Root org login row */}
-                  <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
-                    <div className="flex flex-col items-start">
-                      <p className="truncate">{selectedRootOrg.name}</p>
-                      <p className="text-xs text-mineshaft-400">Root organization</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleLoginById(selectedRootOrg.id)}
-                      aria-label="Login to root organization"
-                      className="text-gray-400 transition-all hover:text-primary-500 group-hover:text-primary-400"
-                    >
-                      <FontAwesomeIcon icon={faArrowRight} />
-                    </button>
-                  </div>
-
-                  {/* Sub-org rows */}
-                  {filteredSubOrgs.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-mineshaft-400">
-                      No sub-organizations found
-                    </p>
-                  ) : (
-                    filteredSubOrgs.map((sub) => (
-                      <button
-                        key={sub.id}
-                        type="button"
-                        onClick={() => handleLoginById(sub.id)}
-                        className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
-                      >
-                        <p className="truncate">{sub.name}</p>
-                        <FontAwesomeIcon
-                          icon={faArrowRight}
-                          className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
-                        />
-                      </button>
-                    ))
-                  )}
-                </div>
-              ) : filteredOrgs.length === 0 ? (
-                <p className="py-4 text-center text-sm text-mineshaft-400">
-                  No organizations found
-                </p>
-              ) : (
-                /* Default: root org list */
-                <div className="space-y-2">
-                  {filteredOrgs.map((org) => {
-                    const hasSubOrgs = org.subOrganizations.length > 0;
-                    const isSearching = !!searchTerm.trim();
-
-                    return (
-                      <div key={org.id}>
-                        <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
-                          <div className="flex flex-col items-start">
-                            <p className="truncate transition-colors">{org.name}</p>
-                            {hasSubOrgs && !isSearching && (
-                              <p className="text-xs text-mineshaft-400">
-                                {org.subOrganizations.length} sub-organization
-                                {org.subOrganizations.length !== 1 ? "s" : ""}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={() => handleLoginById(org.id)}
-                              aria-label="Login"
-                              className="text-gray-400 transition-all hover:text-primary-500 group-hover:text-primary-400"
-                            >
-                              <FontAwesomeIcon icon={faArrowRight} />
-                            </button>
-                            {hasSubOrgs && !isSearching && (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedRootOrg(org)}
-                                aria-label="View sub-organizations"
-                                className="flex size-5 shrink-0 items-center justify-center text-mineshaft-400 transition-colors hover:text-gray-200"
-                              >
-                                <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Auto-expand sub-orgs when searching */}
-                        {isSearching && hasSubOrgs && (
-                          <div className="mx-2 mt-1 space-y-1">
-                            {org.subOrganizations.map((sub) => (
-                              <button
-                                key={sub.id}
-                                type="button"
-                                onClick={() => handleLoginById(sub.id)}
-                                className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
-                              >
-                                <p className="truncate">{sub.name}</p>
-                                <FontAwesomeIcon
-                                  icon={faArrowRight}
-                                  className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <div className="max-h-96 thin-scrollbar overflow-y-auto p-2">{renderListContent()}</div>
           </div>
         </div>
       )}
