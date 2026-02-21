@@ -1237,8 +1237,6 @@ export const OverviewPage = () => {
 
   const isTableFiltered = isFilteredByResources;
 
-  console.log("secret import", sortableImportItems);
-
   if (!isProjectV3)
     return (
       <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">

@@ -1567,49 +1567,24 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
 
-      // TODO (scott): just get the secret instead of searching for it in list
-      const { secrets } = await server.services.secret.getSecretsRaw({
-        personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
+      const secret = await server.services.secret.getSecretByNameRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
-        viewSecretValue: true,
-        throwOnMissingReadValuePermission: false,
-        actorOrgId: req.permission.orgId,
-        environment,
         actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        viewSecretValue: true,
+        environment,
         projectId,
         path: secretPath,
-        search: secretKey,
-        includeTagsInSearch: true,
-        includeMetadataInSearch: true
+        secretName: secretKey,
+        includeImports: true,
+        type: isOverride ? SecretType.Personal : SecretType.Shared
       });
 
       if (isOverride) {
-        const personalSecret = secrets.find(
-          (secret) => secret.type === SecretType.Personal && secret.secretKey === secretKey
-        );
-
-        if (!personalSecret)
-          throw new BadRequestError({
-            message: `Could not find personal secret with key "${secretKey}" at secret path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
-          });
-
-        if (personalSecret)
-          return {
-            valueOverride: personalSecret.secretValue
-          };
+        return { valueOverride: secret.secretValue };
       }
 
-      const sharedSecret = secrets.find(
-        (secret) => secret.type === SecretType.Shared && secret.secretKey === secretKey
-      );
-
-      if (!sharedSecret)
-        throw new BadRequestError({
-          message: `Could not find secret with key "${secretKey}" at secret path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
-        });
-
-      // only audit if not personal
       await server.services.auditLog.createAuditLog({
         projectId,
         ...req.auditLogInfo,
@@ -1619,12 +1594,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environment: req.query.environment,
             secretPath: req.query.secretPath,
             secretKey,
-            secretId: sharedSecret.id
+            secretId: secret.id
           }
         }
       });
 
-      return { value: sharedSecret.secretValue };
+      return { value: secret.secretValue };
     }
   });
 
