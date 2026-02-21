@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamDiscoveryType } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   DiscoveredAccountSchema,
@@ -71,7 +72,19 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: source.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_GET,
+          metadata: {
+            sourceId: source.id,
+            discoveryType: source.discoveryType,
+            name: source.name
+          }
+        }
+      });
 
       return { source };
     }
@@ -103,7 +116,19 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_CREATE,
+          metadata: {
+            discoveryType,
+            gatewayId: req.body.gatewayId,
+            name: req.body.name
+          }
+        }
+      });
 
       return { source };
     }
@@ -138,7 +163,20 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: source.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_UPDATE,
+          metadata: {
+            sourceId: req.params.discoverySourceId,
+            discoveryType,
+            ...(req.body.gatewayId && { gatewayId: req.body.gatewayId }),
+            ...(req.body.name && { name: req.body.name })
+          }
+        }
+      });
 
       return { source };
     }
@@ -166,7 +204,18 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
     handler: async (req) => {
       const source = await server.services.pamDiscoverySource.deleteById(req.params.discoverySourceId, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: source.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_DELETE,
+          metadata: {
+            sourceId: req.params.discoverySourceId,
+            discoveryType
+          }
+        }
+      });
 
       return { source };
     }
@@ -192,12 +241,23 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { message } = await server.services.pamDiscoverySource.triggerScanById(
+      const { message, discoverySource } = await server.services.pamDiscoverySource.triggerScanById(
         req.params.discoverySourceId,
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: discoverySource.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SCAN,
+          metadata: {
+            sourceId: req.params.discoverySourceId,
+            discoveryType
+          }
+        }
+      });
 
       return { message };
     }
@@ -228,7 +288,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { runs, totalCount } = await server.services.pamDiscoverySource.getDiscoveryRuns(
+      const { runs, totalCount, discoverySource } = await server.services.pamDiscoverySource.getDiscoveryRuns(
         {
           ...req.query,
           discoverySourceId: req.params.discoverySourceId
@@ -236,7 +296,19 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: discoverySource.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_RUN_LIST,
+          metadata: {
+            sourceId: req.params.discoverySourceId,
+            discoveryType,
+            count: totalCount
+          }
+        }
+      });
 
       return { runs, totalCount };
     }
@@ -263,9 +335,24 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const run = await server.services.pamDiscoverySource.getDiscoveryRunById(req.params, req.permission);
+      const { run, discoverySource } = await server.services.pamDiscoverySource.getDiscoveryRunById(
+        req.params,
+        req.permission
+      );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: discoverySource.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_RUN_GET,
+          metadata: {
+            sourceId: discoverySource.id,
+            discoveryType,
+            runId: run.id
+          }
+        }
+      });
 
       return { run };
     }
@@ -296,15 +383,28 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { resources, totalCount } = await server.services.pamDiscoverySource.getDiscoveredResources(
-        {
-          ...req.query,
-          discoverySourceId: req.params.discoverySourceId
-        },
-        req.permission
-      );
+      const { resources, totalCount, discoverySource } =
+        await server.services.pamDiscoverySource.getDiscoveredResources(
+          {
+            ...req.query,
+            discoverySourceId: req.params.discoverySourceId
+          },
+          req.permission
+        );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: discoverySource.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST,
+          metadata: {
+            sourceId: req.params.discoverySourceId,
+            discoveryType,
+            count: totalCount
+          }
+        }
+      });
 
       return { resources, totalCount };
     }
@@ -335,7 +435,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { accounts, totalCount } = await server.services.pamDiscoverySource.getDiscoveredAccounts(
+      const { accounts, totalCount, discoverySource } = await server.services.pamDiscoverySource.getDiscoveredAccounts(
         {
           ...req.query,
           discoverySourceId: req.params.discoverySourceId
@@ -343,7 +443,19 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: discoverySource.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST,
+          metadata: {
+            sourceId: req.params.discoverySourceId,
+            discoveryType,
+            count: totalCount
+          }
+        }
+      });
 
       return { accounts, totalCount };
     }

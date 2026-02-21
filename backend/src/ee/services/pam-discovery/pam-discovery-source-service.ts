@@ -407,7 +407,7 @@ export const pamDiscoverySourceServiceFactory = ({
 
     await pamDiscoveryQueue.queuePamDiscoveryScan(id);
 
-    return { message: "Scan queued successfully" };
+    return { message: "Scan queued successfully", discoverySource };
   };
 
   const getDiscoveryRuns = async (
@@ -434,7 +434,7 @@ export const pamDiscoverySourceServiceFactory = ({
     );
 
     const result = await pamDiscoveryRunDAL.findByDiscoverySourceId(discoverySourceId, { offset, limit });
-    return result;
+    return { ...result, discoverySource };
   };
 
   const getDiscoveryRunById = async ({ discoverySourceId, runId }: TGetPamDiscoveryRunDTO, actor: OrgServiceActor) => {
@@ -462,7 +462,7 @@ export const pamDiscoverySourceServiceFactory = ({
       throw new NotFoundError({ message: `Discovery Run with ID '${runId}' not found` });
     }
 
-    return run;
+    return { run, discoverySource };
   };
 
   const getDiscoveredResources = async (
@@ -512,7 +512,7 @@ export const pamDiscoverySourceServiceFactory = ({
       })
     );
 
-    return { resources: decryptedResources, totalCount };
+    return { resources: decryptedResources, totalCount, discoverySource };
   };
 
   const getDiscoveredAccounts = async (
@@ -542,7 +542,7 @@ export const pamDiscoverySourceServiceFactory = ({
       offset,
       limit
     });
-    return result;
+    return { ...result, discoverySource };
   };
 
   return {

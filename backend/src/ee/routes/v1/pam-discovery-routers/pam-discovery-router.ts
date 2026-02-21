@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ActiveDirectoryDiscoveryListItemSchema,
   SanitizedActiveDirectoryDiscoverySourceSchema
@@ -85,7 +86,17 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId
       });
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.PAM_DISCOVERY_SOURCE_LIST,
+          metadata: {
+            count: totalCount
+          }
+        }
+      });
 
       return { sources, totalCount };
     }

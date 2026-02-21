@@ -574,6 +574,16 @@ export enum EventType {
   PAM_RESOURCE_CREATE = "pam-resource-create",
   PAM_RESOURCE_UPDATE = "pam-resource-update",
   PAM_RESOURCE_DELETE = "pam-resource-delete",
+  PAM_DISCOVERY_SOURCE_LIST = "pam-discovery-source-list",
+  PAM_DISCOVERY_SOURCE_GET = "pam-discovery-source-get",
+  PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
+  PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
+  PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
+  PAM_DISCOVERY_SCAN = "pam-discovery-scan",
+  PAM_DISCOVERY_SOURCE_RUN_LIST = "pam-discovery-source-run-list",
+  PAM_DISCOVERY_SOURCE_RUN_GET = "pam-discovery-source-run-get",
+  PAM_DISCOVERY_SOURCE_RESOURCE_LIST = "pam-discovery-source-resource-list",
+  PAM_DISCOVERY_SOURCE_ACCOUNT_LIST = "pam-discovery-source-account-list",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -4475,6 +4485,93 @@ interface PamResourceDeleteEvent {
   };
 }
 
+interface PamDiscoverySourceListEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface PamDiscoverySourceGetEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_GET;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    name: string;
+  };
+}
+
+interface PamDiscoverySourceCreateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
+  metadata: {
+    discoveryType: string;
+    gatewayId: string;
+    name: string;
+  };
+}
+
+interface PamDiscoverySourceUpdateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_UPDATE;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    gatewayId?: string;
+    name?: string;
+  };
+}
+
+interface PamDiscoverySourceDeleteEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_DELETE;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+  };
+}
+
+interface PamDiscoveryScanEvent {
+  type: EventType.PAM_DISCOVERY_SCAN;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+  };
+}
+
+interface PamDiscoverySourceRunListEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_RUN_LIST;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    count: number;
+  };
+}
+
+interface PamDiscoverySourceRunGetEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_RUN_GET;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    runId: string;
+  };
+}
+
+interface PamDiscoverySourceResourceListEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    count: number;
+  };
+}
+
+interface PamDiscoverySourceAccountListEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    count: number;
+  };
+}
+
 interface UpdateCertificateRenewalConfigEvent {
   type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -5462,6 +5559,16 @@ export type Event =
   | PamResourceCreateEvent
   | PamResourceUpdateEvent
   | PamResourceDeleteEvent
+  | PamDiscoverySourceListEvent
+  | PamDiscoverySourceGetEvent
+  | PamDiscoverySourceCreateEvent
+  | PamDiscoverySourceUpdateEvent
+  | PamDiscoverySourceDeleteEvent
+  | PamDiscoveryScanEvent
+  | PamDiscoverySourceRunListEvent
+  | PamDiscoverySourceRunGetEvent
+  | PamDiscoverySourceResourceListEvent
+  | PamDiscoverySourceAccountListEvent
   | UpdateCertificateRenewalConfigEvent
   | DisableCertificateRenewalConfigEvent
   | CreateCertificateRequestEvent
