@@ -10,6 +10,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   EllipsisVerticalIcon,
+  InfoIcon,
   PencilIcon,
   PlayIcon,
   TrashIcon
@@ -28,6 +29,9 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableAlert,
+  UnstableAlertDescription,
+  UnstableAlertTitle,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
@@ -589,6 +593,13 @@ const AccountsTab = ({
 
   return (
     <div>
+      <UnstableAlert variant="org" className="mb-4">
+        <InfoIcon />
+        <UnstableAlertTitle>Account passwords must be configured manually</UnstableAlertTitle>
+        <UnstableAlertDescription>
+          Discovered accounts are auto-imported with empty passwords by default
+        </UnstableAlertDescription>
+      </UnstableAlert>
       <UnstableTable>
         <UnstableTableHeader>
           <UnstableTableRow>
