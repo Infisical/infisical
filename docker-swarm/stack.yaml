@@ -147,7 +147,7 @@ services:
 
 
   redis_replica0:
-    image: bitnami/redis:6.2.10
+    image: bitnami/redis:7.2
     environment:
       - REDIS_REPLICATION_MODE=master
       - REDIS_PASSWORD=123456
@@ -159,7 +159,7 @@ services:
           - node.labels.name == node1
 
   redis_replica1:
-    image: bitnami/redis:6.2.10
+    image: bitnami/redis:7.2
     environment:
       - REDIS_REPLICATION_MODE=slave
       - REDIS_MASTER_HOST=redis_replica0
@@ -174,7 +174,7 @@ services:
           - node.labels.name == node2
 
   redis_replica2:
-    image: bitnami/redis:6.2.10
+    image: bitnami/redis:7.2
     environment:
       - REDIS_REPLICATION_MODE=slave
       - REDIS_MASTER_HOST=redis_replica0
@@ -189,7 +189,7 @@ services:
           - node.labels.name == node3
 
   redis_sentinel1:
-    image: bitnami/redis-sentinel:6.2.10
+    image: bitnami/redis-sentinel:7.2
     environment:
       - REDIS_SENTINEL_QUORUM=2
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
@@ -206,7 +206,7 @@ services:
           - node.labels.name == node1
 
   redis_sentinel2:
-    image: bitnami/redis-sentinel:6.2.10
+    image: bitnami/redis-sentinel:7.2
     environment:
       - REDIS_SENTINEL_QUORUM=2
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
@@ -223,7 +223,7 @@ services:
           - node.labels.name == node2
 
   redis_sentinel3:
-    image: bitnami/redis-sentinel:6.2.10
+    image: bitnami/redis-sentinel:7.2
     environment:
       - REDIS_SENTINEL_QUORUM=2
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
