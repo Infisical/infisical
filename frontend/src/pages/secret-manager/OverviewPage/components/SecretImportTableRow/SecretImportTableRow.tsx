@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import { useDragOperation } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
@@ -21,6 +21,11 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   EmptyMedia,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -88,6 +93,7 @@ export const SecretImportTableRow = ({
   secretImport
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
   const { currentProject } = useProject();
   const resyncSecretReplication = useResyncSecretReplication();
 
@@ -161,6 +167,52 @@ export const SecretImportTableRow = ({
     );
   }, [matchingImportedSecrets, searchFilter]);
 
+  const hasAnyReplicatedImport = useMemo(() => {
+    if (isSingleEnvView) return false;
+    return environments.some((env) => {
+      if (!isSecretImportInEnv(importEnvSlug, importPath, env.slug)) return false;
+      const imp = getSecretImportByEnv(importEnvSlug, importPath, env.slug);
+      return imp?.isReplication === true;
+    });
+  }, [environments, isSingleEnvView, importEnvSlug, importPath, isSecretImportInEnv, getSecretImportByEnv]);
+
+  const envsWithImport = useMemo(() => {
+    if (isSingleEnvView) return [];
+    return environments.filter((env) =>
+      isSecretImportInEnv(importEnvSlug, importPath, env.slug)
+    );
+  }, [environments, isSingleEnvView, importEnvSlug, importPath, isSecretImportInEnv]);
+
+  const effectiveSelectedEnv = useMemo(() => {
+    if (!hasAnyReplicatedImport || envsWithImport.length === 0) return "";
+    if (selectedReplicationEnv && envsWithImport.some((e) => e.slug === selectedReplicationEnv)) {
+      return selectedReplicationEnv;
+    }
+    return envsWithImport[0].slug;
+  }, [hasAnyReplicatedImport, envsWithImport, selectedReplicationEnv]);
+
+  const selectedEnvImportData = useMemo(() => {
+    if (!hasAnyReplicatedImport || !effectiveSelectedEnv) return null;
+    const envImportedSecrets = allEnvImportedSecrets.find(
+      (imp) => imp.sourceEnv === effectiveSelectedEnv
+    );
+    const secretImportRecord = getSecretImportByEnv(
+      importEnvSlug,
+      importPath,
+      effectiveSelectedEnv
+    );
+    return { envImportedSecrets, secretImportRecord };
+  }, [hasAnyReplicatedImport, effectiveSelectedEnv, allEnvImportedSecrets, getSecretImportByEnv, importEnvSlug, importPath]);
+
+  const selectedEnvSecrets = useMemo(() => {
+    if (!selectedEnvImportData?.envImportedSecrets) return [];
+    const secrets = selectedEnvImportData.envImportedSecrets.secrets;
+    if (!searchFilter) return secrets;
+    return secrets.filter((secret) =>
+      secret.key.toUpperCase().includes(searchFilter.toUpperCase())
+    );
+  }, [selectedEnvImportData, searchFilter]);
+
   useEffect(() => {
     if (searchFilter) {
       if (filteredImportedSecrets.length > 0) {
@@ -170,6 +222,16 @@ export const SecretImportTableRow = ({
       }
     }
   }, [searchFilter, filteredImportedSecrets.length]);
+
+  useEffect(() => {
+    if (
+      hasAnyReplicatedImport &&
+      selectedReplicationEnv &&
+      !envsWithImport.some((e) => e.slug === selectedReplicationEnv)
+    ) {
+      setSelectedReplicationEnv("");
+    }
+  }, [hasAnyReplicatedImport, envsWithImport, selectedReplicationEnv]);
 
   const handleResyncSecretReplication = async (importItem: TSecretImport, envSlug: string) => {
     if (resyncSecretReplication.isPending) return;
@@ -316,7 +378,84 @@ export const SecretImportTableRow = ({
     );
   };
 
+  const renderReplicationEnvSelector = () => {
+    if (envsWithImport.length <= 1) return null;
+
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted">Viewing secrets for:</span>
+        <Select value={effectiveSelectedEnv} onValueChange={setSelectedReplicationEnv}>
+          <SelectTrigger size="sm" onClick={(e) => e.stopPropagation()}>
+            <SelectValue placeholder="Select environment..." />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {envsWithImport.map((env) => (
+              <SelectItem key={env.slug} value={env.slug}>
+                {env.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
+
   const renderMultiEnvExpandedSecrets = () => {
+    if (hasAnyReplicatedImport) {
+      const selectedImport = selectedEnvImportData?.secretImportRecord;
+
+      if (selectedEnvSecrets.length === 0) {
+        return (
+          <>
+            {renderReplicationEnvSelector()}
+            <UnstableEmpty className="bg-transparent">
+              <UnstableEmptyHeader>
+                <EmptyMedia variant="icon">
+                  {searchFilter ? <SearchIcon /> : <ImportIcon />}
+                </EmptyMedia>
+                <UnstableEmptyTitle>
+                  {searchFilter
+                    ? "No imported secrets match search"
+                    : "No imported secrets found"}
+                </UnstableEmptyTitle>
+              </UnstableEmptyHeader>
+            </UnstableEmpty>
+          </>
+        );
+      }
+
+      return (
+        <>
+          {renderReplicationEnvSelector()}
+          <UnstableTable containerClassName="border-none rounded-none bg-transparent">
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead className="w-1/2">Name</UnstableTableHead>
+                <UnstableTableHead className="w-1/2">Value</UnstableTableHead>
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {selectedEnvSecrets.map((secret) => (
+                <SecretImportSecretRow
+                  key={`import-secret-multi-${effectiveSelectedEnv}-${secret.key}`}
+                  secretKey={secret.key}
+                  environment={
+                    selectedImport?.isReplication ? effectiveSelectedEnv : importEnvSlug
+                  }
+                  secretPath={
+                    selectedImport?.isReplication
+                      ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${selectedImport.id}`
+                      : importPath
+                  }
+                  isEmpty={secret.isEmpty}
+                />
+              ))}
+            </UnstableTableBody>
+          </UnstableTable>
+        </>
+      );
+    }
+
     if (filteredImportedSecrets.length === 0) {
       return (
         <UnstableEmpty className="bg-transparent">
@@ -337,12 +476,6 @@ export const SecretImportTableRow = ({
     const hasAnyDiscrepancy = filteredImportedSecrets.some((secret) =>
       Array.from(secretKeysByEnv.values()).some((keys) => !keys.has(secret.key))
     );
-
-    const firstEnvImport =
-      allEnvImportedSecrets.length > 0
-        ? getSecretImportByEnv(importEnvSlug, importPath, allEnvImportedSecrets[0].sourceEnv)
-        : undefined;
-    const isReplicated = firstEnvImport?.isReplication;
 
     return (
       <>
@@ -366,12 +499,8 @@ export const SecretImportTableRow = ({
                 <SecretImportSecretRow
                   key={`import-secret-multi-${secret.key}`}
                   secretKey={secret.key}
-                  environment={isReplicated ? allEnvImportedSecrets[0].sourceEnv : importEnvSlug}
-                  secretPath={
-                    isReplicated && firstEnvImport
-                      ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${firstEnvImport.id}`
-                      : importPath
-                  }
+                  environment={importEnvSlug}
+                  secretPath={importPath}
                   isEmpty={secret.isEmpty}
                   missingFromEnvs={missingEnvNames}
                 />
