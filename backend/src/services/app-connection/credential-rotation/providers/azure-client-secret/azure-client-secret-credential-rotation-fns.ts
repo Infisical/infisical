@@ -7,43 +7,42 @@ import { logger } from "@app/lib/logger";
 import { AzureKeyVaultConnectionMethod } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-enums";
 
 import {
-  TAppConnectionCredentialRotationGeneratedCredentials,
+  TCredentialRotationCreateCredential,
+  TCredentialRotationIssueInitialCredentials,
+  TCredentialRotationMergeCredentials,
+  TCredentialRotationProviderFactory,
+  TCredentialRotationRevokeCredential,
+  TCredentialRotationValidateMethod
+} from "../../app-connection-credential-rotation-types";
+import {
+  AzureAddPasswordResponse,
+  AzureErrorResponse,
+  TAzureClientSecretCredentialRotationCredentials,
   TAzureClientSecretGeneratedCredential,
   TAzureClientSecretStrategyConfig,
-  TCredentialRotationProvider
-} from "../app-connection-credential-rotation-types";
+  TCreateAzureClientSecretDTO
+} from "./azure-client-secret-credential-rotation-types";
+
+const sleep = async (ms: number) => {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+};
 
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
 const EXPIRY_PADDING_IN_DAYS = 3;
-
-type AzureAddPasswordResponse = {
-  keyId: string;
-  secretText: string;
-  displayName: string;
-  endDateTime: string;
-};
-
-type AzureErrorResponse = { error: { message: string } };
-
-const sleep = (ms: number) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
-/**
- * Gets a Graph API access token using the connection's own credentials (client credentials grant).
- * This token is ephemeral and NOT stored in the connection's accessToken field.
- */
 const GRAPH_TOKEN_MAX_RETRIES = 3;
-const GRAPH_TOKEN_RETRY_DELAY_MS = 2000;
+const GRAPH_TOKEN_BASE_RETRY_DELAY_MS = 2000;
 
+// might be thrown if its a newly created client secret and it hasn't propagated yet.
+// we need to retry in this case to give it some time
 const isInvalidClientSecretError = (error: unknown): boolean => {
   if (!(error instanceof AxiosError)) return false;
   const desc = (error.response?.data as { error_description?: string })?.error_description || "";
   return desc.includes("AADSTS7000215");
 };
 
-export const getGraphApiToken = async (
+const getGraphApiToken = async (
   credentials: {
     clientId: string;
     clientSecret: string;
@@ -76,7 +75,7 @@ export const getGraphApiToken = async (
     // Retry on AADSTS7000215 (invalid client secret) — this can happen when a newly created
     // secret hasn't propagated in Azure AD yet.
     if (isInvalidClientSecretError(error) && attempt < GRAPH_TOKEN_MAX_RETRIES) {
-      const delay = GRAPH_TOKEN_RETRY_DELAY_MS * 2 ** attempt;
+      const delay = GRAPH_TOKEN_BASE_RETRY_DELAY_MS * 2 ** attempt;
       logger.info(
         `credentialRotation: Graph API token auth failed (secret not propagated?), retrying in ${delay}ms (attempt ${attempt + 1}/${GRAPH_TOKEN_MAX_RETRIES})`
       );
@@ -120,14 +119,12 @@ const parseAzureError = (error: unknown, context: string): never => {
 };
 
 /**
- * Looks up the Azure AD Application Object ID from a client ID (appId) using the Graph API.
+ * Looks up the Azure AD application object ID from a client ID
  */
-export const getApplicationObjectId = async (credentials: {
-  clientId: string;
-  clientSecret: string;
-  tenantId: string;
-}): Promise<string> => {
-  const accessToken = await getGraphApiToken(credentials);
+const getApplicationObjectId = async (
+  credentials: Pick<TAzureClientSecretCredentialRotationCredentials, "clientId">,
+  accessToken: string
+): Promise<string> => {
   const endpoint = `${GRAPH_API_BASE}/applications?$filter=appId eq '${credentials.clientId}'&$select=id`;
 
   try {
@@ -153,14 +150,12 @@ export const getApplicationObjectId = async (credentials: {
   }
 };
 
-/**
- * Validates the strategy config by checking the app's objectId is accessible via Graph API.
- */
-export const validateAzureClientSecretRotationConfig = async (
+// Validates the strategy config by checking the app's objectId is accessible via Graph API.
+const validateAzureClientSecretRotationConfig = async (
   config: TAzureClientSecretStrategyConfig,
-  credentials: { clientId: string; clientSecret: string; tenantId: string }
+  credentials: { clientId: string; clientSecret: string; tenantId: string },
+  accessToken: string
 ) => {
-  const accessToken = await getGraphApiToken(credentials);
   const endpoint = `${GRAPH_API_BASE}/applications/${config.objectId}`;
 
   try {
@@ -189,13 +184,11 @@ const isAzureConcurrentRequestError = (error: unknown): boolean => {
  * Retries on Azure's transient "concurrent requests" error with exponential backoff.
  */
 export const createAzureClientSecret = async (
-  config: TAzureClientSecretStrategyConfig,
-  credentials: { clientId: string; clientSecret: string; tenantId: string },
-  rotationInterval: number,
-  index?: number,
-  attempt = 0
+  dto: TCreateAzureClientSecretDTO
 ): Promise<TAzureClientSecretGeneratedCredential> => {
-  const accessToken = await getGraphApiToken(credentials);
+  const { connectionName, config, accessToken, rotationInterval, activeIndex } = dto;
+  const attempt = dto.attempt ?? 0;
+
   const endpoint = `${GRAPH_API_BASE}/applications/${config.objectId}/addPassword`;
 
   const now = new Date();
@@ -212,7 +205,7 @@ export const createAzureClientSecret = async (
       endpoint,
       {
         passwordCredential: {
-          displayName: `Infisical Managed Credential (${formattedDate}) (idx-${index})`,
+          displayName: `Infisical Managed Credential (${formattedDate}) [${activeIndex + 1}] - ${connectionName}`,
           endDateTime: endDateTime.toISOString()
         }
       },
@@ -225,7 +218,9 @@ export const createAzureClientSecret = async (
     );
 
     if (!data?.secretText || !data?.keyId) {
-      throw new Error("Invalid response from Azure: missing secretText or keyId.");
+      throw new BadRequestError({
+        message: "Invalid response from Azure: missing secretText or keyId."
+      });
     }
 
     return {
@@ -240,7 +235,7 @@ export const createAzureClientSecret = async (
         `credentialRotation: Azure concurrent request error, retrying in ${delay}ms (attempt ${attempt + 1}/${AZURE_CONCURRENT_REQUEST_MAX_RETRIES})`
       );
       await sleep(delay);
-      return createAzureClientSecret(config, credentials, rotationInterval, index, attempt + 1);
+      return createAzureClientSecret({ ...dto, attempt: attempt + 1 });
     }
 
     if (error instanceof BadRequestError) throw error;
@@ -257,9 +252,9 @@ export const createAzureClientSecret = async (
  */
 export const listAzurePasswordCredentials = async (
   config: TAzureClientSecretStrategyConfig,
-  credentials: { clientId: string; clientSecret: string; tenantId: string }
+  credentials: { clientId: string; clientSecret: string; tenantId: string },
+  accessToken: string
 ): Promise<Array<{ keyId: string; displayName: string }>> => {
-  const accessToken = await getGraphApiToken(credentials);
   const endpoint = `${GRAPH_API_BASE}/applications/${config.objectId}?$select=passwordCredentials`;
 
   try {
@@ -286,9 +281,10 @@ export const listAzurePasswordCredentials = async (
 export const azureCredentialExists = async (
   keyId: string,
   config: TAzureClientSecretStrategyConfig,
-  credentials: { clientId: string; clientSecret: string; tenantId: string }
+  credentials: TAzureClientSecretCredentialRotationCredentials,
+  accessToken: string
 ): Promise<boolean> => {
-  const passwordCredentials = await listAzurePasswordCredentials(config, credentials);
+  const passwordCredentials = await listAzurePasswordCredentials(config, credentials, accessToken);
   return passwordCredentials.some((credential) => credential.keyId === keyId);
 };
 
@@ -300,15 +296,15 @@ export const revokeAzureClientSecret = async (
   keyId: string,
   config: TAzureClientSecretStrategyConfig,
   credentials: { clientId: string; clientSecret: string; tenantId: string },
+  accessToken: string,
   attempt = 0
 ): Promise<void> => {
-  const exists = await azureCredentialExists(keyId, config, credentials);
+  const exists = await azureCredentialExists(keyId, config, credentials, accessToken);
   if (!exists) {
     logger.info(`Credential keyId=${keyId} does not exist on app ${config.objectId}, skipping revocation`);
     return;
   }
 
-  const accessToken = await getGraphApiToken(credentials);
   const endpoint = `${GRAPH_API_BASE}/applications/${config.objectId}/removePassword`;
 
   try {
@@ -329,7 +325,7 @@ export const revokeAzureClientSecret = async (
         `credentialRotation: Azure concurrent request error on revoke, retrying in ${delay}ms (attempt ${attempt + 1}/${AZURE_CONCURRENT_REQUEST_MAX_RETRIES})`
       );
       await sleep(delay);
-      await revokeAzureClientSecret(keyId, config, credentials, attempt + 1);
+      await revokeAzureClientSecret(keyId, config, credentials, accessToken, attempt + 1);
       return;
     }
 
@@ -337,63 +333,99 @@ export const revokeAzureClientSecret = async (
   }
 };
 
-export const azureClientSecretRotationProvider: TCredentialRotationProvider = {
-  validateConnectionMethod(method: string) {
+export const azureClientSecretRotationProviderFactory: TCredentialRotationProviderFactory<
+  TAzureClientSecretStrategyConfig,
+  TAzureClientSecretGeneratedCredential
+> = (connection) => {
+  const validateConnectionMethod: TCredentialRotationValidateMethod = (method) => {
     if (method !== AzureKeyVaultConnectionMethod.ClientSecret) {
       throw new BadRequestError({
         message: "Credential rotation is only supported for Client Secret auth method"
       });
     }
-  },
+  };
 
-  async issueInitialCredentials(credentials, rotationInterval) {
+  const issueInitialCredentials: TCredentialRotationIssueInitialCredentials<
+    TAzureClientSecretStrategyConfig,
+    TAzureClientSecretGeneratedCredential
+  > = async (credentials, rotationInterval) => {
     const azureCredentials = credentials as {
       clientId: string;
       clientSecret: string;
       tenantId: string;
       applicationObjectId?: string;
     };
+
+    const accessToken = await getGraphApiToken(azureCredentials);
+
     let { applicationObjectId } = azureCredentials;
     if (!applicationObjectId) {
-      applicationObjectId = await getApplicationObjectId(azureCredentials);
+      applicationObjectId = await getApplicationObjectId(azureCredentials, accessToken);
     }
+
     const strategyConfig: TAzureClientSecretStrategyConfig = { objectId: applicationObjectId };
-    await validateAzureClientSecretRotationConfig(strategyConfig, azureCredentials);
-    const existingCreds = await listAzurePasswordCredentials(strategyConfig, azureCredentials);
-    const newCredential = await createAzureClientSecret(strategyConfig, azureCredentials, rotationInterval, 0);
-    const originalCredential = existingCreds.find((c) => c.keyId !== newCredential.keyId);
-    const generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials = [
-      newCredential,
-      originalCredential
-        ? { keyId: originalCredential.keyId, clientSecret: azureCredentials.clientSecret, createdAt: "" }
-        : null
-    ];
+    await validateAzureClientSecretRotationConfig(strategyConfig, azureCredentials, accessToken);
+
+    // Create one Infisical-managed credential. The second slot starts empty (null) and will
+    // be filled on the first rotation cycle. The original user-provided secret becomes unused
+    // but can't be revoked because Azure doesn't expose which keyId maps to a given secret value.
+    // It will expire naturally based on its configured expiry in Azure AD.
+    const newCredential = await createAzureClientSecret({
+      accessToken,
+      connectionName: connection.name,
+      config: strategyConfig,
+      rotationInterval,
+      activeIndex: 0,
+      attempt: 0
+    });
+
+    const generatedCredentials: (TAzureClientSecretGeneratedCredential | null)[] = [newCredential, null];
+
     return {
       strategyConfig,
       generatedCredentials,
       updatedCredentials: { ...azureCredentials, clientSecret: newCredential.clientSecret, applicationObjectId }
     };
-  },
+  };
 
-  async createCredential(strategyConfig, credentials, rotationInterval, inactiveIndex) {
-    return createAzureClientSecret(
-      strategyConfig,
-      credentials as { clientId: string; clientSecret: string; tenantId: string; applicationObjectId?: string },
-      rotationInterval,
-      inactiveIndex
-    );
-  },
+  const createCredential: TCredentialRotationCreateCredential<
+    TAzureClientSecretStrategyConfig,
+    TAzureClientSecretGeneratedCredential
+  > = async (strategyConfig, credentials, rotationInterval, activeIndex) => {
+    const accessToken = await getGraphApiToken(credentials);
 
-  mergeCredentials(currentCredentials, newCredential) {
+    return createAzureClientSecret({
+      accessToken,
+      activeIndex,
+      config: strategyConfig,
+      connectionName: connection.name,
+      rotationInterval
+    });
+  };
+
+  const mergeCredentials: TCredentialRotationMergeCredentials<TAzureClientSecretGeneratedCredential> = (
+    currentCredentials,
+    newCredential
+  ) => {
     return { ...currentCredentials, clientSecret: newCredential.clientSecret };
-  },
+  };
 
-  async revokeCredential(inactiveCredential, strategyConfig, credentials) {
+  const revokeCredential: TCredentialRotationRevokeCredential<
+    TAzureClientSecretStrategyConfig,
+    TAzureClientSecretGeneratedCredential
+  > = async (inactiveCredential, strategyConfig, credentials) => {
     if (!inactiveCredential?.keyId) return;
-    await revokeAzureClientSecret(
-      inactiveCredential.keyId,
-      strategyConfig,
-      credentials as { clientId: string; clientSecret: string; tenantId: string }
-    );
-  }
+
+    const accessToken = await getGraphApiToken(credentials);
+
+    await revokeAzureClientSecret(inactiveCredential.keyId, strategyConfig, credentials, accessToken);
+  };
+
+  return {
+    validateConnectionMethod,
+    issueInitialCredentials,
+    createCredential,
+    mergeCredentials,
+    revokeCredential
+  };
 };

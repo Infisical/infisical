@@ -5,6 +5,9 @@ import { TableName, TAppConnections } from "@app/db/schemas";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import { transformUsageToProjects } from "@app/services/app-connection/app-connection-fns";
 
+import { TAppConnection } from "./app-connection-types";
+import { AppConnectionCredentialRotationRotateAtUtcSchema } from "./credential-rotation/app-connection-credential-rotation-schemas";
+
 export type TAppConnectionDALFactory = ReturnType<typeof appConnectionDALFactory>;
 
 type AppConnectionFindFilter = Parameters<typeof buildFindFilter<TAppConnections>>[0];
@@ -15,7 +18,16 @@ export const appConnectionDALFactory = (db: TDbClient) => {
   const findWithProjectDetails = async (filter: AppConnectionFindFilter, tx?: Knex) => {
     const query = (tx || db.replicaNode())(TableName.AppConnection)
       .leftJoin(TableName.Project, `${TableName.AppConnection}.projectId`, `${TableName.Project}.id`)
+      .leftJoin(
+        TableName.AppConnectionCredentialRotation,
+        `${TableName.AppConnection}.id`,
+        `${TableName.AppConnectionCredentialRotation}.connectionId`
+      )
       .select(selectAllTableCols(TableName.AppConnection))
+      .select(
+        db.ref("rotationInterval").withSchema(TableName.AppConnectionCredentialRotation).as("rotationInterval"),
+        db.ref("rotateAtUtc").withSchema(TableName.AppConnectionCredentialRotation).as("rotateAtUtc")
+      )
       .select(
         // project
         db.ref("name").withSchema(TableName.Project).as("projectName"),
@@ -30,18 +42,34 @@ export const appConnectionDALFactory = (db: TDbClient) => {
 
     const connections = await query;
 
-    return connections.map(({ projectName, projectSlug, projectType, projectId, ...connection }) => ({
-      ...connection,
-      projectId,
-      project: projectId
-        ? {
-            name: projectName,
-            type: projectType,
-            slug: projectSlug,
-            id: projectId
-          }
-        : null
-    }));
+    return connections.map(({ projectName, projectSlug, projectType, projectId, ...connection }) => {
+      let rotation: TAppConnection["rotation"] | undefined;
+
+      if (connection.isAutoRotationEnabled && connection.rotateAtUtc) {
+        const parsedRotationAtUtc = AppConnectionCredentialRotationRotateAtUtcSchema.safeParse(connection.rotateAtUtc);
+
+        if (parsedRotationAtUtc.success) {
+          rotation = {
+            rotationInterval: connection.rotationInterval,
+            rotateAtUtc: parsedRotationAtUtc.data
+          };
+        }
+      }
+
+      return {
+        ...connection,
+        rotation,
+        projectId,
+        project: projectId
+          ? {
+              name: projectName,
+              type: projectType,
+              slug: projectSlug,
+              id: projectId
+            }
+          : null
+      };
+    });
   };
 
   const findAppConnectionUsageById = async (connectionId: string, tx?: Knex) => {

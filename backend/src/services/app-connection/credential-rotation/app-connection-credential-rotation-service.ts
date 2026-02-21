@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -14,6 +15,7 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnection } from "../app-connection-types";
+import { AzureKeyVaultConnectionMethod } from "../azure-key-vault";
 import { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
 import {
   AppConnectionCredentialRotationStatus,
@@ -30,22 +32,46 @@ import {
   parseRotationErrorMessage
 } from "./app-connection-credential-rotation-fns";
 import {
+  TAppConnectionCredentialCredentials,
   TAppConnectionCredentialRotationStrategyConfig,
   TCreateAppConnectionCredentialRotationDTO,
-  TCredentialRotationProvider,
+  TCredentialRotationProviderFactory,
   TTriggerAppConnectionCredentialRotationDTO,
   TUpdateAppConnectionCredentialRotationDTO
 } from "./app-connection-credential-rotation-types";
-import { azureClientSecretRotationProvider } from "./providers/azure-client-secret-credential-rotation";
+import {
+  AzureClientSecretCredentialRotationCredentialsSchema,
+  azureClientSecretRotationProviderFactory
+} from "./providers/azure-client-secret";
 
 const MAX_GENERATED_CREDENTIALS_LENGTH = 2;
 
-const STRATEGY_MAP: Record<string, AppConnectionCredentialRotationStrategy> = {
-  [AppConnection.AzureKeyVault]: AppConnectionCredentialRotationStrategy.AzureClientSecret
+const STRATEGY_MAP: Record<
+  AppConnectionCredentialRotationStrategy,
+  {
+    app: TAppConnection["app"]; // azure-key-vault
+    method: TAppConnection["method"]; // client-secret
+  }
+> = {
+  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: {
+    app: AppConnection.AzureKeyVault,
+    method: AzureKeyVaultConnectionMethod.ClientSecret
+  }
 };
 
-const CREDENTIAL_ROTATION_PROVIDER_MAP: Record<AppConnectionCredentialRotationStrategy, TCredentialRotationProvider> = {
-  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: azureClientSecretRotationProvider
+const CREDENTIAL_ROTATION_CREDENTIALS_SCHEMA_MAP: Record<
+  AppConnectionCredentialRotationStrategy,
+  z.ZodSchema<TAppConnectionCredentialCredentials>
+> = {
+  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: AzureClientSecretCredentialRotationCredentialsSchema
+};
+
+const CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP: Record<
+  AppConnectionCredentialRotationStrategy,
+  TCredentialRotationProviderFactory
+> = {
+  [AppConnectionCredentialRotationStrategy.AzureClientSecret]:
+    azureClientSecretRotationProviderFactory as TCredentialRotationProviderFactory
 };
 
 export type TAppConnectionCredentialRotationServiceFactoryDep = {
@@ -114,22 +140,25 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const connection = await appConnectionDAL.findById(connectionId, tx);
     if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
 
-    // Auto-infer strategy from connection type
-    const strategy = STRATEGY_MAP[connection.app];
+    const strategy = Object.values(AppConnectionCredentialRotationStrategy).find(
+      (s) => STRATEGY_MAP[s].app === connection.app && STRATEGY_MAP[s].method === connection.method
+    );
+
     if (!strategy) {
-      throw new BadRequestError({ message: `Credential rotation is not supported for ${connection.app} connections` });
+      throw new BadRequestError({
+        message: `Credential rotation is not supported for ${connection.app} connections with ${connection.method} method`
+      });
     }
 
-    const provider = CREDENTIAL_ROTATION_PROVIDER_MAP[strategy];
+    const provider = CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP[strategy](connection);
+
     provider.validateConnectionMethod(connection.method);
 
-    // Check if rotation config already exists
     const existingRotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
     if (existingRotation) {
       throw new BadRequestError({ message: "Credential rotation is already configured for this connection" });
     }
 
-    // Get the connection's own credentials for self-rotation
     const credentials = await getConnectionClientCredentials(connection);
 
     const { strategyConfig, generatedCredentials, updatedCredentials } = await provider.issueInitialCredentials(
@@ -305,8 +334,8 @@ export const appConnectionCredentialRotationServiceFactory = ({
   };
 
   /**
-   * Core rotation logic — called by the queue worker.
-   * Uses two-credential self-rotation pattern.
+   * Core rotation logic. called by the queue worker
+   * twoo credential self-rotation pattern
    */
   const rotateCredentials = async (
     rotationId: string,
@@ -360,15 +389,31 @@ export const appConnectionCredentialRotationServiceFactory = ({
           kmsService
         });
 
-        const provider = CREDENTIAL_ROTATION_PROVIDER_MAP[strategy as AppConnectionCredentialRotationStrategy];
+        const provider =
+          CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP[strategy as AppConnectionCredentialRotationStrategy](connection);
 
         // Two-credential rotation: create-first, revoke-after.
         // This ordering ensures that if create fails, we still have 2 valid secrets.
         const inactiveIndex = (activeIndex + 1) % MAX_GENERATED_CREDENTIALS_LENGTH;
         const inactiveCredential = generatedCredentials[inactiveIndex];
 
+        const credentialsSchema =
+          CREDENTIAL_ROTATION_CREDENTIALS_SCHEMA_MAP[strategy as AppConnectionCredentialRotationStrategy];
+
+        const parsedCredentials = credentialsSchema.safeParse(credentials);
+        if (!parsedCredentials.success) {
+          throw new BadRequestError({
+            message: `Failed to parse credentials for ${strategy} connection`
+          });
+        }
+
         // Step 1: Create new credential first (safe — worst case we have 3 secrets temporarily)
-        const newCredential = await provider.createCredential(config, credentials, rotationInterval, inactiveIndex);
+        const newCredential = await provider.createCredential(
+          config,
+          parsedCredentials.data,
+          rotationInterval,
+          inactiveIndex
+        );
 
         // Step 2: Update connection credentials with new secret
         const updatedCredentials = provider.mergeCredentials(
@@ -384,7 +429,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
             logger.info(
               `credentialRotation: Revoking old credential keyId=${inactiveCredential.keyId} at index=${inactiveIndex} [rotationId=${rotationId}]`
             );
-            await provider.revokeCredential(inactiveCredential, config, credentials);
+            await provider.revokeCredential(inactiveCredential, config, parsedCredentials.data);
           } catch (revokeError) {
             logger.warn(
               revokeError,

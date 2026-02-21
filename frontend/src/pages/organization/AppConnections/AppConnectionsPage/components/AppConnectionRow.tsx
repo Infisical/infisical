@@ -13,7 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { ServerIcon } from "lucide-react";
+import { ClockIcon, ServerIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -53,8 +53,16 @@ export const AppConnectionRow = ({
   isProjectView
 }: Props) => {
   const { currentOrg } = useOrganization();
-  const { id, name, method, app, description, isPlatformManagedCredentials, project } =
-    appConnection;
+  const {
+    id,
+    name,
+    method,
+    app,
+    description,
+    isPlatformManagedCredentials,
+    project,
+    isAutoRotationEnabled
+  } = appConnection;
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -166,6 +174,21 @@ export const AppConnectionRow = ({
               </div>
             </Tooltip>
           )}
+
+          {isAutoRotationEnabled && (
+            <Tooltip
+              side="left"
+              content="This connection's credentials are automatically rotated by Infisical."
+            >
+              <div>
+                <Badge variant="org">
+                  <ClockIcon />
+                  Automatic Credential Rotation
+                </Badge>
+              </div>
+            </Tooltip>
+          )}
+
           <Tooltip className="max-w-sm text-center" content="Options">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

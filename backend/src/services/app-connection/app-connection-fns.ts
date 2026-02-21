@@ -1,5 +1,4 @@
-import { ProjectType } from "@app/db/schemas";
-import { TAppConnections } from "@app/db/schemas/app-connections";
+import { ProjectType, TAppConnections } from "@app/db/schemas";
 import {
   ChefConnectionMethod,
   getChefConnectionListItem,
@@ -39,7 +38,8 @@ import {
   TAppConnectionCredentialsValidator,
   TAppConnectionTransitionCredentialsToPlatform
 } from "./app-connection-types";
-import { Auth0ConnectionMethod, getAuth0ConnectionListItem, validateAuth0ConnectionCredentials } from "./auth0";
+import { Auth0ConnectionMethod } from "./auth0";
+import { getAuth0ConnectionListItem, validateAuth0ConnectionCredentials } from "./auth0/auth0-connection-fns";
 import { AwsConnectionMethod, getAwsConnectionListItem, validateAwsConnectionCredentials } from "./aws";
 import { AzureADCSConnectionMethod } from "./azure-adcs";
 import {
@@ -51,27 +51,28 @@ import {
   getAzureAppConfigurationConnectionListItem,
   validateAzureAppConfigurationConnectionCredentials
 } from "./azure-app-configuration";
+import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets";
 import {
-  AzureClientSecretsConnectionMethod,
   getAzureClientSecretsConnectionListItem,
   validateAzureClientSecretsConnectionCredentials
-} from "./azure-client-secrets";
+} from "./azure-client-secrets/azure-client-secrets-connection-fns";
 import { AzureDevOpsConnectionMethod } from "./azure-devops/azure-devops-enums";
 import {
   getAzureDevopsConnectionListItem,
   validateAzureDevOpsConnectionCredentials
 } from "./azure-devops/azure-devops-fns";
+import { AzureKeyVaultConnectionMethod } from "./azure-key-vault";
 import {
-  AzureKeyVaultConnectionMethod,
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
-} from "./azure-key-vault";
+} from "./azure-key-vault/azure-key-vault-connection-fns";
 import {
   BitbucketConnectionMethod,
   getBitbucketConnectionListItem,
   validateBitbucketConnectionCredentials
 } from "./bitbucket";
-import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
+import { CamundaConnectionMethod } from "./camunda";
+import { getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda/camunda-connection-fns";
 import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
 import {
   CircleCIConnectionMethod,
@@ -83,11 +84,11 @@ import {
   getCloudflareConnectionListItem,
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
+import { DatabricksConnectionMethod } from "./databricks";
 import {
-  DatabricksConnectionMethod,
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
-} from "./databricks";
+} from "./databricks/databricks-connection-fns";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import {
   DigitalOceanConnectionMethod,
@@ -107,13 +108,15 @@ import {
   GitHubRadarConnectionMethod,
   validateGitHubRadarConnectionCredentials
 } from "./github-radar";
-import { getGitLabConnectionListItem, GitLabConnectionMethod, validateGitLabConnectionCredentials } from "./gitlab";
+import { GitLabConnectionMethod } from "./gitlab";
+import { getGitLabConnectionListItem, validateGitLabConnectionCredentials } from "./gitlab/gitlab-connection-fns";
 import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
   validateHCVaultConnectionCredentials
 } from "./hc-vault";
-import { getHerokuConnectionListItem, HerokuConnectionMethod, validateHerokuConnectionCredentials } from "./heroku";
+import { HerokuConnectionMethod } from "./heroku";
+import { getHerokuConnectionListItem, validateHerokuConnectionCredentials } from "./heroku/heroku-connection-fns";
 import {
   getHumanitecConnectionListItem,
   HumanitecConnectionMethod,
@@ -482,11 +485,20 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
 };
 
 export const decryptAppConnection = async (
-  appConnection: TAppConnections,
+  appConnection: TAppConnections & {
+    rotation?: { rotationInterval: number; rotateAtUtc: { hours: number; minutes: number } };
+    project?: { name: string; id: string; type: string; slug: string } | null;
+  },
   kmsService: TAppConnectionServiceFactoryDep["kmsService"]
 ) => {
   return {
     ...appConnection,
+    rotation: appConnection.rotation
+      ? {
+          rotationInterval: appConnection.rotation.rotationInterval,
+          rotateAtUtc: appConnection.rotation.rotateAtUtc
+        }
+      : undefined,
     credentials: await decryptAppConnectionCredentials({
       encryptedCredentials: appConnection.encryptedCredentials,
       orgId: appConnection.orgId,

@@ -79,7 +79,13 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
   const onSubmit = async (
     formData: DiscriminativePick<
       TAppConnection,
-      "method" | "name" | "app" | "credentials" | "isPlatformManagedCredentials"
+      | "method"
+      | "name"
+      | "app"
+      | "credentials"
+      | "isPlatformManagedCredentials"
+      | "isAutoRotationEnabled"
+      | "rotation"
     >
   ) => {
     const connection = await createAppConnection.mutateAsync({

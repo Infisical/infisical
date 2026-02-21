@@ -14,6 +14,16 @@ export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
   app: true,
   method: true
 }).extend({
+  rotation: z
+    .object({
+      rotationInterval: z.number(),
+      rotateAtUtc: z.object({
+        hours: z.number(),
+        minutes: z.number()
+      })
+    })
+    .optional(),
+
   credentialsHash: z.string().optional(),
   project: z
     .object({

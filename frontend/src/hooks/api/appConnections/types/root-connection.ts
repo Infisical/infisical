@@ -9,6 +9,14 @@ export type TRootAppConnection = {
   createdAt: string;
   updatedAt: string;
   isPlatformManagedCredentials?: boolean;
+  isAutoRotationEnabled?: boolean;
+  rotation?: {
+    rotationInterval: number;
+    rotateAtUtc: {
+      hours: number;
+      minutes: number;
+    };
+  };
   gatewayId?: string | null;
   projectId?: string | null;
   project?: {

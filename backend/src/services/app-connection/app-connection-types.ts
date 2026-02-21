@@ -349,6 +349,10 @@ export type TAppConnection = { id: string } & (
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
 
+export type TAppConnectionRawWithMetadata = Awaited<
+  ReturnType<TAppConnectionDALFactory["findWithProjectDetails"]>
+>[number];
+
 export type TSqlConnection = TPostgresConnection | TMsSqlConnection | TMySqlConnection | TOracleDBConnection;
 
 export type TAppConnectionInput = { id: string } & (

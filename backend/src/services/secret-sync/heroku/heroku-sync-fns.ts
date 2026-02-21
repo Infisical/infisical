@@ -1,6 +1,7 @@
 import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { HerokuConnectionMethod, refreshHerokuToken, THerokuConnection } from "@app/services/app-connection/heroku";
+import { HerokuConnectionMethod, THerokuConnection } from "@app/services/app-connection/heroku";
+import { refreshHerokuToken } from "@app/services/app-connection/heroku/heroku-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {

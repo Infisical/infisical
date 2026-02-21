@@ -20,6 +20,7 @@ import {
 } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 
 import { AzureKeyVaultFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -60,7 +61,15 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
   if (!appConnection) {
     return {
       app: AppConnection.AzureKeyVault,
-      method: AzureKeyVaultConnectionMethod.OAuth
+      method: AzureKeyVaultConnectionMethod.OAuth,
+      isAutoRotationEnabled: false,
+      rotation: {
+        rotationInterval: 30,
+        rotateAtUtc: {
+          hours: 0,
+          minutes: 0
+        }
+      }
     };
   }
 
@@ -68,7 +77,9 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
     name: appConnection.name,
     description: appConnection.description,
     app: appConnection.app,
-    method: appConnection.method
+    method: appConnection.method,
+    isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
+    rotation: appConnection.rotation
   };
   const { credentials } = appConnection;
 
@@ -272,6 +283,8 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                 </FormControl>
               )}
             />
+
+            <CredentialRotationForm />
           </>
         )}
 

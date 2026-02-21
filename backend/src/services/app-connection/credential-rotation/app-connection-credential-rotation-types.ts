@@ -1,8 +1,13 @@
 import { z } from "zod";
 
 import { TAppConnectionCredentialRotations } from "../../../db/schemas/app-connection-credential-rotations";
+import { TAppConnectionRaw } from "../app-connection-types";
 import { CreateAppConnectionCredentialRotationSchema } from "./app-connection-credential-rotation-schemas";
-import { TAzureClientSecretGeneratedCredential, TAzureClientSecretStrategyConfig } from "./providers";
+import {
+  TAzureClientSecretCredentialRotationCredentials,
+  TAzureClientSecretGeneratedCredential,
+  TAzureClientSecretStrategyConfig
+} from "./providers/azure-client-secret/azure-client-secret-credential-rotation-types";
 
 export type TAppConnectionCredentialRotationRaw = TAppConnectionCredentialRotations;
 
@@ -15,52 +20,66 @@ export type TAppConnectionCredentialRotation = Omit<
 
 export type TCreateAppConnectionCredentialRotationSchema = z.infer<typeof CreateAppConnectionCredentialRotationSchema>;
 
+// Union of all strategy configs — expands as providers are added
 export type TAppConnectionCredentialRotationStrategyConfig = TAzureClientSecretStrategyConfig;
 
-export type TAppConnectionCredentialRotationGeneratedCredentials = (TAzureClientSecretGeneratedCredential | null)[];
+// Union of all individual generated credential types — expands as providers are added
+export type TAppConnectionCredentialRotationGeneratedCredential = TAzureClientSecretGeneratedCredential;
 
-export type TCredentialRotationProvider = {
-  // Validates the connection's auth method is supported — throws BadRequestError if not
-  validateConnectionMethod(method: string): void;
+// Union of all individual credentials types — expands as providers are added
+export type TAppConnectionCredentialCredentials = TAzureClientSecretCredentialRotationCredentials;
 
-  // Called during createRotation:
-  // - Auto-detects strategy config (e.g. applicationObjectId) from credentials
-  // - Validates accessibility (e.g. Graph API call)
-  // - Lists existing credentials (to track original for first revocation cycle)
-  // - Creates the initial credential
-  issueInitialCredentials(
-    credentials: Record<string, unknown>,
-    rotationInterval: number
-  ): Promise<{
-    strategyConfig: TAppConnectionCredentialRotationStrategyConfig;
-    generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials;
-    updatedCredentials: Record<string, unknown>;
-  }>;
+export type TAppConnectionCredentialRotationGeneratedCredentials =
+  (TAppConnectionCredentialRotationGeneratedCredential | null)[];
 
-  // Called during rotateCredentials (queue worker):
-  // Creates a new credential at the given index
-  createCredential(
-    strategyConfig: TAppConnectionCredentialRotationStrategyConfig,
-    credentials: Record<string, unknown>,
-    rotationInterval: number,
-    inactiveIndex: number
-  ): Promise<TAzureClientSecretGeneratedCredential>;
+// We might need to update this in the future to do more in-depth validation if need be
+export type TCredentialRotationValidateMethod = (method: string) => void;
 
-  // Merges newly created credential back into the connection's credentials object
-  mergeCredentials(
-    currentCredentials: Record<string, unknown>,
-    newCredential: TAzureClientSecretGeneratedCredential
-  ): Record<string, unknown>;
+export type TCredentialRotationIssueInitialCredentials<
+  S extends TAppConnectionCredentialRotationStrategyConfig,
+  C extends TAppConnectionCredentialRotationGeneratedCredential
+> = (
+  credentials: Record<string, unknown>,
+  rotationInterval: number
+) => Promise<{
+  strategyConfig: S;
+  generatedCredentials: (C | null)[];
+  updatedCredentials: Record<string, unknown>;
+}>;
 
-  // Revokes the inactive/old credential (best-effort, non-fatal)
-  revokeCredential(
-    inactiveCredential: TAzureClientSecretGeneratedCredential,
-    strategyConfig: TAppConnectionCredentialRotationStrategyConfig,
-    credentials: Record<string, unknown>
-  ): Promise<void>;
+export type TCredentialRotationCreateCredential<
+  S extends TAppConnectionCredentialRotationStrategyConfig,
+  C extends TAppConnectionCredentialRotationGeneratedCredential
+> = (
+  strategyConfig: S,
+  credentials: TAppConnectionCredentialCredentials,
+  rotationInterval: number,
+  activeIndex: number
+) => Promise<C>;
+
+export type TCredentialRotationMergeCredentials<C extends TAppConnectionCredentialRotationGeneratedCredential> = (
+  currentCredentials: Record<string, unknown>,
+  newCredential: C
+) => Record<string, unknown>;
+
+export type TCredentialRotationRevokeCredential<
+  S extends TAppConnectionCredentialRotationStrategyConfig,
+  C extends TAppConnectionCredentialRotationGeneratedCredential
+> = (inactiveCredential: C, strategyConfig: S, credentials: TAppConnectionCredentialCredentials) => Promise<void>;
+
+// Factory type — takes connection context, returns typed operations.
+// Mirrors TRotationFactory in secret-rotation-v2.
+export type TCredentialRotationProviderFactory<
+  S extends TAppConnectionCredentialRotationStrategyConfig = TAppConnectionCredentialRotationStrategyConfig,
+  C extends TAppConnectionCredentialRotationGeneratedCredential = TAppConnectionCredentialRotationGeneratedCredential
+> = (connection: TAppConnectionRaw) => {
+  validateConnectionMethod: TCredentialRotationValidateMethod;
+  issueInitialCredentials: TCredentialRotationIssueInitialCredentials<S, C>;
+  createCredential: TCredentialRotationCreateCredential<S, C>;
+  mergeCredentials: TCredentialRotationMergeCredentials<C>;
+  revokeCredential: TCredentialRotationRevokeCredential<S, C>;
 };
 
-// DTOs
 export type TCreateAppConnectionCredentialRotationDTO = {
   connectionId: string;
   rotationInterval: number;
@@ -78,7 +97,6 @@ export type TTriggerAppConnectionCredentialRotationDTO = {
   connectionId: string;
 };
 
-// Queue payloads
 export type TAppConnectionCredentialRotationRotateJobPayload = {
   rotationId: string;
   connectionId: string;
