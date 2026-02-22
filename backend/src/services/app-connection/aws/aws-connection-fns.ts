@@ -92,8 +92,13 @@ const AWS_ASSUME_ROLE_MAX_RETRIES = 4;
 const AWS_ASSUME_ROLE_RETRY_BASE_DELAY_MS = 5_000;
 
 const isAssumeRoleAccessDeniedError = (error: unknown): boolean => {
-  const errorMessage = (error as Error)?.message || "";
-  return errorMessage.includes("is not authorized to perform: sts:AssumeRole");
+  const err = error as { name?: string; message?: string };
+  // AWS SDK v3 sets name to "AccessDenied" for STS authorization failures
+  if (err.name === "AccessDenied" && err.message?.includes("sts:AssumeRole")) {
+    return true;
+  }
+  // Fallback to message-based matching for other SDK versions / error shapes
+  return (err.message || "").includes("is not authorized to perform: sts:AssumeRole");
 };
 
 const sleep = (ms: number) =>
