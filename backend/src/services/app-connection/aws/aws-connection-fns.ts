@@ -85,26 +85,65 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
   });
 };
 
+// AWS IAM role propagation can take several seconds after creation. When an IAM role is created
+// and immediately used for AssumeRole (e.g. via Terraform), the call may fail with an AccessDenied
+// error. We retry with exponential backoff to handle this eventual consistency.
+const AWS_ASSUME_ROLE_MAX_RETRIES = 4;
+const AWS_ASSUME_ROLE_RETRY_BASE_DELAY_MS = 5_000;
+
+const isAssumeRoleAccessDeniedError = (error: unknown): boolean => {
+  const errorMessage = (error as Error)?.message || "";
+  return errorMessage.includes("is not authorized to perform: sts:AssumeRole");
+};
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
   let resp: AWS.STS.GetCallerIdentityResponse & {
     $response: AWS.Response<AWS.STS.GetCallerIdentityResponse, AWS.AWSError>;
   };
 
-  try {
-    const awsConfig = await getAwsConnectionConfig(appConnection);
-    const sts = new AWS.STS(awsConfig);
+  let lastError: unknown;
 
-    resp = await sts.getCallerIdentity().promise();
-  } catch (error: unknown) {
-    logger.error(error, "Error validating AWS connection credentials");
+  for (let attempt = 0; attempt <= AWS_ASSUME_ROLE_MAX_RETRIES; attempt += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const awsConfig = await getAwsConnectionConfig(appConnection);
+      const sts = new AWS.STS(awsConfig);
+
+      // eslint-disable-next-line no-await-in-loop
+      resp = await sts.getCallerIdentity().promise();
+      lastError = undefined;
+      break;
+    } catch (error: unknown) {
+      lastError = error;
+
+      if (isAssumeRoleAccessDeniedError(error) && attempt < AWS_ASSUME_ROLE_MAX_RETRIES) {
+        const delayMs = AWS_ASSUME_ROLE_RETRY_BASE_DELAY_MS * 2 ** attempt;
+        logger.info(
+          `AWS AssumeRole not yet authorized (attempt ${attempt + 1}/${AWS_ASSUME_ROLE_MAX_RETRIES + 1}). Retrying in ${delayMs / 1000}s due to likely IAM propagation delay...`
+        );
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(delayMs);
+      } else {
+        break;
+      }
+    }
+  }
+
+  if (lastError) {
+    logger.error(lastError, "Error validating AWS connection credentials");
 
     let message: string;
 
-    if (error instanceof AxiosError) {
+    if (lastError instanceof AxiosError) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      message = (error.response?.data?.message as string) || error.message || "verify credentials";
+      message = (lastError.response?.data?.message as string) || lastError.message || "verify credentials";
     } else {
-      message = (error as Error)?.message || "verify credentials";
+      message = (lastError as Error)?.message || "verify credentials";
     }
 
     throw new BadRequestError({
@@ -112,11 +151,11 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
     });
   }
 
-  if (resp?.$response.httpResponse.statusCode !== 200)
+  if (resp!.$response.httpResponse.statusCode !== 200)
     throw new InternalServerError({
       message: `Unable to validate credentials: ${
-        resp.$response.error?.message ??
-        `AWS responded with a status code of ${resp.$response.httpResponse.statusCode}. Verify credentials and try again.`
+        resp!.$response.error?.message ??
+        `AWS responded with a status code of ${resp!.$response.httpResponse.statusCode}. Verify credentials and try again.`
       }`
     });
 
