@@ -56,7 +56,9 @@ The SDK methods are organized into the following high-level categories:
 
 The `Auth` component provides methods for authentication:
 
-#### Universal Auth
+<AccordionGroup>
+
+<Accordion title="Universal Auth"> 
 
 #### Authenticating
 ```typescript
@@ -87,8 +89,9 @@ client.auth().accessToken("<your-access-token>")
 **Parameters:**
 - `accessToken` (string): The access token to be used for authentication. _This should not include "Bearer"._
 
+</Accordion>
 
-#### AWS IAM
+<Accordion title="AWS IAM">
 
 <Note>
   AWS IAM auth only works when the SDK is being used from within an AWS service, such as Lambda, EC2, etc.
@@ -111,12 +114,17 @@ You can renew the authentication token that is currently set by using the `renew
 await client.auth().awsIamAuth.renew();
 ```
 
+</Accordion>
+
+</AccordionGroup>
 
 ### `secrets`
 
 This sub-class handles operations related to secrets:
 
-#### List Secrets
+<AccordionGroup>
+
+<Accordion title="List Secrets">
 
 ```typescript
 const allSecrets = await client.secrets().listSecrets({
@@ -143,7 +151,9 @@ const allSecrets = await client.secrets().listSecrets({
 **Returns:**
 - `ListSecretsResponse`: The response containing the list of secrets.
 
-#### List secrets with imports
+</Accordion>
+
+<Accordion title="List secrets with imports">
 
 The `listSecretsWithImports` method makes it easier to get all your secrets at once. The imported secrets will automatically be added to the secrets returned. The secrets in the selected environment will take precedence over the imported secrets. This means if you have secrets with conflicting names, the secret from the environment the import was imported into, will take precedence. 
 
@@ -170,9 +180,9 @@ const allSecrets = await client.secrets().listSecretsWithImports({
 **Returns:**
 - `Secret[]`: Returns the list of secrets objects, with imports.
 
+</Accordion>
 
-
-#### Create Secret
+<Accordion title="Create Secret">
 
 ```typescript
 	const newSecret = await client.secrets().createSecret("SECRET_NAME", {
@@ -206,7 +216,9 @@ const allSecrets = await client.secrets().listSecretsWithImports({
 **Returns:**
 - `CreateSecretResponse`: The response after creating the secret.
 
-#### Update Secret
+</Accordion>
+
+<Accordion title="Update Secret">
 
 ```typescript
 const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
@@ -246,7 +258,9 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 **Returns:**
 - `UpdateSecretResponse`: The response after updating the secret.
 
-#### Get Secret by Name
+</Accordion>
+
+<Accordion title="Get Secret by Name">
 
 ```typescript
 	const singleSecret = await client.secrets().getSecret({
@@ -277,7 +291,9 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 **Returns:**
 - `Secret`: Returns the secret object.
 
-#### Delete Secret by Name
+</Accordion>
+
+<Accordion title="Delete Secret by Name">
 
 ```typescript
 const deletedSecret = await client.secrets().deleteSecret("SECRET_TO_DELETE", {
@@ -299,13 +315,15 @@ const deletedSecret = await client.secrets().deleteSecret("SECRET_TO_DELETE", {
 **Returns:**
 - `DeleteSecretResponse`: The response after deleting the secret.
 
+</Accordion>
 
-
+</AccordionGroup>
 
 ### `dynamicSecrets`
 
+<AccordionGroup>
 
-#### Create a new dynamic secret
+<Accordion title="Create a new dynamic secret">
 
 Creating a new dynamic secret can be done by using the `.dynamicSecrets().create({})` function. More details below.
 
@@ -349,8 +367,9 @@ console.log(dynamicSecret);
 **Returns:**
 - `DynamicSecret`: The created dynamic secret.
 
+</Accordion>
 
-#### Delete a dynamic secret
+<Accordion title="Delete a dynamic secret">
 
 Note: Deleting a dynamic secret will also delete it's associated leases.
 
@@ -370,11 +389,16 @@ const deletedDynamicSecret = await client.dynamicSecrets().delete("dynamic-secre
 **Returns:**
 - `DynamicSecret`: The deleted dynamic secret.
 
+</Accordion>
+
+</AccordionGroup>
+
 ### `dynamicSecrets.leases`
 In this section you'll learn how to work with dynamic secret leases
 
+<AccordionGroup>
 
-#### Create a new lease
+<Accordion title="Create a new lease">
 
 ```typescript
 const lease = await client.dynamicSecrets().leases.create({
@@ -400,9 +424,11 @@ console.log(lease);
 **Returns:**
 - `CreateLeaseResponse`: The dynamic secret lease result.
 
+</Accordion>
 
-#### Delete a lease
-```typescript
+<Accordion title="Delete a lease">
+
+  ```typescript
 const deletedLease = await client.dynamicSecrets().leases.delete(newLease.lease.id, {
   environmentSlug: "dev",
   projectSlug: "test-zb-3a",
@@ -422,7 +448,9 @@ const deletedLease = await client.dynamicSecrets().leases.delete(newLease.lease.
 **Returns:**
 - `DeleteLeaseResponse`: The deleted lease result.
 
-#### Renew a lease
+</Accordion>
+
+<Accordion title="Renew a lease">
 
 Please note that renewals must happen **before** the lease has fully expired. After renewing the lease, you won't be given new credentials. Instead the existing credentials will continue to live for the specified TTL
 
@@ -446,9 +474,15 @@ const renewedLease = await client.dynamicSecrets().leases.renew(newLease.lease.i
 **Returns:**
 - `RenewLeaseResponse`: The renewed lease response _(doesn't contain new credentials)_.
 
+</Accordion>
+
+</AccordionGroup>
+
 ### `projects`
 
-#### Create a new project
+<AccordionGroup>
+
+<Accordion title="Create a new project">
 
 ```typescript
 const project = await client.projects().create({
@@ -472,8 +506,9 @@ const project = await client.projects().create({
 **Returns:**
 - `Project`: The project that was created.
 
+</Accordion>
 
-#### Invite members to a project
+<Accordion title="Invite members to a project">
 
 When inviting members to projects, you must either specify the `emails` or `usernames`. If neither are specified, the SDK will throw an error.
 
@@ -495,9 +530,15 @@ const memberships = await client.projects().inviteMembers({
 **Returns:**
 - `Membership[]`: An array of the created project memberships.
 
+</Accordion>
+
+</AccordionGroup>
+
 ### `environments`
 
-#### Create a new environment
+<AccordionGroup>
+
+<Accordion title="Create a new environment">
 
 ```typescript
 const environment = await client.environments().create({
@@ -517,7 +558,15 @@ const environment = await client.environments().create({
 **Returns:**
 - `Environment`: The environment that was created.
 
-#### Create a new folder
+</Accordion>
+
+</AccordionGroup>
+
+### `folders`
+
+<AccordionGroup>
+
+<Accordion title="Create a new folder">
 
 ```typescript
 const folder = await client.folders().create({
@@ -539,7 +588,9 @@ const folder = await client.folders().create({
 **Returns:**
 - `Folder`: The folder that was created.
 
-#### List folders
+</Accordion>
+
+<Accordion title="List folders">
 
 ```typescript
 const folders = await client.folders().listFolders({
@@ -559,11 +610,17 @@ const folders = await client.folders().listFolders({
 **Returns:**
 - `Folder[]`: An array of folders.
 
+</Accordion>
+
+</AccordionGroup>
+
 ### `kms`
 
 The KMS (Key Management Service) module allows you to create and manage cryptographic keys for encryption and digital signing operations.
 
-#### Create a new KMS key
+<AccordionGroup>
+
+<Accordion title="Create a new KMS key">
 
 Creating a new KMS key can be done by using the `.kms().keys().create({})` function. Keys can be created for either encryption/decryption or signing/verification operations.
 
@@ -615,7 +672,9 @@ console.log(signingKey);
 **Returns:**
 - `KmsKey`: The created KMS key object.
 
-#### Get a KMS key by name
+</Accordion>
+
+<Accordion title="Get a KMS key by name">
 
 ```typescript
 const key = await client.kms().keys().getByName({
@@ -633,7 +692,9 @@ console.log(key);
 **Returns:**
 - `KmsKey`: The KMS key object.
 
-#### Delete a KMS key
+</Accordion>
+
+<Accordion title="Delete a KMS key">
 
 ```typescript
 const deletedKey = await client.kms().keys().delete({
@@ -649,11 +710,17 @@ console.log(deletedKey);
 **Returns:**
 - `KmsKey`: The deleted KMS key object.
 
+</Accordion>
+
+</AccordionGroup>
+
 ### `kms.encryption`
 
 The encryption module provides operations for encrypting and decrypting data using KMS keys created with `KeyUsage.ENCRYPTION`.
 
-#### Encrypt data
+<AccordionGroup>
+
+<Accordion title="Encrypt data">
 
 ```typescript
 const encrypted = await client.kms().encryption().encrypt({
@@ -671,7 +738,9 @@ console.log(encrypted); // Returns the ciphertext string
 **Returns:**
 - `string`: The encrypted ciphertext.
 
-#### Decrypt data
+</Accordion>
+
+<Accordion title="Decrypt data">
 
 ```typescript
 const decrypted = await client.kms().encryption().decrypt({
@@ -689,11 +758,17 @@ console.log(decrypted); // Returns the original plaintext
 **Returns:**
 - `string`: The decrypted plaintext.
 
+</Accordion>
+
+</AccordionGroup>
+
 ### `kms.signing`
 
 The signing module provides operations for digitally signing data and verifying signatures using KMS keys created with `KeyUsage.SIGNING`.
 
-#### Sign data
+<AccordionGroup>
+
+<Accordion title="Sign data">
 
 ```typescript
 import { SigningAlgorithm } from "@infisical/sdk";
@@ -720,7 +795,9 @@ console.log(signature);
 **Returns:**
 - `KmsSignDataResponse`: Object containing the signature, keyId, and signingAlgorithm.
 
-#### Verify a signature
+</Accordion>
+
+<Accordion title="Verify a signature">
 
 ```typescript
 const verification = await client.kms().signing().verify({
@@ -743,8 +820,9 @@ console.log(verification.signatureValid); // true or false
 
 **Returns:**
 - `KmsVerifyDataResponse`: Object containing `signatureValid` (boolean), `keyId`, and `signingAlgorithm`.
+</Accordion>
 
-#### Get supported signing algorithms for a key
+<Accordion title="Get supported signing algorithms for a key">
 
 ```typescript
 const algorithms = await client.kms().signing().listSigningAlgorithms({
@@ -760,7 +838,9 @@ console.log(algorithms); // Array of supported SigningAlgorithm values
 **Returns:**
 - `SigningAlgorithm[]`: Array of supported signing algorithms for the key.
 
-#### Get public key
+</Accordion>
+
+<Accordion title="Get public key">
 
 Retrieve the public key for signature verification operations.
 
@@ -777,3 +857,7 @@ console.log(publicKey); // Returns the public key string
 
 **Returns:**
 - `string`: The public key in PEM format.
+
+</Accordion>
+
+</AccordionGroup>
