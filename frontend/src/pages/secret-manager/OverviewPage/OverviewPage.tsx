@@ -696,148 +696,135 @@ export const OverviewPage = () => {
     const { update, create } = popUp?.confirmReplicateUpload?.data as TSecOverwriteOpt;
     const environment = singleVisibleEnv!.slug;
 
-    try {
-      const groupedCreateSecrets: Record<
-        string,
-        Array<{
-          type: SecretType;
-          secretComment: string;
-          secretValue: string;
-          secretKey: string;
-        }>
-      > = {};
+    const groupedCreateSecrets: Record<
+      string,
+      Array<{
+        type: SecretType;
+        secretComment: string;
+        secretValue: string;
+        secretKey: string;
+      }>
+    > = {};
 
-      const groupedUpdateSecrets: Record<
-        string,
-        Array<{
-          type: SecretType;
-          secretComment: string;
-          secretValue: string;
-          secretKey: string;
-        }>
-      > = {};
+    const groupedUpdateSecrets: Record<
+      string,
+      Array<{
+        type: SecretType;
+        secretComment: string;
+        secretValue: string;
+        secretKey: string;
+      }>
+    > = {};
 
-      const allPaths = new Set<string>();
+    const allPaths = new Set<string>();
 
+    create.forEach((secData) => {
+      if (secData.secretPath && secData.secretPath !== secretPath) {
+        allPaths.add(secData.secretPath);
+      }
+    });
+
+    const folderPaths = Array.from(allPaths).map((path) => {
+      const normalizedPath = path.endsWith("/") ? path.slice(0, -1) : path;
+      const segments = normalizedPath.split("/");
+      const folderName = segments[segments.length - 1];
+      const parentPath = segments.slice(0, -1).join("/");
+
+      return {
+        folderName,
+        fullPath: normalizedPath,
+        parentPath: parentPath || "/"
+      };
+    });
+
+    folderPaths.sort(
+      (a, b) => (a.fullPath.match(/\//g) || []).length - (b.fullPath.match(/\//g) || []).length
+    );
+
+    const createdFolders = new Set<string>();
+
+    await folderPaths.reduce(async (previousPromise, { folderName, fullPath, parentPath }) => {
+      await previousPromise;
+
+      if (createdFolders.has(fullPath)) return Promise.resolve();
+
+      try {
+        await createFolder({
+          name: folderName,
+          path: parentPath,
+          environment,
+          projectId
+        });
+
+        createdFolders.add(fullPath);
+      } catch (err) {
+        console.log(`Folder ${folderName} may already exist:`, err);
+      }
+
+      return Promise.resolve();
+    }, Promise.resolve());
+
+    if (create.length > 0) {
       create.forEach((secData) => {
-        if (secData.secretPath && secData.secretPath !== secretPath) {
-          allPaths.add(secData.secretPath);
+        const path = secData.secretPath || secretPath;
+
+        if (!groupedCreateSecrets[path]) {
+          groupedCreateSecrets[path] = [];
         }
+
+        groupedCreateSecrets[path].push({
+          type: SecretType.Shared,
+          secretComment: secData.comments.join("\n"),
+          secretValue: secData.value,
+          secretKey: secData.secretKey
+        });
       });
 
-      const folderPaths = Array.from(allPaths).map((path) => {
-        const normalizedPath = path.endsWith("/") ? path.slice(0, -1) : path;
-        const segments = normalizedPath.split("/");
-        const folderName = segments[segments.length - 1];
-        const parentPath = segments.slice(0, -1).join("/");
-
-        return {
-          folderName,
-          fullPath: normalizedPath,
-          parentPath: parentPath || "/"
-        };
-      });
-
-      folderPaths.sort(
-        (a, b) => (a.fullPath.match(/\//g) || []).length - (b.fullPath.match(/\//g) || []).length
-      );
-
-      const createdFolders = new Set<string>();
-
-      await folderPaths.reduce(async (previousPromise, { folderName, fullPath, parentPath }) => {
-        await previousPromise;
-
-        if (createdFolders.has(fullPath)) return Promise.resolve();
-
-        try {
-          await createFolder({
-            name: folderName,
-            path: parentPath,
+      await Promise.all(
+        Object.entries(groupedCreateSecrets).map(([path, batchSecrets]) =>
+          createSecretBatch({
+            secretPath: path,
+            projectId,
             environment,
-            projectId
-          });
+            secrets: batchSecrets
+          })
+        )
+      );
+    }
 
-          createdFolders.add(fullPath);
-        } catch (err) {
-          console.log(`Folder ${folderName} may already exist:`, err);
+    if (update.length > 0) {
+      update.forEach((secData) => {
+        const path = secData.secretPath || secretPath;
+
+        if (!groupedUpdateSecrets[path]) {
+          groupedUpdateSecrets[path] = [];
         }
 
-        return Promise.resolve();
-      }, Promise.resolve());
-
-      if (create.length > 0) {
-        create.forEach((secData) => {
-          const path = secData.secretPath || secretPath;
-
-          if (!groupedCreateSecrets[path]) {
-            groupedCreateSecrets[path] = [];
-          }
-
-          groupedCreateSecrets[path].push({
-            type: SecretType.Shared,
-            secretComment: secData.comments.join("\n"),
-            secretValue: secData.value,
-            secretKey: secData.secretKey
-          });
+        groupedUpdateSecrets[path].push({
+          type: SecretType.Shared,
+          secretComment: secData.comments.join("\n"),
+          secretValue: secData.value,
+          secretKey: secData.secretKey
         });
-
-        await Promise.all(
-          Object.entries(groupedCreateSecrets).map(([path, batchSecrets]) =>
-            createSecretBatch({
-              secretPath: path,
-              projectId,
-              environment,
-              secrets: batchSecrets
-            })
-          )
-        );
-      }
-
-      if (update.length > 0) {
-        update.forEach((secData) => {
-          const path = secData.secretPath || secretPath;
-
-          if (!groupedUpdateSecrets[path]) {
-            groupedUpdateSecrets[path] = [];
-          }
-
-          groupedUpdateSecrets[path].push({
-            type: SecretType.Shared,
-            secretComment: secData.comments.join("\n"),
-            secretValue: secData.value,
-            secretKey: secData.secretKey
-          });
-        });
-
-        await Promise.all(
-          Object.entries(groupedUpdateSecrets).map(([path, batchSecrets]) =>
-            updateSecretBatch({
-              secretPath: path,
-              projectId,
-              environment,
-              secrets: batchSecrets
-            })
-          )
-        );
-      }
-
-      queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
-      queryClient.invalidateQueries({});
 
-      handlePopUpClose("confirmReplicateUpload");
-      createNotification({
-        type: "success",
-        text: "Successfully replicated secrets"
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to replicate secrets"
-      });
+      await Promise.all(
+        Object.entries(groupedUpdateSecrets).map(([path, batchSecrets]) =>
+          updateSecretBatch({
+            secretPath: path,
+            projectId,
+            environment,
+            secrets: batchSecrets
+          })
+        )
+      );
     }
+
+    handlePopUpClose("confirmReplicateUpload");
+    createNotification({
+      type: "success",
+      text: "Successfully replicated secrets"
+    });
   };
 
   const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
