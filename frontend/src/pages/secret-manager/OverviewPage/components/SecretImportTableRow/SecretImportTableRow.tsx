@@ -174,13 +174,18 @@ export const SecretImportTableRow = ({
       const imp = getSecretImportByEnv(importEnvSlug, importPath, env.slug);
       return imp?.isReplication === true;
     });
-  }, [environments, isSingleEnvView, importEnvSlug, importPath, isSecretImportInEnv, getSecretImportByEnv]);
+  }, [
+    environments,
+    isSingleEnvView,
+    importEnvSlug,
+    importPath,
+    isSecretImportInEnv,
+    getSecretImportByEnv
+  ]);
 
   const envsWithImport = useMemo(() => {
     if (isSingleEnvView) return [];
-    return environments.filter((env) =>
-      isSecretImportInEnv(importEnvSlug, importPath, env.slug)
-    );
+    return environments.filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug));
   }, [environments, isSingleEnvView, importEnvSlug, importPath, isSecretImportInEnv]);
 
   const effectiveSelectedEnv = useMemo(() => {
@@ -202,11 +207,18 @@ export const SecretImportTableRow = ({
       effectiveSelectedEnv
     );
     return { envImportedSecrets, secretImportRecord };
-  }, [hasAnyReplicatedImport, effectiveSelectedEnv, allEnvImportedSecrets, getSecretImportByEnv, importEnvSlug, importPath]);
+  }, [
+    hasAnyReplicatedImport,
+    effectiveSelectedEnv,
+    allEnvImportedSecrets,
+    getSecretImportByEnv,
+    importEnvSlug,
+    importPath
+  ]);
 
   const selectedEnvSecrets = useMemo(() => {
     if (!selectedEnvImportData?.envImportedSecrets) return [];
-    const secrets = selectedEnvImportData.envImportedSecrets.secrets;
+    const { secrets } = selectedEnvImportData.envImportedSecrets;
     if (!searchFilter) return secrets;
     return secrets.filter((secret) =>
       secret.key.toUpperCase().includes(searchFilter.toUpperCase())
@@ -414,9 +426,7 @@ export const SecretImportTableRow = ({
                   {searchFilter ? <SearchIcon /> : <ImportIcon />}
                 </EmptyMedia>
                 <UnstableEmptyTitle>
-                  {searchFilter
-                    ? "No imported secrets match search"
-                    : "No imported secrets found"}
+                  {searchFilter ? "No imported secrets match search" : "No imported secrets found"}
                 </UnstableEmptyTitle>
               </UnstableEmptyHeader>
             </UnstableEmpty>
@@ -439,9 +449,7 @@ export const SecretImportTableRow = ({
                 <SecretImportSecretRow
                   key={`import-secret-multi-${effectiveSelectedEnv}-${secret.key}`}
                   secretKey={secret.key}
-                  environment={
-                    selectedImport?.isReplication ? effectiveSelectedEnv : importEnvSlug
-                  }
+                  environment={selectedImport?.isReplication ? effectiveSelectedEnv : importEnvSlug}
                   secretPath={
                     selectedImport?.isReplication
                       ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${selectedImport.id}`
