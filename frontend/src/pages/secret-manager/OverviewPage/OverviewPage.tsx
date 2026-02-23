@@ -820,6 +820,10 @@ export const OverviewPage = () => {
       );
     }
 
+    queryClient.invalidateQueries({
+      queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
+    });
+
     handlePopUpClose("confirmReplicateUpload");
     createNotification({
       type: "success",
