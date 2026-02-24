@@ -249,6 +249,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
       roles: form.roles.map((r) => r.slug)
     });
     resetAddOrgIdentityForm();
+    setIdentitySearchInput("");
     setIsAddIdentityModalOpen(false);
   };
 
@@ -282,6 +283,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
   const handleCloseAddIdentityModal = () => {
     resetAddOrgIdentityForm();
     resetAddProjectIdentityForm();
+    setIdentitySearchInput("");
     setIsAddIdentityModalOpen(false);
   };
 
