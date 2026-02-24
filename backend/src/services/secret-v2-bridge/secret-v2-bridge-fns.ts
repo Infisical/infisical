@@ -68,10 +68,14 @@ export const fnSecretBulkInsert = async ({
   const identityActorId = actor && actor.type === ActorType.IDENTITY ? actor.actorId : undefined;
   const actorType = actor?.type || ActorType.PLATFORM;
 
-  const newSecrets = await secretDAL.insertMany(
-    sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
-    tx
-  );
+  const insertData = sanitizedInputSecrets.map((el) => ({ ...el, folderId }));
+  const BATCH_SIZE = 500;
+  const newSecrets = [];
+  for (let i = 0; i < insertData.length; i += BATCH_SIZE) {
+    const batch = insertData.slice(i, i + BATCH_SIZE);
+    const batchResult = await secretDAL.insertMany(batch, tx);
+    newSecrets.push(...batchResult);
+  }
 
   const newSecretGroupedByKeyName = groupBy(newSecrets, (item) => item.key);
   const newSecretTags = inputSecrets.flatMap(({ tagIds: secretTags = [], key }) =>
@@ -81,27 +85,30 @@ export const fnSecretBulkInsert = async ({
     }))
   );
 
-  const secretVersions = await secretVersionDAL.insertMany(
-    sanitizedInputSecrets.map((el, index) => ({
-      ...el,
-      folderId,
-      userActorId,
-      identityActorId,
-      actorType,
-      metadata: inputSecrets?.[index]?.secretMetadata
-        ? JSON.stringify(
-            inputSecrets?.[index]?.secretMetadata?.map((meta) => ({
-              key: meta.key,
-              value: meta?.value,
-              encryptedValue: meta?.encryptedValue?.toString("base64")
-            }))
-          )
-        : null,
-      secretId: newSecretGroupedByKeyName[el.key][0].id,
-      parentVersionId: inputSecrets?.[index]?.parentSecretVersionId
-    })),
-    tx
-  );
+  const versionData = sanitizedInputSecrets.map((el, index) => ({
+    ...el,
+    folderId,
+    userActorId,
+    identityActorId,
+    actorType,
+    metadata: inputSecrets?.[index]?.secretMetadata
+      ? JSON.stringify(
+          inputSecrets?.[index]?.secretMetadata?.map((meta) => ({
+            key: meta.key,
+            value: meta?.value,
+            encryptedValue: meta?.encryptedValue?.toString("base64")
+          }))
+        )
+      : null,
+    secretId: newSecretGroupedByKeyName[el.key][0].id,
+    parentVersionId: inputSecrets?.[index]?.parentSecretVersionId
+  }));
+  const secretVersions = [];
+  for (let i = 0; i < versionData.length; i += BATCH_SIZE) {
+    const batch = versionData.slice(i, i + BATCH_SIZE);
+    const batchResult = await secretVersionDAL.insertMany(batch, tx);
+    secretVersions.push(...batchResult);
+  }
 
   const changes = secretVersions
     .filter(({ type }) => type === SecretType.Shared)
@@ -211,38 +218,42 @@ export const fnSecretBulkUpdate = async ({
     })
   );
 
+  const BATCH_SIZE = 500;
   const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
-  const secretVersions = await secretVersionDAL.insertMany(
-    newSecrets.map(
-      (
-        { skipMultilineEncoding, type, key, userId, encryptedComment, version, encryptedValue, id: secretId },
-        index
-      ) => ({
-        skipMultilineEncoding,
-        type,
-        key,
-        userId,
-        encryptedComment,
-        version,
-        metadata:
-          JSON.stringify(
-            inputSecrets?.[index]?.data?.secretMetadata?.map((meta) => ({
-              key: meta.key,
-              value: meta?.value,
-              encryptedValue: meta?.encryptedValue?.toString("base64")
-            }))
-          ) || null,
-        encryptedValue,
-        folderId,
-        secretId,
-        userActorId,
-        identityActorId,
-        actorType,
-        parentVersionId: inputSecrets?.[index]?.data?.parentSecretVersionId
-      })
-    ),
-    tx
+  const versionData = newSecrets.map(
+    (
+      { skipMultilineEncoding, type, key, userId, encryptedComment, version, encryptedValue, id: secretId },
+      index
+    ) => ({
+      skipMultilineEncoding,
+      type,
+      key,
+      userId,
+      encryptedComment,
+      version,
+      metadata:
+        JSON.stringify(
+          inputSecrets?.[index]?.data?.secretMetadata?.map((meta) => ({
+            key: meta.key,
+            value: meta?.value,
+            encryptedValue: meta?.encryptedValue?.toString("base64")
+          }))
+        ) || null,
+      encryptedValue,
+      folderId,
+      secretId,
+      userActorId,
+      identityActorId,
+      actorType,
+      parentVersionId: inputSecrets?.[index]?.data?.parentSecretVersionId
+    })
   );
+  const secretVersions = [];
+  for (let i = 0; i < versionData.length; i += BATCH_SIZE) {
+    const batch = versionData.slice(i, i + BATCH_SIZE);
+    const batchResult = await secretVersionDAL.insertMany(batch, tx);
+    secretVersions.push(...batchResult);
+  }
 
   await secretDAL.upsertSecretReferences(
     inputSecrets
