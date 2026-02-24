@@ -183,6 +183,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const permissions = form.watch("permissions");
 
+  const hasPermissions = useMemo(
+    () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
+    [JSON.stringify(permissions)]
+  );
+
   const formattedPermissions = useMemo(
     () =>
       evaluatePermissionsAbility(
@@ -235,44 +240,48 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           <div className="flex flex-1 flex-col overflow-hidden px-4">
             <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
               {!isPending && <PermissionEmptyState />}
-              <UnstableAccordion
-                type="multiple"
-                value={openPolicies}
-                onValueChange={setOpenPolicies}
-                className="overflow-clip rounded-md border border-border bg-container hover:bg-container-hover"
-              >
-                {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
-                  .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
-                  .filter((subject) => ProjectTypePermissionSubjects[currentProject.type][subject])
-                  .filter(
-                    (subject) =>
-                      // Hide Native Integrations policy if project has no integrations
-                      subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
-                  )
-                  .map((subject) => (
-                    <GeneralPermissionPolicies
-                      subject={subject}
-                      actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-                      title={PROJECT_PERMISSION_OBJECT[subject].title}
-                      description={PROJECT_PERMISSION_OBJECT[subject].description}
-                      key={`project-permission-${subject}`}
-                      isDisabled={isDisabled}
-                      isOpen={openPolicies.includes(subject)}
-                      onShowAccessTree={
-                        [
-                          ProjectPermissionSub.Secrets,
-                          ProjectPermissionSub.SecretFolders,
-                          ProjectPermissionSub.DynamicSecrets,
-                          ProjectPermissionSub.SecretImports
-                        ].includes(subject)
-                          ? setShowAccessTree
-                          : undefined
-                      }
-                    >
-                      {renderConditionalComponents(subject, isDisabled)}
-                    </GeneralPermissionPolicies>
-                  ))}
-              </UnstableAccordion>
+              {hasPermissions && (
+                <UnstableAccordion
+                  type="multiple"
+                  value={openPolicies}
+                  onValueChange={setOpenPolicies}
+                  className="overflow-clip rounded-md border border-border bg-container hover:bg-container-hover"
+                >
+                  {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
+                    .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
+                    .filter(
+                      (subject) => ProjectTypePermissionSubjects[currentProject.type][subject]
+                    )
+                    .filter(
+                      (subject) =>
+                        // Hide Native Integrations policy if project has no integrations
+                        subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
+                    )
+                    .map((subject) => (
+                      <GeneralPermissionPolicies
+                        subject={subject}
+                        actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                        title={PROJECT_PERMISSION_OBJECT[subject].title}
+                        description={PROJECT_PERMISSION_OBJECT[subject].description}
+                        key={`project-permission-${subject}`}
+                        isDisabled={isDisabled}
+                        isOpen={openPolicies.includes(subject)}
+                        onShowAccessTree={
+                          [
+                            ProjectPermissionSub.Secrets,
+                            ProjectPermissionSub.SecretFolders,
+                            ProjectPermissionSub.DynamicSecrets,
+                            ProjectPermissionSub.SecretImports
+                          ].includes(subject)
+                            ? setShowAccessTree
+                            : undefined
+                        }
+                      >
+                        {renderConditionalComponents(subject, isDisabled)}
+                      </GeneralPermissionPolicies>
+                    ))}
+                </UnstableAccordion>
+              )}
             </div>
           </div>
         </FormProvider>

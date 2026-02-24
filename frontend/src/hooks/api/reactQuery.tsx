@@ -11,6 +11,7 @@ import {
   formatedConditionsOperatorNames,
   PermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { formatValidationErrorPath } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
 
 import { ApiErrorTypes, TApiErrors } from "./types";
@@ -19,7 +20,13 @@ export const SIGNUP_TEMP_TOKEN_CACHE_KEY = ["infisical__signup-temp-token"];
 export const MFA_TEMP_TOKEN_CACHE_KEY = ["infisical__mfa-temp-token"];
 export const AUTH_TOKEN_CACHE_KEY = ["infisical__auth-token"];
 
-function ValidationErrorModal({ serverResponse }: { serverResponse: TApiErrors }) {
+function ValidationErrorModal({
+  serverResponse,
+  requestBody
+}: {
+  serverResponse: TApiErrors;
+  requestBody?: Record<string, unknown> | null;
+}) {
   const [open, setOpen] = useState(true);
 
   if (serverResponse.error !== ApiErrorTypes.ValidationError) {
@@ -40,7 +47,7 @@ function ValidationErrorModal({ serverResponse }: { serverResponse: TApiErrors }
             <TBody>
               {serverResponse.message?.map(({ message, path }) => (
                 <Tr key={path.join(".")}>
-                  <Td>{path.join(".")}</Td>
+                  <Td>{formatValidationErrorPath(path, requestBody)}</Td>
                   <Td>{message.toLowerCase()}</Td>
                 </Tr>
               ))}
@@ -56,12 +63,25 @@ export const onRequestError = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     const serverResponse = error.response?.data as TApiErrors;
     if (serverResponse?.error === ApiErrorTypes.ValidationError) {
+      let requestBody: Record<string, unknown> | undefined;
+      try {
+        const configData = error.config?.data;
+        requestBody =
+          typeof configData === "string"
+            ? JSON.parse(configData)
+            : (configData as Record<string, unknown>);
+      } catch {
+        requestBody = undefined;
+      }
+
       createNotification(
         {
           title: "Validation Error",
           type: "error",
           text: "Please check the input and try again.",
-          callToAction: <ValidationErrorModal serverResponse={serverResponse} />,
+          callToAction: (
+            <ValidationErrorModal serverResponse={serverResponse} requestBody={requestBody} />
+          ),
           copyActions: [
             {
               value: serverResponse.reqId,

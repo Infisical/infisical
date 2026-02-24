@@ -1,6 +1,6 @@
 import { cloneElement, useMemo, useState } from "react";
 import { Control, Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { components, MultiValueRemoveProps, OptionProps } from "react-select";
+import { components, MultiValueProps, MultiValueRemoveProps, OptionProps } from "react-select";
 import { CheckIcon, GripVerticalIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -69,6 +69,21 @@ const MultiValueRemove = ({ selectProps, ...props }: MultiValueRemoveProps) => {
     return null;
   }
   return <components.MultiValueRemove selectProps={selectProps} {...props} />;
+};
+
+const MultiValueWithTooltip = <T extends ActionOption>(props: MultiValueProps<T>) => {
+  const { data } = props;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div>
+          <components.MultiValue {...props} />
+        </div>
+      </TooltipTrigger>
+      {data.description && <TooltipContent>{data.description}</TooltipContent>}
+    </Tooltip>
+  );
 };
 
 type ActionsMultiSelectProps<T extends ProjectPermissionSub> = {
@@ -149,7 +164,8 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
       menuPosition="fixed"
       components={{
         Option: OptionWithDescription,
-        MultiValueRemove
+        MultiValueRemove,
+        MultiValue: MultiValueWithTooltip
       }}
     />
   );
