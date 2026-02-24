@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faSave, faServer, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -29,6 +29,7 @@ import {
 } from "@app/components/v2";
 import { Badge, OrgIcon, ProjectIcon } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { useDebounce } from "@app/hooks";
 import { useSearchOrgIdentityMemberships } from "@app/hooks/api";
 import {
   TProjectTemplate,
@@ -101,13 +102,36 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
     AddIdentityType.CreateNew
   );
 
-  const { data: orgIdentitiesResponse, isPending: isMembershipsLoading } =
+  // Search state for the identity dropdown (server-side search)
+  const [identitySearchInput, setIdentitySearchInput] = useState("");
+  const [debouncedIdentitySearch] = useDebounce(identitySearchInput, 300);
+
+  // Fetch identities for the dropdown with server-side search
+  const { data: searchedIdentitiesResponse, isPending: isSearchingIdentities } =
     useSearchOrgIdentityMemberships({
-      search: {}
+      limit: 100,
+      search: debouncedIdentitySearch ? { name: { $contains: debouncedIdentitySearch } } : {}
     });
+  const searchedIdentities = searchedIdentitiesResponse
+    ? searchedIdentitiesResponse.identities.map((v) => v.identity)
+    : [];
+
+  // Fetch identities for name resolution in the table (separate unbounded query)
+  const { data: orgIdentitiesResponse } = useSearchOrgIdentityMemberships({
+    limit: 100,
+    search: {}
+  });
   const orgIdentities = orgIdentitiesResponse
     ? orgIdentitiesResponse.identities.map((v) => v.identity)
     : [];
+
+  // Track names of identities that have been added to the template,
+  // so we can display their names even if they fall outside the fetched page
+  const knownIdentityNamesRef = useRef<Map<string, string>>(new Map());
+  // Populate from both search results and org identity list
+  [...searchedIdentities, ...orgIdentities].forEach((identity) => {
+    knownIdentityNamesRef.current.set(identity.id, identity.name);
+  });
 
   const {
     control,
@@ -185,15 +209,19 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
   const currentIdentities = watch("identities");
   const availableOrgIdentities = useMemo(() => {
     const addedIdentityIds = new Set(currentIdentities.map((i) => i.identityId));
-    return orgIdentities
+    return searchedIdentities
       .filter((identity) => !addedIdentityIds.has(identity.id))
       .map((identity) => ({
         id: identity.id,
         name: identity.name
       }));
-  }, [orgIdentities, currentIdentities]);
+  }, [searchedIdentities, currentIdentities]);
 
   const getIdentityName = (identityId: string) => {
+    // First check the cached names map (includes results from search queries)
+    const cachedName = knownIdentityNamesRef.current.get(identityId);
+    if (cachedName) return cachedName;
+    // Fallback to the org identities list
     const identity = orgIdentities.find((i) => i.id === identityId);
     return identity?.name || identityId;
   };
@@ -616,12 +644,14 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                     <FilterableSelect
                       value={value}
                       onChange={onChange}
-                      isLoading={isMembershipsLoading}
+                      isLoading={isSearchingIdentities}
                       placeholder="Select machine identity..."
                       autoFocus
                       options={availableOrgIdentities}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => option.name}
+                      onInputChange={(newValue) => setIdentitySearchInput(newValue)}
+                      filterOption={() => true}
                     />
                   </FormControl>
                 )}
