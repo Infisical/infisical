@@ -62,6 +62,8 @@ import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-c
 import { azureClientSecretsConnectionService } from "./azure-client-secrets/azure-client-secrets-service";
 import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/azure-devops-schemas";
 import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-service";
+import { ValidateAzureDnsConnectionCredentialsSchema } from "./azure-dns/azure-dns-connection-schema";
+import { azureDnsConnectionService } from "./azure-dns/azure-dns-connection-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
 import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
@@ -180,6 +182,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
   [AppConnection.DNSMadeEasy]: ValidateDNSMadeEasyConnectionCredentialsSchema,
+  [AppConnection.AzureDNS]: ValidateAzureDnsConnectionCredentialsSchema,
   [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema,
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
   [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
@@ -904,6 +907,7 @@ export const appConnectionServiceFactory = ({
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
+    azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),

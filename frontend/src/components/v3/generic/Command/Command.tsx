@@ -90,7 +90,7 @@ function CommandEmpty({ ...props }: React.ComponentProps<typeof CommandPrimitive
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
-      className="py-6 text-center text-sm text-accent"
+      className="py-2.5 text-center text-sm text-accent"
       {...props}
     />
   );

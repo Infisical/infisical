@@ -260,6 +260,13 @@ export const AppConnectionsBrowser = () => {
       category: "Networking & DNS",
     },
     {
+      name: "Azure DNS",
+      slug: "azure-dns",
+      path: "/integrations/app-connections/azure-dns",
+      description: "Learn how to connect Infisical to Azure DNS for ACME DNS validation.",
+      category: "Networking & DNS",
+    },
+    {
       name: "Windmill",
       slug: "windmill",
       path: "/integrations/app-connections/windmill",

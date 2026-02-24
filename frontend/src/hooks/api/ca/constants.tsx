@@ -17,13 +17,15 @@ export const caStatusToNameMap: { [K in CaStatus]: string } = {
 export const ACME_DNS_PROVIDER_NAME_MAP: Record<AcmeDnsProvider, string> = {
   [AcmeDnsProvider.ROUTE53]: "Route53",
   [AcmeDnsProvider.Cloudflare]: "Cloudflare",
-  [AcmeDnsProvider.DNSMadeEasy]: "DNS Made Easy"
+  [AcmeDnsProvider.DNSMadeEasy]: "DNS Made Easy",
+  [AcmeDnsProvider.AzureDNS]: "Azure DNS"
 };
 
 export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
   [AcmeDnsProvider.ROUTE53]: AppConnection.AWS,
   [AcmeDnsProvider.Cloudflare]: AppConnection.Cloudflare,
-  [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy
+  [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
+  [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS
 };
 
 export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
@@ -37,7 +39,18 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
     CaCapability.REVOKE_CERTIFICATES,
     CaCapability.RENEW_CERTIFICATES
   ],
-  [CaType.AZURE_AD_CS]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES]
+  [CaType.AZURE_AD_CS]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
+  [CaType.AWS_PCA]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.REVOKE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES
+  ]
+};
+
+export const EXTERNAL_CA_TYPE_NAME_MAP: Record<string, string> = {
+  [CaType.ACME]: "ACME",
+  [CaType.AZURE_AD_CS]: "Active Directory Certificate Services (AD CS)",
+  [CaType.AWS_PCA]: "AWS Private CA (PCA)"
 };
 
 /**

@@ -48,7 +48,8 @@ export const ProfileRow = ({
   onRevealProfileAcmeEabSecret,
   onDeleteProfile
 }: Props) => {
-  const { data: caData } = useGetInternalCaById(profile.caId ?? "");
+  const isInternalCa = !profile.certificateAuthority?.isExternal;
+  const { data: caData } = useGetInternalCaById(isInternalCa ? (profile.caId ?? "") : "");
 
   const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 

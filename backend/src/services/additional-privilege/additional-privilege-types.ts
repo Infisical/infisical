@@ -11,7 +11,7 @@ export interface TAdditionalPrivilegesScopeFactory {
   onGetAdditionalPrivilegesByIdGuard: (
     arg: TGetAdditionalPrivilegesByIdDTO | TGetAdditionalPrivilegesByNameDTO
   ) => Promise<void>;
-  getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
+  getScopeField: (scope: AccessScopeData) => { key: "orgId" | "projectId"; value: string };
 }
 
 export type TCreateAdditionalPrivilegesDTO = {

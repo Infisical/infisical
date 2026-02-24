@@ -42,10 +42,6 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
         .where((qb) => {
           if (scopeData.scope === AccessScope.Organization) {
             void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
-          } else if (scopeData.scope === AccessScope.Namespace) {
-            void qb
-              .where(`${TableName.Membership}.scope`, AccessScope.Namespace)
-              .where(`${TableName.Membership}.scopeNamespaceId`, scopeData.namespaceId);
           } else if (scopeData.scope === AccessScope.Project) {
             void qb
               .where(`${TableName.Membership}.scope`, AccessScope.Project)
@@ -150,10 +146,6 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
 
           if (scopeData.scope === AccessScope.Organization) {
             void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
-          } else if (scopeData.scope === AccessScope.Namespace) {
-            void qb
-              .where(`${TableName.Membership}.scope`, AccessScope.Namespace)
-              .where(`${TableName.Membership}.scopeNamespaceId`, scopeData.namespaceId);
           } else if (scopeData.scope === AccessScope.Project) {
             void qb
               .where(`${TableName.Membership}.scope`, AccessScope.Project)

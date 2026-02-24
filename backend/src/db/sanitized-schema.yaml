@@ -633,7 +633,6 @@ tables:
       - actorGroupId
       - scopeOrgId
       - scopeProjectId
-      - scopeNamespaceId
       - isActive
       - status
       - inviteEmail
@@ -652,16 +651,6 @@ tables:
       - tenantId
       - accessTokenExpiresAt
       - botAccessTokenExpiresAt
-      - createdAt
-      - updatedAt
-
-  - name: namespaces
-    source: public.namespaces
-    columns:
-      - id
-      - name
-      - description
-      - orgId
       - createdAt
       - updatedAt
 
@@ -970,7 +959,6 @@ tables:
       - permissions
       - orgId
       - projectId
-      - namespaceId
       - createdAt
       - updatedAt
 

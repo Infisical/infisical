@@ -419,12 +419,21 @@ export type TQueueJobTypes = {
       profileId: string;
       caId: string;
       commonName?: string;
-      altNames?: string[];
+      altNames?: Array<{ type: string; value: string }>;
       ttl: string;
       signatureAlgorithm: string;
       keyAlgorithm: string;
       keyUsages?: string[];
       extendedKeyUsages?: string[];
+      isRenewal?: boolean;
+      originalCertificateId?: string;
+      certificateRequestId?: string;
+      csr?: string;
+      organization?: string;
+      organizationalUnit?: string;
+      country?: string;
+      state?: string;
+      locality?: string;
     };
   };
   [QueueName.DailyReminders]: {

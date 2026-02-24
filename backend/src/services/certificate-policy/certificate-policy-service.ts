@@ -303,7 +303,8 @@ export const certificatePolicyServiceFactory = ({
 
   const validateRequestAgainstPolicy = (
     template: TCertificatePolicy,
-    request: TCertificateRequest
+    request: TCertificateRequest,
+    options?: { skipRequired?: boolean }
   ): TPolicyValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -315,13 +316,17 @@ export const certificatePolicyServiceFactory = ({
     if (request.organization) {
       requestAttributes.set(CertSubjectAttributeType.ORGANIZATION, request.organization);
     }
+    if (request.organizationalUnit)
+      requestAttributes.set(CertSubjectAttributeType.ORGANIZATIONAL_UNIT, request.organizationalUnit);
     if (request.country) requestAttributes.set(CertSubjectAttributeType.COUNTRY, request.country);
+    if (request.state) requestAttributes.set(CertSubjectAttributeType.STATE, request.state);
+    if (request.locality) requestAttributes.set(CertSubjectAttributeType.LOCALITY, request.locality);
 
     if (subjectPolicies && subjectPolicies.length > 0) {
       for (const attrPolicy of subjectPolicies) {
         const requestValue = requestAttributes.get(attrPolicy.type);
 
-        if (attrPolicy.required && attrPolicy.required.length > 0) {
+        if (!options?.skipRequired && attrPolicy.required && attrPolicy.required.length > 0) {
           if (!requestValue) {
             errors.push(`Missing required ${attrPolicy.type} attribute`);
           } else {
@@ -405,7 +410,7 @@ export const certificatePolicyServiceFactory = ({
         const requestSans = requestSansByType.get(sanPolicy.type) || [];
 
         // Check REQUIRED values - at least one SAN must match each required pattern
-        if (sanPolicy.required && sanPolicy.required.length > 0) {
+        if (!options?.skipRequired && sanPolicy.required && sanPolicy.required.length > 0) {
           for (const requiredValue of sanPolicy.required) {
             const hasMatchingRequiredSan = requestSans.some((sanValue) => {
               const validation = validateValueAgainstConstraints(sanValue, [requiredValue], `${sanPolicy.type} SAN`);
@@ -467,7 +472,7 @@ export const certificatePolicyServiceFactory = ({
     const keyUsagePolicy = template.keyUsages;
     if (keyUsagePolicy) {
       // Check REQUIRED key usages - must have all required usages
-      if (keyUsagePolicy.required && keyUsagePolicy.required.length > 0) {
+      if (!options?.skipRequired && keyUsagePolicy.required && keyUsagePolicy.required.length > 0) {
         const missingRequired = keyUsagePolicy.required.filter((usage) => !request.keyUsages?.includes(usage));
         if (missingRequired.length > 0) {
           errors.push(`Missing required key usages: ${missingRequired.join(", ")}`);
@@ -498,7 +503,7 @@ export const certificatePolicyServiceFactory = ({
     const extendedKeyUsagePolicy = template.extendedKeyUsages;
     if (extendedKeyUsagePolicy) {
       // Check REQUIRED extended key usages - must have all required usages
-      if (extendedKeyUsagePolicy.required && extendedKeyUsagePolicy.required.length > 0) {
+      if (!options?.skipRequired && extendedKeyUsagePolicy.required && extendedKeyUsagePolicy.required.length > 0) {
         const missingRequired = extendedKeyUsagePolicy.required.filter(
           (usage) => !request.extendedKeyUsages?.includes(usage)
         );
@@ -611,7 +616,7 @@ export const certificatePolicyServiceFactory = ({
           "CA certificate issuance is denied by this policy. The policy does not allow issuing CA certificates."
         );
       }
-    } else if (isCaPolicy === CertPolicyState.REQUIRED) {
+    } else if (!options?.skipRequired && isCaPolicy === CertPolicyState.REQUIRED) {
       if (!requestWantsCA) {
         errors.push(
           "CA certificate issuance is required by this policy. The request must include basicConstraints with isCA set to true."
@@ -1000,7 +1005,8 @@ export const certificatePolicyServiceFactory = ({
     getPolicyBySlug,
     listPolicies,
     deletePolicy,
-    validateCertificateRequest
+    validateCertificateRequest,
+    validateRequestAgainstPolicy
   };
 };
 

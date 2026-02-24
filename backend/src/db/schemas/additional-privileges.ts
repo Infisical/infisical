@@ -20,7 +20,6 @@ export const AdditionalPrivilegesSchema = z.object({
   actorIdentityId: z.string().uuid().nullable().optional(),
   orgId: z.string().uuid().nullable().optional(),
   projectId: z.string().nullable().optional(),
-  namespaceId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

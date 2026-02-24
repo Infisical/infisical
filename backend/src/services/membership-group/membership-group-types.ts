@@ -8,10 +8,9 @@ export interface TMembershipGroupScopeFactory {
   onDeleteMembershipGroupGuard: (arg: TDeleteMembershipGroupDTO) => Promise<void>;
   onListMembershipGroupGuard: (arg: TListMembershipGroupDTO) => Promise<void>;
   onGetMembershipGroupByGroupIdGuard: (arg: TGetMembershipGroupByGroupIdDTO) => Promise<void>;
-  getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
+  getScopeField: (scope: AccessScopeData) => { key: "orgId" | "projectId"; value: string };
   getScopeDatabaseFields: (scope: AccessScopeData) => {
     scopeOrgId: string;
-    scopeNamespaceId?: string | null;
     scopeProjectId?: string | null;
   };
   isCustomRole: (role: string) => boolean;

@@ -6,10 +6,11 @@ import { registerInternalCertificateAuthorityRouter } from "./internal-certifica
 
 export * from "./internal-certificate-authority-router";
 
-export const DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP: Record<
-  CaType,
-  (server: FastifyZodProvider) => Promise<void>
-> = {
+export const DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP: {
+  [CaType.INTERNAL]: (server: FastifyZodProvider) => Promise<void>;
+  [CaType.ACME]: (server: FastifyZodProvider) => Promise<void>;
+  [CaType.AZURE_AD_CS]: (server: FastifyZodProvider) => Promise<void>;
+} = {
   [CaType.INTERNAL]: registerInternalCertificateAuthorityRouter,
   [CaType.ACME]: registerAcmeCertificateAuthorityRouter,
   [CaType.AZURE_AD_CS]: registerAzureAdCsCertificateAuthorityRouter

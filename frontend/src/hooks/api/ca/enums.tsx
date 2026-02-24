@@ -1,7 +1,8 @@
 export enum CaType {
   INTERNAL = "internal",
   ACME = "acme",
-  AZURE_AD_CS = "azure-ad-cs"
+  AZURE_AD_CS = "azure-ad-cs",
+  AWS_PCA = "aws-pca"
 }
 
 export enum InternalCaType {
@@ -22,7 +23,8 @@ export enum CaRenewalType {
 export enum AcmeDnsProvider {
   ROUTE53 = "route53",
   Cloudflare = "cloudflare",
-  DNSMadeEasy = "dns-made-easy"
+  DNSMadeEasy = "dns-made-easy",
+  AzureDNS = "azure-dns"
 }
 
 export enum CaCapability {
