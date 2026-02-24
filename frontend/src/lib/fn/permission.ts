@@ -104,26 +104,34 @@ export function formatValidationErrorPath(
   path: (string | number)[],
   requestBody?: Record<string, unknown> | null
 ): string {
-  const permissionIndex = path[1];
-  const index = typeof permissionIndex === "number" ? permissionIndex : -1;
-
-  // Shows readable name for permission rules validation errors
-  if (
-    requestBody &&
-    path.length >= 3 &&
-    path[0] === "permissions" &&
-    index >= 0 &&
-    path[2] === "action"
-  ) {
-    const { permissions } = requestBody;
-    if (Array.isArray(permissions) && permissions[index]) {
-      const { subject: subjectValue } = permissions[index] as { subject?: string };
-      if (typeof subjectValue === "string") {
-        return PERMISSION_DISPLAY_NAMES[subjectValue] ?? subjectValue;
-      }
-    }
-    return `Permission rule #${index + 1}`;
+  if (!requestBody) {
+    return path.join(".");
   }
 
-  return path.join(".");
+  // Find permissions.N.action pattern anywhere in the path
+  const permissionsKeyIndex = path.findIndex((segment) => segment === "permissions");
+  const permissionIndex = path[permissionsKeyIndex + 1];
+
+  if (
+    permissionsKeyIndex === -1 ||
+    path[permissionsKeyIndex + 2] !== "action" ||
+    typeof permissionIndex !== "number"
+  ) {
+    return path.join(".");
+  }
+
+  // Traverse the path to find the container holding permissions
+  let container: unknown = requestBody;
+  for (let i = 0; i < permissionsKeyIndex; i += 1) {
+    container = (container as Record<string | number, unknown>)?.[path[i]];
+  }
+
+  const permissions = (container as { permissions?: { subject?: string }[] })?.permissions;
+  const subjectValue = permissions?.[permissionIndex]?.subject;
+
+  if (typeof subjectValue === "string") {
+    return PERMISSION_DISPLAY_NAMES[subjectValue] ?? subjectValue;
+  }
+
+  return `Permission rule #${permissionIndex + 1}`;
 }

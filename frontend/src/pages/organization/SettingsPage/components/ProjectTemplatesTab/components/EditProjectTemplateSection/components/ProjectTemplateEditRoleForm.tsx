@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faChevronLeft, faSave } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { twMerge } from "tailwind-merge";
+import { ChevronLeftIcon, SaveIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
-import { UnstableAccordion } from "@app/components/v3";
+import { FormControl, Input } from "@app/components/v2";
+import { Button, UnstableAccordion } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
@@ -48,17 +46,35 @@ export const ProjectTemplateEditRoleForm = ({
   const [openPolicies, setOpenPolicies] = useState<string[]>([]);
 
   const formMethods = useForm<TFormSchema>({
-    values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      slug: "",
+      permissions: {}
+    }
   });
 
   const {
     handleSubmit,
     control,
-    formState: { isDirty, isSubmitting }
+    formState: { isDirty, isSubmitting },
+    reset
   } = formMethods;
 
+  useEffect(() => {
+    if (role) {
+      reset({ ...role, permissions: rolePermission2Form(role.permissions) });
+    }
+  }, [role, reset]);
+
   const updateProjectTemplate = useUpdateProjectTemplate();
+
+  const permissions = formMethods.watch("permissions");
+
+  const hasPermissions = useMemo(
+    () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
+    [JSON.stringify(permissions)]
+  );
 
   const onSubmit = async (form: TFormSchema) => {
     await updateProjectTemplate.mutateAsync({
@@ -87,41 +103,28 @@ export const ProjectTemplateEditRoleForm = ({
     >
       <FormProvider {...formMethods}>
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <Button
-            leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            className="text-base font-medium text-mineshaft-200"
-            variant="link"
-            onClick={onGoBack}
-          >
+          <Button variant="ghost" onClick={onGoBack}>
+            <ChevronLeftIcon />
             {isDisabled ? "Back" : "Cancel"}
           </Button>
           {!isDisabled && (
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-2">
               {isDirty && (
                 <Button
-                  className="mr-4 text-mineshaft-300"
-                  variant="link"
-                  isDisabled={isSubmitting}
-                  isLoading={isSubmitting}
-                  onClick={onGoBack}
+                  type="button"
+                  className="mr-4 text-muted"
+                  variant="ghost"
+                  disabled={isSubmitting}
+                  onClick={() => reset()}
                 >
                   Discard
                 </Button>
               )}
-              <div className="flex items-center">
-                <Button
-                  variant="outline_bg"
-                  type="submit"
-                  className={twMerge(
-                    "mr-4 h-10 border border-primary",
-                    isDirty && "bg-primary text-black"
-                  )}
-                  isDisabled={isSubmitting || !isDirty || isDisabled}
-                  isLoading={isSubmitting}
-                  leftIcon={<FontAwesomeIcon icon={faSave} />}
-                >
-                  Save
-                </Button>
+              <Button variant="project" type="submit" disabled={isSubmitting || !isDirty}>
+                <SaveIcon />
+                Save
+              </Button>
+              <div className="ml-2 border-l border-border pl-4">
                 <AddPoliciesButton isDisabled={isDisabled} projectType={projectTemplate.type} />
               </div>
             </div>
@@ -169,26 +172,28 @@ export const ProjectTemplateEditRoleForm = ({
         <div className="p-4">
           <div className="mb-2 text-lg">Policies</div>
           <PermissionEmptyState />
-          <UnstableAccordion
-            type="multiple"
-            value={openPolicies}
-            onValueChange={setOpenPolicies}
-            className="overflow-clip rounded-md border border-border bg-container"
-          >
-            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-              <GeneralPermissionPolicies
-                subject={subject}
-                actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-                title={PROJECT_PERMISSION_OBJECT[subject].title}
-                description={PROJECT_PERMISSION_OBJECT[subject].description}
-                key={`project-permission-${subject}`}
-                isDisabled={isDisabled}
-                isOpen={openPolicies.includes(subject)}
-              >
-                {renderConditionalComponents(subject, isDisabled)}
-              </GeneralPermissionPolicies>
-            ))}
-          </UnstableAccordion>
+          {hasPermissions && (
+            <UnstableAccordion
+              type="multiple"
+              value={openPolicies}
+              onValueChange={setOpenPolicies}
+              className="overflow-clip rounded-md border border-border bg-container"
+            >
+              {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
+                <GeneralPermissionPolicies
+                  subject={subject}
+                  actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                  title={PROJECT_PERMISSION_OBJECT[subject].title}
+                  description={PROJECT_PERMISSION_OBJECT[subject].description}
+                  key={`project-permission-${subject}`}
+                  isDisabled={isDisabled}
+                  isOpen={openPolicies.includes(subject)}
+                >
+                  {renderConditionalComponents(subject, isDisabled)}
+                </GeneralPermissionPolicies>
+              ))}
+            </UnstableAccordion>
+          )}
         </div>
       </FormProvider>
     </form>
