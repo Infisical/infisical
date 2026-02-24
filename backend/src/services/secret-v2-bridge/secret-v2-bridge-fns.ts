@@ -3,7 +3,7 @@ import path from "node:path";
 import { Knex } from "knex";
 import RE2 from "re2";
 
-import { SecretType, TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
+import { SecretType, TableName, TSecretFolders, TSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -22,6 +22,8 @@ import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from ".
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
+
+const BULK_BATCH_SIZE = 500;
 
 // these functions are special functions shared by a couple of resources
 // used by secret approval, rotation or anywhere in which secret needs to modified
@@ -69,10 +71,10 @@ export const fnSecretBulkInsert = async ({
   const actorType = actor?.type || ActorType.PLATFORM;
 
   const insertData = sanitizedInputSecrets.map((el) => ({ ...el, folderId }));
-  const BATCH_SIZE = 500;
-  const newSecrets = [];
-  for (let i = 0; i < insertData.length; i += BATCH_SIZE) {
-    const batch = insertData.slice(i, i + BATCH_SIZE);
+  const newSecrets: TSecretsV2[] = [];
+  for (let i = 0; i < insertData.length; i += BULK_BATCH_SIZE) {
+    const batch = insertData.slice(i, i + BULK_BATCH_SIZE);
+    // eslint-disable-next-line no-await-in-loop
     const batchResult = await secretDAL.insertMany(batch, tx);
     newSecrets.push(...batchResult);
   }
@@ -103,9 +105,10 @@ export const fnSecretBulkInsert = async ({
     secretId: newSecretGroupedByKeyName[el.key][0].id,
     parentVersionId: inputSecrets?.[index]?.parentSecretVersionId
   }));
-  const secretVersions = [];
-  for (let i = 0; i < versionData.length; i += BATCH_SIZE) {
-    const batch = versionData.slice(i, i + BATCH_SIZE);
+  const secretVersions: TSecretVersionsV2[] = [];
+  for (let i = 0; i < versionData.length; i += BULK_BATCH_SIZE) {
+    const batch = versionData.slice(i, i + BULK_BATCH_SIZE);
+    // eslint-disable-next-line no-await-in-loop
     const batchResult = await secretVersionDAL.insertMany(batch, tx);
     secretVersions.push(...batchResult);
   }
@@ -218,13 +221,9 @@ export const fnSecretBulkUpdate = async ({
     })
   );
 
-  const BATCH_SIZE = 500;
   const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
   const versionData = newSecrets.map(
-    (
-      { skipMultilineEncoding, type, key, userId, encryptedComment, version, encryptedValue, id: secretId },
-      index
-    ) => ({
+    ({ skipMultilineEncoding, type, key, userId, encryptedComment, version, encryptedValue, id: secretId }, index) => ({
       skipMultilineEncoding,
       type,
       key,
@@ -248,9 +247,10 @@ export const fnSecretBulkUpdate = async ({
       parentVersionId: inputSecrets?.[index]?.data?.parentSecretVersionId
     })
   );
-  const secretVersions = [];
-  for (let i = 0; i < versionData.length; i += BATCH_SIZE) {
-    const batch = versionData.slice(i, i + BATCH_SIZE);
+  const secretVersions: TSecretVersionsV2[] = [];
+  for (let i = 0; i < versionData.length; i += BULK_BATCH_SIZE) {
+    const batch = versionData.slice(i, i + BULK_BATCH_SIZE);
+    // eslint-disable-next-line no-await-in-loop
     const batchResult = await secretVersionDAL.insertMany(batch, tx);
     secretVersions.push(...batchResult);
   }

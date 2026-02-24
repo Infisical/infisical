@@ -1800,16 +1800,13 @@ export const secretV2BridgeServiceFactory = ({
       });
     const folderId = folder.id;
 
-    const secrets = await secretDAL.find(
-      {
-        folderId,
-        type: SecretType.Shared,
-        $in: {
-          [`${TableName.SecretV2}.key` as "key"]: inputSecrets.map((el) => el.secretKey)
-        }
-      },
-      { tx: undefined }
-    );
+    const secrets = await secretDAL.find({
+      folderId,
+      type: SecretType.Shared,
+      $in: {
+        [`${TableName.SecretV2}.key` as "key"]: inputSecrets.map((el) => el.secretKey)
+      }
+    });
     if (secrets.length)
       throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
 

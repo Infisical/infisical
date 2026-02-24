@@ -250,6 +250,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
 
       for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
+        // eslint-disable-next-line no-await-in-loop
         const batchResults = await Promise.all(
           batch.map(async ({ filter, data: updateData }) => {
             const [doc] = await (tx || db)(TableName.SecretV2)
