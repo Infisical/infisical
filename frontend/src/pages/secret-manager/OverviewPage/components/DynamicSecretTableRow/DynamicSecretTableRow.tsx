@@ -197,7 +197,7 @@ export const DynamicSecretTableRow = ({
                   <UnstableIconButton
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-red"
+                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
                     isDisabled={!isAllowed}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -226,7 +226,7 @@ export const DynamicSecretTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-red"
+                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();

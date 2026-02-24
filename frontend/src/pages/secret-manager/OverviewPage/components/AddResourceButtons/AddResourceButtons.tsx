@@ -2,6 +2,7 @@ import {
   ChevronDown,
   FingerprintIcon,
   FolderIcon,
+  ImportIcon,
   PlusIcon,
   RefreshCwIcon,
   UploadIcon
@@ -27,9 +28,12 @@ type Props = {
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
   onAddSecretRotation: () => void;
+  onAddSecretImport: () => void;
   onImportSecrets: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
+  isSecretImportAvailable: boolean;
+  isSingleEnvSelected: boolean;
 };
 
 export function AddResourceButtons({
@@ -37,9 +41,12 @@ export function AddResourceButtons({
   onAddFolder,
   onAddDyanamicSecret,
   onAddSecretRotation,
+  onAddSecretImport,
   onImportSecrets,
   isDyanmicSecretAvailable,
-  isSecretRotationAvailable
+  isSecretRotationAvailable,
+  isSecretImportAvailable,
+  isSingleEnvSelected
 }: Props) {
   return (
     <UnstableButtonGroup>
@@ -107,6 +114,22 @@ export function AddResourceButtons({
               </UnstableDropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>
+          </Tooltip>
+          <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
+            <TooltipTrigger className="block w-full">
+              <UnstableDropdownMenuItem
+                onClick={onAddSecretImport}
+                isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
+              >
+                <ImportIcon className="text-import" />
+                Add Secret Import
+              </UnstableDropdownMenuItem>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              {!isSecretImportAvailable
+                ? "Access restricted"
+                : "Select a single environment to add a secret import"}
+            </TooltipContent>
           </Tooltip>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}

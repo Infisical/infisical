@@ -1,4 +1,11 @@
-import { FilterIcon, FingerprintIcon, FolderIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
+import {
+  FilterIcon,
+  FingerprintIcon,
+  FolderIcon,
+  ImportIcon,
+  KeyIcon,
+  RefreshCwIcon
+} from "lucide-react";
 
 import {
   Tooltip,
@@ -74,6 +81,16 @@ export function ResourceFilter({ onToggleRowType, rowTypeFilter }: Props) {
         >
           <RefreshCwIcon className="text-secret-rotation" />
           Secret Rotations
+        </UnstableDropdownMenuCheckboxItem>
+        <UnstableDropdownMenuCheckboxItem
+          onClick={(e) => {
+            e.preventDefault();
+            onToggleRowType(RowType.SecretImport);
+          }}
+          checked={Boolean(rowTypeFilter[RowType.SecretImport])}
+        >
+          <ImportIcon className="text-import" />
+          Secret Imports
         </UnstableDropdownMenuCheckboxItem>
         <UnstableDropdownMenuCheckboxItem
           onClick={(e) => {
