@@ -1151,11 +1151,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                               onChange("");
                             }
                           }}
-                          getOptionLabel={(ca) =>
-                            ca.type === "internal" && ca.configuration.friendlyName
-                              ? ca.configuration.friendlyName
-                              : ca.name
-                          }
+                          getOptionLabel={(ca) => ca.name}
                           getOptionValue={(ca) => ca.id}
                           options={certificateAuthorities}
                           groupBy="groupType"
