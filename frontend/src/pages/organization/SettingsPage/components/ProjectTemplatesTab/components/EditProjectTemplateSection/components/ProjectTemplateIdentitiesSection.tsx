@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faSave, faServer, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -128,10 +128,12 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
   // Track names of identities that have been added to the template,
   // so we can display their names even if they fall outside the fetched page
   const knownIdentityNamesRef = useRef<Map<string, string>>(new Map());
-  // Populate from both search results and org identity list
-  [...searchedIdentities, ...orgIdentities].forEach((identity) => {
-    knownIdentityNamesRef.current.set(identity.id, identity.name);
-  });
+
+  useEffect(() => {
+    [...searchedIdentities, ...orgIdentities].forEach((identity) => {
+      knownIdentityNamesRef.current.set(identity.id, identity.name);
+    });
+  }, [searchedIdentities, orgIdentities]);
 
   const {
     control,
