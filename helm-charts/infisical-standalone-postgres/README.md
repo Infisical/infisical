@@ -23,6 +23,7 @@ A helm chart to deploy Infisical
 | infisical.databaseSchemaMigrationJob.image.tag | string | `"no-root-v2.0"` | Image tag version |
 | infisical.deploymentAnnotations | object | `{}` | Custom annotations for Infisical deployment |
 | infisical.enabled | bool | `true` |  |
+| infisical.env | list | `[]` | Adds a list of environment variables with support for all possible configurations including valueFrom. This is especially useful to override Infisical configuration environment variables. See [Infisical Environment Variables](https://infisical.com/docs/self-hosting/configuration/envars) for available configuration options and the [Kubernetes API reference](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#environment-variables) for details on environment variable configuration. |
 | infisical.fullnameOverride | string | `""` | Override for the full name of Infisical resources in this deployment |
 | infisical.image.imagePullSecrets | list | `[]` | Secret references for pulling the image, if needed |
 | infisical.image.pullPolicy | string | `"IfNotPresent"` | Pulls image only if not already present on the node |
