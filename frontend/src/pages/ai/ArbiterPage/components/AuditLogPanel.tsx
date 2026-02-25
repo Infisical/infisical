@@ -42,9 +42,9 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
         </UnstableCardDescription>
       </UnstableCardHeader>
       <UnstableCardContent className="-mx-5 !mt-0 -mb-5 py-0">
-        <div ref={scrollRef} className="h-[611px] space-y-2.5 overflow-y-auto px-5 py-4 pb-5">
+        <div ref={scrollRef} className="h-[701px] space-y-2.5 overflow-y-auto px-5 py-4 pb-5">
           <AnimatePresence initial={false}>
-            {[...events].reverse().map((event) => (
+            {events.map((event) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: -20 }}

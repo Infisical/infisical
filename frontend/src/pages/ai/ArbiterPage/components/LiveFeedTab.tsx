@@ -17,8 +17,6 @@ import type { DemoEvent } from "../data";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { ConstellationView } from "./ConstellationView";
 
-const EVENT_HIGHLIGHT_DURATION_MS = 3000;
-
 const mapAuditLogToEvent = (log: TAgentGateAuditLog): DemoEvent => ({
   id: log.id,
   agentId: log.requestingAgentId,
@@ -34,43 +32,43 @@ export const LiveFeedTab = () => {
   const { currentProject } = useProject();
   const projectId = currentProject.id;
 
-  const { data: auditData } = useQueryAgentGateAuditLogs({ projectId, limit: 50 });
+  // Capture mount time so we only show events that arrive after page load
+  const [mountTime] = useState(() => new Date().toISOString());
+  const [activeSessionId, setActiveSessionId] = useState<string | undefined>(undefined);
 
+  const { data: auditData } = useQueryAgentGateAuditLogs({
+    projectId,
+    limit: 50,
+    startTime: mountTime,
+    sessionId: activeSessionId
+  });
+
+  const previousLatestIdRef = useRef<string | null>(null);
   const [currentEvent, setCurrentEvent] = useState<DemoEvent | null>(null);
-  const previousIdsRef = useRef<Set<string>>(new Set());
-  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const events: DemoEvent[] = useMemo(() => {
-    if (!auditData?.logs) return [];
+    if (!auditData?.logs?.length) return [];
     return auditData.logs.map(mapAuditLogToEvent);
   }, [auditData?.logs]);
 
-  // Detect new events and highlight the most recent one
+  // Lock onto the first sessionId we see
   useEffect(() => {
-    if (!auditData?.logs?.length) return;
-
-    const currentIds = new Set(auditData.logs.map((l) => l.id));
-    const newEvents = auditData.logs.filter((l) => !previousIdsRef.current.has(l.id));
-
-    if (newEvents.length > 0 && previousIdsRef.current.size > 0) {
-      // Highlight the newest event (logs are sorted desc by timestamp)
-      const newest = mapAuditLogToEvent(newEvents[0]);
-      setCurrentEvent(newest);
-
-      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
-      highlightTimeoutRef.current = setTimeout(() => {
-        setCurrentEvent(null);
-      }, EVENT_HIGHLIGHT_DURATION_MS);
+    if (activeSessionId || !auditData?.logs?.length) return;
+    const firstSession = auditData.logs.find((l) => l.sessionId)?.sessionId;
+    if (firstSession) {
+      setActiveSessionId(firstSession);
     }
+  }, [auditData?.logs, activeSessionId]);
 
-    previousIdsRef.current = currentIds;
-  }, [auditData?.logs]);
-
+  // Highlight the latest event — stays active until a new one arrives
   useEffect(() => {
-    return () => {
-      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
-    };
-  }, []);
+    if (!events.length) return;
+    const latestId = events[0].id;
+    if (latestId !== previousLatestIdRef.current) {
+      previousLatestIdRef.current = latestId;
+      setCurrentEvent(events[0]);
+    }
+  }, [events]);
 
   return (
     <div>
@@ -83,7 +81,7 @@ export const LiveFeedTab = () => {
       </div>
 
       <div className="flex flex-1 flex-col gap-5 lg:flex-row">
-        <UnstableCard className="h-[700px] flex-1 overflow-hidden">
+        <UnstableCard className="h-[790px] flex-1 overflow-hidden">
           <UnstableCardHeader>
             <UnstableCardTitle>Agent Network</UnstableCardTitle>
             <UnstableCardDescription>

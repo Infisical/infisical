@@ -77,4 +77,6 @@ export type TQueryAuditLogsDTO = {
   projectId: string;
   limit?: number;
   offset?: number;
+  startTime?: string;
+  sessionId?: string;
 };

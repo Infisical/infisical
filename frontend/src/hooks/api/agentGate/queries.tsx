@@ -15,7 +15,7 @@ export const agentGateKeys = {
   policies: (params: { projectId: string }) => [...agentGateKeys.all, "policies", params] as const,
   agentPolicy: (params: { agentId: string; projectId: string }) =>
     [...agentGateKeys.all, "agent-policy", params] as const,
-  auditLogs: (params: { projectId: string; limit?: number }) =>
+  auditLogs: (params: { projectId: string; limit?: number; startTime?: string; sessionId?: string }) =>
     [...agentGateKeys.all, "audit-logs", params] as const
 };
 
@@ -47,13 +47,25 @@ export const useGetAgentPolicy = ({ agentId, projectId }: TGetAgentPolicyDTO) =>
   });
 };
 
-export const useQueryAgentGateAuditLogs = ({ projectId, limit = 50 }: TQueryAuditLogsDTO) => {
+export const useQueryAgentGateAuditLogs = ({
+  projectId,
+  limit = 50,
+  startTime,
+  sessionId
+}: TQueryAuditLogsDTO) => {
   return useQuery({
-    queryKey: agentGateKeys.auditLogs({ projectId, limit }),
+    queryKey: agentGateKeys.auditLogs({ projectId, limit, startTime, sessionId }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ logs: TAgentGateAuditLog[] }>(
         "/api/v1/agentgate/audit",
-        { params: { projectId, limit } }
+        {
+          params: {
+            projectId,
+            limit,
+            ...(startTime && { startTime }),
+            ...(sessionId && { sessionId })
+          }
+        }
       );
       return data;
     },
