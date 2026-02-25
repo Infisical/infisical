@@ -39,10 +39,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
         </UnstableCardDescription>
       </UnstableCardHeader>
       <UnstableCardContent className="-mx-5 !mt-0 -mb-5 py-0">
-        <div
-          ref={scrollRef}
-          className="h-[611px] space-y-2.5 overflow-y-auto px-5 py-4 pb-5"
-        >
+        <div ref={scrollRef} className="h-[611px] space-y-2.5 overflow-y-auto px-5 py-4 pb-5">
           <AnimatePresence initial={false}>
             {[...events].reverse().map((event) => (
               <motion.div
@@ -94,9 +91,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
                   >
                     <div className="mb-1 flex items-center gap-1 text-muted">
                       <Shield className="h-3 w-3" />
-                      <span className="text-[10px] tracking-wider uppercase">
-                        Infisical Arbiter
-                      </span>
+                      <span className="text-[10px] tracking-wider uppercase">Network Arbiter</span>
                     </div>
                     &quot;{event.reasoning}&quot;
                   </div>

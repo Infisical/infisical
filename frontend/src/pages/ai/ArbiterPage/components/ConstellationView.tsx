@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { GavelIcon, Shield } from "lucide-react";
+import { GavelIcon, NetworkIcon, ScaleIcon, Shield } from "lucide-react";
 import * as Icons from "lucide-react";
 
 import { AGENTS, type DemoEvent } from "../data";
@@ -52,7 +52,13 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
       <svg className="absolute inset-0 h-full w-full">
         <defs>
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.07" />
+            <path
+              d="M 40 0 L 0 0 0 40"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="0.5"
+              opacity="0.07"
+            />
             <circle cx="0" cy="0" r="1" fill="currentColor" opacity="0.15" />
           </pattern>
         </defs>
@@ -88,7 +94,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
             <path d="M50 10 L85 30 V70 L50 90 L15 70 V30 Z" fill={statusColor.fill} stroke="none" />
           </svg>
 
-          <GavelIcon className={`relative z-10 h-8 w-8 ${statusColor.text}`} />
+          <ScaleIcon className={`relative z-10 h-8 w-8 ${statusColor.text}`} />
 
           {/* Policy Decision Text */}
           <AnimatePresence>
@@ -136,7 +142,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
               <motion.div
                 animate={{
                   scale: isActive ? 1.15 : 1,
-                  opacity: isActive ? 1 : 0.5,
+                  opacity: isActive ? 1 : 0.75,
                   y: [0, -6, 0]
                 }}
                 transition={{
@@ -149,7 +155,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                     ? currentEvent?.status === "approved"
                       ? "border-success bg-success/10 shadow-[0_0_30px_rgba(46,204,113,0.3)]"
                       : "border-danger bg-danger/10 shadow-[0_0_30px_rgba(231,76,60,0.3)]"
-                    : "border-border"
+                    : "border-border bg-card/10"
                 }`}
               >
                 <div className="mb-1 text-foreground">{getIcon(agent.icon)}</div>
@@ -172,7 +178,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                         : "#e74c3c"
                       : "var(--color-border)"
                   }
-                  strokeWidth={isActive ? 1 : 0.5}
+                  strokeWidth={isActive ? 1 : 1}
                   strokeDasharray="6 4"
                   style={
                     isActive
