@@ -1,12 +1,15 @@
 import { useCallback, useState } from "react";
 import {
   CheckCircle,
+  CheckIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   Clock,
   FilterIcon,
   SearchIcon,
   Shield,
-  XCircle
+  XCircle,
+  XIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -82,19 +85,27 @@ const SessionRow = ({ session }: { session: Session }) => {
         onClick={() => setIsExpanded((prev) => !prev)}
       >
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
-          <ChevronDownIcon
-            className={twMerge("transition-transform", isExpanded && "rotate-180")}
+          <ChevronRightIcon
+            className={twMerge("transition-transform", isExpanded && "rotate-90")}
           />
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
           <span className="font-medium">{session.title}</span>
-          <p className="mt-0.5 text-xs text-accent">{session.description}</p>
+        </UnstableTableCell>
+        <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
+          <span className="text-xs text-accent">{session.description}</span>
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
           <div className="flex items-center gap-2">
-            <Badge variant="success">{session.approvedCount} approved</Badge>
+            <Badge variant="success">
+              <CheckIcon />
+              {session.approvedCount} Approved
+            </Badge>
             {session.deniedCount > 0 && (
-              <Badge variant="danger">{session.deniedCount} denied</Badge>
+              <Badge variant="danger">
+                <XIcon />
+                {session.deniedCount} Denied
+              </Badge>
             )}
           </div>
         </UnstableTableCell>
@@ -107,8 +118,8 @@ const SessionRow = ({ session }: { session: Session }) => {
       </UnstableTableRow>
       {isExpanded && (
         <UnstableTableRow>
-          <UnstableTableCell colSpan={4} className="bg-card p-0">
-            <div className="border-t-2 border-border p-6">
+          <UnstableTableCell colSpan={5} className="bg-card p-0">
+            <div className="border-t-1 border-border p-6">
               <div className="relative">
                 {/* Timeline line */}
                 <div className="absolute top-0 bottom-0 left-[15px] w-px bg-border" />
@@ -116,11 +127,11 @@ const SessionRow = ({ session }: { session: Session }) => {
                   {session.events.map((event, index) => (
                     <div key={event.id} className="relative flex items-start gap-4 pb-6 last:pb-0">
                       {/* Timeline node */}
-                      <div className="relative z-10 flex shrink-0 items-center justify-center">
+                      <div className="relative z-10 ml-[5px] flex shrink-0 items-center justify-center">
                         {event.status === "approved" ? (
-                          <CheckCircle className="h-[31px] w-[31px] bg-card text-success" />
+                          <CheckCircle className="size-5 bg-card text-success" />
                         ) : (
-                          <XCircle className="h-[31px] w-[31px] bg-card text-danger" />
+                          <XCircle className="size-5 bg-card text-danger" />
                         )}
                       </div>
                       {/* Event content */}
@@ -232,6 +243,7 @@ export const SessionsTab = () => {
           <UnstableTableRow>
             <UnstableTableHead className="w-5" />
             <UnstableTableHead>Session</UnstableTableHead>
+            <UnstableTableHead>Description</UnstableTableHead>
             <UnstableTableHead>Decisions</UnstableTableHead>
             <UnstableTableHead>Duration</UnstableTableHead>
           </UnstableTableRow>
