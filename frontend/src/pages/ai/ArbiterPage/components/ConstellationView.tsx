@@ -19,7 +19,7 @@ const AGENT_POSITIONS = [
 
 const getIcon = (name: string) => {
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
-  return Icon ? <Icon className="h-5 w-5" /> : null;
+  return Icon ? <Icon className="h-6 w-6" /> : null;
 };
 
 export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
@@ -159,15 +159,15 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   y: { duration: 5 + index * 0.8, repeat: Infinity, ease: "easeInOut" },
                   x: { duration: 7 + index, repeat: Infinity, ease: "easeInOut" }
                 }}
-                className={`flex h-24 w-24 items-center justify-center rounded-full border bg-card transition-shadow duration-500 ${
+                className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
                   isActive
                     ? currentEvent?.status === "approved"
                       ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
                       : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
-                    : "border-border bg-card/10"
+                    : "border-border bg-bunker-800"
                 }`}
               >
-                <div className="text-foreground">{getIcon(agent.icon)}</div>
+                <div className="text-accent">{getIcon(agent.icon)}</div>
               </motion.div>
               <div className="absolute top-full mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
                 {agent.name}
@@ -185,7 +185,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       ? currentEvent?.status === "approved"
                         ? "#2ecc71"
                         : "#e74c3c"
-                      : "var(--color-border)"
+                      : "var(--color-accent)"
                   }
                   strokeWidth={isActive ? 1 : 1}
                   strokeDasharray="6 4"

@@ -21,7 +21,7 @@ export const AGENTS: Agent[] = [
   {
     id: "triage_agent",
     name: "Triage Agent",
-    icon: "Stethoscope",
+    icon: "BriefcaseMedical",
     description: "Classifies and routes incoming tickets to the appropriate agent.",
     activity: "classify_ticket, assess_severity, route_ticket"
   },
