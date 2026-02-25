@@ -42,3 +42,39 @@ export type TUpdateAgentPolicyDTO = {
   selfPolicies?: TSelfPolicies;
   inboundPolicies?: TInboundPolicy[];
 };
+
+export type TPolicyEvaluation = {
+  allowed: boolean;
+  policyType: "structured" | "prompt";
+  policyId: string;
+  reasoning: string;
+  evaluatedAt: string;
+  llmEvaluation?: {
+    model: string;
+    promptTokens: number;
+    completionTokens: number;
+    reasoning: string;
+  };
+};
+
+export type TAgentGateAuditLog = {
+  id: string;
+  sessionId: string | null;
+  projectId: string;
+  timestamp: string;
+  requestingAgentId: string;
+  targetAgentId: string;
+  actionType: "skill" | "communication";
+  action: string;
+  result: "allowed" | "denied";
+  policyEvaluations: TPolicyEvaluation[];
+  context: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TQueryAuditLogsDTO = {
+  projectId: string;
+  limit?: number;
+  offset?: number;
+};

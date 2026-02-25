@@ -14,7 +14,7 @@ export type DemoEvent = {
   details: string;
   status: "approved" | "denied";
   reasoning: string;
-  timestamp: number;
+  timestamp: string;
 };
 
 export const AGENTS: Agent[] = [
@@ -58,7 +58,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     details: "Ticket #4021 — Billing Inquiry",
     status: "approved",
     reasoning: "Classification matches allowed categories.",
-    timestamp: 3
+    timestamp: new Date(Date.now() - 30000).toISOString()
   },
   {
     id: "evt-2",
@@ -68,7 +68,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     details: "Route Ticket #4021 to Support",
     status: "approved",
     reasoning: "Communication path allowed.",
-    timestamp: 8
+    timestamp: new Date(Date.now() - 25000).toISOString()
   },
   {
     id: "evt-3",
@@ -77,7 +77,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     details: "Reship Item SKU-992",
     status: "approved",
     reasoning: "Communication path allowed.",
-    timestamp: 14
+    timestamp: new Date(Date.now() - 20000).toISOString()
   },
   {
     id: "evt-4",
@@ -86,7 +86,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     details: "$15 Courtesy Credit",
     status: "approved",
     reasoning: "Amount $15 is under $50 threshold.",
-    timestamp: 19
+    timestamp: new Date(Date.now() - 15000).toISOString()
   },
   {
     id: "evt-5",
@@ -95,7 +95,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     details: "$200 Full Refund",
     status: "denied",
     reasoning: "Refund denied: customer waited 0 days, does not meet 7-day threshold.",
-    timestamp: 22
+    timestamp: new Date(Date.now() - 12000).toISOString()
   },
   {
     id: "evt-6",
@@ -105,7 +105,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     details: "Request Refund Approval",
     status: "approved",
     reasoning: "Communication path allowed.",
-    timestamp: 25
+    timestamp: new Date(Date.now() - 9000).toISOString()
   },
   {
     id: "evt-7",
@@ -114,7 +114,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
     details: "SKU-992 Stock Check",
     status: "approved",
     reasoning: "Read-only inventory access permitted.",
-    timestamp: 28
+    timestamp: new Date(Date.now() - 6000).toISOString()
   },
   {
     id: "evt-8",
@@ -123,6 +123,6 @@ export const DEMO_EVENTS: DemoEvent[] = [
     details: "$200 Refund Override",
     status: "approved",
     reasoning: "Escalation agent has override authority for amounts under $500.",
-    timestamp: 32
+    timestamp: new Date(Date.now() - 3000).toISOString()
   }
 ];

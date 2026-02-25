@@ -2,13 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TAgentGatePolicy, TGetAgentPolicyDTO, TListAgentGatePoliciesDTO } from "./types";
+import {
+  TAgentGateAuditLog,
+  TAgentGatePolicy,
+  TGetAgentPolicyDTO,
+  TListAgentGatePoliciesDTO,
+  TQueryAuditLogsDTO
+} from "./types";
 
 export const agentGateKeys = {
   all: ["agent-gate"] as const,
   policies: (params: { projectId: string }) => [...agentGateKeys.all, "policies", params] as const,
   agentPolicy: (params: { agentId: string; projectId: string }) =>
-    [...agentGateKeys.all, "agent-policy", params] as const
+    [...agentGateKeys.all, "agent-policy", params] as const,
+  auditLogs: (params: { projectId: string; limit?: number }) =>
+    [...agentGateKeys.all, "audit-logs", params] as const
 };
 
 export const useListAgentGatePolicies = ({ projectId }: TListAgentGatePoliciesDTO) => {
@@ -36,5 +44,20 @@ export const useGetAgentPolicy = ({ agentId, projectId }: TGetAgentPolicyDTO) =>
       return data;
     },
     enabled: Boolean(agentId) && Boolean(projectId)
+  });
+};
+
+export const useQueryAgentGateAuditLogs = ({ projectId, limit = 50 }: TQueryAuditLogsDTO) => {
+  return useQuery({
+    queryKey: agentGateKeys.auditLogs({ projectId, limit }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ logs: TAgentGateAuditLog[] }>(
+        "/api/v1/agentgate/audit",
+        { params: { projectId, limit } }
+      );
+      return data;
+    },
+    enabled: Boolean(projectId),
+    refetchInterval: 4000
   });
 };

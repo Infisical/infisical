@@ -63,7 +63,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
                       {event.status.toUpperCase()}
                     </Badge>
                     <span className="font-mono text-xs text-muted">
-                      {event.timestamp.toFixed(2)}s
+                      {new Date(event.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
                   {event.status === "approved" ? (

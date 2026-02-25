@@ -1,120 +1,85 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { NetworkIcon, Play, RotateCcw, Square } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Radio } from "lucide-react";
 
 import {
   Badge,
-  Button,
   UnstableCard,
   UnstableCardContent,
   UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { useQueryAgentGateAuditLogs } from "@app/hooks/api";
+import { TAgentGateAuditLog } from "@app/hooks/api/agentGate/types";
 
-import { DEMO_EVENTS, type DemoEvent } from "../data";
+import type { DemoEvent } from "../data";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { ConstellationView } from "./ConstellationView";
 
-const EVENT_DISPLAY_DURATION_MS = 2000;
+const EVENT_HIGHLIGHT_DURATION_MS = 3000;
+
+const mapAuditLogToEvent = (log: TAgentGateAuditLog): DemoEvent => ({
+  id: log.id,
+  agentId: log.requestingAgentId,
+  targetAgentId: log.targetAgentId || undefined,
+  action: log.action,
+  details: `${log.actionType}: ${log.action}`,
+  status: log.result === "allowed" ? "approved" : "denied",
+  reasoning: log.policyEvaluations?.[0]?.reasoning ?? "",
+  timestamp: log.timestamp
+});
 
 export const LiveFeedTab = () => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [processedEvents, setProcessedEvents] = useState<DemoEvent[]>([]);
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
+
+  const { data: auditData } = useQueryAgentGateAuditLogs({ projectId, limit: 50 });
+
   const [currentEvent, setCurrentEvent] = useState<DemoEvent | null>(null);
+  const previousIdsRef = useRef<Set<string>>(new Set());
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const currentEventTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const events: DemoEvent[] = useMemo(() => {
+    if (!auditData?.logs) return [];
+    return auditData.logs.map(mapAuditLogToEvent);
+  }, [auditData?.logs]);
 
-  const handleReset = useCallback(() => {
-    setIsPlaying(false);
-    setElapsedTime(0);
-    setProcessedEvents([]);
-    setCurrentEvent(null);
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (currentEventTimeoutRef.current) clearTimeout(currentEventTimeoutRef.current);
-  }, []);
-
-  const handleTogglePlay = useCallback(() => {
-    if (isPlaying) {
-      setIsPlaying(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-    } else {
-      if (processedEvents.length >= DEMO_EVENTS.length) {
-        handleReset();
-      }
-      setIsPlaying(true);
-    }
-  }, [isPlaying, processedEvents.length, handleReset]);
-
+  // Detect new events and highlight the most recent one
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!auditData?.logs?.length) return;
 
-    timerRef.current = setInterval(() => {
-      setElapsedTime((prev) => {
-        const next = prev + 0.1;
-        const lastTimestamp = DEMO_EVENTS[DEMO_EVENTS.length - 1]?.timestamp ?? 0;
-        if (next > lastTimestamp + 3) {
-          setIsPlaying(false);
-          if (timerRef.current) clearInterval(timerRef.current);
-        }
-        return next;
-      });
-    }, 100);
+    const currentIds = new Set(auditData.logs.map((l) => l.id));
+    const newEvents = auditData.logs.filter((l) => !previousIdsRef.current.has(l.id));
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isPlaying]);
+    if (newEvents.length > 0 && previousIdsRef.current.size > 0) {
+      // Highlight the newest event (logs are sorted desc by timestamp)
+      const newest = mapAuditLogToEvent(newEvents[0]);
+      setCurrentEvent(newest);
 
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const nextEvent = DEMO_EVENTS.find(
-      (evt) => evt.timestamp <= elapsedTime && !processedEvents.some((pe) => pe.id === evt.id)
-    );
-
-    if (nextEvent) {
-      setProcessedEvents((prev) => [...prev, nextEvent]);
-      setCurrentEvent(nextEvent);
-
-      if (currentEventTimeoutRef.current) clearTimeout(currentEventTimeoutRef.current);
-      currentEventTimeoutRef.current = setTimeout(() => {
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      highlightTimeoutRef.current = setTimeout(() => {
         setCurrentEvent(null);
-      }, EVENT_DISPLAY_DURATION_MS);
+      }, EVENT_HIGHLIGHT_DURATION_MS);
     }
-  }, [elapsedTime, isPlaying, processedEvents]);
+
+    previousIdsRef.current = currentIds;
+  }, [auditData?.logs]);
 
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (currentEventTimeoutRef.current) clearTimeout(currentEventTimeoutRef.current);
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
     };
   }, []);
 
   return (
     <div>
       <div className="mb-4 flex items-center gap-2">
-        <Badge variant="neutral" className="font-mono">
-          {elapsedTime.toFixed(1)}s
+        <Badge variant="success" className="flex items-center gap-1.5 font-mono">
+          <Radio className="h-3 w-3 animate-pulse" />
+          Live
         </Badge>
-        <Button variant="outline" size="sm" onClick={handleReset}>
-          <RotateCcw />
-          Reset
-        </Button>
-        <Button variant={isPlaying ? "danger" : "project"} size="sm" onClick={handleTogglePlay}>
-          {isPlaying ? (
-            <>
-              <Square />
-              Stop
-            </>
-          ) : (
-            <>
-              <Play />
-              Start
-            </>
-          )}
-        </Button>
+        <span className="text-xs text-muted">Connected</span>
       </div>
 
       <div className="flex flex-1 flex-col gap-5 lg:flex-row">
@@ -127,12 +92,12 @@ export const LiveFeedTab = () => {
           </UnstableCardHeader>
           <UnstableCardContent className="flex-1">
             <div className="h-full">
-              <ConstellationView currentEvent={currentEvent} processedEvents={processedEvents} />
+              <ConstellationView currentEvent={currentEvent} processedEvents={events} />
             </div>
           </UnstableCardContent>
         </UnstableCard>
 
-        <AuditLogPanel events={processedEvents} />
+        <AuditLogPanel events={events} />
       </div>
     </div>
   );

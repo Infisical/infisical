@@ -63,8 +63,8 @@ const buildSessions = (): Session[] => {
   const involvedAgents = [...new Set(DEMO_EVENTS.map((e) => agentNameMap[e.agentId]))];
   const approvedCount = DEMO_EVENTS.filter((e) => e.status === "approved").length;
   const deniedCount = DEMO_EVENTS.filter((e) => e.status === "denied").length;
-  const firstTs = DEMO_EVENTS[0]?.timestamp ?? 0;
-  const lastTs = DEMO_EVENTS[DEMO_EVENTS.length - 1]?.timestamp ?? 0;
+  const firstTs = new Date(DEMO_EVENTS[0]?.timestamp ?? 0).getTime();
+  const lastTs = new Date(DEMO_EVENTS[DEMO_EVENTS.length - 1]?.timestamp ?? 0).getTime();
 
   return [
     {
@@ -72,7 +72,7 @@ const buildSessions = (): Session[] => {
       title: "Billing Inquiry — Ticket #4021",
       description: `${involvedAgents.join(" → ")} flow`,
       events: DEMO_EVENTS,
-      duration: lastTs - firstTs,
+      duration: Math.round((lastTs - firstTs) / 1000),
       approvedCount,
       deniedCount,
       createdAt: new Date("2026-02-25T14:32:00Z")
@@ -160,7 +160,7 @@ const SessionRow = ({ session }: { session: Session }) => {
                           <span className="text-sm font-medium capitalize">{event.agentId}</span>
                           <span className="text-xs text-accent">{event.action}</span>
                           <span className="ml-auto font-mono text-xs text-muted">
-                            {event.timestamp.toFixed(2)}s
+                            {new Date(event.timestamp).toLocaleTimeString()}
                           </span>
                           <Badge
                             variant={event.status === "approved" ? "success" : "danger"}
