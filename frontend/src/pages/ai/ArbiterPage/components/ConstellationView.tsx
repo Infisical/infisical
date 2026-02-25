@@ -69,14 +69,16 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
       <div className="absolute z-10">
         <motion.div
           animate={{
-            scale: currentEvent ? 1.1 : 1,
-            filter: `drop-shadow(0 0 ${currentEvent ? 30 : 20}px ${statusColor.glow})`,
-            y: [0, -8, 0]
+            scale: currentEvent ? 1.03 : 1,
+            filter: `drop-shadow(0 0 ${currentEvent ? 18 : 12}px ${statusColor.glow})`,
+            y: [0, -3, 0],
+            x: [0, 2, 0, -2, 0]
           }}
           transition={{
-            scale: { duration: 0.5 },
-            filter: { duration: 0.5 },
-            y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+            scale: { duration: 0.6 },
+            filter: { duration: 0.6 },
+            y: { duration: 6, repeat: Infinity, ease: "easeInOut" },
+            x: { duration: 8, repeat: Infinity, ease: "easeInOut" }
           }}
           className="relative flex h-32 w-32 animate-pulse items-center justify-center"
         >
@@ -141,20 +143,22 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
             >
               <motion.div
                 animate={{
-                  scale: isActive ? 1.15 : 1,
-                  opacity: isActive ? 1 : 0.75,
-                  y: [0, -6, 0]
+                  scale: isActive ? 1.04 : 1,
+                  opacity: isActive ? 1 : 0.85,
+                  y: [0, -2.5, 0],
+                  x: [0, 2 + index * 0.5, 0, -(2 + index * 0.5), 0]
                 }}
                 transition={{
-                  scale: { duration: 0.4 },
-                  opacity: { duration: 0.4 },
-                  y: { duration: 3 + index * 0.5, repeat: Infinity, ease: "easeInOut" }
+                  scale: { duration: 0.5 },
+                  opacity: { duration: 0.5 },
+                  y: { duration: 5 + index * 0.8, repeat: Infinity, ease: "easeInOut" },
+                  x: { duration: 7 + index, repeat: Infinity, ease: "easeInOut" }
                 }}
                 className={`flex h-24 w-24 flex-col items-center justify-center rounded-full border bg-card transition-shadow duration-500 ${
                   isActive
                     ? currentEvent?.status === "approved"
-                      ? "border-success bg-success/10 shadow-[0_0_30px_rgba(46,204,113,0.3)]"
-                      : "border-danger bg-danger/10 shadow-[0_0_30px_rgba(231,76,60,0.3)]"
+                      ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
+                      : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
                     : "border-border bg-card/10"
                 }`}
               >
@@ -185,7 +189,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       ? isTarget
                         ? { animation: "marchingAntsReverse 1s linear infinite" }
                         : { animation: "marchingAnts 1s linear infinite" }
-                      : { animation: `linePulse ${3 + index * 0.7}s ease-in-out infinite` }
+                      : { animation: `linePulse ${5 + index}s ease-in-out infinite, marchingAntsSlow ${12 + index * 2}s linear infinite, lineBreath ${6 + index}s ease-in-out infinite` }
                   }
                 />
 
@@ -225,8 +229,15 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
           to { stroke-dashoffset: 20; }
         }
         @keyframes linePulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
+          0%, 100% { opacity: 0.35; }
+          50% { opacity: 0.6; }
+        }
+        @keyframes marchingAntsSlow {
+          to { stroke-dashoffset: -20; }
+        }
+        @keyframes lineBreath {
+          0%, 100% { stroke-width: 0.5; }
+          50% { stroke-width: 0.8; }
         }
       `}</style>
     </div>
