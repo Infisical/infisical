@@ -64,9 +64,14 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
         <motion.div
           animate={{
             scale: currentEvent ? 1.1 : 1,
-            filter: `drop-shadow(0 0 ${currentEvent ? 30 : 20}px ${statusColor.glow})`
+            filter: `drop-shadow(0 0 ${currentEvent ? 30 : 20}px ${statusColor.glow})`,
+            y: [0, -8, 0]
           }}
-          transition={{ duration: 0.5 }}
+          transition={{
+            scale: { duration: 0.5 },
+            filter: { duration: 0.5 },
+            y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+          }}
           className="relative flex h-32 w-32 animate-pulse items-center justify-center"
         >
           <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full overflow-visible">
@@ -131,9 +136,14 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
               <motion.div
                 animate={{
                   scale: isActive ? 1.15 : 1,
-                  opacity: isActive ? 1 : 0.5
+                  opacity: isActive ? 1 : 0.5,
+                  y: [0, -6, 0]
                 }}
-                transition={{ duration: 0.4 }}
+                transition={{
+                  scale: { duration: 0.4 },
+                  opacity: { duration: 0.4 },
+                  y: { duration: 3 + index * 0.5, repeat: Infinity, ease: "easeInOut" }
+                }}
                 className={`flex h-24 w-24 flex-col items-center justify-center rounded-full border bg-card transition-shadow duration-500 ${
                   isActive
                     ? currentEvent?.status === "approved"
@@ -169,7 +179,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       ? isTarget
                         ? { animation: "marchingAntsReverse 1s linear infinite" }
                         : { animation: "marchingAnts 1s linear infinite" }
-                      : undefined
+                      : { animation: `linePulse ${3 + index * 0.7}s ease-in-out infinite` }
                   }
                 />
 
@@ -207,6 +217,10 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
         }
         @keyframes marchingAntsReverse {
           to { stroke-dashoffset: 20; }
+        }
+        @keyframes linePulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.8; }
         }
       `}</style>
     </div>

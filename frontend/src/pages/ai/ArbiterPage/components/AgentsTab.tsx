@@ -1,15 +1,31 @@
+import { useCallback, useState } from "react";
 import * as Icons from "lucide-react";
-import { ActivityIcon, EditIcon, MoreHorizontalIcon, PowerOffIcon } from "lucide-react";
+import {
+  ActivityIcon,
+  EditIcon,
+  FilterIcon,
+  MoreHorizontalIcon,
+  PowerOffIcon,
+  SearchIcon
+} from "lucide-react";
 
 import {
   Badge,
+  Button,
+  DocumentationLinkBadge,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   UnstableCard,
+  UnstableCardAction,
   UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
   UnstableDropdownMenu,
+  UnstableDropdownMenuCheckboxItem,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
+  UnstableDropdownMenuLabel,
   UnstableDropdownMenuTrigger,
   UnstableIconButton,
   UnstableTable,
@@ -34,15 +50,77 @@ const getIcon = (name: string) => {
   return Icon ? <Icon className="size-3" /> : null;
 };
 
+const STATUSES = ["Active", "Inactive"] as const;
+
 export const AgentsTab = () => {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  const handleStatusToggle = useCallback(
+    (status: string) =>
+      setStatusFilter((prev) =>
+        prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+      ),
+    []
+  );
+
+  const isTableFiltered = statusFilter.length > 0;
+
+  const filteredAgents = AGENTS.filter((agent) =>
+    agent.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <UnstableCard>
       <UnstableCardHeader>
-        <UnstableCardTitle>Agents</UnstableCardTitle>
+        <UnstableCardTitle>
+          Agents
+          <DocumentationLinkBadge href="/" />
+        </UnstableCardTitle>
         <UnstableCardDescription>
           Registered agents and their current status.
         </UnstableCardDescription>
+        <UnstableCardAction>
+          <Button variant="project">
+            <Icons.CloudUploadIcon />
+            Deploy Agent
+          </Button>
+        </UnstableCardAction>
       </UnstableCardHeader>
+      <div className="flex gap-2">
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search agents by name..."
+          />
+        </InputGroup>
+        <UnstableDropdownMenu>
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton variant={isTableFiltered ? "org" : "outline"}>
+              <FilterIcon />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end">
+            <UnstableDropdownMenuLabel>Filter by Status</UnstableDropdownMenuLabel>
+            {STATUSES.map((status) => (
+              <UnstableDropdownMenuCheckboxItem
+                key={status}
+                checked={statusFilter.includes(status)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleStatusToggle(status);
+                }}
+              >
+                {status}
+              </UnstableDropdownMenuCheckboxItem>
+            ))}
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
+      </div>
       <UnstableTable>
         <UnstableTableHeader>
           <UnstableTableRow>
@@ -53,7 +131,7 @@ export const AgentsTab = () => {
           </UnstableTableRow>
         </UnstableTableHeader>
         <UnstableTableBody>
-          {AGENTS.map((agent) => (
+          {filteredAgents.map((agent) => (
             <UnstableTableRow key={agent.id}>
               <UnstableTableCell>
                 <div className="flex items-center gap-2">
