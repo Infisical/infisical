@@ -20,14 +20,14 @@ export type DemoEvent = {
 export const AGENTS: Agent[] = [
   {
     id: "triage_agent",
-    name: "Triage",
+    name: "Triage Agent",
     icon: "Stethoscope",
     description: "Classifies and routes incoming tickets to the appropriate agent.",
     activity: "classify_ticket, assess_severity, route_ticket"
   },
   {
     id: "support_agent",
-    name: "Support",
+    name: "Support Agent",
     icon: "Headset",
     description: "Handles customer inquiries, issues credits, and processes refunds.",
     activity:
@@ -35,14 +35,14 @@ export const AGENTS: Agent[] = [
   },
   {
     id: "escalation_agent",
-    name: "Escalation",
+    name: "Escalation Agent",
     icon: "AlertTriangle",
     description: "Reviews escalated cases and provides override authority.",
     activity: "review_case, approve_refund, override_policy, flag_for_human_review"
   },
   {
     id: "fulfillment_agent",
-    name: "Fulfillment",
+    name: "Fulfillment Agent",
     icon: "PackageCheck",
     description: "Manages inventory checks and order fulfillment.",
     activity:
