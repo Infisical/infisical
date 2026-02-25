@@ -53,7 +53,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
                 className={`rounded border border-l-[4px] p-3 ${
                   event.status === "approved"
                     ? "border-border border-l-success bg-container"
-                    : "border-danger/20 border-l-danger bg-container"
+                    : "border-danger/20 border-l-danger bg-danger/5"
                 }`}
               >
                 {/* Status + Timestamp */}
