@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AVS - Customer Support</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <span class="logo-text">avs</span>
+        </div>
+        <div class="header-center">
+          <span class="header-title">Customer Support</span>
+        </div>
+        <div class="header-right">
+          <span class="status-indicator"></span>
+          <span class="status-text">Online</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Chat Container -->
+    <main class="chat-container">
+      <!-- Messages Area -->
+      <div id="messagesArea" class="messages-area">
+        <!-- Welcome Message -->
+        <div class="message bot-message">
+          <div class="message-avatar">🤖</div>
+          <div class="message-content">
+            <div class="message-bubble">
+              <p>Hi! I'm AVS Support Assistant. I can help you with:</p>
+              <ul>
+                <li>Order issues (wrong items, missing packages)</li>
+                <li>Billing questions (charges, refunds)</li>
+                <li>Shipping updates and tracking</li>
+                <li>Returns and exchanges</li>
+              </ul>
+              <p>How can I help you today?</p>
+            </div>
+            <span class="message-time">Just now</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-area">
+        <div class="input-container">
+          <textarea
+            id="messageInput"
+            class="message-input"
+            placeholder="Type your message..."
+            rows="1"
+          ></textarea>
+          <button id="sendBtn" class="send-btn" disabled>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+            </svg>
+          </button>
+        </div>
+        <p class="input-hint">Press Enter to send, Shift+Enter for new line</p>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
