@@ -161,6 +161,7 @@ export const observabilityWidgetServiceFactory = ({
     let totalFailedCount = 0;
     let totalPendingCount = 0;
     let totalActiveCount = 0;
+    let totalExpiredCount = 0;
 
     for (const resourceType of resourceTypes) {
       const resolver = resolverRegistry[resourceType as ObservabilityResourceType];
@@ -182,6 +183,7 @@ export const observabilityWidgetServiceFactory = ({
       totalFailedCount += result.summary.failedCount;
       totalPendingCount += result.summary.pendingCount;
       totalActiveCount += result.summary.activeCount;
+      totalExpiredCount += result.summary.expiredCount;
     }
 
     let filteredItems = allItems;
@@ -210,7 +212,8 @@ export const observabilityWidgetServiceFactory = ({
       summary: {
         failedCount: totalFailedCount,
         pendingCount: totalPendingCount,
-        activeCount: totalActiveCount
+        activeCount: totalActiveCount,
+        expiredCount: totalExpiredCount
       }
     };
   };

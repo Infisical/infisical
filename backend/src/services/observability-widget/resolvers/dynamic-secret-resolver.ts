@@ -60,9 +60,12 @@ export const dynamicSecretResolverFactory = (db: TDbClient) => {
       let statusTooltip: string | null = null;
       const expireAt = new Date(lease.expireAt);
 
-      if (lease.status === "failed" || expireAt < now) {
+      if (lease.status === "failed") {
         itemStatus = ObservabilityItemStatus.Failed;
-        statusTooltip = lease.status === "failed" ? (lease.statusDetails || "Lease failed") : "Lease expired";
+        statusTooltip = lease.statusDetails || "Lease failed";
+      } else if (expireAt < now) {
+        itemStatus = ObservabilityItemStatus.Expired;
+        statusTooltip = "Lease expired";
       } else if (expireAt < thresholdDate) {
         itemStatus = ObservabilityItemStatus.Pending;
         statusTooltip = formatExpiresAt(expireAt);

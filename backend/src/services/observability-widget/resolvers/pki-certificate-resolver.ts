@@ -59,7 +59,7 @@ export const pkiCertificateResolverFactory = (db: TDbClient) => {
       const notAfter = new Date(cert.notAfter);
 
       if (notAfter < now) {
-        itemStatus = ObservabilityItemStatus.Failed;
+        itemStatus = ObservabilityItemStatus.Expired;
         statusTooltip = "Certificate expired";
       } else if (notAfter < thresholdDate) {
         itemStatus = ObservabilityItemStatus.Pending;

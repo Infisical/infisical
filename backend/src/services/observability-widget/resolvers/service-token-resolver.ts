@@ -55,7 +55,7 @@ export const serviceTokenResolverFactory = (db: TDbClient) => {
       if (token.expiresAt) {
         const expiresAt = new Date(token.expiresAt);
         if (expiresAt < now) {
-          itemStatus = ObservabilityItemStatus.Failed;
+          itemStatus = ObservabilityItemStatus.Expired;
           statusTooltip = "Token expired";
         } else if (expiresAt < thresholdDate) {
           itemStatus = ObservabilityItemStatus.Pending;

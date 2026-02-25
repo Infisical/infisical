@@ -67,7 +67,7 @@ export const machineIdentityTokenResolverFactory = (db: TDbClient) => {
       const expiresAt = new Date(createdAt.getTime() + token.accessTokenTTL * 1000);
 
       if (expiresAt < now) {
-        itemStatus = ObservabilityItemStatus.Failed;
+        itemStatus = ObservabilityItemStatus.Expired;
         statusTooltip = "Token expired";
       } else if (expiresAt < thresholdDate) {
         itemStatus = ObservabilityItemStatus.Pending;

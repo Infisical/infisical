@@ -28,7 +28,8 @@ export enum ObservabilityResourceType {
 export enum ObservabilityItemStatus {
   Failed = "failed",
   Pending = "pending",
-  Active = "active"
+  Active = "active",
+  Expired = "expired"
 }
 
 // Org-only resource types that cannot be used in project-scoped widgets
@@ -41,7 +42,7 @@ export const ORG_ONLY_RESOURCE_TYPES: readonly ObservabilityResourceType[] = [
 // Zod schemas for validation
 export const EventsWidgetConfigSchema = z.object({
   resourceTypes: z.nativeEnum(ObservabilityResourceType).array().default([]),
-  eventTypes: z.enum(["failed", "pending", "active"]).array().min(1),
+  eventTypes: z.enum(["failed", "pending", "active", "expired"]).array().min(1),
   thresholds: z
     .object({
       expirationDays: z.number().optional(),
@@ -112,6 +113,7 @@ export interface TObservabilityWidgetDataResponse {
     failedCount: number;
     pendingCount: number;
     activeCount: number;
+    expiredCount: number;
   };
 }
 
@@ -120,7 +122,7 @@ export interface TResolverParams {
   orgId: string;
   subOrgId?: string | null;
   projectId?: string | null;
-  eventTypes: Array<"failed" | "pending" | "active">;
+  eventTypes: Array<"failed" | "pending" | "active" | "expired">;
   scopeOrgIds?: string[];
   scopeProjectIds?: string[];
   thresholds?: {
@@ -141,6 +143,7 @@ export interface TResolverResult {
     failedCount: number;
     pendingCount: number;
     activeCount: number;
+    expiredCount: number;
   };
 }
 
@@ -179,11 +182,14 @@ export interface TGetWidgetDataOptions {
 }
 
 // Helper to convert eventTypes array to status set
-export const eventTypesToStatusSet = (eventTypes: Array<"failed" | "pending" | "active">): Set<ObservabilityItemStatus> => {
+export const eventTypesToStatusSet = (
+  eventTypes: Array<"failed" | "pending" | "active" | "expired">
+): Set<ObservabilityItemStatus> => {
   return new Set(
     eventTypes.map((et) => {
       if (et === "failed") return ObservabilityItemStatus.Failed;
       if (et === "pending") return ObservabilityItemStatus.Pending;
+      if (et === "expired") return ObservabilityItemStatus.Expired;
       return ObservabilityItemStatus.Active;
     })
   );

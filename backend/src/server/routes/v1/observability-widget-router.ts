@@ -215,7 +215,8 @@ export const registerObservabilityWidgetRouter = async (server: FastifyZodProvid
           summary: z.object({
             failedCount: z.number(),
             pendingCount: z.number(),
-            activeCount: z.number()
+            activeCount: z.number(),
+            expiredCount: z.number()
           })
         })
       }

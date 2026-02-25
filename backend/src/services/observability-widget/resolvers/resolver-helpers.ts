@@ -10,7 +10,8 @@ export const createEmptyResult = (): TResolverResult => ({
   summary: {
     failedCount: 0,
     pendingCount: 0,
-    activeCount: 0
+    activeCount: 0,
+    expiredCount: 0
   }
 });
 
@@ -98,9 +99,10 @@ export const computeSummary = (
     (acc, item) => {
       if (item.status === ObservabilityItemStatus.Failed) acc.failedCount += 1;
       else if (item.status === ObservabilityItemStatus.Pending) acc.pendingCount += 1;
+      else if (item.status === ObservabilityItemStatus.Expired) acc.expiredCount += 1;
       else acc.activeCount += 1;
       return acc;
     },
-    { failedCount: 0, pendingCount: 0, activeCount: 0 }
+    { failedCount: 0, pendingCount: 0, activeCount: 0, expiredCount: 0 }
   );
 };
