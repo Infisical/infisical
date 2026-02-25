@@ -1,5 +1,5 @@
 import * as Icons from "lucide-react";
-import { ActivityIcon } from "lucide-react";
+import { ActivityIcon, EditIcon, MoreHorizontalIcon, PowerOffIcon } from "lucide-react";
 
 import {
   Badge,
@@ -7,6 +7,11 @@ import {
   UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableIconButton,
   UnstableTable,
   UnstableTableBody,
   UnstableTableCell,
@@ -44,6 +49,7 @@ export const AgentsTab = () => {
             <UnstableTableHead className="w-1/4">Name</UnstableTableHead>
             <UnstableTableHead>Description</UnstableTableHead>
             <UnstableTableHead>Status</UnstableTableHead>
+            <UnstableTableHead className="w-5" />
           </UnstableTableRow>
         </UnstableTableHeader>
         <UnstableTableBody>
@@ -65,6 +71,25 @@ export const AgentsTab = () => {
                   <ActivityIcon />
                   Active
                 </Badge>
+              </UnstableTableCell>
+              <UnstableTableCell>
+                <UnstableDropdownMenu>
+                  <UnstableDropdownMenuTrigger asChild>
+                    <UnstableIconButton variant="ghost" size="xs">
+                      <MoreHorizontalIcon />
+                    </UnstableIconButton>
+                  </UnstableDropdownMenuTrigger>
+                  <UnstableDropdownMenuContent align="end">
+                    <UnstableDropdownMenuItem>
+                      <EditIcon />
+                      Edit Policies
+                    </UnstableDropdownMenuItem>
+                    <UnstableDropdownMenuItem variant="danger">
+                      <PowerOffIcon />
+                      Deactivate
+                    </UnstableDropdownMenuItem>
+                  </UnstableDropdownMenuContent>
+                </UnstableDropdownMenu>
               </UnstableTableCell>
             </UnstableTableRow>
           ))}
