@@ -1,104 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Play, RotateCcw, Square } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { ContentLoader, PageHeader } from "@app/components/v2";
-import {
-  Badge,
-  Button,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
-} from "@app/components/v3";
-import { useProject } from "@app/context";
+import { ContentLoader, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { useOrganization, useProject } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { ArbiterTabs } from "@app/types/project";
 
-import { AuditLogPanel } from "./components/AuditLogPanel";
-import { ConstellationView } from "./components/ConstellationView";
-import { DEMO_EVENTS, type DemoEvent } from "./data";
-
-const EVENT_DISPLAY_DURATION_MS = 2000;
+import { AgentsTab } from "./components/AgentsTab";
+import { LiveFeedTab } from "./components/LiveFeedTab";
+import { SessionsTab } from "./components/SessionsTab";
 
 export const ArbiterPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [processedEvents, setProcessedEvents] = useState<DemoEvent[]>([]);
-  const [currentEvent, setCurrentEvent] = useState<DemoEvent | null>(null);
+  const selectedTab = useSearch({
+    strict: false,
+    select: (el: { selectedTab?: string }) => el.selectedTab
+  });
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const currentEventTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleReset = useCallback(() => {
-    setIsPlaying(false);
-    setElapsedTime(0);
-    setProcessedEvents([]);
-    setCurrentEvent(null);
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (currentEventTimeoutRef.current) clearTimeout(currentEventTimeoutRef.current);
-  }, []);
-
-  const handleTogglePlay = useCallback(() => {
-    if (isPlaying) {
-      setIsPlaying(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-    } else {
-      if (processedEvents.length >= DEMO_EVENTS.length) {
-        handleReset();
+  const updateSelectedTab = (tab: string) => {
+    navigate({
+      to: `${getProjectBaseURL(currentProject.type)}/arbiter` as const,
+      search: (prev) => ({ ...prev, selectedTab: tab }),
+      params: {
+        orgId: currentOrg.id,
+        projectId: currentProject.id
       }
-      setIsPlaying(true);
-    }
-  }, [isPlaying, processedEvents.length, handleReset]);
-
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    timerRef.current = setInterval(() => {
-      setElapsedTime((prev) => {
-        const next = prev + 0.1;
-        const lastTimestamp = DEMO_EVENTS[DEMO_EVENTS.length - 1]?.timestamp ?? 0;
-        if (next > lastTimestamp + 3) {
-          setIsPlaying(false);
-          if (timerRef.current) clearInterval(timerRef.current);
-        }
-        return next;
-      });
-    }, 100);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isPlaying]);
-
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const nextEvent = DEMO_EVENTS.find(
-      (evt) => evt.timestamp <= elapsedTime && !processedEvents.some((pe) => pe.id === evt.id)
-    );
-
-    if (nextEvent) {
-      setProcessedEvents((prev) => [...prev, nextEvent]);
-      setCurrentEvent(nextEvent);
-
-      if (currentEventTimeoutRef.current) clearTimeout(currentEventTimeoutRef.current);
-      currentEventTimeoutRef.current = setTimeout(() => {
-        setCurrentEvent(null);
-      }, EVENT_DISPLAY_DURATION_MS);
-    }
-  }, [elapsedTime, isPlaying, processedEvents]);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (currentEventTimeoutRef.current) clearTimeout(currentEventTimeoutRef.current);
-    };
-  }, []);
+    });
+  };
 
   if (!currentProject) {
     return <ContentLoader />;
@@ -113,52 +47,31 @@ export const ArbiterPage = () => {
       <PageHeader
         scope={ProjectType.AI}
         title="Agent Arbiter"
-        className="h-full"
         description="Monitor agent activity, review governance decisions, and replay sessions"
-      >
-        <div className="flex items-center gap-2">
-          <Badge variant="neutral" className="font-mono">
-            {elapsedTime.toFixed(1)}s
-          </Badge>
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw />
-            Reset
-          </Button>
-          <Button variant={isPlaying ? "danger" : "project"} size="sm" onClick={handleTogglePlay}>
-            {isPlaying ? (
-              <>
-                <Square />
-                Stop
-              </>
-            ) : (
-              <>
-                <Play />
-                Start
-              </>
-            )}
-          </Button>
-        </div>
-      </PageHeader>
+      />
 
-      <div className="flex flex-1 flex-col gap-5 lg:flex-row">
-        {/* Network Visualization */}
-        <UnstableCard className="h-[700px] flex-1 overflow-hidden">
-          <UnstableCardHeader>
-            <UnstableCardTitle>Agent Network</UnstableCardTitle>
-            <UnstableCardDescription>
-              Real-time visualization of agent communication and governance decisions
-            </UnstableCardDescription>
-          </UnstableCardHeader>
-          <UnstableCardContent className="flex-1">
-            <div className="h-full">
-              <ConstellationView currentEvent={currentEvent} processedEvents={processedEvents} />
-            </div>
-          </UnstableCardContent>
-        </UnstableCard>
-
-        {/* Audit Log */}
-        <AuditLogPanel events={processedEvents} />
-      </div>
+      <Tabs value={selectedTab} orientation="vertical" onValueChange={updateSelectedTab}>
+        <TabList>
+          <Tab variant="project" value={ArbiterTabs.LiveFeed}>
+            Live Feed
+          </Tab>
+          <Tab variant="project" value={ArbiterTabs.Sessions}>
+            Sessions
+          </Tab>
+          <Tab variant="project" value={ArbiterTabs.Agents}>
+            Agents
+          </Tab>
+        </TabList>
+        <TabPanel value={ArbiterTabs.LiveFeed}>
+          <LiveFeedTab />
+        </TabPanel>
+        <TabPanel value={ArbiterTabs.Sessions}>
+          <SessionsTab />
+        </TabPanel>
+        <TabPanel value={ArbiterTabs.Agents}>
+          <AgentsTab />
+        </TabPanel>
+      </Tabs>
     </div>
   );
 };
