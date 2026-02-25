@@ -72,8 +72,13 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
   const getRun = async (runId: string) => {
     const run = await infraRunDAL.findById(runId);
 
-    // Find the previous run's file snapshot for diffing.
-    // Skip runs whose snapshot is identical (e.g. apply reuses the same files as its plan).
+    // No diff data for failed runs
+    if (run.status === InfraRunStatus.Failed) {
+      return { ...run, previousFileSnapshot: null };
+    }
+
+    // Find the previous successful run's file snapshot for diffing.
+    // Skip failed runs and runs whose snapshot is identical (e.g. apply reuses the same files as its plan).
     let previousFileSnapshot: Record<string, string> | null = null;
     const currentSnapshot = run.fileSnapshot
       ? JSON.stringify(typeof run.fileSnapshot === "string" ? JSON.parse(run.fileSnapshot) : run.fileSnapshot)
@@ -86,6 +91,7 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
     const prevRun = olderRuns.find((r) => {
       if (new Date(r.createdAt) >= new Date(run.createdAt)) return false;
       if (!r.fileSnapshot) return false;
+      if (r.status === InfraRunStatus.Failed) return false;
       const snap = JSON.stringify(typeof r.fileSnapshot === "string" ? JSON.parse(r.fileSnapshot) : r.fileSnapshot);
       return snap !== currentSnapshot;
     });
@@ -236,7 +242,6 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
     try {
       for (const file of files) {
         await fs.writeFile(path.join(tmpDir, file.name), file.content, "utf-8");
-        appendLog(`[infra] Writing ${file.name}\n`);
       }
 
       // Generate backend.tf for HTTP state backend (no locking — we handle it at service level)
@@ -249,13 +254,21 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
 }
 `;
       await fs.writeFile(path.join(tmpDir, "backend_override.tf"), backendTf, "utf-8");
-      appendLog(`[infra] Configured HTTP state backend\n`);
 
       const binary = await findTofu();
-      appendLog(`[infra] Using binary: ${binary}\n`);
 
-      appendLog(`[infra] Running ${binary} init...\n`);
-      await execCommand(binary, ["init", "-no-color"], tmpDir, appendLog);
+      // Init: capture output but only surface it if init fails
+      let initOutput = "";
+      try {
+        await execCommand(binary, ["init"], tmpDir, (chunk) => {
+          initOutput += chunk;
+        });
+      } catch (initErr) {
+        // Surface init output so the user can see what went wrong
+        fullLogs += initOutput;
+        onData(initOutput);
+        throw initErr;
+      }
 
       // For plan: run plan, save plan file, parse JSON, run AI
       // For apply: check approval gate first, then apply
@@ -263,15 +276,11 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
       let aiSummary: string | null = null;
 
       if (dto.mode === "plan") {
-        appendLog(`\n[infra] Running ${binary} plan...\n`);
-        await execCommand(binary, ["plan", "-no-color", "-out=plan.tfplan"], tmpDir, appendLog);
+        await execCommand(binary, ["plan", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog);
 
-        // Parse plan JSON programmatically
         try {
-          appendLog(`[infra] Parsing plan output...\n`);
           const jsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir);
           planJson = parsePlanJson(jsonOutput);
-          appendLog(`[infra] Changes: +${planJson.add} added, ~${planJson.change} changed, -${planJson.destroy} destroyed\n`);
         } catch (parseErr) {
           logger.warn(parseErr, "Failed to parse plan JSON");
         }
@@ -281,7 +290,6 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
           const insight = await generateAiInsight(fullLogs, planJson);
           if (insight) {
             aiSummary = JSON.stringify(insight);
-            appendLog(`[infra] AI analysis complete\n`);
           }
         } catch (aiErr) {
           logger.warn(aiErr, "AI insight generation failed");
@@ -297,22 +305,18 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
         onComplete({ id: run.id, status: InfraRunStatus.Success, planJson, aiSummary });
       } else {
         // Apply mode — always run plan first to get fresh change data
-        appendLog(`\n[infra] Running ${binary} plan...\n`);
-        await execCommand(binary, ["plan", "-no-color", "-out=plan.tfplan"], tmpDir, appendLog);
+        await execCommand(binary, ["plan", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog);
 
-        // Parse plan to get accurate changes
         try {
-          appendLog(`[infra] Parsing plan output...\n`);
           const jsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir);
           planJson = parsePlanJson(jsonOutput);
-          appendLog(`[infra] Changes: +${planJson.add} added, ~${planJson.change} changed, -${planJson.destroy} destroyed\n`);
         } catch (parseErr) {
           logger.warn(parseErr, "Failed to parse plan JSON");
         }
 
         // Check if we need approval based on cached plan insight
         if (cachedAiInsight?.security?.shouldApprove) {
-          appendLog(`[infra] Security issues detected. Awaiting approval...\n`);
+          appendLog(`\n[infra] Security issues detected. Awaiting approval...\n`);
           await infraRunDAL.updateById(run.id, {
             status: InfraRunStatus.AwaitingApproval,
             logs: fullLogs,
@@ -325,8 +329,8 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
           return;
         }
 
-        appendLog(`\n[infra] Running ${binary} apply...\n`);
-        await execCommand(binary, ["apply", "plan.tfplan", "-no-color"], tmpDir, appendLog);
+        appendLog(`\n`);
+        await execCommand(binary, ["apply", "plan.tfplan"], tmpDir, appendLog);
 
         // Generate AI insight or reuse cached
         if (cachedAiInsight) {
@@ -402,7 +406,7 @@ async function findTofu(): Promise<string> {
 
 function execCommand(binary: string, args: string[], cwd: string, onData: (chunk: string) => void): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(binary, args, { cwd, env: { ...process.env }, stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(binary, args, { cwd, env: { ...process.env, TF_FORCE_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
     proc.stdout.on("data", (data: Buffer) => onData(data.toString()));
     proc.stderr.on("data", (data: Buffer) => onData(data.toString()));
     proc.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`${binary} exited with code ${code}`))));

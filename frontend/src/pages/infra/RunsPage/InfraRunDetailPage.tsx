@@ -1,5 +1,6 @@
+import { AnsiUp } from "ansi_up";
 import { diffLines } from "diff";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -7,6 +8,7 @@ import {
   ArrowLeftIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  CircleXIcon,
   ClockIcon,
   DollarSignIcon,
   FileIcon,
@@ -83,11 +85,11 @@ const FileDiffView = ({
         {lines.map((line, i) => (
           // eslint-disable-next-line react/no-array-index-key
           <div key={i} className="flex bg-green-500/20">
-            <span className="w-10 shrink-0 select-none border-r border-green-800/30 pr-2 text-right text-green-600">
+            <span className="w-10 shrink-0 border-r border-green-800/30 pr-2 text-right text-green-600 select-none">
               {i + 1}
             </span>
-            <span className="w-6 shrink-0 select-none text-center text-green-500">+</span>
-            <span className="flex-1 text-green-300">{line}</span>
+            <span className="w-6 shrink-0 text-center text-green-500 select-none">+</span>
+            <span className="flex-1 whitespace-pre text-green-300">{line}</span>
           </div>
         ))}
       </div>
@@ -102,11 +104,11 @@ const FileDiffView = ({
         {lines.map((line, i) => (
           // eslint-disable-next-line react/no-array-index-key
           <div key={i} className="flex bg-red-500/20">
-            <span className="w-10 shrink-0 select-none border-r border-red-800/30 pr-2 text-right text-red-600">
+            <span className="w-10 shrink-0 border-r border-red-800/30 pr-2 text-right text-red-600 select-none">
               {i + 1}
             </span>
-            <span className="w-6 shrink-0 select-none text-center text-red-500">-</span>
-            <span className="flex-1 text-red-300">{line}</span>
+            <span className="w-6 shrink-0 text-center text-red-500 select-none">-</span>
+            <span className="flex-1 whitespace-pre text-red-300">{line}</span>
           </div>
         ))}
       </div>
@@ -121,11 +123,11 @@ const FileDiffView = ({
         {lines.map((line, i) => (
           // eslint-disable-next-line react/no-array-index-key
           <div key={i} className="flex">
-            <span className="w-10 shrink-0 select-none border-r border-mineshaft-700 pr-2 text-right text-mineshaft-600">
+            <span className="w-10 shrink-0 border-r border-mineshaft-700 pr-2 text-right text-mineshaft-600 select-none">
               {i + 1}
             </span>
             <span className="w-6 shrink-0" />
-            <span className="flex-1 text-mineshaft-300">{line}</span>
+            <span className="flex-1 whitespace-pre text-mineshaft-300">{line}</span>
           </div>
         ))}
       </div>
@@ -152,11 +154,11 @@ const FileDiffView = ({
             newLineNum += 1;
             return (
               <div key={key} className="flex bg-green-500/20">
-                <span className="w-10 shrink-0 select-none border-r border-green-800/30 pr-2 text-right text-green-600">
+                <span className="w-10 shrink-0 border-r border-green-800/30 pr-2 text-right text-green-600 select-none">
                   {ln}
                 </span>
-                <span className="w-6 shrink-0 select-none text-center text-green-500">+</span>
-                <span className="flex-1 text-green-300">{line}</span>
+                <span className="w-6 shrink-0 text-center text-green-500 select-none">+</span>
+                <span className="flex-1 whitespace-pre text-green-300">{line}</span>
               </div>
             );
           }
@@ -165,11 +167,11 @@ const FileDiffView = ({
             oldLineNum += 1;
             return (
               <div key={key} className="flex bg-red-500/20">
-                <span className="w-10 shrink-0 select-none border-r border-red-800/30 pr-2 text-right text-red-600">
+                <span className="w-10 shrink-0 border-r border-red-800/30 pr-2 text-right text-red-600 select-none">
                   {ln}
                 </span>
-                <span className="w-6 shrink-0 select-none text-center text-red-500">-</span>
-                <span className="flex-1 text-red-300">{line}</span>
+                <span className="w-6 shrink-0 text-center text-red-500 select-none">-</span>
+                <span className="flex-1 whitespace-pre text-red-300">{line}</span>
               </div>
             );
           }
@@ -179,17 +181,60 @@ const FileDiffView = ({
           newLineNum += 1;
           return (
             <div key={key} className="flex">
-              <span className="w-10 shrink-0 select-none border-r border-mineshaft-700 pr-2 text-right text-mineshaft-600">
+              <span className="w-10 shrink-0 border-r border-mineshaft-700 pr-2 text-right text-mineshaft-600 select-none">
                 {nln}
               </span>
               <span className="w-6 shrink-0" />
-              <span className="flex-1 text-mineshaft-300">{line}</span>
+              <span className="flex-1 whitespace-pre text-mineshaft-300">{line}</span>
             </div>
           );
         });
       })}
     </div>
   );
+};
+
+const ansiUp = new AnsiUp();
+ansiUp.use_classes = false;
+
+/** Strip ANSI escape codes for plain text matching */
+const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
+
+/**
+ * Parse logs to extract error blocks for a concise error summary.
+ * Captures everything from the first error marker up to the
+ * "[infra] Error: tofu exited with code" sentinel (excluded).
+ */
+const extractErrors = (logs: string): string[] => {
+  const plain = stripAnsi(logs);
+  const lines = plain.split("\n");
+
+  // Find the sentinel line and the first error marker
+  let startIdx = -1;
+  let endIdx = lines.length;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const trimmed = lines[i].trimStart();
+
+    if (startIdx === -1 && /^(Error|│\s*Error|╷)/.test(trimmed)) {
+      startIdx = i;
+    }
+
+    if (/^\[infra\] Error: tofu exited/.test(trimmed)) {
+      endIdx = i;
+      break;
+    }
+  }
+
+  if (startIdx === -1) return [];
+
+  // Collect the error text, trimming trailing blank lines
+  const block = lines.slice(startIdx, endIdx);
+  while (block.length > 0 && block[block.length - 1].trim() === "") {
+    block.pop();
+  }
+
+  return block.length > 0 ? [block.join("\n")] : [];
 };
 
 export const InfraRunDetailPage = () => {
@@ -203,6 +248,12 @@ export const InfraRunDetailPage = () => {
   const denyRun = useDenyInfraRun();
 
   const [activeTab, setActiveTab] = useState<"changes" | "logs" | "ai">("changes");
+
+  useEffect(() => {
+    if (run?.status === "failed" && activeTab === "changes") {
+      setActiveTab("logs");
+    }
+  }, [run?.status]);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
 
   // Parse AI insight from stored JSON string
@@ -343,27 +394,29 @@ export const InfraRunDetailPage = () => {
 
       {/* Tabs */}
       <div className="flex border-b border-mineshaft-600">
-        {(["changes", "logs", "ai"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === tab
-                ? "border-primary text-mineshaft-100"
-                : "border-transparent text-mineshaft-400 hover:text-mineshaft-200"
-            }`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === "changes" && "Changes"}
-            {tab === "logs" && "Logs"}
-            {tab === "ai" && (
-              <span className="flex items-center gap-1.5">
-                <SparklesIcon className="size-3" />
-                AI Analysis
-              </span>
-            )}
-          </button>
-        ))}
+        {(["changes", "logs", "ai"] as const)
+          .filter((tab) => !(tab === "changes" && run.status === "failed"))
+          .map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                activeTab === tab
+                  ? "border-primary text-mineshaft-100"
+                  : "border-transparent text-mineshaft-400 hover:text-mineshaft-200"
+              }`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === "changes" && "Changes"}
+              {tab === "logs" && "Logs"}
+              {tab === "ai" && (
+                <span className="flex items-center gap-1.5">
+                  <SparklesIcon className="size-3" />
+                  AI Analysis
+                </span>
+              )}
+            </button>
+          ))}
       </div>
 
       {/* Tab content */}
@@ -407,7 +460,7 @@ export const InfraRunDetailPage = () => {
           )}
 
           {/* File snapshot diffs */}
-          {fileSnapshot && Object.keys(fileSnapshot).length > 0 && (
+          {run.status !== "failed" && fileSnapshot && Object.keys(fileSnapshot).length > 0 && (
             <UnstableCard>
               <UnstableCardHeader className="pb-2">
                 <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
@@ -424,8 +477,10 @@ export const InfraRunDetailPage = () => {
                     return Array.from(allFiles).map((fileName) => {
                       const current = fileSnapshot[fileName] ?? "";
                       const previous = previousFileSnapshot?.[fileName] ?? "";
-                      const isNew = !previousFileSnapshot?.[fileName] && Boolean(fileSnapshot[fileName]);
-                      const isDeleted = Boolean(previousFileSnapshot?.[fileName]) && !fileSnapshot[fileName];
+                      const isNew =
+                        !previousFileSnapshot?.[fileName] && Boolean(fileSnapshot[fileName]);
+                      const isDeleted =
+                        Boolean(previousFileSnapshot?.[fileName]) && !fileSnapshot[fileName];
                       const isModified = current !== previous && !isNew && !isDeleted;
                       const isUnchanged = current === previous;
                       return (
@@ -443,9 +498,7 @@ export const InfraRunDetailPage = () => {
                               <ChevronRightIcon className="size-3.5 text-mineshaft-400" />
                             )}
                             <FileIcon className="size-3.5 text-mineshaft-500" />
-                            <span className="font-mono text-xs text-mineshaft-200">
-                              {fileName}
-                            </span>
+                            <span className="font-mono text-xs text-mineshaft-200">{fileName}</span>
                             {isNew && <Badge variant="success">new</Badge>}
                             {isDeleted && <Badge variant="danger">deleted</Badge>}
                             {isModified && <Badge variant="warning">modified</Badge>}
@@ -482,19 +535,58 @@ export const InfraRunDetailPage = () => {
       )}
 
       {activeTab === "logs" && (
-        <UnstableCard>
-          <UnstableCardHeader className="pb-2">
-            <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-mineshaft-200">
-              <TerminalIcon className="size-4" />
-              Run Output
-            </UnstableCardTitle>
-          </UnstableCardHeader>
-          <UnstableCardContent>
-            <pre className="max-h-[600px] overflow-auto rounded-md bg-[#1e1e1e] p-4 font-mono text-xs text-green-400">
-              {run.logs || "No logs available."}
-            </pre>
-          </UnstableCardContent>
-        </UnstableCard>
+        <div className="flex flex-col gap-4">
+          {/* Error summary for failed runs */}
+          {run.status === "failed" &&
+            run.logs &&
+            (() => {
+              const errors = extractErrors(run.logs);
+              if (errors.length === 0) return null;
+              return (
+                <UnstableCard className="border-red-500/30">
+                  <UnstableCardHeader className="pb-2">
+                    <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-red-400">
+                      <CircleXIcon className="size-4" />
+                      {errors.length} Error{errors.length > 1 ? "s" : ""} Detected
+                    </UnstableCardTitle>
+                  </UnstableCardHeader>
+                  <UnstableCardContent className="flex flex-col gap-2">
+                    {errors.map((err, idx) => (
+                      <pre
+                        // eslint-disable-next-line react/no-array-index-key
+                        key={idx}
+                        className="overflow-auto rounded-md border border-red-500/20 bg-red-500/5 p-3 font-mono text-xs whitespace-pre-wrap text-red-300"
+                      >
+                        {err}
+                      </pre>
+                    ))}
+                  </UnstableCardContent>
+                </UnstableCard>
+              );
+            })()}
+
+          <UnstableCard>
+            <UnstableCardHeader className="pb-2">
+              <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-mineshaft-200">
+                <TerminalIcon className="size-4" />
+                Run Output
+              </UnstableCardTitle>
+            </UnstableCardHeader>
+            <UnstableCardContent>
+              {run.logs ? (
+                <pre
+                  className="max-h-[600px] overflow-auto rounded-md bg-[#1e1e1e] p-4 font-mono text-xs leading-5 text-mineshaft-300"
+                  // eslint-disable-next-line react/no-danger
+                  dangerouslySetInnerHTML={{ __html: ansiUp.ansi_to_html(run.logs) }}
+                />
+              ) : (
+                <pre className="max-h-[600px] overflow-auto rounded-md bg-[#1e1e1e] p-4 font-mono text-xs text-mineshaft-500">
+                  No logs available.
+                </pre>
+              )}
+            </UnstableCardContent>
+          </UnstableCard>
+        </div>
       )}
 
       {activeTab === "ai" && (
