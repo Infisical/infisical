@@ -1,13 +1,12 @@
-import { useEffect } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { PlusIcon, ShieldIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Field,
   FieldContent,
   FieldError,
   FieldLabel,
@@ -25,32 +24,31 @@ import {
   SheetTitle,
   TextArea,
   UnstableIconButton,
-  UnstableInput,
-  UnstableSeparator
+  UnstableInput
 } from "@app/components/v3";
 import { useGetAgentPolicy, useUpdateAgentPolicy } from "@app/hooks/api";
 
 import { AGENTS } from "../data";
 
-const promptPolicyFormSchema = z.object({
-  id: z.string().min(1, "ID is required"),
-  description: z.string().min(1, "Description is required"),
-  prompt: z.string().min(1, "Prompt is required"),
-  onActions: z.string().min(1, "At least one action is required"),
-  enforce: z.enum(["llm", "log_only"])
+const conditionFormSchema = z.object({
+  id: z.string().default(""),
+  description: z.string().default(""),
+  prompt: z.string().min(1, "Prompt condition is required"),
+  enforce: z.enum(["llm", "log_only"]).default("llm")
+});
+
+const actionFormSchema = z.object({
+  value: z.string().min(1, "Action cannot be empty"),
+  conditions: z.array(conditionFormSchema)
 });
 
 const inboundPolicyFormSchema = z.object({
   fromAgentId: z.string(),
-  allowedToRequest: z.array(z.object({ value: z.string().min(1, "Action cannot be empty") })),
-  promptPolicies: z.array(promptPolicyFormSchema)
+  actions: z.array(actionFormSchema)
 });
 
 const editPolicyFormSchema = z.object({
-  selfPolicies: z.object({
-    allowedActions: z.array(z.object({ value: z.string().min(1, "Action cannot be empty") })),
-    promptPolicies: z.array(promptPolicyFormSchema)
-  }),
+  selfActions: z.array(actionFormSchema),
   inboundPolicies: z.array(inboundPolicyFormSchema)
 });
 
@@ -63,147 +61,179 @@ type Props = {
   projectId: string;
 };
 
-const agentNameMap = Object.fromEntries(AGENTS.map((a) => [a.id, a.name]));
+const agentMap = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
 
-const PromptPolicyFields = ({
+/**
+ * Convert flat API data (allowedActions + promptPolicies) into grouped action form data.
+ * Each action gets the conditions whose onActions include that action name.
+ */
+const toGroupedActions = (
+  allowedActions: string[],
+  promptPolicies: {
+    id: string;
+    description: string;
+    prompt: string;
+    onActions: string[];
+    enforce: "llm" | "log_only";
+  }[]
+) => {
+  return allowedActions.map((action) => ({
+    value: action,
+    conditions: promptPolicies
+      .filter((pp) => pp.onActions.includes(action))
+      .map((pp) => ({
+        id: pp.id,
+        description: pp.description,
+        prompt: pp.prompt,
+        enforce: pp.enforce
+      }))
+  }));
+};
+
+/**
+ * Convert grouped action form data back to flat API shape.
+ * Deduplicates prompt policies by id, merging onActions.
+ */
+const toFlatPolicies = (actions: TEditPolicyForm["selfActions"]) => {
+  const allowedActions = actions.map((a) => a.value);
+  const policyMap = new Map<
+    string,
+    {
+      id: string;
+      description: string;
+      prompt: string;
+      onActions: string[];
+      enforce: "llm" | "log_only";
+    }
+  >();
+
+  for (const action of actions) {
+    for (const cond of action.conditions) {
+      const key = cond.id;
+      const existing = policyMap.get(key);
+      if (existing) {
+        if (!existing.onActions.includes(action.value)) {
+          existing.onActions.push(action.value);
+        }
+      } else {
+        policyMap.set(key, {
+          id: cond.id,
+          description: cond.description,
+          prompt: cond.prompt,
+          enforce: cond.enforce,
+          onActions: [action.value]
+        });
+      }
+    }
+  }
+
+  return { allowedActions, promptPolicies: Array.from(policyMap.values()) };
+};
+
+const ActionFields = ({
   control,
   baseName,
-  onRemove
+  onRemoveAction
 }: {
-  control: TEditPolicyForm extends infer T ? import("react-hook-form").Control<T & TEditPolicyForm> : never;
-  baseName: `selfPolicies.promptPolicies.${number}` | `inboundPolicies.${number}.promptPolicies.${number}`;
-  onRemove: () => void;
+  control: TEditPolicyForm extends infer T
+    ? import("react-hook-form").Control<T & TEditPolicyForm>
+    : never;
+  baseName: `selfActions.${number}` | `inboundPolicies.${number}.actions.${number}`;
+  onRemoveAction: () => void;
 }) => {
+  const conditions = useFieldArray({
+    control,
+    name: `${baseName}.conditions`
+  });
+
   return (
-    <div className="rounded-md border border-border p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-label">Prompt Policy</span>
-        <UnstableIconButton variant="ghost" size="xs" onClick={onRemove}>
+    <div className="space-y-3 rounded-md border border-border bg-container p-3">
+      <div className="flex items-center gap-2">
+        <Controller
+          control={control}
+          name={`${baseName}.value`}
+          render={({ field, fieldState: { error } }) => (
+            <div className="flex-1">
+              <UnstableInput {...field} placeholder="action_name" />
+              {error && <FieldError>{error.message}</FieldError>}
+            </div>
+          )}
+        />
+        <UnstableIconButton variant="ghost" size="xs" onClick={onRemoveAction}>
           <TrashIcon className="text-danger" />
         </UnstableIconButton>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Field>
-          <FieldLabel>ID</FieldLabel>
-          <FieldContent>
-            <Controller
-              control={control}
-              name={`${baseName}.id`}
-              render={({ field, fieldState: { error } }) => (
-                <>
-                  <UnstableInput {...field} placeholder="policy_id" />
-                  {error && <FieldError>{error.message}</FieldError>}
-                </>
-              )}
-            />
-          </FieldContent>
-        </Field>
-        <Field>
-          <FieldLabel>Enforce</FieldLabel>
-          <FieldContent>
-            <Controller
-              control={control}
-              name={`${baseName}.enforce`}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="llm">LLM</SelectItem>
-                    <SelectItem value="log_only">Log Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </FieldContent>
-        </Field>
-      </div>
-      <Field>
-        <FieldLabel>Description</FieldLabel>
-        <FieldContent>
-          <Controller
-            control={control}
-            name={`${baseName}.description`}
-            render={({ field, fieldState: { error } }) => (
-              <>
-                <UnstableInput {...field} placeholder="What this policy does" />
-                {error && <FieldError>{error.message}</FieldError>}
-              </>
-            )}
-          />
-        </FieldContent>
-      </Field>
-      <Field>
-        <FieldLabel>Prompt</FieldLabel>
-        <FieldContent>
-          <Controller
-            control={control}
-            name={`${baseName}.prompt`}
-            render={({ field, fieldState: { error } }) => (
-              <>
-                <TextArea
-                  {...field}
-                  rows={3}
-                  placeholder="Policy prompt for the LLM..."
-                />
-                {error && <FieldError>{error.message}</FieldError>}
-              </>
-            )}
-          />
-        </FieldContent>
-      </Field>
-      <Field>
-        <FieldLabel>On Actions (comma-separated)</FieldLabel>
-        <FieldContent>
-          <Controller
-            control={control}
-            name={`${baseName}.onActions`}
-            render={({ field, fieldState: { error } }) => (
-              <>
-                <UnstableInput
-                  {...field}
-                  placeholder="action_1, action_2"
-                />
-                {error && <FieldError>{error.message}</FieldError>}
-              </>
-            )}
-          />
-        </FieldContent>
-      </Field>
+
+      {conditions.fields.length > 0 && (
+        <div className="ml-3 space-y-2 border-l-2 border-border pl-3">
+          {conditions.fields.map((condField, condIdx) => (
+            <div key={condField.id} className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted">Condition</span>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => conditions.remove(condIdx)}
+                >
+                  <TrashIcon className="size-3 text-danger" />
+                </UnstableIconButton>
+              </div>
+              <Controller
+                control={control}
+                name={`${baseName}.conditions.${condIdx}.prompt`}
+                render={({ field, fieldState: { error } }) => (
+                  <>
+                    <TextArea
+                      {...field}
+                      rows={2}
+                      placeholder="Describe the condition to evaluate..."
+                    />
+                    {error && <FieldError>{error.message}</FieldError>}
+                  </>
+                )}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="xs"
+        onClick={() =>
+          conditions.append({
+            id: `cond_${crypto.randomUUID().slice(0, 8)}`,
+            description: "",
+            prompt: "",
+            enforce: "llm"
+          })
+        }
+      >
+        <PlusIcon />
+        Add Condition
+      </Button>
     </div>
   );
 };
 
 const InboundPolicyFields = ({
   nestIndex,
-  control,
-  onRemove
+  control
 }: {
   nestIndex: number;
-  control: TEditPolicyForm extends infer T ? import("react-hook-form").Control<T & TEditPolicyForm> : never;
-  onRemove: () => void;
+  control: TEditPolicyForm extends infer T
+    ? import("react-hook-form").Control<T & TEditPolicyForm>
+    : never;
 }) => {
-  const allowedToRequest = useFieldArray({
+  const actions = useFieldArray({
     control,
-    name: `inboundPolicies.${nestIndex}.allowedToRequest`
-  });
-
-  const promptPolicies = useFieldArray({
-    control,
-    name: `inboundPolicies.${nestIndex}.promptPolicies`
+    name: `inboundPolicies.${nestIndex}.actions`
   });
 
   return (
-    <div className="rounded-md border border-border p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-label">Inbound Policy</span>
-        <UnstableIconButton variant="ghost" size="xs" onClick={onRemove}>
-          <TrashIcon className="text-danger" />
-        </UnstableIconButton>
-      </div>
-
-      <Field>
+    <div className="space-y-4">
+      <div>
         <FieldLabel>From Agent</FieldLabel>
         <FieldContent>
           <Controller
@@ -225,81 +255,37 @@ const InboundPolicyFields = ({
             )}
           />
         </FieldContent>
-      </Field>
+      </div>
 
       <div>
         <FieldTitle className="mb-2">Allowed To Request</FieldTitle>
         <div className="space-y-2">
-          {allowedToRequest.fields.map((field, idx) => (
-            <div key={field.id} className="flex items-center gap-2">
-              <Controller
-                control={control}
-                name={`inboundPolicies.${nestIndex}.allowedToRequest.${idx}.value`}
-                render={({ field: inputField, fieldState: { error } }) => (
-                  <div className="flex-1">
-                    <UnstableInput {...inputField} placeholder="action_name" />
-                    {error && <FieldError>{error.message}</FieldError>}
-                  </div>
-                )}
-              />
-              <UnstableIconButton
-                variant="ghost"
-                size="xs"
-                onClick={() => allowedToRequest.remove(idx)}
-              >
-                <TrashIcon className="text-danger" />
-              </UnstableIconButton>
-            </div>
+          {actions.fields.map((field, idx) => (
+            <ActionFields
+              key={field.id}
+              control={control}
+              baseName={`inboundPolicies.${nestIndex}.actions.${idx}`}
+              onRemoveAction={() => actions.remove(idx)}
+            />
           ))}
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="xs"
-            onClick={() => allowedToRequest.append({ value: "" })}
+            onClick={() => actions.append({ value: "", conditions: [] })}
           >
             <PlusIcon />
             Add Action
           </Button>
         </div>
       </div>
-
-      {promptPolicies.fields.length > 0 && (
-        <div>
-          <FieldTitle className="mb-2">Prompt Policies</FieldTitle>
-          <div className="space-y-2">
-            {promptPolicies.fields.map((field, idx) => (
-              <PromptPolicyFields
-                key={field.id}
-                control={control}
-                baseName={`inboundPolicies.${nestIndex}.promptPolicies.${idx}`}
-                onRemove={() => promptPolicies.remove(idx)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-      <Button
-        type="button"
-        variant="ghost"
-        size="xs"
-        onClick={() =>
-          promptPolicies.append({
-            id: "",
-            description: "",
-            prompt: "",
-            onActions: "",
-            enforce: "llm"
-          })
-        }
-      >
-        <PlusIcon />
-        Add Prompt Policy
-      </Button>
     </div>
   );
 };
 
 export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Props) => {
+  const [selectedTarget, setSelectedTarget] = useState<"self" | number>("self");
+
   const { data: policy, isPending } = useGetAgentPolicy({
     agentId: agentId ?? "",
     projectId
@@ -315,7 +301,7 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
   } = useForm<TEditPolicyForm>({
     resolver: zodResolver(editPolicyFormSchema),
     defaultValues: {
-      selfPolicies: { allowedActions: [], promptPolicies: [] },
+      selfActions: [],
       inboundPolicies: []
     }
   });
@@ -323,33 +309,22 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
   useEffect(() => {
     if (policy) {
       reset({
-        selfPolicies: {
-          allowedActions: policy.selfPolicies.allowedActions.map((a) => ({ value: a })),
-          promptPolicies: policy.selfPolicies.promptPolicies.map((pp) => ({
-            ...pp,
-            onActions: pp.onActions.join(", ")
-          }))
-        },
+        selfActions: toGroupedActions(
+          policy.selfPolicies.allowedActions,
+          policy.selfPolicies.promptPolicies
+        ),
         inboundPolicies: policy.inboundPolicies.map((ip) => ({
           fromAgentId: ip.fromAgentId ?? "",
-          allowedToRequest: ip.allowedToRequest.map((a) => ({ value: a })),
-          promptPolicies: ip.promptPolicies.map((pp) => ({
-            ...pp,
-            onActions: pp.onActions.join(", ")
-          }))
+          actions: toGroupedActions(ip.allowedToRequest, ip.promptPolicies)
         }))
       });
+      setSelectedTarget("self");
     }
   }, [policy, reset]);
 
-  const selfAllowedActions = useFieldArray({
+  const selfActions = useFieldArray({
     control,
-    name: "selfPolicies.allowedActions"
-  });
-
-  const selfPromptPolicies = useFieldArray({
-    control,
-    name: "selfPolicies.promptPolicies"
+    name: "selfActions"
   });
 
   const inboundPolicies = useFieldArray({
@@ -357,33 +332,24 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
     name: "inboundPolicies"
   });
 
+  const watchedInbound = useWatch({ control, name: "inboundPolicies" });
+
   const onSubmit = async (formData: TEditPolicyForm) => {
     if (!agentId) return;
     try {
+      const selfFlat = toFlatPolicies(formData.selfActions);
       await updatePolicy.mutateAsync({
         agentId,
         projectId,
-        selfPolicies: {
-          allowedActions: formData.selfPolicies.allowedActions.map((a) => a.value),
-          promptPolicies: formData.selfPolicies.promptPolicies.map((pp) => ({
-            ...pp,
-            onActions: pp.onActions
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          }))
-        },
-        inboundPolicies: formData.inboundPolicies.map((ip) => ({
-          fromAgentId: ip.fromAgentId || undefined,
-          allowedToRequest: ip.allowedToRequest.map((a) => a.value),
-          promptPolicies: ip.promptPolicies.map((pp) => ({
-            ...pp,
-            onActions: pp.onActions
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          }))
-        }))
+        selfPolicies: selfFlat,
+        inboundPolicies: formData.inboundPolicies.map((ip) => {
+          const flat = toFlatPolicies(ip.actions);
+          return {
+            fromAgentId: ip.fromAgentId || undefined,
+            allowedToRequest: flat.allowedActions,
+            promptPolicies: flat.promptPolicies
+          };
+        })
       });
       createNotification({ text: "Policy updated successfully", type: "success" });
       onOpenChange(false);
@@ -392,14 +358,38 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
     }
   };
 
-  const agentName = agentId ? (agentNameMap[agentId] ?? agentId) : "";
+  const currentAgent = agentId ? agentMap[agentId] : null;
+
+  const getTargetInfo = () => {
+    if (selectedTarget === "self") {
+      return {
+        name: currentAgent?.name ?? agentId ?? "",
+        description:
+          currentAgent?.description ?? "Configure self-execution policies for this agent."
+      };
+    }
+
+    const inbound = watchedInbound?.[selectedTarget];
+    const fromAgent = inbound?.fromAgentId ? agentMap[inbound.fromAgentId] : null;
+    return {
+      name: fromAgent?.name ?? "Unassigned Agent",
+      description: fromAgent?.description ?? "Select an agent to configure inbound policies."
+    };
+  };
+
+  const targetInfo = getTargetInfo();
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg overflow-y-auto" side="right">
-        <SheetHeader>
-          <SheetTitle>Edit Policy — {agentName}</SheetTitle>
-          <SheetDescription>Configure permissions and prompt policies for this agent.</SheetDescription>
+      <SheetContent
+        className="flex w-[50vw] !max-w-none flex-col gap-y-0 overflow-hidden p-0"
+        side="right"
+      >
+        <SheetHeader className="mb-0 border-b border-border px-6 pt-6 pb-6">
+          <SheetTitle>Edit Policy — {currentAgent?.name ?? agentId}</SheetTitle>
+          <SheetDescription>
+            Configure permissions and prompt policies for this agent.
+          </SheetDescription>
         </SheetHeader>
 
         {isPending && agentId ? (
@@ -407,120 +397,117 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
             Loading policy...
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 px-4 pb-4">
-            {/* Self Policies */}
-            <div>
-              <h3 className="text-sm font-semibold mb-3">Self Policies</h3>
+          <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1">
+              {/* Left sidebar navigation */}
+              <nav className="w-48 shrink-0 space-y-1 overflow-y-auto border-r border-border p-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTarget("self")}
+                  className={`w-full rounded-md px-3 py-2 text-left text-xs font-medium transition-colors ${
+                    selectedTarget === "self"
+                      ? "bg-primary/10 text-primary"
+                      : "text-label hover:bg-container"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldIcon className="size-3.5 shrink-0" />
+                    Self
+                  </div>
+                </button>
 
-              <div className="mb-4">
-                <FieldTitle className="mb-2">Allowed Actions</FieldTitle>
-                <div className="space-y-2">
-                  {selfAllowedActions.fields.map((field, idx) => (
-                    <div key={field.id} className="flex items-center gap-2">
-                      <Controller
-                        control={control}
-                        name={`selfPolicies.allowedActions.${idx}.value`}
-                        render={({ field: inputField, fieldState: { error } }) => (
-                          <div className="flex-1">
-                            <UnstableInput {...inputField} placeholder="action_name" />
-                            {error && <FieldError>{error.message}</FieldError>}
-                          </div>
-                        )}
-                      />
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => selfAllowedActions.remove(idx)}
-                      >
-                        <TrashIcon className="text-danger" />
-                      </UnstableIconButton>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => selfAllowedActions.append({ value: "" })}
-                  >
-                    <PlusIcon />
-                    Add Action
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <FieldTitle className="mb-2">Prompt Policies</FieldTitle>
-                <div className="space-y-2">
-                  {selfPromptPolicies.fields.map((field, idx) => (
-                    <PromptPolicyFields
+                {inboundPolicies.fields.map((field, idx) => {
+                  const fromId = watchedInbound?.[idx]?.fromAgentId;
+                  const fromAgent = fromId ? agentMap[fromId] : null;
+                  return (
+                    <button
                       key={field.id}
-                      control={control}
-                      baseName={`selfPolicies.promptPolicies.${idx}`}
-                      onRemove={() => selfPromptPolicies.remove(idx)}
-                    />
-                  ))}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={() =>
-                      selfPromptPolicies.append({
-                        id: "",
-                        description: "",
-                        prompt: "",
-                        onActions: "",
-                        enforce: "llm"
-                      })
-                    }
-                  >
-                    <PlusIcon />
-                    Add Prompt Policy
-                  </Button>
-                </div>
-              </div>
-            </div>
+                      type="button"
+                      onClick={() => setSelectedTarget(idx)}
+                      className={`w-full rounded-md px-3 py-2 text-left text-xs font-medium transition-colors ${
+                        selectedTarget === idx
+                          ? "bg-primary/10 text-primary"
+                          : "text-label hover:bg-container"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="truncate">{fromAgent?.name ?? "Unassigned"}</span>
+                        <UnstableIconButton
+                          variant="ghost"
+                          size="xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            inboundPolicies.remove(idx);
+                            setSelectedTarget("self");
+                          }}
+                        >
+                          <TrashIcon className="size-3 text-danger" />
+                        </UnstableIconButton>
+                      </div>
+                    </button>
+                  );
+                })}
 
-            <UnstableSeparator />
-
-            {/* Inbound Policies */}
-            <div>
-              <h3 className="text-sm font-semibold mb-3">Inbound Policies</h3>
-              <div className="space-y-3">
-                {inboundPolicies.fields.map((field, idx) => (
-                  <InboundPolicyFields
-                    key={field.id}
-                    nestIndex={idx}
-                    control={control}
-                    onRemove={() => inboundPolicies.remove(idx)}
-                  />
-                ))}
                 <Button
                   type="button"
                   variant="ghost"
                   size="xs"
-                  onClick={() =>
+                  className="w-full"
+                  onClick={() => {
                     inboundPolicies.append({
                       fromAgentId: "",
-                      allowedToRequest: [{ value: "" }],
-                      promptPolicies: []
-                    })
-                  }
+                      actions: [{ value: "", conditions: [] }]
+                    });
+                    setSelectedTarget(inboundPolicies.fields.length);
+                  }}
                 >
                   <PlusIcon />
-                  Add Inbound Policy
+                  Add Inbound
                 </Button>
+              </nav>
+
+              {/* Right content area */}
+              <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-4">
+                {/* Target header */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold">{targetInfo.name}</h3>
+                  <p className="mt-0.5 text-xs text-accent">{targetInfo.description}</p>
+                </div>
+
+                {selectedTarget === "self" ? (
+                  <div>
+                    <FieldTitle className="mb-2">Actions</FieldTitle>
+                    <div className="space-y-2">
+                      {selfActions.fields.map((field, idx) => (
+                        <ActionFields
+                          key={field.id}
+                          control={control}
+                          baseName={`selfActions.${idx}`}
+                          onRemoveAction={() => selfActions.remove(idx)}
+                        />
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => selfActions.append({ value: "", conditions: [] })}
+                      >
+                        <PlusIcon />
+                        Add Action
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <InboundPolicyFields nestIndex={selectedTarget} control={control} />
+                )}
               </div>
             </div>
 
-            <SheetFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            <SheetFooter className="flex flex-row items-center justify-end gap-x-4 border-t border-border px-6 py-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="project"
-                disabled={!isDirty || isSubmitting}
-              >
+              <Button type="submit" variant="project" disabled={!isDirty || isSubmitting}>
                 Save Changes
               </Button>
             </SheetFooter>
