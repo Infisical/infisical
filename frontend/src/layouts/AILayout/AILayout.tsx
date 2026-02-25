@@ -42,7 +42,7 @@ export const AILayout = () => {
                     projectId: currentProject.id
                   }}
                 >
-                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Agent Arbiter</Tab>}
+                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Agent Network</Tab>}
                 </Link>
                 <Link
                   to="/organizations/$orgId/projects/ai/$projectId/access-management"

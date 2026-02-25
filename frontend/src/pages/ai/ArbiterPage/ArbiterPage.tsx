@@ -46,20 +46,23 @@ export const ArbiterPage = () => {
 
       <PageHeader
         scope={ProjectType.AI}
-        title="Agent Arbiter"
+        title="Agent Network"
         description="Monitor agent activity, review governance decisions, and replay sessions"
       />
 
       <Tabs value={selectedTab} orientation="vertical" onValueChange={updateSelectedTab}>
         <TabList>
           <Tab variant="project" value={ArbiterTabs.LiveFeed}>
-            Live Feed
-          </Tab>
-          <Tab variant="project" value={ArbiterTabs.Sessions}>
-            Sessions
+            Monitoring
           </Tab>
           <Tab variant="project" value={ArbiterTabs.Agents}>
-            Agents
+            Network Agents
+          </Tab>
+          <Tab variant="project" value={ArbiterTabs.Sessions}>
+            Session History
+          </Tab>
+          <Tab variant="project" value={ArbiterTabs.Settings}>
+            Settings
           </Tab>
         </TabList>
         <TabPanel value={ArbiterTabs.LiveFeed}>

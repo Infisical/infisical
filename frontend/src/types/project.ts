@@ -15,5 +15,6 @@ export enum ApprovalControlTabs {
 export enum ArbiterTabs {
   LiveFeed = "live-feed",
   Sessions = "sessions",
-  Agents = "agents"
+  Agents = "agents",
+  Settings = "settings"
 }
