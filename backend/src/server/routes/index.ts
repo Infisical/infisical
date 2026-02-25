@@ -415,6 +415,8 @@ import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-credential-dal";
 import { webAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
+import { observabilityWidgetDALFactory } from "@app/services/observability-widget/observability-widget-dal";
+import { observabilityWidgetServiceFactory } from "@app/services/observability-widget/observability-widget-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
@@ -505,6 +507,7 @@ export const registerRoutes = async (
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
+  const observabilityWidgetDAL = observabilityWidgetDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
 
   const identityDAL = identityDALFactory(db);
@@ -1530,6 +1533,11 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectDAL,
     kmsService
+  });
+
+  const observabilityWidgetService = observabilityWidgetServiceFactory({
+    observabilityWidgetDAL,
+    db
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
@@ -2809,6 +2817,7 @@ export const registerRoutes = async (
     integration: integrationService,
     integrationAuth: integrationAuthService,
     webhook: webhookService,
+    observabilityWidget: observabilityWidgetService,
     serviceToken: serviceTokenService,
     identityV1: identityService,
     identityV2: identityV2Service,

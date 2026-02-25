@@ -96,6 +96,7 @@ export * from "./membership-roles";
 export * from "./memberships";
 export * from "./microsoft-teams-integrations";
 export * from "./models";
+export * from "./observability-widgets";
 export * from "./oidc-configs";
 export * from "./org-bots";
 export * from "./org-gateway-config";

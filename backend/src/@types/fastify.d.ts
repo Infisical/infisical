@@ -144,6 +144,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
+import { TObservabilityWidgetServiceFactory } from "@app/services/observability-widget/observability-widget-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
@@ -271,6 +272,7 @@ declare module "fastify" {
       integration: TIntegrationServiceFactory;
       integrationAuth: TIntegrationAuthServiceFactory;
       webhook: TWebhookServiceFactory;
+      observabilityWidget: TObservabilityWidgetServiceFactory;
       serviceToken: TServiceTokenServiceFactory;
       identityV1: TIdentityServiceFactory;
       identityV2: TScopedIdentityV2ServiceFactory;
