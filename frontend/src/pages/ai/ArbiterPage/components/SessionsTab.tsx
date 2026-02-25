@@ -1,15 +1,31 @@
-import { CheckCircle, Clock, Shield, XCircle } from "lucide-react";
+import { useCallback, useState } from "react";
+import {
+  CheckCircle,
+  ChevronDownIcon,
+  Clock,
+  FilterIcon,
+  SearchIcon,
+  Shield,
+  XCircle
+} from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
   Badge,
-  UnstableAccordion,
-  UnstableAccordionContent,
-  UnstableAccordionItem,
-  UnstableAccordionTrigger,
+  DocumentationLinkBadge,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   UnstableCard,
   UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuCheckboxItem,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuLabel,
+  UnstableDropdownMenuTrigger,
+  UnstableIconButton,
   UnstableTable,
   UnstableTableBody,
   UnstableTableCell,
@@ -54,89 +70,178 @@ const buildSessions = (): Session[] => {
 
 const SESSIONS = buildSessions();
 
-export const SessionsTab = () => {
+const DECISION_STATUSES = ["Approved", "Denied"] as const;
+
+const SessionRow = ({ session }: { session: Session }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   return (
-    <UnstableCard>
-      <UnstableCardHeader>
-        <UnstableCardTitle>Sessions</UnstableCardTitle>
-        <UnstableCardDescription>View agent session activity and arbiter decisions.</UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableAccordion type="single" collapsible>
-        {SESSIONS.map((session) => (
-          <UnstableAccordionItem key={session.id} value={session.id}>
-            <UnstableAccordionTrigger>
-              <div className="flex flex-1 items-center justify-between">
-                <div>
-                  <span className="font-medium">{session.title}</span>
-                  <p className="mt-0.5 text-xs text-accent">{session.description}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="success">{session.approvedCount} approved</Badge>
-                  {session.deniedCount > 0 && (
-                    <Badge variant="danger">{session.deniedCount} denied</Badge>
-                  )}
-                  <Badge variant="neutral" className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {session.duration}s
-                  </Badge>
-                </div>
-              </div>
-            </UnstableAccordionTrigger>
-            <UnstableAccordionContent>
-              <UnstableTable>
-                <UnstableTableHeader>
-                  <UnstableTableRow>
-                    <UnstableTableHead>Status</UnstableTableHead>
-                    <UnstableTableHead>Agent</UnstableTableHead>
-                    <UnstableTableHead>Action</UnstableTableHead>
-                    <UnstableTableHead>Details</UnstableTableHead>
-                    <UnstableTableHead>Reasoning</UnstableTableHead>
-                    <UnstableTableHead>Time</UnstableTableHead>
-                  </UnstableTableRow>
-                </UnstableTableHeader>
-                <UnstableTableBody>
-                  {session.events.map((event) => (
-                    <UnstableTableRow key={event.id}>
-                      <UnstableTableCell>
+    <>
+      <UnstableTableRow
+        className="group cursor-pointer"
+        onClick={() => setIsExpanded((prev) => !prev)}
+      >
+        <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
+          <ChevronDownIcon
+            className={twMerge("transition-transform", isExpanded && "rotate-180")}
+          />
+        </UnstableTableCell>
+        <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
+          <span className="font-medium">{session.title}</span>
+          <p className="mt-0.5 text-xs text-accent">{session.description}</p>
+        </UnstableTableCell>
+        <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
+          <div className="flex items-center gap-2">
+            <Badge variant="success">{session.approvedCount} approved</Badge>
+            {session.deniedCount > 0 && (
+              <Badge variant="danger">{session.deniedCount} denied</Badge>
+            )}
+          </div>
+        </UnstableTableCell>
+        <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
+          <Badge variant="neutral" className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {session.duration}s
+          </Badge>
+        </UnstableTableCell>
+      </UnstableTableRow>
+      {isExpanded && (
+        <UnstableTableRow>
+          <UnstableTableCell colSpan={4} className="bg-card p-0">
+            <div className="border-t-2 border-border p-6">
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute top-0 bottom-0 left-[15px] w-px bg-border" />
+                <div className="flex flex-col gap-0">
+                  {session.events.map((event, index) => (
+                    <div key={event.id} className="relative flex items-start gap-4 pb-6 last:pb-0">
+                      {/* Timeline node */}
+                      <div className="relative z-10 flex shrink-0 items-center justify-center">
+                        {event.status === "approved" ? (
+                          <CheckCircle className="h-[31px] w-[31px] bg-card text-success" />
+                        ) : (
+                          <XCircle className="h-[31px] w-[31px] bg-card text-danger" />
+                        )}
+                      </div>
+                      {/* Event content */}
+                      <div className="-mt-0.5 flex min-w-0 flex-1 flex-col gap-1">
                         <div className="flex items-center gap-2">
-                          {event.status === "approved" ? (
-                            <CheckCircle className="h-4 w-4 text-success" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-danger" />
-                          )}
-                          <Badge variant={event.status === "approved" ? "success" : "danger"}>
+                          <span className="text-sm font-medium capitalize">{event.agentId}</span>
+                          <span className="text-xs text-accent">{event.action}</span>
+                          <span className="ml-auto font-mono text-xs text-muted">
+                            {event.timestamp.toFixed(2)}s
+                          </span>
+                          <Badge
+                            variant={event.status === "approved" ? "success" : "danger"}
+                            className="text-[10px]"
+                          >
                             {event.status.toUpperCase()}
                           </Badge>
                         </div>
-                      </UnstableTableCell>
-                      <UnstableTableCell>
-                        <span className="text-info capitalize">{event.agentId}</span>
-                      </UnstableTableCell>
-                      <UnstableTableCell>{event.action}</UnstableTableCell>
-                      <UnstableTableCell>
-                        <span className="text-xs text-accent">{event.details}</span>
-                      </UnstableTableCell>
-                      <UnstableTableCell>
+                        <p className="text-xs text-accent">{event.details}</p>
                         {event.reasoning && (
                           <div className="flex items-center gap-1 text-xs text-muted">
                             <Shield className="h-3 w-3 shrink-0" />
-                            &quot;{event.reasoning}&quot;
+                            <span>&quot;{event.reasoning}&quot;</span>
                           </div>
                         )}
-                      </UnstableTableCell>
-                      <UnstableTableCell>
-                        <span className="font-mono text-xs text-muted">
-                          {event.timestamp.toFixed(2)}s
-                        </span>
-                      </UnstableTableCell>
-                    </UnstableTableRow>
+                        {event.targetAgentId && (
+                          <div className="text-xs text-muted">
+                            → Routed to{" "}
+                            <span className="font-medium capitalize">{event.targetAgentId}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   ))}
-                </UnstableTableBody>
-              </UnstableTable>
-            </UnstableAccordionContent>
-          </UnstableAccordionItem>
-        ))}
-      </UnstableAccordion>
+                </div>
+              </div>
+            </div>
+          </UnstableTableCell>
+        </UnstableTableRow>
+      )}
+    </>
+  );
+};
+
+export const SessionsTab = () => {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  const handleStatusToggle = useCallback(
+    (status: string) =>
+      setStatusFilter((prev) =>
+        prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+      ),
+    []
+  );
+
+  const isTableFiltered = statusFilter.length > 0;
+
+  const filteredSessions = SESSIONS.filter((session) =>
+    session.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <UnstableCard>
+      <UnstableCardHeader>
+        <UnstableCardTitle>
+          Sessions
+          <DocumentationLinkBadge href="/" />
+        </UnstableCardTitle>
+        <UnstableCardDescription>
+          View agent session activity and arbiter decisions.
+        </UnstableCardDescription>
+      </UnstableCardHeader>
+      <div className="flex gap-2">
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search sessions by name..."
+          />
+        </InputGroup>
+        <UnstableDropdownMenu>
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton variant={isTableFiltered ? "org" : "outline"}>
+              <FilterIcon />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end">
+            <UnstableDropdownMenuLabel>Filter by Decision</UnstableDropdownMenuLabel>
+            {DECISION_STATUSES.map((status) => (
+              <UnstableDropdownMenuCheckboxItem
+                key={status}
+                checked={statusFilter.includes(status)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleStatusToggle(status);
+                }}
+              >
+                {status}
+              </UnstableDropdownMenuCheckboxItem>
+            ))}
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
+      </div>
+      <UnstableTable>
+        <UnstableTableHeader>
+          <UnstableTableRow>
+            <UnstableTableHead className="w-5" />
+            <UnstableTableHead>Session</UnstableTableHead>
+            <UnstableTableHead>Decisions</UnstableTableHead>
+            <UnstableTableHead>Duration</UnstableTableHead>
+          </UnstableTableRow>
+        </UnstableTableHeader>
+        <UnstableTableBody>
+          {filteredSessions.map((session) => (
+            <SessionRow key={session.id} session={session} />
+          ))}
+        </UnstableTableBody>
+      </UnstableTable>
     </UnstableCard>
   );
 };

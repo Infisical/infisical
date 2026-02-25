@@ -11,6 +11,7 @@ import { ArbiterTabs } from "@app/types/project";
 import { AgentsTab } from "./components/AgentsTab";
 import { LiveFeedTab } from "./components/LiveFeedTab";
 import { SessionsTab } from "./components/SessionsTab";
+import { SettingsTab } from "./components/SettingsTab";
 
 export const ArbiterPage = () => {
   const { t } = useTranslation();
@@ -73,6 +74,9 @@ export const ArbiterPage = () => {
         </TabPanel>
         <TabPanel value={ArbiterTabs.Agents}>
           <AgentsTab />
+        </TabPanel>
+        <TabPanel value={ArbiterTabs.Settings}>
+          <SettingsTab />
         </TabPanel>
       </Tabs>
     </div>

@@ -47,7 +47,7 @@ const AGENT_DESCRIPTIONS: Record<string, string> = {
 
 const getIcon = (name: string) => {
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
-  return Icon ? <Icon className="size-3" /> : null;
+  return Icon ? <Icon className="size-3.5 text-label" /> : null;
 };
 
 const STATUSES = ["Active", "Inactive"] as const;
