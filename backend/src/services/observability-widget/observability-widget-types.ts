@@ -64,6 +64,11 @@ export const LogsWidgetConfigSchema = z.object({
   limit: z.number()
 });
 
+// Live Logs widget config schema (for audit log streaming)
+export const LiveLogsWidgetConfigSchema = z.object({
+  limit: z.number().min(10).max(300).default(300)
+});
+
 export const PieChartWidgetConfigSchema = z.object({
   metric: z.string(),
   timeRange: z.string().optional()
@@ -74,6 +79,7 @@ export type TEventsWidgetConfig = z.infer<typeof EventsWidgetConfigSchema>;
 export type TMetricsWidgetConfig = z.infer<typeof MetricsWidgetConfigSchema>;
 export type TLogsWidgetConfig = z.infer<typeof LogsWidgetConfigSchema>;
 export type TPieChartWidgetConfig = z.infer<typeof PieChartWidgetConfigSchema>;
+export type TLiveLogsWidgetConfig = z.infer<typeof LiveLogsWidgetConfigSchema>;
 
 // Scope type for widget items
 export interface TObservabilityScope {
@@ -158,7 +164,7 @@ export interface TCreateObservabilityWidgetDTO {
   subOrgId?: string | null;
   projectId?: string | null;
   type: ObservabilityWidgetType;
-  config: TEventsWidgetConfig | TMetricsWidgetConfig | TLogsWidgetConfig | TPieChartWidgetConfig;
+  config: TEventsWidgetConfig | TMetricsWidgetConfig | TLogsWidgetConfig | TPieChartWidgetConfig | TLiveLogsWidgetConfig;
   refreshInterval?: number;
   icon?: string;
   color?: string;
@@ -168,7 +174,7 @@ export interface TCreateObservabilityWidgetDTO {
 export interface TUpdateObservabilityWidgetDTO {
   name?: string;
   description?: string;
-  config?: TEventsWidgetConfig | TMetricsWidgetConfig | TLogsWidgetConfig | TPieChartWidgetConfig;
+  config?: TEventsWidgetConfig | TMetricsWidgetConfig | TLogsWidgetConfig | TPieChartWidgetConfig | TLiveLogsWidgetConfig;
   refreshInterval?: number;
   icon?: string;
   color?: string;
@@ -194,3 +200,48 @@ export const eventTypesToStatusSet = (
     })
   );
 };
+
+// Log level for live logs widget
+export type TLogLevel = "error" | "warn" | "info";
+
+// Log item for live logs widget
+export interface TObservabilityLogItem {
+  id: string;
+  timestamp: Date;
+  level: TLogLevel;
+  resourceType: string;
+  actor: string;
+  message: string;
+  metadata: {
+    eventType: string;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    userAgentType?: string | null;
+    projectId?: string | null;
+    projectName?: string | null;
+    actorMetadata?: unknown;
+    eventMetadata?: unknown;
+  };
+}
+
+// Live logs widget data response
+export interface TObservabilityLiveLogsResponse {
+  widget: {
+    id: string;
+    name: string;
+    description?: string | null;
+    type: ObservabilityWidgetType;
+    refreshInterval: number;
+    icon?: string | null;
+    color?: string | null;
+  };
+  items: TObservabilityLogItem[];
+  totalCount: number;
+  infoText: string;
+  auditLogLink: string;
+}
+
+// Get live logs widget data options
+export interface TGetLiveLogsWidgetDataOptions {
+  limit?: number;
+}

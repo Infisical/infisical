@@ -1537,6 +1537,7 @@ export const registerRoutes = async (
 
   const observabilityWidgetService = observabilityWidgetServiceFactory({
     observabilityWidgetDAL,
+    auditLogDAL,
     db
   });
 

@@ -1,17 +1,28 @@
 import { TDbClient } from "@app/db";
+import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import {
+  formatActorName,
+  formatLogMessage,
+  getLogLevel,
+  getResourceTypeFromEventType
+} from "./live-logs-helpers";
 import { TObservabilityWidgetDALFactory } from "./observability-widget-dal";
 import { getSubOrgDescendants } from "./observability-widget-helpers";
 import {
   EventsWidgetConfigSchema,
-  ObservabilityItemStatus,
+  LiveLogsWidgetConfigSchema,
   ObservabilityResourceType,
   ObservabilityWidgetType,
   ORG_ONLY_RESOURCE_TYPES,
   TCreateObservabilityWidgetDTO,
   TEventsWidgetConfig,
+  TGetLiveLogsWidgetDataOptions,
   TGetWidgetDataOptions,
+  TLiveLogsWidgetConfig,
+  TObservabilityLiveLogsResponse,
+  TObservabilityLogItem,
   TObservabilityWidgetDataResponse,
   TObservabilityWidgetItem,
   TResolverResult,
@@ -23,11 +34,13 @@ export type TObservabilityWidgetServiceFactory = ReturnType<typeof observability
 
 type TObservabilityWidgetServiceFactoryDep = {
   observabilityWidgetDAL: TObservabilityWidgetDALFactory;
+  auditLogDAL: TAuditLogDALFactory;
   db: TDbClient;
 };
 
 export const observabilityWidgetServiceFactory = ({
   observabilityWidgetDAL,
+  auditLogDAL,
   db
 }: TObservabilityWidgetServiceFactoryDep) => {
   const resolverRegistry: TResolverRegistry = createResolverRegistry(db);
@@ -218,12 +231,92 @@ export const observabilityWidgetServiceFactory = ({
     };
   };
 
+  const getLiveLogsWidgetData = async (
+    widgetId: string,
+    options?: TGetLiveLogsWidgetDataOptions
+  ): Promise<TObservabilityLiveLogsResponse> => {
+    const widget = await observabilityWidgetDAL.findById(widgetId);
+    if (!widget) {
+      throw new NotFoundError({ message: "Widget not found" });
+    }
+
+    if (widget.type !== ObservabilityWidgetType.Logs) {
+      throw new BadRequestError({ message: "Only logs widget type is supported for live logs data retrieval" });
+    }
+
+    const configParseResult = LiveLogsWidgetConfigSchema.safeParse(widget.config);
+    const config: TLiveLogsWidgetConfig = configParseResult.success
+      ? configParseResult.data
+      : { limit: 300 };
+
+    const limit = options?.limit ?? config.limit;
+
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    let scopeProjectIds: string[] = widget.projectId ? [widget.projectId] : [];
+
+    if (widget.subOrgId) {
+      const descendants = await getSubOrgDescendants(db, widget.subOrgId);
+      scopeProjectIds = descendants.projectIds;
+    }
+
+    const auditLogs = await auditLogDAL.find({
+      orgId: widget.orgId,
+      projectId: widget.projectId ?? undefined,
+      startDate: oneDayAgo.toISOString(),
+      endDate: now.toISOString(),
+      limit,
+      offset: 0
+    });
+
+    const items: TObservabilityLogItem[] = auditLogs.map((log) => ({
+      id: log.id,
+      timestamp: log.createdAt,
+      level: getLogLevel(log.eventType),
+      resourceType: getResourceTypeFromEventType(log.eventType),
+      actor: formatActorName(log.actor, log.actorMetadata),
+      message: formatLogMessage(log.eventType, log.actorMetadata, log.eventMetadata),
+      metadata: {
+        eventType: log.eventType,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+        userAgentType: log.userAgentType,
+        projectId: log.projectId,
+        projectName: log.projectName,
+        actorMetadata: log.actorMetadata,
+        eventMetadata: log.eventMetadata
+      }
+    }));
+
+    const auditLogLink = widget.projectId
+      ? `/project/${widget.projectId}/audit-logs`
+      : `/org/${widget.orgId}/audit-logs`;
+
+    return {
+      widget: {
+        id: widget.id,
+        name: widget.name,
+        description: widget.description,
+        type: widget.type as ObservabilityWidgetType,
+        refreshInterval: widget.refreshInterval,
+        icon: widget.icon,
+        color: widget.color
+      },
+      items,
+      totalCount: items.length,
+      infoText: `Showing the last ${limit} log entries`,
+      auditLogLink
+    };
+  };
+
   return {
     createWidget,
     getWidget,
     listWidgets,
     updateWidget,
     deleteWidget,
-    getWidgetData
+    getWidgetData,
+    getLiveLogsWidgetData
   };
 };
