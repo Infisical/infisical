@@ -133,13 +133,15 @@ const toFlatPolicies = (actions: TEditPolicyForm["selfActions"]) => {
 const ActionFields = ({
   control,
   baseName,
-  onRemoveAction
+  onRemoveAction,
+  availableActions
 }: {
   control: TEditPolicyForm extends infer T
     ? import("react-hook-form").Control<T & TEditPolicyForm>
     : never;
   baseName: `selfActions.${number}` | `inboundPolicies.${number}.actions.${number}`;
   onRemoveAction: () => void;
+  availableActions?: string[];
 }) => {
   const conditions = useFieldArray({
     control,
@@ -149,16 +151,41 @@ const ActionFields = ({
   return (
     <div className="space-y-3 rounded-md border border-border bg-container p-3">
       <div className="flex items-center gap-2">
-        <Controller
-          control={control}
-          name={`${baseName}.value`}
-          render={({ field, fieldState: { error } }) => (
-            <div className="flex-1">
-              <UnstableInput {...field} placeholder="action_name" />
-              {error && <FieldError>{error.message}</FieldError>}
-            </div>
-          )}
-        />
+        {availableActions ? (
+          <Controller
+            control={control}
+            name={`${baseName}.value`}
+            render={({ field, fieldState: { error } }) => (
+              <div className="flex-1">
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select action..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="*">All actions</SelectItem>
+                    {availableActions.map((action) => (
+                      <SelectItem key={action} value={action}>
+                        {action}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {error && <FieldError>{error.message}</FieldError>}
+              </div>
+            )}
+          />
+        ) : (
+          <Controller
+            control={control}
+            name={`${baseName}.value`}
+            render={({ field, fieldState: { error } }) => (
+              <div className="flex-1">
+                <UnstableInput {...field} placeholder="action_name" />
+                {error && <FieldError>{error.message}</FieldError>}
+              </div>
+            )}
+          />
+        )}
         <UnstableIconButton variant="ghost" size="xs" onClick={onRemoveAction}>
           <TrashIcon className="text-danger" />
         </UnstableIconButton>
@@ -219,12 +246,14 @@ const ActionFields = ({
 
 const InboundPolicyFields = ({
   nestIndex,
-  control
+  control,
+  availableActions
 }: {
   nestIndex: number;
   control: TEditPolicyForm extends infer T
     ? import("react-hook-form").Control<T & TEditPolicyForm>
     : never;
+  availableActions: string[];
 }) => {
   const actions = useFieldArray({
     control,
@@ -266,6 +295,7 @@ const InboundPolicyFields = ({
               control={control}
               baseName={`inboundPolicies.${nestIndex}.actions.${idx}`}
               onRemoveAction={() => actions.remove(idx)}
+              availableActions={availableActions}
             />
           ))}
           <Button
@@ -333,6 +363,8 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
   });
 
   const watchedInbound = useWatch({ control, name: "inboundPolicies" });
+  const watchedSelfActions = useWatch({ control, name: "selfActions" });
+  const selfActionNames = (watchedSelfActions ?? []).map((a) => a.value).filter(Boolean);
 
   const onSubmit = async (formData: TEditPolicyForm) => {
     if (!agentId) return;
@@ -498,7 +530,11 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
                     </div>
                   </div>
                 ) : (
-                  <InboundPolicyFields nestIndex={selectedTarget} control={control} />
+                  <InboundPolicyFields
+                    nestIndex={selectedTarget}
+                    control={control}
+                    availableActions={selfActionNames}
+                  />
                 )}
               </div>
             </div>
