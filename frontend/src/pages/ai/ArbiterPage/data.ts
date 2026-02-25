@@ -19,7 +19,7 @@ export const AGENTS: Agent[] = [
   { id: "triage", name: "Triage", icon: "Stethoscope" },
   { id: "support", name: "Support", icon: "Headset" },
   { id: "escalation", name: "Escalation", icon: "AlertTriangle" },
-  { id: "fulfillment", name: "Fulfillment", icon: "Package" }
+  { id: "fulfillment", name: "Fulfillment", icon: "PackageCheck" }
 ];
 
 export const DEMO_EVENTS: DemoEvent[] = [

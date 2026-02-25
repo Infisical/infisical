@@ -129,9 +129,11 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
       <div className="absolute inset-0">
         {AGENTS.map((agent, index) => {
           const pos = AGENT_POSITIONS[index];
+          const isAgentToAgent = Boolean(currentEvent?.targetAgentId);
           const isActive =
             currentEvent?.agentId === agent.id || currentEvent?.targetAgentId === agent.id;
           const isSource = currentEvent?.agentId === agent.id;
+          const isTarget = currentEvent?.targetAgentId === agent.id;
 
           return (
             <div
@@ -161,7 +163,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
 
               {/* Connection Line to Center */}
               <svg className="absolute -z-10 overflow-visible" style={{ left: 48, top: 48 }}>
-                <motion.line
+                <line
                   x1="0"
                   y1="0"
                   x2={-pos.x}
@@ -174,18 +176,36 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       : "var(--color-border)"
                   }
                   strokeWidth={isActive ? 1 : 0.5}
-                  strokeDasharray={isActive ? "0" : "2 4"}
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
+                  strokeDasharray="6 4"
+                  style={
+                    isActive
+                      ? isTarget
+                        ? { animation: "marchingAntsReverse 1s linear infinite" }
+                        : { animation: "marchingAnts 1s linear infinite" }
+                      : undefined
+                  }
                 />
 
-                {/* Particle traveling along line */}
+                {/* Particle traveling along line: agent→center for source, center→agent for target */}
                 {isSource && currentEvent && (
                   <motion.circle
                     r="3"
                     fill={currentEvent.status === "approved" ? "#2ecc71" : "#e74c3c"}
                   >
                     <animateMotion dur="1s" repeatCount="1" path={`M 0 0 L ${-pos.x} ${-pos.y}`} />
+                  </motion.circle>
+                )}
+                {isTarget && isAgentToAgent && currentEvent && (
+                  <motion.circle
+                    r="3"
+                    fill={currentEvent.status === "approved" ? "#2ecc71" : "#e74c3c"}
+                  >
+                    <animateMotion
+                      dur="1s"
+                      repeatCount="1"
+                      begin="0.5s"
+                      path={`M ${-pos.x} ${-pos.y} L 0 0`}
+                    />
                   </motion.circle>
                 )}
               </svg>
@@ -199,6 +219,12 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
         @keyframes twinkle {
           0%, 100% { opacity: 0.1; }
           50% { opacity: 0.4; }
+        }
+        @keyframes marchingAnts {
+          to { stroke-dashoffset: -20; }
+        }
+        @keyframes marchingAntsReverse {
+          to { stroke-dashoffset: 20; }
         }
       `}</style>
     </div>
