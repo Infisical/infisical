@@ -27,21 +27,21 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
   }, [events]);
 
   return (
-    <UnstableCard className="w-full lg:w-[420px] lg:shrink-0">
-      <UnstableCardHeader className="border-b">
+    <UnstableCard className="w-full gap-y-0 lg:w-[420px] lg:shrink-0">
+      <UnstableCardHeader className="!mb-0 border-b">
         <UnstableCardTitle className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-success" />
-          Audit Log
+          Event Log
         </UnstableCardTitle>
         <UnstableCardDescription className="flex items-center gap-1.5">
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
           Live event stream
         </UnstableCardDescription>
       </UnstableCardHeader>
-      <UnstableCardContent className="-mx-5 -mb-5">
+      <UnstableCardContent className="-mx-5 !mt-0 -mb-5 py-0">
         <div
           ref={scrollRef}
-          className="h-[500px] space-y-2.5 overflow-y-auto scroll-smooth px-5 pb-5"
+          className="h-[611px] space-y-2.5 overflow-y-auto scroll-smooth px-5 py-4 pb-5"
         >
           <AnimatePresence initial={false}>
             {events.map((event) => (

@@ -105,7 +105,7 @@ export const ArbiterPage = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="mx-auto flex max-w-8xl flex-col overflow-hidden">
       <Helmet>
         <title>{t("common.head-title", { title: "Arbiter" })}</title>
       </Helmet>
@@ -113,6 +113,7 @@ export const ArbiterPage = () => {
       <PageHeader
         scope={ProjectType.AI}
         title="Agent Arbiter"
+        className="h-full"
         description="Monitor agent activity, review governance decisions, and replay sessions"
       >
         <div className="flex items-center gap-2">
@@ -139,17 +140,17 @@ export const ArbiterPage = () => {
         </div>
       </PageHeader>
 
-      <div className="flex flex-col gap-5 lg:flex-row">
+      <div className="flex flex-1 flex-col gap-5 lg:flex-row">
         {/* Network Visualization */}
-        <UnstableCard className="flex-1 overflow-hidden">
+        <UnstableCard className="h-[700px] flex-1 overflow-hidden">
           <UnstableCardHeader>
             <UnstableCardTitle>Agent Network</UnstableCardTitle>
             <UnstableCardDescription>
               Real-time visualization of agent communication and governance decisions
             </UnstableCardDescription>
           </UnstableCardHeader>
-          <UnstableCardContent>
-            <div className="h-[500px]">
+          <UnstableCardContent className="flex-1">
+            <div className="h-full">
               <ConstellationView currentEvent={currentEvent} processedEvents={processedEvents} />
             </div>
           </UnstableCardContent>
