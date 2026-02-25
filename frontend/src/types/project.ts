@@ -11,3 +11,10 @@ export enum ApprovalControlTabs {
   Policies = "policies",
   Grants = "grants"
 }
+
+export enum ArbiterTabs {
+  LiveFeed = "live-feed",
+  Sessions = "sessions",
+  Agents = "agents",
+  Settings = "settings"
+}

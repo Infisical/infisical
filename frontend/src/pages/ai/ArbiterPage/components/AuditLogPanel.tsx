@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, CheckCircle, Clock, Shield, XCircle } from "lucide-react";
+import { Activity, CheckCircle, Shield, XCircle } from "lucide-react";
 
 import {
   Badge,
@@ -8,7 +8,11 @@ import {
   UnstableCardContent,
   UnstableCardDescription,
   UnstableCardHeader,
-  UnstableCardTitle
+  UnstableCardTitle,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle
 } from "@app/components/v3";
 
 import type { DemoEvent } from "../data";
@@ -22,38 +26,34 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0;
     }
   }, [events]);
 
   return (
-    <UnstableCard className="w-full lg:w-[420px] lg:shrink-0">
-      <UnstableCardHeader className="border-b">
+    <UnstableCard className="w-full gap-y-0 lg:w-[420px] lg:shrink-0">
+      <UnstableCardHeader className="!mb-0 border-b">
         <UnstableCardTitle className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-success" />
-          Audit Log
+          Event Log
         </UnstableCardTitle>
         <UnstableCardDescription className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
           Live event stream
         </UnstableCardDescription>
       </UnstableCardHeader>
-      <UnstableCardContent className="-mx-5 -mb-5">
-        <div
-          ref={scrollRef}
-          className="h-[500px] space-y-2.5 overflow-y-auto scroll-smooth px-5 pb-5"
-        >
+      <UnstableCardContent className="-mx-5 !mt-0 -mb-5 py-0">
+        <div ref={scrollRef} className="h-[701px] space-y-2.5 overflow-y-auto px-5 py-4 pb-5">
           <AnimatePresence initial={false}>
             {events.map((event) => (
               <motion.div
                 key={event.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 className={`rounded border border-l-[4px] p-3 ${
                   event.status === "approved"
                     ? "border-border border-l-success bg-container"
-                    : "border-danger/20 border-l-danger bg-container"
+                    : "border-danger/20 border-l-danger bg-danger/5"
                 }`}
               >
                 {/* Status + Timestamp */}
@@ -63,7 +63,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
                       {event.status.toUpperCase()}
                     </Badge>
                     <span className="font-mono text-xs text-muted">
-                      {event.timestamp.toFixed(2)}s
+                      {new Date(event.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
                   {event.status === "approved" ? (
@@ -94,9 +94,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
                   >
                     <div className="mb-1 flex items-center gap-1 text-muted">
                       <Shield className="h-3 w-3" />
-                      <span className="text-[10px] tracking-wider uppercase">
-                        Infisical Arbiter
-                      </span>
+                      <span className="text-[10px] tracking-wider uppercase">Network Arbiter</span>
                     </div>
                     &quot;{event.reasoning}&quot;
                   </div>
@@ -106,11 +104,14 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
           </AnimatePresence>
 
           {events.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-muted">
-              <Clock className="mb-3 h-8 w-8 opacity-50" />
-              <p className="text-sm font-medium">Waiting for events...</p>
-              <p className="text-xs">Click Start to begin the simulation</p>
-            </div>
+            <UnstableEmpty className="h-full">
+              <UnstableEmptyHeader>
+                <UnstableEmptyTitle>No events yet</UnstableEmptyTitle>
+                <UnstableEmptyDescription>
+                  Events will appear here as they stream in.
+                </UnstableEmptyDescription>
+              </UnstableEmptyHeader>
+            </UnstableEmpty>
           )}
         </div>
       </UnstableCardContent>
