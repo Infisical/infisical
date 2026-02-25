@@ -1,6 +1,7 @@
 export * from "./accessApproval";
 export * from "./accountRecovery";
 export * from "./admin";
+export * from "./agentGate";
 export * from "./aiMcpActivityLogs";
 export * from "./aiMcpEndpoints";
 export * from "./aiMcpServers";

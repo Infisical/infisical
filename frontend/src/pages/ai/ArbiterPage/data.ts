@@ -2,6 +2,8 @@ export type Agent = {
   id: string;
   name: string;
   icon: string;
+  description: string;
+  activity: string;
 };
 
 export type DemoEvent = {
@@ -16,16 +18,42 @@ export type DemoEvent = {
 };
 
 export const AGENTS: Agent[] = [
-  { id: "triage", name: "Triage", icon: "Stethoscope" },
-  { id: "support", name: "Support", icon: "Headset" },
-  { id: "escalation", name: "Escalation", icon: "AlertTriangle" },
-  { id: "fulfillment", name: "Fulfillment", icon: "PackageCheck" }
+  {
+    id: "triage_agent",
+    name: "Triage",
+    icon: "Stethoscope",
+    description: "Classifies and routes incoming tickets to the appropriate agent.",
+    activity: "classify_ticket, assess_severity, route_ticket"
+  },
+  {
+    id: "support_agent",
+    name: "Support",
+    icon: "Headset",
+    description: "Handles customer inquiries, issues credits, and processes refunds.",
+    activity:
+      "lookup_order_history, check_inventory, issue_refund, access_payment_info, compose_response, send_customer_email, request_escalation"
+  },
+  {
+    id: "escalation_agent",
+    name: "Escalation",
+    icon: "AlertTriangle",
+    description: "Reviews escalated cases and provides override authority.",
+    activity: "review_case, approve_refund, override_policy, flag_for_human_review"
+  },
+  {
+    id: "fulfillment_agent",
+    name: "Fulfillment",
+    icon: "PackageCheck",
+    description: "Manages inventory checks and order fulfillment.",
+    activity:
+      "create_shipment, process_return, check_warehouse_inventory, generate_shipping_label, update_tracking"
+  }
 ];
 
 export const DEMO_EVENTS: DemoEvent[] = [
   {
     id: "evt-1",
-    agentId: "triage",
+    agentId: "triage_agent",
     action: "classify_ticket",
     details: "Ticket #4021 — Billing Inquiry",
     status: "approved",
@@ -34,8 +62,8 @@ export const DEMO_EVENTS: DemoEvent[] = [
   },
   {
     id: "evt-2",
-    agentId: "triage",
-    targetAgentId: "support",
+    agentId: "triage_agent",
+    targetAgentId: "support_agent",
     action: "route_to_support",
     details: "Route Ticket #4021 to Support",
     status: "approved",
@@ -44,7 +72,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
   },
   {
     id: "evt-3",
-    agentId: "support",
+    agentId: "support_agent",
     action: "request_reship",
     details: "Reship Item SKU-992",
     status: "approved",
@@ -53,7 +81,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
   },
   {
     id: "evt-4",
-    agentId: "support",
+    agentId: "support_agent",
     action: "issue_credit",
     details: "$15 Courtesy Credit",
     status: "approved",
@@ -62,7 +90,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
   },
   {
     id: "evt-5",
-    agentId: "support",
+    agentId: "support_agent",
     action: "issue_refund",
     details: "$200 Full Refund",
     status: "denied",
@@ -71,8 +99,8 @@ export const DEMO_EVENTS: DemoEvent[] = [
   },
   {
     id: "evt-6",
-    agentId: "support",
-    targetAgentId: "escalation",
+    agentId: "support_agent",
+    targetAgentId: "escalation_agent",
     action: "escalate_case",
     details: "Request Refund Approval",
     status: "approved",
@@ -81,7 +109,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
   },
   {
     id: "evt-7",
-    agentId: "fulfillment",
+    agentId: "fulfillment_agent",
     action: "check_inventory",
     details: "SKU-992 Stock Check",
     status: "approved",
@@ -90,7 +118,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
   },
   {
     id: "evt-8",
-    agentId: "escalation",
+    agentId: "escalation_agent",
     action: "approve_refund",
     details: "$200 Refund Override",
     status: "approved",
