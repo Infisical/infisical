@@ -151,7 +151,9 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 transition={{ duration: 0.4 }}
                 className={`flex h-24 w-24 flex-col items-center justify-center rounded-full border bg-card transition-shadow duration-500 ${
                   isActive
-                    ? "border-info bg-info/10 shadow-[0_0_30px_rgba(99,176,189,0.3)]"
+                    ? currentEvent?.status === "approved"
+                      ? "border-success bg-success/10 shadow-[0_0_30px_rgba(46,204,113,0.3)]"
+                      : "border-danger bg-danger/10 shadow-[0_0_30px_rgba(231,76,60,0.3)]"
                     : "border-border"
                 }`}
               >
