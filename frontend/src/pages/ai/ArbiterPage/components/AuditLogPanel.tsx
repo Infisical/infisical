@@ -22,7 +22,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0;
     }
   }, [events]);
 
@@ -41,15 +41,15 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
       <UnstableCardContent className="-mx-5 !mt-0 -mb-5 py-0">
         <div
           ref={scrollRef}
-          className="h-[611px] space-y-2.5 overflow-y-auto scroll-smooth px-5 py-4 pb-5"
+          className="h-[611px] space-y-2.5 overflow-y-auto px-5 py-4 pb-5"
         >
           <AnimatePresence initial={false}>
-            {events.map((event) => (
+            {[...events].reverse().map((event) => (
               <motion.div
                 key={event.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 className={`rounded border border-l-[4px] p-3 ${
                   event.status === "approved"
                     ? "border-border border-l-success bg-container"
