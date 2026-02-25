@@ -145,11 +145,11 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
             >
               <motion.div
                 animate={{
-                  scale: isActive ? 1.1 : 1
-                  // opacity: isActive ? 1 : 0.5
+                  scale: isActive ? 1.15 : 1,
+                  opacity: isActive ? 1 : 0.5
                 }}
                 transition={{ duration: 0.4 }}
-                className={`flex h-18 w-24 flex-col items-center justify-center rounded-md border bg-card transition-shadow duration-500 ${
+                className={`flex h-24 w-24 flex-col items-center justify-center rounded-full border bg-card transition-shadow duration-500 ${
                   isActive
                     ? "border-info shadow-[0_0_30px_rgba(255,255,255,0.15)]"
                     : "border-border"
