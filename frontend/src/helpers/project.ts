@@ -94,7 +94,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
     [ProjectType.PAM]: "PAM",
-    [ProjectType.AI]: "Agent Sentinel"
+    [ProjectType.AI]: "Agent Sentinel",
+    [ProjectType.Infra]: "Infrastructure"
   };
   return titleConvert[type];
 };
@@ -107,7 +108,8 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.SSH]: "terminal",
     [ProjectType.SecretScanning]: "secret-scan",
     [ProjectType.PAM]: "groups",
-    [ProjectType.AI]: "moving-block"
+    [ProjectType.AI]: "moving-block",
+    [ProjectType.Infra]: "moving-block"
   };
   return titleConvert[type];
 };

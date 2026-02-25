@@ -199,6 +199,7 @@ import {
   approvalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
 import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import { infraServiceFactory } from "@app/services/infra/infra-service";
 import {
   approvalRequestApprovalsDALFactory,
   approvalRequestDALFactory,
@@ -2778,6 +2779,8 @@ export const registerRoutes = async (
   await microsoftTeamsService.start();
   await eventBusService.init();
 
+  const infraService = infraServiceFactory();
+
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
     login: loginService,
@@ -2918,7 +2921,8 @@ export const registerRoutes = async (
     aiMcpServer: aiMcpServerService,
     aiMcpEndpoint: aiMcpEndpointService,
     aiMcpActivityLog: aiMcpActivityLogService,
-    approvalPolicy: approvalPolicyService
+    approvalPolicy: approvalPolicyService,
+    infra: infraService
   });
 
   const cronJobs: CronJob[] = [];

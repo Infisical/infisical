@@ -44,7 +44,8 @@ const PROJECT_TYPE_NAME: Record<ProjectType, string> = {
   [ProjectType.KMS]: "KMS",
   [ProjectType.PAM]: "PAM",
   [ProjectType.SecretScanning]: "Secret Scanning",
-  [ProjectType.AI]: "Agent Sentinel"
+  [ProjectType.AI]: "Agent Sentinel",
+  [ProjectType.Infra]: "Infrastructure"
 };
 
 const ProjectSelectInner = () => {
