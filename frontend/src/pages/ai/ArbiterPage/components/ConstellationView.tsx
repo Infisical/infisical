@@ -22,15 +22,6 @@ const getIcon = (name: string) => {
   return Icon ? <Icon className="h-5 w-5" /> : null;
 };
 
-// Generate stable starfield positions once
-const STARS = Array.from({ length: 50 }, (_, i) => ({
-  id: i,
-  top: `${(i * 37 + 13) % 100}%`,
-  left: `${(i * 53 + 7) % 100}%`,
-  size: `${(i % 3) + 1}px`,
-  delay: `${(i % 5) + 2}s`
-}));
-
 export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
   const statusColor = useMemo(() => {
     if (!currentEvent)
@@ -57,22 +48,16 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
 
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded rounded-b-lg border border-border bg-bunker-900">
-      {/* Starfield */}
-      <div className="absolute inset-0">
-        {STARS.map((star) => (
-          <div
-            key={star.id}
-            className="absolute rounded-full bg-foreground opacity-10"
-            style={{
-              top: star.top,
-              left: star.left,
-              width: star.size,
-              height: star.size,
-              animation: `twinkle ${star.delay} infinite`
-            }}
-          />
-        ))}
-      </div>
+      {/* Grid/Network Background */}
+      <svg className="absolute inset-0 h-full w-full">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.07" />
+            <circle cx="0" cy="0" r="1" fill="currentColor" opacity="0.15" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+      </svg>
 
       {/* Central Governance Node */}
       <div className="absolute z-10">
@@ -216,12 +201,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
         })}
       </div>
 
-      {/* Twinkle keyframes */}
       <style>{`
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.1; }
-          50% { opacity: 0.4; }
-        }
         @keyframes marchingAnts {
           to { stroke-dashoffset: -20; }
         }
