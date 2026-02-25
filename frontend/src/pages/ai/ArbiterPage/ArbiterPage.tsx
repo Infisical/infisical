@@ -112,7 +112,7 @@ export const ArbiterPage = () => {
 
       <PageHeader
         scope={ProjectType.AI}
-        title="Arbiter"
+        title="Agent Arbiter"
         description="Monitor agent activity, review governance decisions, and replay sessions"
       >
         <div className="flex items-center gap-2">
