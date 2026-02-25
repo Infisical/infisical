@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faSave, faServer, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -46,6 +46,7 @@ const formSchema = z.object({
   identities: z
     .object({
       identityId: z.string().uuid(),
+      identityName: z.string(),
       roles: z.array(z.string()).min(1, "At least one role is required")
     })
     .array(),
@@ -102,11 +103,9 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
     AddIdentityType.CreateNew
   );
 
-  // Search state for the identity dropdown (server-side search)
   const [identitySearchInput, setIdentitySearchInput] = useState("");
   const [debouncedIdentitySearch] = useDebounce(identitySearchInput, 300);
 
-  // Fetch identities for the dropdown with server-side search
   const { data: searchedIdentitiesResponse, isPending: isSearchingIdentities } =
     useSearchOrgIdentityMemberships({
       limit: 100,
@@ -115,25 +114,6 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
   const searchedIdentities = searchedIdentitiesResponse
     ? searchedIdentitiesResponse.identities.map((v) => v.identity)
     : [];
-
-  // Fetch identities for name resolution in the table (separate unbounded query)
-  const { data: orgIdentitiesResponse } = useSearchOrgIdentityMemberships({
-    limit: 100,
-    search: {}
-  });
-  const orgIdentities = orgIdentitiesResponse
-    ? orgIdentitiesResponse.identities.map((v) => v.identity)
-    : [];
-
-  // Track names of identities that have been added to the template,
-  // so we can display their names even if they fall outside the fetched page
-  const knownIdentityNamesRef = useRef<Map<string, string>>(new Map());
-
-  useEffect(() => {
-    [...searchedIdentities, ...orgIdentities].forEach((identity) => {
-      knownIdentityNamesRef.current.set(identity.id, identity.name);
-    });
-  }, [searchedIdentities, orgIdentities]);
 
   const {
     control,
@@ -219,15 +199,6 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
       }));
   }, [searchedIdentities, currentIdentities]);
 
-  const getIdentityName = (identityId: string) => {
-    // First check the cached names map (includes results from search queries)
-    const cachedName = knownIdentityNamesRef.current.get(identityId);
-    if (cachedName) return cachedName;
-    // Fallback to the org identities list
-    const identity = orgIdentities.find((i) => i.id === identityId);
-    return identity?.name || identityId;
-  };
-
   // Add org identity modal form
   const {
     control: addOrgIdentityControl,
@@ -248,6 +219,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
   const handleAddOrgIdentity = (form: TAddOrgIdentityForm) => {
     appendIdentity({
       identityId: form.selectedIdentity.id,
+      identityName: form.selectedIdentity.name,
       roles: form.roles.map((r) => r.slug)
     });
     resetAddOrgIdentityForm();
@@ -296,7 +268,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
       index,
       id: identity.id,
       identityId: identity.identityId,
-      name: getIdentityName(identity.identityId),
+      name: identity.identityName,
       roles: currentIdentities[index]?.roles || []
     }));
 
@@ -309,7 +281,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
     }));
 
     return [...projectManaged, ...orgManaged];
-  }, [identities, projectManagedIdentities, currentIdentities, orgIdentities, watch]);
+  }, [identities, projectManagedIdentities, currentIdentities, watch]);
 
   return (
     <>

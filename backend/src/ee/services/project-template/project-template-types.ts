@@ -25,6 +25,7 @@ export type TProjectTemplateGroup = {
 
 export type TProjectTemplateOrgManagedIdentity = {
   identityId: string;
+  identityName: string;
   roles: string[]; // role slugs
 };
 

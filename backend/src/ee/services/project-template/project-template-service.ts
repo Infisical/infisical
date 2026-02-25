@@ -105,6 +105,7 @@ export const projectTemplateServiceFactory = ({
   ): TProjectTemplateOrgManagedIdentity[] => {
     return memberships.map((m) => ({
       identityId: m.identityId,
+      identityName: m.identityName,
       roles: m.roles
     }));
   };
