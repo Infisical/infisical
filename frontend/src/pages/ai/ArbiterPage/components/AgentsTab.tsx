@@ -1,11 +1,18 @@
 import * as Icons from "lucide-react";
+import { ActivityIcon } from "lucide-react";
 
 import {
   Badge,
   UnstableCard,
-  UnstableCardContent,
+  UnstableCardDescription,
   UnstableCardHeader,
-  UnstableCardTitle
+  UnstableCardTitle,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
 } from "@app/components/v3";
 
 import { AGENTS } from "../data";
@@ -19,34 +26,50 @@ const AGENT_DESCRIPTIONS: Record<string, string> = {
 
 const getIcon = (name: string) => {
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
-  return Icon ? <Icon className="h-5 w-5" /> : null;
+  return Icon ? <Icon className="size-3" /> : null;
 };
 
 export const AgentsTab = () => {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {AGENTS.map((agent) => (
-        <UnstableCard key={agent.id}>
-          <UnstableCardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                {getIcon(agent.icon)}
-              </div>
-              <div>
-                <UnstableCardTitle>{agent.name}</UnstableCardTitle>
-                <Badge variant="success" className="mt-1">
+    <UnstableCard>
+      <UnstableCardHeader>
+        <UnstableCardTitle>Agents</UnstableCardTitle>
+        <UnstableCardDescription>
+          Registered agents and their current status.
+        </UnstableCardDescription>
+      </UnstableCardHeader>
+      <UnstableTable>
+        <UnstableTableHeader>
+          <UnstableTableRow>
+            <UnstableTableHead className="w-1/4">Name</UnstableTableHead>
+            <UnstableTableHead>Description</UnstableTableHead>
+            <UnstableTableHead>Status</UnstableTableHead>
+          </UnstableTableRow>
+        </UnstableTableHeader>
+        <UnstableTableBody>
+          {AGENTS.map((agent) => (
+            <UnstableTableRow key={agent.id}>
+              <UnstableTableCell>
+                <div className="flex items-center gap-2">
+                  {getIcon(agent.icon)}
+                  <span className="font-medium">{agent.name}</span>
+                </div>
+              </UnstableTableCell>
+              <UnstableTableCell>
+                <span className="text-xs text-accent">
+                  {AGENT_DESCRIPTIONS[agent.id] ?? "No description available."}
+                </span>
+              </UnstableTableCell>
+              <UnstableTableCell>
+                <Badge variant="success">
+                  <ActivityIcon />
                   Active
                 </Badge>
-              </div>
-            </div>
-          </UnstableCardHeader>
-          <UnstableCardContent>
-            <p className="text-sm text-accent">
-              {AGENT_DESCRIPTIONS[agent.id] ?? "No description available."}
-            </p>
-          </UnstableCardContent>
-        </UnstableCard>
-      ))}
-    </div>
+              </UnstableTableCell>
+            </UnstableTableRow>
+          ))}
+        </UnstableTableBody>
+      </UnstableTable>
+    </UnstableCard>
   );
 };
