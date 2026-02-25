@@ -98,6 +98,11 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
 
           <ScaleIcon className={`relative z-10 h-8 w-8 ${statusColor.text}`} />
 
+          {/* Network Arbiter Label */}
+          <div className="absolute -bottom-2 mt-4 translate-y-full font-mono text-[10px] tracking-widest text-muted uppercase">
+            Network Arbiter
+          </div>
+
           {/* Policy Decision Text */}
           <AnimatePresence>
             {currentEvent && (
@@ -154,7 +159,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   y: { duration: 5 + index * 0.8, repeat: Infinity, ease: "easeInOut" },
                   x: { duration: 7 + index, repeat: Infinity, ease: "easeInOut" }
                 }}
-                className={`flex h-24 w-24 flex-col items-center justify-center rounded-full border bg-card transition-shadow duration-500 ${
+                className={`flex h-24 w-24 items-center justify-center rounded-full border bg-card transition-shadow duration-500 ${
                   isActive
                     ? currentEvent?.status === "approved"
                       ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
@@ -162,11 +167,11 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                     : "border-border bg-card/10"
                 }`}
               >
-                <div className="mb-1 text-foreground">{getIcon(agent.icon)}</div>
-                <div className="font-mono text-[10px] tracking-widest text-muted uppercase">
-                  {agent.name}
-                </div>
+                <div className="text-foreground">{getIcon(agent.icon)}</div>
               </motion.div>
+              <div className="absolute top-full mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
+                {agent.name}
+              </div>
 
               {/* Connection Line to Center */}
               <svg className="absolute -z-10 overflow-visible" style={{ left: 48, top: 48 }}>
@@ -221,6 +226,81 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
             </div>
           );
         })}
+      </div>
+
+      {/* Legend */}
+      <div className="absolute right-4 bottom-4 z-20 rounded-md border border-border bg-bunker-900/80 p-3 backdrop-blur-sm">
+        <div className="mb-2 font-mono text-[10px] tracking-widest text-muted uppercase">
+          Legend
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14">
+              <path
+                d="M7 1 L12.5 4 V10 L7 13 L1.5 10 V4 Z"
+                fill="rgba(241, 196, 15, 0.1)"
+                stroke="#f1c40f"
+                strokeWidth="0.8"
+              />
+            </svg>
+            <span className="font-mono text-[10px] text-muted">Network Arbiter</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14">
+              <circle
+                cx="7"
+                cy="7"
+                r="5.5"
+                fill="rgba(255,255,255,0.05)"
+                stroke="var(--color-border)"
+                strokeWidth="0.8"
+              />
+            </svg>
+            <span className="font-mono text-[10px] text-muted">AI Agent</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg width="14" height="6" viewBox="0 0 14 6">
+              <line
+                x1="0"
+                y1="3"
+                x2="14"
+                y2="3"
+                stroke="#2ecc71"
+                strokeWidth="1"
+                strokeDasharray="3 2"
+              />
+            </svg>
+            <span className="font-mono text-[10px] text-muted">Approved</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg width="14" height="6" viewBox="0 0 14 6">
+              <line
+                x1="0"
+                y1="3"
+                x2="14"
+                y2="3"
+                stroke="#e74c3c"
+                strokeWidth="1"
+                strokeDasharray="3 2"
+              />
+            </svg>
+            <span className="font-mono text-[10px] text-muted">Denied</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg width="14" height="6" viewBox="0 0 14 6">
+              <line
+                x1="0"
+                y1="3"
+                x2="14"
+                y2="3"
+                stroke="#f1c40f"
+                strokeWidth="1"
+                strokeDasharray="3 2"
+              />
+            </svg>
+            <span className="font-mono text-[10px] text-muted">Idle / Evaluating</span>
+          </div>
+        </div>
       </div>
 
       <style>{`
