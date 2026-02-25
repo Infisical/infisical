@@ -199,7 +199,10 @@ import {
   approvalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
 import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import { infraFileDALFactory } from "@app/services/infra/infra-file-dal";
+import { infraRunDALFactory } from "@app/services/infra/infra-run-dal";
 import { infraServiceFactory } from "@app/services/infra/infra-service";
+import { infraStateDALFactory } from "@app/services/infra/infra-state-dal";
 import {
   approvalRequestApprovalsDALFactory,
   approvalRequestDALFactory,
@@ -2779,7 +2782,10 @@ export const registerRoutes = async (
   await microsoftTeamsService.start();
   await eventBusService.init();
 
-  const infraService = infraServiceFactory();
+  const infraFileDAL = infraFileDALFactory(db);
+  const infraRunDAL = infraRunDALFactory(db);
+  const infraStateDAL = infraStateDALFactory(db);
+  const infraService = infraServiceFactory({ infraFileDAL, infraRunDAL, infraStateDAL });
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {

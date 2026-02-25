@@ -1,14 +1,15 @@
 import Editor, { loader, type OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 // Load Monaco from the local bundle to avoid CSP violations.
-// Set up web workers via Vite's ?worker import.
 self.MonacoEnvironment = {
   getWorker: () => new editorWorker()
 };
 loader.config({ monaco });
+
 import {
   ChevronRightIcon,
   FileIcon,
@@ -24,93 +25,72 @@ import {
 import {
   Badge,
   Button,
+  Skeleton,
   UnstableCard,
   UnstableCardContent,
   UnstableCardHeader,
   UnstableCardTitle,
   UnstableIconButton
 } from "@app/components/v3";
-import { apiRequest } from "@app/config/request";
+import { useProject } from "@app/context";
+import { useApproveInfraRun, useDeleteInfraFile, useInfraFiles, useTriggerInfraRun, useUpsertInfraFile } from "@app/hooks/api/infra";
+import { TAiInsight, TPlanJson } from "@app/hooks/api/infra/types";
 
-type InfraFile = {
+type LocalFile = {
   name: string;
   content: string;
+  dirty: boolean;
 };
 
-const DEFAULT_FILES: InfraFile[] = [
-  {
-    name: "main.tf",
-    content: `# Infisical Infra — write your OpenTofu config here
+const DEFAULT_MAIN_TF = `# Infisical Infra — write your OpenTofu config here
 
 resource "local_file" "hello" {
   content  = "Hello from Infisical Infra!"
   filename = "/tmp/infisical-infra-hello.txt"
 }
-`
-  },
-  {
-    name: "variables.tf",
-    content: `variable "environment" {
-  description = "Deployment environment"
-  type        = string
-  default     = "production"
-}
-
-variable "region" {
-  description = "Cloud region"
-  type        = string
-  default     = "us-east-1"
-}
-`
-  },
-  {
-    name: "outputs.tf",
-    content: `output "file_path" {
-  description = "Path to the generated file"
-  value       = local_file.hello.filename
-}
-`
-  }
-];
-
-const AI_SUGGESTION = {
-  title: "Add a provider block",
-  description:
-    "Your configuration doesn't have a provider block. Consider adding a provider with backend configuration for remote state management.",
-  snippet: `terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-
-  backend "s3" {
-    bucket = "my-terraform-state"
-    key    = "state/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
-provider "aws" {
-  region = var.region
-}
-`
-};
+`;
 
 export const InfraEditorPage = () => {
-  const [files, setFiles] = useState<InfraFile[]>(DEFAULT_FILES);
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
+
+  // API hooks
+  const { data: remoteFiles, isLoading: filesLoading } = useInfraFiles(projectId);
+  const upsertFile = useUpsertInfraFile();
+  const deleteFile = useDeleteInfraFile();
+  const triggerRun = useTriggerInfraRun();
+
+  const approveRun = useApproveInfraRun();
+
+  // Local state
+  const [files, setFiles] = useState<LocalFile[]>([]);
   const [activeFileIndex, setActiveFileIndex] = useState(0);
   const [output, setOutput] = useState("");
+  const [aiInsight, setAiInsight] = useState<TAiInsight | null>(null);
+  const [planJson, setPlanJson] = useState<TPlanJson | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState<"plan" | "apply">("plan");
-  const [showAiSuggestion, setShowAiSuggestion] = useState(true);
   const [consoleHeight, setConsoleHeight] = useState(200);
+  const [initialized, setInitialized] = useState(false);
+  const [awaitingApproval, setAwaitingApproval] = useState<{ runId: string } | null>(null);
   const outputRef = useRef<HTMLPreElement>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const resizingRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeFile = files[activeFileIndex];
+
+  // Load remote files into local state
+  useEffect(() => {
+    if (filesLoading || initialized) return;
+    if (remoteFiles && remoteFiles.length > 0) {
+      setFiles(remoteFiles.map((f) => ({ name: f.name, content: f.content, dirty: false })));
+    } else {
+      // No files yet — create a default main.tf
+      setFiles([{ name: "main.tf", content: DEFAULT_MAIN_TF, dirty: true }]);
+    }
+    setInitialized(true);
+  }, [remoteFiles, filesLoading, initialized]);
 
   const scrollToBottom = useCallback(() => {
     if (outputRef.current) {
@@ -123,11 +103,22 @@ export const InfraEditorPage = () => {
     editor.focus();
   };
 
+  // Auto-save with debounce
+  const scheduleSave = useCallback(
+    (fileName: string, content: string) => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        upsertFile.mutate({ projectId, name: fileName, content });
+        setFiles((prev) => prev.map((f) => (f.name === fileName ? { ...f, dirty: false } : f)));
+      }, 1000);
+    },
+    [projectId, upsertFile]
+  );
+
   const handleFileContentChange = (value: string | undefined) => {
-    if (value === undefined) return;
-    setFiles((prev) =>
-      prev.map((f, i) => (i === activeFileIndex ? { ...f, content: value } : f))
-    );
+    if (value === undefined || !activeFile) return;
+    setFiles((prev) => prev.map((f, i) => (i === activeFileIndex ? { ...f, content: value, dirty: true } : f)));
+    scheduleSave(activeFile.name, value);
   };
 
   const handleAddFile = () => {
@@ -139,13 +130,17 @@ export const InfraEditorPage = () => {
       name = `${baseName}${counter}${ext}`;
       counter += 1;
     }
-    const newFiles = [...files, { name, content: `# ${name}\n` }];
+    const content = `# ${name}\n`;
+    const newFiles = [...files, { name, content, dirty: true }];
     setFiles(newFiles);
     setActiveFileIndex(newFiles.length - 1);
+    upsertFile.mutate({ projectId, name, content });
   };
 
   const handleDeleteFile = (index: number) => {
     if (files.length <= 1) return;
+    const file = files[index];
+    deleteFile.mutate({ projectId, name: file.name });
     const newFiles = files.filter((_, i) => i !== index);
     setFiles(newFiles);
     if (activeFileIndex >= newFiles.length) {
@@ -165,31 +160,43 @@ export const InfraEditorPage = () => {
       window.alert("A file with that name already exists.");
       return;
     }
-    setFiles((prev) =>
-      prev.map((f, i) => (i === index ? { ...f, name: newName } : f))
-    );
+    // Delete old, create new
+    deleteFile.mutate({ projectId, name: current.name });
+    upsertFile.mutate({ projectId, name: newName, content: current.content });
+    setFiles((prev) => prev.map((f, i) => (i === index ? { ...f, name: newName } : f)));
   };
 
-  const handleApplySuggestion = () => {
-    const newFiles = [...files, { name: "providers.tf", content: AI_SUGGESTION.snippet }];
-    setFiles(newFiles);
-    setActiveFileIndex(newFiles.length - 1);
-    setShowAiSuggestion(false);
+  // Save all dirty files before running
+  const saveAllFiles = async () => {
+    const dirtyFiles = files.filter((f) => f.dirty);
+    await Promise.all(dirtyFiles.map((f) => upsertFile.mutateAsync({ projectId, name: f.name, content: f.content })));
+    setFiles((prev) => prev.map((f) => ({ ...f, dirty: false })));
   };
 
   const handleRun = async (runMode: "plan" | "apply") => {
     setMode(runMode);
     setIsRunning(true);
     setOutput("");
+    setAiInsight(null);
+    setPlanJson(null);
+    setAwaitingApproval(null);
 
-    const hcl = files.map((f) => `# --- ${f.name} ---\n${f.content}`).join("\n\n");
+    await saveAllFiles();
 
     try {
-      const { data } = await apiRequest.post<{ output: string; status: string }>(
-        "/api/v1/infra/run",
-        { hcl, mode: runMode }
-      );
-      setOutput(data.output);
+      const result = await triggerRun.mutateAsync({ projectId, mode: runMode });
+      setOutput(result.output);
+      if (result.planJson) setPlanJson(result.planJson);
+      if (result.aiSummary) {
+        try {
+          setAiInsight(JSON.parse(result.aiSummary) as TAiInsight);
+        } catch {
+          setAiInsight({ summary: result.aiSummary, costs: { estimated: [], aiEstimated: [], totalMonthly: "N/A", deltaMonthly: "N/A" }, security: { issues: [], shouldApprove: false } });
+        }
+      }
+      if (result.status === "awaiting_approval") {
+        setAwaitingApproval({ runId: result.runId });
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setOutput(`Error: ${message}`);
@@ -199,30 +206,43 @@ export const InfraEditorPage = () => {
     }
   };
 
+  const handleApprove = async () => {
+    if (!awaitingApproval) return;
+    setAwaitingApproval(null);
+    await approveRun.mutateAsync({ projectId, runId: awaitingApproval.runId });
+    // Re-trigger apply after approval
+    handleRun("apply");
+  };
+
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       resizingRef.current = true;
       const startY = e.clientY;
       const startH = consoleHeight;
-
       const onMove = (ev: MouseEvent) => {
         if (!resizingRef.current) return;
-        const delta = startY - ev.clientY;
-        setConsoleHeight(Math.max(80, Math.min(500, startH + delta)));
+        setConsoleHeight(Math.max(80, Math.min(500, startH + (startY - ev.clientY))));
       };
-
       const onUp = () => {
         resizingRef.current = false;
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
       };
-
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
     },
     [consoleHeight]
   );
+
+  if (filesLoading && !initialized) {
+    return (
+      <div className="flex flex-col gap-4 p-8">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 160px)" }}>
@@ -233,14 +253,9 @@ export const InfraEditorPage = () => {
           <span className="text-sm font-medium text-mineshaft-200">workspace</span>
           <ChevronRightIcon className="size-3 text-mineshaft-600" />
           <span className="text-sm text-mineshaft-300">{activeFile?.name}</span>
+          {activeFile?.dirty && <span className="size-2 rounded-full bg-yellow-500" title="Unsaved changes" />}
         </div>
         <div className="flex items-center gap-2">
-          {showAiSuggestion && !files.some((f) => f.name === "providers.tf") && (
-            <Button variant="ghost" size="xs" onClick={handleApplySuggestion}>
-              <SparklesIcon className="size-3" />
-              AI: Add provider block
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"
@@ -266,17 +281,12 @@ export const InfraEditorPage = () => {
       <div className="flex min-h-0 flex-1">
         {/* File sidebar */}
         <div className="flex w-52 shrink-0 flex-col border-r border-mineshaft-600 bg-mineshaft-900">
-          {/* Sidebar header */}
           <div className="flex items-center justify-between border-b border-mineshaft-600 px-3 py-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">
-              Explorer
-            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">Explorer</span>
             <UnstableIconButton variant="ghost" size="xs" onClick={handleAddFile}>
               <FilePlusIcon className="size-3.5" />
             </UnstableIconButton>
           </div>
-
-          {/* File list */}
           <div className="flex-1 overflow-y-auto py-1">
             {files.map((file, i) => (
               <div
@@ -301,6 +311,7 @@ export const InfraEditorPage = () => {
               >
                 <FileIcon className="size-3.5 shrink-0 text-mineshaft-500" />
                 <span className="flex-1 truncate">{file.name}</span>
+                {file.dirty && <span className="size-1.5 shrink-0 rounded-full bg-yellow-500" />}
                 <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100">
                   <button
                     type="button"
@@ -328,51 +339,12 @@ export const InfraEditorPage = () => {
               </div>
             ))}
           </div>
-
-          {/* AI suggestion in sidebar */}
-          {showAiSuggestion && !files.some((f) => f.name === "providers.tf") && (
-            <div className="border-t border-mineshaft-600 p-3">
-              <UnstableCard className="border-primary/20 bg-primary/[0.03]">
-                <UnstableCardHeader className="p-2 pb-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <SparklesIcon className="size-3 text-primary" />
-                      <UnstableCardTitle className="text-[11px] font-medium text-mineshaft-200">
-                        AI Suggestion
-                      </UnstableCardTitle>
-                    </div>
-                    <button
-                      type="button"
-                      className="text-mineshaft-600 hover:text-mineshaft-300"
-                      onClick={() => setShowAiSuggestion(false)}
-                    >
-                      <XIcon className="size-3" />
-                    </button>
-                  </div>
-                </UnstableCardHeader>
-                <UnstableCardContent className="p-2 pt-0">
-                  <p className="text-[11px] leading-relaxed text-mineshaft-500">
-                    {AI_SUGGESTION.description}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    className="mt-1.5 w-full"
-                    onClick={handleApplySuggestion}
-                  >
-                    <SparklesIcon className="size-3" />
-                    Apply
-                  </Button>
-                </UnstableCardContent>
-              </UnstableCard>
-            </div>
-          )}
         </div>
 
         {/* Editor + Console vertical split */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Open file tabs */}
-          <div className="flex shrink-0 items-center bg-mineshaft-900 border-b border-mineshaft-600">
+          <div className="flex shrink-0 items-center border-b border-mineshaft-600 bg-mineshaft-900">
             {files.map((file, i) => (
               <button
                 key={file.name}
@@ -389,6 +361,7 @@ export const InfraEditorPage = () => {
               >
                 <FileIcon className="size-3" />
                 {file.name}
+                {file.dirty && <span className="size-1.5 rounded-full bg-yellow-500" />}
               </button>
             ))}
           </div>
@@ -436,23 +409,122 @@ export const InfraEditorPage = () => {
                   </Badge>
                 )}
               </div>
-              {output && (
-                <Button variant="ghost" size="xs" onClick={() => setOutput("")}>
-                  <Trash2Icon className="size-3" />
-                  Clear
-                </Button>
+              <div className="flex items-center gap-2">
+                {planJson && (
+                  <Badge variant="info">
+                    +{planJson.add} ~{planJson.change} -{planJson.destroy}
+                  </Badge>
+                )}
+                {aiInsight && (
+                  <Badge variant="info">
+                    <SparklesIcon className="size-3" />
+                    AI Insight
+                  </Badge>
+                )}
+                {output && (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setOutput("");
+                      setAiInsight(null);
+                      setPlanJson(null);
+                      setAwaitingApproval(null);
+                    }}
+                  >
+                    <Trash2Icon className="size-3" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex min-h-0 flex-1 overflow-auto">
+              <pre ref={outputRef} className="min-w-0 flex-1 bg-[#1e1e1e] p-3 font-mono text-xs text-green-400">
+                {output || (
+                  <span className="text-mineshaft-600">
+                    Click &quot;Plan&quot; or &quot;Apply&quot; to run your configuration...
+                  </span>
+                )}
+              </pre>
+              {(aiInsight || awaitingApproval) && (
+                <div className="w-96 shrink-0 overflow-y-auto border-l border-mineshaft-600 bg-mineshaft-900 p-3">
+                  {/* Approval gate */}
+                  {awaitingApproval && aiInsight?.security?.shouldApprove && (
+                    <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 p-3">
+                      <p className="mb-2 text-xs font-semibold text-red-400">Security Issues Detected</p>
+                      {aiInsight.security.issues.map((issue, idx) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <div key={idx} className="mb-1.5 text-xs text-red-300">
+                          <Badge variant="danger" className="mr-1">{issue.severity}</Badge>
+                          {issue.resource} — {issue.description}
+                        </div>
+                      ))}
+                      <div className="mt-3 flex gap-2">
+                        <Button size="xs" variant="success" onClick={handleApprove}>
+                          Approve & Apply
+                        </Button>
+                        <Button size="xs" variant="outline" onClick={() => setAwaitingApproval(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Summary */}
+                  {aiInsight && (
+                    <>
+                      <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-primary">
+                        <SparklesIcon className="size-3" />
+                        AI Analysis
+                      </div>
+                      <div className="prose prose-invert prose-xs mb-3 max-w-none text-xs text-mineshaft-300">
+                        <ReactMarkdown>{aiInsight.summary}</ReactMarkdown>
+                      </div>
+
+                      {/* Costs */}
+                      {(aiInsight.costs.estimated.length > 0 || aiInsight.costs.aiEstimated.length > 0) && (
+                        <div className="mb-3">
+                          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">
+                            Cost Estimate
+                          </p>
+                          <p className="mb-1 text-xs text-mineshaft-200">
+                            {aiInsight.costs.totalMonthly}/mo ({aiInsight.costs.deltaMonthly} delta)
+                          </p>
+                          {[...aiInsight.costs.estimated, ...aiInsight.costs.aiEstimated].map((c, idx) => (
+                            // eslint-disable-next-line react/no-array-index-key
+                            <div key={idx} className="flex justify-between text-[11px] text-mineshaft-400">
+                              <span>{c.resource}</span>
+                              <span>{c.monthlyCost}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Security */}
+                      {aiInsight.security.issues.length > 0 && !awaitingApproval && (
+                        <div>
+                          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">
+                            Security
+                          </p>
+                          {aiInsight.security.issues.map((issue, idx) => (
+                            // eslint-disable-next-line react/no-array-index-key
+                            <div key={idx} className="mb-1 text-xs">
+                              <Badge
+                                variant={issue.severity === "critical" || issue.severity === "high" ? "danger" : "warning"}
+                                className="mr-1"
+                              >
+                                {issue.severity}
+                              </Badge>
+                              <span className="text-mineshaft-300">{issue.description}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
             </div>
-            <pre
-              ref={outputRef}
-              className="min-h-0 flex-1 overflow-auto bg-[#1e1e1e] p-3 font-mono text-xs text-green-400"
-            >
-              {output || (
-                <span className="text-mineshaft-600">
-                  Click &quot;Plan&quot; or &quot;Apply&quot; to run your configuration...
-                </span>
-              )}
-            </pre>
           </div>
         </div>
       </div>

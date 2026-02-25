@@ -259,7 +259,12 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
 
-  QueueJobs = "queue_jobs"
+  QueueJobs = "queue_jobs",
+
+  // Infra
+  InfraFile = "infra_files",
+  InfraState = "infra_states",
+  InfraRun = "infra_runs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

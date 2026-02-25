@@ -155,6 +155,7 @@ import { Route as projectRoleDetailsBySlugPageRouteKmsImport } from './pages/pro
 import { Route as projectMemberDetailsByIDPageRouteKmsImport } from './pages/project/MemberDetailsByIDPage/route-kms'
 import { Route as projectIdentityDetailsByIDPageRouteKmsImport } from './pages/project/IdentityDetailsByIDPage/route-kms'
 import { Route as projectGroupDetailsByIDPageRouteKmsImport } from './pages/project/GroupDetailsByIDPage/route-kms'
+import { Route as infraRunsPageRouteDetailImport } from './pages/infra/RunsPage/route-detail'
 import { Route as projectRoleDetailsBySlugPageRouteInfraImport } from './pages/project/RoleDetailsBySlugPage/route-infra'
 import { Route as projectMemberDetailsByIDPageRouteInfraImport } from './pages/project/MemberDetailsByIDPage/route-infra'
 import { Route as projectIdentityDetailsByIDPageRouteInfraImport } from './pages/project/IdentityDetailsByIDPage/route-infra'
@@ -1615,6 +1616,12 @@ const projectGroupDetailsByIDPageRouteKmsRoute =
     path: '/groups/$groupId',
     getParentRoute: () => kmsLayoutRoute,
   } as any)
+
+const infraRunsPageRouteDetailRoute = infraRunsPageRouteDetailImport.update({
+  id: '/run/$runId',
+  path: '/run/$runId',
+  getParentRoute: () => infraLayoutRoute,
+} as any)
 
 const projectRoleDetailsBySlugPageRouteInfraRoute =
   projectRoleDetailsBySlugPageRouteInfraImport.update({
@@ -3897,6 +3904,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectRoleDetailsBySlugPageRouteInfraImport
       parentRoute: typeof infraLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/run/$runId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/run/$runId'
+      path: '/run/$runId'
+      fullPath: '/organizations/$orgId/projects/infra/$projectId/run/$runId'
+      preLoaderRoute: typeof infraRunsPageRouteDetailImport
+      parentRoute: typeof infraLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/groups/$groupId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/groups/$groupId'
       path: '/groups/$groupId'
@@ -4901,6 +4915,7 @@ interface infraLayoutRouteChildren {
   projectIdentityDetailsByIDPageRouteInfraRoute: typeof projectIdentityDetailsByIDPageRouteInfraRoute
   projectMemberDetailsByIDPageRouteInfraRoute: typeof projectMemberDetailsByIDPageRouteInfraRoute
   projectRoleDetailsBySlugPageRouteInfraRoute: typeof projectRoleDetailsBySlugPageRouteInfraRoute
+  infraRunsPageRouteDetailRoute: typeof infraRunsPageRouteDetailRoute
 }
 
 const infraLayoutRouteChildren: infraLayoutRouteChildren = {
@@ -4921,6 +4936,7 @@ const infraLayoutRouteChildren: infraLayoutRouteChildren = {
     projectMemberDetailsByIDPageRouteInfraRoute,
   projectRoleDetailsBySlugPageRouteInfraRoute:
     projectRoleDetailsBySlugPageRouteInfraRoute,
+  infraRunsPageRouteDetailRoute: infraRunsPageRouteDetailRoute,
 }
 
 const infraLayoutRouteWithChildren = infraLayoutRoute._addFileChildren(
@@ -6105,6 +6121,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/infra/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteInfraRoute
   '/organizations/$orgId/projects/infra/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteInfraRoute
   '/organizations/$orgId/projects/infra/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteInfraRoute
+  '/organizations/$orgId/projects/infra/$projectId/run/$runId': typeof infraRunsPageRouteDetailRoute
   '/organizations/$orgId/projects/kms/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteKmsRoute
@@ -6373,6 +6390,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/infra/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteInfraRoute
   '/organizations/$orgId/projects/infra/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteInfraRoute
   '/organizations/$orgId/projects/infra/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteInfraRoute
+  '/organizations/$orgId/projects/infra/$projectId/run/$runId': typeof infraRunsPageRouteDetailRoute
   '/organizations/$orgId/projects/kms/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteKmsRoute
@@ -6666,6 +6684,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteInfraRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteInfraRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteInfraRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/run/$runId': typeof infraRunsPageRouteDetailRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/groups/$groupId': typeof projectGroupDetailsByIDPageRouteKmsRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteKmsRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteKmsRoute
@@ -6951,6 +6970,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/infra/$projectId/identities/$identityId'
     | '/organizations/$orgId/projects/infra/$projectId/members/$membershipId'
     | '/organizations/$orgId/projects/infra/$projectId/roles/$roleSlug'
+    | '/organizations/$orgId/projects/infra/$projectId/run/$runId'
     | '/organizations/$orgId/projects/kms/$projectId/groups/$groupId'
     | '/organizations/$orgId/projects/kms/$projectId/identities/$identityId'
     | '/organizations/$orgId/projects/kms/$projectId/members/$membershipId'
@@ -7218,6 +7238,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/infra/$projectId/identities/$identityId'
     | '/organizations/$orgId/projects/infra/$projectId/members/$membershipId'
     | '/organizations/$orgId/projects/infra/$projectId/roles/$roleSlug'
+    | '/organizations/$orgId/projects/infra/$projectId/run/$runId'
     | '/organizations/$orgId/projects/kms/$projectId/groups/$groupId'
     | '/organizations/$orgId/projects/kms/$projectId/identities/$identityId'
     | '/organizations/$orgId/projects/kms/$projectId/members/$membershipId'
@@ -7509,6 +7530,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/roles/$roleSlug'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/run/$runId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/groups/$groupId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/members/$membershipId'
@@ -8194,7 +8216,8 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/members/$membershipId",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/roles/$roleSlug"
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/roles/$roleSlug",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/run/$runId"
       ]
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout": {
@@ -8758,6 +8781,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/roles/$roleSlug": {
       "filePath": "project/RoleDetailsBySlugPage/route-infra.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/run/$runId": {
+      "filePath": "infra/RunsPage/route-detail.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/groups/$groupId": {

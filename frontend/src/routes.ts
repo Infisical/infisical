@@ -314,6 +314,7 @@ const infraRoutes = route("/organizations/$orgId/projects/infra/$projectId", [
   layout("infra-layout", "infra/layout.tsx", [
     route("/overview", "infra/DashboardPage/route.tsx"),
     route("/runs", "infra/RunsPage/route.tsx"),
+    route("/run/$runId", "infra/RunsPage/route-detail.tsx"),
     route("/resources", "infra/ResourcesPage/route.tsx"),
     route("/variables", "infra/VariablesPage/route.tsx"),
     route("/editor", "infra/EditorPage/route.tsx"),

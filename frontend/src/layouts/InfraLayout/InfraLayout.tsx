@@ -44,7 +44,15 @@ export const InfraLayout = () => {
                   params={baseParams}
                 >
                   {({ isActive }) => (
-                    <Tab value={isActive ? "selected" : ""}>Runs</Tab>
+                    <Tab
+                      value={
+                        isActive || location.pathname.match(/\/run\//)
+                          ? "selected"
+                          : ""
+                      }
+                    >
+                      Runs
+                    </Tab>
                   )}
                 </Link>
                 <Link

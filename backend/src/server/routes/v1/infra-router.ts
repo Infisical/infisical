@@ -1,78 +1,287 @@
 import type WebSocket from "ws";
 import { z } from "zod";
 
+import { InfraFilesSchema } from "@app/db/schemas/infra-files";
+import { InfraRunsSchema } from "@app/db/schemas/infra-runs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { InfraRunStatus } from "@app/services/infra/infra-types";
 
 export const registerInfraRouter = async (server: FastifyZodProvider) => {
-  // POST /api/v1/infra/run — run plan or apply (non-streaming fallback)
+  // ── File Endpoints ──
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/files",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      response: { 200: z.object({ files: InfraFilesSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const files = await server.services.infra.listFiles(req.params.projectId);
+      return { files };
+    }
+  });
+
   server.route({
     method: "POST",
-    url: "/run",
+    url: "/:projectId/files",
     config: { rateLimit: writeLimit },
     schema: {
-      body: z.object({
-        hcl: z.string().min(1, "HCL content is required"),
-        mode: z.enum(["plan", "apply"]).default("plan")
+      params: z.object({ projectId: z.string() }),
+      body: z.object({ name: z.string().min(1), content: z.string() }),
+      response: { 200: z.object({ file: InfraFilesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const file = await server.services.infra.upsertFile({
+        projectId: req.params.projectId,
+        name: req.body.name,
+        content: req.body.content
+      });
+      return { file };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:projectId/files/:name",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({ projectId: z.string(), name: z.string() }),
+      response: { 200: z.object({ success: z.boolean() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.infra.deleteFile({
+        projectId: req.params.projectId,
+        name: req.params.name
+      });
+      return { success: true };
+    }
+  });
+
+  // GET checksums for sync detection (CLI uses this)
+  server.route({
+    method: "GET",
+    url: "/:projectId/files/checksums",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      response: { 200: z.object({ checksums: z.record(z.string()) }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const checksums = await server.services.infra.getFileChecksums(req.params.projectId);
+      return { checksums };
+    }
+  });
+
+  // Pull all files (CLI download)
+  server.route({
+    method: "POST",
+    url: "/:projectId/files/pull",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      response: { 200: z.object({ files: z.array(z.object({ name: z.string(), content: z.string() })) }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const files = await server.services.infra.listFiles(req.params.projectId);
+      return { files: files.map((f) => ({ name: f.name, content: f.content })) };
+    }
+  });
+
+  // ── Resource Endpoints ──
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/resources",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      response: {
+        200: z.object({
+          resources: z.array(
+            z.object({
+              type: z.string(),
+              name: z.string(),
+              provider: z.string(),
+              address: z.string(),
+              attributes: z.record(z.unknown())
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const resources = await server.services.infra.getResources(req.params.projectId);
+      return { resources };
+    }
+  });
+
+  // ── Run Endpoints ──
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/runs",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      querystring: z.object({
+        limit: z.coerce.number().optional().default(50),
+        offset: z.coerce.number().optional().default(0)
       }),
+      response: { 200: z.object({ runs: InfraRunsSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const runs = await server.services.infra.listRuns({
+        projectId: req.params.projectId,
+        limit: req.query.limit,
+        offset: req.query.offset
+      });
+      return { runs };
+    }
+  });
+
+  // Get single run detail
+  server.route({
+    method: "GET",
+    url: "/:projectId/runs/:runId",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ projectId: z.string(), runId: z.string() }),
+      response: {
+        200: z.object({
+          run: InfraRunsSchema,
+          previousFileSnapshot: z.record(z.string()).nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { previousFileSnapshot, ...run } = await server.services.infra.getRun(req.params.runId);
+      return { run, previousFileSnapshot };
+    }
+  });
+
+  // Approve a run that is awaiting_approval
+  server.route({
+    method: "POST",
+    url: "/:projectId/runs/:runId/approve",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({ projectId: z.string(), runId: z.string() }),
+      response: { 200: z.object({ run: InfraRunsSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const run = await server.services.infra.approveRun(req.params.runId);
+      return { run };
+    }
+  });
+
+  // Deny a run that is awaiting_approval
+  server.route({
+    method: "POST",
+    url: "/:projectId/runs/:runId/deny",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({ projectId: z.string(), runId: z.string() }),
+      response: { 200: z.object({ run: InfraRunsSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const run = await server.services.infra.denyRun(req.params.runId);
+      return { run };
+    }
+  });
+
+  // Trigger plan or apply (synchronous)
+  server.route({
+    method: "POST",
+    url: "/:projectId/run",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      body: z.object({ mode: z.enum(["plan", "apply"]).default("plan") }),
       response: {
         200: z.object({
           output: z.string(),
-          status: z.string()
+          status: z.string(),
+          runId: z.string(),
+          planJson: z.unknown().nullable().optional(),
+          aiSummary: z.string().nullable().optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       let output = "";
-      let status: InfraRunStatus = InfraRunStatus.Running;
-
-      await new Promise<void>((resolve) => {
-        server.services.infra.run(
-          { hcl: req.body.hcl, mode: req.body.mode },
+      const result = await new Promise<{
+        id: string;
+        status: string;
+        planJson?: unknown;
+        aiSummary?: string | null;
+      }>((resolve) => {
+        server.services.infra.triggerRun(
+          {
+            projectId: req.params.projectId,
+            mode: req.body.mode,
+            userId: req.permission.id
+          },
           (chunk: string) => {
             output += chunk;
           },
-          (finalStatus: InfraRunStatus) => {
-            status = finalStatus;
-            resolve();
-          }
+          (run) => resolve(run)
         );
       });
 
-      return { output, status };
+      return {
+        output,
+        status: result.status,
+        runId: result.id,
+        planJson: result.planJson ?? null,
+        aiSummary: result.aiSummary ?? null
+      };
     }
   });
 
-  // WebSocket /api/v1/infra/run/stream — streaming plan/apply output
+  // WebSocket streaming
   server.route({
     method: "GET",
-    url: "/run/stream",
+    url: "/:projectId/run/stream",
     config: { rateLimit: readLimit },
     schema: {
-      querystring: z.object({
-        hcl: z.string().min(1),
-        mode: z.enum(["plan", "apply"]).default("plan")
-      }),
-      response: {
-        200: z.object({ message: z.string() })
-      }
+      params: z.object({ projectId: z.string() }),
+      querystring: z.object({ mode: z.enum(["plan", "apply"]).default("plan") }),
+      response: { 200: z.object({ message: z.string() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    wsHandler: async (connection: WebSocket, req: { query: { hcl: string; mode: "plan" | "apply" } }) => {
+    wsHandler: async (
+      connection: WebSocket,
+      req: { params: { projectId: string }; query: { mode: "plan" | "apply" }; permission: { id: string } }
+    ) => {
       try {
-        server.services.infra.run(
-          { hcl: req.query.hcl, mode: req.query.mode },
+        server.services.infra.triggerRun(
+          {
+            projectId: req.params.projectId,
+            mode: req.query.mode,
+            userId: req.permission.id
+          },
           (chunk: string) => {
             if (connection.readyState === 1) {
               connection.send(JSON.stringify({ type: "output", data: chunk }));
             }
           },
-          (status: InfraRunStatus) => {
+          (run: { id: string; status: string; planJson?: unknown; aiSummary?: string | null }) => {
             if (connection.readyState === 1) {
-              connection.send(JSON.stringify({ type: "complete", status }));
+              connection.send(JSON.stringify({ type: "complete", ...run }));
               connection.close();
             }
           }
@@ -83,5 +292,38 @@ export const registerInfraRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: () => ({ message: "WebSocket upgrade required" })
+  });
+
+  // ── State Backend (for OpenTofu HTTP backend — no auth, called by tofu child process) ──
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/state",
+    config: { rateLimit: readLimit },
+    schema: { params: z.object({ projectId: z.string() }) },
+    handler: async (req, reply) => {
+      const state = await server.services.infra.getState(req.params.projectId);
+      if (!state) {
+        return reply.status(404).send({ error: "No state found" });
+      }
+      // Tofu HTTP backend expects raw JSON state with application/json content type
+      return reply.header("Content-Type", "application/json").send(
+        typeof state.content === "string" ? state.content : JSON.stringify(state.content)
+      );
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:projectId/state",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      body: z.unknown()
+    },
+    handler: async (req, reply) => {
+      await server.services.infra.upsertState(req.params.projectId, req.body);
+      return reply.send({ success: true });
+    }
   });
 };
