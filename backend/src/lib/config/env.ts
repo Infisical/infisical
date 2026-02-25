@@ -185,6 +185,8 @@ const envSchema = z
     ),
     ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.default("false").optional(),
     DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.default("false").optional(),
+    // OpenAI for AgentGate prompt policy evaluation
+    OPENAI_API_KEY: zpStr(z.string().optional().describe("OpenAI API key for AgentGate LLM policy evaluation")),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),

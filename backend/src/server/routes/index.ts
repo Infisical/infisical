@@ -189,6 +189,12 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import {
+  agentGateAuditDALFactory,
+  agentGateExecutionDALFactory,
+  agentGatePolicyDALFactory,
+  agentGateServiceFactory
+} from "@app/services/agent-gate";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -2608,6 +2614,11 @@ export const registerRoutes = async (
   const aiMcpEndpointServerDAL = aiMcpEndpointServerDALFactory(db);
   const aiMcpEndpointServerToolDAL = aiMcpEndpointServerToolDALFactory(db);
 
+  // AgentGate DALs
+  const agentGatePolicyDAL = agentGatePolicyDALFactory(db);
+  const agentGateExecutionDAL = agentGateExecutionDALFactory(db);
+  const agentGateAuditDAL = agentGateAuditDALFactory(db);
+
   const pamFolderService = pamFolderServiceFactory({
     pamFolderDAL,
     permissionService
@@ -2713,6 +2724,13 @@ export const registerRoutes = async (
     userDAL,
     permissionService,
     gatewayV2Service
+  });
+
+  // AgentGate Service
+  const agentGateService = agentGateServiceFactory({
+    agentGatePolicyDAL,
+    agentGateExecutionDAL,
+    agentGateAuditDAL
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -2918,7 +2936,8 @@ export const registerRoutes = async (
     aiMcpServer: aiMcpServerService,
     aiMcpEndpoint: aiMcpEndpointService,
     aiMcpActivityLog: aiMcpActivityLogService,
-    approvalPolicy: approvalPolicyService
+    approvalPolicy: approvalPolicyService,
+    agentGate: agentGateService
   });
 
   const cronJobs: CronJob[] = [];

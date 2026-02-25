@@ -61,6 +61,7 @@ import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { TAgentGateServiceFactory } from "@app/services/agent-gate/agent-gate-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
@@ -383,6 +384,7 @@ declare module "fastify" {
       aiMcpEndpoint: TAiMcpEndpointServiceFactory;
       aiMcpActivityLog: TAiMcpActivityLogServiceFactory;
       approvalPolicy: TApprovalPolicyServiceFactory;
+      agentGate: TAgentGateServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -20,6 +20,15 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
+  TAgentGateAuditLogs,
+  TAgentGateAuditLogsInsert,
+  TAgentGateAuditLogsUpdate,
+  TAgentGateExecutions,
+  TAgentGateExecutionsInsert,
+  TAgentGateExecutionsUpdate,
+  TAgentGatePolicies,
+  TAgentGatePoliciesInsert,
+  TAgentGatePoliciesUpdate,
   TAiMcpActivityLogs,
   TAiMcpActivityLogsInsert,
   TAiMcpActivityLogsUpdate,
@@ -1604,5 +1613,22 @@ declare module "knex/types/tables" {
     >;
 
     [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
+
+    // AgentGate tables
+    [TableName.AgentGatePolicies]: KnexOriginal.CompositeTableType<
+      TAgentGatePolicies,
+      TAgentGatePoliciesInsert,
+      TAgentGatePoliciesUpdate
+    >;
+    [TableName.AgentGateExecutions]: KnexOriginal.CompositeTableType<
+      TAgentGateExecutions,
+      TAgentGateExecutionsInsert,
+      TAgentGateExecutionsUpdate
+    >;
+    [TableName.AgentGateAuditLogs]: KnexOriginal.CompositeTableType<
+      TAgentGateAuditLogs,
+      TAgentGateAuditLogsInsert,
+      TAgentGateAuditLogsUpdate
+    >;
   }
 }

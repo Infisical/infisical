@@ -8,6 +8,7 @@ import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/
 
 import { registerAccountRecoveryRouter } from "./account-recovery-router";
 import { registerAdminRouter } from "./admin-router";
+import { registerAgentGateRouter } from "./agent-gate-router";
 import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
@@ -317,4 +318,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/approval-policies" }
   );
+
+  // AgentGate - AI Agent Governance
+  await server.register(registerAgentGateRouter, { prefix: "/agentgate" });
 };
