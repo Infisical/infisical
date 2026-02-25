@@ -1802,28 +1802,9 @@ export const secretV2BridgeServiceFactory = ({
 
     const secrets = await secretDAL.find({
       folderId,
-      $complex: {
-        operator: "and",
-        value: [
-          {
-            operator: "or",
-            value: inputSecrets.map((el) => ({
-              operator: "and",
-              value: [
-                {
-                  operator: "eq",
-                  field: `${TableName.SecretV2}.key` as "key",
-                  value: el.secretKey
-                },
-                {
-                  operator: "eq",
-                  field: "type",
-                  value: SecretType.Shared
-                }
-              ]
-            }))
-          }
-        ]
+      type: SecretType.Shared,
+      $in: {
+        [`${TableName.SecretV2}.key` as "key"]: inputSecrets.map((el) => el.secretKey)
       }
     });
     if (secrets.length)
@@ -2040,28 +2021,9 @@ export const secretV2BridgeServiceFactory = ({
         const secretsToUpdateInDB = await secretDAL.find(
           {
             folderId,
-            $complex: {
-              operator: "and",
-              value: [
-                {
-                  operator: "or",
-                  value: secretsToUpdate.map((el) => ({
-                    operator: "and",
-                    value: [
-                      {
-                        operator: "eq",
-                        field: `${TableName.SecretV2}.key` as "key",
-                        value: el.secretKey
-                      },
-                      {
-                        operator: "eq",
-                        field: "type",
-                        value: SecretType.Shared
-                      }
-                    ]
-                  }))
-                }
-              ]
+            type: SecretType.Shared,
+            $in: {
+              [`${TableName.SecretV2}.key` as "key"]: secretsToUpdate.map((el) => el.secretKey)
             }
           },
           { tx }
@@ -2148,28 +2110,9 @@ export const secretV2BridgeServiceFactory = ({
           const secrets = await secretDAL.find(
             {
               folderId,
-              $complex: {
-                operator: "and",
-                value: [
-                  {
-                    operator: "or",
-                    value: secretsWithNewName.map((el) => ({
-                      operator: "and",
-                      value: [
-                        {
-                          operator: "eq",
-                          field: `${TableName.SecretV2}.key` as "key",
-                          value: el.newSecretName as string
-                        },
-                        {
-                          operator: "eq",
-                          field: "type",
-                          value: SecretType.Shared
-                        }
-                      ]
-                    }))
-                  }
-                ]
+              type: SecretType.Shared,
+              $in: {
+                [`${TableName.SecretV2}.key` as "key"]: secretsWithNewName.map((el) => el.newSecretName as string)
               }
             },
             { tx }
@@ -2462,28 +2405,9 @@ export const secretV2BridgeServiceFactory = ({
 
     const secretsToDelete = await secretDAL.find({
       folderId,
-      $complex: {
-        operator: "and",
-        value: [
-          {
-            operator: "or",
-            value: inputSecrets.map((el) => ({
-              operator: "and",
-              value: [
-                {
-                  operator: "eq",
-                  field: `${TableName.SecretV2}.key` as "key",
-                  value: el.secretKey
-                },
-                {
-                  operator: "eq",
-                  field: "type",
-                  value: SecretType.Shared
-                }
-              ]
-            }))
-          }
-        ]
+      type: SecretType.Shared,
+      $in: {
+        [`${TableName.SecretV2}.key` as "key"]: inputSecrets.map((el) => el.secretKey)
       }
     });
     const secretsToDeleteSet = new Set(secretsToDelete.map((el) => el.key));
