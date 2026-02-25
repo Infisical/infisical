@@ -42,7 +42,7 @@ export type TCreateProjectTemplateDTO = {
   environments?: TProjectTemplateEnvironment[] | null;
   users?: TProjectTemplateUser[] | null;
   groups?: TProjectTemplateGroup[] | null;
-  identities?: TProjectTemplateOrgManagedIdentity[] | null;
+  identities?: Pick<TProjectTemplateOrgManagedIdentity, "identityId" | "roles">[] | null;
   projectManagedIdentities?: TProjectTemplateProjectManagedIdentity[] | null;
 };
 
@@ -51,7 +51,7 @@ export type TUpdateProjectTemplateDTO = Partial<
 > & {
   users?: TProjectTemplateUser[] | null;
   groups?: TProjectTemplateGroup[] | null;
-  identities?: TProjectTemplateOrgManagedIdentity[] | null;
+  identities?: Pick<TProjectTemplateOrgManagedIdentity, "identityId" | "roles">[] | null;
   projectManagedIdentities?: TProjectTemplateProjectManagedIdentity[] | null;
 };
 
