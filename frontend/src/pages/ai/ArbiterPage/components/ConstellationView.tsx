@@ -47,7 +47,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
   }, [currentEvent]);
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded rounded-b-lg border border-border bg-bunker-900">
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-md rounded-b-lg border border-border bg-bunker-900">
       {/* Grid/Network Background */}
       <svg className="absolute inset-0 h-full w-full">
         <defs>
@@ -189,7 +189,9 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       ? isTarget
                         ? { animation: "marchingAntsReverse 1s linear infinite" }
                         : { animation: "marchingAnts 1s linear infinite" }
-                      : { animation: `linePulse ${5 + index}s ease-in-out infinite, marchingAntsSlow ${12 + index * 2}s linear infinite, lineBreath ${6 + index}s ease-in-out infinite` }
+                      : {
+                          animation: `linePulse ${5 + index}s ease-in-out infinite, marchingAntsSlow ${12 + index * 2}s linear infinite, lineBreath ${6 + index}s ease-in-out infinite`
+                        }
                   }
                 />
 

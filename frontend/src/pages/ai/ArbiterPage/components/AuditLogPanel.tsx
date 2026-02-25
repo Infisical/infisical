@@ -104,7 +104,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
           </AnimatePresence>
 
           {events.length === 0 && (
-            <UnstableEmpty className="h-full">
+            <UnstableEmpty className="h-full border">
               <UnstableEmptyHeader>
                 <UnstableEmptyTitle>No events yet</UnstableEmptyTitle>
                 <UnstableEmptyDescription>
