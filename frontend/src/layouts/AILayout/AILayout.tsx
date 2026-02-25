@@ -36,6 +36,15 @@ export const AILayout = () => {
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>MCP</Tab>}
                 </Link>
                 <Link
+                  to="/organizations/$orgId/projects/ai/$projectId/arbiter"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Arbiter</Tab>}
+                </Link>
+                <Link
                   to="/organizations/$orgId/projects/ai/$projectId/access-management"
                   params={{
                     orgId: currentOrg.id,

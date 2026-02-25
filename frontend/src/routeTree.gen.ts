@@ -126,6 +126,7 @@ import { Route as certManagerApprovalsPageRouteImport } from './pages/cert-manag
 import { Route as certManagerAlertingPageRouteImport } from './pages/cert-manager/AlertingPage/route'
 import { Route as aiSettingsPageRouteImport } from './pages/ai/SettingsPage/route'
 import { Route as aiMCPPageRouteImport } from './pages/ai/MCPPage/route'
+import { Route as aiArbiterPageRouteImport } from './pages/ai/ArbiterPage/route'
 import { Route as projectRoleDetailsBySlugPageRouteSshImport } from './pages/project/RoleDetailsBySlugPage/route-ssh'
 import { Route as projectMemberDetailsByIDPageRouteSshImport } from './pages/project/MemberDetailsByIDPage/route-ssh'
 import { Route as projectIdentityDetailsByIDPageRouteSshImport } from './pages/project/IdentityDetailsByIDPage/route-ssh'
@@ -1391,6 +1392,12 @@ const aiSettingsPageRouteRoute = aiSettingsPageRouteImport.update({
 const aiMCPPageRouteRoute = aiMCPPageRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => aiLayoutRoute,
+} as any)
+
+const aiArbiterPageRouteRoute = aiArbiterPageRouteImport.update({
+  id: '/arbiter',
+  path: '/arbiter',
   getParentRoute: () => aiLayoutRoute,
 } as any)
 
@@ -3129,6 +3136,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof sshLayoutImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSshProjectIdImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/arbiter': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/arbiter'
+      path: '/arbiter'
+      fullPath: '/organizations/$orgId/projects/ai/$projectId/arbiter'
+      preLoaderRoute: typeof aiArbiterPageRouteImport
+      parentRoute: typeof aiLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview'
       path: '/overview'
@@ -4483,6 +4497,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren =
   )
 
 interface aiLayoutRouteChildren {
+  aiArbiterPageRouteRoute: typeof aiArbiterPageRouteRoute
   aiMCPPageRouteRoute: typeof aiMCPPageRouteRoute
   aiSettingsPageRouteRoute: typeof aiSettingsPageRouteRoute
   projectAccessControlPageRouteAiRoute: typeof projectAccessControlPageRouteAiRoute
@@ -4496,6 +4511,7 @@ interface aiLayoutRouteChildren {
 }
 
 const aiLayoutRouteChildren: aiLayoutRouteChildren = {
+  aiArbiterPageRouteRoute: aiArbiterPageRouteRoute,
   aiMCPPageRouteRoute: aiMCPPageRouteRoute,
   aiSettingsPageRouteRoute: aiSettingsPageRouteRoute,
   projectAccessControlPageRouteAiRoute: projectAccessControlPageRouteAiRoute,
@@ -5748,6 +5764,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/ssh/$projectId': typeof sshLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
+  '/organizations/$orgId/projects/ai/$projectId/arbiter': typeof aiArbiterPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
@@ -6011,6 +6028,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/ssh/$projectId': typeof sshLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
+  '/organizations/$orgId/projects/ai/$projectId/arbiter': typeof aiArbiterPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
@@ -6282,6 +6300,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout': typeof secretManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout': typeof secretScanningLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout': typeof sshLayoutRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/arbiter': typeof aiArbiterPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview': typeof aiMCPPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/settings': typeof aiSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting': typeof certManagerAlertingPageRouteRoute
@@ -6554,6 +6573,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ssh/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
+    | '/organizations/$orgId/projects/ai/$projectId/arbiter'
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
@@ -6816,6 +6836,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ssh/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
+    | '/organizations/$orgId/projects/ai/$projectId/arbiter'
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
@@ -7085,6 +7106,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/arbiter'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting'
@@ -7789,6 +7811,7 @@ export const routeTree = rootRoute
       "filePath": "ai/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/arbiter",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/access-management",
@@ -7913,6 +7936,10 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/members/$membershipId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/roles/$roleSlug"
       ]
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/arbiter": {
+      "filePath": "ai/ArbiterPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview": {
       "filePath": "ai/MCPPage/route.tsx",

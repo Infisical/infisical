@@ -315,6 +315,7 @@ const aiRoutes = route("/organizations/$orgId/projects/ai/$projectId", [
     route("/mcp-servers/$serverId", "ai/MCPServerDetailPage/route.tsx"),
     route("/mcp-endpoints/$endpointId", "ai/MCPEndpointDetailPage/route.tsx"),
     route("/overview", "ai/MCPPage/route.tsx"),
+    route("/arbiter", "ai/ArbiterPage/route.tsx"),
     route("/settings", "ai/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-ai.tsx"),
     route("/access-management", "project/AccessControlPage/route-ai.tsx"),
