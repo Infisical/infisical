@@ -85,14 +85,14 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
           className="relative flex h-32 w-32 animate-pulse items-center justify-center"
         >
           <AnimatePresence>
-            {currentEvent && (
-              <motion.svg
-                viewBox="0 0 100 100"
-                className="absolute inset-0 h-full w-full overflow-visible"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
+            <motion.svg
+              viewBox="0 0 100 100"
+              className="absolute inset-0 h-full w-full overflow-visible"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {currentEvent && (
                 <motion.path
                   d="M50 0 L93.3 25 V75 L50 100 L6.7 75 V25 Z"
                   fill="none"
@@ -102,13 +102,13 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   animate={{ pathLength: 1 }}
                   transition={{ duration: 2, repeat: Infinity, repeatType: "mirror" }}
                 />
-                <path
-                  d="M50 10 L85 30 V70 L50 90 L15 70 V30 Z"
-                  fill={statusColor.fill}
-                  stroke="none"
-                />
-              </motion.svg>
-            )}
+              )}
+              <path
+                d="M50 10 L85 30 V70 L50 90 L15 70 V30 Z"
+                fill={statusColor.fill}
+                stroke="none"
+              />
+            </motion.svg>
           </AnimatePresence>
 
           <GavelIcon className={`relative z-10 h-8 w-8 ${statusColor.text}`} />
