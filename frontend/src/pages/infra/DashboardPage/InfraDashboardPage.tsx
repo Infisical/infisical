@@ -38,7 +38,15 @@ import { useOrganization, useProject } from "@app/context";
 import { useInfraFiles, useInfraResources, useInfraRuns } from "@app/hooks/api/infra";
 import { TAiInsight, TInfraRun } from "@app/hooks/api/infra/types";
 
-const RESOURCE_COLORS = ["#f97316", "#3b82f6", "#a855f7", "#22c55e", "#eab308", "#ec4899", "#6b7280"];
+const RESOURCE_COLORS = [
+  "#f97316",
+  "#3b82f6",
+  "#a855f7",
+  "#22c55e",
+  "#eab308",
+  "#ec4899",
+  "#6b7280"
+];
 
 const STAT_ICONS = [BoxIcon, PlayIcon, AlertTriangleIcon, ActivityIcon];
 const STAT_ACCENTS = ["text-primary", "text-green-400", "text-yellow-400", "text-blue-400"];
@@ -142,7 +150,11 @@ export const InfraDashboardPage = () => {
   }, [resources]);
 
   const statCards = [
-    { label: "Resources", value: String(resources?.length ?? 0), sub: `across ${stats?.totalFiles ?? 0} files` },
+    {
+      label: "Resources",
+      value: String(resources?.length ?? 0),
+      sub: `across ${stats?.totalFiles ?? 0} files`
+    },
     {
       label: "Total Runs",
       value: String(stats?.totalRuns ?? 0),
@@ -166,7 +178,9 @@ export const InfraDashboardPage = () => {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-mineshaft-100">{currentProject.name}</h1>
-        <p className="mt-1 text-sm text-mineshaft-400">Infrastructure dashboard — powered by OpenTofu</p>
+        <p className="mt-1 text-sm text-mineshaft-400">
+          Infrastructure dashboard — powered by OpenTofu
+        </p>
       </div>
 
       {/* AI Insights from latest run */}
@@ -182,7 +196,8 @@ export const InfraDashboardPage = () => {
                 {latestAiInsight.security.issues.length > 0 && (
                   <Badge variant="danger">
                     <ShieldAlertIcon className="size-3" />
-                    {latestAiInsight.security.issues.length} issue{latestAiInsight.security.issues.length > 1 ? "s" : ""}
+                    {latestAiInsight.security.issues.length} issue
+                    {latestAiInsight.security.issues.length > 1 ? "s" : ""}
                   </Badge>
                 )}
                 {latestAiInsight.costs.totalMonthly !== "N/A" && (
@@ -216,7 +231,7 @@ export const InfraDashboardPage = () => {
               {/* Security findings */}
               {latestAiInsight.security.issues.length > 0 && (
                 <div className="mb-3">
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">
+                  <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-mineshaft-400 uppercase">
                     Security Findings
                   </p>
                   <div className="space-y-1.5">
@@ -224,12 +239,17 @@ export const InfraDashboardPage = () => {
                       // eslint-disable-next-line react/no-array-index-key
                       <div key={idx} className="flex items-start gap-2 text-xs">
                         <Badge
-                          variant={issue.severity === "critical" || issue.severity === "high" ? "danger" : "warning"}
+                          variant={
+                            issue.severity === "critical" || issue.severity === "high"
+                              ? "danger"
+                              : "warning"
+                          }
                         >
                           {issue.severity}
                         </Badge>
                         <span className="text-mineshaft-300">
-                          <span className="font-mono text-mineshaft-400">{issue.resource}</span> — {issue.description}
+                          <span className="font-mono text-mineshaft-400">{issue.resource}</span> —{" "}
+                          {issue.description}
                         </span>
                       </div>
                     ))}
@@ -238,19 +258,23 @@ export const InfraDashboardPage = () => {
               )}
 
               {/* Cost summary */}
-              {(latestAiInsight.costs.estimated.length > 0 || latestAiInsight.costs.aiEstimated.length > 0) && (
+              {(latestAiInsight.costs.estimated.length > 0 ||
+                latestAiInsight.costs.aiEstimated.length > 0) && (
                 <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">
-                    Cost Estimate — {latestAiInsight.costs.totalMonthly}/mo ({latestAiInsight.costs.deltaMonthly} delta)
+                  <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-mineshaft-400 uppercase">
+                    Cost Estimate — {latestAiInsight.costs.totalMonthly}/mo (
+                    {latestAiInsight.costs.deltaMonthly} delta)
                   </p>
                   <div className="space-y-0.5">
-                    {[...latestAiInsight.costs.estimated, ...latestAiInsight.costs.aiEstimated].map((c, idx) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <div key={idx} className="flex justify-between text-xs text-mineshaft-400">
-                        <span>{c.resource}</span>
-                        <span>{c.monthlyCost}</span>
-                      </div>
-                    ))}
+                    {[...latestAiInsight.costs.estimated, ...latestAiInsight.costs.aiEstimated].map(
+                      (c, idx) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <div key={idx} className="flex justify-between text-xs text-mineshaft-400">
+                          <span>{c.resource}</span>
+                          <span>{c.monthlyCost}</span>
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
               )}
@@ -294,7 +318,7 @@ export const InfraDashboardPage = () => {
               Run Activity (7 days)
             </UnstableCardTitle>
           </UnstableCardHeader>
-          <UnstableCardContent className="pb-4 pr-4">
+          <UnstableCardContent className="pr-4 pb-4">
             {activityData.length === 0 ? (
               <div className="flex h-[220px] items-center justify-center text-sm text-mineshaft-500">
                 No run data yet
@@ -345,13 +369,17 @@ export const InfraDashboardPage = () => {
           </UnstableCardContent>
         </UnstableCard>
 
-        <UnstableCard className="col-span-2">
+        <UnstableCard className="col-span-2 h-full">
           <UnstableCardHeader>
-            <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">Resource Types</UnstableCardTitle>
+            <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
+              Resource Types
+            </UnstableCardTitle>
           </UnstableCardHeader>
-          <UnstableCardContent className="flex items-center justify-center pb-4">
+          <UnstableCardContent className="my-auto flex items-center justify-center pb-4">
             {resourceBreakdown.length === 0 ? (
-              <div className="flex h-[160px] items-center justify-center text-sm text-mineshaft-500">No resources yet</div>
+              <div className="flex h-[160px] items-center justify-center text-sm text-mineshaft-500">
+                No resources yet
+              </div>
             ) : (
               <div className="flex items-center gap-4">
                 <ResponsiveContainer width={160} height={160}>
@@ -383,7 +411,10 @@ export const InfraDashboardPage = () => {
                 <div className="flex flex-col gap-1.5">
                   {resourceBreakdown.map((entry) => (
                     <div key={entry.name} className="flex items-center gap-2 text-xs">
-                      <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                      <span
+                        className="inline-block size-2.5 rounded-full"
+                        style={{ backgroundColor: entry.color }}
+                      />
                       <span className="font-mono text-mineshaft-400">{entry.name}</span>
                       <span className="font-medium text-mineshaft-200">{entry.value}</span>
                     </div>
@@ -398,7 +429,9 @@ export const InfraDashboardPage = () => {
       {/* Recent Runs */}
       <UnstableCard>
         <UnstableCardHeader>
-          <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">Recent Runs</UnstableCardTitle>
+          <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
+            Recent Runs
+          </UnstableCardTitle>
         </UnstableCardHeader>
         <UnstableCardContent className="p-0">
           {!runs || runs.length === 0 ? (
@@ -430,7 +463,9 @@ export const InfraDashboardPage = () => {
                               : "bg-blue-500"
                       }`}
                     />
-                    <span className="font-mono text-xs text-mineshaft-300">{run.id.slice(0, 8)}</span>
+                    <span className="font-mono text-xs text-mineshaft-300">
+                      {run.id.slice(0, 8)}
+                    </span>
                     <Badge variant={run.type === "apply" ? "success" : "info"}>{run.type}</Badge>
                     {run.aiSummary && (
                       <Badge variant="default">

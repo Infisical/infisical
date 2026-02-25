@@ -72,20 +72,23 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
   const getRun = async (runId: string) => {
     const run = await infraRunDAL.findById(runId);
 
-    // Find the previous run's file snapshot for diffing
+    // Find the previous run's file snapshot for diffing.
+    // Skip runs whose snapshot is identical (e.g. apply reuses the same files as its plan).
     let previousFileSnapshot: Record<string, string> | null = null;
-    const previousRuns = await infraRunDAL.find(
-      { projectId: run.projectId },
-      { limit: 1, offset: 0, sort: [["createdAt", "desc"]] }
-    );
-    // Find the most recent run BEFORE this one
+    const currentSnapshot = run.fileSnapshot
+      ? JSON.stringify(typeof run.fileSnapshot === "string" ? JSON.parse(run.fileSnapshot) : run.fileSnapshot)
+      : null;
+
     const olderRuns = await infraRunDAL.find(
       { projectId: run.projectId },
       { limit: 50, offset: 0, sort: [["createdAt", "desc"]] }
     );
-    const prevRun = olderRuns.find(
-      (r) => new Date(r.createdAt) < new Date(run.createdAt) && r.fileSnapshot
-    );
+    const prevRun = olderRuns.find((r) => {
+      if (new Date(r.createdAt) >= new Date(run.createdAt)) return false;
+      if (!r.fileSnapshot) return false;
+      const snap = JSON.stringify(typeof r.fileSnapshot === "string" ? JSON.parse(r.fileSnapshot) : r.fileSnapshot);
+      return snap !== currentSnapshot;
+    });
     if (prevRun?.fileSnapshot) {
       previousFileSnapshot = (typeof prevRun.fileSnapshot === "string"
         ? JSON.parse(prevRun.fileSnapshot)
