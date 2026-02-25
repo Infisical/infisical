@@ -1792,6 +1792,13 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
+    // deduplicate secrets by key, keeping the last occurrence
+    const seen = new Map<string, (typeof inputSecrets)[number]>();
+    for (const secret of inputSecrets) {
+      seen.set(secret.secretKey, secret);
+    }
+    const deduplicatedSecrets = Array.from(seen.values());
+
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
@@ -1804,23 +1811,28 @@ export const secretV2BridgeServiceFactory = ({
       folderId,
       type: SecretType.Shared,
       $in: {
-        [`${TableName.SecretV2}.key` as "key"]: inputSecrets.map((el) => el.secretKey)
+        [`${TableName.SecretV2}.key` as "key"]: deduplicatedSecrets.map((el) => el.secretKey)
       }
     });
     if (secrets.length)
       throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
 
     const project = await projectDAL.findById(projectId);
-    await scanSecretPolicyViolations(projectId, secretPath, inputSecrets, project.secretDetectionIgnoreValues || []);
+    await scanSecretPolicyViolations(
+      projectId,
+      secretPath,
+      deduplicatedSecrets,
+      project.secretDetectionIgnoreValues || []
+    );
 
     // get all tags
-    const sanitizedTagIds = [...new Set(inputSecrets.flatMap(({ tagIds = [] }) => tagIds))];
+    const sanitizedTagIds = [...new Set(deduplicatedSecrets.flatMap(({ tagIds = [] }) => tagIds))];
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
     if (tags.length !== sanitizedTagIds.length)
       throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
     const tagsGroupByID = groupBy(tags, (i) => i.id);
 
-    inputSecrets.forEach((el) => {
+    deduplicatedSecrets.forEach((el) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Create,
         subject(ProjectPermissionSub.Secrets, {
@@ -1835,7 +1847,7 @@ export const secretV2BridgeServiceFactory = ({
     // now get all secret references made and validate the permission
     const secretReferencesGroupByInputSecretKey: Record<string, ReturnType<typeof getAllSecretReferences>> = {};
     const secretReferences: TSecretReference[] = [];
-    inputSecrets.forEach((el) => {
+    deduplicatedSecrets.forEach((el) => {
       if (el.secretValue) {
         const references = getAllSecretReferences(el.secretValue);
         secretReferencesGroupByInputSecretKey[el.secretKey] = references;
@@ -1852,7 +1864,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const executeBulkInsert = async (tx: Knex) => {
       const modifiedSecretsInDB = await fnSecretBulkInsert({
-        inputSecrets: inputSecrets.map((el) => {
+        inputSecrets: deduplicatedSecrets.map((el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
 
           return {
@@ -1978,6 +1990,16 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const secretsToUpdateGroupByPath = groupBy(inputSecrets, (el) => el.secretPath || defaultSecretPath);
+
+    // deduplicate secrets by key within each path, keeping the last occurrence
+    for (const path of Object.keys(secretsToUpdateGroupByPath)) {
+      const seen = new Map<string, (typeof secretsToUpdateGroupByPath)[string][number]>();
+      for (const secret of secretsToUpdateGroupByPath[path]) {
+        seen.set(secret.secretKey, secret);
+      }
+      secretsToUpdateGroupByPath[path] = Array.from(seen.values());
+    }
+
     const projectEnvironment = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!projectEnvironment) {
       throw new NotFoundError({
