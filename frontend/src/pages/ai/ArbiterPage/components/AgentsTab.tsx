@@ -27,6 +27,10 @@ import {
   UnstableDropdownMenuItem,
   UnstableDropdownMenuLabel,
   UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
   UnstableIconButton,
   UnstableTable,
   UnstableTableBody,
@@ -65,6 +69,7 @@ export const AgentsTab = () => {
   );
 
   const isTableFiltered = statusFilter.length > 0;
+  const isFiltered = search.length > 0 || statusFilter.length > 0;
 
   const filteredAgents = AGENTS.filter((agent) =>
     agent.name.toLowerCase().includes(search.toLowerCase())
@@ -121,58 +126,75 @@ export const AgentsTab = () => {
           </UnstableDropdownMenuContent>
         </UnstableDropdownMenu>
       </div>
-      <UnstableTable>
-        <UnstableTableHeader>
-          <UnstableTableRow>
-            <UnstableTableHead className="w-1/4">Name</UnstableTableHead>
-            <UnstableTableHead>Description</UnstableTableHead>
-            <UnstableTableHead>Status</UnstableTableHead>
-            <UnstableTableHead className="w-5" />
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
-          {filteredAgents.map((agent) => (
-            <UnstableTableRow key={agent.id}>
-              <UnstableTableCell>
-                <div className="flex items-center gap-2">
-                  {getIcon(agent.icon)}
-                  <span className="font-medium">{agent.name}</span>
-                </div>
-              </UnstableTableCell>
-              <UnstableTableCell>
-                <span className="text-xs text-accent">
-                  {AGENT_DESCRIPTIONS[agent.id] ?? "No description available."}
-                </span>
-              </UnstableTableCell>
-              <UnstableTableCell>
-                <Badge variant="success">
-                  <ActivityIcon />
-                  Active
-                </Badge>
-              </UnstableTableCell>
-              <UnstableTableCell>
-                <UnstableDropdownMenu>
-                  <UnstableDropdownMenuTrigger asChild>
-                    <UnstableIconButton variant="ghost" size="xs">
-                      <MoreHorizontalIcon />
-                    </UnstableIconButton>
-                  </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent align="end">
-                    <UnstableDropdownMenuItem>
-                      <EditIcon />
-                      Edit Policies
-                    </UnstableDropdownMenuItem>
-                    <UnstableDropdownMenuItem variant="danger">
-                      <PowerOffIcon />
-                      Deactivate
-                    </UnstableDropdownMenuItem>
-                  </UnstableDropdownMenuContent>
-                </UnstableDropdownMenu>
-              </UnstableTableCell>
+      {!filteredAgents.length ? (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {isFiltered
+                ? "No agents match the current filter"
+                : "No agents have been deployed yet"}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {isFiltered
+                ? "Adjust your search or filter criteria."
+                : "Deploy an agent to get started."}
+            </UnstableEmptyDescription>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      ) : (
+        <UnstableTable>
+          <UnstableTableHeader>
+            <UnstableTableRow>
+              <UnstableTableHead className="w-1/4">Name</UnstableTableHead>
+              <UnstableTableHead>Description</UnstableTableHead>
+              <UnstableTableHead>Status</UnstableTableHead>
+              <UnstableTableHead className="w-5" />
             </UnstableTableRow>
-          ))}
-        </UnstableTableBody>
-      </UnstableTable>
+          </UnstableTableHeader>
+          <UnstableTableBody>
+            {filteredAgents.map((agent) => (
+              <UnstableTableRow key={agent.id}>
+                <UnstableTableCell>
+                  <div className="flex items-center gap-2">
+                    {getIcon(agent.icon)}
+                    <span className="font-medium">{agent.name}</span>
+                  </div>
+                </UnstableTableCell>
+                <UnstableTableCell>
+                  <span className="text-xs text-accent">
+                    {AGENT_DESCRIPTIONS[agent.id] ?? "No description available."}
+                  </span>
+                </UnstableTableCell>
+                <UnstableTableCell>
+                  <Badge variant="success">
+                    <ActivityIcon />
+                    Active
+                  </Badge>
+                </UnstableTableCell>
+                <UnstableTableCell>
+                  <UnstableDropdownMenu>
+                    <UnstableDropdownMenuTrigger asChild>
+                      <UnstableIconButton variant="ghost" size="xs">
+                        <MoreHorizontalIcon />
+                      </UnstableIconButton>
+                    </UnstableDropdownMenuTrigger>
+                    <UnstableDropdownMenuContent align="end">
+                      <UnstableDropdownMenuItem>
+                        <EditIcon />
+                        Edit Policies
+                      </UnstableDropdownMenuItem>
+                      <UnstableDropdownMenuItem variant="danger">
+                        <PowerOffIcon />
+                        Deactivate
+                      </UnstableDropdownMenuItem>
+                    </UnstableDropdownMenuContent>
+                  </UnstableDropdownMenu>
+                </UnstableTableCell>
+              </UnstableTableRow>
+            ))}
+          </UnstableTableBody>
+        </UnstableTable>
+      )}
     </UnstableCard>
   );
 };

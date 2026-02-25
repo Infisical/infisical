@@ -68,7 +68,7 @@ export const SettingsTab = () => {
             Basic configuration for your agent network project.
           </UnstableCardDescription>
           <UnstableCardAction>
-            <Button variant="project">
+            <Button isDisabled variant="project">
               <SaveIcon />
               Save Changes
             </Button>
@@ -78,10 +78,7 @@ export const SettingsTab = () => {
           <FieldGroup>
             <Field>
               <FieldTitle>Project Name</FieldTitle>
-              <UnstableInput
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-              />
+              <UnstableInput value={projectName} onChange={(e) => setProjectName(e.target.value)} />
             </Field>
             <Field>
               <FieldTitle>Description</FieldTitle>
@@ -146,11 +143,7 @@ export const SettingsTab = () => {
                   Automatically route requests to the escalation agent when governance checks fail.
                 </FieldDescription>
               </FieldTitle>
-              <Switch
-                variant="project"
-                checked={autoEscalate}
-                onCheckedChange={setAutoEscalate}
-              />
+              <Switch variant="project" checked={autoEscalate} onCheckedChange={setAutoEscalate} />
             </Field>
             <UnstableSeparator />
             <Field orientation="horizontal">
@@ -163,11 +156,7 @@ export const SettingsTab = () => {
                   Record all agent decisions and governance outcomes for compliance and debugging.
                 </FieldDescription>
               </FieldTitle>
-              <Switch
-                variant="project"
-                checked={auditLogging}
-                onCheckedChange={setAuditLogging}
-              />
+              <Switch variant="project" checked={auditLogging} onCheckedChange={setAuditLogging} />
             </Field>
             <UnstableSeparator />
             <Field orientation="horizontal">
@@ -180,11 +169,7 @@ export const SettingsTab = () => {
                   Run all agent actions in a sandboxed environment without side effects.
                 </FieldDescription>
               </FieldTitle>
-              <Switch
-                variant="warning"
-                checked={sandboxMode}
-                onCheckedChange={setSandboxMode}
-              />
+              <Switch variant="warning" checked={sandboxMode} onCheckedChange={setSandboxMode} />
             </Field>
           </FieldGroup>
         </UnstableCardContent>
@@ -206,9 +191,7 @@ export const SettingsTab = () => {
             <Field orientation="horizontal">
               <FieldTitle className="flex-1">
                 Slack Notifications
-                <FieldDescription>
-                  Send alerts to your connected Slack workspace.
-                </FieldDescription>
+                <FieldDescription>Send alerts to your connected Slack workspace.</FieldDescription>
               </FieldTitle>
               <Switch
                 variant="project"
@@ -265,7 +248,7 @@ export const SettingsTab = () => {
             Set limits on agent request throughput to prevent abuse and control costs.
           </UnstableCardDescription>
           <UnstableCardAction>
-            <Button variant="project">
+            <Button isDisabled variant="project">
               <SaveIcon />
               Save Limits
             </Button>
@@ -327,8 +310,8 @@ export const SettingsTab = () => {
               <FieldTitle className="flex-1">
                 Reset Project Data
                 <FieldDescription>
-                  Clear all session history, audit logs, and cached agent state. Agent configurations
-                  will be preserved.
+                  Clear all session history, audit logs, and cached agent state. Agent
+                  configurations will be preserved.
                 </FieldDescription>
               </FieldTitle>
               <Button variant="outline" size="sm">

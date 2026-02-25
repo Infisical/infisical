@@ -42,7 +42,7 @@ export const ArbiterPage = () => {
   return (
     <div className="mx-auto flex max-w-8xl flex-col overflow-hidden">
       <Helmet>
-        <title>{t("common.head-title", { title: "Arbiter" })}</title>
+        <title>{t("common.head-title", { title: "Agent Network" })}</title>
       </Helmet>
 
       <PageHeader

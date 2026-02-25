@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Play, RotateCcw, Square } from "lucide-react";
+import { NetworkIcon, Play, RotateCcw, Square } from "lucide-react";
 
 import {
   Badge,

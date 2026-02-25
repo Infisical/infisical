@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   Clock,
+  DownloadIcon,
   FilterIcon,
   SearchIcon,
   Shield,
@@ -15,11 +16,13 @@ import { twMerge } from "tailwind-merge";
 
 import {
   Badge,
+  Button,
   DocumentationLinkBadge,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   UnstableCard,
+  UnstableCardAction,
   UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
@@ -28,6 +31,10 @@ import {
   UnstableDropdownMenuContent,
   UnstableDropdownMenuLabel,
   UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
   UnstableIconButton,
   UnstableTable,
   UnstableTableBody,
@@ -47,6 +54,7 @@ type Session = {
   duration: number;
   approvedCount: number;
   deniedCount: number;
+  createdAt: Date;
 };
 
 const agentNameMap = Object.fromEntries(AGENTS.map((a) => [a.id, a.name]));
@@ -66,7 +74,8 @@ const buildSessions = (): Session[] => {
       events: DEMO_EVENTS,
       duration: lastTs - firstTs,
       approvedCount,
-      deniedCount
+      deniedCount,
+      createdAt: new Date("2026-02-25T14:32:00Z")
     }
   ];
 };
@@ -115,10 +124,21 @@ const SessionRow = ({ session }: { session: Session }) => {
             {session.duration}s
           </Badge>
         </UnstableTableCell>
+        <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
+          <span className="text-xs text-accent">
+            {session.createdAt.toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit"
+            })}
+          </span>
+        </UnstableTableCell>
       </UnstableTableRow>
       {isExpanded && (
         <UnstableTableRow>
-          <UnstableTableCell colSpan={5} className="bg-card p-0">
+          <UnstableTableCell colSpan={6} className="bg-card p-0">
             <div className="border-t-1 border-border p-6">
               <div className="relative">
                 {/* Timeline line */}
@@ -188,6 +208,7 @@ export const SessionsTab = () => {
   );
 
   const isTableFiltered = statusFilter.length > 0;
+  const isFiltered = search.length > 0 || statusFilter.length > 0;
 
   const filteredSessions = SESSIONS.filter((session) =>
     session.title.toLowerCase().includes(search.toLowerCase())
@@ -203,6 +224,12 @@ export const SessionsTab = () => {
         <UnstableCardDescription>
           View agent session activity and arbiter decisions.
         </UnstableCardDescription>
+        <UnstableCardAction>
+          <Button variant="project">
+            <DownloadIcon />
+            Export Sessions
+          </Button>
+        </UnstableCardAction>
       </UnstableCardHeader>
       <div className="flex gap-2">
         <InputGroup className="flex-1">
@@ -238,22 +265,40 @@ export const SessionsTab = () => {
           </UnstableDropdownMenuContent>
         </UnstableDropdownMenu>
       </div>
-      <UnstableTable>
-        <UnstableTableHeader>
-          <UnstableTableRow>
-            <UnstableTableHead className="w-5" />
-            <UnstableTableHead>Session</UnstableTableHead>
-            <UnstableTableHead>Description</UnstableTableHead>
-            <UnstableTableHead>Decisions</UnstableTableHead>
-            <UnstableTableHead>Duration</UnstableTableHead>
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
-          {filteredSessions.map((session) => (
-            <SessionRow key={session.id} session={session} />
-          ))}
-        </UnstableTableBody>
-      </UnstableTable>
+      {!filteredSessions.length ? (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {isFiltered
+                ? "No sessions match the current filter"
+                : "No sessions have been recorded yet"}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {isFiltered
+                ? "Adjust your search or filter criteria."
+                : "Sessions will appear here once agents begin processing."}
+            </UnstableEmptyDescription>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      ) : (
+        <UnstableTable>
+          <UnstableTableHeader>
+            <UnstableTableRow>
+              <UnstableTableHead className="w-5" />
+              <UnstableTableHead>Session</UnstableTableHead>
+              <UnstableTableHead>Description</UnstableTableHead>
+              <UnstableTableHead>Decisions</UnstableTableHead>
+              <UnstableTableHead>Duration</UnstableTableHead>
+              <UnstableTableHead>Timestamp</UnstableTableHead>
+            </UnstableTableRow>
+          </UnstableTableHeader>
+          <UnstableTableBody>
+            {filteredSessions.map((session) => (
+              <SessionRow key={session.id} session={session} />
+            ))}
+          </UnstableTableBody>
+        </UnstableTable>
+      )}
     </UnstableCard>
   );
 };

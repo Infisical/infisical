@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, CheckCircle, Clock, Shield, XCircle } from "lucide-react";
+import { Activity, CheckCircle, Shield, XCircle } from "lucide-react";
 
 import {
   Badge,
@@ -8,7 +8,11 @@ import {
   UnstableCardContent,
   UnstableCardDescription,
   UnstableCardHeader,
-  UnstableCardTitle
+  UnstableCardTitle,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle
 } from "@app/components/v3";
 
 import type { DemoEvent } from "../data";
@@ -34,7 +38,6 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
           Event Log
         </UnstableCardTitle>
         <UnstableCardDescription className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
           Live event stream
         </UnstableCardDescription>
       </UnstableCardHeader>
@@ -101,11 +104,14 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
           </AnimatePresence>
 
           {events.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-muted">
-              <Clock className="mb-3 h-8 w-8 opacity-50" />
-              <p className="text-sm font-medium">Waiting for events...</p>
-              <p className="text-xs">Click Start to begin the simulation</p>
-            </div>
+            <UnstableEmpty className="h-full">
+              <UnstableEmptyHeader>
+                <UnstableEmptyTitle>No events yet</UnstableEmptyTitle>
+                <UnstableEmptyDescription>
+                  Events will appear here as they stream in.
+                </UnstableEmptyDescription>
+              </UnstableEmptyHeader>
+            </UnstableEmpty>
           )}
         </div>
       </UnstableCardContent>
