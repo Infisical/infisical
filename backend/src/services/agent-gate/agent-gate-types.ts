@@ -58,30 +58,6 @@ export interface PolicyEvaluationResult {
   llmEvaluation?: LlmEvaluation;
 }
 
-export interface ActionStartedEvent {
-  executionId: string;
-  sessionId?: string;
-  requestingAgentId: string;
-  targetAgentId: string;
-  actionType: "skill" | "communication";
-  action: string;
-  parameters?: Record<string, unknown>;
-  context: ActionContext;
-  startedAt: string;
-}
-
-export interface ActionCompletedEvent {
-  executionId: string;
-  sessionId?: string;
-  requestingAgentId: string;
-  targetAgentId: string;
-  action: string;
-  status: "completed" | "failed";
-  completedAt: string;
-  durationMs: number;
-  result?: Record<string, unknown>;
-  error?: string;
-}
 
 export interface AgentRegistration {
   agentId: string;
@@ -130,16 +106,6 @@ export interface TEvaluatePolicyDTO {
   request: PolicyEvaluationRequest;
 }
 
-export interface TStartExecutionDTO {
-  projectId: string;
-  event: ActionStartedEvent;
-}
-
-export interface TCompleteExecutionDTO {
-  projectId: string;
-  event: ActionCompletedEvent;
-}
-
 export interface TRegisterAgentDTO {
   projectId: string;
   registration: AgentRegistration;
@@ -152,6 +118,7 @@ export interface TAuditQueryDTO {
     agentId?: string;
     action?: string;
     result?: "allowed" | "denied";
+    executionStatus?: "pending" | "started" | "completed" | "failed";
     startTime?: string;
     endTime?: string;
   };

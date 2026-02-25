@@ -17,34 +17,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  // Agent executions table
-  if (!(await knex.schema.hasTable(TableName.AgentGateExecutions))) {
-    await knex.schema.createTable(TableName.AgentGateExecutions, (t) => {
-      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("executionId", 100).notNullable();
-      t.string("sessionId", 255);
-      t.string("projectId").notNullable();
-      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-      t.string("requestingAgentId", 100).notNullable();
-      t.string("targetAgentId", 100).notNullable();
-      t.string("actionType", 20).notNullable();
-      t.string("action", 100).notNullable();
-      t.string("status", 20).notNullable().defaultTo("pending");
-      t.jsonb("parameters");
-      t.jsonb("context");
-      t.jsonb("result");
-      t.text("error");
-      t.timestamp("startedAt");
-      t.timestamp("completedAt");
-      t.integer("durationMs");
-      t.timestamps(true, true, true);
-      t.index(["projectId", "requestingAgentId", "createdAt"]);
-      t.index(["executionId"]);
-      t.index(["sessionId"]);
-    });
-  }
-
-  // Agent audit logs table
+  // Agent audit logs table (includes execution tracking)
   if (!(await knex.schema.hasTable(TableName.AgentGateAuditLogs))) {
     await knex.schema.createTable(TableName.AgentGateAuditLogs, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -59,6 +32,13 @@ export async function up(knex: Knex): Promise<void> {
       t.string("result", 20).notNullable();
       t.jsonb("policyEvaluations").notNullable();
       t.jsonb("context");
+      // Execution tracking fields
+      t.string("executionStatus", 20);
+      t.jsonb("executionResult");
+      t.text("executionError");
+      t.timestamp("executionStartedAt");
+      t.timestamp("executionCompletedAt");
+      t.integer("executionDurationMs");
       t.timestamps(true, true, true);
       t.index(["projectId", "timestamp"]);
       t.index(["projectId", "requestingAgentId", "timestamp"]);
@@ -71,6 +51,5 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.AgentGateAuditLogs);
-  await knex.schema.dropTableIfExists(TableName.AgentGateExecutions);
   await knex.schema.dropTableIfExists(TableName.AgentGatePolicies);
 }

@@ -13,6 +13,7 @@
     "escalation": "tsx src/agents/escalation/server.ts",
     "all-agents": "tsx src/start-all.ts",
     "init": "tsx src/demo/init.ts",
+    "demo": "tsx src/demo/run-demo.ts",
     "web": "cd web && npm run dev",
     "web:install": "cd web && npm install"
   },

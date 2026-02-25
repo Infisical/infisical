@@ -191,7 +191,6 @@ import { additionalPrivilegeDALFactory } from "@app/services/additional-privileg
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import {
   agentGateAuditDALFactory,
-  agentGateExecutionDALFactory,
   agentGatePolicyDALFactory,
   agentGateServiceFactory
 } from "@app/services/agent-gate";
@@ -2616,7 +2615,6 @@ export const registerRoutes = async (
 
   // AgentGate DALs
   const agentGatePolicyDAL = agentGatePolicyDALFactory(db);
-  const agentGateExecutionDAL = agentGateExecutionDALFactory(db);
   const agentGateAuditDAL = agentGateAuditDALFactory(db);
 
   const pamFolderService = pamFolderServiceFactory({
@@ -2729,7 +2727,6 @@ export const registerRoutes = async (
   // AgentGate Service
   const agentGateService = agentGateServiceFactory({
     agentGatePolicyDAL,
-    agentGateExecutionDAL,
     agentGateAuditDAL
   });
 

@@ -19,6 +19,7 @@ export const agentGateAuditDALFactory = (db: TDbClient) => {
     result: "allowed" | "denied";
     policyEvaluations: TPolicyEvaluationResult[];
     context?: Record<string, unknown>;
+    executionStatus?: "pending" | "started" | "completed" | "failed";
   }): Promise<TAgentGateAuditLogs> => {
     try {
       const [created] = await db(TableName.AgentGateAuditLogs)
@@ -34,6 +35,53 @@ export const agentGateAuditDALFactory = (db: TDbClient) => {
     }
   };
 
+  const startExecution = async (auditLogId: string): Promise<TAgentGateAuditLogs | undefined> => {
+    try {
+      const [updated] = await db(TableName.AgentGateAuditLogs)
+        .where({ id: auditLogId })
+        .update({
+          executionStatus: "started",
+          executionStartedAt: new Date()
+        })
+        .returning("*");
+      return updated;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "StartExecution" });
+    }
+  };
+
+  const completeExecution = async (
+    auditLogId: string,
+    data: {
+      status: "completed" | "failed";
+      result?: Record<string, unknown>;
+      error?: string;
+    }
+  ): Promise<TAgentGateAuditLogs | undefined> => {
+    try {
+      const auditLog = await db(TableName.AgentGateAuditLogs).where({ id: auditLogId }).first();
+      if (!auditLog) return undefined;
+
+      const startedAt = auditLog.executionStartedAt ? new Date(auditLog.executionStartedAt) : new Date();
+      const completedAt = new Date();
+      const durationMs = completedAt.getTime() - startedAt.getTime();
+
+      const [updated] = await db(TableName.AgentGateAuditLogs)
+        .where({ id: auditLogId })
+        .update({
+          executionStatus: data.status,
+          executionResult: data.result ? JSON.stringify(data.result) : undefined,
+          executionError: data.error,
+          executionCompletedAt: completedAt,
+          executionDurationMs: durationMs
+        })
+        .returning("*");
+      return updated;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CompleteExecution" });
+    }
+  };
+
   const findByProject = async (
     projectId: string,
     filters?: {
@@ -41,6 +89,7 @@ export const agentGateAuditDALFactory = (db: TDbClient) => {
       agentId?: string;
       action?: string;
       result?: "allowed" | "denied";
+      executionStatus?: "pending" | "started" | "completed" | "failed";
       startTime?: Date;
       endTime?: Date;
     },
@@ -73,6 +122,10 @@ export const agentGateAuditDALFactory = (db: TDbClient) => {
         query = query.andWhere({ result: filters.result });
       }
 
+      if (filters?.executionStatus) {
+        query = query.andWhere({ executionStatus: filters.executionStatus });
+      }
+
       if (filters?.startTime) {
         query = query.andWhere("timestamp", ">=", filters.startTime);
       }
@@ -90,6 +143,8 @@ export const agentGateAuditDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     createAuditLog,
-    findByProject
+    findByProject,
+    startExecution,
+    completeExecution
   };
 };

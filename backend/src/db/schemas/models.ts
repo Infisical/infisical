@@ -263,7 +263,6 @@ export enum TableName {
 
   // AgentGate
   AgentGatePolicies = "agent_gate_policies",
-  AgentGateExecutions = "agent_gate_executions",
   AgentGateAuditLogs = "agent_gate_audit_logs"
 }
 

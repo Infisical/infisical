@@ -1,26 +1,22 @@
-import { TInboundPolicy, TPromptPolicy } from "@app/db/schemas";
+import { TAgentGateAuditLogs, TInboundPolicy, TPromptPolicy } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TAgentGateAuditDALFactory } from "./agent-gate-audit-dal";
-import { TAgentGateExecutionDALFactory } from "./agent-gate-execution-dal";
 import { TAgentGatePolicyDALFactory } from "./agent-gate-policy-dal";
 import {
   ActionContext,
   PolicyEvaluationResult,
   TAuditQueryDTO,
-  TCompleteExecutionDTO,
   TCreateAgentPolicyDTO,
   TEvaluatePolicyDTO,
   TRegisterAgentDTO,
-  TStartExecutionDTO,
   TUpdateAgentPolicyDTO
 } from "./agent-gate-types";
 
 type TAgentGateServiceFactoryDep = {
   agentGatePolicyDAL: TAgentGatePolicyDALFactory;
-  agentGateExecutionDAL: TAgentGateExecutionDALFactory;
   agentGateAuditDAL: TAgentGateAuditDALFactory;
 };
 
@@ -33,6 +29,10 @@ interface LlmEvaluationResult {
     promptTokens: number;
     completionTokens: number;
   };
+}
+
+export interface PolicyEvaluationResponse extends PolicyEvaluationResult {
+  auditLogId: string;
 }
 
 async function evaluatePromptPolicy(
@@ -106,13 +106,11 @@ Should this action be allowed according to the policy?`;
 }
 
 function mockLlmEvaluation(
-  policy: TPromptPolicy,
+  _policy: TPromptPolicy,
   action: string,
   parameters: Record<string, unknown>,
   context: ActionContext
 ): LlmEvaluationResult {
-  const policyLower = policy.prompt.toLowerCase();
-
   if (action === "issue_refund" && context.refundAmount !== undefined) {
     const amount = context.refundAmount;
     if (amount <= 50) {
@@ -159,7 +157,7 @@ function mockLlmEvaluation(
   }
 
   if (action === "access_payment_info") {
-    const issueCategory = context.issueCategory;
+    const { issueCategory } = context;
     const severity = context.issueSeverity;
 
     if (issueCategory === "billing" && severity === "high") {
@@ -192,11 +190,7 @@ function mockLlmEvaluation(
   };
 }
 
-export const agentGateServiceFactory = ({
-  agentGatePolicyDAL,
-  agentGateExecutionDAL,
-  agentGateAuditDAL
-}: TAgentGateServiceFactoryDep) => {
+export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL }: TAgentGateServiceFactoryDep) => {
   const createPolicy = async (dto: TCreateAgentPolicyDTO) => {
     const policy = await agentGatePolicyDAL.upsertPolicy(dto.projectId, dto.agentId, {
       selfPolicies: dto.selfPolicies,
@@ -239,11 +233,7 @@ export const agentGateServiceFactory = ({
     return existing;
   };
 
-  const allow = (
-    policyType: "structured" | "prompt",
-    policyId: string,
-    reasoning: string
-  ): PolicyEvaluationResult => ({
+  const allow = (policyType: "structured" | "prompt", policyId: string, reasoning: string): PolicyEvaluationResult => ({
     allowed: true,
     policyType,
     policyId,
@@ -251,11 +241,7 @@ export const agentGateServiceFactory = ({
     evaluatedAt: new Date().toISOString()
   });
 
-  const deny = (
-    policyType: "structured" | "prompt",
-    policyId: string,
-    reasoning: string
-  ): PolicyEvaluationResult => ({
+  const deny = (policyType: "structured" | "prompt", policyId: string, reasoning: string): PolicyEvaluationResult => ({
     allowed: false,
     policyType,
     policyId,
@@ -273,11 +259,7 @@ export const agentGateServiceFactory = ({
     context: ActionContext
   ): Promise<PolicyEvaluationResult> => {
     if (!policy.selfPolicies.allowedActions.includes(skillId)) {
-      return deny(
-        "structured",
-        "self_allowed_actions",
-        `Action "${skillId}" is not in ${policy.agentId}'s allowed actions`
-      );
+      return deny("structured", "self_allowed_actions", `Action "${skillId}" is not in ${policy.agentId}'s allowed actions`);
     }
 
     for (const promptPolicy of policy.selfPolicies.promptPolicies) {
@@ -340,10 +322,7 @@ export const agentGateServiceFactory = ({
       );
     }
 
-    if (
-      !inboundPolicy.allowedToRequest.includes(messageType) &&
-      !inboundPolicy.allowedToRequest.includes("*")
-    ) {
+    if (!inboundPolicy.allowedToRequest.includes(messageType) && !inboundPolicy.allowedToRequest.includes("*")) {
       return deny(
         "structured",
         "inbound_not_allowed",
@@ -379,91 +358,73 @@ export const agentGateServiceFactory = ({
     );
   };
 
-  const evaluatePolicy = async (dto: TEvaluatePolicyDTO): Promise<PolicyEvaluationResult> => {
+  const evaluatePolicy = async (dto: TEvaluatePolicyDTO): Promise<PolicyEvaluationResponse> => {
     const { projectId, request } = dto;
     const { requestingAgentId, targetAgentId, action, context } = request;
 
     const targetPolicy = await agentGatePolicyDAL.findByProjectAndAgentId(projectId, targetAgentId);
     if (!targetPolicy) {
       const result = deny("structured", "unknown_agent", `Unknown agent: ${targetAgentId}`);
-      await logAuditEvent(projectId, request, result);
-      return result;
+      const auditLog = await createAuditLogInternal(projectId, request, result);
+      return { ...result, auditLogId: auditLog.id };
     }
 
     let result: PolicyEvaluationResult;
 
     if (action.type === "skill" && requestingAgentId === targetAgentId) {
-      result = await evaluateSelfSkill(
-        targetPolicy,
-        action.skillId,
-        action.parameters,
-        context
-      );
+      result = await evaluateSelfSkill(targetPolicy, action.skillId, action.parameters, context);
     } else if (action.type === "communication") {
       result = await evaluateInboundRequest(targetPolicy, requestingAgentId, action.messageType, context);
     } else {
       result = deny("structured", "invalid_action", "Invalid action type");
     }
 
-    await logAuditEvent(projectId, request, result);
-    return result;
+    const auditLog = await createAuditLogInternal(projectId, request, result);
+    return { ...result, auditLogId: auditLog.id };
   };
 
-  const logAuditEvent = async (
+  const createAuditLogInternal = async (
     projectId: string,
     request: TEvaluatePolicyDTO["request"],
     result: PolicyEvaluationResult
-  ) => {
-    try {
-      const actionName = request.action.type === "skill" ? request.action.skillId : request.action.messageType;
-      await agentGateAuditDAL.createAuditLog({
-        sessionId: request.context.sessionId,
-        projectId,
-        timestamp: new Date(),
-        requestingAgentId: request.requestingAgentId,
-        targetAgentId: request.targetAgentId,
-        actionType: request.action.type,
-        action: actionName,
-        result: result.allowed ? "allowed" : "denied",
-        policyEvaluations: [result],
-        context: request.context as Record<string, unknown>
-      });
-    } catch (error) {
-      logger.error({ error }, "Failed to create audit log");
-    }
-  };
-
-  const startExecution = async (dto: TStartExecutionDTO) => {
-    const { projectId, event } = dto;
-    return agentGateExecutionDAL.createExecution({
-      executionId: event.executionId,
-      sessionId: event.sessionId,
+  ): Promise<TAgentGateAuditLogs> => {
+    const actionName = request.action.type === "skill" ? request.action.skillId : request.action.messageType;
+    return agentGateAuditDAL.createAuditLog({
+      sessionId: request.context.sessionId,
       projectId,
-      requestingAgentId: event.requestingAgentId,
-      targetAgentId: event.targetAgentId,
-      actionType: event.actionType,
-      action: event.action,
-      parameters: event.parameters,
-      context: event.context as Record<string, unknown>,
-      startedAt: new Date(event.startedAt)
+      timestamp: new Date(),
+      requestingAgentId: request.requestingAgentId,
+      targetAgentId: request.targetAgentId,
+      actionType: request.action.type,
+      action: actionName,
+      result: result.allowed ? "allowed" : "denied",
+      policyEvaluations: [result],
+      context: request.context as Record<string, unknown>,
+      executionStatus: result.allowed ? "pending" : undefined
     });
   };
 
-  const completeExecution = async (dto: TCompleteExecutionDTO) => {
-    const { event } = dto;
-    const execution = await agentGateExecutionDAL.completeExecution(event.executionId, {
-      status: event.status,
-      completedAt: new Date(event.completedAt),
-      durationMs: event.durationMs,
-      result: event.result,
-      error: event.error
-    });
-
-    if (!execution) {
-      throw new NotFoundError({ message: `Execution not found: ${event.executionId}` });
+  const startExecution = async (auditLogId: string) => {
+    const auditLog = await agentGateAuditDAL.startExecution(auditLogId);
+    if (!auditLog) {
+      throw new NotFoundError({ message: `Audit log not found: ${auditLogId}` });
     }
+    return auditLog;
+  };
 
-    return execution;
+  const completeExecution = async (
+    auditLogId: string,
+    data: {
+      status: "completed" | "failed";
+      result?: Record<string, unknown>;
+      error?: string;
+    }
+  ) => {
+    const auditLog = await agentGateAuditDAL.completeExecution(auditLogId, data);
+    if (!auditLog) {
+      throw new NotFoundError({ message: `Audit log not found: ${auditLogId}` });
+    }
+    return auditLog;
   };
 
   const registerAgent = async (dto: TRegisterAgentDTO) => {
@@ -502,6 +463,7 @@ export const agentGateServiceFactory = ({
             agentId: filters.agentId,
             action: filters.action,
             result: filters.result,
+            executionStatus: filters.executionStatus,
             startTime: filters.startTime ? new Date(filters.startTime) : undefined,
             endTime: filters.endTime ? new Date(filters.endTime) : undefined
           }
@@ -535,7 +497,8 @@ export const agentGateServiceFactory = ({
       action: log.action,
       result: log.result,
       policyEvaluations: log.policyEvaluations,
-      context: log.context as Record<string, unknown> | undefined
+      context: log.context as Record<string, unknown> | undefined,
+      executionStatus: log.result === "allowed" ? "pending" : undefined
     });
   };
 

@@ -1,11 +1,8 @@
 import "dotenv/config";
-import { v4 as uuidv4 } from "uuid";
 import {
-  PolicyEvaluationResult,
+  PolicyEvaluationResponse,
   ActionContext,
   GovernanceAuditLog,
-  ActionStartedEvent,
-  ActionCompletedEvent,
 } from "./types.js";
 import {
   InfisicalAgentGateClient,
@@ -19,7 +16,7 @@ export interface AgentGateOptions {
 }
 
 export interface ExecutionHandle {
-  executionId: string;
+  auditLogId: string;
   startTime: number;
   complete: (result?: Record<string, unknown>) => Promise<void>;
   fail: (error: string) => Promise<void>;
@@ -31,8 +28,8 @@ export interface ExecutionHandle {
  * This is a thin client that asks Infisical for permission before every action.
  * ALL policy evaluation happens in Infisical - this client just:
  * 1. Sends the request to Infisical
- * 2. Gets back allowed: true/false
- * 3. Reports execution start/complete back to Infisical for monitoring
+ * 2. Gets back allowed: true/false + auditLogId
+ * 3. Reports execution start/complete back to Infisical using the auditLogId
  *
  * The agent has NO knowledge of policies - it just asks and waits for the answer.
  */
@@ -84,7 +81,7 @@ export class AgentGate {
     skillId: string,
     parameters: Record<string, unknown>,
     context: ActionContext,
-  ): Promise<{ result: PolicyEvaluationResult; handle?: ExecutionHandle }> {
+  ): Promise<{ result: PolicyEvaluationResponse; handle?: ExecutionHandle }> {
     const startTime = Date.now();
 
     const result = await this.client.checkSkillPermission(
@@ -105,15 +102,7 @@ export class AgentGate {
       return { result };
     }
 
-    const executionId = uuidv4();
-    const handle = this.createExecutionHandle(
-      executionId,
-      "skill",
-      skillId,
-      this.agentId,
-      parameters,
-      context,
-    );
+    const handle = this.createExecutionHandle(result.auditLogId);
 
     return { result, handle };
   }
@@ -130,7 +119,7 @@ export class AgentGate {
     messageType: string,
     content: Record<string, unknown>,
     context: ActionContext,
-  ): Promise<{ result: PolicyEvaluationResult; handle?: ExecutionHandle }> {
+  ): Promise<{ result: PolicyEvaluationResponse; handle?: ExecutionHandle }> {
     const startTime = Date.now();
 
     const result = await this.client.checkCommunicationPermission(
@@ -141,13 +130,7 @@ export class AgentGate {
       context,
     );
 
-    this.logAction(
-      "communication",
-      messageType,
-      targetAgentId,
-      result,
-      context,
-    );
+    this.logAction("communication", messageType, targetAgentId, result, context);
 
     const elapsed = Date.now() - startTime;
     console.log(
@@ -158,79 +141,31 @@ export class AgentGate {
       return { result };
     }
 
-    const executionId = uuidv4();
-    const handle = this.createExecutionHandle(
-      executionId,
-      "communication",
-      messageType,
-      targetAgentId,
-      content,
-      context,
-    );
+    const handle = this.createExecutionHandle(result.auditLogId);
 
     return { result, handle };
   }
 
-  private createExecutionHandle(
-    executionId: string,
-    actionType: "skill" | "communication",
-    action: string,
-    targetAgentId: string,
-    parameters: Record<string, unknown>,
-    context: ActionContext,
-  ): ExecutionHandle {
+  private createExecutionHandle(auditLogId: string): ExecutionHandle {
     const startTime = Date.now();
-    const sessionId = context.sessionId; // Extract sessionId for all events
 
-    const startEvent: ActionStartedEvent = {
-      executionId,
-      sessionId, // Include sessionId for unified audit trail
-      requestingAgentId: this.agentId,
-      targetAgentId,
-      actionType,
-      action,
-      parameters,
-      context,
-      startedAt: new Date().toISOString(),
-    };
-    this.client.reportActionStarted(startEvent);
+    // Report execution started
+    this.client.reportActionStarted(auditLogId);
 
     return {
-      executionId,
+      auditLogId,
       startTime,
       complete: async (result?: Record<string, unknown>) => {
-        const completedAt = new Date().toISOString();
-        const durationMs = Date.now() - startTime;
-
-        const completeEvent: ActionCompletedEvent = {
-          executionId,
-          sessionId, // Include sessionId for unified audit trail
-          requestingAgentId: this.agentId,
-          targetAgentId,
-          action,
+        await this.client.reportActionCompleted(auditLogId, {
           status: "completed",
-          completedAt,
-          durationMs,
           result,
-        };
-        await this.client.reportActionCompleted(completeEvent);
+        });
       },
       fail: async (error: string) => {
-        const completedAt = new Date().toISOString();
-        const durationMs = Date.now() - startTime;
-
-        const completeEvent: ActionCompletedEvent = {
-          executionId,
-          sessionId, // Include sessionId for unified audit trail
-          requestingAgentId: this.agentId,
-          targetAgentId,
-          action,
+        await this.client.reportActionCompleted(auditLogId, {
           status: "failed",
-          completedAt,
-          durationMs,
           error,
-        };
-        await this.client.reportActionCompleted(completeEvent);
+        });
       },
     };
   }
@@ -240,10 +175,11 @@ export class AgentGate {
   }
 
   async queryAuditLogs(options?: {
-    sessionId?: string; // Filter by sessionId to see all events in a workflow
+    sessionId?: string;
     agentId?: string;
     action?: string;
     result?: "allowed" | "denied";
+    executionStatus?: "pending" | "started" | "completed" | "failed";
     limit?: number;
   }): Promise<GovernanceAuditLog[]> {
     return this.client.queryAuditLogs(options);
@@ -253,12 +189,12 @@ export class AgentGate {
     actionType: "skill" | "communication",
     action: string,
     targetAgent: string | undefined,
-    result: PolicyEvaluationResult,
+    result: PolicyEvaluationResponse,
     context: ActionContext,
   ): void {
     const log: GovernanceAuditLog = {
-      id: uuidv4(),
-      sessionId: context.sessionId, // Include sessionId for unified audit trail
+      id: result.auditLogId,
+      sessionId: context.sessionId,
       timestamp: new Date().toISOString(),
       requestingAgentId: this.agentId,
       targetAgentId: targetAgent || this.agentId,

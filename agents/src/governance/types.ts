@@ -88,7 +88,7 @@ export interface PromptPolicy {
 
 export interface GovernanceAuditLog {
   id: string;
-  sessionId?: string; // Links all events in a workflow
+  sessionId?: string;
   timestamp: string;
   requestingAgentId: string;
   targetAgentId: string;
@@ -97,29 +97,14 @@ export interface GovernanceAuditLog {
   result: "allowed" | "denied";
   policyEvaluations: PolicyEvaluationResult[];
   context: ActionContext;
+  executionStatus?: "pending" | "started" | "completed" | "failed";
+  executionResult?: Record<string, unknown>;
+  executionError?: string;
+  executionStartedAt?: string;
+  executionCompletedAt?: string;
+  executionDurationMs?: number;
 }
 
-export interface ActionStartedEvent {
-  executionId: string;
-  sessionId?: string; // Links all events in a workflow
-  requestingAgentId: string;
-  targetAgentId: string;
-  actionType: "skill" | "communication";
-  action: string;
-  parameters?: Record<string, unknown>;
-  context: ActionContext;
-  startedAt: string;
-}
-
-export interface ActionCompletedEvent {
-  executionId: string;
-  sessionId?: string; // Links all events in a workflow
-  requestingAgentId: string;
-  targetAgentId: string;
-  action: string;
-  status: "completed" | "failed";
-  completedAt: string;
-  durationMs: number;
-  result?: Record<string, unknown>;
-  error?: string;
+export interface PolicyEvaluationResponse extends PolicyEvaluationResult {
+  auditLogId: string;
 }

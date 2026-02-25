@@ -55,8 +55,12 @@ const PolicyEvaluationRequestSchema = z.object({
   context: ActionContextSchema
 });
 
+const PolicyEvaluationResponseSchema = PolicyEvaluationResultSchema.extend({
+  auditLogId: z.string().uuid().describe("The ID of the audit log entry. Use this to track execution status.")
+});
+
 export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
-  // Policy Evaluation - Core endpoint
+  // Policy Evaluation - Core endpoint (now returns auditLogId for execution tracking)
   server.route({
     method: "POST",
     url: "/evaluate",
@@ -65,13 +69,14 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Evaluate a policy for an agent action",
+      description:
+        "Evaluate a policy for an agent action. Returns auditLogId which can be used to track execution status.",
       body: PolicyEvaluationRequestSchema,
       querystring: z.object({
         projectId: z.string().describe("The project ID")
       }),
       response: {
-        200: PolicyEvaluationResultSchema
+        200: PolicyEvaluationResponseSchema
       }
     },
     handler: async (req) => {
@@ -83,78 +88,52 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Execution Tracking - Start
+  // Execution Tracking - Start (marks audit log as execution started)
   server.route({
     method: "POST",
-    url: "/executions/start",
+    url: "/audit/:auditLogId/start",
     config: {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Record the start of an agent action execution",
-      body: z.object({
-        executionId: z.string(),
-        sessionId: z.string().optional(),
-        requestingAgentId: z.string(),
-        targetAgentId: z.string(),
-        actionType: z.enum(["skill", "communication"]),
-        action: z.string(),
-        parameters: z.record(z.unknown()).optional(),
-        context: ActionContextSchema,
-        startedAt: z.string()
-      }),
-      querystring: z.object({
-        projectId: z.string().describe("The project ID")
+      description: "Mark an audit log entry as execution started",
+      params: z.object({
+        auditLogId: z.string().uuid()
       }),
       response: {
-        204: z.void()
+        200: AgentGateAuditLogsSchema
       }
     },
-    handler: async (req, res) => {
-      await server.services.agentGate.startExecution({
-        projectId: req.query.projectId,
-        event: req.body
-      });
-      return res.status(204).send();
+    handler: async (req) => {
+      return server.services.agentGate.startExecution(req.params.auditLogId);
     }
   });
 
-  // Execution Tracking - Complete
+  // Execution Tracking - Complete (marks audit log as execution completed/failed)
   server.route({
     method: "POST",
-    url: "/executions/complete",
+    url: "/audit/:auditLogId/complete",
     config: {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Record the completion of an agent action execution",
+      description: "Mark an audit log entry as execution completed or failed",
+      params: z.object({
+        auditLogId: z.string().uuid()
+      }),
       body: z.object({
-        executionId: z.string(),
-        sessionId: z.string().optional(),
-        requestingAgentId: z.string(),
-        targetAgentId: z.string(),
-        action: z.string(),
         status: z.enum(["completed", "failed"]),
-        completedAt: z.string(),
-        durationMs: z.number(),
         result: z.record(z.unknown()).optional(),
         error: z.string().optional()
       }),
-      querystring: z.object({
-        projectId: z.string().describe("The project ID")
-      }),
       response: {
-        204: z.void()
+        200: AgentGateAuditLogsSchema
       }
     },
-    handler: async (req, res) => {
-      await server.services.agentGate.completeExecution({
-        projectId: req.query.projectId,
-        event: req.body
-      });
-      return res.status(204).send();
+    handler: async (req) => {
+      return server.services.agentGate.completeExecution(req.params.auditLogId, req.body);
     }
   });
 
@@ -332,7 +311,7 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Create Audit Log
+  // Create Audit Log (manual creation, separate from evaluate)
   server.route({
     method: "POST",
     url: "/audit",
@@ -341,7 +320,7 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Create an audit log entry",
+      description: "Create an audit log entry manually",
       querystring: z.object({
         projectId: z.string().describe("The project ID")
       }),
@@ -381,6 +360,10 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
         agentId: z.string().optional(),
         action: z.string().optional(),
         result: z.enum(["allowed", "denied"]).optional(),
+        executionStatus: z
+          .enum(["pending", "started", "completed", "failed"])
+          .optional()
+          .describe("Filter by execution completion status"),
         startTime: z.string().optional(),
         endTime: z.string().optional(),
         limit: z.coerce.number().optional().default(100),
@@ -393,7 +376,8 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { projectId, sessionId, agentId, action, result, startTime, endTime, limit, offset } = req.query;
+      const { projectId, sessionId, agentId, action, result, executionStatus, startTime, endTime, limit, offset } =
+        req.query;
       const logs = await server.services.agentGate.queryAuditLogs({
         projectId,
         filters: {
@@ -401,6 +385,7 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
           agentId,
           action,
           result,
+          executionStatus,
           startTime,
           endTime
         },

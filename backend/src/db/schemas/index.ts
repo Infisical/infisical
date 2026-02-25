@@ -5,7 +5,6 @@ export * from "./access-approval-requests";
 export * from "./access-approval-requests-reviewers";
 export * from "./additional-privileges";
 export * from "./agent-gate-audit-logs";
-export * from "./agent-gate-executions";
 export * from "./agent-gate-policies";
 export * from "./ai-mcp-activity-logs";
 export * from "./ai-mcp-endpoint-server-tools";

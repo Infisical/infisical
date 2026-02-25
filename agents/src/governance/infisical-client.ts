@@ -1,11 +1,9 @@
 import {
   PolicyEvaluationRequest,
-  PolicyEvaluationResult,
+  PolicyEvaluationResponse,
   AgentPolicy,
   GovernanceAuditLog,
   ActionContext,
-  ActionStartedEvent,
-  ActionCompletedEvent,
 } from "./types.js";
 
 export interface InfisicalAgentGateConfig {
@@ -53,13 +51,14 @@ export class InfisicalAgentGateClient {
   /**
    * Check if an agent is allowed to execute its own skill (self-governance).
    * The agent is both the requester and target.
+   * Returns auditLogId for tracking execution status.
    */
   async checkSkillPermission(
     agentId: string,
     skillId: string,
     parameters: Record<string, unknown>,
     context: ActionContext,
-  ): Promise<PolicyEvaluationResult> {
+  ): Promise<PolicyEvaluationResponse> {
     const request: PolicyEvaluationRequest = {
       requestingAgentId: agentId,
       targetAgentId: agentId,
@@ -76,6 +75,7 @@ export class InfisicalAgentGateClient {
 
   /**
    * Check if an agent is allowed to communicate with (request something from) another agent.
+   * Returns auditLogId for tracking execution status.
    */
   async checkCommunicationPermission(
     requestingAgentId: string,
@@ -83,7 +83,7 @@ export class InfisicalAgentGateClient {
     messageType: string,
     content: Record<string, unknown>,
     context: ActionContext,
-  ): Promise<PolicyEvaluationResult> {
+  ): Promise<PolicyEvaluationResponse> {
     const request: PolicyEvaluationRequest = {
       requestingAgentId,
       targetAgentId,
@@ -101,10 +101,11 @@ export class InfisicalAgentGateClient {
   /**
    * Core policy evaluation - calls Infisical Agent Arbiter API
    * POST /api/v1/agentgate/evaluate?projectId=<project_id>
+   * Now returns auditLogId for execution tracking
    */
   private async evaluatePolicy(
     request: PolicyEvaluationRequest,
-  ): Promise<PolicyEvaluationResult> {
+  ): Promise<PolicyEvaluationResponse> {
     try {
       const response = await fetch(
         this.buildUrl("/api/v1/agentgate/evaluate"),
@@ -121,7 +122,7 @@ export class InfisicalAgentGateClient {
         );
       }
 
-      const result = (await response.json()) as PolicyEvaluationResult;
+      const result = (await response.json()) as PolicyEvaluationResponse;
       return result;
     } catch (error) {
       if (this.useMockFallback) {
@@ -138,6 +139,7 @@ export class InfisicalAgentGateClient {
         policyId: "error_fallback",
         reasoning: `Policy evaluation failed: ${error instanceof Error ? error.message : "Unknown error"}. Defaulting to DENY for safety.`,
         evaluatedAt: new Date().toISOString(),
+        auditLogId: "mock-error-" + Date.now(),
       };
     }
   }
@@ -181,27 +183,24 @@ export class InfisicalAgentGateClient {
 
   /**
    * Report that an action has started executing.
-   * POST /api/v1/agentgate/executions/start?projectId=<project_id>
+   * POST /api/v1/agentgate/audit/:auditLogId/start
    */
-  async reportActionStarted(event: ActionStartedEvent): Promise<void> {
+  async reportActionStarted(auditLogId: string): Promise<void> {
     try {
       const response = await fetch(
-        this.buildUrl("/api/v1/agentgate/executions/start"),
+        `${this.config.baseUrl}/api/v1/agentgate/audit/${auditLogId}/start`,
         {
           method: "POST",
           headers: this.getHeaders(),
-          body: JSON.stringify(event),
         },
       );
 
-      if (!response.ok && response.status !== 204) {
+      if (!response.ok) {
         throw new Error(`Failed to report action started: ${response.status}`);
       }
     } catch (error) {
       if (this.useMockFallback) {
-        console.log(
-          `[AgentArbiter] Action started: ${event.requestingAgentId}.${event.action}`,
-        );
+        console.log(`[AgentArbiter] Action started: ${auditLogId}`);
       } else {
         console.error("[AgentArbiter] Failed to report action started:", error);
       }
@@ -210,30 +209,35 @@ export class InfisicalAgentGateClient {
 
   /**
    * Report that an action has completed (successfully or failed).
-   * POST /api/v1/agentgate/executions/complete?projectId=<project_id>
+   * POST /api/v1/agentgate/audit/:auditLogId/complete
    */
-  async reportActionCompleted(event: ActionCompletedEvent): Promise<void> {
+  async reportActionCompleted(
+    auditLogId: string,
+    data: {
+      status: "completed" | "failed";
+      result?: Record<string, unknown>;
+      error?: string;
+    },
+  ): Promise<void> {
     try {
       const response = await fetch(
-        this.buildUrl("/api/v1/agentgate/executions/complete"),
+        `${this.config.baseUrl}/api/v1/agentgate/audit/${auditLogId}/complete`,
         {
           method: "POST",
           headers: this.getHeaders(),
-          body: JSON.stringify(event),
+          body: JSON.stringify(data),
         },
       );
 
-      if (!response.ok && response.status !== 204) {
+      if (!response.ok) {
         throw new Error(
           `Failed to report action completed: ${response.status}`,
         );
       }
     } catch (error) {
       if (this.useMockFallback) {
-        const icon = event.status === "completed" ? "✓" : "✗";
-        console.log(
-          `[AgentArbiter] Action ${icon} ${event.status}: ${event.requestingAgentId}.${event.action} (${event.durationMs}ms)`,
-        );
+        const icon = data.status === "completed" ? "✓" : "✗";
+        console.log(`[AgentArbiter] Action ${icon} ${data.status}: ${auditLogId}`);
       } else {
         console.error(
           "[AgentArbiter] Failed to report action completed:",
@@ -300,10 +304,11 @@ export class InfisicalAgentGateClient {
    * GET /api/v1/agentgate/audit?projectId=<project_id>&sessionId=...&agentId=...&result=...
    */
   async queryAuditLogs(options?: {
-    sessionId?: string; // Filter by sessionId to see all events in a workflow
+    sessionId?: string;
     agentId?: string;
     action?: string;
     result?: "allowed" | "denied";
+    executionStatus?: "pending" | "started" | "completed" | "failed";
     startTime?: string;
     endTime?: string;
     limit?: number;
@@ -318,6 +323,7 @@ export class InfisicalAgentGateClient {
         if (options.agentId) params.append("agentId", options.agentId);
         if (options.action) params.append("action", options.action);
         if (options.result) params.append("result", options.result);
+        if (options.executionStatus) params.append("executionStatus", options.executionStatus);
         if (options.startTime) params.append("startTime", options.startTime);
         if (options.endTime) params.append("endTime", options.endTime);
         if (options.limit) params.append("limit", options.limit.toString());
@@ -352,26 +358,29 @@ export class InfisicalAgentGateClient {
 
   private mockEvaluatePolicy(
     request: PolicyEvaluationRequest,
-  ): PolicyEvaluationResult {
+  ): PolicyEvaluationResponse {
     const { requestingAgentId, targetAgentId, action, context } = request;
+    const mockAuditLogId = `mock-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
     // Self-governance: agent executing its own skill
     if (action.type === "skill") {
-      return this.mockEvaluateSelfSkill(
+      const result = this.mockEvaluateSelfSkill(
         targetAgentId,
         action.skillId,
         action.parameters,
         context,
       );
+      return { ...result, auditLogId: mockAuditLogId };
     }
 
     // Inter-agent: one agent requesting something from another
-    return this.mockEvaluateInboundRequest(
+    const result = this.mockEvaluateInboundRequest(
       requestingAgentId,
       targetAgentId,
       action.messageType,
       context,
     );
+    return { ...result, auditLogId: mockAuditLogId };
   }
 
   private mockEvaluateSelfSkill(
@@ -379,7 +388,7 @@ export class InfisicalAgentGateClient {
     skillId: string,
     parameters: Record<string, unknown>,
     context: ActionContext,
-  ): PolicyEvaluationResult {
+  ): Omit<PolicyEvaluationResponse, "auditLogId"> {
     const policy = MOCK_AGENT_POLICIES[agentId];
     if (!policy) {
       return {
@@ -430,7 +439,7 @@ export class InfisicalAgentGateClient {
     targetAgentId: string,
     messageType: string,
     _context: ActionContext,
-  ): PolicyEvaluationResult {
+  ): Omit<PolicyEvaluationResponse, "auditLogId"> {
     const targetPolicy = MOCK_AGENT_POLICIES[targetAgentId];
     if (!targetPolicy) {
       return {
@@ -484,7 +493,7 @@ export class InfisicalAgentGateClient {
     _skillId: string,
     parameters: Record<string, unknown>,
     context: ActionContext,
-  ): PolicyEvaluationResult {
+  ): Omit<PolicyEvaluationResponse, "auditLogId"> {
     switch (policy.id) {
       case "refund_context_check": {
         const amount =
