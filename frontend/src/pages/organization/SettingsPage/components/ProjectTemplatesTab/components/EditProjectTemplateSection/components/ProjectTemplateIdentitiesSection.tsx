@@ -103,7 +103,8 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
 
   const { data: orgIdentitiesResponse, isPending: isMembershipsLoading } =
     useSearchOrgIdentityMemberships({
-      search: {}
+      search: {},
+      limit: 1000
     });
   const orgIdentities = orgIdentitiesResponse
     ? orgIdentitiesResponse.identities.map((v) => v.identity)
