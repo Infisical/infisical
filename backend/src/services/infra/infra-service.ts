@@ -121,7 +121,10 @@ export const infraServiceFactory = ({
     if (run.status !== InfraRunStatus.AwaitingApproval) {
       throw new BadRequestError({ message: "Run is not awaiting approval" });
     }
-    return infraRunDAL.updateById(runId, { status: InfraRunStatus.Running });
+    // Delete the awaiting run — the frontend will re-trigger with approved: true,
+    // which creates a new run that actually executes the plan.
+    await infraRunDAL.deleteById(runId);
+    return run;
   };
 
   const denyRun = async (runId: string) => {
@@ -129,12 +132,9 @@ export const infraServiceFactory = ({
     if (run.status !== InfraRunStatus.AwaitingApproval) {
       throw new BadRequestError({ message: "Run is not awaiting approval" });
     }
-    return infraRunDAL.updateById(runId, {
-      status: InfraRunStatus.Denied,
-      logs: `${run.logs}\n[infra] Run denied by user.\n`,
-      planJson: null,
-      aiSummary: null
-    });
+    // Delete the denied run entirely — denied runs should not persist
+    await infraRunDAL.deleteById(runId);
+    return run;
   };
 
   // ── State Backend ──
@@ -215,14 +215,20 @@ export const infraServiceFactory = ({
       }
     }
 
-    // Merge in resources and dependency data from the latest plan
+    // Merge in resources and dependency data from the latest plan/apply run.
+    // Skip if the most recent successful run is a destroy — all prior plans are stale.
     const addressSet = new Set(stateResources.map((r) => r.address));
 
     const latestRuns = await infraRunDAL.find(
       { projectId, status: InfraRunStatus.Success },
       { limit: 1, sort: [["createdAt", "desc"]] }
     );
-    const latestPlanJson = latestRuns[0]?.planJson as unknown as TPlanJson | null;
+    const latestRun = latestRuns[0];
+    // Only enrich from plan data if the latest run is NOT a destroy
+    const latestPlanJson =
+      latestRun && latestRun.type !== InfraRunType.Destroy
+        ? (latestRun.planJson as unknown as TPlanJson | null)
+        : null;
 
     if (latestPlanJson?.resources) {
       // Build a lookup of plan dependency data (richer than state depends_on)
@@ -915,6 +921,7 @@ ${planJson ? JSON.stringify(planJson, null, 2) : "Not available"}${costContext}`
 
 Rules:
 - For costs: use provided static estimates for covered resources (put in "estimated"). For uncovered resources, estimate based on typical cloud pricing and set confidence level (put in "aiEstimated").
+- Infisical provider pricing: $18/mo per infisical_identity. All other infisical_* resources are free ($0). Do not estimate costs for infisical resources other than infisical_identity.
 - For security: flag networking misconfigurations, overly permissive access, unencrypted data stores, exposed credentials, missing logging/monitoring.
 - Set shouldApprove to true ONLY for critical or high severity security issues.`,
       responseMimeType: "application/json",
@@ -990,7 +997,9 @@ const RESOURCE_COST_TABLE: Record<string, number> = {
   azurerm_virtual_machine: 14.6,
   azurerm_storage_account: 0.02,
   azurerm_sql_database: 4.9,
-  azurerm_kubernetes_cluster: 72.0
+  azurerm_kubernetes_cluster: 72.0,
+  // Infisical
+  infisical_identity: 18.0
 };
 
 function estimateResourceCosts(rawPlanJson: string): Array<{ resource: string; monthlyCost: number; type: string }> {

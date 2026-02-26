@@ -13,7 +13,11 @@ import {
 } from "lucide-react";
 
 import { Badge, Button } from "@app/components/v3";
-import { buildGraphFromPlanJson, type TAiInsight, type TPlanJson } from "@app/hooks/api/infra/types";
+import {
+  buildGraphFromPlanJson,
+  type TAiInsight,
+  type TPlanJson
+} from "@app/hooks/api/infra/types";
 import { ResourceTopologyGraph } from "../components/ResourceTopologyGraph";
 
 // ── Helpers ──
@@ -220,7 +224,8 @@ export const InfraRunOverlay = ({
         }
       } else {
         // Fresh start: initialize all steps
-        const defs = mode === "destroy" ? DESTROY_STEPS : mode === "apply" ? APPLY_STEPS : PLAN_STEPS;
+        const defs =
+          mode === "destroy" ? DESTROY_STEPS : mode === "apply" ? APPLY_STEPS : PLAN_STEPS;
         const initial: Step[] = defs.map((d, i) => ({
           ...d,
           status: i === 0 ? "active" : "pending"
@@ -326,11 +331,13 @@ export const InfraRunOverlay = ({
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-mineshaft-600 px-4 py-3">
               <div className="flex items-center gap-2.5">
-                <Badge variant={mode === "destroy" ? "danger" : mode === "apply" ? "success" : "info"}>
+                <Badge
+                  variant={mode === "destroy" ? "danger" : mode === "apply" ? "success" : "info"}
+                >
                   {mode === "destroy" ? "Destroy" : mode === "apply" ? "Apply" : "Plan"}
                 </Badge>
                 {isRunning && (
-                  <span className="text-xs text-mineshaft-400 animate-pulse">Running...</span>
+                  <span className="animate-pulse text-xs text-mineshaft-400">Running...</span>
                 )}
                 {isDone && !hasFailed && (
                   <motion.span
@@ -387,9 +394,7 @@ export const InfraRunOverlay = ({
                         {step.label}
                       </span>
                     </motion.div>
-                    {i < steps.length - 1 && (
-                      <ConnectorLine filled={step.status === "completed"} />
-                    )}
+                    {i < steps.length - 1 && <ConnectorLine filled={step.status === "completed"} />}
                   </div>
                 ))}
               </div>
@@ -411,7 +416,8 @@ export const InfraRunOverlay = ({
                     </div>
                     {mode === "destroy" && (
                       <p className="mb-3 text-xs text-red-300/80">
-                        This will permanently destroy all managed resources. This action cannot be undone.
+                        This will permanently destroy all managed resources. This action cannot be
+                        undone.
                       </p>
                     )}
                     {aiInsight?.security.issues.map((issue, idx) => (
@@ -433,7 +439,12 @@ export const InfraRunOverlay = ({
                       </div>
                     ))}
                     <div className="mt-4 flex gap-2">
-                      <Button variant={mode === "destroy" ? "danger" : "success"} size="sm" onClick={onApprove} className="flex-1">
+                      <Button
+                        variant={mode === "destroy" ? "danger" : "success"}
+                        size="sm"
+                        onClick={onApprove}
+                        className="flex-1"
+                      >
                         {mode === "destroy" ? "Approve & Destroy" : "Approve & Apply"}
                       </Button>
                       <Button variant="outline" size="sm" onClick={onDeny} className="flex-1">
@@ -462,28 +473,30 @@ export const InfraRunOverlay = ({
                   )}
 
                   {/* Topology graph (compact, run-specific) */}
-                  {planJson && planJson.resources.length > 0 && (() => {
-                    const runGraph = buildGraphFromPlanJson(planJson);
-                    return runGraph.nodes.length > 0 ? (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        <ResourceTopologyGraph
-                          nodes={runGraph.nodes}
-                          edges={runGraph.edges}
-                          actionMap={planJson.resources.reduce<Record<string, string>>(
-                            (acc, r) => ({ ...acc, [r.address]: r.action }),
-                            {}
-                          )}
-                          compact
-                          animate
-                          className="h-48"
-                        />
-                      </motion.div>
-                    ) : null;
-                  })()}
+                  {planJson &&
+                    planJson.resources.length > 0 &&
+                    (() => {
+                      const runGraph = buildGraphFromPlanJson(planJson);
+                      return runGraph.nodes.length > 0 ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3 }}
+                        >
+                          <ResourceTopologyGraph
+                            nodes={runGraph.nodes}
+                            edges={runGraph.edges}
+                            actionMap={planJson.resources.reduce<Record<string, string>>(
+                              (acc, r) => ({ ...acc, [r.address]: r.action }),
+                              {}
+                            )}
+                            compact
+                            animate
+                            className="h-48"
+                          />
+                        </motion.div>
+                      ) : null;
+                    })()}
 
                   {/* AI Insight */}
                   {aiInsight && (
@@ -505,7 +518,7 @@ export const InfraRunOverlay = ({
                       {(aiInsight.costs.estimated.length > 0 ||
                         aiInsight.costs.aiEstimated.length > 0) && (
                         <div className="mt-3 border-t border-primary/10 pt-3">
-                          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">
+                          <p className="mb-1 text-[11px] font-semibold tracking-wider text-mineshaft-400 uppercase">
                             Cost Estimate
                           </p>
                           <p className="mb-1 text-xs text-mineshaft-200">
@@ -529,7 +542,7 @@ export const InfraRunOverlay = ({
                       {/* Security */}
                       {aiInsight.security.issues.length > 0 && (
                         <div className="mt-3 border-t border-primary/10 pt-3">
-                          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">
+                          <p className="mb-1 text-[11px] font-semibold tracking-wider text-mineshaft-400 uppercase">
                             Security
                           </p>
                           {aiInsight.security.issues.map((issue, idx) => (
@@ -556,27 +569,30 @@ export const InfraRunOverlay = ({
               )}
 
               {/* Error summary */}
-              {isDone && hasFailed && output && (() => {
-                const errorText = extractError(output);
-                return errorText ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="mt-5 overflow-hidden rounded-lg border border-red-500/30"
-                  >
-                    <div className="bg-gradient-to-b from-red-500/10 to-transparent p-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <XIcon className="size-4 text-red-400" />
-                        <span className="text-sm font-semibold text-red-400">Error</span>
+              {isDone &&
+                hasFailed &&
+                output &&
+                (() => {
+                  const errorText = extractError(output);
+                  return errorText ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="mt-5 overflow-hidden rounded-lg border border-red-500/30"
+                    >
+                      <div className="bg-gradient-to-b from-red-500/10 to-transparent p-4">
+                        <div className="mb-2 flex items-center gap-2">
+                          <XIcon className="size-4 text-red-400" />
+                          <span className="text-sm font-semibold text-red-400">Error</span>
+                        </div>
+                        <pre className="font-mono text-xs whitespace-pre-wrap text-red-200/80">
+                          {errorText}
+                        </pre>
                       </div>
-                      <pre className="whitespace-pre-wrap font-mono text-xs text-red-200/80">
-                        {errorText}
-                      </pre>
-                    </div>
-                  </motion.div>
-                ) : null;
-              })()}
+                    </motion.div>
+                  ) : null;
+                })()}
 
               {/* Terminal output (collapsible) */}
               {output && (

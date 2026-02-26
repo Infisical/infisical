@@ -332,7 +332,7 @@ export const InfraRunsPage = () => {
                     )}
                   </p>
                 </div>
-                <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-green-400">
+                <div className="h-fit rounded-lg bg-mineshaft-700/50 p-2.5 text-green-400">
                   <CheckCircle2Icon className="size-5" />
                 </div>
               </div>

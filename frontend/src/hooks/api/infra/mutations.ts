@@ -54,8 +54,15 @@ export const useTriggerInfraRun = () => {
       const { data } = await apiRequest.post<TRunResult>(`/api/v1/infra/${projectId}/run`, { mode, approved });
       return data;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (_, { projectId, mode }) => {
       queryClient.invalidateQueries({ queryKey: infraKeys.runs(projectId) });
+      // Apply and destroy modify state, so refresh resources/graph/state
+      if (mode === "apply" || mode === "destroy") {
+        queryClient.invalidateQueries({ queryKey: infraKeys.resources(projectId) });
+        queryClient.invalidateQueries({ queryKey: infraKeys.graph(projectId) });
+        queryClient.invalidateQueries({ queryKey: infraKeys.state(projectId) });
+        queryClient.invalidateQueries({ queryKey: infraKeys.stateHistory(projectId) });
+      }
     }
   });
 };
@@ -73,6 +80,10 @@ export const useApproveInfraRun = () => {
     onSuccess: (_, { projectId, runId }) => {
       queryClient.invalidateQueries({ queryKey: infraKeys.runs(projectId) });
       queryClient.invalidateQueries({ queryKey: infraKeys.run(runId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.resources(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.graph(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.state(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.stateHistory(projectId) });
     }
   });
 };
@@ -90,6 +101,10 @@ export const useDenyInfraRun = () => {
     onSuccess: (_, { projectId, runId }) => {
       queryClient.invalidateQueries({ queryKey: infraKeys.runs(projectId) });
       queryClient.invalidateQueries({ queryKey: infraKeys.run(runId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.resources(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.graph(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.state(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.stateHistory(projectId) });
     }
   });
 };

@@ -418,11 +418,21 @@ export const InfraRunDetailPage = () => {
   const handleApprove = async () => {
     if (!run) return;
     await approveRun.mutateAsync({ projectId: currentProject.id, runId: run.id });
+    // Approved run is deleted — navigate to editor so user can re-trigger execution
+    navigate({
+      to: "/organizations/$orgId/projects/infra/$projectId/editor",
+      params: { orgId: params.orgId, projectId: params.projectId }
+    });
   };
 
   const handleDeny = async () => {
     if (!run) return;
     await denyRun.mutateAsync({ projectId: currentProject.id, runId: run.id });
+    // Denied run is deleted — navigate back to runs list
+    navigate({
+      to: "/organizations/$orgId/projects/infra/$projectId/runs",
+      params: { orgId: params.orgId, projectId: params.projectId }
+    });
   };
 
   if (isLoading) {
@@ -481,7 +491,7 @@ export const InfraRunDetailPage = () => {
     : [];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex h-full flex-col gap-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -871,10 +881,10 @@ export const InfraRunDetailPage = () => {
       )}
 
       {activeTab === "topology" && runGraph && (
-        <UnstableCard className="flex h-full min-h-0 flex-col">
-          <UnstableCardContent>
-            <div className="flex">
-              <div className="min-w-0 flex-1">
+        <UnstableCard className="h-full min-h-0 flex-1 grow">
+          <UnstableCardContent className="h-full">
+            <div className="flex h-full">
+              <div className="h-full min-w-0 flex-1">
                 <ResourceTopologyGraph
                   nodes={runGraph.nodes}
                   edges={runGraph.edges}
@@ -884,7 +894,7 @@ export const InfraRunDetailPage = () => {
                       : undefined
                   }
                   animate
-                  className={twMerge("h-[500px]", selectedResource && "rounded-r-none border-r-0")}
+                  className={twMerge("h-full", selectedResource && "rounded-r-none border-r-0")}
                   onNodeClick={handleNodeClick}
                   selectedNodeId={selectedNodeId}
                 />
