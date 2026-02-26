@@ -13,9 +13,12 @@ interface ConstellationViewProps {
 const AGENT_POSITIONS = [
   { x: -200, y: -150 },
   { x: 250, y: -80 },
-  { x: -220, y: 120 },
-  { x: 120, y: 200 }
+  { x: -260, y: 155 },
+  { x: 155, y: 245 }
 ];
+
+// Per-agent line length adjustment (px to shrink from agent edge)
+const AGENT_LINE_INSET = [-10, -4, 2, 4];
 
 const getIcon = (name: string) => {
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
@@ -144,7 +147,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
           const dist = Math.sqrt(dx * dx + dy * dy);
           const ux = dx / dist;
           const uy = dy / dist;
-          const agentRadius = 40;
+          const agentRadius = 44 + AGENT_LINE_INSET[index];
           const centerRadius = 64;
           const x1 = ux * agentRadius;
           const y1 = uy * agentRadius;
