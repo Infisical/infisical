@@ -82,7 +82,7 @@ export const pkiCertificateResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: notAfter,
-        resourceLink: `/org/${orgId}/pki/${cert.caId}/certificates/${cert.id}`,
+        resourceLink: `/organizations/${orgId}/projects/cert-manager/${cert.projectId}/certificates/${cert.id}`,
         metadata: {
           serialNumber: cert.serialNumber,
           commonName: cert.commonName,

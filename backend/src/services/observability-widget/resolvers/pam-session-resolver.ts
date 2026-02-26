@@ -85,7 +85,7 @@ export const pamSessionResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: session.startedAt || new Date(),
-        resourceLink: `/org/${orgId}/project/${session.projectId}/pam/sessions/${session.id}`,
+        resourceLink: `/organizations/${orgId}/projects/pam/${session.projectId}/sessions/${session.id}`,
         metadata: {
           actorName: session.actorName,
           actorEmail: session.actorEmail,

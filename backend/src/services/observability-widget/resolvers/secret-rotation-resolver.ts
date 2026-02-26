@@ -80,7 +80,7 @@ export const secretRotationResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: rotation.lastRotatedAt || new Date(),
-        resourceLink: `/org/${orgId}/project/${rotation.projectId}/secret-rotation/${rotation.id}`,
+        resourceLink: `/organizations/${orgId}/projects/secret-management/${rotation.projectId}/secret-rotation`,
         metadata: {
           rotationType: rotation.type,
           nextRotationAt: rotation.nextRotationAt,

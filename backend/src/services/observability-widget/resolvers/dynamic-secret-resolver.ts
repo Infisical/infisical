@@ -87,7 +87,7 @@ export const dynamicSecretResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: expireAt,
-        resourceLink: `/org/${orgId}/project/${lease.projectId}/dynamic-secrets`,
+        resourceLink: `/organizations/${orgId}/projects/secret-management/${lease.projectId}/secrets/${lease.envSlug}`,
         metadata: {
           dynamicSecretType: lease.dynamicSecretType,
           externalEntityId: lease.externalEntityId,

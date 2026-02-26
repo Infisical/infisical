@@ -69,7 +69,7 @@ export const webhookResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: webhook.updatedAt,
-        resourceLink: `/org/${orgId}/project/${webhook.projectId}/settings/webhooks`,
+        resourceLink: `/organizations/${orgId}/projects/secret-management/${webhook.projectId}/settings`,
         metadata: {
           secretPath: webhook.secretPath,
           environment: webhook.envSlug,

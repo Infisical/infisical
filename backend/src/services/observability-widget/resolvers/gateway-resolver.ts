@@ -63,7 +63,7 @@ export const gatewayResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: gateway.heartbeat || gateway.updatedAt,
-        resourceLink: `/org/${orgId}/settings/gateway`,
+        resourceLink: `/organizations/${orgId}/networking?selectedTab=gateways`,
         metadata: {
           lastHeartbeat: gateway.heartbeat
         }

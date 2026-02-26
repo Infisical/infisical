@@ -64,7 +64,7 @@ export const relayResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: relay.heartbeat || relay.updatedAt,
-        resourceLink: `/org/${orgId}/settings/relay`,
+        resourceLink: `/organizations/${orgId}/networking?selectedTab=relays`,
         metadata: {
           host: relay.host,
           lastHeartbeat: relay.heartbeat

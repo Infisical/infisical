@@ -71,7 +71,7 @@ export const secretSyncResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: sync.lastSyncedAt || new Date(),
-        resourceLink: `/org/${orgId}/project/${sync.projectId}/integrations/secret-syncs/${sync.id}`,
+        resourceLink: `/organizations/${orgId}/projects/secret-management/${sync.projectId}/integrations/secret-syncs/${sync.destination}/${sync.id}`,
         metadata: {
           destination: sync.destination,
           lastSyncMessage: sync.lastSyncMessage

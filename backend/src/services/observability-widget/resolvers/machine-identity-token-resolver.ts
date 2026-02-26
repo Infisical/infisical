@@ -91,7 +91,7 @@ export const machineIdentityTokenResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: token.accessTokenLastUsedAt || token.createdAt,
-        resourceLink: `/org/${orgId}/identities/${token.identityId}`,
+        resourceLink: `/organizations/${orgId}/identities/${token.identityId}`,
         metadata: {
           identityName: token.identityName,
           authMethod: token.authMethod,

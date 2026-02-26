@@ -54,7 +54,7 @@ export const userSessionResolverFactory = (db: TDbClient) => {
         status: ObservabilityItemStatus.Active,
         statusTooltip: null,
         eventTimestamp: session.lastUsed,
-        resourceLink: `/org/${orgId}/settings/members`,
+        resourceLink: `/organizations/${orgId}/access-management`,
         metadata: {
           email: session.email,
           ip: session.ip,

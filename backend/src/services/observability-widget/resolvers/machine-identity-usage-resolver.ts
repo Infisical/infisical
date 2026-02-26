@@ -63,7 +63,7 @@ export const machineIdentityUsageResolverFactory = (db: TDbClient) => {
         status: ObservabilityItemStatus.Active,
         statusTooltip: null,
         eventTimestamp: identity.lastUsedAt || new Date(0),
-        resourceLink: `/org/${orgId}/identities/${identity.id}`,
+        resourceLink: `/organizations/${orgId}/identities/${identity.id}`,
         metadata: {
           lastUsedAt: identity.lastUsedAt
         }

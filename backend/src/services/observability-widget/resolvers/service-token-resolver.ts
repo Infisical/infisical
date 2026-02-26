@@ -82,7 +82,7 @@ export const serviceTokenResolverFactory = (db: TDbClient) => {
         status: itemStatus,
         statusTooltip,
         eventTimestamp: token.lastUsed || new Date(),
-        resourceLink: `/org/${orgId}/project/${token.projectId}/settings/service-tokens`,
+        resourceLink: `/organizations/${orgId}/projects/secret-management/${token.projectId}/settings`,
         metadata: {
           expiresAt: token.expiresAt,
           lastUsed: token.lastUsed
