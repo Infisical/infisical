@@ -26,6 +26,7 @@ const mapAuditLogToEvent = (log: TAgentGateAuditLog): DemoEvent => ({
   status: log.result === "allowed" ? "approved" : "denied",
   reasoning: log.policyEvaluations?.[0]?.reasoning ?? "",
   agentReasoning: log.agentReasoning || undefined,
+  executionStatus: log.executionStatus,
   timestamp: log.timestamp
 });
 
@@ -53,6 +54,8 @@ export const LiveFeedTab = () => {
   });
 
   const previousLatestIdRef = useRef<string | null>(null);
+  const activeSinceRef = useRef<number>(0);
+  const deactivateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentEvent, setCurrentEvent] = useState<DemoEvent | null>(null);
 
   const events: DemoEvent[] = useMemo(() => {
@@ -68,16 +71,55 @@ export const LiveFeedTab = () => {
       setActiveSessionId(latestSession);
       previousLatestIdRef.current = null;
       setCurrentEvent(null);
+      if (deactivateTimerRef.current) {
+        clearTimeout(deactivateTimerRef.current);
+        deactivateTimerRef.current = null;
+      }
     }
   }, [unfilteredData?.logs]);
 
-  // Highlight the latest event — stays active until a new one arrives
+  // Highlight the latest event — active while executionStatus is null, pending, or started
+  // Stays active for a minimum of 5 seconds
+  const isActiveStatus = (status: DemoEvent["executionStatus"]) =>
+    status == null || status === "pending" || status === "started";
+
+  const MIN_ACTIVE_MS = 15000;
+
+  const scheduleDeactivate = () => {
+    if (deactivateTimerRef.current) return;
+    const elapsed = Date.now() - activeSinceRef.current;
+    const remaining = Math.max(0, MIN_ACTIVE_MS - elapsed);
+    deactivateTimerRef.current = setTimeout(() => {
+      deactivateTimerRef.current = null;
+      setCurrentEvent(null);
+    }, remaining);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (deactivateTimerRef.current) clearTimeout(deactivateTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (!events.length) return;
-    const latestId = events[0].id;
-    if (latestId !== previousLatestIdRef.current) {
-      previousLatestIdRef.current = latestId;
-      setCurrentEvent(events[0]);
+    const latest = events[0];
+    if (latest.id !== previousLatestIdRef.current) {
+      // New event arrived — always activate it with minimum time guarantee
+      previousLatestIdRef.current = latest.id;
+      if (deactivateTimerRef.current) {
+        clearTimeout(deactivateTimerRef.current);
+        deactivateTimerRef.current = null;
+      }
+      activeSinceRef.current = Date.now();
+      setCurrentEvent(latest);
+      if (!isActiveStatus(latest.executionStatus)) {
+        // Already completed/failed — schedule deactivation after minimum time
+        scheduleDeactivate();
+      }
+    } else if (currentEvent && !isActiveStatus(latest.executionStatus)) {
+      // Status changed on the current event — schedule deactivation with minimum time
+      scheduleDeactivate();
     }
   }, [events]);
 
