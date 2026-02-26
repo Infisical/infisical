@@ -556,9 +556,6 @@ export const NhiIdentityDetailPage = () => {
                           </p>
                           <p className="text-xs text-mineshaft-400">{factor.description}</p>
                         </div>
-                        <Badge variant={getSeverityBadgeVariant(factor.severity)}>
-                          {capitalize(factor.severity)}
-                        </Badge>
                         {fixAction && (
                           <Button
                             size="sm"
