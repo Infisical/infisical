@@ -24,6 +24,7 @@ const ObservabilityWidgetResponseSchema = ObservabilityWidgetsSchema.pick({
   refreshInterval: true,
   icon: true,
   color: true,
+  isBuiltIn: true,
   createdAt: true,
   updatedAt: true
 }).extend({

@@ -16,7 +16,7 @@ import {
 
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
-import { useListWidgets } from "@app/hooks/api/observabilityWidgets";
+import { useCreateWidget, useListWidgets } from "@app/hooks/api/observabilityWidgets";
 import {
   useCreateWidgetView,
   useDeleteWidgetView,
@@ -97,6 +97,27 @@ const GRID_COLS = 12;
 const ROW_HEIGHT = 200;
 const GRID_MARGIN: [number, number] = [16, 16];
 
+function parseRefreshInterval(interval?: string): number {
+  if (!interval || interval === "Off") return 30;
+  const match = interval.match(/^(\d+)(s|m)$/);
+  if (!match) return 30;
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  return unit === "m" ? value * 60 : value;
+}
+
+function getWidgetType(isLogs?: boolean, isMetrics?: boolean): "logs" | "metrics" | "events" {
+  if (isLogs) return "logs";
+  if (isMetrics) return "metrics";
+  return "events";
+}
+
+function getWidgetDimensions(isLogs?: boolean, isMetrics?: boolean): { w: number; h: number } {
+  if (isLogs) return { w: 12, h: 2 };
+  if (isMetrics) return { w: 3, h: 1 };
+  return { w: 6, h: 2 };
+}
+
 interface ObservabilityDashboardProps {
   panelOpen: boolean;
   onPanelOpenChange: (open: boolean) => void;
@@ -114,6 +135,7 @@ export function ObservabilityDashboard({
   const createViewMutation = useCreateWidgetView();
   const updateViewMutation = useUpdateWidgetView();
   const deleteViewMutation = useDeleteWidgetView();
+  const createWidgetMutation = useCreateWidget();
 
   const navigate = useNavigate({ from: ROUTE_PATHS.Organization.ObservabilityPage.path });
   const viewParam = useSearch({
@@ -152,14 +174,29 @@ export function ObservabilityDashboard({
   }, [backendViews, activeViewId, setActiveViewId]);
 
   const activeView = backendViews.find((v) => v.id === activeViewId);
+
+  const widgetByNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    backendWidgets.forEach((w) => {
+      map[w.name.toLowerCase()] = w.id;
+    });
+    return map;
+  }, [backendWidgets]);
+
+  const tmplToWidgetName: Record<string, string> = {
+    logs: "live logs",
+    "all-failures": "all failures",
+    "secret-syncs": "secret syncs monitor",
+    "expiring-certs": "expiring certificates"
+  };
+
   const backendLayout: LayoutItem[] = useMemo(() => {
     if (!activeView) return [];
     const { items } = activeView;
     if (!Array.isArray(items)) return [];
     const rawItems = items as LayoutItem[];
 
-    // Auto-assign widgetId to items that were saved without one (e.g. default views
-    // created before widgets existed, or items using legacy frontend-only templates).
+// Auto-assign widgetId to items that were saved without one
     const logsWidget = backendWidgets.find((w) => w.type === "logs");
     const eventsWidgets = backendWidgets.filter((w) => w.type === "events");
     const metricsWidgets = backendWidgets.filter((w) => w.type === "metrics");
@@ -168,18 +205,34 @@ export function ObservabilityDashboard({
 
     return rawItems.map((item) => {
       if (item.widgetId) return item;
+
+      // First try to match by name using the template mapping
+      const expectedName = tmplToWidgetName[item.tmpl];
+      if (expectedName) {
+        const widgetId = widgetByNameMap[expectedName];
+        if (widgetId) {
+          return { ...item, widgetId };
+        }
+      }
+
+      // Fallback to type-based matching
       if (item.tmpl === "logs" && logsWidget) {
         return { ...item, widgetId: logsWidget.id };
       }
       if (item.tmpl === "_backend_metrics" && metricsIdx < metricsWidgets.length) {
-        return { ...item, widgetId: metricsWidgets[metricsIdx++].id };
+        const widgetId = metricsWidgets[metricsIdx].id;
+        metricsIdx += 1;
+        return { ...item, widgetId };
       }
       if (item.tmpl !== "logs" && item.tmpl !== "_backend_metrics" && eventsIdx < eventsWidgets.length) {
-        return { ...item, widgetId: eventsWidgets[eventsIdx++].id };
+        const widgetId = eventsWidgets[eventsIdx].id;
+        eventsIdx += 1;
+        return { ...item, widgetId };
       }
+
       return item;
     });
-  }, [activeView, backendWidgets]);
+  }, [activeView, widgetByNameMap, backendWidgets]);
 
   const [localLayout, setLocalLayout] = useState<LayoutItem[] | null>(null);
   const layout = localLayout ?? backendLayout;
@@ -294,7 +347,7 @@ export function ObservabilityDashboard({
   );
 
   const handleCreateTemplate = useCallback(
-    (result: CreateTemplateResult) => {
+    async (result: CreateTemplateResult) => {
       setCustomTemplates((prev) => ({ ...prev, [result.key]: result.template }));
 
       if (editingWidget) {
@@ -304,43 +357,76 @@ export function ObservabilityDashboard({
           return [...prev, result.panelItem];
         });
         setEditingWidget(undefined);
+        onPanelOpenChange(false);
       } else {
-        setCustomPanelItems((prev) => [...prev, result.panelItem]);
-        const uid = genUid();
-        const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
-        setLayout((prev) => [
-          ...prev,
-          {
-            uid,
-            tmpl: result.key,
-            x: 0,
-            y: maxY,
-            w: result.template.isLogs ? 12 : result.template.isMetrics ? 3 : 6,
-            h: result.template.isMetrics ? 1 : 2
-          }
-        ]);
+        const isLogsWidget = result.template.isLogs;
+        const isMetricsWidget = result.template.isMetrics;
+        const { filter } = result.template;
+
+        const defaultEventTypes: ("failed" | "pending" | "active" | "expired")[] = [
+          "failed",
+          "pending",
+          "active",
+          "expired"
+        ];
+        let eventTypes: ("failed" | "pending" | "active" | "expired")[] = defaultEventTypes;
+        if (!isLogsWidget && !isMetricsWidget && filter?.statuses?.length) {
+          eventTypes = filter.statuses as ("failed" | "pending" | "active" | "expired")[];
+        }
+
+        try {
+          const widgetType = getWidgetType(isLogsWidget, isMetricsWidget);
+          const dims = getWidgetDimensions(isLogsWidget, isMetricsWidget);
+
+          const widget = await createWidgetMutation.mutateAsync({
+            name: result.template.title,
+            description: result.template.description,
+            orgId,
+            subOrgId: filter?.subOrgIds?.[0] ?? null,
+            projectId: filter?.projectId ?? null,
+            type: widgetType,
+            config: {
+              resourceTypes: filter?.resources ?? [],
+              eventTypes
+            },
+            refreshInterval: parseRefreshInterval(result.template.refresh),
+            icon: result.template.icon,
+            color: result.template.iconBg
+          });
+
+          const uid = genUid();
+          const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+          const tmpl = isMetricsWidget ? "_backend_metrics" : "_backend_events";
+          setLayout((prev) => [
+            ...prev,
+            { uid, tmpl, widgetId: widget.id, x: 0, y: maxY, ...dims }
+          ]);
+        } catch {
+          // Fallback to local-only storage if API fails
+          setCustomPanelItems((prev) => [...prev, result.panelItem]);
+          const uid = genUid();
+          const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+          const dims = getWidgetDimensions(isLogsWidget, isMetricsWidget);
+          setLayout((prev) => [
+            ...prev,
+            { uid, tmpl: result.key, x: 0, y: maxY, ...dims }
+          ]);
+        }
+        onPanelOpenChange(false);
       }
-      onPanelOpenChange(false);
     },
-    [setLayout, editingWidget, layout]
+    [setLayout, editingWidget, layout, createWidgetMutation, orgId, onPanelOpenChange]
   );
 
   const addWidget = useCallback(
     (tmpl: string, widgetId?: string) => {
       const uid = genUid();
       const t = allTemplates[tmpl];
+      const dims = getWidgetDimensions(t?.isLogs, t?.isMetrics);
       const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
       setLayout((prev) => [
         ...prev,
-        {
-          uid,
-          tmpl,
-          widgetId,
-          x: 0,
-          y: maxY,
-          w: t?.isLogs ? 12 : t?.isMetrics ? 3 : 6,
-          h: t?.isMetrics ? 1 : 2
-        }
+        { uid, tmpl, widgetId, x: 0, y: maxY, ...dims }
       ]);
       onPanelOpenChange(false);
     },
@@ -435,6 +521,7 @@ export function ObservabilityDashboard({
               .filter((item): item is LayoutItem => item !== null);
 
             // Add the new widget
+            const dims = getWidgetDimensions(t?.isLogs, t?.isMetrics);
             return [
               ...updatedExistingItems,
               {
@@ -443,8 +530,7 @@ export function ObservabilityDashboard({
                 widgetId: data.widgetId,
                 x: droppedItemPosition.x,
                 y: droppedItemPosition.y,
-                w: t?.isLogs ? 12 : t?.isMetrics ? 3 : 6,
-                h: t?.isMetrics ? 1 : 2
+                ...dims
               }
             ];
           });
@@ -608,6 +694,7 @@ export function ObservabilityDashboard({
                           if (data.type === "panel-item" && data.tmpl) {
                             const uid = genUid();
                             const t = allTemplates[data.tmpl];
+                            const dims = getWidgetDimensions(t?.isLogs, t?.isMetrics);
 
                             setLayout([
                               {
@@ -616,8 +703,7 @@ export function ObservabilityDashboard({
                                 widgetId: data.widgetId,
                                 x: 0,
                                 y: 0,
-                                w: t?.isLogs ? 12 : t?.isMetrics ? 3 : 6,
-                                h: t?.isMetrics ? 1 : 2
+                                ...dims
                               }
                             ]);
                           }

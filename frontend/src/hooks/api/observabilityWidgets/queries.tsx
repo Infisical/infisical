@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -11,6 +11,7 @@ export interface ObservabilityWidgetListItem {
   icon?: string;
   color?: string;
   refreshInterval: number;
+  isBuiltIn?: boolean;
 }
 
 export interface ObservabilityWidgetDataItem {
@@ -135,3 +136,43 @@ export const useGetWidgetMetrics = (widgetId: string | undefined) =>
       return data ? data.widget.refreshInterval * 1000 : 30_000;
     }
   });
+
+export interface CreateWidgetDTO {
+  name: string;
+  description?: string;
+  orgId: string;
+  subOrgId?: string | null;
+  projectId?: string | null;
+  type: "events" | "logs" | "metrics" | "pie-chart";
+  config: {
+    resourceTypes?: string[];
+    eventTypes: ("failed" | "pending" | "active" | "expired")[];
+    thresholds?: {
+      expirationDays?: number;
+      inactivityDays?: number;
+      heartbeatMinutes?: number;
+    };
+  };
+  refreshInterval?: number;
+  icon?: string;
+  color?: string;
+}
+
+export const useCreateWidget = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (dto: CreateWidgetDTO) => {
+      const { data } = await apiRequest.post<{ widget: ObservabilityWidgetListItem }>(
+        "/api/v1/observability-widgets",
+        dto
+      );
+      return data.widget;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: observabilityWidgetKeys.list(variables.orgId)
+      });
+    }
+  });
+};

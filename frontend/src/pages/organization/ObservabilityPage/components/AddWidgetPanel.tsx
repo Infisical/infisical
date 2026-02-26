@@ -119,23 +119,39 @@ export function AddWidgetPanel({
 
   const isEditMode = !!editing;
 
-  const backendPanelItems: PanelItem[] = useMemo(
-    () =>
-      backendWidgets
-        .filter((w) => w.type === "events" || w.type === "logs" || w.type === "metrics")
-        .map((w) => ({
+  const backendPanelItems: PanelItem[] = useMemo(() => {
+    const widgetNameToTmpl: Record<string, string> = {
+      "live logs": "logs",
+      "all failures": "all-failures",
+      "secret syncs monitor": "secret-syncs",
+      "expiring certificates": "expiring-certs"
+    };
+
+    return backendWidgets
+      .filter((w) => w.type === "events" || w.type === "logs" || w.type === "metrics")
+      .map((w) => {
+        const nameLower = w.name.toLowerCase();
+        let tmpl: string;
+        if (w.type === "logs") {
+          tmpl = "logs";
+        } else if (w.type === "metrics") {
+          tmpl = "_backend_metrics";
+        } else {
+          tmpl = widgetNameToTmpl[nameLower] ?? "_backend_events";
+        }
+        return {
           id: w.id,
-          tmpl: w.type === "logs" ? "logs" : w.type === "metrics" ? "_backend_metrics" : "_backend_events",
+          tmpl,
           icon: w.icon ?? (w.type === "logs" ? "Terminal" : "Activity"),
           bg: w.color ?? "#1c2a3a",
           name: w.name,
           desc: w.description ?? "",
-          badge: "Infisical",
-          category: "inf" as const,
+          badge: w.isBuiltIn ? "Infisical" : "Custom",
+          category: w.isBuiltIn ? ("inf" as const) : ("custom" as const),
           widgetId: w.id
-        })),
-    [backendWidgets]
-  );
+        };
+      });
+  }, [backendWidgets]);
 
   const allItems = useMemo(
     () => [...PANEL_ITEMS, ...backendPanelItems, ...customPanelItems],

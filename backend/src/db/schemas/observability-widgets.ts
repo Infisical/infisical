@@ -14,6 +14,7 @@ export const ObservabilityWidgetsSchema = z.object({
   refreshInterval: z.number().default(30),
   icon: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
+  isBuiltIn: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date()
 });

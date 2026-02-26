@@ -1050,7 +1050,8 @@ export const registerRoutes = async (
     roleDAL,
     userGroupMembershipDAL,
     additionalPrivilegeDAL,
-    observabilityWidgetViewDAL
+    observabilityWidgetViewDAL,
+    observabilityWidgetDAL
   });
 
   const subOrgService = subOrgServiceFactory({

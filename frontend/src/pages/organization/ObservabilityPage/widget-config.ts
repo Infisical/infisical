@@ -49,6 +49,7 @@ export interface LayoutItem {
   h: number;
   static?: boolean;
   widgetId?: string;
+  customTemplate?: WidgetTemplate;
 }
 
 export interface PanelItem {
@@ -143,6 +144,16 @@ export const TEMPLATES: Record<string, WidgetTemplate> = {
     refresh: "30s",
     stats: [],
     dataKey: "secret_syncs",
+    firstStatus: ""
+  },
+  "expiring-certs": {
+    title: "Expiring Certificates",
+    description: "Certificates expiring within 30 days",
+    icon: "Activity",
+    iconBg: "#1c2a3a",
+    refresh: "30s",
+    stats: [],
+    dataKey: "expiring_certs",
     firstStatus: ""
   },
   _backend_events: {

@@ -57,6 +57,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TObservabilityWidgetDALFactory } from "../observability-widget/observability-widget-dal";
 import { TObservabilityWidgetViewDALFactory } from "../observability-widget-view/observability-widget-view-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
@@ -116,6 +117,7 @@ type TOrgServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   observabilityWidgetViewDAL: Pick<TObservabilityWidgetViewDALFactory, "create" | "find">;
+  observabilityWidgetDAL: Pick<TObservabilityWidgetDALFactory, "create">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -149,12 +151,57 @@ export const orgServiceFactory = ({
   membershipUserDAL,
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
-  observabilityWidgetViewDAL
+  observabilityWidgetViewDAL,
+  observabilityWidgetDAL
 }: TOrgServiceFactoryDep) => {
-  const DEFAULT_FAIL_ALERTS_LAYOUT = [
-    { uid: "default-all-failures", tmpl: "all-failures", x: 0, y: 0, w: 6, h: 2 },
-    { uid: "default-secret-syncs", tmpl: "secret-syncs", x: 6, y: 0, w: 6, h: 2 },
-    { uid: "default-live-logs", tmpl: "logs", x: 0, y: 2, w: 12, h: 2 }
+  const BUILT_IN_WIDGETS = [
+    {
+      name: "All Failures",
+      description: "Monitor all failed resources across the organization",
+      type: "events",
+      config: { resourceTypes: [], eventTypes: ["failed"] },
+      refreshInterval: 30,
+      icon: "Activity",
+      color: "#1c2a3a",
+      layoutTmpl: "all-failures"
+    },
+    {
+      name: "Expiring Certificates",
+      description: "Certificates expiring within 30 days",
+      type: "events",
+      config: {
+        resourceTypes: ["pki-certificate"],
+        eventTypes: ["expired", "pending"],
+        thresholds: { expirationDays: 30 }
+      },
+      refreshInterval: 30,
+      icon: "Activity",
+      color: "#1c2a3a",
+      layoutTmpl: "expiring-certs"
+    },
+    {
+      name: "Secret Syncs Monitor",
+      description: "Monitor secret sync and rotation failures",
+      type: "events",
+      config: {
+        resourceTypes: ["secret-sync", "secret-rotation"],
+        eventTypes: ["failed", "pending", "active", "expired"]
+      },
+      refreshInterval: 30,
+      icon: "RefreshCw",
+      color: "#f97316",
+      layoutTmpl: "secret-syncs"
+    },
+    {
+      name: "Live Logs",
+      description: "Real-time org-wide activity stream",
+      type: "logs",
+      config: { limit: 300 },
+      refreshInterval: 5,
+      icon: "Terminal",
+      color: "#1c2a3a",
+      layoutTmpl: "logs"
+    }
   ];
 
   /*
@@ -683,6 +730,57 @@ export const orgServiceFactory = ({
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
 
     try {
+      const widgetIdMap: Record<string, string> = {};
+
+      for (const widgetDef of BUILT_IN_WIDGETS) {
+        // eslint-disable-next-line no-await-in-loop
+        const widget = await observabilityWidgetDAL.create(
+          {
+            name: widgetDef.name,
+            description: widgetDef.description,
+            orgId: organization.id,
+            type: widgetDef.type,
+            config: widgetDef.config,
+            refreshInterval: widgetDef.refreshInterval,
+            icon: widgetDef.icon,
+            color: widgetDef.color,
+            isBuiltIn: true
+          },
+          trx
+        );
+        widgetIdMap[widgetDef.layoutTmpl] = widget.id;
+      }
+
+      const defaultLayout = [
+        {
+          uid: "default-all-failures",
+          tmpl: "all-failures",
+          widgetId: widgetIdMap["all-failures"],
+          x: 0,
+          y: 0,
+          w: 6,
+          h: 2
+        },
+        {
+          uid: "default-secret-syncs",
+          tmpl: "secret-syncs",
+          widgetId: widgetIdMap["secret-syncs"],
+          x: 6,
+          y: 0,
+          w: 6,
+          h: 2
+        },
+        {
+          uid: "default-live-logs",
+          tmpl: "logs",
+          widgetId: widgetIdMap["logs"],
+          x: 0,
+          y: 2,
+          w: 12,
+          h: 2
+        }
+      ];
+
       await observabilityWidgetViewDAL.create(
         {
           name: "Fail alerts",
@@ -690,12 +788,12 @@ export const orgServiceFactory = ({
           userId: null,
           scope: "organization",
           isDefault: true,
-          items: JSON.stringify(DEFAULT_FAIL_ALERTS_LAYOUT)
+          items: JSON.stringify(defaultLayout)
         },
         trx
       );
     } catch (error) {
-      logger.warn(error, "Failed to create default observability view for organization");
+      logger.warn(error, "Failed to create default observability widgets and view for organization");
     }
 
     return organization;
