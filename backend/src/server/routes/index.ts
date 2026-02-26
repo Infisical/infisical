@@ -2727,7 +2727,8 @@ export const registerRoutes = async (
   // AgentGate Service
   const agentGateService = agentGateServiceFactory({
     agentGatePolicyDAL,
-    agentGateAuditDAL
+    agentGateAuditDAL,
+    keyStore
   });
 
   const migrationService = externalMigrationServiceFactory({

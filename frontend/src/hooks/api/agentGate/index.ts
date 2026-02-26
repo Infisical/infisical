@@ -2,6 +2,7 @@ export { useUpdateAgentPolicy } from "./mutations";
 export {
   agentGateKeys,
   useGetAgentPolicy,
+  useGetSessionSummaries,
   useListAgentGatePolicies,
   useQueryAgentGateAuditLogs
 } from "./queries";

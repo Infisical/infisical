@@ -1,4 +1,5 @@
 import { TAgentGateAuditLogs, TInboundPolicy, TPromptPolicy } from "@app/db/schemas";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -12,6 +13,7 @@ import {
   TAuditQueryDTO,
   TCreateAgentPolicyDTO,
   TEvaluatePolicyDTO,
+  TGetSessionSummariesDTO,
   TRegisterAgentDTO,
   TUpdateAgentPolicyDTO
 } from "./agent-gate-types";
@@ -19,6 +21,7 @@ import {
 type TAgentGateServiceFactoryDep = {
   agentGatePolicyDAL: TAgentGatePolicyDALFactory;
   agentGateAuditDAL: TAgentGateAuditDALFactory;
+  keyStore: Pick<TKeyStoreFactory, "setItem" | "getItem">;
 };
 
 export type TAgentGateServiceFactory = ReturnType<typeof agentGateServiceFactory>;
@@ -194,7 +197,85 @@ function mockLlmEvaluation(
   };
 }
 
-export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL }: TAgentGateServiceFactoryDep) => {
+function mockSessionSummary(logs: TAgentGateAuditLogs[]): { summary: string; description: string } {
+  const agents = [...new Set(logs.map((l) => l.requestingAgentId.replace(/_/g, " ")))];
+  const actions = [...new Set(logs.map((l) => l.action))];
+  const approved = logs.filter((l) => l.result === "allowed").length;
+  const denied = logs.filter((l) => l.result === "denied").length;
+
+  return {
+    summary: `${agents[0] || "Agent"} session with ${logs.length} actions`,
+    description: `Agents ${agents.join(", ")} performed ${actions.length} unique actions. ${approved} approved, ${denied} denied.`
+  };
+}
+
+async function generateSessionSummary(logs: TAgentGateAuditLogs[]): Promise<{ summary: string; description: string }> {
+  const appCfg = getConfig();
+  const openaiApiKey = appCfg.OPENAI_API_KEY;
+
+  if (!openaiApiKey) {
+    logger.warn("OpenAI API key not configured, using mock session summary");
+    return mockSessionSummary(logs);
+  }
+
+  try {
+    const logsForPrompt = logs.map((log) => ({
+      agent: log.requestingAgentId,
+      target: log.targetAgentId,
+      action: log.action,
+      actionType: log.actionType,
+      result: log.result,
+      reasoning: log.agentReasoning || ""
+    }));
+
+    const systemPrompt = `You are a concise summarizer for AI agent session logs. Given a list of agent actions and policy decisions, produce:
+1. A "summary" - a short title (6 words max) describing what the session was about.
+2. A "description" - 1 short sentence explaining what happened in the session.
+
+Respond with valid JSON: { "summary": "...", "description": "..." }`;
+
+    const userPrompt = `Session logs (${logs.length} events):\n${JSON.stringify(logsForPrompt, null, 2)}`;
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      logger.error({ error }, "OpenAI API error in session summary");
+      return mockSessionSummary(logs);
+    }
+
+    const data = await response.json();
+    const result = JSON.parse(data.choices[0].message.content);
+
+    return {
+      summary: result.summary,
+      description: result.description
+    };
+  } catch (error) {
+    logger.error({ error }, "Error generating session summary");
+    return mockSessionSummary(logs);
+  }
+}
+
+export const agentGateServiceFactory = ({
+  agentGatePolicyDAL,
+  agentGateAuditDAL,
+  keyStore
+}: TAgentGateServiceFactoryDep) => {
   const createPolicy = async (dto: TCreateAgentPolicyDTO) => {
     const policy = await agentGatePolicyDAL.upsertPolicy(dto.projectId, dto.agentId, {
       selfPolicies: dto.selfPolicies,
@@ -524,6 +605,35 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
     });
   };
 
+  const getSessionSummaries = async (dto: TGetSessionSummariesDTO) => {
+    const { projectId, sessionIds } = dto;
+    const summaries: Record<string, { summary: string; description: string }> = {};
+
+    const uncachedSessionIds: string[] = [];
+
+    for (const sessionId of sessionIds) {
+      const cached = await keyStore.getItem(KeyStorePrefixes.AgentGateSessionSummary(sessionId));
+      if (cached) {
+        summaries[sessionId] = JSON.parse(cached);
+      } else {
+        uncachedSessionIds.push(sessionId);
+      }
+    }
+
+    await Promise.all(
+      uncachedSessionIds.map(async (sessionId) => {
+        const logs = await agentGateAuditDAL.findByProject(projectId, { sessionId });
+        if (!logs.length) return;
+
+        const result = await generateSessionSummary(logs);
+        await keyStore.setItem(KeyStorePrefixes.AgentGateSessionSummary(sessionId), JSON.stringify(result));
+        summaries[sessionId] = result;
+      })
+    );
+
+    return summaries;
+  };
+
   return {
     createPolicy,
     updatePolicy,
@@ -535,6 +645,7 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
     completeExecution,
     registerAgent,
     queryAuditLogs,
-    createAuditLog
+    createAuditLog,
+    getSessionSummaries
   };
 };

@@ -45,8 +45,8 @@ import {
   UnstableTableRow
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useQueryAgentGateAuditLogs } from "@app/hooks/api";
-import { TAgentGateAuditLog } from "@app/hooks/api/agentGate/types";
+import { useGetSessionSummaries, useQueryAgentGateAuditLogs } from "@app/hooks/api";
+import { TAgentGateAuditLog, TSessionSummaryMap } from "@app/hooks/api/agentGate/types";
 
 import { SessionReplayModal } from "./SessionReplayModal";
 
@@ -104,9 +104,11 @@ const DECISION_STATUSES = ["Approved", "Denied"] as const;
 
 const SessionRow = ({
   session,
+  summaries,
   onReplay
 }: {
   session: Session;
+  summaries?: TSessionSummaryMap;
   onReplay: (session: Session) => void;
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -123,10 +125,14 @@ const SessionRow = ({
           />
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
-          <span className="font-medium">{session.id.replace("session-", " ")}</span>
+          <span className="font-medium">
+            {summaries?.[session.id]?.summary || session.id.replace("session-", " ")}
+          </span>
         </UnstableTableCell>
-        <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
-          <span className="text-xs text-accent">{session.description}</span>
+        <UnstableTableCell isTruncatable className={twMerge(isExpanded && "border-b-0")}>
+          <span className="text-xs text-accent">
+            {summaries?.[session.id]?.description || session.description}
+          </span>
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
           <div className="flex items-center gap-2">
@@ -259,6 +265,19 @@ export const SessionsTab = () => {
     return buildSessions(auditData.logs);
   }, [auditData?.logs]);
 
+  const sessionIds = useMemo(() => sessions.map((s) => s.id), [sessions]);
+
+  const {
+    data: summaries,
+    isLoading: isSummariesLoading,
+    isError: isSummariesError
+  } = useGetSessionSummaries({
+    sessionIds,
+    projectId
+  });
+
+  const summariesReady = !isSummariesLoading || isSummariesError;
+
   const handleStatusToggle = useCallback(
     (status: string) =>
       setStatusFilter((prev) =>
@@ -271,9 +290,12 @@ export const SessionsTab = () => {
   const isFiltered = search.length > 0 || statusFilter.length > 0;
 
   const filteredSessions = sessions.filter((session) => {
+    const sessionSummary = summaries?.[session.id];
+    const searchTitle = sessionSummary?.summary || session.title;
+    const searchDesc = sessionSummary?.description || session.description;
     const matchesSearch =
-      session.title.toLowerCase().includes(search.toLowerCase()) ||
-      session.description.toLowerCase().includes(search.toLowerCase());
+      searchTitle.toLowerCase().includes(search.toLowerCase()) ||
+      searchDesc.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
     if (statusFilter.length === 0) return true;
     if (statusFilter.includes("Approved") && session.approvedCount > 0) return true;
@@ -333,7 +355,14 @@ export const SessionsTab = () => {
             </UnstableDropdownMenuContent>
           </UnstableDropdownMenu>
         </div>
-        {!filteredSessions.length ? (
+        {sessions.length > 0 && !summariesReady ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex items-center gap-3 text-sm text-muted">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Generating session summaries...
+            </div>
+          </div>
+        ) : !filteredSessions.length ? (
           <UnstableEmpty className="border">
             <UnstableEmptyHeader>
               <UnstableEmptyTitle>
@@ -353,8 +382,10 @@ export const SessionsTab = () => {
             <UnstableTableHeader>
               <UnstableTableRow>
                 <UnstableTableHead className="w-5" />
-                <UnstableTableHead>Session</UnstableTableHead>
-                <UnstableTableHead>Description</UnstableTableHead>
+                <UnstableTableHead className="w-1/4">Session</UnstableTableHead>
+                <UnstableTableHead className="w-1/3" isTruncatable>
+                  Description
+                </UnstableTableHead>
                 <UnstableTableHead>Decisions</UnstableTableHead>
                 <UnstableTableHead>Duration</UnstableTableHead>
                 <UnstableTableHead>Timestamp</UnstableTableHead>
@@ -363,7 +394,12 @@ export const SessionsTab = () => {
             </UnstableTableHeader>
             <UnstableTableBody>
               {filteredSessions.map((session) => (
-                <SessionRow key={session.id} session={session} onReplay={setReplaySession} />
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  summaries={summaries}
+                  onReplay={setReplaySession}
+                />
               ))}
             </UnstableTableBody>
           </UnstableTable>
@@ -374,7 +410,9 @@ export const SessionsTab = () => {
         isOpen={Boolean(replaySession)}
         onClose={() => setReplaySession(null)}
         logs={replaySession?.logs ?? []}
-        sessionTitle={replaySession?.title ?? ""}
+        sessionTitle={
+          (replaySession && summaries?.[replaySession.id]?.summary) || replaySession?.title || ""
+        }
       />
     </>
   );

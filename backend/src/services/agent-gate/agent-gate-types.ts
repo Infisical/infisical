@@ -134,3 +134,8 @@ export interface TAuditQueryDTO {
   limit?: number;
   offset?: number;
 }
+
+export interface TGetSessionSummariesDTO {
+  projectId: string;
+  sessionIds: string[];
+}

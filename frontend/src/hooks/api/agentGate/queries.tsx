@@ -6,8 +6,10 @@ import {
   TAgentGateAuditLog,
   TAgentGatePolicy,
   TGetAgentPolicyDTO,
+  TGetSessionSummariesDTO,
   TListAgentGatePoliciesDTO,
-  TQueryAuditLogsDTO
+  TQueryAuditLogsDTO,
+  TSessionSummaryMap
 } from "./types";
 
 export const agentGateKeys = {
@@ -20,7 +22,9 @@ export const agentGateKeys = {
     limit?: number;
     startTime?: string;
     sessionId?: string;
-  }) => [...agentGateKeys.all, "audit-logs", params] as const
+  }) => [...agentGateKeys.all, "audit-logs", params] as const,
+  sessionSummaries: (params: { projectId: string; sessionIds: string[] }) =>
+    [...agentGateKeys.all, "session-summaries", { ...params, sessionIds: [...params.sessionIds].sort() }] as const
 };
 
 export const useListAgentGatePolicies = ({ projectId }: TListAgentGatePoliciesDTO) => {
@@ -75,5 +79,22 @@ export const useQueryAgentGateAuditLogs = ({
     },
     enabled: Boolean(projectId),
     refetchInterval: 1000
+  });
+};
+
+export const useGetSessionSummaries = ({ sessionIds, projectId }: TGetSessionSummariesDTO) => {
+  return useQuery({
+    queryKey: agentGateKeys.sessionSummaries({ projectId, sessionIds }),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ summaries: TSessionSummaryMap }>(
+        "/api/v1/agentgate/sessions/summaries",
+        { sessionIds },
+        { params: { projectId } }
+      );
+      return data.summaries;
+    },
+    enabled: sessionIds.length > 0 && Boolean(projectId),
+    staleTime: Infinity,
+    retry: 1
   });
 };

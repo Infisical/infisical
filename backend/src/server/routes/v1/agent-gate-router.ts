@@ -398,6 +398,43 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // Get Session Summaries (LLM-generated, Redis-cached)
+  server.route({
+    method: "POST",
+    url: "/sessions/summaries",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Generate LLM-powered summaries for sessions. Results are cached in Redis.",
+      body: z.object({
+        sessionIds: z.array(z.string())
+      }),
+      querystring: z.object({
+        projectId: z.string().describe("The project ID")
+      }),
+      response: {
+        200: z.object({
+          summaries: z.record(
+            z.string(),
+            z.object({
+              summary: z.string(),
+              description: z.string()
+            })
+          )
+        })
+      }
+    },
+    handler: async (req) => {
+      const summaries = await server.services.agentGate.getSessionSummaries({
+        projectId: req.query.projectId,
+        sessionIds: req.body.sessionIds
+      });
+      return { summaries };
+    }
+  });
+
   // Seed demo policies endpoint (for hackathon demo)
   server.route({
     method: "POST",

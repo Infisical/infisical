@@ -82,3 +82,10 @@ export type TQueryAuditLogsDTO = {
   startTime?: string;
   sessionId?: string;
 };
+
+export type TSessionSummaryMap = Record<string, { summary: string; description: string }>;
+
+export type TGetSessionSummariesDTO = {
+  sessionIds: string[];
+  projectId: string;
+};
