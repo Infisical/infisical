@@ -75,15 +75,15 @@ export function CreateTemplateForm({
     editing?.template.filter?.scopeMode ??
       (editing?.template.filter?.projectId
         ? "project"
-        : editing?.template.filter?.subOrgId
+        : editing?.template.filter?.subOrgIds?.length
           ? "suborg"
           : "org")
   );
   const [selectedProject, setSelectedProject] = useState<string>(
     editing?.template.filter?.projectId ?? MOCK_PROJECTS[0].name
   );
-  const [selectedSubOrg, setSelectedSubOrg] = useState<string>(
-    editing?.template.filter?.subOrgId ?? MOCK_SUBORGS[0].name
+  const [selectedSubOrgs, setSelectedSubOrgs] = useState<Set<string>>(
+    new Set(editing?.template.filter?.subOrgIds ?? [])
   );
   const [refreshInterval, setRefreshInterval] = useState(
     editing?.template.refresh ?? (widgetType === "stream" ? "5s" : "30s")
@@ -104,10 +104,10 @@ export function CreateTemplateForm({
       scopeTypes: [],
       statuses: Array.from(selectedStatuses),
       projectId: scopeMode === "project" ? selectedProject : undefined,
-      subOrgId: scopeMode === "suborg" ? selectedSubOrg : undefined,
+      subOrgIds: scopeMode === "suborg" ? Array.from(selectedSubOrgs) : undefined,
       scopeMode
     }),
-    [selectedResources, selectedStatuses, scopeMode, selectedProject, selectedSubOrg]
+    [selectedResources, selectedStatuses, scopeMode, selectedProject, selectedSubOrgs]
   );
 
   const statusCounts = useMemo(() => countByStatus(filter), [filter]);
@@ -321,22 +321,28 @@ export function CreateTemplateForm({
             </div>
 
             {scopeMode === "suborg" && (
-              <div className="relative mt-2">
-                <select
-                  value={selectedSubOrg}
-                  onChange={(e) => setSelectedSubOrg(e.target.value)}
-                  className="w-full appearance-none rounded-md border border-mineshaft-600 bg-mineshaft-700 px-3 py-2 pr-8 text-[13px] text-white outline-none focus:border-primary"
-                >
-                  {MOCK_SUBORGS.map((s) => (
-                    <option key={s.id} value={s.name}>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {MOCK_SUBORGS.map((s) => {
+                  const sel = selectedSubOrgs.has(s.name);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedSubOrgs(toggleSet(selectedSubOrgs, s.name))
+                      }
+                      className={twMerge(
+                        "flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                        sel
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-mineshaft-600 bg-mineshaft-700 text-mineshaft-300 hover:border-mineshaft-500 hover:text-white"
+                      )}
+                    >
                       {s.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-mineshaft-300"
-                />
+                      {sel && <Check size={10} />}
+                    </button>
+                  );
+                })}
               </div>
             )}
 

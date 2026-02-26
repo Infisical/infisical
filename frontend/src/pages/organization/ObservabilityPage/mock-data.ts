@@ -20,7 +20,7 @@ export interface WidgetFilter {
   scopeTypes: string[];
   statuses: string[];
   projectId?: string;
-  subOrgId?: string;
+  subOrgIds?: string[];
   scopeMode?: "org" | "suborg" | "project";
 }
 
