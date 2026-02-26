@@ -50,7 +50,7 @@ export const SessionReplayModal = ({
   const events = logs.map(mapLogToEvent);
   const totalEvents = events.length;
   const currentEvent = currentIndex >= 0 && currentIndex < totalEvents ? events[currentIndex] : null;
-  const processedEvents = currentIndex >= 0 ? events.slice(0, currentIndex + 1) : [];
+  const processedEvents = currentIndex >= 0 ? events.slice(0, currentIndex + 1).reverse() : [];
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {

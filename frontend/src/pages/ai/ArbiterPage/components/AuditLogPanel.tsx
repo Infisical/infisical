@@ -42,7 +42,9 @@ export const AuditLogPanel = ({
   }, [events]);
 
   return (
-    <UnstableCard className={twMerge("w-full gap-y-0 overflow-hidden lg:w-[420px] lg:shrink-0", className)}>
+    <UnstableCard
+      className={twMerge("w-full gap-y-0 overflow-hidden lg:w-[420px] lg:shrink-0", className)}
+    >
       <UnstableCardHeader className="!mb-0 border-b">
         <UnstableCardTitle className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-success" />
@@ -53,7 +55,10 @@ export const AuditLogPanel = ({
         </UnstableCardDescription>
       </UnstableCardHeader>
       <UnstableCardContent className="-mx-5 !mt-0 -mb-5 min-h-0 flex-1 py-0">
-        <div ref={scrollRef} className={`space-y-2.5 overflow-y-auto px-5 py-4 pb-5 ${fillHeight ? "h-full" : "h-[701px]"}`}>
+        <div
+          ref={scrollRef}
+          className={`space-y-2.5 overflow-y-auto px-5 py-4 pb-5 ${fillHeight ? "h-full" : "h-[701px]"}`}
+        >
           <AnimatePresence initial={false}>
             {events.map((event) => (
               <motion.div
