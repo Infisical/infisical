@@ -16,7 +16,6 @@ import { Tooltip } from "@app/components/v2";
 import { useGetWidgetData } from "@app/hooks/api/observabilityWidgets";
 
 import type { DataRow, StatItem, WidgetTemplate } from "../mock-data";
-import { queryRows } from "../mock-data";
 import { StatusPill } from "./StatusPill";
 import { WidgetIcon } from "./WidgetIcon";
 
@@ -126,7 +125,6 @@ export function TableWidget({
         resourceLink: item.resourceLink
       }));
     }
-    if (template.filter) return queryRows(template.filter);
     return [];
   }, [widgetId, widgetData, template]);
 

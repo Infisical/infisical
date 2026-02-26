@@ -11,7 +11,7 @@ import { useGetUserProjects } from "@app/hooks/api/projects";
 import { subOrganizationsQuery } from "@app/hooks/api/subOrganizations";
 
 import type { PanelItem, WidgetFilter, WidgetTemplate } from "../mock-data";
-import { countByStatus, EVENT_TYPES, RESOURCE_TYPES } from "../mock-data";
+import { EVENT_TYPES, RESOURCE_TYPES } from "../mock-data";
 import { AVAILABLE_ICONS, WidgetIcon } from "./WidgetIcon";
 
 export interface CreateTemplateResult {
@@ -145,12 +145,6 @@ export function CreateTemplateForm({
     [selectedResources, selectedStatuses, scopeMode, selectedProjectId, selectedSubOrgs]
   );
 
-  const statusCounts = useMemo(() => countByStatus(filter), [filter]);
-  const matchedTotal = useMemo(
-    () => Object.values(statusCounts).reduce((a, b) => a + b, 0),
-    [statusCounts]
-  );
-
   const canSubmit =
     title.trim().length > 0 && (widgetType === "stream" || selectedResources.size > 0);
 
@@ -191,7 +185,7 @@ export function CreateTemplateForm({
       color: s.color,
       label: s.label,
       key: s.key,
-      count: statusCounts[s.key] ?? 0
+      count: 0
     }));
 
     const firstResource = RESOURCE_TYPES.find((r) => selectedResources.has(r.key));
@@ -215,9 +209,7 @@ export function CreateTemplateForm({
       icon: selectedIcon || firstResource?.icon || "Activity",
       bg: selectedColor || "#1c2a3a",
       name: title.trim(),
-      desc:
-        description.trim() ||
-        `${filter.resources.length} resource(s), ${matchedTotal} matching row(s).`,
+      desc: description.trim() || `${filter.resources.length} resource(s) tracked.`,
       badge: "Custom",
       category: "custom"
     };

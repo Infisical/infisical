@@ -122,11 +122,11 @@ export function AddWidgetPanel({
   const backendPanelItems: PanelItem[] = useMemo(
     () =>
       backendWidgets
-        .filter((w) => w.type === "events")
+        .filter((w) => w.type === "events" || w.type === "logs")
         .map((w) => ({
           id: w.id,
-          tmpl: "_backend_events",
-          icon: w.icon ?? "Activity",
+          tmpl: w.type === "logs" ? "logs" : "_backend_events",
+          icon: w.icon ?? (w.type === "logs" ? "Terminal" : "Activity"),
           bg: w.color ?? "#1c2a3a",
           name: w.name,
           desc: w.description ?? "",
