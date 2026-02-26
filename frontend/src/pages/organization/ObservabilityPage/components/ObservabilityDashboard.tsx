@@ -178,7 +178,7 @@ export function ObservabilityDashboard({
   }, [activeViewId]);
 
   const [isExternalDragging, setIsExternalDragging] = useState(false);
-  const uidCounter = useRef(100);
+  const genUid = () => `w${crypto.randomUUID().slice(0, 8)}`;
   const isDropping = useRef(false);
 
   const [customTemplates, setCustomTemplates] = useState<Record<string, WidgetTemplate>>({});
@@ -286,8 +286,7 @@ export function ObservabilityDashboard({
         setEditingWidget(undefined);
       } else {
         setCustomPanelItems((prev) => [...prev, result.panelItem]);
-        uidCounter.current += 1;
-        const uid = `w${uidCounter.current}`;
+        const uid = genUid();
         const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
         setLayout((prev) => [
           ...prev,
@@ -308,8 +307,7 @@ export function ObservabilityDashboard({
 
   const addWidget = useCallback(
     (tmpl: string, widgetId?: string) => {
-      uidCounter.current += 1;
-      const uid = `w${uidCounter.current}`;
+      const uid = genUid();
       const t = allTemplates[tmpl];
       const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
       setLayout((prev) => [
@@ -389,8 +387,7 @@ export function ObservabilityDashboard({
           // Set flag to prevent handleLayoutChange from running right after
           isDropping.current = true;
 
-          uidCounter.current += 1;
-          const uid = `w${uidCounter.current}`;
+          const uid = genUid();
           const t = allTemplates[data.tmpl];
 
           // Find the dropping placeholder to get its final position
@@ -589,8 +586,7 @@ export function ObservabilityDashboard({
                             widgetId?: string;
                           };
                           if (data.type === "panel-item" && data.tmpl) {
-                            uidCounter.current += 1;
-                            const uid = `w${uidCounter.current}`;
+                            const uid = genUid();
                             const t = allTemplates[data.tmpl];
 
                             setLayout([
