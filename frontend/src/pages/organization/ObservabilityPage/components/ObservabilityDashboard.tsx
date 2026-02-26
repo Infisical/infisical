@@ -168,9 +168,14 @@ export function ObservabilityDashboard({
   const backendLayoutRef = useRef(backendLayout);
   backendLayoutRef.current = backendLayout;
 
+  // Only reset local layout when the active view changes, not on every backendLayout
+  // recompute. If we reset on backendLayout changes, a background refetch mid-drag
+  // causes rglLayout to update while RGL is in a drag state, producing undefined
+  // entries in the layout array and crashing compact/getStatics.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setLocalLayout(null);
-  }, [activeViewId, backendLayout]);
+  }, [activeViewId]);
 
   const [isExternalDragging, setIsExternalDragging] = useState(false);
   const uidCounter = useRef(100);
@@ -462,18 +467,20 @@ export function ObservabilityDashboard({
 
   const rglLayout: Layout = useMemo(
     () =>
-      layout.map((item) => ({
-        i: item.uid,
-        x: item.x,
-        y: item.y,
-        w: item.w,
-        h: item.h,
-        minW: 2,
-        maxW: 12,
-        minH: 1,
-        maxH: 6,
-        static: item.static ?? false
-      })),
+      layout
+        .filter((item): item is LayoutItem => !!item?.uid)
+        .map((item) => ({
+          i: item.uid,
+          x: item.x,
+          y: item.y,
+          w: item.w,
+          h: item.h,
+          minW: 2,
+          maxW: 12,
+          minH: 1,
+          maxH: 6,
+          static: item.static ?? false
+        })),
     [layout]
   );
 

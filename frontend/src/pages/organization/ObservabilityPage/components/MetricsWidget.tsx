@@ -1,4 +1,4 @@
-import { ExternalLink, GripVertical, Lock, LockOpen } from "lucide-react";
+import { GripVertical, Lock, LockOpen } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
@@ -25,7 +25,7 @@ export function MetricsWidget({
   const resolvedIcon = data?.widget.icon ?? icon ?? "Activity";
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex flex-1 flex-col">
       {/* Header */}
       <div className="flex items-center border-b border-mineshaft-600">
         <div
@@ -77,15 +77,6 @@ export function MetricsWidget({
               )}
             </div>
             <span className="mt-1 text-center text-[12px] text-mineshaft-300">{data?.label}</span>
-            {data?.link && (
-              <a
-                href={data.link}
-                className="mt-2 flex items-center gap-1 text-[11px] text-primary hover:underline"
-              >
-                <ExternalLink size={10} />
-                View all
-              </a>
-            )}
           </>
         )}
       </div>
