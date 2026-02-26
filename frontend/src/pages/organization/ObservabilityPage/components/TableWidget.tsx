@@ -115,7 +115,7 @@ export function TableWidget({
         name: item.resourceName,
         status: item.status,
         desc: item.statusTooltip ?? "",
-        scope: `${item.scope.type} - ${item.scope.displayName}`,
+        scope: item.scope.displayName,
         date: (() => {
           const d = new Date(item.eventTimestamp);
           const mm = String(d.getMonth() + 1).padStart(2, "0");
