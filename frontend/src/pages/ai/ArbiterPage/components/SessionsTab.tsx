@@ -145,7 +145,9 @@ const SessionRow = ({
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
           <Badge variant="neutral" className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {session.duration}s
+            {session.duration >= 60
+              ? `${Math.floor(session.duration / 60)}m ${session.duration % 60}s`
+              : `${session.duration}s`}
           </Badge>
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
