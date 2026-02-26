@@ -136,16 +136,20 @@ export function TableWidget({
 
   const liveStats: StatItem[] | undefined = useMemo(() => {
     if (!widgetId || !widgetData) return undefined;
-    const { failedCount, pendingCount, activeCount, expiredCount } = widgetData.summary;
+    const counts = rawRows.reduce(
+      (acc, row) => {
+        acc[row.status] = (acc[row.status] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
     const stats: StatItem[] = [];
-    if (failedCount > 0 || activeCount > 0 || pendingCount > 0 || expiredCount > 0) {
-      if (failedCount > 0) stats.push({ color: "#f85149", label: "Failed", key: "failed", count: failedCount });
-      if (expiredCount > 0) stats.push({ color: "#d29922", label: "Expired", key: "expired", count: expiredCount });
-      if (pendingCount > 0) stats.push({ color: "#58a6ff", label: "Pending", key: "pending", count: pendingCount });
-      if (activeCount > 0) stats.push({ color: "#3fb950", label: "Active", key: "active", count: activeCount });
-    }
+    if (counts.failed) stats.push({ color: "#f85149", label: "Failed", key: "failed", count: counts.failed });
+    if (counts.expired) stats.push({ color: "#d29922", label: "Expired", key: "expired", count: counts.expired });
+    if (counts.pending) stats.push({ color: "#58a6ff", label: "Pending", key: "pending", count: counts.pending });
+    if (counts.active) stats.push({ color: "#3fb950", label: "Active", key: "active", count: counts.active });
     return stats;
-  }, [widgetId, widgetData]);
+  }, [widgetId, widgetData, rawRows]);
 
   // For server-side: rows are already the current page; total comes from API.
   // For client-side (custom widgets): sort and slice locally.
