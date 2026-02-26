@@ -176,3 +176,19 @@ export const useCreateWidget = () => {
     }
   });
 };
+
+export const useDeleteWidget = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ widgetId, orgId }: { widgetId: string; orgId: string }) => {
+      await apiRequest.delete(`/api/v1/observability-widgets/${widgetId}`);
+      return { widgetId, orgId };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: observabilityWidgetKeys.list(variables.orgId)
+      });
+    }
+  });
+};

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { GripVertical, Plus, Search, Sparkles, X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -14,11 +14,13 @@ import { WidgetIcon } from "./WidgetIcon";
 function DraggablePanelCard({
   item,
   onAdd,
+  onDelete,
   onDragStart,
   onDragEnd
 }: {
   item: PanelItem;
   onAdd: (id: string, widgetId?: string) => void;
+  onDelete?: (widgetId: string) => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }) {
@@ -79,14 +81,29 @@ function DraggablePanelCard({
         </span>
       </div>
 
-      <button
-        type="button"
-        onClick={() => onAdd(tmplKey, item.widgetId)}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-mineshaft-600 text-mineshaft-400 opacity-0 transition-all hover:border-primary hover:bg-primary/10 hover:text-primary group-hover/card:opacity-100"
-        title="Click to add"
-      >
-        <FontAwesomeIcon icon={faPlus} size="xs" />
-      </button>
+      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-all group-hover/card:opacity-100">
+        {onDelete && item.widgetId && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(item.widgetId!);
+            }}
+            className="flex h-7 w-7 items-center justify-center rounded-md border border-mineshaft-600 text-mineshaft-400 transition-all hover:border-red-500 hover:bg-red-500/10 hover:text-red-400"
+            title="Delete widget"
+          >
+            <FontAwesomeIcon icon={faTrash} size="xs" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onAdd(tmplKey, item.widgetId)}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-mineshaft-600 text-mineshaft-400 transition-all hover:border-primary hover:bg-primary/10 hover:text-primary"
+          title="Click to add"
+        >
+          <FontAwesomeIcon icon={faPlus} size="xs" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -95,6 +112,7 @@ export function AddWidgetPanel({
   open,
   onClose,
   onAdd,
+  onDeleteWidget,
   isDragging = false,
   customPanelItems = [],
   onCreateTemplate,
@@ -106,6 +124,7 @@ export function AddWidgetPanel({
   open: boolean;
   onClose: () => void;
   onAdd: (tmpl: string, widgetId?: string) => void;
+  onDeleteWidget?: (widgetId: string) => void;
   isDragging?: boolean;
   customPanelItems?: PanelItem[];
   onCreateTemplate?: (result: CreateTemplateResult) => void;
@@ -290,6 +309,7 @@ export function AddWidgetPanel({
                         key={p.id}
                         item={p}
                         onAdd={onAdd}
+                        onDelete={onDeleteWidget}
                         onDragStart={onExternalDragStart}
                         onDragEnd={onExternalDragEnd}
                       />

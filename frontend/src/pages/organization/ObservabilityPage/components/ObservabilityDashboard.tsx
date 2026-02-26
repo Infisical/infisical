@@ -16,7 +16,7 @@ import {
 
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
-import { useCreateWidget, useListWidgets } from "@app/hooks/api/observabilityWidgets";
+import { useCreateWidget, useDeleteWidget, useListWidgets } from "@app/hooks/api/observabilityWidgets";
 import {
   useCreateWidgetView,
   useDeleteWidgetView,
@@ -136,6 +136,7 @@ export function ObservabilityDashboard({
   const updateViewMutation = useUpdateWidgetView();
   const deleteViewMutation = useDeleteWidgetView();
   const createWidgetMutation = useCreateWidget();
+  const deleteWidgetMutation = useDeleteWidget();
 
   const navigate = useNavigate({ from: ROUTE_PATHS.Organization.ObservabilityPage.path });
   const viewParam = useSearch({
@@ -438,6 +439,14 @@ export function ObservabilityDashboard({
       setLayout((prev) => prev.filter((item) => item.uid !== uid));
     },
     [setLayout]
+  );
+
+  const handleDeleteWidget = useCallback(
+    async (widgetId: string) => {
+      await deleteWidgetMutation.mutateAsync({ widgetId, orgId });
+      setLayout((prev) => prev.filter((item) => item.widgetId !== widgetId));
+    },
+    [deleteWidgetMutation, orgId, setLayout]
   );
 
   const toggleWidgetLock = useCallback(
@@ -754,6 +763,7 @@ export function ObservabilityDashboard({
             setEditingWidget(undefined);
           }}
           onAdd={addWidget}
+          onDeleteWidget={handleDeleteWidget}
           isDragging={isExternalDragging}
           customPanelItems={customPanelItems}
           onCreateTemplate={handleCreateTemplate}
