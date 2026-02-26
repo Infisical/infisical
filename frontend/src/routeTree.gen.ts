@@ -123,6 +123,7 @@ import { Route as kmsSettingsPageRouteImport } from './pages/kms/SettingsPage/ro
 import { Route as kmsOverviewPageRouteImport } from './pages/kms/OverviewPage/route'
 import { Route as kmsKmipPageRouteImport } from './pages/kms/KmipPage/route'
 import { Route as infraVariablesPageRouteImport } from './pages/infra/VariablesPage/route'
+import { Route as infraStatePageRouteImport } from './pages/infra/StatePage/route'
 import { Route as infraSettingsPageRouteImport } from './pages/infra/SettingsPage/route'
 import { Route as infraRunsPageRouteImport } from './pages/infra/RunsPage/route'
 import { Route as infraResourcesPageRouteImport } from './pages/infra/ResourcesPage/route'
@@ -1397,6 +1398,12 @@ const kmsKmipPageRouteRoute = kmsKmipPageRouteImport.update({
 const infraVariablesPageRouteRoute = infraVariablesPageRouteImport.update({
   id: '/variables',
   path: '/variables',
+  getParentRoute: () => infraLayoutRoute,
+} as any)
+
+const infraStatePageRouteRoute = infraStatePageRouteImport.update({
+  id: '/state',
+  path: '/state',
   getParentRoute: () => infraLayoutRoute,
 } as any)
 
@@ -3344,6 +3351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof infraSettingsPageRouteImport
       parentRoute: typeof infraLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/state': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/state'
+      path: '/state'
+      fullPath: '/organizations/$orgId/projects/infra/$projectId/state'
+      preLoaderRoute: typeof infraStatePageRouteImport
+      parentRoute: typeof infraLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/variables': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/variables'
       path: '/variables'
@@ -4908,6 +4922,7 @@ interface infraLayoutRouteChildren {
   infraResourcesPageRouteRoute: typeof infraResourcesPageRouteRoute
   infraRunsPageRouteRoute: typeof infraRunsPageRouteRoute
   infraSettingsPageRouteRoute: typeof infraSettingsPageRouteRoute
+  infraStatePageRouteRoute: typeof infraStatePageRouteRoute
   infraVariablesPageRouteRoute: typeof infraVariablesPageRouteRoute
   projectAccessControlPageRouteInfraRoute: typeof projectAccessControlPageRouteInfraRoute
   projectAuditLogsPageRouteInfraRoute: typeof projectAuditLogsPageRouteInfraRoute
@@ -4924,6 +4939,7 @@ const infraLayoutRouteChildren: infraLayoutRouteChildren = {
   infraResourcesPageRouteRoute: infraResourcesPageRouteRoute,
   infraRunsPageRouteRoute: infraRunsPageRouteRoute,
   infraSettingsPageRouteRoute: infraSettingsPageRouteRoute,
+  infraStatePageRouteRoute: infraStatePageRouteRoute,
   infraVariablesPageRouteRoute: infraVariablesPageRouteRoute,
   projectAccessControlPageRouteInfraRoute:
     projectAccessControlPageRouteInfraRoute,
@@ -6041,6 +6057,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/infra/$projectId/resources': typeof infraResourcesPageRouteRoute
   '/organizations/$orgId/projects/infra/$projectId/runs': typeof infraRunsPageRouteRoute
   '/organizations/$orgId/projects/infra/$projectId/settings': typeof infraSettingsPageRouteRoute
+  '/organizations/$orgId/projects/infra/$projectId/state': typeof infraStatePageRouteRoute
   '/organizations/$orgId/projects/infra/$projectId/variables': typeof infraVariablesPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
@@ -6318,6 +6335,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/infra/$projectId/resources': typeof infraResourcesPageRouteRoute
   '/organizations/$orgId/projects/infra/$projectId/runs': typeof infraRunsPageRouteRoute
   '/organizations/$orgId/projects/infra/$projectId/settings': typeof infraSettingsPageRouteRoute
+  '/organizations/$orgId/projects/infra/$projectId/state': typeof infraStatePageRouteRoute
   '/organizations/$orgId/projects/infra/$projectId/variables': typeof infraVariablesPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
@@ -6604,6 +6622,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/resources': typeof infraResourcesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/runs': typeof infraRunsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/settings': typeof infraSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/state': typeof infraStatePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/variables': typeof infraVariablesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/kmip': typeof kmsKmipPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/overview': typeof kmsOverviewPageRouteRoute
@@ -6890,6 +6909,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/infra/$projectId/resources'
     | '/organizations/$orgId/projects/infra/$projectId/runs'
     | '/organizations/$orgId/projects/infra/$projectId/settings'
+    | '/organizations/$orgId/projects/infra/$projectId/state'
     | '/organizations/$orgId/projects/infra/$projectId/variables'
     | '/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/organizations/$orgId/projects/kms/$projectId/overview'
@@ -7166,6 +7186,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/infra/$projectId/resources'
     | '/organizations/$orgId/projects/infra/$projectId/runs'
     | '/organizations/$orgId/projects/infra/$projectId/settings'
+    | '/organizations/$orgId/projects/infra/$projectId/state'
     | '/organizations/$orgId/projects/infra/$projectId/variables'
     | '/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/organizations/$orgId/projects/kms/$projectId/overview'
@@ -7450,6 +7471,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/resources'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/runs'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/settings'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/state'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/variables'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/kmip'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/overview'
@@ -8210,6 +8232,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/resources",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/runs",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/settings",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/state",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/variables",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/access-management",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/audit-logs",
@@ -8353,6 +8376,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/settings": {
       "filePath": "infra/SettingsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/state": {
+      "filePath": "infra/StatePage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/infra/$projectId/_infra-layout/variables": {
