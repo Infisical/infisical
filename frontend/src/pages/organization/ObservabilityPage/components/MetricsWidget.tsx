@@ -1,4 +1,4 @@
-import { GripVertical, Lock, LockOpen } from "lucide-react";
+import { GripVertical, Lock, LockOpen, RotateCw } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
@@ -19,7 +19,7 @@ export function MetricsWidget({
   color?: string;
   icon?: string;
 }) {
-  const { data, isLoading } = useGetWidgetMetrics(widgetId);
+  const { data, isLoading, refetch } = useGetWidgetMetrics(widgetId);
 
   const resolvedColor = data?.widget.color ?? color ?? "#3b82f6";
   const resolvedIcon = data?.widget.icon ?? icon ?? "Activity";
@@ -46,14 +46,27 @@ export function MetricsWidget({
               {data?.widget.name ?? "Metrics"}
             </span>
           </div>
-          <span className="flex items-center gap-1 rounded border border-mineshaft-600 bg-bunker-800 px-1.5 py-0.5 text-[10px] text-mineshaft-300">
-            <span className="inline-block h-[5px] w-[5px] animate-pulse rounded-full bg-blue-500" />
-            {data
-              ? data.widget.refreshInterval < 60
-                ? `${data.widget.refreshInterval}s`
-                : `${Math.round(data.widget.refreshInterval / 60)}m`
-              : "30s"}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="rounded border border-mineshaft-600 bg-bunker-800 px-1.5 py-0.5 text-[10px] text-mineshaft-300">
+              <span className="inline-block h-[5px] w-[5px] animate-pulse rounded-full bg-blue-500" />
+              {data
+                ? data.widget.refreshInterval < 60
+                  ? `${data.widget.refreshInterval}s`
+                  : `${Math.round(data.widget.refreshInterval / 60)}m`
+                : "30s"}
+            </span>
+            {widgetId && (
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="flex h-[22px] w-[22px] items-center justify-center rounded text-mineshaft-300 transition-colors hover:bg-mineshaft-600 hover:text-white"
+                aria-label="Refresh"
+                title="Refresh"
+              >
+                <RotateCw size={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
