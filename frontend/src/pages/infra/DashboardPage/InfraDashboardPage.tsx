@@ -12,12 +12,10 @@ import {
   YAxis
 } from "recharts";
 import ReactMarkdown from "react-markdown";
-import { Link } from "@tanstack/react-router";
 import {
   ActivityIcon,
   AlertTriangleIcon,
   BoxIcon,
-  ChevronRightIcon,
   DollarSignIcon,
   PlayIcon,
   ShieldAlertIcon,
@@ -34,9 +32,10 @@ import {
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { useInfraFiles, useInfraResources, useInfraRuns } from "@app/hooks/api/infra";
-import { TAiInsight, TInfraRun } from "@app/hooks/api/infra/types";
+import { useProject } from "@app/context";
+import { useInfraFiles, useInfraGraph, useInfraResources, useInfraRuns } from "@app/hooks/api/infra";
+import { TAiInsight } from "@app/hooks/api/infra/types";
+import { ResourceTopologyGraph } from "../components/ResourceTopologyGraph";
 
 const RESOURCE_COLORS = [
   "#f97316",
@@ -60,21 +59,28 @@ const formatDate = (dateStr: string) => {
   if (diffMin < 60) return `${diffMin}m ago`;
   const diffHrs = Math.floor(diffMin / 60);
   if (diffHrs < 24) return `${diffHrs}h ago`;
-  return `${Math.floor(diffHrs / 24)}d ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  return `${diffDays}d ago`;
 };
 
 export const InfraDashboardPage = () => {
-  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { data: runs, isLoading: runsLoading } = useInfraRuns(currentProject.id);
   const { data: files, isLoading: filesLoading } = useInfraFiles(currentProject.id);
   const { data: resources, isLoading: resourcesLoading } = useInfraResources(currentProject.id);
+  const { data: graph } = useInfraGraph(currentProject.id);
   const [expandedSummary, setExpandedSummary] = useState(false);
+
+  // Filter out denied runs — they are cancelled and should not appear
+  const visibleRuns = useMemo(() => {
+    if (!runs) return null;
+    return runs.filter((r) => r.status !== "denied");
+  }, [runs]);
 
   // Parse the latest AI insight from JSON
   const latestAiInsight = useMemo<TAiInsight | null>(() => {
-    if (!runs) return null;
-    const runWithAi = runs.find((r) => r.aiSummary);
+    if (!visibleRuns) return null;
+    const runWithAi = visibleRuns.find((r) => r.aiSummary);
     if (!runWithAi?.aiSummary) return null;
     try {
       return JSON.parse(runWithAi.aiSummary) as TAiInsight;
@@ -85,23 +91,23 @@ export const InfraDashboardPage = () => {
         security: { issues: [], shouldApprove: false }
       };
     }
-  }, [runs]);
+  }, [visibleRuns]);
 
   // Compute stats from real data
   const stats = useMemo(() => {
-    if (!runs) return null;
-    const totalRuns = runs.length;
-    const successRuns = runs.filter((r) => r.status === "success").length;
-    const failedRuns = runs.filter((r) => r.status === "failed").length;
-    const awaitingRuns = runs.filter((r) => r.status === "awaiting_approval").length;
+    if (!visibleRuns) return null;
+    const totalRuns = visibleRuns.length;
+    const successRuns = visibleRuns.filter((r) => r.status === "success").length;
+    const failedRuns = visibleRuns.filter((r) => r.status === "failed").length;
+    const awaitingRuns = visibleRuns.filter((r) => r.status === "awaiting_approval").length;
     const totalFiles = files?.length ?? 0;
 
     return { totalRuns, successRuns, failedRuns, awaitingRuns, totalFiles };
-  }, [runs, files]);
+  }, [visibleRuns, files]);
 
   // Build activity chart from runs (group by day)
   const activityData = useMemo(() => {
-    if (!runs || runs.length === 0) return [];
+    if (!visibleRuns || visibleRuns.length === 0) return [];
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const buckets: Record<string, { success: number; failed: number }> = {};
 
@@ -114,7 +120,7 @@ export const InfraDashboardPage = () => {
     }
 
     const keys = Object.keys(buckets);
-    runs.forEach((r) => {
+    visibleRuns.forEach((r) => {
       const d = new Date(r.createdAt);
       const now = new Date();
       const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
@@ -133,7 +139,7 @@ export const InfraDashboardPage = () => {
       failed: buckets[key].failed,
       runs: buckets[key].success + buckets[key].failed
     }));
-  }, [runs]);
+  }, [visibleRuns]);
 
   // Resource type breakdown for pie chart
   const resourceBreakdown = useMemo(() => {
@@ -167,16 +173,16 @@ export const InfraDashboardPage = () => {
     },
     {
       label: "Last Run",
-      value: runs && runs.length > 0 ? formatDate(runs[0].createdAt) : "—",
-      sub: runs && runs.length > 0 ? `${runs[0].type} — ${runs[0].status}` : "no runs yet"
+      value: visibleRuns && visibleRuns.length > 0 ? formatDate(visibleRuns[0].createdAt) : "—",
+      sub: visibleRuns && visibleRuns.length > 0 ? `${visibleRuns[0].type} — ${visibleRuns[0].status}` : "no runs yet"
     }
   ];
 
   const isLoading = runsLoading || filesLoading || resourcesLoading;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
+    <div className="flex h-full flex-col gap-6 overflow-hidden">
+      <div className="shrink-0">
         <h1 className="text-2xl font-semibold text-mineshaft-100">{currentProject.name}</h1>
         <p className="mt-1 text-sm text-mineshaft-400">
           Infrastructure dashboard — powered by OpenTofu
@@ -185,7 +191,7 @@ export const InfraDashboardPage = () => {
 
       {/* AI Insights from latest run */}
       {latestAiInsight && (
-        <UnstableCard className="border-primary/20 bg-gradient-to-r from-primary/[0.04] to-transparent">
+        <UnstableCard className="shrink-0 border-primary/20 bg-gradient-to-r from-primary/[0.04] to-transparent">
           <UnstableCardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -284,7 +290,7 @@ export const InfraDashboardPage = () => {
       )}
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid shrink-0 grid-cols-4 gap-4">
         {statCards.map((stat, idx) => (
           <UnstableCard key={stat.label} className="relative overflow-hidden">
             {isLoading ? (
@@ -311,7 +317,7 @@ export const InfraDashboardPage = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid shrink-0 grid-cols-5 gap-4">
         <UnstableCard className="col-span-3">
           <UnstableCardHeader>
             <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
@@ -426,83 +432,23 @@ export const InfraDashboardPage = () => {
         </UnstableCard>
       </div>
 
-      {/* Recent Runs */}
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
-            Recent Runs
-          </UnstableCardTitle>
-        </UnstableCardHeader>
-        <UnstableCardContent className="p-0">
-          {!runs || runs.length === 0 ? (
-            <div className="p-6 text-center text-sm text-mineshaft-500">
-              No runs yet. Go to the Editor to run your first plan.
-            </div>
-          ) : (
-            <div className="divide-y divide-mineshaft-600">
-              {runs.slice(0, 5).map((run: TInfraRun) => (
-                <Link
-                  key={run.id}
-                  to="/organizations/$orgId/projects/infra/$projectId/run/$runId"
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId: currentProject.id,
-                    runId: run.id
-                  }}
-                  className="flex items-center justify-between px-5 py-3 text-sm transition-colors hover:bg-mineshaft-700/30"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`inline-block size-2 rounded-full ${
-                        run.status === "success"
-                          ? "bg-green-500"
-                          : run.status === "failed"
-                            ? "bg-red-500"
-                            : run.status === "awaiting_approval"
-                              ? "bg-yellow-500"
-                              : "bg-blue-500"
-                      }`}
-                    />
-                    <span className="font-mono text-xs text-mineshaft-300">
-                      {run.id.slice(0, 8)}
-                    </span>
-                    <Badge variant={run.type === "apply" ? "success" : "info"}>{run.type}</Badge>
-                    {run.aiSummary && (
-                      <Badge variant="default">
-                        <SparklesIcon className="size-3" />
-                        AI
-                      </Badge>
-                    )}
-                    {run.status === "awaiting_approval" && (
-                      <Badge variant="warning">
-                        <AlertTriangleIcon className="size-3" />
-                        Needs Approval
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-mineshaft-400">
-                    <Badge
-                      variant={
-                        run.status === "success"
-                          ? "success"
-                          : run.status === "failed"
-                            ? "danger"
-                            : run.status === "awaiting_approval"
-                              ? "warning"
-                              : "info"
-                      }
-                    >
-                      {run.status === "awaiting_approval" ? "awaiting approval" : run.status}
-                    </Badge>
-                    <span>{formatDate(run.createdAt)}</span>
-                    <ChevronRightIcon className="size-3.5" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </UnstableCardContent>
-      </UnstableCard>
+      {/* Topology Graph — fills remaining height */}
+      {graph && graph.nodes.length > 0 && (
+        <UnstableCard className="flex min-h-0 flex-1 flex-col">
+          <UnstableCardHeader className="shrink-0">
+            <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
+              Resource Topology
+            </UnstableCardTitle>
+          </UnstableCardHeader>
+          <UnstableCardContent className="min-h-0 flex-1 pb-0">
+            <ResourceTopologyGraph
+              nodes={graph.nodes}
+              edges={graph.edges}
+              className="h-full"
+            />
+          </UnstableCardContent>
+        </UnstableCard>
+      )}
     </div>
   );
 };

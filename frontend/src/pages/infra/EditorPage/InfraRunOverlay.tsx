@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 
 import { Badge, Button } from "@app/components/v3";
-import type { TAiInsight, TPlanJson } from "@app/hooks/api/infra/types";
+import { buildGraphFromPlanJson, type TAiInsight, type TPlanJson } from "@app/hooks/api/infra/types";
+import { ResourceTopologyGraph } from "../components/ResourceTopologyGraph";
 
 // ── Helpers ──
 
@@ -74,6 +75,13 @@ const APPLY_STEPS: Omit<Step, "status">[] = [
   { id: "init", label: "Initializing", duration: 2000 },
   { id: "plan", label: "Planning changes", duration: 4000 },
   { id: "apply", label: "Applying changes", duration: 6000 },
+  { id: "done", label: "Complete", duration: 0 }
+];
+
+const DESTROY_STEPS: Omit<Step, "status">[] = [
+  { id: "init", label: "Initializing", duration: 2000 },
+  { id: "plan", label: "Planning destruction", duration: 5000 },
+  { id: "destroy", label: "Destroying resources", duration: 7000 },
   { id: "done", label: "Complete", duration: 0 }
 ];
 
@@ -145,7 +153,7 @@ const ConnectorLine = ({ filled }: { filled: boolean }) => (
 type InfraRunOverlayProps = {
   isOpen: boolean;
   onClose: () => void;
-  mode: "plan" | "apply";
+  mode: "plan" | "apply" | "destroy";
   isRunning: boolean;
   output: string;
   planJson: TPlanJson | null;
@@ -178,39 +186,65 @@ export const InfraRunOverlay = ({
     timersRef.current = [];
   }, []);
 
-  // Start simulation when isRunning transitions to true
+  // Start or resume simulation when isRunning transitions to true
   useEffect(() => {
     if (isRunning && !prevRunningRef.current) {
       setShowSuccess(false);
       setShowOutput(false);
       clearTimers();
 
-      const defs = mode === "apply" ? APPLY_STEPS : PLAN_STEPS;
-      const initial: Step[] = defs.map((d, i) => ({
-        ...d,
-        status: i === 0 ? "active" : "pending"
-      }));
-      setSteps(initial);
+      // Check if we're resuming after approval (steps already exist with an active action step)
+      const activeIdx = steps.findIndex((s) => s.status === "active");
+      const isResuming = steps.length > 0 && activeIdx > 0;
 
-      // Schedule timed transitions (excluding last "done" step — that's set by finalize)
-      let cumulative = 0;
-      for (let i = 0; i < defs.length - 1; i += 1) {
-        cumulative += defs[i].duration;
-        const idx = i;
-        const t = setTimeout(() => {
-          setSteps((prev) =>
-            prev.map((s, j) => {
-              if (j === idx) return { ...s, status: "completed" };
-              if (j === idx + 1) return { ...s, status: "active" };
-              return s;
-            })
-          );
-        }, cumulative);
-        timersRef.current.push(t);
+      if (isResuming) {
+        // Resuming: schedule remaining steps from the current active step onward
+        const remaining = steps.slice(activeIdx);
+        let cumulative = 0;
+        for (let i = 0; i < remaining.length - 1; i += 1) {
+          cumulative += remaining[i].duration;
+          const stepId = remaining[i].id;
+          const nextStepId = remaining[i + 1].id;
+          const t = setTimeout(() => {
+            setSteps((prev) =>
+              prev.map((s) => {
+                if (s.id === stepId) return { ...s, status: "completed" };
+                if (s.id === nextStepId) return { ...s, status: "active" };
+                return s;
+              })
+            );
+          }, cumulative);
+          timersRef.current.push(t);
+        }
+      } else {
+        // Fresh start: initialize all steps
+        const defs = mode === "destroy" ? DESTROY_STEPS : mode === "apply" ? APPLY_STEPS : PLAN_STEPS;
+        const initial: Step[] = defs.map((d, i) => ({
+          ...d,
+          status: i === 0 ? "active" : "pending"
+        }));
+        setSteps(initial);
+
+        // Schedule timed transitions (excluding last "done" step — that's set by finalize)
+        let cumulative = 0;
+        for (let i = 0; i < defs.length - 1; i += 1) {
+          cumulative += defs[i].duration;
+          const idx = i;
+          const t = setTimeout(() => {
+            setSteps((prev) =>
+              prev.map((s, j) => {
+                if (j === idx) return { ...s, status: "completed" };
+                if (j === idx + 1) return { ...s, status: "active" };
+                return s;
+              })
+            );
+          }, cumulative);
+          timersRef.current.push(t);
+        }
       }
     }
     prevRunningRef.current = isRunning;
-  }, [isRunning, mode, clearTimers]);
+  }, [isRunning, mode, clearTimers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Finalize when isRunning transitions to false (and we have steps)
   useEffect(() => {
@@ -218,10 +252,11 @@ export const InfraRunOverlay = ({
       clearTimers();
 
       if (awaitingApproval) {
-        // Pause: mark everything before "apply" as completed, keep apply active
+        // Pause: mark everything before the action step as completed, keep action step active
+        const actionStepId = mode === "destroy" ? "destroy" : "apply";
         setSteps((prev) =>
           prev.map((s) => {
-            if (s.id === "apply") return { ...s, status: "active" };
+            if (s.id === actionStepId) return { ...s, status: "active" };
             if (s.id === "done") return s;
             if (s.status !== "completed") return { ...s, status: "completed" };
             return s;
@@ -285,8 +320,8 @@ export const InfraRunOverlay = ({
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-mineshaft-600 px-4 py-3">
               <div className="flex items-center gap-2.5">
-                <Badge variant={mode === "apply" ? "success" : "info"}>
-                  {mode === "plan" ? "Plan" : "Apply"}
+                <Badge variant={mode === "destroy" ? "danger" : mode === "apply" ? "success" : "info"}>
+                  {mode === "destroy" ? "Destroy" : mode === "apply" ? "Apply" : "Plan"}
                 </Badge>
                 {isRunning && (
                   <span className="text-xs text-mineshaft-400 animate-pulse">Running...</span>
@@ -354,7 +389,7 @@ export const InfraRunOverlay = ({
               </div>
 
               {/* Approval gate */}
-              {awaitingApproval && aiInsight && (
+              {awaitingApproval && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -364,9 +399,16 @@ export const InfraRunOverlay = ({
                   <div className="bg-gradient-to-b from-red-500/10 to-transparent p-4">
                     <div className="mb-3 flex items-center gap-2">
                       <ShieldAlertIcon className="size-4 text-red-400" />
-                      <span className="text-sm font-semibold text-red-400">Approval Required</span>
+                      <span className="text-sm font-semibold text-red-400">
+                        {mode === "destroy" ? "Destroy Confirmation" : "Approval Required"}
+                      </span>
                     </div>
-                    {aiInsight.security.issues.map((issue, idx) => (
+                    {mode === "destroy" && (
+                      <p className="mb-3 text-xs text-red-300/80">
+                        This will permanently destroy all managed resources. This action cannot be undone.
+                      </p>
+                    )}
+                    {aiInsight?.security.issues.map((issue, idx) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <div key={idx} className="mb-2 flex items-start gap-2 text-xs">
                         <Badge
@@ -385,10 +427,10 @@ export const InfraRunOverlay = ({
                       </div>
                     ))}
                     <div className="mt-4 flex gap-2">
-                      <Button variant="success" size="sm" onClick={onApprove} className="flex-1">
-                        Approve & Apply
+                      <Button variant={mode === "destroy" ? "danger" : "success"} size="sm" onClick={onApprove} className="flex-1">
+                        {mode === "destroy" ? "Approve & Destroy" : "Approve & Apply"}
                       </Button>
-                      <Button variant="danger" size="sm" onClick={onDeny} className="flex-1">
+                      <Button variant="outline" size="sm" onClick={onDeny} className="flex-1">
                         Deny
                       </Button>
                     </div>
@@ -412,6 +454,30 @@ export const InfraRunOverlay = ({
                       <Badge variant="danger">-{planJson.destroy} destroy</Badge>
                     </div>
                   )}
+
+                  {/* Topology graph (compact, run-specific) */}
+                  {planJson && planJson.resources.length > 0 && (() => {
+                    const runGraph = buildGraphFromPlanJson(planJson);
+                    return runGraph.nodes.length > 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        <ResourceTopologyGraph
+                          nodes={runGraph.nodes}
+                          edges={runGraph.edges}
+                          actionMap={planJson.resources.reduce<Record<string, string>>(
+                            (acc, r) => ({ ...acc, [r.address]: r.action }),
+                            {}
+                          )}
+                          compact
+                          animate
+                          className="h-48"
+                        />
+                      </motion.div>
+                    ) : null;
+                  })()}
 
                   {/* AI Insight */}
                   {aiInsight && (

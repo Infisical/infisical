@@ -124,6 +124,39 @@ export const registerInfraRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // ── Graph Endpoint ──
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/graph",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      response: {
+        200: z.object({
+          nodes: z.array(
+            z.object({
+              id: z.string(),
+              type: z.string(),
+              name: z.string(),
+              provider: z.string()
+            })
+          ),
+          edges: z.array(
+            z.object({
+              source: z.string(),
+              target: z.string()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.infra.getGraph(req.params.projectId);
+    }
+  });
+
   // ── Run Endpoints ──
 
   server.route({
@@ -209,7 +242,7 @@ export const registerInfraRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       params: z.object({ projectId: z.string() }),
-      body: z.object({ mode: z.enum(["plan", "apply"]).default("plan") }),
+      body: z.object({ mode: z.enum(["plan", "apply", "destroy"]).default("plan"), approved: z.boolean().optional() }),
       response: {
         200: z.object({
           output: z.string(),
@@ -233,7 +266,8 @@ export const registerInfraRouter = async (server: FastifyZodProvider) => {
           {
             projectId: req.params.projectId,
             mode: req.body.mode,
-            userId: req.permission.id
+            userId: req.permission.id,
+            approved: req.body.approved
           },
           (chunk: string) => {
             output += chunk;
@@ -259,13 +293,13 @@ export const registerInfraRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       params: z.object({ projectId: z.string() }),
-      querystring: z.object({ mode: z.enum(["plan", "apply"]).default("plan") }),
+      querystring: z.object({ mode: z.enum(["plan", "apply", "destroy"]).default("plan") }),
       response: { 200: z.object({ message: z.string() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     wsHandler: async (
       connection: WebSocket,
-      req: { params: { projectId: string }; query: { mode: "plan" | "apply" }; permission: { id: string } }
+      req: { params: { projectId: string }; query: { mode: "plan" | "apply" | "destroy" }; permission: { id: string } }
     ) => {
       try {
         server.services.infra.triggerRun(

@@ -12,6 +12,7 @@ export type TPlanResourceChange = {
   type: string;
   name: string;
   address: string;
+  dependsOn: string[];
 };
 
 export type TPlanJson = {
@@ -69,4 +70,46 @@ export type TInfraResource = {
   provider: string;
   address: string;
   attributes: Record<string, unknown>;
+  dependsOn: string[];
 };
+
+export type TInfraGraphNode = {
+  id: string;
+  type: string;
+  name: string;
+  provider: string;
+};
+
+export type TInfraGraph = {
+  nodes: TInfraGraphNode[];
+  edges: Array<{ source: string; target: string }>;
+};
+
+/** Build a run-specific graph from planJson resources and their dependencies */
+export function buildGraphFromPlanJson(planJson: TPlanJson): TInfraGraph {
+  const addressSet = new Set(planJson.resources.map((r) => r.address));
+
+  const nodes: TInfraGraphNode[] = planJson.resources.map((r) => ({
+    id: r.address,
+    type: r.type,
+    name: r.name,
+    provider: r.type.split("_")[0] ?? "unknown"
+  }));
+
+  const edgeSet = new Set<string>();
+  const edges: Array<{ source: string; target: string }> = [];
+
+  for (const r of planJson.resources) {
+    for (const dep of r.dependsOn) {
+      if (addressSet.has(dep)) {
+        const key = `${dep}->${r.address}`;
+        if (!edgeSet.has(key)) {
+          edges.push({ source: dep, target: r.address });
+          edgeSet.add(key);
+        }
+      }
+    }
+  }
+
+  return { nodes, edges };
+}

@@ -72,8 +72,8 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
   const getRun = async (runId: string) => {
     const run = await infraRunDAL.findById(runId);
 
-    // No diff data for failed runs
-    if (run.status === InfraRunStatus.Failed) {
+    // No diff data for failed or denied runs
+    if (run.status === InfraRunStatus.Failed || run.status === InfraRunStatus.Denied) {
       return { ...run, previousFileSnapshot: null };
     }
 
@@ -117,7 +117,12 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
     if (run.status !== InfraRunStatus.AwaitingApproval) {
       throw new BadRequestError({ message: "Run is not awaiting approval" });
     }
-    return infraRunDAL.updateById(runId, { status: InfraRunStatus.Failed, logs: `${run.logs}\n[infra] Run denied by user.\n` });
+    return infraRunDAL.updateById(runId, {
+      status: InfraRunStatus.Denied,
+      logs: `${run.logs}\n[infra] Run denied by user.\n`,
+      planJson: null,
+      aiSummary: null
+    });
   };
 
   // ── State Backend ──
@@ -138,35 +143,122 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
   // ── Resources (parsed from state) ──
 
   const getResources = async (projectId: string) => {
+    // Resources from state (already applied)
+    const stateResources: Array<{
+      type: string;
+      name: string;
+      provider: string;
+      address: string;
+      attributes: Record<string, unknown>;
+      dependsOn: string[];
+    }> = [];
+
     const state = await getState(projectId);
-    if (!state?.content) return [];
-
-    const stateObj = (typeof state.content === "string" ? JSON.parse(state.content) : state.content) as {
-      resources?: Array<{
-        type: string;
-        name: string;
-        provider: string;
-        instances?: Array<{
-          attributes?: Record<string, unknown>;
+    if (state?.content) {
+      const stateObj = (typeof state.content === "string" ? JSON.parse(state.content) : state.content) as {
+        resources?: Array<{
+          type: string;
+          name: string;
+          provider: string;
+          depends_on?: string[];
+          instances?: Array<{
+            attributes?: Record<string, unknown>;
+          }>;
         }>;
-      }>;
-    };
-
-    if (!stateObj.resources) return [];
-
-    return stateObj.resources.map((r) => {
-      // Provider string is like: provider["registry.opentofu.org/hashicorp/local"]
-      const providerMatch = r.provider.match(/\/([^/"\]]+)\]?"?$/);
-      const providerShort = providerMatch?.[1] ?? r.provider;
-      const attrs = r.instances?.[0]?.attributes ?? {};
-      return {
-        type: r.type,
-        name: r.name,
-        provider: providerShort,
-        address: `${r.type}.${r.name}`,
-        attributes: attrs
       };
-    });
+
+      if (stateObj.resources) {
+        for (const r of stateObj.resources) {
+          const providerMatch = r.provider.match(/\/([^/"\]]+)\]?"?$/);
+          const providerShort = providerMatch?.[1] ?? r.provider;
+          const attrs = r.instances?.[0]?.attributes ?? {};
+          stateResources.push({
+            type: r.type,
+            name: r.name,
+            provider: providerShort,
+            address: `${r.type}.${r.name}`,
+            attributes: attrs,
+            dependsOn: r.depends_on ?? []
+          });
+        }
+      }
+    }
+
+    // Merge in resources and dependency data from the latest plan
+    const addressSet = new Set(stateResources.map((r) => r.address));
+
+    const latestRuns = await infraRunDAL.find(
+      { projectId, status: InfraRunStatus.Success },
+      { limit: 1, sort: [["createdAt", "desc"]] }
+    );
+    const latestPlanJson = latestRuns[0]?.planJson as unknown as TPlanJson | null;
+
+    if (latestPlanJson?.resources) {
+      // Build a lookup of plan dependency data (richer than state depends_on)
+      const planDepMap = new Map<string, string[]>();
+      for (const r of latestPlanJson.resources) {
+        if (r.dependsOn?.length) {
+          planDepMap.set(r.address, r.dependsOn);
+        }
+      }
+
+      for (const r of latestPlanJson.resources) {
+        if (addressSet.has(r.address)) {
+          // Resource exists in state — enrich its dependencies with plan data
+          const planDeps = planDepMap.get(r.address);
+          if (planDeps?.length) {
+            const existing = stateResources.find((s) => s.address === r.address);
+            if (existing) {
+              const merged = new Set([...existing.dependsOn, ...planDeps]);
+              existing.dependsOn = Array.from(merged);
+            }
+          }
+        } else {
+          // Resource only in plan (not yet applied)
+          stateResources.push({
+            type: r.type,
+            name: r.name,
+            provider: "unknown",
+            address: r.address,
+            attributes: {},
+            dependsOn: r.dependsOn ?? []
+          });
+          addressSet.add(r.address);
+        }
+      }
+    }
+
+    return stateResources;
+  };
+
+  const getGraph = async (projectId: string) => {
+    const resources = await getResources(projectId);
+    const addressSet = new Set(resources.map((r) => r.address));
+
+    const nodes = resources.map((r) => ({
+      id: r.address,
+      type: r.type,
+      name: r.name,
+      provider: r.provider
+    }));
+
+    // Build edges from all resource dependencies (state + plan merged)
+    const edgeSet = new Set<string>();
+    const edges: Array<{ source: string; target: string }> = [];
+
+    for (const r of resources) {
+      for (const dep of r.dependsOn) {
+        if (addressSet.has(dep)) {
+          const key = `${dep}->${r.address}`;
+          if (!edgeSet.has(key)) {
+            edges.push({ source: dep, target: r.address });
+            edgeSet.add(key);
+          }
+        }
+      }
+    }
+
+    return { nodes, edges };
   };
 
   // ── Runner ──
@@ -203,7 +295,7 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
     let planRunId: string | null = null;
     let cachedAiInsight: TAiInsight | null = null;
 
-    if (dto.mode === "apply") {
+    if (dto.mode === "apply" || dto.mode === "destroy") {
       const recentPlans = await infraRunDAL.find(
         { projectId: dto.projectId, type: InfraRunType.Plan, status: InfraRunStatus.Success },
         { limit: 1, sort: [["createdAt", "desc"]] }
@@ -221,9 +313,11 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
       }
     }
 
+    const runType = dto.mode === "destroy" ? InfraRunType.Destroy : dto.mode === "apply" ? InfraRunType.Apply : InfraRunType.Plan;
+
     const run = await infraRunDAL.create({
       projectId: dto.projectId,
-      type: dto.mode === "apply" ? InfraRunType.Apply : InfraRunType.Plan,
+      type: runType,
       status: InfraRunStatus.Running,
       logs: "",
       fileSnapshot,
@@ -285,6 +379,17 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
           logger.warn(parseErr, "Failed to parse plan JSON");
         }
 
+        // Enrich with dependency graph from `tofu graph`
+        if (planJson) {
+          try {
+            const dotOutput = await captureCommand(binary, ["graph"], tmpDir);
+            const dotDeps = parseDotGraph(dotOutput);
+            enrichPlanWithGraphDeps(planJson, dotDeps);
+          } catch (graphErr) {
+            logger.warn(graphErr, "Failed to enrich plan with tofu graph");
+          }
+        }
+
         // AI analysis
         try {
           const insight = await generateAiInsight(fullLogs, planJson);
@@ -293,6 +398,76 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
           }
         } catch (aiErr) {
           logger.warn(aiErr, "AI insight generation failed");
+        }
+
+        await infraRunDAL.updateById(run.id, {
+          status: InfraRunStatus.Success,
+          logs: fullLogs,
+          planJson: planJson as unknown as string,
+          aiSummary
+        });
+
+        onComplete({ id: run.id, status: InfraRunStatus.Success, planJson, aiSummary });
+      } else if (dto.mode === "destroy") {
+        // Destroy mode — plan with -destroy flag, require approval before executing
+
+        await execCommand(binary, ["plan", "-destroy", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog);
+
+        try {
+          const jsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir);
+          planJson = parsePlanJson(jsonOutput);
+        } catch (parseErr) {
+          logger.warn(parseErr, "Failed to parse plan JSON");
+        }
+
+        // Enrich with dependency graph from `tofu graph`
+        if (planJson) {
+          try {
+            const dotOutput = await captureCommand(binary, ["graph"], tmpDir);
+            const dotDeps = parseDotGraph(dotOutput);
+            enrichPlanWithGraphDeps(planJson, dotDeps);
+          } catch (graphErr) {
+            logger.warn(graphErr, "Failed to enrich plan with tofu graph");
+          }
+        }
+
+        if (!dto.approved) {
+          // First destroy attempt — require approval
+          // AI analysis
+          try {
+            const insight = await generateAiInsight(fullLogs, planJson);
+            if (insight) aiSummary = JSON.stringify(insight);
+          } catch (aiErr) {
+            logger.warn(aiErr, "AI insight generation failed");
+          }
+
+          appendLog(`\n[infra] Destroy plan ready. Awaiting approval...\n`);
+          await infraRunDAL.updateById(run.id, {
+            status: InfraRunStatus.AwaitingApproval,
+            logs: fullLogs,
+            planJson: planJson as unknown as string,
+            aiSummary
+          });
+          onComplete({ id: run.id, status: InfraRunStatus.AwaitingApproval, planJson, aiSummary });
+          activeRuns.delete(dto.projectId);
+          await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+          return;
+        }
+
+        // Approved — execute the destroy plan
+        appendLog(`\n`);
+        await execCommand(binary, ["apply", "plan.tfplan"], tmpDir, appendLog);
+
+        // Generate AI insight or reuse cached
+        if (cachedAiInsight) {
+          aiSummary = JSON.stringify(cachedAiInsight);
+        } else {
+          try {
+            const insight = await generateAiInsight(fullLogs, planJson);
+            if (insight) aiSummary = JSON.stringify(insight);
+          } catch (aiErr) {
+            logger.warn(aiErr, "AI insight generation failed");
+          }
         }
 
         await infraRunDAL.updateById(run.id, {
@@ -312,6 +487,17 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
           planJson = parsePlanJson(jsonOutput);
         } catch (parseErr) {
           logger.warn(parseErr, "Failed to parse plan JSON");
+        }
+
+        // Enrich with dependency graph from `tofu graph`
+        if (planJson) {
+          try {
+            const dotOutput = await captureCommand(binary, ["graph"], tmpDir);
+            const dotDeps = parseDotGraph(dotOutput);
+            enrichPlanWithGraphDeps(planJson, dotDeps);
+          } catch (graphErr) {
+            logger.warn(graphErr, "Failed to enrich plan with tofu graph");
+          }
         }
 
         // Check if we need approval based on cached plan insight
@@ -377,6 +563,7 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
     approveRun,
     denyRun,
     getResources,
+    getGraph,
     getState,
     upsertState,
     triggerRun
@@ -460,12 +647,67 @@ function parsePlanJson(jsonOutput: string): TPlanJson {
       destroy += 1;
     }
 
-    if (action !== "no-op") {
-      resources.push({ action, type: rc.type, name: rc.name, address: rc.address });
-    }
+    resources.push({
+      action,
+      type: rc.type,
+      name: rc.name,
+      address: rc.address,
+      dependsOn: []
+    });
   }
 
   return { add, change, destroy, resources };
+}
+
+/**
+ * Parse `tofu graph` DOT output and extract resource→resource dependency edges.
+ * Node labels look like: "[root] infisical_project.tf-project (expand)"
+ * Edge lines look like: "source_label" -> "target_label"
+ * We extract the resource address (type.name) from each label, skipping provider/output/root nodes.
+ */
+function parseDotGraph(dot: string): Map<string, Set<string>> {
+  const deps = new Map<string, Set<string>>();
+
+  // Extract resource address from a DOT node label like "[root] infisical_project.tf-project (expand)"
+  const extractAddress = (label: string): string | null => {
+    // Remove [root] prefix and (expand)/(close) suffix
+    const cleaned = label.replace(/^\[root\]\s+/, "").replace(/\s+\(expand\)$/, "").replace(/\s+\(close\)$/, "").trim();
+    // Must be a resource address: type.name (with possible hyphens/underscores)
+    if (/^[a-z][\w]*\.[\w-]+$/.test(cleaned)) {
+      return cleaned;
+    }
+    return null;
+  };
+
+  // Match edge lines: "label1" -> "label2"
+  const edgeRegex = /"([^"]+)"\s*->\s*"([^"]+)"/g;
+  let match = edgeRegex.exec(dot);
+  while (match) {
+    const sourceAddr = extractAddress(match[1]);
+    const targetAddr = extractAddress(match[2]);
+    // Edge direction in DOT is source -> target, meaning source depends on target
+    // So targetAddr is the dependency of sourceAddr
+    if (sourceAddr && targetAddr) {
+      if (!deps.has(sourceAddr)) deps.set(sourceAddr, new Set());
+      deps.get(sourceAddr)!.add(targetAddr);
+    }
+    match = edgeRegex.exec(dot);
+  }
+
+  return deps;
+}
+
+/** Enrich planJson resources with dependency data from `tofu graph` DOT output */
+function enrichPlanWithGraphDeps(planJson: TPlanJson, dotDeps: Map<string, Set<string>>): void {
+  for (const r of planJson.resources) {
+    const deps = dotDeps.get(r.address);
+    if (deps) {
+      const merged = new Set([...r.dependsOn, ...deps]);
+      // Remove self-references
+      merged.delete(r.address);
+      r.dependsOn = Array.from(merged);
+    }
+  }
 }
 
 async function generateAiInsight(logs: string, planJson: TPlanJson | null): Promise<TAiInsight | null> {

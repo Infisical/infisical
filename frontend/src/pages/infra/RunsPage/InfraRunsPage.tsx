@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AlertTriangleIcon, ClockIcon, SparklesIcon } from "lucide-react";
 
@@ -49,6 +50,12 @@ export const InfraRunsPage = () => {
   const { data: runs, isLoading } = useInfraRuns(currentProject.id);
   const navigate = useNavigate();
 
+  // Filter out denied runs — they are cancelled and should not appear
+  const visibleRuns = useMemo(() => {
+    if (!runs) return null;
+    return runs.filter((r) => r.status !== "denied");
+  }, [runs]);
+
   const handleRowClick = (runId: string) => {
     navigate({
       to: "/organizations/$orgId/projects/infra/$projectId/run/$runId",
@@ -74,7 +81,7 @@ export const InfraRunsPage = () => {
             <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
-      ) : !runs || runs.length === 0 ? (
+      ) : !visibleRuns || visibleRuns.length === 0 ? (
         <div className="rounded-lg border border-dashed border-mineshaft-600 p-8 text-center text-sm text-mineshaft-400">
           No runs yet. Go to the Editor tab to run your first plan or apply.
         </div>
@@ -90,7 +97,7 @@ export const InfraRunsPage = () => {
             </UnstableTableRow>
           </UnstableTableHeader>
           <UnstableTableBody>
-            {runs.map((run: TInfraRun) => {
+            {visibleRuns.map((run: TInfraRun) => {
               const plan = run.planJson as TPlanJson | null;
               return (
                 <UnstableTableRow
@@ -103,7 +110,7 @@ export const InfraRunsPage = () => {
                     {run.aiSummary && <SparklesIcon className="ml-1.5 inline size-3 text-primary" />}
                   </UnstableTableCell>
                   <UnstableTableCell>
-                    <Badge variant={run.type === "apply" ? "success" : "info"}>{run.type}</Badge>
+                    <Badge variant={run.type === "destroy" ? "danger" : run.type === "apply" ? "success" : "info"}>{run.type}</Badge>
                   </UnstableTableCell>
                   <UnstableTableCell>
                     <div className="flex items-center gap-1.5">

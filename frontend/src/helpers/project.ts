@@ -109,7 +109,7 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.SecretScanning]: "secret-scan",
     [ProjectType.PAM]: "groups",
     [ProjectType.AI]: "moving-block",
-    [ProjectType.Infra]: "moving-block"
+    [ProjectType.Infra]: "share"
   };
   return titleConvert[type];
 };

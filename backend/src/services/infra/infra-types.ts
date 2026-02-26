@@ -3,12 +3,14 @@ export enum InfraRunStatus {
   Running = "running",
   Success = "success",
   Failed = "failed",
-  AwaitingApproval = "awaiting_approval"
+  AwaitingApproval = "awaiting_approval",
+  Denied = "denied"
 }
 
 export enum InfraRunType {
   Plan = "plan",
-  Apply = "apply"
+  Apply = "apply",
+  Destroy = "destroy"
 }
 
 export type TCreateFileDTO = {
@@ -24,8 +26,9 @@ export type TDeleteFileDTO = {
 
 export type TTriggerRunDTO = {
   projectId: string;
-  mode: "plan" | "apply";
+  mode: "plan" | "apply" | "destroy";
   userId?: string;
+  approved?: boolean; // true when re-triggering after approval (skip approval gate)
 };
 
 export type TListRunsDTO = {
@@ -60,6 +63,7 @@ export type TPlanResourceChange = {
   type: string;
   name: string;
   address: string;
+  dependsOn: string[];
 };
 
 export type TPlanJson = {

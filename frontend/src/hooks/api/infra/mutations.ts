@@ -39,8 +39,8 @@ export const useTriggerInfraRun = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, mode }: { projectId: string; mode: "plan" | "apply" }) => {
-      const { data } = await apiRequest.post<TRunResult>(`/api/v1/infra/${projectId}/run`, { mode });
+    mutationFn: async ({ projectId, mode, approved }: { projectId: string; mode: "plan" | "apply" | "destroy"; approved?: boolean }) => {
+      const { data } = await apiRequest.post<TRunResult>(`/api/v1/infra/${projectId}/run`, { mode, approved });
       return data;
     },
     onSuccess: (_, { projectId }) => {

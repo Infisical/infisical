@@ -24,7 +24,7 @@ import {
   UnstableIconButton
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useApproveInfraRun, useDeleteInfraFile, useInfraFiles, useTriggerInfraRun, useUpsertInfraFile } from "@app/hooks/api/infra";
+import { useApproveInfraRun, useDeleteInfraFile, useDenyInfraRun, useInfraFiles, useTriggerInfraRun, useUpsertInfraFile } from "@app/hooks/api/infra";
 import { TAiInsight, TPlanJson } from "@app/hooks/api/infra/types";
 
 import { InfraRunOverlay } from "./InfraRunOverlay";
@@ -53,6 +53,7 @@ export const InfraEditorPage = () => {
   const deleteFile = useDeleteInfraFile();
   const triggerRun = useTriggerInfraRun();
   const approveRun = useApproveInfraRun();
+  const denyRun = useDenyInfraRun();
 
   // Local state
   const [files, setFiles] = useState<LocalFile[]>([]);
@@ -61,9 +62,9 @@ export const InfraEditorPage = () => {
   const [aiInsight, setAiInsight] = useState<TAiInsight | null>(null);
   const [planJson, setPlanJson] = useState<TPlanJson | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [mode, setMode] = useState<"plan" | "apply">("plan");
+  const [mode, setMode] = useState<"plan" | "apply" | "destroy">("plan");
   const [initialized, setInitialized] = useState(false);
-  const [awaitingApproval, setAwaitingApproval] = useState<{ runId: string } | null>(null);
+  const [awaitingApproval, setAwaitingApproval] = useState<{ runId: string; mode: "apply" | "destroy" } | null>(null);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -155,7 +156,7 @@ export const InfraEditorPage = () => {
     setFiles((prev) => prev.map((f) => ({ ...f, dirty: false })));
   };
 
-  const handleRun = async (runMode: "plan" | "apply") => {
+  const handleRun = async (runMode: "plan" | "apply" | "destroy", options?: { approved?: boolean }) => {
     setMode(runMode);
     setIsRunning(true);
     setOutput("");
@@ -167,7 +168,7 @@ export const InfraEditorPage = () => {
     await saveAllFiles();
 
     try {
-      const result = await triggerRun.mutateAsync({ projectId, mode: runMode });
+      const result = await triggerRun.mutateAsync({ projectId, mode: runMode, approved: options?.approved });
       setOutput(result.output);
       if (result.planJson) setPlanJson(result.planJson as TPlanJson);
       if (result.aiSummary) {
@@ -178,7 +179,7 @@ export const InfraEditorPage = () => {
         }
       }
       if (result.status === "awaiting_approval") {
-        setAwaitingApproval({ runId: result.runId });
+        setAwaitingApproval({ runId: result.runId, mode: runMode as "apply" | "destroy" });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -190,10 +191,37 @@ export const InfraEditorPage = () => {
 
   const handleApprove = async () => {
     if (!awaitingApproval) return;
+    const { runId, mode: approvalMode } = awaitingApproval;
+    setAwaitingApproval(null);
+    setIsRunning(true);
+
+    await approveRun.mutateAsync({ projectId, runId });
+
+    try {
+      const result = await triggerRun.mutateAsync({ projectId, mode: approvalMode, approved: true });
+      setOutput(result.output);
+      if (result.planJson) setPlanJson(result.planJson as TPlanJson);
+      if (result.aiSummary) {
+        try {
+          setAiInsight(JSON.parse(result.aiSummary) as TAiInsight);
+        } catch {
+          setAiInsight({ summary: result.aiSummary, costs: { estimated: [], aiEstimated: [], totalMonthly: "N/A", deltaMonthly: "N/A" }, security: { issues: [], shouldApprove: false } });
+        }
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setOutput(`Error: ${message}`);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const handleDeny = async () => {
+    if (!awaitingApproval) return;
     const { runId } = awaitingApproval;
     setAwaitingApproval(null);
-    await approveRun.mutateAsync({ projectId, runId });
-    handleRun("apply");
+    setOverlayOpen(false);
+    await denyRun.mutateAsync({ projectId, runId });
   };
 
   if (filesLoading && !initialized) {
@@ -212,7 +240,7 @@ export const InfraEditorPage = () => {
         <div className="flex shrink-0 items-center justify-between border-b border-mineshaft-600 bg-mineshaft-800/50 px-4 py-2">
           <div className="flex items-center gap-3">
             <FolderOpenIcon className="size-4 text-mineshaft-400" />
-            <span className="text-sm font-medium text-mineshaft-200">workspace</span>
+            <span className="text-sm font-medium text-mineshaft-200">{currentProject.name}</span>
             <ChevronRightIcon className="size-3 text-mineshaft-600" />
             <span className="text-sm text-mineshaft-300">{activeFile?.name}</span>
             {activeFile?.dirty && <span className="size-2 rounded-full bg-yellow-500" title="Unsaved changes" />}
@@ -235,6 +263,15 @@ export const InfraEditorPage = () => {
               isPending={isRunning && mode === "apply"}
             >
               Apply
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => handleRun("destroy")}
+              isDisabled={isRunning}
+              isPending={isRunning && mode === "destroy"}
+            >
+              Destroy
             </Button>
           </div>
         </div>
@@ -305,29 +342,6 @@ export const InfraEditorPage = () => {
 
           {/* Editor area — full height now */}
           <div className="flex min-w-0 flex-1 flex-col">
-            {/* Open file tabs */}
-            <div className="flex shrink-0 items-center border-b border-mineshaft-600 bg-mineshaft-900">
-              {files.map((file, i) => (
-                <button
-                  key={file.name}
-                  type="button"
-                  className={`flex items-center gap-1.5 border-r border-mineshaft-600 px-3 py-1.5 text-xs transition-colors ${
-                    i === activeFileIndex
-                      ? "bg-[#1e1e1e] text-mineshaft-100"
-                      : "bg-mineshaft-800 text-mineshaft-500 hover:text-mineshaft-300"
-                  }`}
-                  onClick={() => {
-                    setActiveFileIndex(i);
-                    editorRef.current?.focus();
-                  }}
-                >
-                  <FileIcon className="size-3" />
-                  {file.name}
-                  {file.dirty && <span className="size-1.5 rounded-full bg-yellow-500" />}
-                </button>
-              ))}
-            </div>
-
             {/* Monaco Editor */}
             <div className="min-h-0 flex-1">
               <Editor
@@ -338,7 +352,8 @@ export const InfraEditorPage = () => {
                 onChange={handleFileContentChange}
                 onMount={handleEditorMount}
                 options={{
-                  minimap: { enabled: false },
+                  minimap: { enabled: true },
+                  stickyScroll: { enabled: false },
                   fontSize: 13,
                   lineNumbers: "on",
                   scrollBeyondLastLine: false,
@@ -366,7 +381,7 @@ export const InfraEditorPage = () => {
         aiInsight={aiInsight}
         awaitingApproval={awaitingApproval !== null}
         onApprove={handleApprove}
-        onDeny={() => setAwaitingApproval(null)}
+        onDeny={handleDeny}
       />
     </>
   );

@@ -28,13 +28,15 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useApproveInfraRun, useDenyInfraRun, useInfraRun } from "@app/hooks/api/infra";
-import { TAiInsight, TPlanJson } from "@app/hooks/api/infra/types";
+import { buildGraphFromPlanJson, TAiInsight, TPlanJson } from "@app/hooks/api/infra/types";
+import { ResourceTopologyGraph } from "../components/ResourceTopologyGraph";
 
 const statusVariant = (status: string): "success" | "danger" | "warning" | "info" => {
   switch (status) {
     case "success":
       return "success";
     case "failed":
+    case "denied":
       return "danger";
     case "running":
       return "warning";
@@ -247,10 +249,10 @@ export const InfraRunDetailPage = () => {
   const approveRun = useApproveInfraRun();
   const denyRun = useDenyInfraRun();
 
-  const [activeTab, setActiveTab] = useState<"changes" | "logs" | "ai">("changes");
+  const [activeTab, setActiveTab] = useState<"changes" | "topology" | "logs" | "ai">("changes");
 
   useEffect(() => {
-    if (run?.status === "failed" && activeTab === "changes") {
+    if ((run?.status === "failed" || run?.status === "denied") && activeTab === "changes") {
       setActiveTab("logs");
     }
   }, [run?.status]);
@@ -274,6 +276,12 @@ export const InfraRunDetailPage = () => {
     if (!run?.planJson) return null;
     return run.planJson as TPlanJson;
   }, [run?.planJson]);
+
+  // Build run-specific topology graph from this run's planJson
+  const runGraph = useMemo(() => {
+    if (!planJson?.resources?.length) return null;
+    return buildGraphFromPlanJson(planJson);
+  }, [planJson]);
 
   const fileSnapshot = useMemo<Record<string, string> | null>(() => {
     if (!run?.fileSnapshot) return null;
@@ -308,7 +316,7 @@ export const InfraRunDetailPage = () => {
     return (
       <div className="flex flex-col items-center gap-4 pt-20">
         <p className="text-mineshaft-400">Run not found.</p>
-        <Button variant="outline" size="sm" onClick={() => navigate({ to: "../../runs" })}>
+        <Button variant="outline" size="sm" onClick={() => navigate({ to: "/organizations/$orgId/projects/infra/$projectId/runs", params: { orgId: params.orgId, projectId: params.projectId } })}>
           Back to Runs
         </Button>
       </div>
@@ -323,7 +331,7 @@ export const InfraRunDetailPage = () => {
           <button
             type="button"
             className="mb-2 flex items-center gap-1.5 text-xs text-mineshaft-400 hover:text-mineshaft-200"
-            onClick={() => navigate({ to: "../../runs" })}
+            onClick={() => navigate({ to: "/organizations/$orgId/projects/infra/$projectId/runs", params: { orgId: params.orgId, projectId: params.projectId } })}
           >
             <ArrowLeftIcon className="size-3" />
             Back to Runs
@@ -332,7 +340,7 @@ export const InfraRunDetailPage = () => {
             <h1 className="text-2xl font-semibold text-mineshaft-100">
               Run <span className="font-mono text-lg text-mineshaft-300">{run.id.slice(0, 8)}</span>
             </h1>
-            <Badge variant={run.type === "apply" ? "success" : "info"}>{run.type}</Badge>
+            <Badge variant={run.type === "destroy" ? "danger" : run.type === "apply" ? "success" : "info"}>{run.type}</Badge>
             <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs text-mineshaft-400">
@@ -394,8 +402,9 @@ export const InfraRunDetailPage = () => {
 
       {/* Tabs */}
       <div className="flex border-b border-mineshaft-600">
-        {(["changes", "logs", "ai"] as const)
-          .filter((tab) => !(tab === "changes" && run.status === "failed"))
+        {(["changes", "topology", "logs", "ai"] as const)
+          .filter((tab) => !(tab === "changes" && (run.status === "failed" || run.status === "denied")))
+          .filter((tab) => !(tab === "topology" && (run.status === "failed" || run.status === "denied")))
           .map((tab) => (
             <button
               key={tab}
@@ -408,6 +417,7 @@ export const InfraRunDetailPage = () => {
               onClick={() => setActiveTab(tab)}
             >
               {tab === "changes" && "Changes"}
+              {tab === "topology" && "Topology"}
               {tab === "logs" && "Logs"}
               {tab === "ai" && (
                 <span className="flex items-center gap-1.5">
@@ -531,6 +541,22 @@ export const InfraRunDetailPage = () => {
               No change details available for this run.
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === "topology" && runGraph && (
+        <div>
+          <ResourceTopologyGraph
+            nodes={runGraph.nodes}
+            edges={runGraph.edges}
+            actionMap={
+              planJson?.resources
+                ? Object.fromEntries(planJson.resources.map((r) => [r.address, r.action]))
+                : undefined
+            }
+            animate
+            className="h-[500px]"
+          />
         </div>
       )}
 
