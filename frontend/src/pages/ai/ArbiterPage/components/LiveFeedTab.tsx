@@ -37,6 +37,14 @@ export const LiveFeedTab = () => {
   const [mountTime] = useState(() => new Date().toISOString());
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>(undefined);
 
+  // Unfiltered query to detect new sessions
+  const { data: unfilteredData } = useQueryAgentGateAuditLogs({
+    projectId,
+    limit: 1,
+    startTime: mountTime
+  });
+
+  // Session-filtered query for the active session's events
   const { data: auditData } = useQueryAgentGateAuditLogs({
     projectId,
     limit: 50,
@@ -52,14 +60,16 @@ export const LiveFeedTab = () => {
     return auditData.logs.map(mapAuditLogToEvent);
   }, [auditData?.logs]);
 
-  // Lock onto the first sessionId we see
+  // Switch to the latest session whenever a new one appears
   useEffect(() => {
-    if (activeSessionId || !auditData?.logs?.length) return;
-    const firstSession = auditData.logs.find((l) => l.sessionId)?.sessionId;
-    if (firstSession) {
-      setActiveSessionId(firstSession);
+    if (!unfilteredData?.logs?.length) return;
+    const latestSession = unfilteredData.logs[0]?.sessionId;
+    if (latestSession && latestSession !== activeSessionId) {
+      setActiveSessionId(latestSession);
+      previousLatestIdRef.current = null;
+      setCurrentEvent(null);
     }
-  }, [auditData?.logs, activeSessionId]);
+  }, [unfilteredData?.logs]);
 
   // Highlight the latest event — stays active until a new one arrives
   useEffect(() => {

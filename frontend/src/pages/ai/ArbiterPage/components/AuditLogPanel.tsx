@@ -83,7 +83,9 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
                 </div>
 
                 {/* Details */}
-                <div className="mb-2 text-xs text-accent">{event.details}</div>
+                <div className="mb-2 text-xs text-accent">
+                  {event.agentReasoning || event.details}
+                </div>
 
                 {/* Reasoning */}
                 {event.reasoning && (

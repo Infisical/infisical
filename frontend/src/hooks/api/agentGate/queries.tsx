@@ -15,8 +15,12 @@ export const agentGateKeys = {
   policies: (params: { projectId: string }) => [...agentGateKeys.all, "policies", params] as const,
   agentPolicy: (params: { agentId: string; projectId: string }) =>
     [...agentGateKeys.all, "agent-policy", params] as const,
-  auditLogs: (params: { projectId: string; limit?: number; startTime?: string; sessionId?: string }) =>
-    [...agentGateKeys.all, "audit-logs", params] as const
+  auditLogs: (params: {
+    projectId: string;
+    limit?: number;
+    startTime?: string;
+    sessionId?: string;
+  }) => [...agentGateKeys.all, "audit-logs", params] as const
 };
 
 export const useListAgentGatePolicies = ({ projectId }: TListAgentGatePoliciesDTO) => {
@@ -70,6 +74,6 @@ export const useQueryAgentGateAuditLogs = ({
       return data;
     },
     enabled: Boolean(projectId),
-    refetchInterval: 4000
+    refetchInterval: 1000
   });
 };

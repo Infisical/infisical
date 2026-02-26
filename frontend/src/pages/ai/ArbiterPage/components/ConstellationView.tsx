@@ -174,7 +174,8 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   scale: isActive ? 1.04 : 1,
                   opacity: isActive ? 1 : 0.85,
                   y: [0, -2.5, 0],
-                  x: [0, 2 + index * 0.5, 0, -(2 + index * 0.5), 0]
+                  x: [0, 2 + index * 0.5, 0, -(2 + index * 0.5), 0],
+                  filter: `drop-shadow(0 0 ${currentEvent ? 18 : 12}px ${statusColor.glow})`
                 }}
                 transition={{
                   scale: { duration: 0.5 },
@@ -206,9 +207,9 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full mt-2 w-44 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1 text-center"
+                      className="absolute top-full mt-2 w-44 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1.5 text-center"
                     >
-                      <div className="text-[10px] leading-tight text-muted italic">
+                      <div className="text-[10px] leading-tight text-accent italic">
                         &quot;{currentEvent.agentReasoning}&quot;
                       </div>
                     </motion.div>
