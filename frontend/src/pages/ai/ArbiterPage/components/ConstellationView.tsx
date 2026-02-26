@@ -215,23 +215,6 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 <div className="mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
                   {agent.name}
                 </div>
-
-                {/* Agent reasoning label */}
-                <AnimatePresence mode="popLayout">
-                  {isSource && currentEvent?.agentReasoning && (
-                    <motion.div
-                      key={currentEvent.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full mt-2 w-44 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1.5 text-center"
-                    >
-                      <div className="text-[10px] leading-tight text-accent italic">
-                        &quot;{currentEvent.agentReasoning}&quot;
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
 
               {/* Connection Line to Center */}
@@ -293,6 +276,32 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
             </div>
           );
         })}
+      </div>
+
+      {/* Agent Reasoning */}
+      <div className="absolute bottom-4 left-4 z-20 max-w-xs">
+        <AnimatePresence mode="popLayout">
+          {currentEvent?.agentReasoning && (
+            <motion.div
+              key={currentEvent.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                filter: `drop-shadow(0 0 ${currentEvent ? 18 : 12}px ${statusColor.glow})`
+              }}
+              exit={{ opacity: 0, y: -10 }}
+              className="rounded-md border border-border bg-gradient-to-r from-accent/10 to-accent/5 px-3 py-2 backdrop-blur-sm"
+            >
+              <div className="mb-1 font-mono text-[10px] tracking-widest text-muted uppercase">
+                {currentEvent.agentId.replace(/_/g, " ")}
+              </div>
+              <div className="text-xs leading-tight text-accent italic">
+                &quot;{currentEvent.agentReasoning}&quot;
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Legend */}
