@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PauseIcon, PlayIcon, RotateCcwIcon, SkipForwardIcon } from "lucide-react";
+import { PauseIcon, PlayIcon, RotateCcwIcon, SkipBackIcon, SkipForwardIcon } from "lucide-react";
 
 import {
   Badge,
@@ -68,6 +68,10 @@ export const SessionReplayModal = ({
       return prev + 1;
     });
   }, [totalEvents]);
+
+  const stepBack = useCallback(() => {
+    setCurrentIndex((prev) => Math.max(-1, prev - 1));
+  }, []);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -150,6 +154,15 @@ export const SessionReplayModal = ({
             >
               {isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
               {isPlaying ? "Pause" : currentIndex >= totalEvents - 1 ? "Restart" : "Play"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={stepBack}
+              disabled={isPlaying || currentIndex <= -1}
+            >
+              <SkipBackIcon className="h-4 w-4" />
+              Back
             </Button>
             <Button
               variant="outline"

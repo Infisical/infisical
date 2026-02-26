@@ -123,7 +123,7 @@ const SessionRow = ({
           />
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
-          <span className="font-medium">{session.title}</span>
+          <span className="font-medium">{session.id.replace("session-", " ")}</span>
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
           <span className="text-xs text-accent">{session.description}</span>
