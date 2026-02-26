@@ -18,7 +18,7 @@ const AGENT_POSITIONS = [
 ];
 
 // Per-agent line length adjustment (px to shrink from agent edge)
-const AGENT_LINE_INSET = [-10, -4, 2, 4];
+const AGENT_LINE_INSET = [-10, -4, 3, 6];
 
 const getIcon = (name: string) => {
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
@@ -114,7 +114,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
 
           {/* Policy Decision Text */}
           <AnimatePresence mode="wait">
-            {!currentEvent && (
+            {/* {!currentEvent && (
               <motion.div
                 key="idle"
                 initial={{ opacity: 0 }}
@@ -124,30 +124,32 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
               >
                 [IDLE]
               </motion.div>
-            )}
-            {currentEvent && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="absolute top-full mt-4 w-64 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1.5 text-center"
-              >
+            )} */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-full mt-4 w-32 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1.5 text-center"
+            >
+              {currentEvent ? (
                 <div
-                  className={`mb-1 font-mono text-xs ${
+                  className={`font-mono text-xs ${
                     currentEvent.status === "approved" ? "text-success" : "text-danger"
                   }`}
                 >
                   [{currentEvent.status.toUpperCase()}]
                 </div>
-                <div
+              ) : (
+                <div className="animate-pulse font-mono text-xs text-warning">[IDLE]</div>
+              )}
+              {/* <div
                   className={`text-[10px] leading-tight italic ${
                     currentEvent.status === "approved" ? "text-accent" : "text-danger"
                   }`}
                 >
                   &quot;{currentEvent.reasoning}&quot;
-                </div>
-              </motion.div>
-            )}
+                </div> */}
+            </motion.div>
           </AnimatePresence>
         </motion.div>
       </div>
@@ -199,44 +201,16 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 }}
                 className="relative flex flex-col items-center"
               >
-                <div className="relative flex h-20 w-20 items-center justify-center">
-                  <svg
-                    viewBox="0 0 80 80"
-                    className="absolute inset-0 h-full w-full overflow-visible"
-                  >
-                    {isActive && (
-                      <circle
-                        cx="40"
-                        cy="40"
-                        r="38"
-                        fill={
-                          currentEvent?.status === "approved"
-                            ? "rgba(46, 204, 113, 0.1)"
-                            : "rgba(231, 76, 60, 0.1)"
-                        }
-                        stroke="none"
-                      />
-                    )}
-                    <motion.circle
-                      key={isActive ? currentEvent?.id : "idle"}
-                      cx="40"
-                      cy="40"
-                      r="38"
-                      fill="none"
-                      stroke={
-                        isActive
-                          ? currentEvent?.status === "approved"
-                            ? "#2ecc71"
-                            : "#e74c3c"
-                          : "var(--color-border)"
-                      }
-                      strokeWidth="1"
-                      initial={{ pathLength: isActive ? 0 : 1 }}
-                      animate={{ pathLength: 1 }}
-                      transition={isActive ? { duration: 1.0 } : { duration: 0 }}
-                    />
-                  </svg>
-                  <div className="relative z-10 text-accent">{getIcon(agent.icon)}</div>
+                <div
+                  className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
+                    isActive
+                      ? currentEvent?.status === "approved"
+                        ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
+                        : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
+                      : "border-border"
+                  }`}
+                >
+                  <div className="text-accent">{getIcon(agent.icon)}</div>
                 </div>
                 <div className="mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
                   {agent.name}

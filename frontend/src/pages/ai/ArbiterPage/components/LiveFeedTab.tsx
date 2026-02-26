@@ -83,7 +83,7 @@ export const LiveFeedTab = () => {
   const isActiveStatus = (status: DemoEvent["executionStatus"]) =>
     status == null || status === "pending" || status === "started";
 
-  const MIN_ACTIVE_MS = 15000;
+  const MIN_ACTIVE_MS = 20000;
 
   const scheduleDeactivate = () => {
     if (deactivateTimerRef.current) return;
