@@ -281,7 +281,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
       {/* Agent Reasoning */}
       <div className="absolute bottom-4 left-4 z-20 max-w-xs">
         <AnimatePresence mode="popLayout">
-          {currentEvent?.agentReasoning && (
+          {(currentEvent?.agentReasoning || currentEvent?.details) && (
             <motion.div
               key={currentEvent.id}
               initial={{ opacity: 0, y: 10 }}
@@ -297,7 +297,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 {currentEvent.agentId.replace(/_/g, " ")}
               </div>
               <div className="text-xs leading-tight text-accent italic">
-                &quot;{currentEvent.agentReasoning}&quot;
+                &quot;{currentEvent.agentReasoning || currentEvent?.details}&quot;
               </div>
             </motion.div>
           )}
