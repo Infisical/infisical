@@ -69,7 +69,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
       </svg>
 
       {/* Central Governance Node */}
-      <div className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2" style={{ marginTop: -40 }}>
+      <div className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2" style={{ marginTop: -70 }}>
         <motion.div
           animate={{
             scale: currentEvent ? 1.03 : 1,
@@ -166,7 +166,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
               key={agent.id}
               className="absolute top-1/2 left-1/2"
               style={{
-                transform: `translate(${pos.x - 48}px, ${pos.y - 48 - 40}px)`
+                transform: `translate(${pos.x - 48}px, ${pos.y - 48 - 70}px)`
               }}
             >
               <motion.div
