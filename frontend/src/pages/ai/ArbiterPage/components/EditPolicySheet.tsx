@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, ShieldIcon, TrashIcon } from "lucide-react";
+import { PlusIcon, ShieldIcon, SquareTerminalIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Badge,
   Button,
   FieldContent,
   FieldError,
@@ -106,7 +107,9 @@ const toGroupedActions = (
  * Convert grouped action form data back to flat API shape.
  * Deduplicates prompt policies by id, merging onActions.
  */
-const toFlatPolicies = (actions: { value: string; conditions: z.infer<typeof conditionFormSchema>[] }[]) => {
+const toFlatPolicies = (
+  actions: { value: string; conditions: z.infer<typeof conditionFormSchema>[] }[]
+) => {
   const allowedActions = actions.map((a) => a.value);
   const policyMap = new Map<
     string,
@@ -142,18 +145,108 @@ const toFlatPolicies = (actions: { value: string; conditions: z.infer<typeof con
   return { allowedActions, promptPolicies: Array.from(policyMap.values()) };
 };
 
+const ReadOnlyActionFields = ({
+  control,
+  baseName,
+  actionDescription
+}: {
+  control: any;
+  baseName: string;
+  actionDescription?: string;
+}) => {
+  const conditions = useFieldArray({
+    control,
+    name: `${baseName}.conditions`
+  });
+
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-border px-2 py-2">
+        <div className="flex size-8 items-center justify-center rounded-md bg-accent/10">
+          <SquareTerminalIcon className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <Controller
+            control={control}
+            name={`${baseName}.value`}
+            render={({ field }) => (
+              <div className="font-mono text-sm font-semibold">{field.value}</div>
+            )}
+          />
+          {actionDescription && <div className="text-xs text-accent">{actionDescription}</div>}
+        </div>
+        <Badge variant="neutral">
+          {conditions.fields.length} {conditions.fields.length === 1 ? "condition" : "conditions"}
+        </Badge>
+      </div>
+
+      {/* Conditions */}
+      <div className="space-y-4 p-4">
+        {conditions.fields.map((condField, condIdx) => (
+          <div key={condField.id}>
+            <div className="mb-1.5 font-mono text-[10px] tracking-widest text-muted uppercase">
+              Condition {condIdx + 1}
+            </div>
+            <div className="flex items-start gap-2">
+              <div className="flex min-w-0 flex-1 border-l-2 border-border pl-3">
+                <Controller
+                  control={control}
+                  name={`${baseName}.conditions.${condIdx}.prompt`}
+                  render={({ field, fieldState: { error } }) => (
+                    <div className="flex-1">
+                      <TextArea
+                        {...field}
+                        rows={2}
+                        placeholder="Describe the condition to evaluate..."
+                      />
+                      {error && <FieldError>{error.message}</FieldError>}
+                    </div>
+                  )}
+                />
+              </div>
+              <UnstableIconButton
+                variant="ghost"
+                size="xs"
+                className="mt-2"
+                onClick={() => conditions.remove(condIdx)}
+              >
+                <TrashIcon className="size-3.5 text-danger" />
+              </UnstableIconButton>
+            </div>
+          </div>
+        ))}
+
+        <Button
+          onClick={() =>
+            conditions.append({
+              id: `cond_${crypto.randomUUID().slice(0, 8)}`,
+              description: "",
+              prompt: "",
+              enforce: "llm"
+            })
+          }
+          variant="outline"
+          size="sm"
+        >
+          <PlusIcon />
+          Add Evaluation Criteria
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const ActionFields = ({
   control,
   baseName,
   onRemoveAction,
-  availableActions,
-  readOnly
+  availableActions
 }: {
   control: any;
   baseName: string;
   onRemoveAction: () => void;
   availableActions?: string[];
-  readOnly?: boolean;
 }) => {
   const conditions = useFieldArray({
     control,
@@ -163,15 +256,7 @@ const ActionFields = ({
   return (
     <div className="space-y-3 rounded-md border border-border bg-container p-3">
       <div className="flex items-center gap-2">
-        {readOnly ? (
-          <Controller
-            control={control}
-            name={`${baseName}.value`}
-            render={({ field }) => (
-              <span className="flex-1 font-mono text-xs font-medium">{field.value}</span>
-            )}
-          />
-        ) : availableActions ? (
+        {availableActions ? (
           <Controller
             control={control}
             name={`${baseName}.value`}
@@ -206,11 +291,9 @@ const ActionFields = ({
             )}
           />
         )}
-        {!readOnly && (
-          <UnstableIconButton variant="ghost" size="xs" onClick={onRemoveAction}>
-            <TrashIcon className="text-danger" />
-          </UnstableIconButton>
-        )}
+        <UnstableIconButton variant="ghost" size="xs" onClick={onRemoveAction}>
+          <TrashIcon className="text-danger" />
+        </UnstableIconButton>
       </div>
 
       {conditions.fields.length > 0 && (
@@ -334,7 +417,12 @@ const InboundPolicyFields = ({
 };
 
 // --- Edit Actions Sheet ---
-export const EditActionsSheet = ({ isOpen, onOpenChange, agentId, projectId }: ActionsSheetProps) => {
+export const EditActionsSheet = ({
+  isOpen,
+  onOpenChange,
+  agentId,
+  projectId
+}: ActionsSheetProps) => {
   const { data: policy, isPending } = useGetAgentPolicy({
     agentId: agentId ?? "",
     projectId
@@ -412,40 +500,25 @@ export const EditActionsSheet = ({ isOpen, onOpenChange, agentId, projectId }: A
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-            <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6">
-              <div className="mb-4">
-                <div className="flex items-center gap-2">
-                  <ShieldIcon className="size-4 shrink-0 text-label" />
-                  <h3 className="text-sm font-semibold">{currentAgent?.name ?? agentId}</h3>
+            <div className="min-w-0 flex-1 overflow-y-auto p-6">
+              {selfActions.fields.length === 0 ? (
+                <div className="rounded-md border border-border p-6 text-center">
+                  <p className="text-sm text-muted">No actions registered for this agent.</p>
+                  <p className="mt-1 text-xs text-accent">
+                    Actions are registered by the agent at deployment time.
+                  </p>
                 </div>
-                <p className="mt-0.5 text-xs text-accent">
-                  {currentAgent?.description ?? "Configure self-execution policies for this agent."}
-                </p>
-              </div>
-
-              <div>
-                <FieldTitle className="mb-2">Actions</FieldTitle>
-                {selfActions.fields.length === 0 ? (
-                  <div className="rounded-md border border-border p-6 text-center">
-                    <p className="text-sm text-muted">No actions registered for this agent.</p>
-                    <p className="mt-1 text-xs text-accent">
-                      Actions are registered by the agent at deployment time.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {selfActions.fields.map((field, idx) => (
-                      <ActionFields
-                        key={field.id}
-                        control={control}
-                        baseName={`selfActions.${idx}`}
-                        onRemoveAction={() => selfActions.remove(idx)}
-                        readOnly
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  {selfActions.fields.map((field, idx) => (
+                    <ReadOnlyActionFields
+                      key={field.id}
+                      control={control}
+                      baseName={`selfActions.${idx}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             <SheetFooter className="flex flex-row items-center justify-end gap-x-4 border-t border-border px-6 py-4">
@@ -464,7 +537,12 @@ export const EditActionsSheet = ({ isOpen, onOpenChange, agentId, projectId }: A
 };
 
 // --- Edit Inbound Policies Sheet ---
-export const EditInboundPoliciesSheet = ({ isOpen, onOpenChange, agentId, projectId }: InboundSheetProps) => {
+export const EditInboundPoliciesSheet = ({
+  isOpen,
+  onOpenChange,
+  agentId,
+  projectId
+}: InboundSheetProps) => {
   const { data: policy, isPending } = useGetAgentPolicy({
     agentId: agentId ?? "",
     projectId
@@ -608,7 +686,8 @@ export const EditInboundPoliciesSheet = ({ isOpen, onOpenChange, agentId, projec
                     <ShieldIcon className="mb-2 size-8 text-muted" />
                     <p className="text-sm text-muted">No inbound policies configured.</p>
                     <p className="mt-1 text-xs text-accent">
-                      Add an inbound policy to allow other agents to request actions from this agent.
+                      Add an inbound policy to allow other agents to request actions from this
+                      agent.
                     </p>
                   </div>
                 ) : (
@@ -622,7 +701,8 @@ export const EditInboundPoliciesSheet = ({ isOpen, onOpenChange, agentId, projec
                             {fromAgent?.name ?? "Unassigned Agent"}
                           </h4>
                           <p className="text-xs text-accent">
-                            {fromAgent?.description ?? "Select an agent to configure inbound policies."}
+                            {fromAgent?.description ??
+                              "Select an agent to configure inbound policies."}
                           </p>
                         </div>
                         <InboundPolicyFields
