@@ -419,6 +419,26 @@ const pamDataExplorerRoute = route(
   "pam/PamDataExplorerPage/route.tsx"
 );
 
+const nexusRoutes = route("/organizations/$orgId/projects/nexus/$projectId", [
+  layout("nexus-layout", "nexus/layout.tsx", [
+    route("/overview", "nexus/OverviewPage/route.tsx"),
+    route("/pqc-readiness", "nexus/PqcReadinessPage/route.tsx"),
+    route("/certificates", "nexus/CertificatesPage/route.tsx"),
+    route("/cryptographic-assets", "nexus/CryptographicAssetsPage/route.tsx"),
+    route("/discovery", "nexus/DiscoveryPage/route.tsx"),
+    route("/policies", "nexus/PoliciesPage/route.tsx"),
+    route("/violations", "nexus/ViolationsPage/route.tsx"),
+    route("/integrations", "nexus/NexusIntegrationsPage/route.tsx"),
+    route("/settings", "nexus/SettingsPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-nexus.tsx"),
+    route("/access-management", "project/AccessControlPage/route-nexus.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-nexus.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-nexus.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-nexus.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-nexus.tsx")
+  ])
+]);
+
 const organizationRoutes = route("/organizations/$orgId", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
@@ -501,7 +521,8 @@ export const routes = rootRoute("root.tsx", [
         sshRoutes,
         secretScanningRoutes,
         pamRoutes,
-        aiRoutes
+        aiRoutes,
+        nexusRoutes
       ])
     ])
   ])

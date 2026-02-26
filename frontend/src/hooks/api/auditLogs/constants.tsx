@@ -367,7 +367,18 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.SECRET_VALIDATION_RULE_CREATE]: "Create Secret Validation Rule",
   [EventType.SECRET_VALIDATION_RULE_UPDATE]: "Update Secret Validation Rule",
-  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule"
+  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule",
+
+  // Nexus
+  [EventType.NEXUS_POLICY_CREATED]: "Create Nexus Policy",
+  [EventType.NEXUS_POLICY_ACTIVATED]: "Activate Nexus Policy",
+  [EventType.NEXUS_POLICY_DEACTIVATED]: "Deactivate Nexus Policy",
+  [EventType.NEXUS_DISCOVERY_SCAN_STARTED]: "Start Discovery Scan",
+  [EventType.NEXUS_DISCOVERY_SCAN_COMPLETED]: "Discovery Scan Completed",
+  [EventType.NEXUS_VIOLATION_ACCEPTED_RISK]: "Accept Violation Risk",
+  [EventType.NEXUS_VIOLATION_TICKET_CREATED]: "Create Violation Ticket",
+  [EventType.NEXUS_INTEGRATION_ADDED]: "Add Nexus Integration",
+  [EventType.NEXUS_SETTINGS_UPDATED]: "Update Nexus Settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -467,5 +478,17 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.MCP_SERVER_SYNC_TOOLS,
     // MCP Activity Logs
     EventType.MCP_ACTIVITY_LOG_LIST
+  ],
+  [ProjectType.Nexus]: [
+    ...sharedProjectEvents,
+    EventType.NEXUS_POLICY_CREATED,
+    EventType.NEXUS_POLICY_ACTIVATED,
+    EventType.NEXUS_POLICY_DEACTIVATED,
+    EventType.NEXUS_DISCOVERY_SCAN_STARTED,
+    EventType.NEXUS_DISCOVERY_SCAN_COMPLETED,
+    EventType.NEXUS_VIOLATION_ACCEPTED_RISK,
+    EventType.NEXUS_VIOLATION_TICKET_CREATED,
+    EventType.NEXUS_INTEGRATION_ADDED,
+    EventType.NEXUS_SETTINGS_UPDATED
   ]
 };

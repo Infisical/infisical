@@ -1,0 +1,1 @@
+export { DiscoveryPage } from "./DiscoveryPage";

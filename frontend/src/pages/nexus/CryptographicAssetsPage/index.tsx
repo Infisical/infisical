@@ -1,0 +1,1 @@
+export { CryptographicAssetsPage } from "./CryptographicAssetsPage";

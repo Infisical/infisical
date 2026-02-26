@@ -114,6 +114,7 @@
     "react-markdown": "^10.0.1",
     "react-select": "^5.9.0",
     "react-toastify": "^10.0.6",
+    "recharts": "^3.7.0",
     "redaxios": "^0.5.1",
     "rehype-raw": "^7.0.0",
     "sonner": "^2.0.7",

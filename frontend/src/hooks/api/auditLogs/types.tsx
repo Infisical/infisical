@@ -917,6 +917,77 @@ interface ClearIdentityLdapAuthLockoutsEvent {
   };
 }
 
+interface NexusPolicyCreatedEvent {
+  type: EventType.NEXUS_POLICY_CREATED;
+  metadata: {
+    policyName: string;
+    policyType: string;
+  };
+}
+
+interface NexusPolicyActivatedEvent {
+  type: EventType.NEXUS_POLICY_ACTIVATED;
+  metadata: {
+    policyName: string;
+  };
+}
+
+interface NexusPolicyDeactivatedEvent {
+  type: EventType.NEXUS_POLICY_DEACTIVATED;
+  metadata: {
+    policyName: string;
+  };
+}
+
+interface NexusDiscoveryScanStartedEvent {
+  type: EventType.NEXUS_DISCOVERY_SCAN_STARTED;
+  metadata: {
+    jobName: string;
+  };
+}
+
+interface NexusDiscoveryScanCompletedEvent {
+  type: EventType.NEXUS_DISCOVERY_SCAN_COMPLETED;
+  metadata: {
+    jobName: string;
+    assetsFound: number;
+    duration: string;
+  };
+}
+
+interface NexusViolationAcceptedRiskEvent {
+  type: EventType.NEXUS_VIOLATION_ACCEPTED_RISK;
+  metadata: {
+    violationId: string;
+    policyName: string;
+  };
+}
+
+interface NexusViolationTicketCreatedEvent {
+  type: EventType.NEXUS_VIOLATION_TICKET_CREATED;
+  metadata: {
+    violationId: string;
+    ticketId: string;
+    systemName: string;
+  };
+}
+
+interface NexusIntegrationAddedEvent {
+  type: EventType.NEXUS_INTEGRATION_ADDED;
+  metadata: {
+    integrationName: string;
+    project: string;
+  };
+}
+
+interface NexusSettingsUpdatedEvent {
+  type: EventType.NEXUS_SETTINGS_UPDATED;
+  metadata: {
+    settingKey: string;
+    value: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1003,7 +1074,16 @@ export type Event =
   | UpdateProjectWorkflowIntegrationConfig
   | GetProjectWorkflowIntegrationConfig
   | IntegrationSyncedEvent
-  | ClearIdentityLdapAuthLockoutsEvent;
+  | ClearIdentityLdapAuthLockoutsEvent
+  | NexusPolicyCreatedEvent
+  | NexusPolicyActivatedEvent
+  | NexusPolicyDeactivatedEvent
+  | NexusDiscoveryScanStartedEvent
+  | NexusDiscoveryScanCompletedEvent
+  | NexusViolationAcceptedRiskEvent
+  | NexusViolationTicketCreatedEvent
+  | NexusIntegrationAddedEvent
+  | NexusSettingsUpdatedEvent;
 
 export type AuditLog = {
   id: string;

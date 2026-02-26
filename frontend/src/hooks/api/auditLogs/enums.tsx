@@ -365,5 +365,16 @@ export enum EventType {
   // Secret Validation Rules
   SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
   SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
-  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete"
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
+
+  // Nexus
+  NEXUS_POLICY_CREATED = "nexus-policy-created",
+  NEXUS_POLICY_ACTIVATED = "nexus-policy-activated",
+  NEXUS_POLICY_DEACTIVATED = "nexus-policy-deactivated",
+  NEXUS_DISCOVERY_SCAN_STARTED = "nexus-discovery-scan-started",
+  NEXUS_DISCOVERY_SCAN_COMPLETED = "nexus-discovery-scan-completed",
+  NEXUS_VIOLATION_ACCEPTED_RISK = "nexus-violation-accepted-risk",
+  NEXUS_VIOLATION_TICKET_CREATED = "nexus-violation-ticket-created",
+  NEXUS_INTEGRATION_ADDED = "nexus-integration-added",
+  NEXUS_SETTINGS_UPDATED = "nexus-settings-updated"
 }
