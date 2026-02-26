@@ -1,11 +1,15 @@
-import { AnsiUp } from "ansi_up";
-import { diffLines } from "diff";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { AnsiUp } from "ansi_up";
+import { diffLines } from "diff";
 import {
   AlertTriangleIcon,
+  ArrowDownIcon,
   ArrowLeftIcon,
+  ArrowUpIcon,
+  BoxIcon,
+  CheckCircle2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
   CircleXIcon,
@@ -13,9 +17,13 @@ import {
   DollarSignIcon,
   FileIcon,
   ShieldAlertIcon,
+  ShieldCheckIcon,
   SparklesIcon,
-  TerminalIcon
+  TerminalIcon,
+  TimerIcon,
+  XCircleIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
   Badge,
@@ -29,6 +37,7 @@ import {
 import { useProject } from "@app/context";
 import { useApproveInfraRun, useDenyInfraRun, useInfraRun } from "@app/hooks/api/infra";
 import { buildGraphFromPlanJson, TAiInsight, TPlanJson } from "@app/hooks/api/infra/types";
+
 import { ResourceTopologyGraph } from "../components/ResourceTopologyGraph";
 
 const statusVariant = (status: string): "success" | "danger" | "warning" | "info" => {
@@ -50,6 +59,76 @@ const statusVariant = (status: string): "success" | "danger" | "warning" | "info
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
   return d.toLocaleString();
+};
+
+const formatDuration = (startStr: string, endStr: string) => {
+  const ms = new Date(endStr).getTime() - new Date(startStr).getTime();
+  if (ms < 1000) return "<1s";
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  const remainSecs = secs % 60;
+  return remainSecs > 0 ? `${mins}m ${remainSecs}s` : `${mins}m`;
+};
+
+const parseCost = (s: string) => parseFloat(s.replace(/[^0-9.\-+]/g, ""));
+
+/** Animates a number from 0 to `end` over `duration` ms using easeOut */
+const useCountUp = (end: number, duration = 1200) => {
+  const [value, setValue] = useState(0);
+  const prevEnd = useRef(0);
+
+  useEffect(() => {
+    if (end === prevEnd.current) return;
+    const start = prevEnd.current;
+    prevEnd.current = end;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setValue(Math.round(start + (end - start) * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [end, duration]);
+
+  return value;
+};
+
+const AnimatedNumber = ({ value, className }: { value: number; className?: string }) => {
+  const display = useCountUp(value);
+  return <span className={className}>{display}</span>;
+};
+
+/** Stat card wrapper that grows in with a staggered delay */
+const GrowIn = ({
+  children,
+  delay = 0,
+  className
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) => {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  return (
+    <div
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "scale(1) translateY(0)" : "scale(0.92) translateY(8px)",
+        transition: "opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
+      }}
+    >
+      {children}
+    </div>
+  );
 };
 
 const actionColor = (action: string) => {
@@ -332,6 +411,32 @@ export const InfraRunDetailPage = () => {
     );
   }
 
+  const duration =
+    run.updatedAt !== run.createdAt ? formatDuration(run.createdAt, run.updatedAt) : null;
+
+  const costDelta = (() => {
+    if (!aiInsight) return null;
+    const delta = aiInsight.costs.deltaMonthly;
+    if (!delta || delta === "N/A") return null;
+    const num = parseCost(delta);
+    if (Number.isNaN(num)) return null;
+    return { value: delta, direction: num > 0 ? "up" : num < 0 ? "down" : "flat" } as const;
+  })();
+
+  const secSummary = (() => {
+    if (!aiInsight) return null;
+    const { issues } = aiInsight.security;
+    if (issues.length === 0) return { total: 0, critical: 0 };
+    const critical = issues.filter(
+      (i) => i.severity === "critical" || i.severity === "high"
+    ).length;
+    return { total: issues.length, critical };
+  })();
+
+  const resourceTypes = planJson?.resources
+    ? [...new Set(planJson.resources.map((r) => r.type))]
+    : [];
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -361,14 +466,24 @@ export const InfraRunDetailPage = () => {
             >
               {run.type}
             </Badge>
-            <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+            <Badge variant={statusVariant(run.status)}>
+              {run.status === "success" && <CheckCircle2Icon className="size-3" />}
+              {run.status === "failed" && <XCircleIcon className="size-3" />}
+              {run.status}
+            </Badge>
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs text-mineshaft-400">
             <span className="flex items-center gap-1">
               <ClockIcon className="size-3" />
               {formatDate(run.createdAt)}
             </span>
-            {run.triggeredBy && <span>Triggered by: {run.triggeredBy.slice(0, 8)}</span>}
+            {duration && (
+              <span className="flex items-center gap-1">
+                <TimerIcon className="size-3" />
+                {duration}
+              </span>
+            )}
+            {run.triggeredBy && <span>by {run.triggeredBy.slice(0, 8)}</span>}
           </div>
         </div>
 
@@ -390,35 +505,163 @@ export const InfraRunDetailPage = () => {
         )}
       </div>
 
-      {/* Resource changes summary */}
-      {planJson && (
-        <div className="flex gap-4">
-          <UnstableCard className="flex-1">
-            <UnstableCardContent className="flex items-center gap-3">
-              <div className="min-w-12 rounded-lg bg-green-500/10 p-2.5 text-center">
-                <span className="text-lg font-bold text-green-400">+{planJson.add}</span>
+      {/* Stats row */}
+      <div className="grid grid-cols-5 gap-4">
+        {/* Plan changes */}
+        <GrowIn delay={0}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-mineshaft-400">Changes</p>
+                {planJson ? (
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-lg font-bold text-green-400">+<AnimatedNumber value={planJson.add} /></span>
+                    <span className="text-lg font-bold text-yellow-400">~<AnimatedNumber value={planJson.change} /></span>
+                    <span className="text-lg font-bold text-red-400">-<AnimatedNumber value={planJson.destroy} /></span>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-lg font-bold text-mineshaft-50">—</p>
+                )}
+                <p className="mt-0.5 text-xs text-mineshaft-500">
+                  {planJson
+                    ? `${planJson.resources.length} resource${planJson.resources.length !== 1 ? "s" : ""}`
+                    : "no plan data"}
+                </p>
               </div>
-              <span className="text-sm text-mineshaft-400">to add</span>
+              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-primary">
+                <BoxIcon className="size-5" />
+              </div>
             </UnstableCardContent>
           </UnstableCard>
-          <UnstableCard className="flex-1">
-            <UnstableCardContent className="flex items-center gap-3">
-              <div className="min-w-12 rounded-lg bg-yellow-500/10 p-2.5 text-center">
-                <span className="text-lg font-bold text-yellow-400">~{planJson.change}</span>
+        </GrowIn>
+
+        {/* Resource types */}
+        <GrowIn delay={60}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-mineshaft-400">Resource Types</p>
+                <p className="mt-1 text-lg font-bold text-mineshaft-50"><AnimatedNumber value={resourceTypes.length} /></p>
+                {resourceTypes.length > 0 && (
+                  <div className="mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                    {resourceTypes.slice(0, 3).map((t) => (
+                      <span key={t} className="truncate text-xs text-mineshaft-500">
+                        {t}
+                      </span>
+                    ))}
+                    {resourceTypes.length > 3 && (
+                      <span className="text-xs text-mineshaft-600">+{resourceTypes.length - 3}</span>
+                    )}
+                  </div>
+                )}
               </div>
-              <span className="text-sm text-mineshaft-400">to change</span>
             </UnstableCardContent>
           </UnstableCard>
-          <UnstableCard className="flex-1">
-            <UnstableCardContent className="flex items-center gap-3">
-              <div className="min-w-12 rounded-lg bg-red-500/10 p-2.5 text-center">
-                <span className="text-lg font-bold text-red-400">-{planJson.destroy}</span>
+        </GrowIn>
+
+        {/* Duration */}
+        <GrowIn delay={120}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-mineshaft-400">Duration</p>
+                <p className="mt-1 text-lg font-bold text-mineshaft-50">{duration ?? "—"}</p>
+                <p className="mt-0.5 text-xs text-mineshaft-500">
+                  {run.status === "running"
+                    ? "still running"
+                    : run.status === "awaiting_approval"
+                      ? "awaiting approval"
+                      : "completed"}
+                </p>
               </div>
-              <span className="text-sm text-mineshaft-400">to destroy</span>
+              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-blue-400">
+                <TimerIcon className="size-5" />
+              </div>
             </UnstableCardContent>
           </UnstableCard>
-        </div>
-      )}
+        </GrowIn>
+
+        {/* Cost impact */}
+        <GrowIn delay={180}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-mineshaft-400">Cost Impact</p>
+                <p className="mt-1 text-lg font-bold text-mineshaft-50">
+                  {aiInsight?.costs.totalMonthly ?? "—"}
+                </p>
+                {costDelta ? (
+                  <div
+                    className={twMerge(
+                      "mt-0.5 flex items-center gap-1 text-xs",
+                      costDelta.direction === "up" && "text-red-400",
+                      costDelta.direction === "down" && "text-green-400",
+                      costDelta.direction === "flat" && "text-mineshaft-500"
+                    )}
+                  >
+                    {costDelta.direction === "up" && <ArrowUpIcon className="size-3" />}
+                    {costDelta.direction === "down" && <ArrowDownIcon className="size-3" />}
+                    <span>{costDelta.value}</span>
+                  </div>
+                ) : (
+                  <p className="mt-0.5 text-xs text-mineshaft-500">
+                    {aiInsight ? "no delta" : "no estimate"}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-emerald-400">
+                <DollarSignIcon className="size-5" />
+              </div>
+            </UnstableCardContent>
+          </UnstableCard>
+        </GrowIn>
+
+        {/* Security */}
+        <GrowIn delay={240}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-mineshaft-400">Security</p>
+                {secSummary && secSummary.total > 0 ? (
+                  <>
+                    <p className="mt-1 text-lg font-bold text-mineshaft-50">
+                      <AnimatedNumber value={secSummary.total} /> issue{secSummary.total > 1 ? "s" : ""}
+                    </p>
+                    <p className="mt-0.5 text-xs text-mineshaft-500">
+                      {secSummary.critical > 0 ? (
+                        <span className="text-red-400">{secSummary.critical} critical/high</span>
+                      ) : (
+                        "low severity"
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 text-lg font-bold text-green-400">
+                      {aiInsight ? "Clear" : "—"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-mineshaft-500">
+                      {aiInsight ? "no issues" : "no analysis"}
+                    </p>
+                  </>
+                )}
+              </div>
+              <div
+                className={twMerge(
+                  "rounded-lg bg-mineshaft-700/50 p-2.5",
+                  secSummary && secSummary.critical > 0 ? "text-red-400" : "text-green-400"
+                )}
+              >
+                {secSummary && secSummary.total > 0 ? (
+                  <ShieldAlertIcon className="size-5" />
+                ) : (
+                  <ShieldCheckIcon className="size-5" />
+                )}
+              </div>
+            </UnstableCardContent>
+          </UnstableCard>
+        </GrowIn>
+      </div>
 
       {/* Tabs */}
       <div className="flex border-b border-mineshaft-600">
@@ -447,6 +690,11 @@ export const InfraRunDetailPage = () => {
                 <span className="flex items-center gap-1.5">
                   <SparklesIcon className="size-3" />
                   AI Analysis
+                  {aiInsight && aiInsight.security.issues.length > 0 && (
+                    <span className="flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                      !
+                    </span>
+                  )}
                 </span>
               )}
             </button>
@@ -459,7 +707,7 @@ export const InfraRunDetailPage = () => {
           {/* Resource changes list */}
           {planJson?.resources && planJson.resources.length > 0 && (
             <UnstableCard>
-              <UnstableCardHeader className="pb-2">
+              <UnstableCardHeader>
                 <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
                   Resource Changes
                 </UnstableCardTitle>
@@ -496,7 +744,7 @@ export const InfraRunDetailPage = () => {
           {/* File snapshot diffs */}
           {run.status !== "failed" && fileSnapshot && Object.keys(fileSnapshot).length > 0 && (
             <UnstableCard>
-              <UnstableCardHeader className="pb-2">
+              <UnstableCardHeader>
                 <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
                   Files
                 </UnstableCardTitle>
@@ -594,7 +842,7 @@ export const InfraRunDetailPage = () => {
               if (errors.length === 0) return null;
               return (
                 <UnstableCard className="border-red-500/30">
-                  <UnstableCardHeader className="pb-2">
+                  <UnstableCardHeader>
                     <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-red-400">
                       <CircleXIcon className="size-4" />
                       {errors.length} Error{errors.length > 1 ? "s" : ""} Detected
@@ -645,7 +893,7 @@ export const InfraRunDetailPage = () => {
             <>
               {/* Summary */}
               <UnstableCard>
-                <UnstableCardHeader className="pb-2">
+                <UnstableCardHeader>
                   <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-mineshaft-200">
                     <SparklesIcon className="size-4 text-primary" />
                     Summary
@@ -661,7 +909,7 @@ export const InfraRunDetailPage = () => {
               {/* Cost Estimates */}
               {(aiInsight.costs.estimated.length > 0 || aiInsight.costs.aiEstimated.length > 0) && (
                 <UnstableCard>
-                  <UnstableCardHeader className="pb-2">
+                  <UnstableCardHeader>
                     <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-mineshaft-200">
                       <DollarSignIcon className="size-4 text-green-400" />
                       Cost Estimate
@@ -741,7 +989,7 @@ export const InfraRunDetailPage = () => {
                 <UnstableCard
                   className={aiInsight.security.shouldApprove ? "border-red-500/30" : ""}
                 >
-                  <UnstableCardHeader className="pb-2">
+                  <UnstableCardHeader>
                     <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-mineshaft-200">
                       <ShieldAlertIcon className="size-4 text-red-400" />
                       Security Findings

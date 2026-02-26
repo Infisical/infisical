@@ -1,12 +1,15 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CheckIcon,
   EyeIcon,
   EyeOffIcon,
+  HashIcon,
   KeyIcon,
   LinkIcon,
+  LockIcon,
   PencilIcon,
   PlusIcon,
+  SettingsIcon,
   Trash2Icon,
   XIcon
 } from "lucide-react";
@@ -18,6 +21,10 @@ import {
   UnstableAlert,
   UnstableAlertDescription,
   UnstableAlertTitle,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle,
   UnstableTable,
   UnstableTableBody,
   UnstableTableCell,
@@ -32,6 +39,60 @@ import {
   useUpsertInfraVariable
 } from "@app/hooks/api/infra";
 import { TInfraVariable } from "@app/hooks/api/infra/types";
+
+const useCountUp = (end: number, duration = 1200) => {
+  const [value, setValue] = useState(0);
+  const prevEnd = useRef(0);
+  useEffect(() => {
+    if (end === prevEnd.current) return;
+    const start = prevEnd.current;
+    prevEnd.current = end;
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setValue(Math.round(start + (end - start) * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [end, duration]);
+  return value;
+};
+
+const AnimatedNumber = ({ value }: { value: number }) => {
+  const display = useCountUp(value);
+  return <span>{display}</span>;
+};
+
+const GrowIn = ({
+  children,
+  delay = 0,
+  className
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) => {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  return (
+    <div
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "scale(1) translateY(0)" : "scale(0.92) translateY(8px)",
+        transition:
+          "opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
+      }}
+    >
+      {children}
+    </div>
+  );
+};
 
 type TEditingState = {
   key: string;
@@ -125,7 +186,12 @@ const VariableRow = ({
   return (
     <UnstableTableRow className="group">
       <UnstableTableCell>
-        <span className="font-mono text-xs text-mineshaft-200">{variable.key}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-mineshaft-200">{variable.key}</span>
+          {variable.key.startsWith("TF_VAR_") && (
+            <Badge variant="info">TF</Badge>
+          )}
+        </div>
       </UnstableTableCell>
       <UnstableTableCell>
         {variable.sensitive ? (
@@ -223,11 +289,17 @@ export const InfraVariablesPage = () => {
     return (
       <div className="flex flex-col gap-4">
         <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-3 gap-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
         <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
+  const totalCount = variables?.length ?? 0;
   const envVarCount = variables?.filter((v) => !v.key.startsWith("TF_VAR_")).length ?? 0;
   const tfVarCount = variables?.filter((v) => v.key.startsWith("TF_VAR_")).length ?? 0;
   const sensitiveCount = variables?.filter((v) => v.sensitive).length ?? 0;
@@ -252,93 +324,188 @@ export const InfraVariablesPage = () => {
         </Button>
       </div>
 
-      <UnstableTable>
-        <UnstableTableHeader>
-          <UnstableTableRow>
-            <UnstableTableHead>Key</UnstableTableHead>
-            <UnstableTableHead>Value</UnstableTableHead>
-            <UnstableTableHead>Sensitive</UnstableTableHead>
-            <UnstableTableHead className="w-20" />
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
-          {isAdding && (
-            <UnstableTableRow>
-              <UnstableTableCell>
-                <Input
-                  value={newKey}
-                  onChange={(e) => setNewKey(e.target.value)}
-                  placeholder="e.g. AWS_ACCESS_KEY_ID"
-                  className="font-mono text-xs"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAdd();
-                    if (e.key === "Escape") setIsAdding(false);
-                  }}
+      {/* Stat cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <GrowIn delay={0}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-mineshaft-400">Total</p>
+                <p className="mt-1 text-2xl font-bold text-mineshaft-50">
+                  <AnimatedNumber value={totalCount} />
+                </p>
+                <p className="mt-0.5 text-xs text-mineshaft-500">variables</p>
+              </div>
+              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-primary">
+                <HashIcon className="size-5" />
+              </div>
+            </UnstableCardContent>
+          </UnstableCard>
+        </GrowIn>
+        <GrowIn delay={60}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-mineshaft-400">Environment</p>
+                <p className="mt-1 text-2xl font-bold text-mineshaft-50">
+                  <AnimatedNumber value={envVarCount} />
+                </p>
+                <p className="mt-0.5 text-xs text-mineshaft-500">provider auth</p>
+              </div>
+              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-blue-400">
+                <SettingsIcon className="size-5" />
+              </div>
+            </UnstableCardContent>
+          </UnstableCard>
+        </GrowIn>
+        <GrowIn delay={120}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-mineshaft-400">Terraform</p>
+                <p className="mt-1 text-2xl font-bold text-mineshaft-50">
+                  <AnimatedNumber value={tfVarCount} />
+                </p>
+                <p className="mt-0.5 text-xs text-mineshaft-500">TF_VAR_ prefixed</p>
+              </div>
+              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-green-400">
+                <KeyIcon className="size-5" />
+              </div>
+            </UnstableCardContent>
+          </UnstableCard>
+        </GrowIn>
+        <GrowIn delay={180}>
+          <UnstableCard>
+            <UnstableCardContent className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-mineshaft-400">Sensitive</p>
+                <p className="mt-1 text-2xl font-bold text-mineshaft-50">
+                  <AnimatedNumber value={sensitiveCount} />
+                </p>
+                <p className="mt-0.5 text-xs text-mineshaft-500">encrypted values</p>
+              </div>
+              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-yellow-400">
+                <LockIcon className="size-5" />
+              </div>
+            </UnstableCardContent>
+          </UnstableCard>
+        </GrowIn>
+      </div>
+
+      {/* Variables table in a card */}
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
+            All Variables
+          </UnstableCardTitle>
+        </UnstableCardHeader>
+        <UnstableCardContent className="p-0">
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead>Key</UnstableTableHead>
+                <UnstableTableHead>Value</UnstableTableHead>
+                <UnstableTableHead>Sensitive</UnstableTableHead>
+                <UnstableTableHead className="w-20" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {isAdding && (
+                <UnstableTableRow>
+                  <UnstableTableCell>
+                    <Input
+                      value={newKey}
+                      onChange={(e) => setNewKey(e.target.value)}
+                      placeholder="e.g. AWS_ACCESS_KEY_ID"
+                      className="font-mono text-xs"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAdd();
+                        if (e.key === "Escape") setIsAdding(false);
+                      }}
+                    />
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    <Input
+                      value={newValue}
+                      onChange={(e) => setNewValue(e.target.value)}
+                      placeholder="Value"
+                      className="font-mono text-xs"
+                      type={newSensitive ? "password" : "text"}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAdd();
+                        if (e.key === "Escape") setIsAdding(false);
+                      }}
+                    />
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    <Checkbox
+                      id="new-sensitive"
+                      isChecked={newSensitive}
+                      onCheckedChange={(checked) => setNewSensitive(checked === true)}
+                    >
+                      Sensitive
+                    </Checkbox>
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={handleAdd}
+                        isLoading={upsertVariable.isPending}
+                      >
+                        Save
+                      </Button>
+                      <Button variant="plain" size="xs" onClick={() => setIsAdding(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </UnstableTableCell>
+                </UnstableTableRow>
+              )}
+              {variables?.map((v) => (
+                <VariableRow
+                  key={v.id}
+                  variable={v}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  isDeleting={deleteVariable.isPending}
                 />
-              </UnstableTableCell>
-              <UnstableTableCell>
-                <Input
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                  placeholder="Value"
-                  className="font-mono text-xs"
-                  type={newSensitive ? "password" : "text"}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAdd();
-                    if (e.key === "Escape") setIsAdding(false);
-                  }}
-                />
-              </UnstableTableCell>
-              <UnstableTableCell>
-                <Checkbox
-                  id="new-sensitive"
-                  isChecked={newSensitive}
-                  onCheckedChange={(checked) => setNewSensitive(checked === true)}
-                >
-                  Sensitive
-                </Checkbox>
-              </UnstableTableCell>
-              <UnstableTableCell>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={handleAdd}
-                    isLoading={upsertVariable.isPending}
-                  >
-                    Save
-                  </Button>
-                  <Button variant="plain" size="xs" onClick={() => setIsAdding(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </UnstableTableCell>
-            </UnstableTableRow>
-          )}
-          {variables?.map((v) => (
-            <VariableRow
-              key={v.id}
-              variable={v}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              isDeleting={deleteVariable.isPending}
-            />
-          ))}
-          {(!variables || variables.length === 0) && !isAdding && (
-            <UnstableTableRow>
-              <UnstableTableCell colSpan={4} className="py-8 text-center">
-                <div className="flex flex-col items-center gap-2">
-                  <KeyIcon className="size-8 text-mineshaft-500" />
-                  <p className="text-sm text-mineshaft-400">
-                    No variables configured. Click &quot;Add Variable&quot; to get started.
-                  </p>
-                </div>
-              </UnstableTableCell>
-            </UnstableTableRow>
-          )}
-        </UnstableTableBody>
-      </UnstableTable>
+              ))}
+              {(!variables || variables.length === 0) && !isAdding && (
+                <UnstableTableRow>
+                  <UnstableTableCell colSpan={4} className="py-12 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="rounded-xl bg-mineshaft-700/50 p-4">
+                        <KeyIcon className="size-8 text-mineshaft-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-mineshaft-300">
+                          No variables configured
+                        </p>
+                        <p className="mt-1 text-xs text-mineshaft-500">
+                          Add environment variables for provider auth or TF_VAR_ variables for
+                          Terraform inputs.
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        leftIcon={<PlusIcon className="size-3" />}
+                        onClick={() => setIsAdding(true)}
+                        className="mt-1"
+                      >
+                        Add Your First Variable
+                      </Button>
+                    </div>
+                  </UnstableTableCell>
+                </UnstableTableRow>
+              )}
+            </UnstableTableBody>
+          </UnstableTable>
+        </UnstableCardContent>
+      </UnstableCard>
 
       <UnstableAlert variant="info">
         <LinkIcon className="size-4" />

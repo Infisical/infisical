@@ -4,6 +4,9 @@ import fs from "fs/promises";
 import os from "os";
 import path from "path";
 
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -429,18 +432,24 @@ export const infraServiceFactory = ({
           }
         }
 
-        // AI analysis
+        // Compute static cost estimates (used as AI context and as fallback)
+        const staticCosts = rawPlanJsonOutput ? estimateResourceCosts(rawPlanJsonOutput) : [];
+
+        // AI analysis — pass static costs so Gemini can enrich with uncovered resources
         try {
-          const insight = await generateAiInsight(fullLogs, planJson);
+          const insight = await generateAiInsight(fullLogs, planJson, staticCosts);
           if (insight) {
             aiSummary = JSON.stringify(insight);
           }
         } catch (aiErr) {
           logger.warn(aiErr, "AI insight generation failed");
         }
-        // Build insight from plan JSON with static cost estimates
-        const insight = buildInsightFromCosts(planJson, rawPlanJsonOutput);
-        aiSummary = JSON.stringify(insight);
+
+        // Fall back to static cost estimates if AI is unavailable
+        if (!aiSummary) {
+          const fallbackInsight = buildInsightFromCosts(planJson, rawPlanJsonOutput);
+          aiSummary = JSON.stringify(fallbackInsight);
+        }
 
         await infraRunDAL.updateById(run.id, {
           status: InfraRunStatus.Success,
@@ -475,7 +484,6 @@ export const infraServiceFactory = ({
 
         if (!dto.approved) {
           // First destroy attempt — require approval
-          // AI analysis
           try {
             const insight = await generateAiInsight(fullLogs, planJson);
             if (insight) aiSummary = JSON.stringify(insight);
@@ -500,7 +508,7 @@ export const infraServiceFactory = ({
         appendLog(`\n`);
         await execCommand(binary, ["apply", "plan.tfplan"], tmpDir, appendLog);
 
-        // Generate AI insight or reuse cached
+        // Reuse cached AI insight or generate fresh
         if (cachedAiInsight) {
           aiSummary = JSON.stringify(cachedAiInsight);
         } else {
@@ -565,12 +573,21 @@ export const infraServiceFactory = ({
         appendLog(`\n`);
         await execCommand(binary, ["apply", "plan.tfplan"], tmpDir, appendLog, varEnv);
 
-        // Generate AI insight or reuse cached
+        // Reuse cached AI insight, or generate fresh
         if (cachedAiInsight) {
           aiSummary = JSON.stringify(cachedAiInsight);
         } else {
-          const applyInsight = buildInsightFromCosts(planJson, rawPlanJsonOutput);
-          aiSummary = JSON.stringify(applyInsight);
+          const applyCosts = rawPlanJsonOutput ? estimateResourceCosts(rawPlanJsonOutput) : [];
+          try {
+            const insight = await generateAiInsight(fullLogs, planJson, applyCosts);
+            if (insight) aiSummary = JSON.stringify(insight);
+          } catch (aiErr) {
+            logger.warn(aiErr, "AI insight generation failed");
+          }
+          if (!aiSummary) {
+            const fallbackInsight = buildInsightFromCosts(planJson, rawPlanJsonOutput);
+            aiSummary = JSON.stringify(fallbackInsight);
+          }
         }
 
         await infraRunDAL.updateById(run.id, {
@@ -819,70 +836,105 @@ function enrichPlanWithGraphDeps(planJson: TPlanJson, dotDeps: Map<string, Set<s
   }
 }
 
-async function generateAiInsight(logs: string, planJson: TPlanJson | null): Promise<TAiInsight | null> {
+const aiInsightSchema = z.object({
+  summary: z.string().describe("Markdown summary under 200 words, focus on what matters"),
+  costs: z.object({
+    estimated: z
+      .array(
+        z.object({
+          resource: z.string().describe("Resource address"),
+          monthlyCost: z.string().describe("Monthly cost, e.g. '$8.35'"),
+          source: z.string().describe("Source of the estimate, e.g. 'pricing-table'")
+        })
+      )
+      .describe("Resources with static pricing-table estimates"),
+    aiEstimated: z
+      .array(
+        z.object({
+          resource: z.string().describe("Resource address"),
+          monthlyCost: z.string().describe("Monthly cost, e.g. '$8.35'"),
+          confidence: z.enum(["high", "medium", "low"]).describe("Confidence level of the AI estimate")
+        })
+      )
+      .describe("Resources estimated by AI (not covered by pricing tables)"),
+    totalMonthly: z.string().describe("Total monthly cost, e.g. '$42.50'"),
+    deltaMonthly: z.string().describe("Change from current spend, e.g. '+$42.50'")
+  }),
+  security: z.object({
+    issues: z
+      .array(
+        z.object({
+          severity: z.enum(["critical", "high", "medium", "low"]),
+          resource: z.string().describe("Resource address"),
+          description: z.string(),
+          recommendation: z.string()
+        })
+      )
+      .describe("Security findings"),
+    shouldApprove: z.boolean().describe("Set to true ONLY if there are critical or high severity security issues")
+  })
+});
+
+async function generateAiInsight(
+  logs: string,
+  planJson: TPlanJson | null,
+  staticCosts: Array<{ resource: string; monthlyCost: number; type: string }> = []
+): Promise<TAiInsight | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
+  const { GoogleGenAI } = await import("@google/genai");
+  const ai = new GoogleGenAI({ apiKey });
+
   const truncatedLogs = logs.length > 15000 ? logs.slice(-15000) : logs;
+
+  let costContext = "";
+  if (staticCosts.length > 0) {
+    const costLines = staticCosts
+      .filter((c) => c.monthlyCost > 0)
+      .map((c) => `  ${c.resource} (${c.type}): $${c.monthlyCost.toFixed(2)}/mo`);
+    if (costLines.length > 0) {
+      costContext = `\nStatic cost estimates (from pricing tables — use these in "estimated", add any uncovered resources to "aiEstimated"):\n${costLines.join("\n")}`;
+    }
+  }
 
   const prompt = `OpenTofu plan/apply output:
 ${truncatedLogs}
 
-Parsed resource changes (programmatic):
-${planJson ? JSON.stringify(planJson, null, 2) : "Not available"}
+Parsed resource changes (programmatic — already extracted, do not repeat):
+${planJson ? JSON.stringify(planJson, null, 2) : "Not available"}${costContext}`;
 
-Produce a JSON response with this exact schema:
-{
-  "summary": "string — markdown summary under 200 words",
-  "costs": {
-    "estimated": [{"resource": "string", "monthlyCost": "string", "source": "string"}],
-    "aiEstimated": [{"resource": "string", "monthlyCost": "string", "confidence": "high|medium|low"}],
-    "totalMonthly": "string",
-    "deltaMonthly": "string"
-  },
-  "security": {
-    "issues": [{"severity": "critical|high|medium|low", "resource": "string", "description": "string", "recommendation": "string"}],
-    "shouldApprove": false
-  }
-}
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      systemInstruction: `You are a DevOps and security expert embedded in Infisical Infra. You will receive:
+1. OpenTofu plan output (human-readable)
+2. Parsed resource changes (JSON, programmatic — already extracted, do not repeat)
+3. Cost estimates from pricing tables (if available)
 
 Rules:
-- For costs: estimate based on typical cloud pricing. Set confidence level.
-- For security: flag networking misconfigurations, overly permissive access, unencrypted data, exposed credentials.
-- Set shouldApprove to true ONLY for critical or high severity security issues.
-- Output valid JSON only. No markdown fences, no extra text.`;
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [
-            {
-              text: "You are a DevOps and security expert embedded in Infisical Infra. Analyze OpenTofu output and produce structured JSON insights. Never output markdown fences — only raw JSON."
-            }
-          ]
-        },
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json"
-        }
-      })
+- For costs: use provided static estimates for covered resources (put in "estimated"). For uncovered resources, estimate based on typical cloud pricing and set confidence level (put in "aiEstimated").
+- For security: flag networking misconfigurations, overly permissive access, unencrypted data stores, exposed credentials, missing logging/monitoring.
+- Set shouldApprove to true ONLY for critical or high severity security issues.`,
+      responseMimeType: "application/json",
+      responseJsonSchema: zodToJsonSchema(aiInsightSchema)
     }
-  );
+  });
 
-  if (!response.ok) {
-    logger.warn(`Gemini API returned ${response.status}`);
-    return null;
-  }
-
-  const data = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = response.text;
   if (!text) return null;
+
+  try {
+    return aiInsightSchema.parse(JSON.parse(text));
+  } catch (parseErr) {
+    logger.warn(parseErr, "Failed to parse Gemini AI response");
+    return {
+      summary: text.slice(0, 1000),
+      costs: { estimated: [], aiEstimated: [], totalMonthly: "N/A", deltaMonthly: "N/A" },
+      security: { issues: [], shouldApprove: false }
+    };
+  }
 }
 
 // Static monthly cost estimates for common AWS/GCP/Azure resource types (USD)

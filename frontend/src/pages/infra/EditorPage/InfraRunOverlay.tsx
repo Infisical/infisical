@@ -198,13 +198,15 @@ export const InfraRunOverlay = ({
       const isResuming = steps.length > 0 && activeIdx > 0;
 
       if (isResuming) {
-        // Resuming: schedule remaining steps from the current active step onward
+        // Resuming: schedule remaining steps up to (but not including) "done".
+        // The last real step stays active until isRunning becomes false.
         const remaining = steps.slice(activeIdx);
+        const realRemaining = remaining.filter((s) => s.id !== "done");
         let cumulative = 0;
-        for (let i = 0; i < remaining.length - 1; i += 1) {
-          cumulative += remaining[i].duration;
-          const stepId = remaining[i].id;
-          const nextStepId = remaining[i + 1].id;
+        for (let i = 0; i < realRemaining.length - 1; i += 1) {
+          cumulative += realRemaining[i].duration;
+          const stepId = realRemaining[i].id;
+          const nextStepId = realRemaining[i + 1].id;
           const t = setTimeout(() => {
             setSteps((prev) =>
               prev.map((s) => {
@@ -225,10 +227,12 @@ export const InfraRunOverlay = ({
         }));
         setSteps(initial);
 
-        // Schedule timed transitions (excluding last "done" step — that's set by finalize)
+        // Schedule timed transitions up to the second-to-last real step.
+        // The last real step (before "done") stays active until isRunning becomes false.
+        const realDefs = defs.filter((d) => d.id !== "done");
         let cumulative = 0;
-        for (let i = 0; i < defs.length - 1; i += 1) {
-          cumulative += defs[i].duration;
+        for (let i = 0; i < realDefs.length - 1; i += 1) {
+          cumulative += realDefs[i].duration;
           const idx = i;
           const t = setTimeout(() => {
             setSteps((prev) =>
@@ -264,11 +268,13 @@ export const InfraRunOverlay = ({
         );
       } else {
         const failed = output.includes("Error");
+        // Mark all steps as completed/failed immediately — "done" goes
+        // straight to completed (no active spinner), it's just a checkmark.
         setSteps((prev) =>
           prev.map((s) => {
-            if (s.id === "done") return { ...s, status: failed ? "failed" : "completed" };
-            if (s.status === "active") return { ...s, status: failed ? "failed" : "completed" };
-            if (s.status === "pending") return { ...s, status: failed ? "failed" : "completed" };
+            if (s.status === "active" || s.status === "pending" || s.id === "done") {
+              return { ...s, status: failed ? "failed" : "completed" };
+            }
             return s;
           })
         );
