@@ -150,9 +150,10 @@ export const AgentsTab = () => {
           <UnstableTable>
             <UnstableTableHeader>
               <UnstableTableRow>
-                <UnstableTableHead className="w-1/4">Name</UnstableTableHead>
+                <UnstableTableHead className="w-1/6">Name</UnstableTableHead>
                 <UnstableTableHead>Description</UnstableTableHead>
-                <UnstableTableHead>Policies</UnstableTableHead>
+                <UnstableTableHead>Actions</UnstableTableHead>
+                <UnstableTableHead>Inbound Policies</UnstableTableHead>
                 <UnstableTableHead>Status</UnstableTableHead>
                 <UnstableTableHead className="w-5" />
               </UnstableTableRow>
@@ -176,10 +177,15 @@ export const AgentsTab = () => {
                       <span className="text-xs text-accent">{agent.description}</span>
                     </UnstableTableCell>
                     <UnstableTableCell>
-                      {policy ? (
-                        <Badge variant="neutral">
-                          {policyCount} {policyCount === 1 ? "policy" : "policies"}
-                        </Badge>
+                      {policy?.selfPolicies.allowedActions.length ? (
+                        policy.selfPolicies.allowedActions.length
+                      ) : (
+                        <span className="text-xs text-muted">None</span>
+                      )}
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      {policy?.inboundPolicies.length ? (
+                        policy.inboundPolicies.length
                       ) : (
                         <span className="text-xs text-muted">None</span>
                       )}
