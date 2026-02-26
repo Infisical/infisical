@@ -481,7 +481,7 @@ export function CreateTemplateForm({
                 </button>
                 {/* Dropdown */}
                 {showSubOrgDropdown && (
-                  <div className="absolute left-0 right-0 z-50 mt-1 rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
+                  <div className="mt-1 rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
                     <div className="border-b border-mineshaft-600 p-2">
                       <div className="relative">
                         <FontAwesomeIcon
@@ -558,7 +558,7 @@ export function CreateTemplateForm({
                 </button>
                 {/* Dropdown */}
                 {showProjectDropdown && (
-                  <div className="absolute left-0 right-0 z-50 mt-1 rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
+                  <div className="mt-1 rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
                     <div className="border-b border-mineshaft-600 p-2">
                       <div className="relative">
                         <FontAwesomeIcon
