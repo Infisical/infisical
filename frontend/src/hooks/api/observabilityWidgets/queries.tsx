@@ -107,3 +107,22 @@ export const useGetWidgetLiveLogs = (widgetId: string | undefined, params?: { li
         .then((r) => r.data),
     refetchInterval: 5_000
   });
+
+export interface ObservabilityMetricsResponse {
+  widget: ObservabilityWidgetListItem;
+  value: number;
+  label: string;
+  unit?: string;
+  link?: string;
+}
+
+export const useGetWidgetMetrics = (widgetId: string | undefined) =>
+  useQuery({
+    queryKey: ["observability-widget-metrics", widgetId] as const,
+    enabled: !!widgetId,
+    queryFn: () =>
+      apiRequest
+        .get<ObservabilityMetricsResponse>(`/api/v1/observability-widgets/${widgetId}/metrics`)
+        .then((r) => r.data),
+    refetchInterval: 30_000
+  });
