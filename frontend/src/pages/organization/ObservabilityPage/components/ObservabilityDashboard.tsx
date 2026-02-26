@@ -22,8 +22,8 @@ import {
   useUpdateWidgetView
 } from "@app/hooks/api/observabilityWidgetViews";
 
-import type { LayoutItem, PanelItem, WidgetTemplate } from "../mock-data";
-import { TEMPLATES } from "../mock-data";
+import type { LayoutItem, PanelItem, WidgetTemplate } from "../widget-config";
+import { TEMPLATES } from "../widget-config";
 import { AddWidgetPanel } from "./AddWidgetPanel";
 import type { CreateTemplateResult, EditingWidget } from "./CreateTemplateForm";
 import { SidebarNav } from "./SidebarNav";
@@ -142,14 +142,19 @@ export function ObservabilityDashboard({
     // created before widgets existed, or items using legacy frontend-only templates).
     const logsWidget = backendWidgets.find((w) => w.type === "logs");
     const eventsWidgets = backendWidgets.filter((w) => w.type === "events");
+    const metricsWidgets = backendWidgets.filter((w) => w.type === "metrics");
     let eventsIdx = 0;
+    let metricsIdx = 0;
 
     return rawItems.map((item) => {
       if (item.widgetId) return item;
       if (item.tmpl === "logs" && logsWidget) {
         return { ...item, widgetId: logsWidget.id };
       }
-      if (item.tmpl !== "logs" && eventsIdx < eventsWidgets.length) {
+      if (item.tmpl === "_backend_metrics" && metricsIdx < metricsWidgets.length) {
+        return { ...item, widgetId: metricsWidgets[metricsIdx++].id };
+      }
+      if (item.tmpl !== "logs" && item.tmpl !== "_backend_metrics" && eventsIdx < eventsWidgets.length) {
         return { ...item, widgetId: eventsWidgets[eventsIdx++].id };
       }
       return item;
@@ -286,8 +291,8 @@ export function ObservabilityDashboard({
             tmpl: result.key,
             x: 0,
             y: maxY,
-            w: result.template.isLogs ? 12 : 6,
-            h: 2
+            w: result.template.isLogs ? 12 : result.template.isMetrics ? 3 : 6,
+            h: result.template.isMetrics ? 1 : 2
           }
         ]);
       }
@@ -310,8 +315,8 @@ export function ObservabilityDashboard({
           widgetId,
           x: 0,
           y: maxY,
-          w: t?.isLogs ? 12 : 6,
-          h: 2
+          w: t?.isLogs ? 12 : t?.isMetrics ? 3 : 6,
+          h: t?.isMetrics ? 1 : 2
         }
       ]);
       onPanelOpenChange(false);
@@ -416,8 +421,8 @@ export function ObservabilityDashboard({
                 widgetId: data.widgetId,
                 x: droppedItemPosition.x,
                 y: droppedItemPosition.y,
-                w: t?.isLogs ? 12 : 6,
-                h: 2
+                w: t?.isLogs ? 12 : t?.isMetrics ? 3 : 6,
+                h: t?.isMetrics ? 1 : 2
               }
             ];
           });
@@ -588,8 +593,8 @@ export function ObservabilityDashboard({
                                 widgetId: data.widgetId,
                                 x: 0,
                                 y: 0,
-                                w: t?.isLogs ? 12 : 6,
-                                h: 2
+                                w: t?.isLogs ? 12 : t?.isMetrics ? 3 : 6,
+                                h: t?.isMetrics ? 1 : 2
                               }
                             ]);
                           }

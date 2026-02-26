@@ -36,6 +36,7 @@ export interface WidgetTemplate {
   dataKey: string;
   firstStatus: string;
   isLogs?: boolean;
+  isMetrics?: boolean;
   filter?: WidgetFilter;
 }
 
@@ -153,6 +154,17 @@ export const TEMPLATES: Record<string, WidgetTemplate> = {
     stats: [],
     dataKey: "",
     firstStatus: ""
+  },
+  _backend_metrics: {
+    title: "Metrics",
+    description: "",
+    icon: "Activity",
+    iconBg: "#1c2a3a",
+    refresh: "30s",
+    stats: [],
+    dataKey: "",
+    firstStatus: "",
+    isMetrics: true
   }
 };
 
@@ -164,5 +176,5 @@ export const DEFAULT_ORG_LAYOUT: LayoutItem[] = [
 ];
 
 // ═══ PANEL ITEMS ═════════════════════════════════════════════════════
-// Backend widgets of type "logs" and "events" are added dynamically.
+// Backend widgets of type "logs", "events", and "metrics" are added dynamically.
 export const PANEL_ITEMS: PanelItem[] = [];

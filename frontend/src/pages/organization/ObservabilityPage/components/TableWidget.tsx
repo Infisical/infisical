@@ -15,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 import { Tooltip } from "@app/components/v2";
 import { useGetWidgetData } from "@app/hooks/api/observabilityWidgets";
 
-import type { DataRow, StatItem, WidgetTemplate } from "../mock-data";
+import type { DataRow, StatItem, WidgetTemplate } from "../widget-config";
 import { StatusPill } from "./StatusPill";
 import { WidgetIcon } from "./WidgetIcon";
 

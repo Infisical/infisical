@@ -10,8 +10,8 @@ import { useSubscription } from "@app/context";
 import { useGetUserProjects } from "@app/hooks/api/projects";
 import { subOrganizationsQuery } from "@app/hooks/api/subOrganizations";
 
-import type { PanelItem, WidgetFilter, WidgetTemplate } from "../mock-data";
-import { EVENT_TYPES, RESOURCE_TYPES } from "../mock-data";
+import type { PanelItem, WidgetFilter, WidgetTemplate } from "../widget-config";
+import { EVENT_TYPES, RESOURCE_TYPES } from "../widget-config";
 import { AVAILABLE_ICONS, WidgetIcon } from "./WidgetIcon";
 
 export interface CreateTemplateResult {

@@ -1,8 +1,9 @@
 import { X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import type { LayoutItem, WidgetTemplate } from "../mock-data";
+import type { LayoutItem, WidgetTemplate } from "../widget-config";
 import { LogsWidget } from "./LogsWidget";
+import { MetricsWidget } from "./MetricsWidget";
 import { TableWidget } from "./TableWidget";
 
 interface WidgetCardProps {
@@ -41,6 +42,12 @@ export function WidgetCard({ item, templates, onRemove, onEdit, onToggleLock }: 
       <div className="flex flex-1 flex-col overflow-hidden rounded-[10px]">
         {template.isLogs ? (
           <LogsWidget
+            isLocked={isLocked}
+            onToggleLock={() => onToggleLock?.(item.uid)}
+            widgetId={item.widgetId}
+          />
+        ) : template.isMetrics ? (
+          <MetricsWidget
             isLocked={isLocked}
             onToggleLock={() => onToggleLock?.(item.uid)}
             widgetId={item.widgetId}

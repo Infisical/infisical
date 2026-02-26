@@ -5,8 +5,8 @@ import { GripVertical, Plus, Search, Sparkles, X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import type { ObservabilityWidgetListItem } from "@app/hooks/api/observabilityWidgets";
 
-import type { PanelItem } from "../mock-data";
-import { PANEL_ITEMS } from "../mock-data";
+import type { PanelItem } from "../widget-config";
+import { PANEL_ITEMS } from "../widget-config";
 import { CreateTemplateForm } from "./CreateTemplateForm";
 import type { CreateTemplateResult, EditingWidget } from "./CreateTemplateForm";
 import { WidgetIcon } from "./WidgetIcon";
@@ -122,10 +122,10 @@ export function AddWidgetPanel({
   const backendPanelItems: PanelItem[] = useMemo(
     () =>
       backendWidgets
-        .filter((w) => w.type === "events" || w.type === "logs")
+        .filter((w) => w.type === "events" || w.type === "logs" || w.type === "metrics")
         .map((w) => ({
           id: w.id,
-          tmpl: w.type === "logs" ? "logs" : "_backend_events",
+          tmpl: w.type === "logs" ? "logs" : w.type === "metrics" ? "_backend_metrics" : "_backend_events",
           icon: w.icon ?? (w.type === "logs" ? "Terminal" : "Activity"),
           bg: w.color ?? "#1c2a3a",
           name: w.name,
