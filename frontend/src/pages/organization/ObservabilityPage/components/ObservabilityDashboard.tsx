@@ -114,7 +114,8 @@ export function ObservabilityDashboard({
   useEffect(() => {
     if (backendWidgets.length === 0) return;
     setLayouts((prev) => {
-      if (prev.org.length > 0) return prev;
+      const existingOrg = prev.org ?? [];
+      if (existingOrg.length > 0) return prev;
       const eventWidgets = backendWidgets.filter((w) => w.type === "events");
       const seeded: LayoutItem[] = eventWidgets.map((w, i) => ({
         uid: `backend-${w.id}`,
@@ -153,7 +154,7 @@ export function ObservabilityDashboard({
   const handleAddOrgView = useCallback((name: string) => {
     const id = `org-view-${Date.now()}`;
     setOrgViews((prev) => [...prev, { id, name }]);
-    setLayouts((prev) => ({ ...prev, [id]: [...DEFAULT_LAYOUT] }));
+    setLayouts((prev) => ({ ...prev, [id]: [] }));
     setActiveView(id);
   }, []);
 
