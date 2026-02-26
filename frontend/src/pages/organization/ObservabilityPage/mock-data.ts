@@ -484,6 +484,7 @@ export const DATA: Record<string, Record<string, DataRow[]>> = {
 export const TEMPLATES: Record<string, WidgetTemplate> = {
   needs_attention: {
     title: "Needs Attention",
+    description: "Failed integrations and secret syncs combined",
     icon: "AlertTriangle",
     iconBg: "#2b0d0d",
     borderColor: "#6e1a1a",
@@ -520,6 +521,7 @@ export const TEMPLATES: Record<string, WidgetTemplate> = {
   },
   mi: {
     title: "MI Token TTL",
+    description: "Expiring and expired machine identity tokens",
     icon: "Bot",
     iconBg: "#2b1f0d",
     borderColor: "#5a3e1b",
@@ -539,6 +541,7 @@ export const TEMPLATES: Record<string, WidgetTemplate> = {
   },
   logs: {
     title: "Live Logs",
+    description: "Real-time org-wide activity stream",
     icon: "Terminal",
     iconBg: "#1c2a3a",
     refresh: "5s",

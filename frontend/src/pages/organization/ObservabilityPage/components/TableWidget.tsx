@@ -152,7 +152,12 @@ export function TableWidget({
             >
               <WidgetIcon name={template.icon} size={12} className="text-inherit" />
             </div>
-            <span className="text-[13px] font-medium text-bunker-100">{template.title}</span>
+            <div className="min-w-0">
+              <span className="text-[13px] font-medium text-bunker-100">{template.title}</span>
+              {template.description && (
+                <p className="truncate text-[11px] text-mineshaft-400">{template.description}</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="rounded border border-mineshaft-600 bg-bunker-800 px-1.5 py-0.5 text-[10px] text-mineshaft-300">
