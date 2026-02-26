@@ -54,8 +54,8 @@ export const nhiIdentityDALFactory = (db: TDbClient) => {
       const pattern = `%${escapedSearch}%`;
       void query.where((q) => {
         void q
-          .whereRaw(`??.?? ILIKE ? ESCAPE '\\\\'`, [TableName.NhiIdentity, "name", pattern])
-          .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\\\'`, [TableName.NhiIdentity, "externalId", pattern]);
+          .whereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.NhiIdentity, "name", pattern])
+          .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.NhiIdentity, "externalId", pattern]);
       });
     }
 

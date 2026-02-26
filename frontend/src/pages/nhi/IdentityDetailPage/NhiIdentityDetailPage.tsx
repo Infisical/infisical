@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Input, Select, SelectItem } from "@app/components/v2";
+import { Input, Modal, ModalClose, ModalContent, Select, SelectItem } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -45,6 +45,7 @@ import {
   NhiIdentityStatus,
   NhiIdentityType,
   NhiProvider,
+  NhiRemediationActionType,
   NhiRemediationStatus,
   TNhiRecommendedAction,
   TNhiRiskFactor
@@ -268,6 +269,29 @@ const formatActionType = (actionType: string) =>
   actionType
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const getRemediationActionDescription = (actionType: string) => {
+  switch (actionType) {
+    case NhiRemediationActionType.RemoveAdminPoliciesUser:
+      return "This will detach administrator and wildcard policies from this IAM user. The user will lose administrative privileges.";
+    case NhiRemediationActionType.RemoveAdminPoliciesRole:
+      return "This will detach administrator and wildcard policies from this IAM role. Any entities assuming this role will lose administrative privileges.";
+    case NhiRemediationActionType.DeactivateAccessKey:
+      return "This will set the access key status to Inactive. The key will no longer be usable for API requests.";
+    case NhiRemediationActionType.DeleteAccessKey:
+      return "This will permanently delete the access key. Any applications using this key will lose access immediately.";
+    case NhiRemediationActionType.DeactivateAllAccessKeys:
+      return "This will deactivate all active access keys for this IAM user. Any applications using these keys will lose access.";
+    case NhiRemediationActionType.DeleteDeployKey:
+      return "This will delete the deploy key from the GitHub repository. Any services relying on this key will lose access.";
+    case NhiRemediationActionType.RevokeFinegrainedPat:
+      return "This will revoke the fine-grained personal access token. Any integrations using this token will stop working.";
+    case NhiRemediationActionType.SuspendAppInstallation:
+      return "This will suspend the GitHub App installation. The app will no longer be able to access your organization's resources.";
+    default:
+      return "This action will be applied directly and may not be easily reversible.";
+  }
+};
 
 export const NhiIdentityDetailPage = () => {
   const { currentProject } = useProject();
@@ -676,21 +700,39 @@ export const NhiIdentityDetailPage = () => {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-md rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-full bg-red-500/15">
-                <ShieldCheckIcon size={20} className="text-red-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-mineshaft-100">{confirmAction.label}</h3>
-                <p className="text-sm text-mineshaft-400">{confirmAction.description}</p>
-              </div>
+      <Modal
+        isOpen={Boolean(confirmAction)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setConfirmAction(null);
+        }}
+      >
+        <ModalContent
+          title={confirmAction?.label ?? "Confirm Remediation"}
+          subTitle={confirmAction?.description}
+          footerContent={
+            <div className="flex items-center">
+              <Button
+                variant="danger"
+                onClick={() => confirmAction && handleRemediate(confirmAction)}
+                isPending={executeRemediation.isPending}
+                className="mr-4"
+              >
+                Confirm &amp; Apply
+              </Button>
+              <ModalClose asChild>
+                <Button
+                  variant="outline"
+                  isDisabled={executeRemediation.isPending}
+                >
+                  Cancel
+                </Button>
+              </ModalClose>
             </div>
-
-            <div className="mt-4 space-y-3">
+          }
+          onClose={() => setConfirmAction(null)}
+        >
+          {confirmAction && (
+            <div className="space-y-3">
               <div className="rounded border border-mineshaft-600 bg-mineshaft-800 p-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-mineshaft-400">
                   Target
@@ -699,33 +741,26 @@ export const NhiIdentityDetailPage = () => {
                 <p className="text-xs text-mineshaft-400">{identity.externalId}</p>
               </div>
 
+              <div className="rounded border border-mineshaft-600 bg-mineshaft-800 p-3">
+                <p className="text-xs font-medium uppercase tracking-wider text-mineshaft-400">
+                  What will happen
+                </p>
+                <p className="mt-1 text-sm text-mineshaft-200">
+                  {getRemediationActionDescription(confirmAction.actionType)}
+                </p>
+              </div>
+
               <div className="rounded border border-red-500/20 bg-red-500/5 p-3">
                 <p className="text-sm text-red-300">
-                  This action will be applied directly to {identity.provider === NhiProvider.GitHub ? "GitHub" : "AWS"}.
-                  It may not be easily reversible.
+                  This action will be applied directly to{" "}
+                  {identity.provider === NhiProvider.GitHub ? "GitHub" : "AWS"} and may not be
+                  easily reversible.
                 </p>
               </div>
             </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                variant="outline_bg"
-                onClick={() => setConfirmAction(null)}
-                disabled={executeRemediation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                colorSchema="danger"
-                onClick={() => handleRemediate(confirmAction)}
-                isPending={executeRemediation.isPending}
-              >
-                Confirm &amp; Apply
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 };

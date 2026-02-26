@@ -14,7 +14,7 @@ import { executeGitHubRemediation } from "./github/github-nhi-remediation";
 import { TNhiIdentityDALFactory, TNhiSourceDALFactory } from "./nhi-dal";
 import { NhiIdentityType, NhiProvider, NhiRemediationActionType, NhiRemediationStatus } from "./nhi-enums";
 import { TNhiRemediationActionDALFactory } from "./nhi-remediation-dal";
-import { NhiRiskFactor } from "./nhi-risk-scoring";
+import { computeRiskScore, NhiRiskFactor, TGitHubRiskMetadata } from "./nhi-risk-scoring";
 import {
   TExecuteRemediationDTO,
   TGetRecommendedActionsDTO,
@@ -295,6 +295,51 @@ export const nhiRemediationServiceFactory = ({
         metadata: result.details || {},
         completedAt: result.success ? new Date() : undefined
       });
+
+      // After successful remediation, update the identity metadata and recompute risk score
+      if (result.success) {
+        try {
+          const updatedMetadata = { ...metadata };
+          const currentPolicies = (metadata.policies as string[]) || [];
+
+          if (
+            actionType === NhiRemediationActionType.RemoveAdminPoliciesUser ||
+            actionType === NhiRemediationActionType.RemoveAdminPoliciesRole
+          ) {
+            const detachedPolicies = ((result.details?.detachedPolicies as string[]) || []);
+            updatedMetadata.policies = currentPolicies.filter((p) => !detachedPolicies.includes(p));
+          } else if (actionType === NhiRemediationActionType.DeactivateAccessKey) {
+            updatedMetadata.status = "Inactive";
+          }
+
+          const isGitHub = identity.provider === NhiProvider.GitHub;
+          const githubMetadata: TGitHubRiskMetadata | undefined = isGitHub
+            ? {
+                readOnly: updatedMetadata.readOnly as boolean | undefined,
+                tokenExpiresAt: updatedMetadata.tokenExpiresAt as string | null | undefined,
+                repositorySelection: updatedMetadata.repositorySelection as string | undefined,
+                identityType: identity.type
+              }
+            : undefined;
+
+          const { score, factors } = computeRiskScore({
+            policies: (updatedMetadata.policies as string[]) || [],
+            keyCreateDate: (updatedMetadata.createDate as string) || null,
+            keyLastUsedDate: (updatedMetadata.lastUsedDate as string) || null,
+            lastActivityAt: identity.lastActivityAt ? new Date(identity.lastActivityAt) : null,
+            ownerEmail: identity.ownerEmail || null,
+            githubMetadata
+          });
+
+          await nhiIdentityDAL.updateById(identityId, {
+            metadata: updatedMetadata,
+            riskScore: score,
+            riskFactors: JSON.stringify(factors)
+          });
+        } catch (err) {
+          logger.warn(err, `Failed to update identity metadata after remediation for ${identityId}`);
+        }
+      }
 
       return updatedAction;
     } catch (err) {
