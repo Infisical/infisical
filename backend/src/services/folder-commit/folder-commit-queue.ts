@@ -64,8 +64,10 @@ export const folderCommitQueueServiceFactory = ({
         return;
       }
     } catch (error) {
-      // If cooldown check fails, proceed with scheduling (fail-open)
-      logger.warn(`Failed to check cooldown for envId=${envId}, proceeding with schedule`);
+      // Fail closed: if Redis is down, skip scheduling to prevent checkpoint storms.
+      // The cooldown mechanism exists specifically to prevent storms, so bypassing it defeats the purpose.
+      logger.warn(error, `Failed to check cooldown for envId=${envId}, skipping schedule (fail-closed)`);
+      return;
     }
 
     // Use a stable job ID based only on envId for natural BullMQ deduplication.
@@ -175,7 +177,7 @@ export const folderCommitQueueServiceFactory = ({
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
 
     try {
-      lock = await keyStore.acquireLock([KeyStorePrefixes.FolderTreeCheckpoint(envId)], 15 * 1000);
+      lock = await keyStore.acquireLock([KeyStorePrefixes.FolderTreeCheckpoint(envId)], 30 * 1000);
       logger.info(`Successfully acquired lock for envId=${envId}`);
     } catch (e) {
       // Let BullMQ handle retry via its built-in exponential backoff mechanism.
