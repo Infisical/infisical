@@ -306,10 +306,20 @@ export class TriageAgentExecutor extends BaseAgentExecutor {
         role: "assistant",
         content: JSON.stringify({ action: "call_skill", skillCall, reasoning }),
       });
-      context.llmHistory.push({
-        role: "user",
-        content: `Skill ${skillId} was DENIED by governance policy. Reason: ${result.governance.reasoning}. Try a different approach.`,
-      });
+      
+      // For critical skills that have no alternative, tell the LLM to complete with failure
+      const criticalSkills = ["classify_ticket", "assess_severity"];
+      if (criticalSkills.includes(skillId)) {
+        context.llmHistory.push({
+          role: "user",
+          content: `CRITICAL: Skill ${skillId} was DENIED by governance policy. Reason: ${result.governance.reasoning}. This is a required skill for triage - you cannot complete triage without it. You must mark the task as complete and report that triage could not be performed due to policy denial.`,
+        });
+      } else {
+        context.llmHistory.push({
+          role: "user",
+          content: `Skill ${skillId} was DENIED by governance policy. Reason: ${result.governance.reasoning}. Try a different approach.`,
+        });
+      }
     }
   }
 

@@ -27,7 +27,7 @@ export const TRIAGE_AGENT_CARD: AgentCard = {
 export const SUPPORT_AGENT_CARD: AgentCard = {
   name: "Support Agent",
   description:
-    "Frontline customer support worker. Handles order lookups, inventory checks, small refunds (up to $50), and customer communication. Escalates complex cases.",
+    "Frontline customer support worker. Handles order lookups, inventory checks, refunds, and customer communication. Escalates complex cases when required by governance policies.",
   protocolVersion: "0.3.0",
   version: "1.0.0",
   url: `http://localhost:${AGENT_PORTS.support}/a2a/jsonrpc`,
@@ -61,7 +61,7 @@ export const FULFILLMENT_AGENT_CARD: AgentCard = {
 export const ESCALATION_AGENT_CARD: AgentCard = {
   name: "Escalation Agent",
   description:
-    "Senior authority for complex cases. Reviews escalations, approves high-value refunds (up to $500), and overrides standard policy when justified.",
+    "Senior authority for complex cases. Reviews escalations, approves refunds beyond standard limits, and overrides policy when justified. Subject to governance policies.",
   protocolVersion: "0.3.0",
   version: "1.0.0",
   url: `http://localhost:${AGENT_PORTS.escalation}/a2a/jsonrpc`,

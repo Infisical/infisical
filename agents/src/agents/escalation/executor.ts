@@ -345,9 +345,22 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
         role: "assistant",
         content: JSON.stringify({ action: "call_skill", skillCall, reasoning }),
       });
+      // Provide specific guidance based on the denied skill
+      let guidance = `Skill ${skillId} was DENIED by governance policy. Reason: ${result.governance.reasoning}.`;
+
+      if (skillId === "approve_refund") {
+        // If refund approval was denied (likely due to amount limits), guide to flag for human review
+        guidance += ` Since the refund approval was denied, you should use flag_for_human_review to escalate this to a human manager who can approve higher amounts.`;
+      } else if (skillId === "review_case") {
+        // Critical skill - cannot proceed without it
+        guidance += ` CRITICAL: This is a required skill for escalation review. You must complete the task and report that the escalation could not be processed due to policy denial.`;
+      } else {
+        guidance += ` You may need to flag for human review or try a different approach.`;
+      }
+
       context.llmHistory.push({
         role: "user",
-        content: `Skill ${skillId} was DENIED by governance policy. Reason: ${result.governance.reasoning}. You may need to flag for human review or try a different approach.`,
+        content: guidance,
       });
     }
   }
@@ -455,10 +468,7 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
               `Issue severity: ${context.request.classification?.severity?.toUpperCase() || "MEDIUM"}`,
               "Customer impact assessment completed",
             ],
-            recommendation:
-              context.request.requestedRefund <= 500
-                ? "APPROVE"
-                : "FLAG_FOR_HUMAN",
+            recommendation: "APPROVE",
           };
         };
 
@@ -468,10 +478,8 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
           const requestedAmount =
             (parameters.requestedAmount as number) ||
             context.request.requestedRefund;
-          const approvedAmount = Math.min(
-            (parameters.approvedAmount as number) || requestedAmount,
-            500,
-          );
+          const approvedAmount =
+            (parameters.approvedAmount as number) || requestedAmount;
           const reasoning = this.generateApprovalReasoning(
             context.request,
             approvedAmount,
@@ -482,7 +490,6 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
             status: "approved",
             reasoning,
             approvalLevel: "escalation_agent",
-            maxApprovalLimit: 500,
             timestamp: new Date().toISOString(),
           };
         };
@@ -508,9 +515,8 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
             status: "pending_human_review",
             reason:
               (parameters.reason as string) ||
-              "Amount exceeds escalation agent authority",
+              "Requires human manager approval",
             requestedAmount: context.request.requestedRefund,
-            escalationAgentLimit: 500,
             timestamp: new Date().toISOString(),
           };
         };
@@ -633,9 +639,7 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
     }
 
     reasons.push("Customer impact is significant");
-    reasons.push(
-      `Refund of $${approvedAmount} is within escalation agent approval limit ($500)`,
-    );
+    reasons.push(`Refund of $${approvedAmount} recommended for approval`);
     reasons.push("No indication of customer fraud or abuse");
 
     return reasons.join(". ") + ".";
