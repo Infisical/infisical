@@ -83,9 +83,25 @@ export const LogsWidgetConfigSchema = z.object({
   limit: z.number()
 });
 
+// Audit log event categories for filtering
+export const AuditLogEventCategory = {
+  SECRETS: "secrets",
+  INTEGRATIONS: "integrations",
+  IDENTITIES: "identities",
+  PKI: "pki",
+  SSH: "ssh",
+  KMS: "kms",
+  AUTH: "auth",
+  PROJECTS: "projects",
+  ORGANIZATIONS: "organizations"
+} as const;
+
+export type TAuditLogEventCategory = (typeof AuditLogEventCategory)[keyof typeof AuditLogEventCategory];
+
 // Live Logs widget config schema (for audit log streaming)
 export const LiveLogsWidgetConfigSchema = z.object({
-  limit: z.number().min(10).max(300).default(300)
+  limit: z.number().min(10).max(300).default(300),
+  eventCategories: z.array(z.string()).optional()
 });
 
 export const PieChartWidgetConfigSchema = z.object({
@@ -210,6 +226,8 @@ export interface TUpdateObservabilityWidgetDTO {
   refreshInterval?: number;
   icon?: string;
   color?: string;
+  subOrgId?: string | null;
+  projectId?: string | null;
 }
 
 // Get widget data options
@@ -266,6 +284,10 @@ export interface TObservabilityLiveLogsResponse {
     refreshInterval: number;
     icon?: string | null;
     color?: string | null;
+  };
+  scope: {
+    type: "org" | "sub-org" | "project";
+    displayName: string;
   };
   items: TObservabilityLogItem[];
   totalCount: number;

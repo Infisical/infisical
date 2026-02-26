@@ -118,7 +118,7 @@ export async function up(knex: Knex): Promise<void> {
           orgId: org.id,
           type: "logs",
           config: JSON.stringify({ limit: 300 }),
-          refreshInterval: 5,
+          refreshInterval: 30,
           icon: "Terminal",
           color: "#1c2a3a",
           isBuiltIn: true

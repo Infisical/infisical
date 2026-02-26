@@ -23,6 +23,7 @@ export interface WidgetFilter {
   projectId?: string;
   subOrgIds?: string[];
   scopeMode?: "org" | "suborg" | "project";
+  eventCategories?: string[];
 }
 
 export interface WidgetTemplate {

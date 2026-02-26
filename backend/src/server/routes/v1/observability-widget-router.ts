@@ -50,7 +50,7 @@ const ObservabilityWidgetItemSchema = z.object({
 
 const ObservabilityLogItemSchema = z.object({
   id: z.string(),
-  timestamp: z.date(),
+  timestamp: z.union([z.date(), z.string()]),
   level: z.enum(["error", "warn", "info"]),
   resourceType: z.string(),
   actor: z.string(),
@@ -168,7 +168,9 @@ export const registerObservabilityWidgetRouter = async (server: FastifyZodProvid
         config: z.union([NumberMetricsWidgetConfigSchema, EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema]).optional(),
         refreshInterval: z.number().min(5).max(3600).optional(),
         icon: z.string().max(64).optional(),
-        color: z.string().max(32).optional()
+        color: z.string().max(32).optional(),
+        subOrgId: z.string().uuid().nullable().optional(),
+        projectId: z.string().uuid().nullable().optional()
       }),
       response: {
         200: z.object({
@@ -278,6 +280,10 @@ export const registerObservabilityWidgetRouter = async (server: FastifyZodProvid
             refreshInterval: z.number(),
             icon: z.string().nullable().optional(),
             color: z.string().nullable().optional()
+          }),
+          scope: z.object({
+            type: z.enum(["org", "sub-org", "project"]),
+            displayName: z.string()
           }),
           items: z.array(ObservabilityLogItemSchema),
           totalCount: z.number(),

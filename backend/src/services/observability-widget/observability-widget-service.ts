@@ -1,5 +1,7 @@
 import { TDbClient } from "@app/db";
+import { TableName } from "@app/db/schemas";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import {
@@ -12,6 +14,7 @@ import { metricsResolverFactory } from "./metrics-resolvers";
 import { TObservabilityWidgetDALFactory } from "./observability-widget-dal";
 import { getSubOrgDescendants } from "./observability-widget-helpers";
 import {
+  AuditLogEventCategory,
   EventsWidgetConfigSchema,
   LiveLogsWidgetConfigSchema,
   NumberMetricsWidgetConfigSchema,
@@ -33,6 +36,93 @@ import {
   TUpdateObservabilityWidgetDTO
 } from "./observability-widget-types";
 import { createResolverRegistry, TResolverRegistry } from "./resolvers";
+
+const EVENT_CATEGORY_TO_EVENT_TYPES: Record<string, EventType[]> = {
+  [AuditLogEventCategory.SECRETS]: [
+    EventType.GET_SECRETS,
+    EventType.GET_SECRET,
+    EventType.REVEAL_SECRET,
+    EventType.CREATE_SECRET,
+    EventType.CREATE_SECRETS,
+    EventType.UPDATE_SECRET,
+    EventType.UPDATE_SECRETS,
+    EventType.DELETE_SECRET,
+    EventType.DELETE_SECRETS,
+    EventType.MOVE_SECRETS
+  ],
+  [AuditLogEventCategory.INTEGRATIONS]: [
+    EventType.AUTHORIZE_INTEGRATION,
+    EventType.UPDATE_INTEGRATION_AUTH,
+    EventType.UNAUTHORIZE_INTEGRATION,
+    EventType.CREATE_INTEGRATION,
+    EventType.DELETE_INTEGRATION,
+    EventType.MANUAL_SYNC_INTEGRATION
+  ],
+  [AuditLogEventCategory.IDENTITIES]: [
+    EventType.CREATE_IDENTITY,
+    EventType.UPDATE_IDENTITY,
+    EventType.DELETE_IDENTITY,
+    EventType.CREATE_IDENTITY_ORG_MEMBERSHIP,
+    EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP,
+    EventType.DELETE_IDENTITY_ORG_MEMBERSHIP,
+    EventType.CREATE_IDENTITY_PROJECT_MEMBERSHIP,
+    EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP,
+    EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP
+  ],
+  [AuditLogEventCategory.PKI]: [
+    EventType.GET_CA,
+    EventType.CREATE_CA,
+    EventType.UPDATE_CA,
+    EventType.DELETE_CA,
+    EventType.RENEW_CA,
+    EventType.GET_CERT,
+    EventType.ISSUE_CERT,
+    EventType.SIGN_CERT,
+    EventType.DELETE_CERT,
+    EventType.REVOKE_CERT
+  ],
+  [AuditLogEventCategory.SSH]: [
+    EventType.CREATE_SSH_CA,
+    EventType.UPDATE_SSH_CA,
+    EventType.DELETE_SSH_CA,
+    EventType.GET_SSH_CA,
+    EventType.ISSUE_SSH_CREDS
+  ],
+  [AuditLogEventCategory.KMS]: [
+    EventType.CREATE_KMS,
+    EventType.UPDATE_KMS,
+    EventType.DELETE_KMS,
+    EventType.GET_KMS,
+    EventType.UPDATE_PROJECT_KMS
+  ],
+  [AuditLogEventCategory.AUTH]: [
+    EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
+    EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
+    EventType.LOGIN_IDENTITY_OIDC_AUTH,
+    EventType.LOGIN_IDENTITY_JWT_AUTH,
+    EventType.LOGIN_IDENTITY_GCP_AUTH,
+    EventType.LOGIN_IDENTITY_AWS_AUTH,
+    EventType.LOGIN_IDENTITY_AZURE_AUTH,
+    EventType.LOGIN_IDENTITY_LDAP_AUTH
+  ],
+  [AuditLogEventCategory.PROJECTS]: [
+    EventType.CREATE_ENVIRONMENT,
+    EventType.UPDATE_ENVIRONMENT,
+    EventType.DELETE_ENVIRONMENT,
+    EventType.ADD_PROJECT_MEMBER,
+    EventType.REMOVE_PROJECT_MEMBER,
+    EventType.CREATE_FOLDER,
+    EventType.UPDATE_FOLDER,
+    EventType.DELETE_FOLDER
+  ],
+  [AuditLogEventCategory.ORGANIZATIONS]: [
+    EventType.CREATE_SUB_ORGANIZATION,
+    EventType.UPDATE_SUB_ORGANIZATION,
+    EventType.ADD_TRUSTED_IP,
+    EventType.UPDATE_TRUSTED_IP,
+    EventType.DELETE_TRUSTED_IP
+  ]
+};
 
 export type TObservabilityWidgetServiceFactory = ReturnType<typeof observabilityWidgetServiceFactory>;
 
@@ -126,14 +216,23 @@ export const observabilityWidgetServiceFactory = ({
       }
     }
 
-    const updatedWidget = await observabilityWidgetDAL.updateById(widgetId, {
+    const updateData: Record<string, unknown> = {
       name: dto.name,
       description: dto.description,
       config: dto.config,
       refreshInterval: dto.refreshInterval,
       icon: dto.icon,
       color: dto.color
-    });
+    };
+
+    if (dto.subOrgId !== undefined) {
+      updateData.subOrgId = dto.subOrgId;
+    }
+    if (dto.projectId !== undefined) {
+      updateData.projectId = dto.projectId;
+    }
+
+    const updatedWidget = await observabilityWidgetDAL.updateById(widgetId, updateData);
 
     return updatedWidget;
   };
@@ -266,13 +365,21 @@ export const observabilityWidgetServiceFactory = ({
       scopeProjectIds = descendants.projectIds;
     }
 
+    let eventTypeFilter: EventType[] | undefined;
+    if (config.eventCategories && config.eventCategories.length > 0) {
+      eventTypeFilter = config.eventCategories.flatMap(
+        (category) => EVENT_CATEGORY_TO_EVENT_TYPES[category] ?? []
+      );
+    }
+
     const auditLogs = await auditLogDAL.find({
       orgId: widget.orgId,
       projectId: widget.projectId ?? undefined,
       startDate: oneDayAgo.toISOString(),
       endDate: now.toISOString(),
       limit,
-      offset: 0
+      offset: 0,
+      eventType: eventTypeFilter
     });
 
     const items: TObservabilityLogItem[] = auditLogs.map((log) => ({
@@ -298,6 +405,18 @@ export const observabilityWidgetServiceFactory = ({
       ? `/project/${widget.projectId}/audit-logs`
       : `/org/${widget.orgId}/audit-logs`;
 
+    let scopeInfo: { type: "org" | "sub-org" | "project"; displayName: string };
+    if (widget.projectId) {
+      const project = await db.replicaNode()(TableName.Project).where("id", widget.projectId).first();
+      scopeInfo = { type: "project", displayName: project?.name ?? "Project" };
+    } else if (widget.subOrgId) {
+      const subOrg = await db.replicaNode()(TableName.Organization).where("id", widget.subOrgId).first();
+      scopeInfo = { type: "sub-org", displayName: subOrg?.name ?? "Sub-Organization" };
+    } else {
+      const org = await db.replicaNode()(TableName.Organization).where("id", widget.orgId).first();
+      scopeInfo = { type: "org", displayName: org?.name ?? "Organization" };
+    }
+
     return {
       widget: {
         id: widget.id,
@@ -308,6 +427,7 @@ export const observabilityWidgetServiceFactory = ({
         icon: widget.icon,
         color: widget.color
       },
+      scope: scopeInfo,
       items,
       totalCount: items.length,
       infoText: `Showing the last ${limit} log entries`,

@@ -197,7 +197,7 @@ export const orgServiceFactory = ({
       description: "Real-time org-wide activity stream",
       type: "logs",
       config: { limit: 300 },
-      refreshInterval: 5,
+      refreshInterval: 30,
       icon: "Terminal",
       color: "#1c2a3a",
       layoutTmpl: "logs"

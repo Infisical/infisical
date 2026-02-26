@@ -12,6 +12,8 @@ export interface ObservabilityWidgetListItem {
   color?: string;
   refreshInterval: number;
   isBuiltIn?: boolean;
+  subOrgId?: string | null;
+  projectId?: string | null;
 }
 
 export interface ObservabilityWidgetDataItem {
@@ -93,6 +95,10 @@ export interface ObservabilityLogItem {
 
 export interface ObservabilityLiveLogsResponse {
   widget: ObservabilityWidgetListItem;
+  scope: {
+    type: "org" | "sub-org" | "project";
+    displayName: string;
+  };
   items: ObservabilityLogItem[];
   totalCount: number;
   infoText: string;
@@ -137,6 +143,33 @@ export const useGetWidgetMetrics = (widgetId: string | undefined) =>
     }
   });
 
+export interface EventsWidgetConfig {
+  resourceTypes?: string[];
+  eventTypes: ("failed" | "pending" | "active" | "expired")[];
+  thresholds?: {
+    expirationDays?: number;
+    inactivityDays?: number;
+    heartbeatMinutes?: number;
+  };
+}
+
+export interface LogsWidgetConfig {
+  limit?: number;
+  eventCategories?: string[];
+}
+
+export const AUDIT_LOG_EVENT_CATEGORIES = [
+  { key: "secrets", label: "Secrets", description: "Secret operations (read, create, update, delete)" },
+  { key: "integrations", label: "Integrations", description: "Integration sync and auth events" },
+  { key: "identities", label: "Identities", description: "Machine identity operations" },
+  { key: "pki", label: "PKI", description: "Certificate authority and certificate events" },
+  { key: "ssh", label: "SSH", description: "SSH CA and credential events" },
+  { key: "kms", label: "KMS", description: "KMS key and encryption events" },
+  { key: "auth", label: "Authentication", description: "Login and auth events" },
+  { key: "projects", label: "Projects", description: "Project and environment events" },
+  { key: "organizations", label: "Organizations", description: "Organization and sub-org events" }
+] as const;
+
 export interface CreateWidgetDTO {
   name: string;
   description?: string;
@@ -144,15 +177,7 @@ export interface CreateWidgetDTO {
   subOrgId?: string | null;
   projectId?: string | null;
   type: "events" | "logs" | "metrics" | "pie-chart";
-  config: {
-    resourceTypes?: string[];
-    eventTypes: ("failed" | "pending" | "active" | "expired")[];
-    thresholds?: {
-      expirationDays?: number;
-      inactivityDays?: number;
-      heartbeatMinutes?: number;
-    };
-  };
+  config: EventsWidgetConfig | LogsWidgetConfig;
   refreshInterval?: number;
   icon?: string;
   color?: string;
@@ -172,6 +197,44 @@ export const useCreateWidget = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: observabilityWidgetKeys.list(variables.orgId)
+      });
+    }
+  });
+};
+
+export interface UpdateWidgetDTO {
+  widgetId: string;
+  orgId: string;
+  name?: string;
+  description?: string;
+  config?: EventsWidgetConfig | LogsWidgetConfig;
+  refreshInterval?: number;
+  icon?: string;
+  color?: string;
+  subOrgId?: string | null;
+  projectId?: string | null;
+}
+
+export const useUpdateWidget = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ widgetId, orgId, ...dto }: UpdateWidgetDTO) => {
+      const { data } = await apiRequest.patch<{ widget: ObservabilityWidgetListItem }>(
+        `/api/v1/observability-widgets/${widgetId}`,
+        dto
+      );
+      return { widget: data.widget, orgId };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: observabilityWidgetKeys.list(result.orgId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["observability-widget-live-logs", result.widget.id]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["observability-widget-data", result.widget.id]
       });
     }
   });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GripVertical, Lock, LockOpen, Pause, Play } from "lucide-react";
+import { GripVertical, Lock, LockOpen, Pause, Pencil, Play } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
@@ -13,6 +13,12 @@ const LEVEL_COLOR: Record<string, string> = {
   info: "#58a6ff"
 };
 
+const SCOPE_DOT_COLORS: Record<string, string> = {
+  project: "#d29922",
+  org: "#58a6ff",
+  "sub-org": "#f0883e"
+};
+
 interface LogEntry {
   ts: Date;
   level: "error" | "warn" | "info";
@@ -24,10 +30,12 @@ interface LogEntry {
 export function LogsWidget({
   isLocked = false,
   onToggleLock,
+  onEdit,
   widgetId
 }: {
   isLocked?: boolean;
   onToggleLock?: () => void;
+  onEdit?: () => void;
   widgetId?: string;
 }) {
   const [paused, setPaused] = useState(false);
@@ -106,6 +114,17 @@ export function LogsWidget({
             <span className="text-[13px] font-medium text-bunker-100">
               {liveLogsData?.widget.name ?? "Live Logs"}
             </span>
+            {onEdit && (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="flex h-[22px] w-[22px] items-center justify-center rounded text-mineshaft-300 transition-colors hover:bg-mineshaft-600 hover:text-primary"
+                aria-label="Edit widget"
+                title="Edit widget"
+              >
+                <Pencil size={11} />
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             {/* Level toggles */}
@@ -165,22 +184,23 @@ export function LogsWidget({
         </div>
       </div>
 
-      {/* Stat bar */}
-      <div className="flex gap-3 border-b border-mineshaft-600 bg-bunker-800 px-3.5 py-1.5">
+      {/* Scope bar */}
+      <div className="flex items-center gap-3 border-b border-mineshaft-600 bg-bunker-800 px-3.5 py-1.5">
         <div className="flex items-center gap-1.5 text-[11px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#f85149]" />
-          <span className="text-mineshaft-300">errors</span>
-          <span className="font-semibold text-[#f85149]">{counters.error}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#d29922]" />
-          <span className="text-mineshaft-300">warnings</span>
-          <span className="font-semibold text-[#d29922]">{counters.warn}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#58a6ff]" />
-          <span className="text-mineshaft-300">info</span>
-          <span className="font-semibold text-[#58a6ff]">{counters.info}</span>
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{
+              background: liveLogsData?.scope
+                ? SCOPE_DOT_COLORS[liveLogsData.scope.type] ?? "#8b949e"
+                : "#58a6ff"
+            }}
+          />
+          <span className="capitalize text-mineshaft-400">
+            {liveLogsData?.scope?.type ?? "org"}
+          </span>
+          <span className="text-mineshaft-300">
+            {liveLogsData?.scope?.displayName ?? "Organization"}
+          </span>
         </div>
         <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] text-mineshaft-300">
           <input
@@ -242,8 +262,25 @@ export function LogsWidget({
         )}
       </div>
 
-      {/* Footer with lock button */}
-      <div className="flex items-center justify-end gap-2 border-t border-mineshaft-600 bg-bunker-800 py-1.5 pl-3.5 pr-10">
+      {/* Footer with totals and lock button */}
+      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-bunker-800 py-1.5 pl-3.5 pr-10">
+        <div className="flex gap-3">
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#f85149]" />
+            <span className="text-mineshaft-300">errors</span>
+            <span className="font-semibold text-[#f85149]">{counters.error}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#d29922]" />
+            <span className="text-mineshaft-300">warnings</span>
+            <span className="font-semibold text-[#d29922]">{counters.warn}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#58a6ff]" />
+            <span className="text-mineshaft-300">info</span>
+            <span className="font-semibold text-[#58a6ff]">{counters.info}</span>
+          </div>
+        </div>
         <Tooltip content={isLocked ? "Unlock widget" : "Lock widget"}>
           <button
             type="button"

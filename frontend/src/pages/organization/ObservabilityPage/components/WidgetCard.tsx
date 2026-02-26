@@ -12,13 +12,22 @@ interface WidgetCardProps {
   onRemove: (uid: string) => void;
   onEdit?: (uid: string, tmplKey: string) => void;
   onToggleLock?: (uid: string) => void;
+  isBuiltIn?: boolean;
 }
 
-export function WidgetCard({ item, templates, onRemove, onEdit, onToggleLock }: WidgetCardProps) {
+export function WidgetCard({
+  item,
+  templates,
+  onRemove,
+  onEdit,
+  onToggleLock,
+  isBuiltIn = false
+}: WidgetCardProps) {
   const template = templates[item.tmpl];
   if (!template) return null;
 
   const isLocked = item.static ?? false;
+  const canEdit = !isBuiltIn && !!onEdit;
 
   return (
     <div
@@ -44,6 +53,7 @@ export function WidgetCard({ item, templates, onRemove, onEdit, onToggleLock }: 
           <LogsWidget
             isLocked={isLocked}
             onToggleLock={() => onToggleLock?.(item.uid)}
+            onEdit={canEdit ? () => onEdit(item.uid, item.tmpl) : undefined}
             widgetId={item.widgetId}
           />
         ) : template.isMetrics ? (
@@ -55,7 +65,7 @@ export function WidgetCard({ item, templates, onRemove, onEdit, onToggleLock }: 
         ) : (
           <TableWidget
             template={template}
-            onEdit={onEdit ? () => onEdit(item.uid, item.tmpl) : undefined}
+            onEdit={canEdit ? () => onEdit(item.uid, item.tmpl) : undefined}
             isLocked={isLocked}
             onToggleLock={() => onToggleLock?.(item.uid)}
             widgetId={item.widgetId}
