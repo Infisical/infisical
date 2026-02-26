@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as Icons from "lucide-react";
 import { PlusIcon, ShieldIcon, TrashIcon, ZapIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -97,6 +99,11 @@ type InboundSheetProps = {
 };
 
 const agentMap = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
+
+const getIcon = (name: string) => {
+  const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
+  return Icon ? <Icon className="size-4" /> : <ShieldIcon className="size-4" />;
+};
 
 /**
  * Convert flat API data (allowedActions + promptPolicies) into grouped action form data.
@@ -289,7 +296,7 @@ const InboundActionCard = ({
             render={({ field, fieldState: { error } }) => (
               <div>
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="h-7 w-fit gap-1.5 border-none bg-transparent px-0 font-mono text-sm font-semibold shadow-none">
+                  <SelectTrigger className="h-7 w-fit gap-1.5 border-none bg-transparent px-0 font-mono text-xs font-semibold shadow-none">
                     <SelectValue placeholder="Select action..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -307,8 +314,7 @@ const InboundActionCard = ({
           />
         </div>
         <Badge variant="neutral">
-          {conditions.fields.length}{" "}
-          {conditions.fields.length === 1 ? "condition" : "conditions"}
+          {conditions.fields.length} {conditions.fields.length === 1 ? "condition" : "conditions"}
         </Badge>
         <UnstableIconButton variant="ghost" size="xs" onClick={onRemove}>
           <TrashIcon className="size-3.5 text-danger" />
@@ -376,13 +382,17 @@ const InboundPolicyCard = ({
   control,
   availableActions,
   onRemove,
-  fromAgent
+  fromAgent,
+  usedAgentIds,
+  currentAgentId
 }: {
   nestIndex: number;
   control: any;
   availableActions: string[];
   onRemove: () => void;
-  fromAgent: { name: string; description: string } | null;
+  fromAgent: { name: string; description: string; icon: string } | null;
+  usedAgentIds: string[];
+  currentAgentId: string;
 }) => {
   const actions = useFieldArray({
     control,
@@ -390,13 +400,13 @@ const InboundPolicyCard = ({
   });
 
   return (
-    <div className="rounded-lg border border-border">
+    <div className="rounded-lg border border-border bg-container">
       {/* Inbound policy header */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-2">
         <div className="flex size-8 items-center justify-center rounded-md bg-accent/10">
-          <ShieldIcon className="size-4" />
+          {fromAgent ? getIcon(fromAgent.icon) : <ShieldIcon className="size-4" />}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className={twMerge("min-w-0 flex-1", fromAgent && "-mt-2")}>
           <Controller
             control={control}
             name={`inboundPolicies.${nestIndex}.fromAgentId`}
@@ -406,7 +416,9 @@ const InboundPolicyCard = ({
                   <SelectValue placeholder="Select agent..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {AGENTS.map((agent) => (
+                  {AGENTS.filter(
+                    (agent) => agent.id === currentAgentId || !usedAgentIds.includes(agent.id)
+                  ).map((agent) => (
                     <SelectItem key={agent.id} value={agent.id}>
                       {agent.name}
                     </SelectItem>
@@ -415,9 +427,7 @@ const InboundPolicyCard = ({
               </Select>
             )}
           />
-          {fromAgent && (
-            <div className="text-xs text-accent">{fromAgent.description}</div>
-          )}
+          {fromAgent && <div className="-mt-2 text-xs text-accent">{fromAgent.description}</div>}
         </div>
         <Badge variant="neutral">
           {actions.fields.length} {actions.fields.length === 1 ? "action" : "actions"}
@@ -474,7 +484,6 @@ export const EditActionsSheet = ({
   } = useForm<TEditActionsForm>({
     resolver: zodResolver(editActionsFormSchema),
     mode: "onSubmit",
-    reValidateMode: "onSubmit",
     defaultValues: {
       selfActions: []
     }
@@ -604,7 +613,6 @@ export const EditInboundPoliciesSheet = ({
   } = useForm<TEditInboundForm>({
     resolver: zodResolver(editInboundFormSchema),
     mode: "onSubmit",
-    reValidateMode: "onSubmit",
     defaultValues: {
       inboundPolicies: []
     }
@@ -690,8 +698,7 @@ export const EditInboundPoliciesSheet = ({
                   <ShieldIcon className="mx-auto mb-2 size-8 text-muted" />
                   <p className="text-sm text-muted">No inbound policies configured.</p>
                   <p className="mt-1 text-xs text-accent">
-                    Add an inbound policy to allow other agents to request actions from this
-                    agent.
+                    Add an inbound policy to allow other agents to request actions from this agent.
                   </p>
                 </div>
               ) : (
@@ -699,6 +706,9 @@ export const EditInboundPoliciesSheet = ({
                   {inboundPolicies.fields.map((field, idx) => {
                     const fromId = watchedInbound?.[idx]?.fromAgentId;
                     const fromAgent = fromId ? agentMap[fromId] : null;
+                    const usedAgentIds = (watchedInbound ?? [])
+                      .map((ip) => ip?.fromAgentId)
+                      .filter((id): id is string => Boolean(id));
                     return (
                       <InboundPolicyCard
                         key={field.id}
@@ -707,6 +717,8 @@ export const EditInboundPoliciesSheet = ({
                         availableActions={selfActionNames}
                         onRemove={() => inboundPolicies.remove(idx)}
                         fromAgent={fromAgent}
+                        usedAgentIds={usedAgentIds}
+                        currentAgentId={fromId ?? ""}
                       />
                     );
                   })}
