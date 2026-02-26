@@ -67,3 +67,43 @@ export const useGetWidgetData = (
         .then((r) => r.data),
     refetchInterval: 30_000
   });
+
+export interface ObservabilityLogItem {
+  id: string;
+  timestamp: string;
+  level: "error" | "warn" | "info";
+  resourceType: string;
+  actor: string;
+  message: string;
+  metadata: {
+    eventType: string;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    userAgentType?: string | null;
+    projectId?: string | null;
+    projectName?: string | null;
+    actorMetadata?: unknown;
+    eventMetadata?: unknown;
+  };
+}
+
+export interface ObservabilityLiveLogsResponse {
+  widget: ObservabilityWidgetListItem;
+  items: ObservabilityLogItem[];
+  totalCount: number;
+  infoText: string;
+  auditLogLink: string;
+}
+
+export const useGetWidgetLiveLogs = (widgetId: string | undefined, params?: { limit?: number }) =>
+  useQuery({
+    queryKey: ["observability-widget-live-logs", widgetId, params] as const,
+    enabled: !!widgetId,
+    queryFn: () =>
+      apiRequest
+        .get<ObservabilityLiveLogsResponse>(`/api/v1/observability-widgets/${widgetId}/live-logs`, {
+          params
+        })
+        .then((r) => r.data),
+    refetchInterval: 5_000
+  });
