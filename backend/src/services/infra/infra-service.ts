@@ -918,120 +918,120 @@ Rules:
     azurerm_sql_database: 4.9,
     azurerm_kubernetes_cluster: 72.0
   };
+}
 
-  function estimateResourceCosts(rawPlanJson: string): Array<{ resource: string; monthlyCost: number; type: string }> {
-    try {
-      const plan = JSON.parse(rawPlanJson) as {
-        resource_changes?: Array<{
-          address: string;
-          type: string;
-          change?: { actions?: string[] };
-        }>;
-        planned_values?: {
-          root_module?: {
+function estimateResourceCosts(rawPlanJson: string): Array<{ resource: string; monthlyCost: number; type: string }> {
+  try {
+    const plan = JSON.parse(rawPlanJson) as {
+      resource_changes?: Array<{
+        address: string;
+        type: string;
+        change?: { actions?: string[] };
+      }>;
+      planned_values?: {
+        root_module?: {
+          resources?: Array<{ address: string; type: string; values?: Record<string, unknown> }>;
+          child_modules?: Array<{
             resources?: Array<{ address: string; type: string; values?: Record<string, unknown> }>;
-            child_modules?: Array<{
-              resources?: Array<{ address: string; type: string; values?: Record<string, unknown> }>;
-            }>;
-          };
+          }>;
         };
       };
-
-      const costs: Array<{ resource: string; monthlyCost: number; type: string }> = [];
-
-      // Use resource_changes for the list of resources being created/updated
-      const changes = plan.resource_changes ?? [];
-      for (const rc of changes) {
-        const actions = rc.change?.actions ?? [];
-        // Skip resources being deleted or with no-op
-        if (actions.includes("delete") && !actions.includes("create")) continue;
-        if (actions.length === 1 && actions[0] === "no-op") continue;
-
-        const baseCost = RESOURCE_COST_TABLE[rc.type];
-        if (baseCost !== undefined && baseCost > 0) {
-          costs.push({ resource: rc.address, monthlyCost: baseCost, type: rc.type });
-        } else if (baseCost === undefined) {
-          // Unknown resource type — check if it looks like a billable resource (not IAM, not data sources)
-          // For unknown types, estimate $0 (free) rather than guessing
-          costs.push({ resource: rc.address, monthlyCost: 0, type: rc.type });
-        }
-      }
-
-      // If no resource_changes, fall back to planned_values
-      if (changes.length === 0 && plan.planned_values?.root_module) {
-        const allResources = [
-          ...(plan.planned_values.root_module.resources ?? []),
-          ...(plan.planned_values.root_module.child_modules ?? []).flatMap((m) => m.resources ?? [])
-        ];
-        for (const r of allResources) {
-          const baseCost = RESOURCE_COST_TABLE[r.type];
-          if (baseCost !== undefined && baseCost > 0) {
-            costs.push({ resource: r.address, monthlyCost: baseCost, type: r.type });
-          }
-        }
-      }
-
-      return costs;
-    } catch (err) {
-      logger.warn(err, "Failed to estimate resource costs from plan JSON");
-      return [];
-    }
-  }
-
-  function buildInsightFromCosts(planJson: TPlanJson | null, rawPlanJsonOutput: string | null): TAiInsight {
-    const estimated: TAiInsight["costs"]["estimated"] = [];
-    let totalMonthly = "N/A";
-    let deltaMonthly = "N/A";
-
-    // Estimate costs from the raw plan JSON
-    if (rawPlanJsonOutput) {
-      const costs = estimateResourceCosts(rawPlanJsonOutput);
-      let total = 0;
-      for (const c of costs) {
-        if (c.monthlyCost > 0) {
-          estimated.push({
-            resource: c.resource,
-            monthlyCost: `$${c.monthlyCost.toFixed(2)}`,
-            source: "estimate"
-          });
-          total += c.monthlyCost;
-        }
-      }
-      if (total > 0 || costs.length > 0) {
-        totalMonthly = `$${total.toFixed(2)}`;
-        deltaMonthly = `+$${total.toFixed(2)}`;
-      }
-    }
-
-    // Build a simple summary from plan changes
-    let summary = "No changes detected.";
-    if (planJson) {
-      const parts: string[] = [];
-      if (planJson.add > 0) parts.push(`**${planJson.add}** to add`);
-      if (planJson.change > 0) parts.push(`**${planJson.change}** to change`);
-      if (planJson.destroy > 0) parts.push(`**${planJson.destroy}** to destroy`);
-      if (parts.length > 0) {
-        summary = `Plan: ${parts.join(", ")}.`;
-        if (planJson.resources.length > 0) {
-          const resourceList = planJson.resources.map((r) => `- \`${r.address}\` (${r.action})`).join("\n");
-          summary += `\n\n${resourceList}`;
-        }
-      }
-      if (totalMonthly !== "N/A") {
-        summary += `\n\nEstimated cost: ${totalMonthly}/mo`;
-        if (deltaMonthly !== "N/A") summary += ` (${deltaMonthly})`;
-      }
-    }
-
-    return {
-      summary,
-      costs: {
-        estimated,
-        aiEstimated: [],
-        totalMonthly,
-        deltaMonthly
-      },
-      security: { issues: [], shouldApprove: false }
     };
+
+    const costs: Array<{ resource: string; monthlyCost: number; type: string }> = [];
+
+    // Use resource_changes for the list of resources being created/updated
+    const changes = plan.resource_changes ?? [];
+    for (const rc of changes) {
+      const actions = rc.change?.actions ?? [];
+      // Skip resources being deleted or with no-op
+      if (actions.includes("delete") && !actions.includes("create")) continue;
+      if (actions.length === 1 && actions[0] === "no-op") continue;
+
+      const baseCost = RESOURCE_COST_TABLE[rc.type];
+      if (baseCost !== undefined && baseCost > 0) {
+        costs.push({ resource: rc.address, monthlyCost: baseCost, type: rc.type });
+      } else if (baseCost === undefined) {
+        // Unknown resource type — check if it looks like a billable resource (not IAM, not data sources)
+        // For unknown types, estimate $0 (free) rather than guessing
+        costs.push({ resource: rc.address, monthlyCost: 0, type: rc.type });
+      }
+    }
+
+    // If no resource_changes, fall back to planned_values
+    if (changes.length === 0 && plan.planned_values?.root_module) {
+      const allResources = [
+        ...(plan.planned_values.root_module.resources ?? []),
+        ...(plan.planned_values.root_module.child_modules ?? []).flatMap((m) => m.resources ?? [])
+      ];
+      for (const r of allResources) {
+        const baseCost = RESOURCE_COST_TABLE[r.type];
+        if (baseCost !== undefined && baseCost > 0) {
+          costs.push({ resource: r.address, monthlyCost: baseCost, type: r.type });
+        }
+      }
+    }
+
+    return costs;
+  } catch (err) {
+    logger.warn(err, "Failed to estimate resource costs from plan JSON");
+    return [];
   }
+}
+
+function buildInsightFromCosts(planJson: TPlanJson | null, rawPlanJsonOutput: string | null): TAiInsight {
+  const estimated: TAiInsight["costs"]["estimated"] = [];
+  let totalMonthly = "N/A";
+  let deltaMonthly = "N/A";
+
+  // Estimate costs from the raw plan JSON
+  if (rawPlanJsonOutput) {
+    const costs = estimateResourceCosts(rawPlanJsonOutput);
+    let total = 0;
+    for (const c of costs) {
+      if (c.monthlyCost > 0) {
+        estimated.push({
+          resource: c.resource,
+          monthlyCost: `$${c.monthlyCost.toFixed(2)}`,
+          source: "estimate"
+        });
+        total += c.monthlyCost;
+      }
+    }
+    if (total > 0 || costs.length > 0) {
+      totalMonthly = `$${total.toFixed(2)}`;
+      deltaMonthly = `+$${total.toFixed(2)}`;
+    }
+  }
+
+  // Build a simple summary from plan changes
+  let summary = "No changes detected.";
+  if (planJson) {
+    const parts: string[] = [];
+    if (planJson.add > 0) parts.push(`**${planJson.add}** to add`);
+    if (planJson.change > 0) parts.push(`**${planJson.change}** to change`);
+    if (planJson.destroy > 0) parts.push(`**${planJson.destroy}** to destroy`);
+    if (parts.length > 0) {
+      summary = `Plan: ${parts.join(", ")}.`;
+      if (planJson.resources.length > 0) {
+        const resourceList = planJson.resources.map((r) => `- \`${r.address}\` (${r.action})`).join("\n");
+        summary += `\n\n${resourceList}`;
+      }
+    }
+    if (totalMonthly !== "N/A") {
+      summary += `\n\nEstimated cost: ${totalMonthly}/mo`;
+      if (deltaMonthly !== "N/A") summary += ` (${deltaMonthly})`;
+    }
+  }
+
+  return {
+    summary,
+    costs: {
+      estimated,
+      aiEstimated: [],
+      totalMonthly,
+      deltaMonthly
+    },
+    security: { issues: [], shouldApprove: false }
+  };
 }
