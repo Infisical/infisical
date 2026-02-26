@@ -13,9 +13,10 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
+import { useGetWidgetData } from "@app/hooks/api/observabilityWidgets";
 
-import type { DataRow, WidgetTemplate } from "../mock-data";
-import { DATA, PAGE_SIZE, queryRows } from "../mock-data";
+import type { DataRow, StatItem, WidgetTemplate } from "../mock-data";
+import { PAGE_SIZE, queryRows } from "../mock-data";
 import { StatusPill } from "./StatusPill";
 import { WidgetIcon } from "./WidgetIcon";
 
@@ -76,21 +77,51 @@ export function TableWidget({
   template,
   onEdit,
   isLocked = false,
-  onToggleLock
+  onToggleLock,
+  widgetId
 }: {
   template: WidgetTemplate;
   onEdit?: () => void;
   isLocked?: boolean;
   onToggleLock?: () => void;
+  widgetId?: string;
 }) {
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
+  const { data: widgetData, isLoading: isWidgetLoading, refetch: refetchWidgetData } = useGetWidgetData(
+    widgetId
+  );
+
   const rawRows: DataRow[] = useMemo(() => {
+    if (widgetId) {
+      if (!widgetData) return [];
+      return widgetData.items.map((item) => ({
+        name: item.resourceName,
+        status: item.status,
+        desc: item.statusTooltip ?? "",
+        scope: `${item.scope.type} - ${item.scope.displayName}`,
+        date: item.eventTimestamp,
+        resource: item.resourceType
+      }));
+    }
     if (template.filter) return queryRows(template.filter);
-    return DATA[template.dataKey]?.[template.firstStatus] ?? [];
-  }, [template]);
+    return [];
+  }, [widgetId, widgetData, template]);
+
+  const liveStats: StatItem[] | undefined = useMemo(() => {
+    if (!widgetId || !widgetData) return undefined;
+    const { failedCount, pendingCount, activeCount, expiredCount } = widgetData.summary;
+    const stats: StatItem[] = [];
+    if (failedCount > 0 || activeCount > 0 || pendingCount > 0 || expiredCount > 0) {
+      if (failedCount > 0) stats.push({ color: "#f85149", label: "Failed", key: "failed", count: failedCount });
+      if (expiredCount > 0) stats.push({ color: "#d29922", label: "Expired", key: "expired", count: expiredCount });
+      if (pendingCount > 0) stats.push({ color: "#58a6ff", label: "Pending", key: "pending", count: pendingCount });
+      if (activeCount > 0) stats.push({ color: "#3fb950", label: "Active", key: "active", count: activeCount });
+    }
+    return stats;
+  }, [widgetId, widgetData]);
 
   const rows = useMemo(() => sortRows(rawRows, sortKey, sortDir), [rawRows, sortKey, sortDir]);
 
@@ -156,9 +187,13 @@ export function TableWidget({
               <WidgetIcon name={template.icon} size={12} className="text-inherit" />
             </div>
             <div className="min-w-0">
-              <span className="text-[13px] font-medium text-bunker-100">{template.title}</span>
-              {template.description && (
-                <p className="truncate text-[11px] text-mineshaft-400">{template.description}</p>
+              <span className="text-[13px] font-medium text-bunker-100">
+                {widgetData?.widget.name ?? template.title}
+              </span>
+              {(widgetData?.widget.description ?? template.description) && (
+                <p className="truncate text-[11px] text-mineshaft-400">
+                  {widgetData?.widget.description ?? template.description}
+                </p>
               )}
             </div>
           </div>
@@ -168,9 +203,10 @@ export function TableWidget({
             </span>
             <button
               type="button"
+              onClick={widgetId ? () => refetchWidgetData() : undefined}
               className="flex h-[22px] w-[22px] items-center justify-center rounded text-mineshaft-300 transition-colors hover:bg-mineshaft-600 hover:text-white"
             >
-              <RotateCw size={12} />
+              <RotateCw size={12} className={isWidgetLoading ? "animate-spin" : ""} />
             </button>
             {onEdit && (
               <button
@@ -189,7 +225,13 @@ export function TableWidget({
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full table-fixed border-collapse">
+        {isWidgetLoading ? (
+          <div className="flex h-full items-center justify-center py-8 text-[12px] text-mineshaft-300">
+            <RotateCw size={14} className="mr-2 animate-spin" />
+            Loading...
+          </div>
+        ) : (
+          <table className="w-full table-fixed border-collapse">
           <colgroup>
             <col className="w-[22%]" />
             <col className="w-[130px]" />
@@ -279,13 +321,14 @@ export function TableWidget({
               </tr>
             )}
           </tbody>
-        </table>
+          </table>
+        )}
       </div>
 
       {/* Footer */}
       <div className="flex items-center justify-between border-t border-mineshaft-600 bg-bunker-800 py-1.5 pl-3.5 pr-10">
         <div className="flex items-center gap-3">
-          {template.stats.map((s) => (
+          {(liveStats ?? template.stats).map((s) => (
             <div key={s.label} className="flex items-center gap-1.5 text-[11px]">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
               <span className="text-mineshaft-300">{s.label}</span>

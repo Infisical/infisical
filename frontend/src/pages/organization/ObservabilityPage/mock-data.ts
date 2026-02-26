@@ -46,16 +46,19 @@ export interface LayoutItem {
   w: number;
   h: number;
   static?: boolean;
+  widgetId?: string;
 }
 
 export interface PanelItem {
   id: string;
+  tmpl?: string;
   icon: string;
   bg: string;
   name: string;
   desc: string;
   badge: string;
   category: "inf" | "org" | "custom";
+  widgetId?: string;
 }
 
 export interface SubView {
@@ -465,82 +468,8 @@ export function countByStatus(filter?: WidgetFilter): Record<string, number> {
   return counts;
 }
 
-// ═══ LEGACY DATA (for built-in templates) ════════════════════════════
-export const DATA: Record<string, Record<string, DataRow[]>> = {
-  needs_attention: {
-    failed: ALL_ROWS.filter(
-      (r) =>
-        (r.resource === "native_integration" || r.resource === "secret_sync") &&
-        r.status === "failed"
-    )
-  },
-  mi: {
-    expired: ALL_ROWS.filter(
-      (r) => r.resource === "mi_token_ttl" && (r.status === "expired" || r.status === "pending")
-    ),
-    active: ALL_ROWS.filter((r) => r.resource === "mi_token_ttl" && r.status === "active")
-  }
-};
-
 // ═══ TEMPLATES ════════════════════════════════════════════════════════
 export const TEMPLATES: Record<string, WidgetTemplate> = {
-  needs_attention: {
-    title: "Needs Attention",
-    description: "Failed integrations and secret syncs combined",
-    icon: "AlertTriangle",
-    iconBg: "#2b0d0d",
-    borderColor: "#6e1a1a",
-    refresh: "30s",
-    stats: [
-      {
-        color: "#f85149",
-        label: "Failed",
-        key: "failed",
-        count: ALL_ROWS.filter(
-          (r) =>
-            (r.resource === "native_integration" || r.resource === "secret_sync") &&
-            r.status === "failed"
-        ).length
-      },
-      {
-        color: "#3fb950",
-        label: "Active",
-        key: "active",
-        count: ALL_ROWS.filter(
-          (r) =>
-            (r.resource === "native_integration" || r.resource === "secret_sync") &&
-            r.status === "active"
-        ).length
-      }
-    ],
-    dataKey: "needs_attention",
-    firstStatus: "failed",
-    filter: {
-      resources: ["native_integration", "secret_sync"],
-      scopeTypes: [],
-      statuses: ["failed"]
-    }
-  },
-  mi: {
-    title: "MI Token TTL",
-    description: "Expiring and expired machine identity tokens",
-    icon: "Bot",
-    iconBg: "#2b1f0d",
-    borderColor: "#5a3e1b",
-    refresh: "1m",
-    stats: [
-      { color: "#f85149", label: "Expired", key: "expired", count: 2 },
-      { color: "#d29922", label: "Pending", key: "pending", count: 1 },
-      { color: "#3fb950", label: "Healthy", key: "active", count: 3 }
-    ],
-    dataKey: "mi",
-    firstStatus: "expired",
-    filter: {
-      resources: ["mi_token_ttl"],
-      scopeTypes: [],
-      statuses: ["expired", "pending"]
-    }
-  },
   logs: {
     title: "Live Logs",
     description: "Real-time org-wide activity stream",
@@ -551,29 +480,21 @@ export const TEMPLATES: Record<string, WidgetTemplate> = {
     dataKey: "logs",
     firstStatus: "",
     isLogs: true
+  },
+  _backend_events: {
+    title: "Events",
+    description: "",
+    icon: "Activity",
+    iconBg: "#1c2a3a",
+    refresh: "30s",
+    stats: [],
+    dataKey: "",
+    firstStatus: ""
   }
 };
 
 // ═══ PANEL ITEMS ═════════════════════════════════════════════════════
 export const PANEL_ITEMS: PanelItem[] = [
-  {
-    id: "needs_attention",
-    icon: "AlertTriangle",
-    bg: "#2b0d0d",
-    name: "Needs Attention",
-    desc: "Failed integrations and secret syncs combined.",
-    badge: "Infisical",
-    category: "inf"
-  },
-  {
-    id: "mi",
-    icon: "Bot",
-    bg: "#2b1f0d",
-    name: "MI Token TTL",
-    desc: "Expiring and expired machine identity tokens.",
-    badge: "Infisical",
-    category: "inf"
-  },
   {
     id: "logs",
     icon: "Terminal",
@@ -759,12 +680,5 @@ export function generateSeedLogs(): LogEntry[] {
     message: s.message
   }));
 }
-
-// ═══ DEFAULT LAYOUT ══════════════════════════════════════════════════
-export const DEFAULT_LAYOUT: LayoutItem[] = [
-  { uid: "w1", tmpl: "needs_attention", x: 0, y: 0, w: 6, h: 2 },
-  { uid: "w2", tmpl: "mi", x: 6, y: 0, w: 6, h: 2 },
-  { uid: "w3", tmpl: "logs", x: 0, y: 2, w: 12, h: 2 }
-];
 
 export const PAGE_SIZE = 3;

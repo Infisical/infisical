@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { GripVertical, Plus, Search, Sparkles, X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import type { ObservabilityWidgetListItem } from "@app/hooks/api/observabilityWidgets";
+
 import type { PanelItem } from "../mock-data";
 import { PANEL_ITEMS } from "../mock-data";
 import { CreateTemplateForm } from "./CreateTemplateForm";
@@ -15,18 +17,19 @@ function DraggablePanelCard({
   onDragEnd
 }: {
   item: PanelItem;
-  onAdd: (id: string) => void;
+  onAdd: (id: string, widgetId?: string) => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const tmplKey = item.tmpl ?? item.id;
 
   const handleDragStart = (e: React.DragEvent) => {
     setIsDragging(true);
     onDragStart?.();
     e.dataTransfer.setData(
       "application/json",
-      JSON.stringify({ type: "panel-item", tmpl: item.id })
+      JSON.stringify({ type: "panel-item", tmpl: tmplKey, widgetId: item.widgetId })
     );
     e.dataTransfer.effectAllowed = "copy";
   };
@@ -77,7 +80,7 @@ function DraggablePanelCard({
 
       <button
         type="button"
-        onClick={() => onAdd(item.id)}
+        onClick={() => onAdd(tmplKey, item.widgetId)}
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-mineshaft-600 text-mineshaft-400 opacity-0 transition-all hover:border-primary hover:bg-primary/10 hover:text-primary group-hover/card:opacity-100"
         title="Click to add"
       >
@@ -96,26 +99,46 @@ export function AddWidgetPanel({
   onCreateTemplate,
   editing,
   onExternalDragStart,
-  onExternalDragEnd
+  onExternalDragEnd,
+  backendWidgets = []
 }: {
   open: boolean;
   onClose: () => void;
-  onAdd: (tmpl: string) => void;
+  onAdd: (tmpl: string, widgetId?: string) => void;
   isDragging?: boolean;
   customPanelItems?: PanelItem[];
   onCreateTemplate?: (result: CreateTemplateResult) => void;
   editing?: EditingWidget;
   onExternalDragStart?: () => void;
   onExternalDragEnd?: () => void;
+  backendWidgets?: ObservabilityWidgetListItem[];
 }) {
   const [search, setSearch] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const isEditMode = !!editing;
 
+  const backendPanelItems: PanelItem[] = useMemo(
+    () =>
+      backendWidgets
+        .filter((w) => w.type === "events")
+        .map((w) => ({
+          id: w.id,
+          tmpl: "_backend_events",
+          icon: w.icon ?? "Activity",
+          bg: w.color ?? "#1c2a3a",
+          name: w.name,
+          desc: w.description ?? "",
+          badge: "Infisical",
+          category: "inf" as const,
+          widgetId: w.id
+        })),
+    [backendWidgets]
+  );
+
   const allItems = useMemo(
-    () => [...PANEL_ITEMS, ...customPanelItems],
-    [customPanelItems]
+    () => [...PANEL_ITEMS, ...backendPanelItems, ...customPanelItems],
+    [backendPanelItems, customPanelItems]
   );
 
   const filtered = useMemo(() => {

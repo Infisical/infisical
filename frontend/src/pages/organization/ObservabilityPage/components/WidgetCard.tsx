@@ -50,6 +50,7 @@ export function WidgetCard({ item, templates, onRemove, onEdit, onToggleLock }: 
             onEdit={onEdit && template.filter ? () => onEdit(item.uid, item.tmpl) : undefined}
             isLocked={isLocked}
             onToggleLock={() => onToggleLock?.(item.uid)}
+            widgetId={item.widgetId}
           />
         )}
       </div>

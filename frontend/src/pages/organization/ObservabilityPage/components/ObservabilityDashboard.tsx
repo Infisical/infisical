@@ -1,11 +1,14 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Layout, LayoutItem as RGLLayoutItem } from "react-grid-layout";
 import { GridLayout, useContainerWidth } from "react-grid-layout";
 import { GridBackground } from "react-grid-layout/extras";
 import { Plus, RotateCw } from "lucide-react";
 
+import { useOrganization } from "@app/context";
+import { useListWidgets } from "@app/hooks/api/observabilityWidgets";
+
 import type { LayoutItem, PanelItem, SubView, WidgetTemplate } from "../mock-data";
-import { DEFAULT_LAYOUT, TEMPLATES } from "../mock-data";
+import { TEMPLATES } from "../mock-data";
 import { AddWidgetPanel } from "./AddWidgetPanel";
 import type { CreateTemplateResult, EditingWidget } from "./CreateTemplateForm";
 import { SidebarNav } from "./SidebarNav";
@@ -79,17 +82,38 @@ const GRID_MARGIN: [number, number] = [16, 16];
 
 export function ObservabilityDashboard() {
   const { width, containerRef, mounted } = useContainerWidth();
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id ?? "";
+  const { data: backendWidgets = [] } = useListWidgets(orgId);
 
   const [activeView, setActiveView] = useState("org");
   const [subViews, setSubViews] = useState<SubView[]>([]);
   const [layouts, setLayouts] = useState<Record<string, LayoutItem[]>>({
-    org: [...DEFAULT_LAYOUT],
+    org: [],
     private: []
   });
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [isExternalDragging, setIsExternalDragging] = useState(false);
   const uidCounter = useRef(100);
+
+  useEffect(() => {
+    if (backendWidgets.length === 0) return;
+    setLayouts((prev) => {
+      if (prev.org.length > 0) return prev;
+      const eventWidgets = backendWidgets.filter((w) => w.type === "events");
+      const seeded: LayoutItem[] = eventWidgets.map((w, i) => ({
+        uid: `backend-${w.id}`,
+        tmpl: "_backend_events",
+        widgetId: w.id,
+        x: (i % 2) * 6,
+        y: Math.floor(i / 2) * 2,
+        w: 6,
+        h: 2
+      }));
+      return { ...prev, org: seeded };
+    });
+  }, [backendWidgets]);
 
   const [customTemplates, setCustomTemplates] = useState<Record<string, WidgetTemplate>>({});
   const [customPanelItems, setCustomPanelItems] = useState<PanelItem[]>([]);
@@ -181,7 +205,7 @@ export function ObservabilityDashboard() {
   );
 
   const addWidget = useCallback(
-    (tmpl: string) => {
+    (tmpl: string, widgetId?: string) => {
       uidCounter.current += 1;
       const uid = `w${uidCounter.current}`;
       const t = allTemplates[tmpl];
@@ -191,6 +215,7 @@ export function ObservabilityDashboard() {
         {
           uid,
           tmpl,
+          widgetId,
           x: 0,
           y: maxY,
           w: t?.isLogs ? 12 : 6,
@@ -250,6 +275,7 @@ export function ObservabilityDashboard() {
         const data = JSON.parse(dragEvent.dataTransfer.getData("application/json")) as {
           type: string;
           tmpl: string;
+          widgetId?: string;
         };
         if (data.type === "panel-item" && data.tmpl) {
           uidCounter.current += 1;
@@ -284,6 +310,7 @@ export function ObservabilityDashboard() {
             {
               uid,
               tmpl: data.tmpl,
+              widgetId: data.widgetId,
               x: droppedItemPosition.x,
               y: droppedItemPosition.y,
               w: t?.isLogs ? 12 : 6,
@@ -502,6 +529,7 @@ export function ObservabilityDashboard() {
           editing={editingWidget}
           onExternalDragStart={handleExternalDragStart}
           onExternalDragEnd={handleExternalDragEnd}
+          backendWidgets={backendWidgets}
         />
       </div>
     </>
