@@ -122,7 +122,8 @@ export function TableWidget({
           const ss = String(d.getSeconds()).padStart(2, "0");
           return `${mm}-${dd}-${yy} ${hh}:${min}:${ss}`;
         })(),
-        resource: item.resourceType
+        resource: item.resourceType,
+        resourceLink: item.resourceLink
       }));
     }
     if (template.filter) return queryRows(template.filter);
@@ -325,7 +326,7 @@ export function TableWidget({
                     </td>
                     <td className="px-3.5 py-2 text-center">
                       <a
-                        href="#"
+                        href={row.resourceLink ?? "#"}
                         className="inline-flex items-center justify-center text-mineshaft-300 transition-colors hover:text-primary"
                         aria-label="View details"
                       >

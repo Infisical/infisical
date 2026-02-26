@@ -6,6 +6,7 @@ export interface DataRow {
   scope: string;
   date: string;
   resource?: string;
+  resourceLink?: string;
 }
 
 export interface StatItem {
