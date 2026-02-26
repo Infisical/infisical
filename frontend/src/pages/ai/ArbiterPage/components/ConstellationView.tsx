@@ -83,9 +83,12 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
             y: { duration: 6, repeat: Infinity, ease: "easeInOut" },
             x: { duration: 8, repeat: Infinity, ease: "easeInOut" }
           }}
-          className="relative flex h-32 w-32 animate-pulse items-center justify-center"
+          className="relative flex h-32 w-32 items-center justify-center"
         >
-          <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full overflow-visible">
+          <svg
+            viewBox="0 0 100 100"
+            className="absolute inset-0 h-full w-full animate-pulse overflow-visible"
+          >
             <motion.path
               key={currentEvent ? currentEvent.id : "idle"}
               d="M50 0 L93.3 25 V75 L50 100 L6.7 75 V25 Z"
@@ -99,7 +102,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
             <path d="M50 10 L85 30 V70 L50 90 L15 70 V30 Z" fill={statusColor.fill} stroke="none" />
           </svg>
 
-          <ScaleIcon className={`relative z-10 h-8 w-8 ${statusColor.text}`} />
+          <ScaleIcon className={`relative z-10 h-8 w-8 animate-pulse ${statusColor.text}`} />
 
           {/* Network Arbiter Label */}
           <div className="absolute -top-14 mt-4 translate-y-full font-mono text-[10px] tracking-widest text-muted uppercase">
@@ -113,7 +116,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="absolute top-full mt-4 w-64 text-center"
+                className="absolute top-full mt-4 w-64 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1.5 text-center"
               >
                 <div
                   className={`mb-1 font-mono text-xs ${
@@ -122,8 +125,12 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 >
                   [{currentEvent.status.toUpperCase()}]
                 </div>
-                <div className="text-[10px] leading-tight text-accent">
-                  {currentEvent.reasoning}
+                <div
+                  className={`text-[10px] leading-tight italic ${
+                    currentEvent.status === "approved" ? "text-accent" : "text-danger"
+                  }`}
+                >
+                  &quot;{currentEvent.reasoning}&quot;
                 </div>
               </motion.div>
             )}
@@ -199,10 +206,10 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full mt-2 w-44 text-center"
+                      className="absolute top-full mt-2 w-44 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1 text-center"
                     >
-                      <div className="text-[10px] leading-tight text-accent">
-                        {currentEvent.agentReasoning}
+                      <div className="text-[10px] leading-tight text-muted italic">
+                        &quot;{currentEvent.agentReasoning}&quot;
                       </div>
                     </motion.div>
                   )}
