@@ -53,7 +53,7 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
                 className={`rounded border border-l-[4px] p-3 ${
                   event.status === "approved"
                     ? "border-border border-l-success bg-container"
-                    : "border-danger/20 border-l-danger bg-danger/5"
+                    : "border-border border-l-danger bg-container"
                 }`}
               >
                 {/* Status + Timestamp */}
@@ -75,9 +75,11 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
 
                 {/* Agent → Action */}
                 <div className="mb-1 text-sm font-medium">
-                  <span className="text-info capitalize">{event.agentId}</span>
+                  <span className="text-foreground capitalize">
+                    {event.agentId.replace("_", " ")}
+                  </span>
                   <span className="mx-1 text-muted">→</span>
-                  <span className="text-foreground">{event.action}</span>
+                  <span className="text-info">{event.action}</span>
                 </div>
 
                 {/* Details */}

@@ -14,7 +14,7 @@ const AGENT_POSITIONS = [
   { x: -200, y: -150 },
   { x: 250, y: -80 },
   { x: -220, y: 120 },
-  { x: 180, y: 180 }
+  { x: 120, y: 200 }
 ];
 
 const getIcon = (name: string) => {
@@ -99,7 +99,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
           <ScaleIcon className={`relative z-10 h-8 w-8 ${statusColor.text}`} />
 
           {/* Network Arbiter Label */}
-          <div className="absolute -bottom-2 mt-4 translate-y-full font-mono text-[10px] tracking-widest text-muted uppercase">
+          <div className="absolute -top-14 mt-4 translate-y-full font-mono text-[10px] tracking-widest text-muted uppercase">
             Network Arbiter
           </div>
 
@@ -159,19 +159,23 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   y: { duration: 5 + index * 0.8, repeat: Infinity, ease: "easeInOut" },
                   x: { duration: 7 + index, repeat: Infinity, ease: "easeInOut" }
                 }}
-                className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
-                  isActive
-                    ? currentEvent?.status === "approved"
-                      ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
-                      : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
-                    : "border-border bg-bunker-800"
-                }`}
+                className="flex flex-col items-center"
               >
-                <div className="text-accent">{getIcon(agent.icon)}</div>
+                <div
+                  className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
+                    isActive
+                      ? currentEvent?.status === "approved"
+                        ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
+                        : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
+                      : "border-border bg-bunker-800"
+                  }`}
+                >
+                  <div className="text-accent">{getIcon(agent.icon)}</div>
+                </div>
+                <div className="mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
+                  {agent.name}
+                </div>
               </motion.div>
-              <div className="absolute top-full mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
-                {agent.name}
-              </div>
 
               {/* Connection Line to Center */}
               <svg className="absolute -z-10 overflow-visible" style={{ left: 48, top: 48 }}>
