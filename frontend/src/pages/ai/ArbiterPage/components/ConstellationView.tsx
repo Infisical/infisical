@@ -161,16 +161,18 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 }}
                 className="flex flex-col items-center"
               >
-                <div
-                  className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
-                    isActive
-                      ? currentEvent?.status === "approved"
-                        ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
-                        : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
-                      : "border-border bg-bunker-800"
-                  }`}
-                >
-                  <div className="text-accent">{getIcon(agent.icon)}</div>
+                <div className="rounded-full bg-bunker-800">
+                  <div
+                    className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
+                      isActive
+                        ? currentEvent?.status === "approved"
+                          ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
+                          : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
+                        : "border-border"
+                    }`}
+                  >
+                    <div className="text-accent">{getIcon(agent.icon)}</div>
+                  </div>
                 </div>
                 <div className="mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
                   {agent.name}
