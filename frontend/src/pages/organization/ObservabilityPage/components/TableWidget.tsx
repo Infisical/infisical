@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
+  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
   GripVertical,
@@ -349,7 +350,7 @@ export function TableWidget({
                         className="inline-flex items-center justify-center text-mineshaft-300 transition-colors hover:text-primary"
                         aria-label="View details"
                       >
-                        <ChevronRight size={14} />
+                        <ArrowUpRight size={13} />
                       </a>
                     </td>
                   </tr>
