@@ -3,9 +3,8 @@ import { GripVertical, Lock, LockOpen, Pause, Play } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
+import { useGetWidgetLiveLogs } from "@app/hooks/api/observabilityWidgets";
 
-import type { LogEntry } from "../mock-data";
-import { generateLogEntry, generateSeedLogs } from "../mock-data";
 import { WidgetIcon } from "./WidgetIcon";
 
 const LEVEL_COLOR: Record<string, string> = {
@@ -14,25 +13,44 @@ const LEVEL_COLOR: Record<string, string> = {
   info: "#58a6ff"
 };
 
+interface LogEntry {
+  ts: Date;
+  level: "error" | "warn" | "info";
+  resource: string;
+  actor: string;
+  message: string;
+}
+
 export function LogsWidget({
   isLocked = false,
-  onToggleLock
+  onToggleLock,
+  widgetId
 }: {
   isLocked?: boolean;
   onToggleLock?: () => void;
+  widgetId?: string;
 }) {
-  const [mounted, setMounted] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [paused, setPaused] = useState(false);
   const [activeLevels, setActiveLevels] = useState(new Set(["error", "warn", "info"]));
   const [textFilter, setTextFilter] = useState("");
-  const [autoScroll] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(true);
   const streamRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setLogs(generateSeedLogs());
-    setMounted(true);
-  }, []);
+  const { data: liveLogsData, isLoading } = useGetWidgetLiveLogs(
+    paused ? undefined : widgetId,
+    { limit: 300 }
+  );
+
+  const logs: LogEntry[] = useMemo(() => {
+    if (!liveLogsData) return [];
+    return liveLogsData.items.map((item) => ({
+      ts: new Date(item.timestamp),
+      level: item.level,
+      resource: item.resourceType,
+      actor: item.actor,
+      message: item.message
+    }));
+  }, [liveLogsData]);
 
   const counters = useMemo(
     () => ({
@@ -42,15 +60,6 @@ export function LogsWidget({
     }),
     [logs]
   );
-
-  useEffect(() => {
-    if (paused || !mounted) return undefined;
-    const interval = setInterval(() => {
-      const entry = generateLogEntry();
-      setLogs((prev) => [entry, ...prev].slice(0, 200));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [paused, mounted]);
 
   useEffect(() => {
     if (autoScroll && streamRef.current) {
@@ -94,7 +103,9 @@ export function LogsWidget({
             <div className="flex h-[22px] w-[22px] items-center justify-center rounded-[5px] bg-[#1c2a3a]">
               <WidgetIcon name="Terminal" size={12} className="text-primary" />
             </div>
-            <span className="text-[13px] font-medium text-bunker-100">Live Logs</span>
+            <span className="text-[13px] font-medium text-bunker-100">
+              {liveLogsData?.widget.name ?? "Live Logs"}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             {/* Level toggles */}
@@ -176,9 +187,9 @@ export function LogsWidget({
           />
           Auto-scroll
         </label>
-        <span className="text-[11px] text-mineshaft-300">
-          Scope: org - Admin Org
-        </span>
+        {liveLogsData && (
+          <span className="text-[11px] text-mineshaft-300">{liveLogsData.infoText}</span>
+        )}
       </div>
 
       {/* Log stream */}
@@ -186,7 +197,11 @@ export function LogsWidget({
         ref={streamRef}
         className="flex-1 overflow-y-auto border-t border-mineshaft-600 bg-[#0a0e14] font-mono text-[12px] leading-relaxed"
       >
-        {!mounted ? (
+        {!widgetId ? (
+          <div className="flex h-full items-center justify-center text-[11px] text-mineshaft-300">
+            No widget connected
+          </div>
+        ) : isLoading && !liveLogsData ? (
           <div className="flex h-full items-center justify-center text-[11px] text-mineshaft-300">
             Loading logs...
           </div>
@@ -231,7 +246,6 @@ export function LogsWidget({
 
       {/* Footer with lock button */}
       <div className="flex items-center justify-end gap-2 border-t border-mineshaft-600 bg-bunker-800 py-1.5 pl-3.5 pr-10">
-        {/* Lock button */}
         <Tooltip content={isLocked ? "Unlock widget" : "Lock widget"}>
           <button
             type="button"

@@ -43,6 +43,7 @@ export function WidgetCard({ item, templates, onRemove, onEdit, onToggleLock }: 
           <LogsWidget
             isLocked={isLocked}
             onToggleLock={() => onToggleLock?.(item.uid)}
+            widgetId={item.widgetId}
           />
         ) : (
           <TableWidget
