@@ -47,7 +47,7 @@ export function WidgetCard({ item, templates, onRemove, onEdit, onToggleLock }: 
         ) : (
           <TableWidget
             template={template}
-            onEdit={onEdit && template.filter ? () => onEdit(item.uid, item.tmpl) : undefined}
+            onEdit={onEdit ? () => onEdit(item.uid, item.tmpl) : undefined}
             isLocked={isLocked}
             onToggleLock={() => onToggleLock?.(item.uid)}
             widgetId={item.widgetId}
