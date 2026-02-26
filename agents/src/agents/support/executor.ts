@@ -20,6 +20,11 @@ import {
   LLMDecision,
 } from "../../shared/llm-client.js";
 import { sendTicketResolutionEmail } from "../../shared/email-service.js";
+import {
+  sessionMemory,
+  shouldAbortSession,
+  type CycleDetectionResult,
+} from "../../shared/session-memory.js";
 
 interface SupportTaskContext {
   ticket: CustomerTicket;
@@ -123,6 +128,48 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
 
     const context = this.extractContext(userMessage);
 
+    // Initialize or retrieve session memory
+    const sessionId =
+      context.governanceContext.sessionId || `session-${Date.now()}`;
+    const session = sessionMemory.getOrCreate(
+      sessionId,
+      context.ticket.ticketId,
+    );
+
+    this.log("Extracted context", {
+      sessionId,
+      ticketId: context.ticket.ticketId,
+      sessionStatus: session.status,
+      flaggedForHumanReview: context.flaggedForHumanReview,
+    });
+
+    // Check session memory for terminal states FIRST
+    const abortCheck = shouldAbortSession(sessionId);
+    if (abortCheck.abort) {
+      this.log("🛑 Session memory indicates task should not continue", {
+        reason: abortCheck.reason,
+        sessionStatus: session.status,
+      });
+
+      this.publishMessage(
+        eventBus,
+        JSON.stringify({
+          action: "ticket_pending_human_review",
+          ticketId: context.ticket.ticketId,
+          resolution: {
+            status: session.status,
+            reason: abortCheck.reason,
+            actionsPerformed: session.actions.map(
+              (a) => `${a.action}:${a.result}`,
+            ),
+          },
+          llmSummary: abortCheck.reason,
+        }),
+      );
+
+      return;
+    }
+
     this.log("Received ticket from Triage", {
       ticketId: context.ticket.ticketId,
       classification: context.classification.category,
@@ -130,6 +177,12 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
 
     // If ticket was flagged for human review, complete immediately with appropriate message
     if (context.flaggedForHumanReview) {
+      // Update session memory
+      sessionMemory.updateStatus(
+        sessionId,
+        "pending_human_review",
+        context.humanReviewReason,
+      );
       this.log("🛑 Ticket flagged for human review - completing task", {
         reason: context.humanReviewReason,
       });
@@ -153,29 +206,15 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
         }),
       );
 
-      // Send notification email about pending review
-      try {
-        await sendTicketResolutionEmail({
-          ticketId: context.ticket.ticketId,
-          orderId: context.ticket.orderId,
-          customerName: context.ticket.customerName,
-          customerEmail: context.ticket.customerEmail,
-          issueDescription: context.ticket.issueDescription,
-          resolution: {
-            summary: `Your request is being reviewed by a manager. ${context.humanReviewReason || "The requested action requires additional approval."}. You will receive an update once the review is complete.`,
-            actionsPerformed: [
-              "Escalation requested",
-              "Flagged for human review",
-            ],
-          },
-        });
-        this.log("📧 Human review notification email sent");
-      } catch (emailError) {
-        this.log("⚠️ Failed to send human review notification email", {
-          error:
-            emailError instanceof Error ? emailError.message : "Unknown error",
-        });
-      }
+      // Send notification email about pending review (governed)
+      await this.sendGovernedEmail(
+        eventBus,
+        taskId,
+        contextId,
+        context,
+        `Your request is being reviewed by a manager. ${context.humanReviewReason || "The requested action requires additional approval."}. You will receive an update once the review is complete.`,
+        "pending_review",
+      );
 
       return;
     }
@@ -217,44 +256,61 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
             }),
           );
 
-          // Send resolution email notification
-          try {
-            await sendTicketResolutionEmail({
-              ticketId: context.ticket.ticketId,
-              orderId: context.ticket.orderId,
-              customerName: context.ticket.customerName,
-              customerEmail: context.ticket.customerEmail,
-              issueDescription: context.ticket.issueDescription,
-              resolution: {
-                summary:
-                  decision.finalResponse || "Your issue has been resolved.",
-                totalRefundIssued: context.totalRefundIssued || undefined,
-                reshipmentCreated: !!context.fulfillmentTrackingNumber,
-                trackingNumber: context.fulfillmentTrackingNumber,
-                actionsPerformed: context.actionsPerformed,
-              },
-            });
-            this.log("📧 Resolution email sent successfully");
-          } catch (emailError) {
-            this.log("⚠️ Failed to send resolution email", {
-              error:
-                emailError instanceof Error
-                  ? emailError.message
-                  : "Unknown error",
-            });
-          }
+          // Send resolution email notification (governed)
+          await this.sendGovernedEmail(
+            eventBus,
+            taskId,
+            contextId,
+            context,
+            decision.finalResponse || "Your issue has been resolved.",
+            "resolution",
+          );
 
           break;
         }
 
         if (decision.action === "call_skill" && decision.skillCall) {
-          await this.executeSkillFromLLM(
+          const skillResult = await this.executeSkillFromLLM(
             eventBus,
             taskId,
             contextId,
             context,
             decision.skillCall,
           );
+
+          // Check if cycle detection triggered a break
+          if (skillResult.shouldBreak) {
+            this.log(
+              "🛑 Cycle detected in skill execution - completing as pending human review",
+              {
+                reason: context.humanReviewReason,
+              },
+            );
+
+            this.publishMessage(
+              eventBus,
+              JSON.stringify({
+                action: "ticket_pending_human_review",
+                ticketId: context.ticket.ticketId,
+                orderId: context.ticket.orderId,
+                reason: context.humanReviewReason,
+                actionsPerformed: context.actionsPerformed,
+              }),
+            );
+
+            // Send cycle detected email (governed)
+            await this.sendGovernedEmail(
+              eventBus,
+              taskId,
+              contextId,
+              context,
+              `Your request is pending manager review. Reason: ${context.humanReviewReason}. We will contact you once a decision is made.`,
+              "cycle_detected",
+            );
+
+            break;
+          }
+
           continue;
         }
 
@@ -287,27 +343,15 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
               }),
             );
 
-            try {
-              await sendTicketResolutionEmail({
-                ticketId: context.ticket.ticketId,
-                orderId: context.ticket.orderId,
-                customerName: context.ticket.customerName,
-                customerEmail: context.ticket.customerEmail,
-                issueDescription: context.ticket.issueDescription,
-                resolution: {
-                  summary: `Your request is pending manager review. Reason: ${context.humanReviewReason}. We will contact you once a decision is made.`,
-                  actionsPerformed: context.actionsPerformed,
-                },
-              });
-              this.log("📧 Human review notification email sent");
-            } catch (emailError) {
-              this.log("⚠️ Failed to send human review email", {
-                error:
-                  emailError instanceof Error
-                    ? emailError.message
-                    : "Unknown error",
-              });
-            }
+            // Send human review notification email (governed)
+            await this.sendGovernedEmail(
+              eventBus,
+              taskId,
+              contextId,
+              context,
+              `Your request is pending manager review. Reason: ${context.humanReviewReason}. We will contact you once a decision is made.`,
+              "pending_review",
+            );
 
             break;
           }
@@ -366,30 +410,15 @@ Please try again with the correct format.`,
         }),
       );
 
-      // Send resolution email even when max iterations reached
-      try {
-        await sendTicketResolutionEmail({
-          ticketId: context.ticket.ticketId,
-          orderId: context.ticket.orderId,
-          customerName: context.ticket.customerName,
-          customerEmail: context.ticket.customerEmail,
-          issueDescription: context.ticket.issueDescription,
-          resolution: {
-            summary:
-              "Your support ticket has been processed. Our team has taken the actions listed below to resolve your issue.",
-            totalRefundIssued: context.totalRefundIssued || undefined,
-            reshipmentCreated: !!context.fulfillmentTrackingNumber,
-            trackingNumber: context.fulfillmentTrackingNumber,
-            actionsPerformed: context.actionsPerformed,
-          },
-        });
-        this.log("📧 Resolution email sent successfully");
-      } catch (emailError) {
-        this.log("⚠️ Failed to send resolution email", {
-          error:
-            emailError instanceof Error ? emailError.message : "Unknown error",
-        });
-      }
+      // Send resolution email (governed)
+      await this.sendGovernedEmail(
+        eventBus,
+        taskId,
+        contextId,
+        context,
+        "Your support ticket has been processed. Our team has taken the actions listed below to resolve your issue.",
+        "max_iterations",
+      );
     }
   }
 
@@ -433,10 +462,58 @@ Please try again with the correct format.`,
       parameters: Record<string, unknown>;
       reasoning: string;
     },
-  ): Promise<void> {
+  ): Promise<{ shouldBreak: boolean }> {
     const { skillId, parameters, reasoning } = skillCall;
+    const sessionId =
+      context.governanceContext.sessionId || `session-${Date.now()}`;
 
     this.log(`SKILL: ${skillId}`, { parameters, reasoning });
+
+    // Check session memory for cycles BEFORE attempting action
+    const cycleCheck = sessionMemory.detectCycle(
+      sessionId,
+      this.agentId,
+      skillId,
+    );
+    if (cycleCheck.hasCycle) {
+      this.log("🔄 Cycle detected - preventing repeat action", {
+        cycleType: cycleCheck.cycleType,
+        details: cycleCheck.details,
+        recommendation: cycleCheck.recommendation,
+      });
+
+      context.llmHistory.push({
+        role: "assistant",
+        content: JSON.stringify({ action: "call_skill", skillCall, reasoning }),
+      });
+      context.llmHistory.push({
+        role: "user",
+        content: `CYCLE DETECTED: ${cycleCheck.details}. You have already attempted this action multiple times. Recommendation: ${cycleCheck.recommendation}. ${
+          cycleCheck.recommendation === "complete_pending"
+            ? "Please complete the task as pending human review."
+            : cycleCheck.recommendation === "abort"
+              ? "Please complete the task with what has been accomplished."
+              : "Please try a different approach or escalate."
+        }`,
+      });
+
+      // If recommendation is to complete pending, mark session and signal break
+      if (
+        cycleCheck.recommendation === "complete_pending" ||
+        cycleCheck.recommendation === "abort"
+      ) {
+        sessionMemory.updateStatus(
+          sessionId,
+          "pending_human_review",
+          cycleCheck.details,
+        );
+        context.flaggedForHumanReview = true;
+        context.humanReviewReason = cycleCheck.details;
+        return { shouldBreak: true };
+      }
+
+      return { shouldBreak: false };
+    }
 
     const executor = this.getSkillExecutor(skillId, context, parameters);
 
@@ -452,6 +529,16 @@ Please try again with the correct format.`,
     );
 
     if (result.allowed) {
+      // Record successful action in session memory
+      sessionMemory.recordAction(
+        sessionId,
+        this.agentId,
+        skillId,
+        "success",
+        parameters,
+        JSON.stringify(result.result).substring(0, 200),
+      );
+
       context.actionsPerformed.push(`✅ ${skillId}: ${reasoning}`);
       context.llmHistory.push({
         role: "assistant",
@@ -464,6 +551,16 @@ Please try again with the correct format.`,
 
       this.updateContextFromSkillResult(context, skillId, result.result);
     } else {
+      // Record denied action in session memory
+      sessionMemory.recordAction(
+        sessionId,
+        this.agentId,
+        skillId,
+        "denied",
+        parameters,
+        result.governance.reasoning,
+      );
+
       context.actionsPerformed.push(
         `❌ ${skillId}: DENIED - ${result.governance.reasoning}`,
       );
@@ -489,6 +586,8 @@ Please try again with the correct format.`,
         content: guidance,
       });
     }
+
+    return { shouldBreak: false };
   }
 
   private async executeAgentMessageFromLLM(
@@ -504,8 +603,57 @@ Please try again with the correct format.`,
     },
   ): Promise<void> {
     const { targetAgent, messageType, content, reasoning } = agentMessage;
+    const sessionId =
+      context.governanceContext.sessionId || `session-${Date.now()}`;
 
     this.log(`COMM: ${targetAgent}`, { messageType, reasoning });
+
+    // Check for escalation cycles before sending
+    if (targetAgent === "escalation_agent") {
+      const cycleCheck = sessionMemory.detectCycle(
+        sessionId,
+        this.agentId,
+        `escalate_to_${targetAgent}`,
+      );
+      if (cycleCheck.hasCycle) {
+        this.log("🔄 Escalation cycle detected", {
+          cycleType: cycleCheck.cycleType,
+          details: cycleCheck.details,
+        });
+
+        context.llmHistory.push({
+          role: "assistant",
+          content: JSON.stringify({
+            action: "message_agent",
+            agentMessage,
+            reasoning,
+          }),
+        });
+        context.llmHistory.push({
+          role: "user",
+          content: `ESCALATION CYCLE DETECTED: ${cycleCheck.details}. You have already escalated this issue. The escalation has been flagged for human review. Please complete the task as pending human review - do not attempt further escalations.`,
+        });
+
+        // Mark session as pending human review
+        sessionMemory.updateStatus(
+          sessionId,
+          "pending_human_review",
+          cycleCheck.details,
+        );
+        context.flaggedForHumanReview = true;
+        context.humanReviewReason = cycleCheck.details;
+        return;
+      }
+
+      // Record escalation attempt
+      sessionMemory.recordEscalation(
+        sessionId,
+        this.agentId,
+        targetAgent,
+        reasoning,
+        (content.requestedRefund as number) || (content.amount as number),
+      );
+    }
 
     const commResult = await this.governedAgentMessage(
       eventBus,
@@ -529,6 +677,25 @@ Please try again with the correct format.`,
       );
 
       const responseData = this.extractAgentResponse(commResult.result);
+
+      // Update escalation result in session memory
+      if (targetAgent === "escalation_agent") {
+        const escalations = sessionMemory.getEscalationHistory(sessionId);
+        const lastEscalation = escalations[escalations.length - 1];
+        if (lastEscalation) {
+          const escalationResult = responseData.flaggedForHuman
+            ? "flagged_for_human"
+            : responseData.action === "escalation_approved"
+              ? "approved"
+              : "pending";
+          sessionMemory.updateEscalation(
+            sessionId,
+            lastEscalation.id,
+            escalationResult,
+            responseData.approvedAmount as number,
+          );
+        }
+      }
 
       context.llmHistory.push({
         role: "assistant",
@@ -640,11 +807,34 @@ Please try again with the correct format.`,
       case "send_customer_email":
         return async () => {
           await this.simulateDelay(300);
+          
+          // If this is a resolution/notification email, use the email service
+          if (parameters.emailType) {
+            const emailData = {
+              ticketId: context.ticket.ticketId,
+              orderId: context.ticket.orderId,
+              customerName: context.ticket.customerName,
+              customerEmail: context.ticket.customerEmail,
+              issueDescription: context.ticket.issueDescription,
+              resolution: {
+                summary: (parameters.body as string) || (parameters.summary as string) || "Your issue has been processed.",
+                totalRefundIssued: context.totalRefundIssued || undefined,
+                reshipmentCreated: !!context.fulfillmentTrackingNumber,
+                trackingNumber: context.fulfillmentTrackingNumber,
+                actionsPerformed: context.actionsPerformed,
+              },
+            };
+
+            await sendTicketResolutionEmail(emailData);
+          }
+          
           return {
             messageId: `MSG-${Date.now()}`,
-            to: context.ticket.customerEmail,
+            to: (parameters.to as string) || context.ticket.customerEmail,
+            subject: parameters.subject as string,
             sentAt: new Date().toISOString(),
             status: "sent",
+            emailType: parameters.emailType,
           };
         };
 
@@ -686,6 +876,57 @@ Please try again with the correct format.`,
 
     if (skillId === "lookup_order_history" && res && !res.error) {
       context.order = res as unknown as OrderInfo;
+    }
+  }
+
+  /**
+   * Sends an email to the customer through governance.
+   * This ensures the email is subject to policy checks before being sent.
+   */
+  private async sendGovernedEmail(
+    eventBus: ExecutionEventBus,
+    taskId: string,
+    contextId: string,
+    context: SupportTaskContext,
+    body: string,
+    emailType: "resolution" | "pending_review" | "max_iterations" | "cycle_detected",
+  ): Promise<{ sent: boolean; reason?: string }> {
+    const skillId = "send_customer_email";
+    const parameters = { 
+      to: context.ticket.customerEmail,
+      subject: `Update on your support ticket ${context.ticket.ticketId}`,
+      body,
+      emailType,
+    };
+    const reasoning = `Sending ${emailType} email to customer`;
+
+    this.log(`📧 Attempting governed email: ${emailType}`);
+
+    const executor = this.getSkillExecutor(skillId, context, parameters);
+
+    const result = await this.governedSkillExecution(
+      eventBus,
+      taskId,
+      contextId,
+      skillId,
+      parameters,
+      this.getGovernanceContext(context, skillId, parameters),
+      executor,
+      reasoning,
+    );
+
+    if (result.allowed) {
+      context.actionsPerformed.push(`✅ ${skillId}: ${reasoning}`);
+      this.log("📧 Email sent successfully (governed)");
+      return { sent: true };
+    } else {
+      context.actionsPerformed.push(
+        `❌ ${skillId}: DENIED - ${result.governance.reasoning}`,
+      );
+      this.log("📧 Email BLOCKED by governance", {
+        reason: result.governance.reasoning,
+      });
+      return { sent: false, reason: result.governance.reasoning };
     }
   }
 

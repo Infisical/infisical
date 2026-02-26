@@ -32,9 +32,16 @@ function formatActionsPerformed(actions: string[]): string {
 }
 
 export async function sendTicketResolutionEmail(
-  data: TicketResolutionEmailData
+  data: TicketResolutionEmailData,
 ): Promise<void> {
-  const { ticketId, orderId, customerName, customerEmail, issueDescription, resolution } = data;
+  const {
+    ticketId,
+    orderId,
+    customerName,
+    customerEmail,
+    issueDescription,
+    resolution,
+  } = data;
 
   const refundSection = resolution.totalRefundIssued
     ? `<tr>
@@ -187,7 +194,9 @@ export async function sendTicketResolutionEmail(
     html,
   });
 
-  console.log(`[Email] Sent resolution email for ticket ${ticketId} to ${customerEmail} (messageId: ${info.messageId})`);
+  console.log(
+    `[Email] Sent resolution email for ticket ${ticketId} to ${customerEmail} (messageId: ${info.messageId})`,
+  );
 }
 
 export async function verifySmtpConnection(): Promise<boolean> {

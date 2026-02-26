@@ -6,6 +6,7 @@ import { ActionContext } from "../../governance/index.js";
 import { TicketClassification, CustomerTicket } from "../../shared/types.js";
 import { TRIAGE_SKILLS } from "../../shared/skills.js";
 import { getNextAction, LLMDecision } from "../../shared/llm-client.js";
+import { sessionMemory } from "../../shared/session-memory.js";
 
 interface TriageTaskContext {
   ticket: CustomerTicket;
@@ -120,6 +121,10 @@ export class TriageAgentExecutor extends BaseAgentExecutor {
       actionsPerformed: [],
       llmHistory: [],
     };
+
+    // Initialize session memory for this new ticket
+    const sessionId = ticketData.sessionId || `session-${Date.now()}`;
+    sessionMemory.getOrCreate(sessionId, ticketData.ticketId);
 
     this.log("Processing ticket", {
       sessionId: ticketData.sessionId,

@@ -649,7 +649,7 @@ const MOCK_AGENT_POLICIES: Record<
         {
           id: "refund_context_check",
           prompt:
-            "Allow refunds up to $50. Over $50: allow if waited 7+ days OR wrong-item with Gold/Platinum. Otherwise deny.",
+            "REFUND POLICY: Allow if amount <= $50. For amounts > $50, ALLOW if ANY of these conditions are met: (1) daysSinceTicketCreated >= 7 days, OR (2) customerLoyaltyStatus is 'gold' or 'platinum'. Check the context fields carefully. If daysSinceTicketCreated >= 7 OR customerLoyaltyStatus is gold/platinum, the refund MUST be allowed regardless of amount.",
           onActions: ["issue_refund"],
         },
         {
@@ -660,7 +660,7 @@ const MOCK_AGENT_POLICIES: Record<
         {
           id: "customer_email_quality",
           prompt:
-            "Verify professional tone, complete details, no unverified claims.",
+            "Verify professional tone, complete details, no unverified claims or promises about pending actions.",
           onActions: ["send_customer_email"],
         },
       ],

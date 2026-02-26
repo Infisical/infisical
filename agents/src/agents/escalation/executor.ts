@@ -6,6 +6,7 @@ import { ActionContext } from "../../governance/index.js";
 import { CustomerTicket, TicketClassification } from "../../shared/types.js";
 import { ESCALATION_SKILLS } from "../../shared/skills.js";
 import { getNextAction, LLMDecision } from "../../shared/llm-client.js";
+import { sessionMemory } from "../../shared/session-memory.js";
 
 interface EscalationRequest {
   sessionId?: string;
@@ -37,32 +38,31 @@ const ESCALATION_AGENT_SYSTEM_PROMPT = `You are an Escalation Agent for an e-com
 
 ## Your Available Skills (use with action: "call_skill"):
 - review_case: Review the escalated case details and history. Parameters: { "ticketId": "string", "orderId": "string" }
-- approve_refund: Approve a refund up to $500. Parameters: { "ticketId": "string", "requestedAmount": number, "approvedAmount": number }
+- approve_refund: Approve a refund for the customer. Parameters: { "ticketId": "string", "requestedAmount": number, "approvedAmount": number }
 - override_policy: Override standard policy for exceptional circumstances. Parameters: { "ticketId": "string", "policyId": "string", "reason": "string" }
 - flag_for_human_review: Flag case for human review when outside your authority. Parameters: { "ticketId": "string", "reason": "string" }
 
 ## Agent Communications (use with action: "message_agent"):
 - support_agent: Notify support agent of your decision. Use messageType: "escalation_decision"
 
-## IMPORTANT - Governance & Authority Limits:
-- You can approve refunds up to $500 maximum
+## IMPORTANT - Governance:
 - All your actions are subject to governance policies enforced by the system
 - Some actions may be DENIED - when this happens, read the denial reason carefully
-- If a refund exceeds your authority, flag it for human review
+- The denial reason will tell you what you need to do (e.g., "exceeds authority, flag for human review")
+- Do NOT assume you know your limits - try the action and let governance guide you
 - Adapt your approach based on denial feedback
 
 ## Decision Criteria:
 - Verify the order and issue are legitimate
 - Check for customer fraud history
 - Assess the severity and customer impact
-- Ensure the refund amount is within your authority ($500 limit)
-- If amount exceeds $500, you MUST flag for human review
+- Use your best judgment on the appropriate refund amount
 
 ## Workflow:
 1. First, review the case to understand the details and verify the request
 2. Based on the review, decide whether to approve, partially approve, or flag for human review
-3. If approving, call approve_refund with the appropriate amount (capped at $500)
-4. If the request exceeds your authority, flag for human review
+3. If approving, call approve_refund with the appropriate amount
+4. If an action is denied due to exceeding authority, flag for human review
 5. When decision is made, mark the task as complete
 
 ## Current Task Context:
@@ -375,7 +375,9 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
       targetAgent,
       messageType,
       {
-        action: context.flaggedForHuman ? "escalation_flagged_for_human" : messageType,
+        action: context.flaggedForHuman
+          ? "escalation_flagged_for_human"
+          : messageType,
         targetAgent,
         sessionId: context.governanceContext.sessionId,
         ticketId: context.request.ticketId,
@@ -383,7 +385,9 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
         approvedAmount: context.approvedAmount,
         reasoning: context.approvalReasoning,
         flaggedForHuman: context.flaggedForHuman || false,
-        flagReason: context.flaggedForHuman ? "Amount exceeds escalation agent authority" : undefined,
+        flagReason: context.flaggedForHuman
+          ? "Amount exceeds escalation agent authority"
+          : undefined,
         ticket: context.request.ticket,
         classification: context.request.classification,
         ...content,
@@ -452,7 +456,9 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
               "Customer impact assessment completed",
             ],
             recommendation:
-              context.request.requestedRefund <= 500 ? "APPROVE" : "FLAG_FOR_HUMAN",
+              context.request.requestedRefund <= 500
+                ? "APPROVE"
+                : "FLAG_FOR_HUMAN",
           };
         };
 
@@ -460,7 +466,8 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
         return async () => {
           await this.simulateDelay(400);
           const requestedAmount =
-            (parameters.requestedAmount as number) || context.request.requestedRefund;
+            (parameters.requestedAmount as number) ||
+            context.request.requestedRefund;
           const approvedAmount = Math.min(
             (parameters.approvedAmount as number) || requestedAmount,
             500,
@@ -534,6 +541,19 @@ export class EscalationAgentExecutor extends BaseAgentExecutor {
 
     if (skillId === "flag_for_human_review" && res && !res.error) {
       context.flaggedForHuman = true;
+
+      // Update session memory to reflect human review status
+      const sessionId = context.request.sessionId;
+      if (sessionId) {
+        sessionMemory.updateStatus(
+          sessionId,
+          "pending_human_review",
+          `Escalation flagged for human review: ${res.reason || "Amount exceeds approval authority"}`,
+        );
+        this.log("📝 Session memory updated: pending_human_review", {
+          sessionId,
+        });
+      }
     }
 
     if (skillId === "override_policy" && res && !res.error) {

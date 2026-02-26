@@ -59,7 +59,7 @@ export async function composeEmail(
   },
 ): Promise<{ subject: string; body: string }> {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "o4-mini",
     messages: [
       {
         role: "system",
@@ -80,7 +80,6 @@ Resolution:
       },
     ],
     response_format: { type: "json_object" },
-    temperature: 0.3,
   });
 
   const content = response.choices[0]?.message?.content;

@@ -49,7 +49,7 @@ export const SUPPORT_SKILLS: AgentSkill[] = [
   {
     id: 'send_customer_email',
     name: 'Send Customer Email',
-    description: 'Sends an email to the customer. Subject to quality checks.',
+    description: 'Sends an email to the customer. Used for all customer communications including resolutions, updates, and notifications.',
     tags: ['support', 'communication', 'email'],
   },
   {
@@ -103,7 +103,7 @@ export const ESCALATION_SKILLS: AgentSkill[] = [
   {
     id: 'approve_refund',
     name: 'Approve Refund',
-    description: 'Approves refunds up to $500 that exceed standard agent limits',
+    description: 'Approves refunds that exceed standard agent limits. Subject to governance policies.',
     tags: ['escalation', 'refund', 'approval'],
   },
   {

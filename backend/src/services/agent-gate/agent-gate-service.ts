@@ -75,13 +75,12 @@ Should this action be allowed according to the policy?`;
         Authorization: `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "o4-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        response_format: { type: "json_object" },
-        temperature: 0
+        response_format: { type: "json_object" }
       })
     });
 
@@ -291,7 +290,7 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
             reasoning: llmResult.reasoning,
             evaluatedAt: new Date().toISOString(),
             llmEvaluation: {
-              model: "gpt-4o-mini",
+              model: "o4-mini",
               promptTokens: llmResult.usage.promptTokens,
               completionTokens: llmResult.usage.completionTokens,
               reasoning: llmResult.reasoning
@@ -308,7 +307,7 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
           reasoning: llmResult.reasoning,
           evaluatedAt: new Date().toISOString(),
           llmEvaluation: {
-            model: "gpt-4o-mini",
+            model: "o4-mini",
             promptTokens: llmResult.usage.promptTokens,
             completionTokens: llmResult.usage.completionTokens,
             reasoning: llmResult.reasoning
@@ -360,7 +359,7 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
             reasoning: llmResult.reasoning,
             evaluatedAt: new Date().toISOString(),
             llmEvaluation: {
-              model: "gpt-4o-mini",
+              model: "o4-mini",
               promptTokens: llmResult.usage.promptTokens,
               completionTokens: llmResult.usage.completionTokens,
               reasoning: llmResult.reasoning
