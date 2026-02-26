@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { Link, useParams } from "@tanstack/react-router";
 import {
   ArchiveIcon,
+  CalendarIcon,
   CheckCircle2Icon,
   CheckIcon,
   ChevronLeftIcon,
@@ -12,13 +13,14 @@ import {
   LoaderIcon,
   type LucideIcon,
   ShieldAlertIcon,
+  ShieldBanIcon,
   ShieldCheckIcon,
   UsersIcon,
   XCircleIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Input, Modal, ModalClose, ModalContent, Select, SelectItem } from "@app/components/v2";
+import { Input, Modal, ModalClose, ModalContent, Select, SelectItem, TextArea } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -35,10 +37,12 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
+  useAcceptNhiIdentityRisk,
   useExecuteRemediation,
   useGetNhiIdentity,
   useGetRecommendedActions,
   useListRemediationActions,
+  useRevokeNhiRiskAcceptance,
   useUpdateNhiIdentity
 } from "@app/hooks/api/nhi";
 import {
@@ -299,12 +303,17 @@ export const NhiIdentityDetailPage = () => {
 
   const updateIdentity = useUpdateNhiIdentity();
   const executeRemediation = useExecuteRemediation();
+  const acceptRisk = useAcceptNhiIdentityRisk();
+  const revokeRisk = useRevokeNhiRiskAcceptance();
 
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerDirty, setOwnerDirty] = useState(false);
   const [status, setStatus] = useState("");
   const [statusDirty, setStatusDirty] = useState(false);
   const [confirmAction, setConfirmAction] = useState<TNhiRecommendedAction | null>(null);
+  const [isAcceptRiskModalOpen, setIsAcceptRiskModalOpen] = useState(false);
+  const [riskReason, setRiskReason] = useState("");
+  const [riskExpiresAt, setRiskExpiresAt] = useState("");
 
   if (isPending || !identity) return <UnstablePageLoader />;
 
@@ -362,6 +371,37 @@ export const NhiIdentityDetailPage = () => {
     }
   };
 
+  const handleAcceptRisk = async () => {
+    try {
+      await acceptRisk.mutateAsync({
+        identityId: identity.id,
+        projectId: currentProject.id,
+        reason: riskReason,
+        expiresAt: riskExpiresAt ? new Date(riskExpiresAt).toISOString() : undefined
+      });
+      setIsAcceptRiskModalOpen(false);
+      setRiskReason("");
+      setRiskExpiresAt("");
+      createNotification({ text: "Risk accepted", type: "success" });
+    } catch {
+      createNotification({ text: "Failed to accept risk", type: "error" });
+    }
+  };
+
+  const handleRevokeRisk = async () => {
+    try {
+      await revokeRisk.mutateAsync({
+        identityId: identity.id,
+        projectId: currentProject.id
+      });
+      createNotification({ text: "Risk acceptance revoked", type: "success" });
+    } catch {
+      createNotification({ text: "Failed to revoke risk acceptance", type: "error" });
+    }
+  };
+
+  const isRiskAccepted = Boolean(identity.riskAcceptedAt);
+
   const riskFactors: TNhiRiskFactor[] = Array.isArray(identity.riskFactors)
     ? identity.riskFactors
     : [];
@@ -413,9 +453,14 @@ export const NhiIdentityDetailPage = () => {
                 <Detail>
                   <DetailLabel>Status</DetailLabel>
                   <DetailValue>
-                    <Badge variant={getStatusBadgeVariant(identity.status)}>
-                      {capitalize(identity.status)}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getStatusBadgeVariant(identity.status)}>
+                        {capitalize(identity.status)}
+                      </Badge>
+                      {isRiskAccepted && (
+                        <Badge variant="info">Risk Accepted</Badge>
+                      )}
+                    </div>
                   </DetailValue>
                 </Detail>
                 {accountId && (
@@ -523,6 +568,60 @@ export const NhiIdentityDetailPage = () => {
                   </DetailValue>
                 </Detail>
               </DetailGroup>
+            </UnstableCardContent>
+          </UnstableCard>
+
+          <UnstableCard>
+            <UnstableCardHeader className="border-b">
+              <UnstableCardTitle>Risk Acceptance</UnstableCardTitle>
+              <UnstableCardDescription>
+                {isRiskAccepted
+                  ? "This identity has been marked as accepted risk"
+                  : "Mark this identity as an accepted risk to exclude it from policy evaluation"}
+              </UnstableCardDescription>
+            </UnstableCardHeader>
+            <UnstableCardContent>
+              {isRiskAccepted ? (
+                <div className="space-y-3">
+                  <Detail>
+                    <DetailLabel>Reason</DetailLabel>
+                    <DetailValue>{identity.riskAcceptedReason || "No reason provided"}</DetailValue>
+                  </Detail>
+                  <Detail>
+                    <DetailLabel>Accepted</DetailLabel>
+                    <DetailValue>
+                      {identity.riskAcceptedAt
+                        ? new Date(identity.riskAcceptedAt).toLocaleString()
+                        : "Unknown"}
+                    </DetailValue>
+                  </Detail>
+                  {identity.riskAcceptedExpiresAt && (
+                    <Detail>
+                      <DetailLabel>Expires</DetailLabel>
+                      <DetailValue>
+                        {new Date(identity.riskAcceptedExpiresAt).toLocaleString()}
+                      </DetailValue>
+                    </Detail>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleRevokeRisk}
+                    isPending={revokeRisk.isPending}
+                  >
+                    Revoke Acceptance
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setIsAcceptRiskModalOpen(true)}
+                >
+                  <ShieldBanIcon size={14} className="mr-1" />
+                  Accept Risk
+                </Button>
+              )}
             </UnstableCardContent>
           </UnstableCard>
         </div>
@@ -757,6 +856,76 @@ export const NhiIdentityDetailPage = () => {
               </div>
             </div>
           )}
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={isAcceptRiskModalOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setIsAcceptRiskModalOpen(false);
+            setRiskReason("");
+            setRiskExpiresAt("");
+          }
+        }}
+      >
+        <ModalContent
+          title="Accept Risk"
+          subTitle="This identity will be excluded from automated policy evaluation."
+          footerContent={
+            <div className="flex items-center">
+              <Button
+                onClick={handleAcceptRisk}
+                isPending={acceptRisk.isPending}
+                isDisabled={!riskReason.trim()}
+                className="mr-4"
+              >
+                Accept Risk
+              </Button>
+              <ModalClose asChild>
+                <Button variant="outline" isDisabled={acceptRisk.isPending}>
+                  Cancel
+                </Button>
+              </ModalClose>
+            </div>
+          }
+          onClose={() => {
+            setIsAcceptRiskModalOpen(false);
+            setRiskReason("");
+            setRiskExpiresAt("");
+          }}
+        >
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="risk-reason" className="mb-1 block text-sm text-mineshaft-300">
+                Reason <span className="text-red-400">*</span>
+              </label>
+              <TextArea
+                id="risk-reason"
+                value={riskReason}
+                onChange={(e) => setRiskReason(e.target.value)}
+                placeholder="Explain why this risk is acceptable..."
+                className="w-full"
+                rows={3}
+              />
+            </div>
+            <div>
+              <label htmlFor="risk-expires" className="mb-1 flex items-center gap-1 text-sm text-mineshaft-300">
+                <CalendarIcon size={14} />
+                Expiry Date (optional)
+              </label>
+              <Input
+                id="risk-expires"
+                type="date"
+                value={riskExpiresAt}
+                onChange={(e) => setRiskExpiresAt(e.target.value)}
+                className="w-full"
+              />
+              <p className="mt-1 text-xs text-mineshaft-400">
+                If set, the acceptance will automatically expire and policies will apply again.
+              </p>
+            </div>
+          </div>
         </ModalContent>
       </Modal>
     </>

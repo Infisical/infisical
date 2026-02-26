@@ -149,6 +149,7 @@ export const nhiIdentityDALFactory = (db: TDbClient) => {
       mediumCount: number;
       lowCount: number;
       unownedCount: number;
+      riskAcceptedCount: number;
       avgRiskScore: number;
     };
 
@@ -159,6 +160,7 @@ export const nhiIdentityDALFactory = (db: TDbClient) => {
       mediumCount: 0,
       lowCount: 0,
       unownedCount: 0,
+      riskAcceptedCount: 0,
       avgRiskScore: 0
     };
 
@@ -180,6 +182,9 @@ export const nhiIdentityDALFactory = (db: TDbClient) => {
         dbInstance.raw('COUNT(*) FILTER (WHERE ?? < 20)::int as "lowCount"', [`${TableName.NhiIdentity}.riskScore`]),
         dbInstance.raw('COUNT(*) FILTER (WHERE ?? IS NULL)::int as "unownedCount"', [
           `${TableName.NhiIdentity}.ownerEmail`
+        ]),
+        dbInstance.raw('COUNT(*) FILTER (WHERE ?? IS NOT NULL)::int as "riskAcceptedCount"', [
+          `${TableName.NhiIdentity}.riskAcceptedAt`
         ]),
         dbInstance.raw('COALESCE(AVG(??), 0)::int as "avgRiskScore"', [`${TableName.NhiIdentity}.riskScore`])
       )

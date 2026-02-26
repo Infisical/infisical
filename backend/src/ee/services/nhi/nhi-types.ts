@@ -136,3 +136,15 @@ export type TGetRecommendedActionsDTO = {
   identityId: string;
   projectId: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TAcceptNhiIdentityRiskDTO = {
+  identityId: string;
+  projectId: string;
+  reason: string;
+  expiresAt?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TRevokeNhiIdentityRiskAcceptanceDTO = {
+  identityId: string;
+  projectId: string;
+} & Omit<TProjectPermission, "projectId">;

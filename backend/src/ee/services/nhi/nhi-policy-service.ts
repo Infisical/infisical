@@ -385,6 +385,24 @@ export const nhiPolicyServiceFactory = ({
     // Process each identity sequentially (required for proper remediation ordering)
     // eslint-disable-next-line no-restricted-syntax
     for (const identity of identities) {
+      // Skip risk-accepted identities (lazy expiry check)
+      if (identity.riskAcceptedAt) {
+        if (identity.riskAcceptedExpiresAt && new Date(identity.riskAcceptedExpiresAt) < new Date()) {
+          // Acceptance expired — clear it and proceed with evaluation
+          // eslint-disable-next-line no-await-in-loop
+          await nhiIdentityDAL.updateById(identity.id, {
+            riskAcceptedAt: null,
+            riskAcceptedByUserId: null,
+            riskAcceptedReason: null,
+            riskAcceptedExpiresAt: null
+          });
+        } else {
+          // Still accepted — skip policy evaluation
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+      }
+
       const factorNames = extractRiskFactorNames(identity.riskFactors);
       const identityFactorSet = new Set(factorNames);
 

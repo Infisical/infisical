@@ -459,6 +459,7 @@ export const registerNhiRouter = async (server: FastifyZodProvider) => {
           mediumCount: z.number(),
           lowCount: z.number(),
           unownedCount: z.number(),
+          riskAcceptedCount: z.number(),
           avgRiskScore: z.number()
         })
       }
@@ -472,6 +473,74 @@ export const registerNhiRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+    }
+  });
+
+  // --- Risk Acceptance ---
+
+  server.route({
+    method: "POST",
+    url: "/identities/:identityId/accept-risk",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({
+        identityId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string(),
+        reason: z.string().min(1).max(1000),
+        expiresAt: z.string().datetime().optional()
+      }),
+      response: {
+        200: z.object({
+          identity: NhiIdentitiesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const identity = await server.services.nhi.acceptRisk({
+        identityId: req.params.identityId,
+        projectId: req.body.projectId,
+        reason: req.body.reason,
+        expiresAt: req.body.expiresAt,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { identity };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/identities/:identityId/revoke-risk-acceptance",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({
+        identityId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          identity: NhiIdentitiesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const identity = await server.services.nhi.revokeRiskAcceptance({
+        identityId: req.params.identityId,
+        projectId: req.body.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { identity };
     }
   });
 

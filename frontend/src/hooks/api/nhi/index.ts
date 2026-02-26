@@ -1,9 +1,11 @@
 export {
+  useAcceptNhiIdentityRisk,
   useCreateNhiPolicy,
   useCreateNhiSource,
   useDeleteNhiPolicy,
   useDeleteNhiSource,
   useExecuteRemediation,
+  useRevokeNhiRiskAcceptance,
   useTriggerNhiScan,
   useUpdateNhiIdentity,
   useUpdateNhiNotificationSettings,

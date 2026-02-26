@@ -71,6 +71,10 @@ export type TNhiIdentity = {
   status: string;
   lastActivityAt: string | null;
   lastSeenAt: string;
+  riskAcceptedAt: string | null;
+  riskAcceptedByUserId: string | null;
+  riskAcceptedReason: string | null;
+  riskAcceptedExpiresAt: string | null;
   createdAt: string;
   updatedAt: string;
   sourceName?: string | null;
@@ -94,6 +98,7 @@ export type TNhiStats = {
   mediumCount: number;
   lowCount: number;
   unownedCount: number;
+  riskAcceptedCount: number;
   avgRiskScore: number;
 };
 

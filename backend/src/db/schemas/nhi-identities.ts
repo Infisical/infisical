@@ -22,6 +22,10 @@ export const NhiIdentitiesSchema = z.object({
   status: z.string().default("active"),
   lastActivityAt: z.date().nullable().optional(),
   lastSeenAt: z.date(),
+  riskAcceptedAt: z.date().nullable().optional(),
+  riskAcceptedByUserId: z.string().uuid().nullable().optional(),
+  riskAcceptedReason: z.string().nullable().optional(),
+  riskAcceptedExpiresAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

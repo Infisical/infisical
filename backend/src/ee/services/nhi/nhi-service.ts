@@ -23,6 +23,7 @@ import { TNhiPolicyServiceFactory } from "./nhi-policy-service";
 import { computeRiskScore, TGitHubRiskMetadata } from "./nhi-risk-scoring";
 import { TRawNhiIdentity } from "./nhi-scanner-types";
 import {
+  TAcceptNhiIdentityRiskDTO,
   TCreateNhiSourceDTO,
   TDeleteNhiSourceDTO,
   TGetNhiIdentityByIdDTO,
@@ -31,6 +32,7 @@ import {
   TListNhiIdentitiesDTO,
   TListNhiScansDTO,
   TListNhiSourcesDTO,
+  TRevokeNhiIdentityRiskAcceptanceDTO,
   TTriggerNhiScanDTO,
   TUpdateNhiIdentityDTO,
   TUpdateNhiSourceDTO
@@ -483,6 +485,56 @@ export const nhiServiceFactory = ({
     return nhiIdentityDAL.updateById(identityId, updateData);
   };
 
+  // --- Risk Acceptance ---
+
+  const acceptRisk = async ({
+    identityId,
+    projectId,
+    reason,
+    expiresAt,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TAcceptNhiIdentityRiskDTO) => {
+    await checkProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId });
+
+    const identity = await nhiIdentityDAL.findById(identityId);
+    if (!identity) {
+      throw new NotFoundError({ message: `NHI identity with ID ${identityId} not found` });
+    }
+
+    return nhiIdentityDAL.updateById(identityId, {
+      riskAcceptedAt: new Date(),
+      riskAcceptedByUserId: actorId,
+      riskAcceptedReason: reason,
+      riskAcceptedExpiresAt: expiresAt ? new Date(expiresAt) : null
+    });
+  };
+
+  const revokeRiskAcceptance = async ({
+    identityId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TRevokeNhiIdentityRiskAcceptanceDTO) => {
+    await checkProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId });
+
+    const identity = await nhiIdentityDAL.findById(identityId);
+    if (!identity) {
+      throw new NotFoundError({ message: `NHI identity with ID ${identityId} not found` });
+    }
+
+    return nhiIdentityDAL.updateById(identityId, {
+      riskAcceptedAt: null,
+      riskAcceptedByUserId: null,
+      riskAcceptedReason: null,
+      riskAcceptedExpiresAt: null
+    });
+  };
+
   // --- Stats ---
 
   const getStats = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TGetNhiStatsDTO) => {
@@ -502,6 +554,8 @@ export const nhiServiceFactory = ({
     listIdentities,
     getIdentityById,
     updateIdentity,
+    acceptRisk,
+    revokeRiskAcceptance,
     getStats
   };
 };

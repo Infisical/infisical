@@ -228,6 +228,58 @@ export const useDeleteNhiPolicy = () => {
   });
 };
 
+export const useAcceptNhiIdentityRisk = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityId,
+      projectId,
+      reason,
+      expiresAt
+    }: {
+      identityId: string;
+      projectId: string;
+      reason: string;
+      expiresAt?: string;
+    }) => {
+      const { data } = await apiRequest.post<{ identity: TNhiIdentity }>(
+        `/api/v1/nhi/identities/${identityId}/accept-risk`,
+        { projectId, reason, expiresAt }
+      );
+      return data.identity;
+    },
+    onSuccess: (result, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: nhiKeys.identityById(result.id) });
+      queryClient.invalidateQueries({ queryKey: nhiKeys.identities(projectId) });
+      queryClient.invalidateQueries({ queryKey: nhiKeys.stats(projectId) });
+    }
+  });
+};
+
+export const useRevokeNhiRiskAcceptance = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityId,
+      projectId
+    }: {
+      identityId: string;
+      projectId: string;
+    }) => {
+      const { data } = await apiRequest.post<{ identity: TNhiIdentity }>(
+        `/api/v1/nhi/identities/${identityId}/revoke-risk-acceptance`,
+        { projectId }
+      );
+      return data.identity;
+    },
+    onSuccess: (result, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: nhiKeys.identityById(result.id) });
+      queryClient.invalidateQueries({ queryKey: nhiKeys.identities(projectId) });
+      queryClient.invalidateQueries({ queryKey: nhiKeys.stats(projectId) });
+    }
+  });
+};
+
 export const useUpdateNhiNotificationSettings = () => {
   const queryClient = useQueryClient();
   return useMutation({

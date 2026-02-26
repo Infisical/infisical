@@ -4,6 +4,7 @@ import {
   AlertTriangleIcon,
   type LucideIcon,
   PlusIcon,
+  ShieldBanIcon,
   ShieldIcon,
   UserIcon,
   UsersIcon
@@ -149,6 +150,17 @@ export const NhiOverviewPage = () => {
           color="text-yellow-500"
         />
       </div>
+
+      {(stats?.riskAcceptedCount ?? 0) > 0 && (
+        <div className="mt-4 grid grid-cols-4 gap-4">
+          <StatCard
+            label="Risk Accepted"
+            value={stats?.riskAcceptedCount ?? 0}
+            icon={ShieldBanIcon}
+            color="text-blue-500"
+          />
+        </div>
+      )}
 
       <UnstableCard className="mt-4">
         <UnstableCardContent>
