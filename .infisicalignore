@@ -60,3 +60,6 @@ docs/documentation/platform/pki/certificate-syncs/chef.mdx:private-key:61
 backend/src/services/certificate-request/certificate-request-service.test.ts:private-key:246
 backend/src/services/certificate-request/certificate-request-service.test.ts:private-key:248
 docs/documentation/platform/pki/enrollment-methods/api.mdx:private-key:142
+backend/src/db/manual/observability-demo.ts:generic-api-key:26
+backend/src/db/manual/observability-demo.ts:generic-api-key:27
+backend/src/db/manual/observability-demo.ts:generic-api-key:28
