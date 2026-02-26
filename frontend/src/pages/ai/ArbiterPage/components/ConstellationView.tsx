@@ -69,11 +69,14 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
       </svg>
 
       {/* Central Governance Node */}
-      <div className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2" style={{ marginTop: -70 }}>
+      <div
+        className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+        style={{ marginTop: -70 }}
+      >
         <motion.div
           animate={{
             scale: currentEvent ? 1.03 : 1,
-            filter: `drop-shadow(0 0 ${currentEvent ? 18 : 12}px ${statusColor.glow})`,
+            filter: `drop-shadow(0 0 ${currentEvent ? 18 : 18}px ${statusColor.glow})`,
             y: [0, -3, 0],
             x: [0, 2, 0, -2, 0]
           }}
@@ -110,7 +113,18 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
           </div>
 
           {/* Policy Decision Text */}
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
+            {!currentEvent && (
+              <motion.div
+                key="idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute top-full mt-4 animate-pulse font-mono text-[10px] tracking-widest text-muted text-warning uppercase"
+              >
+                [IDLE]
+              </motion.div>
+            )}
             {currentEvent && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -185,16 +199,44 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 }}
                 className="relative flex flex-col items-center"
               >
-                <div
-                  className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
-                    isActive
-                      ? currentEvent?.status === "approved"
-                        ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
-                        : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
-                      : "border-border"
-                  }`}
-                >
-                  <div className="text-accent">{getIcon(agent.icon)}</div>
+                <div className="relative flex h-20 w-20 items-center justify-center">
+                  <svg
+                    viewBox="0 0 80 80"
+                    className="absolute inset-0 h-full w-full overflow-visible"
+                  >
+                    {isActive && (
+                      <circle
+                        cx="40"
+                        cy="40"
+                        r="38"
+                        fill={
+                          currentEvent?.status === "approved"
+                            ? "rgba(46, 204, 113, 0.1)"
+                            : "rgba(231, 76, 60, 0.1)"
+                        }
+                        stroke="none"
+                      />
+                    )}
+                    <motion.circle
+                      key={isActive ? currentEvent?.id : "idle"}
+                      cx="40"
+                      cy="40"
+                      r="38"
+                      fill="none"
+                      stroke={
+                        isActive
+                          ? currentEvent?.status === "approved"
+                            ? "#2ecc71"
+                            : "#e74c3c"
+                          : "var(--color-border)"
+                      }
+                      strokeWidth="1"
+                      initial={{ pathLength: isActive ? 0 : 1 }}
+                      animate={{ pathLength: 1 }}
+                      transition={isActive ? { duration: 1.0 } : { duration: 0 }}
+                    />
+                  </svg>
+                  <div className="relative z-10 text-accent">{getIcon(agent.icon)}</div>
                 </div>
                 <div className="mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
                   {agent.name}
@@ -246,7 +288,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 />
 
                 {/* Particle traveling along line: agent→center for source, center→agent for target */}
-                {isSource && currentEvent && (
+                {/* {isSource && currentEvent && (
                   <motion.circle
                     r="3"
                     fill={currentEvent.status === "approved" ? "#2ecc71" : "#e74c3c"}
@@ -256,8 +298,8 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   >
                     <animateMotion dur="1s" repeatCount="1" path={`M ${x1} ${y1} L ${x2} ${y2}`} />
                   </motion.circle>
-                )}
-                {isTarget && isAgentToAgent && currentEvent && (
+                )} */}
+                {/* {isTarget && isAgentToAgent && currentEvent && (
                   <motion.circle
                     r="3"
                     fill={currentEvent.status === "approved" ? "#2ecc71" : "#e74c3c"}
@@ -272,7 +314,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       path={`M ${x2} ${y2} L ${x1} ${y1}`}
                     />
                   </motion.circle>
-                )}
+                )} */}
               </svg>
             </div>
           );
