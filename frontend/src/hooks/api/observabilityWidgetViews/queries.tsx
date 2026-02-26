@@ -5,18 +5,21 @@ import { apiRequest } from "@app/config/request";
 export interface WidgetViewItem {
   uid: string;
   tmpl: string;
-  cols: number;
-  rows: number;
-  order: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
   widgetId?: string;
-  config?: unknown;
+  static?: boolean;
 }
 
 export interface ObservabilityWidgetView {
   id: string;
   name: string;
   orgId: string;
-  userId: string;
+  userId: string | null;
+  scope: "organization" | "private";
+  isDefault: boolean;
   items: WidgetViewItem[];
   createdAt: string;
   updatedAt: string;
@@ -45,7 +48,7 @@ export const useListWidgetViews = (orgId: string) => {
 export const useCreateWidgetView = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: { name: string; orgId: string }) => {
+    mutationFn: async (dto: { name: string; orgId: string; scope?: "organization" | "private" }) => {
       const {
         data: { view }
       } = await apiRequest.post<{ view: ObservabilityWidgetView }>("/api/v1/observability-widget-views", dto);

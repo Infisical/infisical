@@ -15,8 +15,14 @@ import {
 
 import { useOrganization } from "@app/context";
 import { useListWidgets } from "@app/hooks/api/observabilityWidgets";
+import {
+  useCreateWidgetView,
+  useDeleteWidgetView,
+  useListWidgetViews,
+  useUpdateWidgetView
+} from "@app/hooks/api/observabilityWidgetViews";
 
-import type { LayoutItem, PanelItem, SubView, WidgetTemplate } from "../mock-data";
+import type { LayoutItem, PanelItem, WidgetTemplate } from "../mock-data";
 import { TEMPLATES } from "../mock-data";
 import { AddWidgetPanel } from "./AddWidgetPanel";
 import type { CreateTemplateResult, EditingWidget } from "./CreateTemplateForm";
@@ -102,33 +108,50 @@ export function ObservabilityDashboard({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
   const { data: backendWidgets = [] } = useListWidgets(orgId);
+  const { data: backendViews = [] } = useListWidgetViews(orgId);
+  const createViewMutation = useCreateWidgetView();
+  const updateViewMutation = useUpdateWidgetView();
+  const deleteViewMutation = useDeleteWidgetView();
 
-  const [activeView, setActiveView] = useState<string | null>(null);
-  const [orgViews, setOrgViews] = useState<SubView[]>([]);
-  const [privateViews, setPrivateViews] = useState<SubView[]>([]);
-  const [layouts, setLayouts] = useState<Record<string, LayoutItem[]>>({});
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
+  const orgViews = useMemo(
+    () => backendViews.filter((v) => v.scope === "organization"),
+    [backendViews]
+  );
+  const privateViews = useMemo(
+    () => backendViews.filter((v) => v.scope === "private"),
+    [backendViews]
+  );
+
+  useEffect(() => {
+    if (!activeViewId && backendViews.length > 0) {
+      const firstOrgView = backendViews.find((v) => v.scope === "organization");
+      setActiveViewId(firstOrgView?.id ?? backendViews[0].id);
+    }
+  }, [backendViews, activeViewId]);
+
+  const activeView = backendViews.find((v) => v.id === activeViewId);
+  const backendLayout: LayoutItem[] = useMemo(() => {
+    if (!activeView) return [];
+    const { items } = activeView;
+    if (!Array.isArray(items)) return [];
+    return items as LayoutItem[];
+  }, [activeView]);
+
+  const [localLayout, setLocalLayout] = useState<LayoutItem[] | null>(null);
+  const layout = localLayout ?? backendLayout;
+
+  // Keep a ref to the backend layout so we can access it in callbacks without stale closures
+  const backendLayoutRef = useRef(backendLayout);
+  backendLayoutRef.current = backendLayout;
+
+  useEffect(() => {
+    setLocalLayout(null);
+  }, [activeViewId, backendLayout]);
 
   const [isExternalDragging, setIsExternalDragging] = useState(false);
   const uidCounter = useRef(100);
-
-  useEffect(() => {
-    if (backendWidgets.length === 0) return;
-    setLayouts((prev) => {
-      const existingOrg = prev.org ?? [];
-      if (existingOrg.length > 0) return prev;
-      const eventWidgets = backendWidgets.filter((w) => w.type === "events");
-      const seeded: LayoutItem[] = eventWidgets.map((w, i) => ({
-        uid: `backend-${w.id}`,
-        tmpl: "_backend_events",
-        widgetId: w.id,
-        x: (i % 2) * 6,
-        y: Math.floor(i / 2) * 2,
-        w: 6,
-        h: 2
-      }));
-      return { ...prev, org: seeded };
-    });
-  }, [backendWidgets]);
 
   const [customTemplates, setCustomTemplates] = useState<Record<string, WidgetTemplate>>({});
   const [customPanelItems, setCustomPanelItems] = useState<PanelItem[]>([]);
@@ -136,71 +159,80 @@ export function ObservabilityDashboard({
 
   const [editingWidget, setEditingWidget] = useState<EditingWidget | undefined>(undefined);
 
-  const layout = activeView && Array.isArray(layouts[activeView]) ? layouts[activeView] : [];
+  const updateLayoutDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeViewIdRef = useRef(activeViewId);
+  activeViewIdRef.current = activeViewId;
+
   const setLayout = useCallback(
     (updater: LayoutItem[] | ((prev: LayoutItem[]) => LayoutItem[])) => {
-      if (!activeView) return;
-      setLayouts((prev) => {
-        const currentLayout = Array.isArray(prev[activeView]) ? prev[activeView] : [];
-        return {
-          ...prev,
-          [activeView]: typeof updater === "function" ? updater(currentLayout) : updater
-        };
+      if (!activeViewIdRef.current) return;
+
+      setLocalLayout((prevLocal) => {
+        const currentLayout = prevLocal ?? backendLayoutRef.current;
+        const newLayout = typeof updater === "function" ? updater(currentLayout) : updater;
+
+        if (updateLayoutDebounceRef.current) {
+          clearTimeout(updateLayoutDebounceRef.current);
+        }
+
+        updateLayoutDebounceRef.current = setTimeout(() => {
+          if (activeViewIdRef.current) {
+            updateViewMutation.mutate({
+              viewId: activeViewIdRef.current,
+              orgId,
+              items: newLayout
+            });
+          }
+        }, 500);
+
+        return newLayout;
       });
     },
-    [activeView]
+    [orgId, updateViewMutation]
   );
 
-  const handleAddOrgView = useCallback((name: string) => {
-    const id = `org-view-${Date.now()}`;
-    setOrgViews((prev) => [...prev, { id, name }]);
-    setLayouts((prev) => ({ ...prev, [id]: [] }));
-    setActiveView(id);
-  }, []);
+  const handleAddOrgView = useCallback(
+    async (name: string) => {
+      const view = await createViewMutation.mutateAsync({
+        name,
+        orgId,
+        scope: "organization"
+      });
+      setActiveViewId(view.id);
+    },
+    [createViewMutation, orgId]
+  );
 
-  const handleAddPrivateView = useCallback((name: string) => {
-    const id = `private-view-${Date.now()}`;
-    setPrivateViews((prev) => [...prev, { id, name }]);
-    setLayouts((prev) => ({ ...prev, [id]: [] }));
-    setActiveView(id);
-  }, []);
+  const handleAddPrivateView = useCallback(
+    async (name: string) => {
+      const view = await createViewMutation.mutateAsync({
+        name,
+        orgId,
+        scope: "private"
+      });
+      setActiveViewId(view.id);
+    },
+    [createViewMutation, orgId]
+  );
 
-  const handleRenameView = useCallback((id: string, name: string) => {
-    setOrgViews((prev) => prev.map((sv) => (sv.id === id ? { ...sv, name } : sv)));
-    setPrivateViews((prev) => prev.map((sv) => (sv.id === id ? { ...sv, name } : sv)));
-  }, []);
+  const handleRenameView = useCallback(
+    (id: string, name: string) => {
+      updateViewMutation.mutate({ viewId: id, orgId, name });
+    },
+    [updateViewMutation, orgId]
+  );
 
   const handleDeleteView = useCallback(
-    (id: string) => {
-      const isOrgView = orgViews.some((v) => v.id === id);
-      const isPrivateView = privateViews.some((v) => v.id === id);
+    async (id: string) => {
+      await deleteViewMutation.mutateAsync({ viewId: id, orgId });
 
-      if (isOrgView) {
-        setOrgViews((prev) => prev.filter((sv) => sv.id !== id));
-      }
-      if (isPrivateView) {
-        setPrivateViews((prev) => prev.filter((sv) => sv.id !== id));
-      }
-
-      setLayouts((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-
-      if (activeView === id) {
-        const remainingOrgViews = orgViews.filter((v) => v.id !== id);
-        const remainingPrivateViews = privateViews.filter((v) => v.id !== id);
-        if (remainingOrgViews.length > 0) {
-          setActiveView(remainingOrgViews[0].id);
-        } else if (remainingPrivateViews.length > 0) {
-          setActiveView(remainingPrivateViews[0].id);
-        } else {
-          setActiveView(null);
-        }
+      if (activeViewId === id) {
+        const remainingViews = backendViews.filter((v) => v.id !== id);
+        const nextOrgView = remainingViews.find((v) => v.scope === "organization");
+        setActiveViewId(nextOrgView?.id ?? remainingViews[0]?.id ?? null);
       }
     },
-    [activeView, orgViews, privateViews]
+    [activeViewId, backendViews, deleteViewMutation, orgId]
   );
 
   const handleEditWidget = useCallback(
@@ -330,41 +362,44 @@ export function ObservabilityDashboard({
             ? { x: droppingPlaceholder.x, y: droppingPlaceholder.y }
             : { x: layoutItem.x, y: layoutItem.y };
 
-          // Update existing items with their new positions from the compacted layout
-          const updatedExistingItems: LayoutItem[] = newLayout
-            .filter((rglItem) => rglItem.i !== "__dropping-elem__")
-            .map((rglItem) => {
-              const existingItem = layout.find((item) => item.uid === rglItem.i);
-              if (!existingItem) return null;
-              return {
-                ...existingItem,
-                x: rglItem.x,
-                y: rglItem.y,
-                w: rglItem.w,
-                h: rglItem.h
-              };
-            })
-            .filter((item): item is LayoutItem => item !== null);
+          // Use functional update to get latest layout state and avoid stale closures
+          setLayout((currentLayout) => {
+            // Update existing items with their new positions from the compacted layout
+            const updatedExistingItems: LayoutItem[] = newLayout
+              .filter((rglItem) => rglItem.i !== "__dropping-elem__")
+              .map((rglItem) => {
+                const existingItem = currentLayout.find((item) => item.uid === rglItem.i);
+                if (!existingItem) return null;
+                return {
+                  ...existingItem,
+                  x: rglItem.x,
+                  y: rglItem.y,
+                  w: rglItem.w,
+                  h: rglItem.h
+                };
+              })
+              .filter((item): item is LayoutItem => item !== null);
 
-          // Add the new widget
-          setLayout([
-            ...updatedExistingItems,
-            {
-              uid,
-              tmpl: data.tmpl,
-              widgetId: data.widgetId,
-              x: droppedItemPosition.x,
-              y: droppedItemPosition.y,
-              w: t?.isLogs ? 12 : 6,
-              h: 2
-            }
-          ]);
+            // Add the new widget
+            return [
+              ...updatedExistingItems,
+              {
+                uid,
+                tmpl: data.tmpl,
+                widgetId: data.widgetId,
+                x: droppedItemPosition.x,
+                y: droppedItemPosition.y,
+                w: t?.isLogs ? 12 : 6,
+                h: 2
+              }
+            ];
+          });
         }
       } catch {
         // Invalid drag data
       }
     },
-    [allTemplates, setLayout, layout]
+    [allTemplates, setLayout]
   );
 
   const handleDropDragOver = useCallback(
@@ -420,8 +455,8 @@ export function ObservabilityDashboard({
       <style>{resizeHandleStyles}</style>
       <div className="flex gap-x-12">
         <SidebarNav
-          activeView={activeView ?? ""}
-          onChangeView={setActiveView}
+          activeView={activeViewId}
+          onChangeView={setActiveViewId}
           orgViews={orgViews}
           privateViews={privateViews}
           onAddOrgView={handleAddOrgView}
@@ -486,24 +521,82 @@ export function ObservabilityDashboard({
                       </div>
                     ))}
                   </GridLayout>
-                  {layout.length === 0 && !isExternalDragging && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <UnstableEmpty className="min-h-[400px] w-full">
-                        <UnstableEmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <LayoutGrid />
-                          </EmptyMedia>
-                          <UnstableEmptyTitle>No widgets yet</UnstableEmptyTitle>
-                          <UnstableEmptyDescription>
-                            Add widgets to visualize organization activity, secrets access, and
-                            system health.
-                          </UnstableEmptyDescription>
-                        </UnstableEmptyHeader>
-                        <Button variant="org" onClick={() => onPanelOpenChange(true)}>
-                          <Plus />
-                          Add Widget
-                        </Button>
-                      </UnstableEmpty>
+                  {layout.length === 0 && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.dataTransfer.types.includes("application/json")) {
+                          setIsExternalDragging(true);
+                        }
+                      }}
+                      onDragLeave={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX;
+                        const y = e.clientY;
+                        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                          setIsExternalDragging(false);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsExternalDragging(false);
+
+                        try {
+                          const data = JSON.parse(e.dataTransfer.getData("application/json")) as {
+                            type: string;
+                            tmpl: string;
+                            widgetId?: string;
+                          };
+                          if (data.type === "panel-item" && data.tmpl) {
+                            uidCounter.current += 1;
+                            const uid = `w${uidCounter.current}`;
+                            const t = allTemplates[data.tmpl];
+
+                            setLayout([
+                              {
+                                uid,
+                                tmpl: data.tmpl,
+                                widgetId: data.widgetId,
+                                x: 0,
+                                y: 0,
+                                w: t?.isLogs ? 12 : 6,
+                                h: 2
+                              }
+                            ]);
+                          }
+                        } catch {
+                          // Invalid drag data
+                        }
+                      }}
+                    >
+                      {!isExternalDragging ? (
+                        <UnstableEmpty className="min-h-[400px] w-full">
+                          <UnstableEmptyHeader>
+                            <EmptyMedia variant="icon">
+                              <LayoutGrid />
+                            </EmptyMedia>
+                            <UnstableEmptyTitle>No widgets yet</UnstableEmptyTitle>
+                            <UnstableEmptyDescription>
+                              Add widgets to visualize organization activity, secrets access, and
+                              system health.
+                            </UnstableEmptyDescription>
+                          </UnstableEmptyHeader>
+                          <Button variant="org" onClick={() => onPanelOpenChange(true)}>
+                            <Plus />
+                            Add Widget
+                          </Button>
+                        </UnstableEmpty>
+                      ) : (
+                        <div className="flex min-h-[400px] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/5">
+                          <LayoutGrid className="mb-3 h-12 w-12 text-primary/60" />
+                          <p className="text-lg font-medium text-primary/80">Drop widget here</p>
+                          <p className="mt-1 text-sm text-gray-400">
+                            Release to add the widget to your dashboard
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>

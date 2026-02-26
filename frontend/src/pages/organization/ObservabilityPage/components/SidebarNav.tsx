@@ -4,13 +4,13 @@ import { twMerge } from "tailwind-merge";
 
 import { Input } from "@app/components/v2";
 
-import type { SubView } from "../mock-data";
+import type { ObservabilityWidgetView } from "@app/hooks/api/observabilityWidgetViews";
 
 interface SidebarNavProps {
-  activeView: string;
+  activeView: string | null;
   onChangeView: (id: string) => void;
-  orgViews: SubView[];
-  privateViews: SubView[];
+  orgViews: ObservabilityWidgetView[];
+  privateViews: ObservabilityWidgetView[];
   onAddOrgView: (name: string) => void;
   onAddPrivateView: (name: string) => void;
   onRenameView: (id: string, name: string) => void;
@@ -79,7 +79,7 @@ export function SidebarNav({
   const isOrgSectionActive = orgViews.some((v) => v.id === activeView);
   const isPrivateSectionActive = privateViews.some((v) => v.id === activeView);
 
-  const renderSubView = (sv: SubView) => (
+  const renderSubView = (sv: ObservabilityWidgetView) => (
     <div
       key={sv.id}
       className={twMerge(
@@ -127,17 +127,19 @@ export function SidebarNav({
           >
             <Pencil size={12} />
           </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteView(sv.id);
-            }}
-            className="rounded p-0.5 text-mineshaft-400 hover:text-red-400"
-            title="Delete"
-          >
-            <Trash2 size={12} />
-          </button>
+          {!sv.isDefault && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteView(sv.id);
+              }}
+              className="rounded p-0.5 text-mineshaft-400 hover:text-red-400"
+              title="Delete"
+            >
+              <Trash2 size={12} />
+            </button>
+          )}
         </div>
       )}
     </div>

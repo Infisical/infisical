@@ -1,4 +1,6 @@
-import { NotFoundError } from "@app/lib/errors";
+import { Knex } from "knex";
+
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TObservabilityWidgetViewDALFactory } from "./observability-widget-view-dal";
 
@@ -8,16 +10,49 @@ type TObservabilityWidgetViewServiceFactoryDep = {
   observabilityWidgetViewDAL: TObservabilityWidgetViewDALFactory;
 };
 
+const DEFAULT_FAIL_ALERTS_LAYOUT = [
+  { uid: "default-all-failures", tmpl: "all-failures", x: 0, y: 0, w: 6, h: 2 },
+  { uid: "default-secret-syncs", tmpl: "secret-syncs", x: 6, y: 0, w: 6, h: 2 },
+  { uid: "default-live-logs", tmpl: "logs", x: 0, y: 2, w: 12, h: 2 }
+];
+
 export const observabilityWidgetViewServiceFactory = ({
   observabilityWidgetViewDAL
 }: TObservabilityWidgetViewServiceFactoryDep) => {
-  const createView = async (dto: { name: string; orgId: string; userId: string }) => {
+  const createView = async (dto: {
+    name: string;
+    orgId: string;
+    userId?: string | null;
+    scope?: "organization" | "private";
+    items?: unknown;
+  }) => {
     const view = await observabilityWidgetViewDAL.create({
       name: dto.name,
       orgId: dto.orgId,
-      userId: dto.userId,
-      items: JSON.stringify([])
+      userId: dto.userId ?? null,
+      scope: dto.scope ?? (dto.userId ? "private" : "organization"),
+      items: dto.items !== undefined ? JSON.stringify(dto.items) : JSON.stringify([])
     });
+    return view;
+  };
+
+  const createDefaultOrgView = async (orgId: string, tx?: Knex) => {
+    const existingViews = await observabilityWidgetViewDAL.findOrgViews(orgId, tx);
+    if (existingViews.length > 0) {
+      return existingViews[0];
+    }
+
+    const view = await observabilityWidgetViewDAL.create(
+      {
+        name: "Fail alerts",
+        orgId,
+        userId: null,
+        scope: "organization",
+        isDefault: true,
+        items: JSON.stringify(DEFAULT_FAIL_ALERTS_LAYOUT)
+      },
+      tx
+    );
     return view;
   };
 
@@ -50,12 +85,16 @@ export const observabilityWidgetViewServiceFactory = ({
     if (!view) {
       throw new NotFoundError({ message: "Widget view not found" });
     }
+    if (view.isDefault) {
+      throw new BadRequestError({ message: "Default views cannot be deleted" });
+    }
     await observabilityWidgetViewDAL.deleteById(viewId);
     return view;
   };
 
   return {
     createView,
+    createDefaultOrgView,
     listViews,
     getView,
     updateView,

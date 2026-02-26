@@ -57,6 +57,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TObservabilityWidgetViewDALFactory } from "../observability-widget-view/observability-widget-view-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
 import { deleteOrgMembershipsFn } from "./org-fns";
@@ -114,6 +115,7 @@ type TOrgServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  observabilityWidgetViewDAL: Pick<TObservabilityWidgetViewDALFactory, "create" | "find">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -146,8 +148,15 @@ export const orgServiceFactory = ({
   membershipRoleDAL,
   membershipUserDAL,
   userGroupMembershipDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  observabilityWidgetViewDAL
 }: TOrgServiceFactoryDep) => {
+  const DEFAULT_FAIL_ALERTS_LAYOUT = [
+    { uid: "default-all-failures", tmpl: "all-failures", x: 0, y: 0, w: 6, h: 2 },
+    { uid: "default-secret-syncs", tmpl: "secret-syncs", x: 6, y: 0, w: 6, h: 2 },
+    { uid: "default-live-logs", tmpl: "logs", x: 0, y: 2, w: 12, h: 2 }
+  ];
+
   /*
    * Get organization details by the organization id
    * */
@@ -672,6 +681,23 @@ export const orgServiceFactory = ({
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
+
+    try {
+      await observabilityWidgetViewDAL.create(
+        {
+          name: "Fail alerts",
+          orgId: organization.id,
+          userId: null,
+          scope: "organization",
+          isDefault: true,
+          items: JSON.stringify(DEFAULT_FAIL_ALERTS_LAYOUT)
+        },
+        trx
+      );
+    } catch (error) {
+      logger.warn(error, "Failed to create default observability view for organization");
+    }
+
     return organization;
   };
 

@@ -10,6 +10,8 @@ const ObservabilityWidgetViewResponseSchema = ObservabilityWidgetViewsSchema.pic
   name: true,
   orgId: true,
   userId: true,
+  scope: true,
+  isDefault: true,
   createdAt: true,
   updatedAt: true
 }).extend({
@@ -28,7 +30,8 @@ export const registerObservabilityWidgetViewRouter = async (server: FastifyZodPr
       operationId: "createObservabilityWidgetView",
       body: z.object({
         name: z.string().min(1).max(128),
-        orgId: z.string().uuid()
+        orgId: z.string().uuid(),
+        scope: z.enum(["organization", "private"]).default("private")
       }),
       response: {
         201: z.object({
@@ -40,7 +43,8 @@ export const registerObservabilityWidgetViewRouter = async (server: FastifyZodPr
       const view = await server.services.observabilityWidgetView.createView({
         name: req.body.name,
         orgId: req.body.orgId,
-        userId: req.permission.id
+        userId: req.body.scope === "private" ? req.permission.id : null,
+        scope: req.body.scope
       });
       return res.status(201).send({ view });
     }

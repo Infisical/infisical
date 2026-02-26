@@ -12,15 +12,33 @@ export const observabilityWidgetViewDALFactory = (db: TDbClient) => {
 
   const findByOrgAndUser = async (orgId: string, userId: string, tx?: Knex) => {
     try {
-      const views = await (tx || db.replicaNode())(TableName.ObservabilityWidgetView).where({ orgId, userId });
+      const views = await (tx || db.replicaNode())(TableName.ObservabilityWidgetView)
+        .where({ orgId })
+        .andWhere((qb) => {
+          qb.whereNull("userId").orWhere({ userId });
+        })
+        .orderBy("createdAt", "asc");
       return views;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByOrgAndUser - ObservabilityWidgetView" });
     }
   };
 
+  const findOrgViews = async (orgId: string, tx?: Knex) => {
+    try {
+      const views = await (tx || db.replicaNode())(TableName.ObservabilityWidgetView)
+        .where({ orgId, scope: "organization" })
+        .whereNull("userId")
+        .orderBy("createdAt", "asc");
+      return views;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOrgViews - ObservabilityWidgetView" });
+    }
+  };
+
   return {
     ...observabilityWidgetViewOrm,
-    findByOrgAndUser
+    findByOrgAndUser,
+    findOrgViews
   };
 };

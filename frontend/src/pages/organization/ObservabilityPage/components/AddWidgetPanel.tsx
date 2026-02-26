@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { GripVertical, Plus, Search, Sparkles, X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-
 import type { ObservabilityWidgetListItem } from "@app/hooks/api/observabilityWidgets";
 
 import type { PanelItem } from "../mock-data";
@@ -84,7 +85,7 @@ function DraggablePanelCard({
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-mineshaft-600 text-mineshaft-400 opacity-0 transition-all hover:border-primary hover:bg-primary/10 hover:text-primary group-hover/card:opacity-100"
         title="Click to add"
       >
-        <Plus size={12} />
+        <FontAwesomeIcon icon={faPlus} size="xs" />
       </button>
     </div>
   );
@@ -154,7 +155,7 @@ export function AddWidgetPanel({
 
   return (
     <>
-      {/* Overlay */}
+      {/* Overlay - uses pointer-events-none during drag to allow drops through */}
       {open && (
         <div
           className={twMerge(
@@ -169,19 +170,20 @@ export function AddWidgetPanel({
       {/* Panel */}
       <div
         className={twMerge(
-          "fixed bottom-0 right-0 top-0 z-[300] flex w-[380px] flex-col border-l border-mineshaft-600 bg-bunker-800 shadow-[-8px_0_30px_rgba(0,0,0,0.4)] transition-transform duration-300 ease-out",
+          "fixed bottom-0 right-0 top-0 z-[300] flex w-[380px] flex-col border-l border-mineshaft-600 bg-bunker-800 font-inter text-gray-200 shadow-[-8px_0_30px_rgba(0,0,0,0.4)] transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "translate-x-full",
           isDragging && "opacity-50"
         )}
       >
-        <div className="flex items-center justify-between border-b border-mineshaft-600 px-5 py-5">
-          <span className="text-base font-semibold text-bunker-100">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-mineshaft-600 px-5 py-4">
+          <h2 className="text-base font-semibold text-bunker-100">
             {isEditMode ? "Edit Widget" : "Add Widget"}
-          </span>
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-2 py-1 text-mineshaft-300 transition-colors hover:bg-mineshaft-600 hover:text-white"
+            className="rounded p-1 text-mineshaft-400 transition-colors hover:bg-mineshaft-700 hover:text-white"
           >
             <X size={18} />
           </button>
@@ -206,6 +208,7 @@ export function AddWidgetPanel({
         )}
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
+
           {isEditMode ? (
             <CreateTemplateForm
               key={editing.uid}

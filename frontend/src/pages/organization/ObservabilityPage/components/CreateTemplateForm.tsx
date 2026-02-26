@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
-import { Check, ChevronDown, Palette } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { faSearch } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
+import { Check, ChevronDown, Loader2, Palette, X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { Button } from "@app/components/v3";
+import { useSubscription } from "@app/context";
+import { useGetUserProjects } from "@app/hooks/api/projects";
+import { subOrganizationsQuery } from "@app/hooks/api/subOrganizations";
+
 import type { PanelItem, WidgetFilter, WidgetTemplate } from "../mock-data";
-import {
-  countByStatus,
-  EVENT_TYPES,
-  MOCK_PROJECTS,
-  MOCK_SUBORGS,
-  RESOURCE_TYPES
-} from "../mock-data";
+import { countByStatus, EVENT_TYPES, RESOURCE_TYPES } from "../mock-data";
 import { AVAILABLE_ICONS, WidgetIcon } from "./WidgetIcon";
 
 export interface CreateTemplateResult {
@@ -79,8 +81,8 @@ export function CreateTemplateForm({
           ? "suborg"
           : "org")
   );
-  const [selectedProject, setSelectedProject] = useState<string>(
-    editing?.template.filter?.projectId ?? MOCK_PROJECTS[0].name
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    editing?.template.filter?.projectId ?? ""
   );
   const [selectedSubOrgs, setSelectedSubOrgs] = useState<Set<string>>(
     new Set(editing?.template.filter?.subOrgIds ?? [])
@@ -93,6 +95,39 @@ export function CreateTemplateForm({
   const [selectedIcon, setSelectedIcon] = useState<string>(editing?.template.icon ?? "");
   const [selectedColor, setSelectedColor] = useState<string>(editing?.template.iconBg ?? "");
 
+  const [subOrgSearch, setSubOrgSearch] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
+  const [showSubOrgDropdown, setShowSubOrgDropdown] = useState(false);
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  const subOrgDropdownRef = useRef<HTMLDivElement>(null);
+  const projectDropdownRef = useRef<HTMLDivElement>(null);
+
+  const { subscription } = useSubscription();
+
+  const subOrgQueryOptions = subOrganizationsQuery.list({ limit: 500, isAccessible: true });
+  const { data: subOrganizations = [], isLoading: isLoadingSubOrgs } = useQuery({
+    ...subOrgQueryOptions,
+    enabled: Boolean(subscription?.subOrganization)
+  });
+
+  const { data: projects = [], isLoading: isLoadingProjects } = useGetUserProjects();
+
+  const filteredSubOrgs = useMemo(
+    () =>
+      subOrganizations.filter((s) =>
+        s.name.toLowerCase().includes(subOrgSearch.toLowerCase())
+      ),
+    [subOrgSearch, subOrganizations]
+  );
+
+  const filteredProjects = useMemo(
+    () =>
+      projects.filter((p) =>
+        p.name.toLowerCase().includes(projectSearch.toLowerCase())
+      ),
+    [projectSearch, projects]
+  );
+
   const REFRESH_OPTIONS =
     widgetType === "stream"
       ? ["1s", "2s", "5s", "10s", "30s", "60s"]
@@ -103,11 +138,11 @@ export function CreateTemplateForm({
       resources: Array.from(selectedResources),
       scopeTypes: [],
       statuses: Array.from(selectedStatuses),
-      projectId: scopeMode === "project" ? selectedProject : undefined,
+      projectId: scopeMode === "project" ? selectedProjectId : undefined,
       subOrgIds: scopeMode === "suborg" ? Array.from(selectedSubOrgs) : undefined,
       scopeMode
     }),
-    [selectedResources, selectedStatuses, scopeMode, selectedProject, selectedSubOrgs]
+    [selectedResources, selectedStatuses, scopeMode, selectedProjectId, selectedSubOrgs]
   );
 
   const statusCounts = useMemo(() => countByStatus(filter), [filter]);
@@ -191,8 +226,8 @@ export function CreateTemplateForm({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-primary/30 bg-[#0d1e2e]/50 p-4">
-      <div className="text-[13px] font-semibold text-bunker-100">
+    <div className="flex flex-col gap-4 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="text-sm font-semibold text-gray-200">
         {isEditMode ? "Edit Widget" : "Create Custom Widget"}
       </div>
 
@@ -321,48 +356,179 @@ export function CreateTemplateForm({
             </div>
 
             {scopeMode === "suborg" && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {MOCK_SUBORGS.map((s) => {
-                  const sel = selectedSubOrgs.has(s.name);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedSubOrgs(toggleSet(selectedSubOrgs, s.name))
-                      }
-                      className={twMerge(
-                        "flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
-                        sel
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-mineshaft-600 bg-mineshaft-700 text-mineshaft-300 hover:border-mineshaft-500 hover:text-white"
+              <div className="relative mt-2" ref={subOrgDropdownRef}>
+                {/* Selected Sub-Orgs display */}
+                {selectedSubOrgs.size > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {Array.from(selectedSubOrgs).map((subOrgId) => {
+                      const subOrg = subOrganizations.find((s) => s.id === subOrgId);
+                      return (
+                        <span
+                          key={subOrgId}
+                          className="flex items-center gap-1 rounded-md border border-primary/50 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary"
+                        >
+                          {subOrg?.name ?? subOrgId}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSubOrgs(toggleSet(selectedSubOrgs, subOrgId))}
+                            className="ml-0.5 text-primary/70 hover:text-primary"
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                {/* Dropdown trigger */}
+                <button
+                  type="button"
+                  onClick={() => setShowSubOrgDropdown(!showSubOrgDropdown)}
+                  className="flex w-full items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-3 py-2 text-[13px] text-mineshaft-300 outline-none transition-colors hover:border-mineshaft-500 focus:border-primary"
+                >
+                  <span>Select sub-organizations...</span>
+                  {isLoadingSubOrgs ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <ChevronDown
+                      size={14}
+                      className={twMerge("transition-transform", showSubOrgDropdown && "rotate-180")}
+                    />
+                  )}
+                </button>
+                {/* Dropdown */}
+                {showSubOrgDropdown && (
+                  <div className="absolute left-0 right-0 z-50 mt-1 rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
+                    <div className="border-b border-mineshaft-600 p-2">
+                      <div className="relative">
+                        <FontAwesomeIcon
+                          icon={faSearch}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-mineshaft-400"
+                          size="xs"
+                        />
+                        <input
+                          type="text"
+                          value={subOrgSearch}
+                          onChange={(e) => setSubOrgSearch(e.target.value)}
+                          placeholder="Search sub-organizations..."
+                          className="w-full rounded-md border border-mineshaft-600 bg-mineshaft-700 py-1.5 pl-8 pr-3 text-[12px] text-white outline-none placeholder:text-mineshaft-400 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-1">
+                      {isLoadingSubOrgs ? (
+                        <div className="flex items-center justify-center px-3 py-4">
+                          <Loader2 size={16} className="animate-spin text-mineshaft-400" />
+                        </div>
+                      ) : filteredSubOrgs.length === 0 ? (
+                        <div className="px-3 py-2 text-center text-[12px] text-mineshaft-400">
+                          No sub-organizations found
+                        </div>
+                      ) : (
+                        filteredSubOrgs.map((s) => {
+                          const sel = selectedSubOrgs.has(s.id);
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => setSelectedSubOrgs(toggleSet(selectedSubOrgs, s.id))}
+                              className={twMerge(
+                                "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-[12px] transition-colors",
+                                sel
+                                  ? "bg-primary/10 text-primary"
+                                  : "text-mineshaft-200 hover:bg-mineshaft-700"
+                              )}
+                            >
+                              {s.name}
+                              {sel && <Check size={12} />}
+                            </button>
+                          );
+                        })
                       )}
-                    >
-                      {s.name}
-                      {sel && <Check size={10} />}
-                    </button>
-                  );
-                })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {scopeMode === "project" && (
-              <div className="relative mt-2">
-                <select
-                  value={selectedProject}
-                  onChange={(e) => setSelectedProject(e.target.value)}
-                  className="w-full appearance-none rounded-md border border-mineshaft-600 bg-mineshaft-700 px-3 py-2 pr-8 text-[13px] text-white outline-none focus:border-primary"
+              <div className="relative mt-2" ref={projectDropdownRef}>
+                {/* Dropdown trigger */}
+                <button
+                  type="button"
+                  onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+                  className="flex w-full items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-3 py-2 text-[13px] text-white outline-none transition-colors hover:border-mineshaft-500 focus:border-primary"
                 >
-                  {MOCK_PROJECTS.map((p) => (
-                    <option key={p.id} value={p.name}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-mineshaft-300"
-                />
+                  <span>
+                    {selectedProjectId
+                      ? projects.find((p) => p.id === selectedProjectId)?.name ?? "Select a project..."
+                      : "Select a project..."}
+                  </span>
+                  {isLoadingProjects ? (
+                    <Loader2 size={14} className="animate-spin text-mineshaft-300" />
+                  ) : (
+                    <ChevronDown
+                      size={14}
+                      className={twMerge("text-mineshaft-300 transition-transform", showProjectDropdown && "rotate-180")}
+                    />
+                  )}
+                </button>
+                {/* Dropdown */}
+                {showProjectDropdown && (
+                  <div className="absolute left-0 right-0 z-50 mt-1 rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
+                    <div className="border-b border-mineshaft-600 p-2">
+                      <div className="relative">
+                        <FontAwesomeIcon
+                          icon={faSearch}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-mineshaft-400"
+                          size="xs"
+                        />
+                        <input
+                          type="text"
+                          value={projectSearch}
+                          onChange={(e) => setProjectSearch(e.target.value)}
+                          placeholder="Search projects..."
+                          className="w-full rounded-md border border-mineshaft-600 bg-mineshaft-700 py-1.5 pl-8 pr-3 text-[12px] text-white outline-none placeholder:text-mineshaft-400 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-1">
+                      {isLoadingProjects ? (
+                        <div className="flex items-center justify-center px-3 py-4">
+                          <Loader2 size={16} className="animate-spin text-mineshaft-400" />
+                        </div>
+                      ) : filteredProjects.length === 0 ? (
+                        <div className="px-3 py-2 text-center text-[12px] text-mineshaft-400">
+                          No projects found
+                        </div>
+                      ) : (
+                        filteredProjects.map((p) => {
+                          const sel = selectedProjectId === p.id;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedProjectId(p.id);
+                                setShowProjectDropdown(false);
+                                setProjectSearch("");
+                              }}
+                              className={twMerge(
+                                "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-[12px] transition-colors",
+                                sel
+                                  ? "bg-primary/10 text-primary"
+                                  : "text-mineshaft-200 hover:bg-mineshaft-700"
+                              )}
+                            >
+                              {p.name}
+                              {sel && <Check size={12} />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -459,7 +625,7 @@ export function CreateTemplateForm({
         <button
           type="button"
           onClick={() => setShowAppearance(!showAppearance)}
-          className="flex w-full items-center gap-1.5 text-[11px] font-medium text-mineshaft-300 transition-colors hover:text-white"
+          className="flex w-full cursor-pointer items-center gap-1.5 text-[11px] font-medium text-mineshaft-300 transition-colors hover:text-white"
         >
           <Palette size={12} />
           Appearance
@@ -471,7 +637,7 @@ export function CreateTemplateForm({
         </button>
 
         {showAppearance && (
-          <div className="mt-3 flex flex-col gap-3 rounded-md border border-mineshaft-600 bg-bunker-800/50 p-3">
+          <div className="mt-3 flex flex-col gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
             {/* Icon picker */}
             <div>
               <label className="mb-1.5 block text-[10px] font-medium text-mineshaft-300">
@@ -525,22 +691,19 @@ export function CreateTemplateForm({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-1">
-        <button
-          type="button"
+      <div className="flex items-center gap-3 pt-1">
+        <Button
+          variant="success"
+          size="md"
           onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="flex-1 rounded-md bg-[#238636] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#2ea043] disabled:cursor-not-allowed disabled:opacity-40"
+          isDisabled={!canSubmit}
+          className="flex-1"
         >
           {isEditMode ? "Save Changes" : "Create Widget"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-mineshaft-600 px-4 py-2 text-[13px] font-medium text-mineshaft-300 transition-colors hover:bg-mineshaft-600 hover:text-white"
-        >
+        </Button>
+        <Button variant="neutral" size="md" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

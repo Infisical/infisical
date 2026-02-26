@@ -482,6 +482,26 @@ export const TEMPLATES: Record<string, WidgetTemplate> = {
     firstStatus: "",
     isLogs: true
   },
+  "all-failures": {
+    title: "All Failures",
+    description: "Monitor all failed resources across the organization",
+    icon: "Activity",
+    iconBg: "#1c2a3a",
+    refresh: "30s",
+    stats: [],
+    dataKey: "failures",
+    firstStatus: "error"
+  },
+  "secret-syncs": {
+    title: "Secret Syncs Monitor",
+    description: "Monitor secret sync and rotation failures",
+    icon: "RefreshCw",
+    iconBg: "#f97316",
+    refresh: "30s",
+    stats: [],
+    dataKey: "secret_syncs",
+    firstStatus: ""
+  },
   _backend_events: {
     title: "Events",
     description: "",
@@ -493,6 +513,13 @@ export const TEMPLATES: Record<string, WidgetTemplate> = {
     firstStatus: ""
   }
 };
+
+// ═══ DEFAULT LAYOUT ══════════════════════════════════════════════════
+export const DEFAULT_ORG_LAYOUT: LayoutItem[] = [
+  { uid: "default-all-failures", tmpl: "all-failures", x: 0, y: 0, w: 6, h: 2 },
+  { uid: "default-secret-syncs", tmpl: "secret-syncs", x: 6, y: 0, w: 6, h: 2 },
+  { uid: "default-live-logs", tmpl: "logs", x: 0, y: 2, w: 12, h: 2 }
+];
 
 // ═══ PANEL ITEMS ═════════════════════════════════════════════════════
 export const PANEL_ITEMS: PanelItem[] = [
