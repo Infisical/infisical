@@ -201,9 +201,10 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 </div>
 
                 {/* Agent reasoning label */}
-                <AnimatePresence>
+                <AnimatePresence mode="popLayout">
                   {isSource && currentEvent?.agentReasoning && (
                     <motion.div
+                      key={currentEvent.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
