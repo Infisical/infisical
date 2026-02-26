@@ -3,6 +3,7 @@ import { Radio } from "lucide-react";
 
 import {
   Badge,
+  DocumentationLinkBadge,
   UnstableCard,
   UnstableCardContent,
   UnstableCardDescription,
@@ -125,18 +126,16 @@ export const LiveFeedTab = () => {
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-2">
-        <Badge variant="success" className="flex items-center gap-1.5 font-mono">
-          <Radio className="h-3 w-3 animate-pulse" />
-          Live
-        </Badge>
-        <span className="text-xs text-muted">Connected</span>
-      </div>
-
       <div className="flex flex-1 flex-col gap-5 lg:flex-row">
         <UnstableCard className="h-[790px] flex-1 overflow-hidden">
           <UnstableCardHeader>
-            <UnstableCardTitle>Agent Network</UnstableCardTitle>
+            <UnstableCardTitle>
+              Agent Network
+              <Badge variant="success" className="flex items-center gap-1.5 font-mono">
+                <Radio className="h-3 w-3 animate-pulse" />
+                Live
+              </Badge>
+            </UnstableCardTitle>
             <UnstableCardDescription>
               Real-time visualization of agent communication and governance decisions
             </UnstableCardDescription>

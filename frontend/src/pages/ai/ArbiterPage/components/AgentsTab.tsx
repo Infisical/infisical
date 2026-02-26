@@ -2,11 +2,12 @@ import { useCallback, useState } from "react";
 import * as Icons from "lucide-react";
 import {
   ActivityIcon,
-  EditIcon,
   FilterIcon,
   MoreHorizontalIcon,
   PowerOffIcon,
-  SearchIcon
+  SearchIcon,
+  ShieldIcon,
+  ZapIcon
 } from "lucide-react";
 
 import {
@@ -43,7 +44,7 @@ import { useProject } from "@app/context";
 import { useListAgentGatePolicies } from "@app/hooks/api";
 
 import { AGENTS } from "../data";
-import { EditPolicySheet } from "./EditPolicySheet";
+import { EditActionsSheet, EditInboundPoliciesSheet } from "./EditPolicySheet";
 
 const getIcon = (name: string) => {
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
@@ -51,6 +52,8 @@ const getIcon = (name: string) => {
 };
 
 const STATUSES = ["Active", "Inactive"] as const;
+
+type EditMode = { type: "actions"; agentId: string } | { type: "inbound"; agentId: string } | null;
 
 export const AgentsTab = () => {
   const { currentProject } = useProject();
@@ -60,7 +63,7 @@ export const AgentsTab = () => {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState<EditMode>(null);
 
   const handleStatusToggle = useCallback(
     (status: string) =>
@@ -150,9 +153,10 @@ export const AgentsTab = () => {
           <UnstableTable>
             <UnstableTableHeader>
               <UnstableTableRow>
-                <UnstableTableHead className="w-1/4">Name</UnstableTableHead>
+                <UnstableTableHead className="w-1/6">Name</UnstableTableHead>
                 <UnstableTableHead>Description</UnstableTableHead>
-                <UnstableTableHead>Policies</UnstableTableHead>
+                <UnstableTableHead>Actions</UnstableTableHead>
+                <UnstableTableHead>Inbound Policies</UnstableTableHead>
                 <UnstableTableHead>Status</UnstableTableHead>
                 <UnstableTableHead className="w-5" />
               </UnstableTableRow>
@@ -160,9 +164,6 @@ export const AgentsTab = () => {
             <UnstableTableBody>
               {filteredAgents.map((agent) => {
                 const policy = policyMap.get(agent.id);
-                const policyCount =
-                  (policy?.selfPolicies.promptPolicies.length ?? 0) +
-                  (policy?.inboundPolicies.length ?? 0);
 
                 return (
                   <UnstableTableRow key={agent.id}>
@@ -176,10 +177,15 @@ export const AgentsTab = () => {
                       <span className="text-xs text-accent">{agent.description}</span>
                     </UnstableTableCell>
                     <UnstableTableCell>
-                      {policy ? (
-                        <Badge variant="neutral">
-                          {policyCount} {policyCount === 1 ? "policy" : "policies"}
-                        </Badge>
+                      {policy?.selfPolicies.allowedActions.length ? (
+                        policy.selfPolicies.allowedActions.length
+                      ) : (
+                        <span className="text-xs text-muted">None</span>
+                      )}
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      {policy?.inboundPolicies.length ? (
+                        policy.inboundPolicies.length
                       ) : (
                         <span className="text-xs text-muted">None</span>
                       )}
@@ -198,9 +204,17 @@ export const AgentsTab = () => {
                           </UnstableIconButton>
                         </UnstableDropdownMenuTrigger>
                         <UnstableDropdownMenuContent align="end">
-                          <UnstableDropdownMenuItem onClick={() => setEditingAgentId(agent.id)}>
-                            <EditIcon />
-                            Edit Policies
+                          <UnstableDropdownMenuItem
+                            onClick={() => setEditMode({ type: "actions", agentId: agent.id })}
+                          >
+                            <ZapIcon />
+                            Edit Action Conditions
+                          </UnstableDropdownMenuItem>
+                          <UnstableDropdownMenuItem
+                            onClick={() => setEditMode({ type: "inbound", agentId: agent.id })}
+                          >
+                            <ShieldIcon />
+                            Edit Inbound Policies
                           </UnstableDropdownMenuItem>
                           <UnstableDropdownMenuItem variant="danger">
                             <PowerOffIcon />
@@ -217,12 +231,21 @@ export const AgentsTab = () => {
         )}
       </UnstableCard>
 
-      <EditPolicySheet
-        isOpen={editingAgentId !== null}
+      <EditActionsSheet
+        isOpen={editMode?.type === "actions"}
         onOpenChange={(open) => {
-          if (!open) setEditingAgentId(null);
+          if (!open) setEditMode(null);
         }}
-        agentId={editingAgentId}
+        agentId={editMode?.type === "actions" ? editMode.agentId : null}
+        projectId={projectId}
+      />
+
+      <EditInboundPoliciesSheet
+        isOpen={editMode?.type === "inbound"}
+        onOpenChange={(open) => {
+          if (!open) setEditMode(null);
+        }}
+        agentId={editMode?.type === "inbound" ? editMode.agentId : null}
         projectId={projectId}
       />
     </>

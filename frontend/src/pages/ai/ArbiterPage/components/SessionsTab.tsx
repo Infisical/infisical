@@ -3,6 +3,7 @@ import {
   CheckCircle,
   CheckIcon,
   ChevronRightIcon,
+  CirclePlayIcon,
   Clock,
   DownloadIcon,
   FilterIcon,
@@ -122,7 +123,7 @@ const SessionRow = ({
           />
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
-          <span className="font-medium">{session.title}</span>
+          <span className="font-medium">{session.id.replace("session-", " ")}</span>
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
           <span className="text-xs text-accent">{session.description}</span>
@@ -144,7 +145,9 @@ const SessionRow = ({
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
           <Badge variant="neutral" className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {session.duration}s
+            {session.duration >= 60
+              ? `${Math.floor(session.duration / 60)}m ${session.duration % 60}s`
+              : `${session.duration}s`}
           </Badge>
         </UnstableTableCell>
         <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
@@ -167,7 +170,7 @@ const SessionRow = ({
               onReplay(session);
             }}
           >
-            <PlayIcon className="h-3.5 w-3.5" />
+            <CirclePlayIcon />
           </UnstableIconButton>
         </UnstableTableCell>
       </UnstableTableRow>
