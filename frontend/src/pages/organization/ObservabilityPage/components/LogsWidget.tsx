@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GripVertical, Pause, Play } from "lucide-react";
+import { GripVertical, Lock, LockOpen, Pause, Play } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+
+import { Tooltip } from "@app/components/v2";
 
 import type { LogEntry } from "../mock-data";
 import { generateLogEntry, generateSeedLogs } from "../mock-data";
@@ -12,13 +14,19 @@ const LEVEL_COLOR: Record<string, string> = {
   info: "#58a6ff"
 };
 
-export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<string, unknown> }) {
+export function LogsWidget({
+  isLocked = false,
+  onToggleLock
+}: {
+  isLocked?: boolean;
+  onToggleLock?: () => void;
+}) {
   const [mounted, setMounted] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [paused, setPaused] = useState(false);
   const [activeLevels, setActiveLevels] = useState(new Set(["error", "warn", "info"]));
   const [textFilter, setTextFilter] = useState("");
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [autoScroll] = useState(true);
   const streamRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,8 +84,7 @@ export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<strin
       {/* Header */}
       <div className="flex items-center border-b border-mineshaft-600">
         <div
-          className="flex cursor-grab items-center self-stretch border-r border-mineshaft-600 px-1.5 text-mineshaft-500 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-300 active:cursor-grabbing"
-          {...dragHandleProps}
+          className="drag-handle flex cursor-grab items-center self-stretch border-r border-mineshaft-600 px-1.5 text-mineshaft-500 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-300 active:cursor-grabbing"
           title="Drag to reorder"
         >
           <GripVertical size={14} />
@@ -222,6 +229,25 @@ export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<strin
         )}
       </div>
 
+      {/* Footer with lock button */}
+      <div className="flex items-center justify-end gap-2 border-t border-mineshaft-600 bg-bunker-800 py-1.5 pl-3.5 pr-10">
+        {/* Lock button */}
+        <Tooltip content={isLocked ? "Unlock widget" : "Lock widget"}>
+          <button
+            type="button"
+            onClick={onToggleLock}
+            className={twMerge(
+              "flex h-[26px] w-[26px] items-center justify-center rounded-[5px] transition-colors",
+              isLocked
+                ? "bg-amber-900/30 text-amber-400 hover:bg-amber-900/50"
+                : "text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-200"
+            )}
+            aria-label={isLocked ? "Unlock widget" : "Lock widget"}
+          >
+            {isLocked ? <Lock size={14} /> : <LockOpen size={14} />}
+          </button>
+        </Tooltip>
+      </div>
     </div>
   );
 }

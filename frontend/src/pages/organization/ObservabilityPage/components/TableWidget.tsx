@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   GripVertical,
+  Lock,
+  LockOpen,
   Pencil,
   RotateCw
 } from "lucide-react";
@@ -72,12 +74,14 @@ function sortRows(rows: DataRow[], key: SortKey, dir: SortDir): DataRow[] {
 
 export function TableWidget({
   template,
-  dragHandleProps,
-  onEdit
+  onEdit,
+  isLocked = false,
+  onToggleLock
 }: {
   template: WidgetTemplate;
-  dragHandleProps?: Record<string, unknown>;
   onEdit?: () => void;
+  isLocked?: boolean;
+  onToggleLock?: () => void;
 }) {
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("date");
@@ -138,8 +142,7 @@ export function TableWidget({
       {/* Header */}
       <div className="flex items-center border-b border-mineshaft-600">
         <div
-          className="flex cursor-grab items-center self-stretch border-r border-mineshaft-600 px-1.5 text-mineshaft-500 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-300 active:cursor-grabbing"
-          {...dragHandleProps}
+          className="drag-handle flex cursor-grab items-center self-stretch border-r border-mineshaft-600 px-1.5 text-mineshaft-500 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-300 active:cursor-grabbing"
           title="Drag to reorder"
         >
           <GripVertical size={14} />
@@ -280,7 +283,7 @@ export function TableWidget({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-bunker-800 px-3.5 py-1.5">
+      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-bunker-800 py-1.5 pl-3.5 pr-10">
         <div className="flex items-center gap-3">
           {template.stats.map((s) => (
             <div key={s.label} className="flex items-center gap-1.5 text-[11px]">
@@ -333,6 +336,26 @@ export function TableWidget({
               </button>
             </div>
           )}
+
+          {/* Separator */}
+          <div className="mx-1 h-4 w-px bg-mineshaft-600" />
+
+          {/* Lock button */}
+          <Tooltip content={isLocked ? "Unlock widget" : "Lock widget"}>
+            <button
+              type="button"
+              onClick={onToggleLock}
+              className={twMerge(
+                "flex h-[26px] w-[26px] items-center justify-center rounded-[5px] transition-colors",
+                isLocked
+                  ? "bg-amber-900/30 text-amber-400 hover:bg-amber-900/50"
+                  : "text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-200"
+              )}
+              aria-label={isLocked ? "Unlock widget" : "Lock widget"}
+            >
+              {isLocked ? <Lock size={14} /> : <LockOpen size={14} />}
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>

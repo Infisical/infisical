@@ -1,186 +1,140 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  pointerWithin,
-  rectIntersection,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type CollisionDetection,
-  type DragEndEvent,
-  type DragStartEvent
-} from "@dnd-kit/core";
-import { arrayMove, SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
-import { GripVertical, Plus, RotateCw } from "lucide-react";
-import { twMerge } from "tailwind-merge";
-
-import { useOrganization, useUser } from "@app/context";
-import { ROUTE_PATHS } from "@app/const/routes";
-import {
-  useCreateWidgetView,
-  useDeleteWidgetView,
-  useListWidgetViews,
-  useUpdateWidgetView,
-  type WidgetViewItem
-} from "@app/hooks/api/observabilityWidgetViews";
+import { useCallback, useMemo, useRef, useState } from "react";
+import type { Layout, LayoutItem as RGLLayoutItem } from "react-grid-layout";
+import { GridLayout, useContainerWidth } from "react-grid-layout";
+import { GridBackground } from "react-grid-layout/extras";
+import { Plus, RotateCw } from "lucide-react";
 
 import type { LayoutItem, PanelItem, SubView, WidgetTemplate } from "../mock-data";
 import { DEFAULT_LAYOUT, TEMPLATES } from "../mock-data";
 import { AddWidgetPanel } from "./AddWidgetPanel";
 import type { CreateTemplateResult, EditingWidget } from "./CreateTemplateForm";
 import { SidebarNav } from "./SidebarNav";
-import { SortableWidgetCard, WidgetCardOverlay } from "./WidgetCard";
+import { WidgetCard } from "./WidgetCard";
 
-const customCollision: CollisionDetection = (args) => {
-  const pointerCollisions = pointerWithin(args);
-  if (pointerCollisions.length > 0) return pointerCollisions;
-  return rectIntersection(args);
-};
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 
-function DroppableGrid({ children, isOver }: { children: React.ReactNode; isOver: boolean }) {
-  const { setNodeRef } = useDroppable({ id: "grid-drop-zone" });
-  return (
-    <div
-      ref={setNodeRef}
-      className={twMerge(
-        "grid auto-rows-[200px] grid-cols-12 gap-4 rounded-xl border-2 border-dashed p-1 transition-colors duration-200",
-        isOver ? "border-primary/40 bg-primary/[0.03]" : "border-transparent"
-      )}
-    >
-      {children}
-    </div>
-  );
-}
+const resizeHandleStyles = `
+  /* Custom resize handle styling - diagonal lines icon */
+  .react-grid-item > .react-resizable-handle {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    bottom: 2px;
+    right: 2px;
+    cursor: se-resize;
+    background: transparent;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease;
+    z-index: 10;
+  }
+  .react-grid-item > .react-resizable-handle:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .react-grid-item > .react-resizable-handle::before {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 2L2 12M12 6L6 12M12 10L10 12' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+  .react-grid-item > .react-resizable-handle:hover::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 2L2 12M12 6L6 12M12 10L10 12' stroke='%23d1d5db' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+  .react-grid-item > .react-resizable-handle::after {
+    display: none;
+  }
+
+  /* Locked widget styles - hide resize handle */
+  .react-grid-item.widget-locked > .react-resizable-handle {
+    display: none !important;
+  }
+  .react-grid-item.widget-locked {
+    cursor: default;
+  }
+  .react-grid-item.widget-locked .drag-handle {
+    cursor: default !important;
+  }
+
+  /* Drag and placeholder styles */
+  .react-grid-item.react-draggable-dragging {
+    z-index: 100;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  }
+  .react-grid-placeholder {
+    background: rgba(99, 102, 241, 0.15) !important;
+    border: 2px dashed rgba(99, 102, 241, 0.5) !important;
+    border-radius: 10px;
+  }
+`;
+
+const GRID_COLS = 12;
+const ROW_HEIGHT = 200;
+const GRID_MARGIN: [number, number] = [16, 16];
 
 export function ObservabilityDashboard() {
-  const { currentOrg } = useOrganization();
-  const { user } = useUser();
-  const orgId = currentOrg?.id ?? "";
+  const { width, containerRef, mounted } = useContainerWidth();
 
-  const { data: persistedViews = [] } = useListWidgetViews(orgId);
-  const createViewMutation = useCreateWidgetView();
-  const updateViewMutation = useUpdateWidgetView();
-  const deleteViewMutation = useDeleteWidgetView();
-
-  const navigate = useNavigate({ from: ROUTE_PATHS.Organization.ObservabilityPage.path });
-  const activeView = useSearch({
-    from: ROUTE_PATHS.Organization.ObservabilityPage.id,
-    select: (s) => s.view || "org",
-    structuralSharing: true
-  });
-  const setActiveView = useCallback(
-    (view: string) => {
-      navigate({ search: (prev) => ({ ...prev, view: view === "org" ? "" : view }) });
-    },
-    [navigate]
-  );
-
+  const [activeView, setActiveView] = useState("org");
+  const [subViews, setSubViews] = useState<SubView[]>([]);
   const [layouts, setLayouts] = useState<Record<string, LayoutItem[]>>({
     org: [...DEFAULT_LAYOUT],
     private: []
   });
 
-  // Sync persisted views into local layouts when they load
-  useEffect(() => {
-    if (persistedViews.length === 0) return;
-    setLayouts((prev) => {
-      const next = { ...prev };
-      for (const view of persistedViews) {
-        if (!(view.id in next)) {
-          const items = view.items;
-          next[view.id] = Array.isArray(items) ? (items as LayoutItem[]) : [];
-        }
-      }
-      return next;
-    });
-  }, [persistedViews]);
-
-  const subViews: SubView[] = persistedViews.map((v) => ({ id: v.id, name: v.name }));
-
   const [panelOpen, setPanelOpen] = useState(false);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [isOverGrid, setIsOverGrid] = useState(false);
+  const [isExternalDragging, setIsExternalDragging] = useState(false);
   const uidCounter = useRef(100);
 
   const [customTemplates, setCustomTemplates] = useState<Record<string, WidgetTemplate>>({});
   const [customPanelItems, setCustomPanelItems] = useState<PanelItem[]>([]);
-  const allTemplates = useMemo(
-    () => ({ ...TEMPLATES, ...customTemplates }),
-    [customTemplates]
-  );
+  const allTemplates = useMemo(() => ({ ...TEMPLATES, ...customTemplates }), [customTemplates]);
 
   const [editingWidget, setEditingWidget] = useState<EditingWidget | undefined>(undefined);
 
   const layout = Array.isArray(layouts[activeView]) ? (layouts[activeView] as LayoutItem[]) : [];
   const setLayout = useCallback(
     (updater: LayoutItem[] | ((prev: LayoutItem[]) => LayoutItem[])) => {
-      setLayouts((prev) => ({
-        ...prev,
-        [activeView]: typeof updater === "function" ? updater(Array.isArray(prev[activeView]) ? (prev[activeView] as LayoutItem[]) : []) : updater
-      }));
+      setLayouts((prev) => {
+        const currentLayout = Array.isArray(prev[activeView])
+          ? (prev[activeView] as LayoutItem[])
+          : [];
+        return {
+          ...prev,
+          [activeView]: typeof updater === "function" ? updater(currentLayout) : updater
+        };
+      });
     },
     [activeView]
   );
 
-  // Persist layout changes for user-owned views
-  const persistLayoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (activeView === "org" || activeView === "private" || !orgId) return;
-    if (persistLayoutRef.current) clearTimeout(persistLayoutRef.current);
-    persistLayoutRef.current = setTimeout(() => {
-      updateViewMutation.mutate({ viewId: activeView, orgId, items: layout as WidgetViewItem[] });
-    }, 200);
-    return () => {
-      if (persistLayoutRef.current) clearTimeout(persistLayoutRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layout, activeView, orgId]);
+  const handleAddSubView = useCallback((name: string) => {
+    const id = `view-${Date.now()}`;
+    setSubViews((prev) => [...prev, { id, name }]);
+    setLayouts((prev) => ({ ...prev, [id]: [] }));
+    setActiveView(id);
+  }, []);
 
-  const handleAddSubView = useCallback(
-    (name: string) => {
-      if (!orgId || !user?.id) return;
-      createViewMutation.mutate(
-        { name, orgId },
-        {
-          onSuccess(view) {
-            setLayouts((prev) => ({ ...prev, [view.id]: [] }));
-            setActiveView(view.id);
-          }
-        }
-      );
-    },
-    [orgId, user?.id, createViewMutation]
-  );
-
-  const handleRenameSubView = useCallback(
-    (id: string, name: string) => {
-      if (!orgId) return;
-      updateViewMutation.mutate({ viewId: id, orgId, name });
-    },
-    [orgId, updateViewMutation]
-  );
+  const handleRenameSubView = useCallback((id: string, name: string) => {
+    setSubViews((prev) => prev.map((sv) => (sv.id === id ? { ...sv, name } : sv)));
+  }, []);
 
   const handleDeleteSubView = useCallback(
     (id: string) => {
-      if (!orgId) return;
-      deleteViewMutation.mutate(
-        { viewId: id, orgId },
-        {
-          onSuccess() {
-            setLayouts((prev) => {
-              const next = { ...prev };
-              delete next[id];
-              return next;
-            });
-            if (activeView === id) setActiveView("private");
-          }
-        }
-      );
+      setSubViews((prev) => prev.filter((sv) => sv.id !== id));
+      setLayouts((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      if (activeView === id) setActiveView("private");
     },
-    [orgId, activeView, deleteViewMutation]
+    [activeView]
   );
 
   const handleEditWidget = useCallback(
@@ -206,123 +160,202 @@ export function ObservabilityDashboard() {
         setEditingWidget(undefined);
       } else {
         setCustomPanelItems((prev) => [...prev, result.panelItem]);
-        const uid = `w${++uidCounter.current}`;
+        uidCounter.current += 1;
+        const uid = `w${uidCounter.current}`;
+        const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
         setLayout((prev) => [
           ...prev,
           {
             uid,
             tmpl: result.key,
-            cols: result.template.isLogs ? 12 : 6,
-            rows: 2,
-            order: prev.length
+            x: 0,
+            y: maxY,
+            w: result.template.isLogs ? 12 : 6,
+            h: 2
           }
         ]);
       }
       setPanelOpen(false);
     },
-    [setLayout, editingWidget]
-  );
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
-
-  const isPanelDrag = activeDragId?.startsWith("panel-");
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveDragId(String(event.active.id));
-  }, []);
-
-  const handleDragOver = useCallback(
-    (event: { over: { id: string | number } | null }) => {
-      if (!isPanelDrag) return;
-      setIsOverGrid(
-        event.over?.id === "grid-drop-zone" ||
-          layout.some((i) => i.uid === String(event.over?.id))
-      );
-    },
-    [isPanelDrag, layout]
+    [setLayout, editingWidget, layout]
   );
 
   const addWidget = useCallback(
     (tmpl: string) => {
-      const uid = `w${++uidCounter.current}`;
+      uidCounter.current += 1;
+      const uid = `w${uidCounter.current}`;
       const t = allTemplates[tmpl];
+      const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
       setLayout((prev) => [
         ...prev,
-        { uid, tmpl, cols: t?.isLogs ? 12 : 6, rows: 2, order: prev.length }
+        {
+          uid,
+          tmpl,
+          x: 0,
+          y: maxY,
+          w: t?.isLogs ? 12 : 6,
+          h: 2
+        }
       ]);
       setPanelOpen(false);
     },
-    [allTemplates, setLayout]
-  );
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      setActiveDragId(null);
-      setIsOverGrid(false);
-      const { active, over } = event;
-      const data = active.data.current;
-      if (data?.type === "panel-item") {
-        if (over) addWidget(data.tmpl as string);
-        return;
-      }
-      if (over) {
-        const activeId = String(active.id);
-        const overId = String(over.id);
-        if (activeId !== overId && overId !== "grid-drop-zone") {
-          setLayout((prev) => {
-            const oldIndex = prev.findIndex((item) => item.uid === activeId);
-            const newIndex = prev.findIndex((item) => item.uid === overId);
-            if (oldIndex === -1 || newIndex === -1) return prev;
-            return arrayMove(prev, oldIndex, newIndex).map((item, i) => ({
-              ...item,
-              order: i
-            }));
-          });
-        }
-      }
-    },
-    [addWidget, setLayout]
+    [allTemplates, setLayout, layout]
   );
 
   const removeWidget = useCallback(
     (uid: string) => {
+      setLayout((prev) => prev.filter((item) => item.uid !== uid));
+    },
+    [setLayout]
+  );
+
+  const toggleWidgetLock = useCallback(
+    (uid: string) => {
       setLayout((prev) =>
-        prev
-          .filter((item) => item.uid !== uid)
-          .map((item, i) => ({ ...item, order: i }))
+        prev.map((item) => (item.uid === uid ? { ...item, static: !item.static } : item))
       );
     },
     [setLayout]
   );
 
-  const resizeWidget = useCallback(
-    (uid: string, cols: number, rows: number) => {
+  const handleLayoutChange = useCallback(
+    (newLayout: Layout) => {
       setLayout((prev) =>
-        prev.map((item) => (item.uid === uid ? { ...item, cols, rows } : item))
+        prev.map((item) => {
+          const rglItem = newLayout.find((l) => l.i === item.uid);
+          if (!rglItem) return item;
+          return {
+            ...item,
+            x: rglItem.x,
+            y: rglItem.y,
+            w: rglItem.w,
+            h: rglItem.h
+          };
+        })
       );
     },
     [setLayout]
   );
 
-  const activeItem = activeDragId ? layout.find((item) => item.uid === activeDragId) : null;
+  const handleDrop = useCallback(
+    (newLayout: Layout, layoutItem: RGLLayoutItem | undefined, e: Event) => {
+      setIsExternalDragging(false);
 
-  const viewLabel =
-    activeView === "org"
-      ? "Organization"
-      : activeView === "private"
-        ? "Private"
-        : (subViews.find((s) => s.id === activeView)?.name ?? "View");
+      if (!layoutItem) return;
+
+      const dragEvent = e as DragEvent;
+      if (!dragEvent.dataTransfer) return;
+
+      try {
+        const data = JSON.parse(dragEvent.dataTransfer.getData("application/json")) as {
+          type: string;
+          tmpl: string;
+        };
+        if (data.type === "panel-item" && data.tmpl) {
+          uidCounter.current += 1;
+          const uid = `w${uidCounter.current}`;
+          const t = allTemplates[data.tmpl];
+
+          // Find the dropping placeholder to get its final position
+          const droppingPlaceholder = newLayout.find((item) => item.i === "__dropping-elem__");
+          const droppedItemPosition = droppingPlaceholder
+            ? { x: droppingPlaceholder.x, y: droppingPlaceholder.y }
+            : { x: layoutItem.x, y: layoutItem.y };
+
+          // Update existing items with their new positions from the compacted layout
+          const updatedExistingItems: LayoutItem[] = newLayout
+            .filter((rglItem) => rglItem.i !== "__dropping-elem__")
+            .map((rglItem) => {
+              const existingItem = layout.find((item) => item.uid === rglItem.i);
+              if (!existingItem) return null;
+              return {
+                ...existingItem,
+                x: rglItem.x,
+                y: rglItem.y,
+                w: rglItem.w,
+                h: rglItem.h
+              };
+            })
+            .filter((item): item is LayoutItem => item !== null);
+
+          // Add the new widget
+          setLayout([
+            ...updatedExistingItems,
+            {
+              uid,
+              tmpl: data.tmpl,
+              x: droppedItemPosition.x,
+              y: droppedItemPosition.y,
+              w: t?.isLogs ? 12 : 6,
+              h: 2
+            }
+          ]);
+        }
+      } catch {
+        // Invalid drag data
+      }
+    },
+    [allTemplates, setLayout, layout]
+  );
+
+  const handleDropDragOver = useCallback(
+    (e: React.DragEvent): { w: number; h: number } | false | undefined => {
+      if (!e.dataTransfer) return false;
+
+      try {
+        const { types } = e.dataTransfer;
+        if (types.includes("application/json")) {
+          setIsExternalDragging(true);
+          return { w: 6, h: 2 };
+        }
+      } catch {
+        // Ignore
+      }
+      return false;
+    },
+    []
+  );
+
+  const handleExternalDragStart = useCallback(() => {
+    setIsExternalDragging(true);
+  }, []);
+
+  const handleExternalDragEnd = useCallback(() => {
+    setIsExternalDragging(false);
+  }, []);
+
+  const rglLayout: Layout = useMemo(
+    () =>
+      layout.map((item) => ({
+        i: item.uid,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+        minW: 2,
+        maxW: 12,
+        minH: 1,
+        maxH: 6,
+        static: item.static ?? false
+      })),
+    [layout]
+  );
+
+  const getViewLabel = () => {
+    if (activeView === "org") return "Organization";
+    if (activeView === "private") return "Private";
+    return subViews.find((s) => s.id === activeView)?.name ?? "View";
+  };
+  const viewLabel = getViewLabel();
+
+  const gridRows = Math.max(
+    6,
+    Math.ceil(layout.reduce((max, item) => Math.max(max, item.y + item.h), 0) + 2)
+  );
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={customCollision}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
+    <>
+      <style>{resizeHandleStyles}</style>
       <div className="flex min-h-0 flex-1">
         <SidebarNav
           activeView={activeView}
@@ -381,25 +414,64 @@ export function ObservabilityDashboard() {
           </div>
 
           {/* Grid */}
-          <div className="flex-1 overflow-auto px-8 pb-8 pt-5">
-            {layout.length > 0 ? (
-              <SortableContext
-                items={layout.map((item) => item.uid)}
-                strategy={rectSortingStrategy}
+          <div className="flex-1 overflow-auto px-8 pt-5 pb-8">
+            {layout.length > 0 || isExternalDragging ? (
+              <div
+                ref={containerRef as React.RefObject<HTMLDivElement>}
+                style={{ position: "relative" }}
               >
-                <DroppableGrid isOver={isOverGrid}>
-                  {layout.map((item) => (
-                    <SortableWidgetCard
-                      key={item.uid}
-                      item={item}
-                      templates={allTemplates}
-                      onRemove={removeWidget}
-                      onResize={resizeWidget}
-                      onEdit={handleEditWidget}
-                    />
-                  ))}
-                </DroppableGrid>
-              </SortableContext>
+                {mounted && (
+                  <>
+                    {isExternalDragging && (
+                      <GridBackground
+                        width={width}
+                        cols={GRID_COLS}
+                        rowHeight={ROW_HEIGHT}
+                        margin={GRID_MARGIN}
+                        rows={gridRows}
+                        color="rgba(99, 102, 241, 0.12)"
+                        borderRadius={8}
+                      />
+                    )}
+                    <GridLayout
+                      width={width}
+                      layout={rglLayout}
+                      gridConfig={{
+                        cols: GRID_COLS,
+                        rowHeight: ROW_HEIGHT,
+                        margin: GRID_MARGIN
+                      }}
+                      dragConfig={{
+                        enabled: true,
+                        handle: ".drag-handle"
+                      }}
+                      resizeConfig={{
+                        enabled: true,
+                        handles: ["se"]
+                      }}
+                      dropConfig={{
+                        enabled: true,
+                        defaultItem: { w: 6, h: 2 }
+                      }}
+                      onLayoutChange={handleLayoutChange}
+                      onDrop={handleDrop}
+                      onDropDragOver={handleDropDragOver}
+                    >
+                      {layout.map((item) => (
+                        <div key={item.uid} className={item.static ? "widget-locked" : undefined}>
+                          <WidgetCard
+                            item={item}
+                            templates={allTemplates}
+                            onRemove={removeWidget}
+                            onEdit={handleEditWidget}
+                            onToggleLock={toggleWidgetLock}
+                          />
+                        </div>
+                      ))}
+                    </GridLayout>
+                  </>
+                )}
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="mb-3 text-[28px] text-mineshaft-500">+</div>
@@ -415,39 +487,23 @@ export function ObservabilityDashboard() {
             )}
           </div>
         </main>
+
+        {/* Side Panel */}
+        <AddWidgetPanel
+          open={panelOpen}
+          onClose={() => {
+            setPanelOpen(false);
+            setEditingWidget(undefined);
+          }}
+          onAdd={addWidget}
+          isDragging={isExternalDragging}
+          customPanelItems={customPanelItems}
+          onCreateTemplate={handleCreateTemplate}
+          editing={editingWidget}
+          onExternalDragStart={handleExternalDragStart}
+          onExternalDragEnd={handleExternalDragEnd}
+        />
       </div>
-
-      {/* Side Panel */}
-      <AddWidgetPanel
-        open={panelOpen}
-        onClose={() => {
-          setPanelOpen(false);
-          setEditingWidget(undefined);
-        }}
-        onAdd={addWidget}
-        isDragging={!!activeDragId}
-        customPanelItems={customPanelItems}
-        onCreateTemplate={handleCreateTemplate}
-        editing={editingWidget}
-      />
-
-      {/* Drag Overlay */}
-      <DragOverlay dropAnimation={null}>
-        {activeItem ? (
-          <WidgetCardOverlay item={activeItem} templates={allTemplates} />
-        ) : isPanelDrag ? (
-          <div className="flex items-center gap-2 rounded-lg border-2 border-primary/60 bg-mineshaft-800/95 px-4 py-3 shadow-2xl backdrop-blur-sm">
-            <GripVertical size={14} className="text-primary/60" />
-            <span className="text-[13px] font-medium text-bunker-100">
-              {(() => {
-                const tmplId = activeDragId?.replace("panel-", "");
-                const tmpl = tmplId ? allTemplates[tmplId] : null;
-                return tmpl?.title ?? "Widget";
-              })()}
-            </span>
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+    </>
   );
 }

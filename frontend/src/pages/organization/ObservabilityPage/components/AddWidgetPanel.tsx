@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useDraggable } from "@dnd-kit/core";
 import { GripVertical, Plus, Search, Sparkles, X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -9,15 +8,39 @@ import { CreateTemplateForm } from "./CreateTemplateForm";
 import type { CreateTemplateResult, EditingWidget } from "./CreateTemplateForm";
 import { WidgetIcon } from "./WidgetIcon";
 
-function DraggablePanelCard({ item, onAdd }: { item: PanelItem; onAdd: (id: string) => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `panel-${item.id}`,
-    data: { type: "panel-item", tmpl: item.id }
-  });
+function DraggablePanelCard({
+  item,
+  onAdd,
+  onDragStart,
+  onDragEnd
+}: {
+  item: PanelItem;
+  onAdd: (id: string) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    setIsDragging(true);
+    onDragStart?.();
+    e.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({ type: "panel-item", tmpl: item.id })
+    );
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    onDragEnd?.();
+  };
 
   return (
     <div
-      ref={setNodeRef}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       className={twMerge(
         "group/card flex items-center gap-2.5 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-3 transition-all",
         isDragging
@@ -25,11 +48,7 @@ function DraggablePanelCard({ item, onAdd }: { item: PanelItem; onAdd: (id: stri
           : "hover:border-mineshaft-500 hover:bg-mineshaft-700"
       )}
     >
-      <div
-        className="flex cursor-grab items-center self-stretch text-mineshaft-500 transition-colors hover:text-mineshaft-300 active:cursor-grabbing"
-        {...listeners}
-        {...attributes}
-      >
+      <div className="flex cursor-grab items-center self-stretch text-mineshaft-500 transition-colors hover:text-mineshaft-300 active:cursor-grabbing">
         <GripVertical size={14} />
       </div>
 
@@ -75,7 +94,9 @@ export function AddWidgetPanel({
   isDragging = false,
   customPanelItems = [],
   onCreateTemplate,
-  editing
+  editing,
+  onExternalDragStart,
+  onExternalDragEnd
 }: {
   open: boolean;
   onClose: () => void;
@@ -84,6 +105,8 @@ export function AddWidgetPanel({
   customPanelItems?: PanelItem[];
   onCreateTemplate?: (result: CreateTemplateResult) => void;
   editing?: EditingWidget;
+  onExternalDragStart?: () => void;
+  onExternalDragEnd?: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -183,7 +206,13 @@ export function AddWidgetPanel({
                   </div>
                   <div className="mb-4 flex flex-col gap-1.5">
                     {builtIn.map((p) => (
-                      <DraggablePanelCard key={p.id} item={p} onAdd={onAdd} />
+                      <DraggablePanelCard
+                        key={p.id}
+                        item={p}
+                        onAdd={onAdd}
+                        onDragStart={onExternalDragStart}
+                        onDragEnd={onExternalDragEnd}
+                      />
                     ))}
                   </div>
                 </>
@@ -196,7 +225,13 @@ export function AddWidgetPanel({
                   </div>
                   <div className="mb-4 flex flex-col gap-1.5">
                     {org.map((p) => (
-                      <DraggablePanelCard key={p.id} item={p} onAdd={onAdd} />
+                      <DraggablePanelCard
+                        key={p.id}
+                        item={p}
+                        onAdd={onAdd}
+                        onDragStart={onExternalDragStart}
+                        onDragEnd={onExternalDragEnd}
+                      />
                     ))}
                   </div>
                 </>
@@ -209,7 +244,13 @@ export function AddWidgetPanel({
                   </div>
                   <div className="mb-4 flex flex-col gap-1.5">
                     {custom.map((p) => (
-                      <DraggablePanelCard key={p.id} item={p} onAdd={onAdd} />
+                      <DraggablePanelCard
+                        key={p.id}
+                        item={p}
+                        onAdd={onAdd}
+                        onDragStart={onExternalDragStart}
+                        onDragEnd={onExternalDragEnd}
+                      />
                     ))}
                   </div>
                 </>

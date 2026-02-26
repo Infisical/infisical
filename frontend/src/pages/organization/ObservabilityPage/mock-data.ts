@@ -41,9 +41,11 @@ export interface WidgetTemplate {
 export interface LayoutItem {
   uid: string;
   tmpl: string;
-  cols: number;
-  rows: number;
-  order: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  static?: boolean;
 }
 
 export interface PanelItem {
@@ -760,9 +762,9 @@ export function generateSeedLogs(): LogEntry[] {
 
 // ═══ DEFAULT LAYOUT ══════════════════════════════════════════════════
 export const DEFAULT_LAYOUT: LayoutItem[] = [
-  { uid: "w1", tmpl: "needs_attention", cols: 6, rows: 2, order: 0 },
-  { uid: "w2", tmpl: "mi", cols: 6, rows: 2, order: 1 },
-  { uid: "w3", tmpl: "logs", cols: 12, rows: 2, order: 2 }
+  { uid: "w1", tmpl: "needs_attention", x: 0, y: 0, w: 6, h: 2 },
+  { uid: "w2", tmpl: "mi", x: 6, y: 0, w: 6, h: 2 },
+  { uid: "w3", tmpl: "logs", x: 0, y: 2, w: 12, h: 2 }
 ];
 
 export const PAGE_SIZE = 3;
