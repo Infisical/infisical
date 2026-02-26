@@ -152,6 +152,7 @@ export function ObservabilityDashboard({
 
   const [isExternalDragging, setIsExternalDragging] = useState(false);
   const uidCounter = useRef(100);
+  const isDropping = useRef(false);
 
   const [customTemplates, setCustomTemplates] = useState<Record<string, WidgetTemplate>>({});
   const [customPanelItems, setCustomPanelItems] = useState<PanelItem[]>([]);
@@ -319,6 +320,12 @@ export function ObservabilityDashboard({
 
   const handleLayoutChange = useCallback(
     (newLayout: Layout) => {
+      // Skip if we just did a drop - handleDrop already updated the layout
+      if (isDropping.current) {
+        isDropping.current = false;
+        return;
+      }
+
       setLayout((prev) =>
         prev.map((item) => {
           const rglItem = newLayout.find((l) => l.i === item.uid);
@@ -352,6 +359,9 @@ export function ObservabilityDashboard({
           widgetId?: string;
         };
         if (data.type === "panel-item" && data.tmpl) {
+          // Set flag to prevent handleLayoutChange from running right after
+          isDropping.current = true;
+
           uidCounter.current += 1;
           const uid = `w${uidCounter.current}`;
           const t = allTemplates[data.tmpl];
