@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -13,6 +13,7 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
+import { OrgIcon, ProjectIcon, SubOrgIcon } from "@app/components/v3";
 import { useGetWidgetData } from "@app/hooks/api/observabilityWidgets";
 
 import type { DataRow, StatItem, WidgetTemplate } from "../widget-config";
@@ -28,9 +29,13 @@ function parseScope(scope: string): { type: string; name: string } {
   return { type: scope.slice(0, dash).toLowerCase().trim(), name: scope.slice(dash + 3).trim() };
 }
 
+const SCOPE_ICONS: Record<string, { icon: React.ElementType; color: string } | undefined> = {
+  project: { icon: ProjectIcon, color: "#e0ed34" },
+  org: { icon: OrgIcon, color: "#30b3ff" },
+  "sub-org": { icon: SubOrgIcon, color: "#96ff59" }
+};
+
 const SCOPE_DOT_COLORS: Record<string, string> = {
-  project: "#d29922",
-  org: "#58a6ff",
   mi: "#f0883e",
   user: "#bc8cff",
   group: "#39d0d8",
@@ -313,12 +318,24 @@ export function TableWidget({
                         position="top"
                       >
                         <span className="flex items-center gap-1.5">
-                          <span
-                            className="inline-block h-2 w-2 shrink-0 rounded-full"
-                            style={{
-                              background: SCOPE_DOT_COLORS[scope.type] ?? "#8b949e"
-                            }}
-                          />
+                          {(() => {
+                            const scopeIcon = SCOPE_ICONS[scope.type];
+                            if (scopeIcon) {
+                              return (
+                                <scopeIcon.icon
+                                  size={12}
+                                  className="shrink-0"
+                                  style={{ color: scopeIcon.color }}
+                                />
+                              );
+                            }
+                            return (
+                              <span
+                                className="inline-block h-2 w-2 shrink-0 rounded-full"
+                                style={{ background: SCOPE_DOT_COLORS[scope.type] ?? "#8b949e" }}
+                              />
+                            );
+                          })()}
                           <span className="truncate text-mineshaft-300">{scope.name}</span>
                         </span>
                       </Tooltip>
