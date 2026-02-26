@@ -84,7 +84,7 @@ export const registerObservabilityWidgetRouter = async (server: FastifyZodProvid
         subOrgId: z.string().uuid().optional().nullable(),
         projectId: z.string().optional().nullable(),
         type: z.nativeEnum(ObservabilityWidgetType),
-        config: z.union([EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema, NumberMetricsWidgetConfigSchema]),
+        config: z.union([NumberMetricsWidgetConfigSchema, EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema]),
         refreshInterval: z.number().min(5).max(3600).default(30),
         icon: z.string().max(64).optional(),
         color: z.string().max(32).optional()
@@ -165,7 +165,7 @@ export const registerObservabilityWidgetRouter = async (server: FastifyZodProvid
       body: z.object({
         name: z.string().min(1).max(128).optional(),
         description: z.string().max(512).optional(),
-        config: z.union([EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema, NumberMetricsWidgetConfigSchema]).optional(),
+        config: z.union([NumberMetricsWidgetConfigSchema, EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema]).optional(),
         refreshInterval: z.number().min(5).max(3600).optional(),
         icon: z.string().max(64).optional(),
         color: z.string().max(32).optional()
