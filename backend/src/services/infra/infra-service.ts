@@ -194,8 +194,11 @@ export const infraServiceFactory = ({
 
       if (stateObj.resources) {
         for (const r of stateObj.resources) {
+          // Extract short provider name from registry path like:
+          //   provider["registry.opentofu.org/hashicorp/aws"]
+          // Falls back to deriving from the resource type prefix (e.g. aws_instance → aws)
           const providerMatch = r.provider.match(/\/([^/"\]]+)\]?"?$/);
-          const providerShort = providerMatch?.[1] ?? r.provider;
+          const providerShort = providerMatch?.[1] ?? r.type.split("_")[0] ?? r.provider;
           const attrs = r.instances?.[0]?.attributes ?? {};
           stateResources.push({
             type: r.type,
@@ -239,11 +242,11 @@ export const infraServiceFactory = ({
             }
           }
         } else {
-          // Resource only in plan (not yet applied)
+          // Resource only in plan (not yet applied) — derive provider from type prefix
           stateResources.push({
             type: r.type,
             name: r.name,
-            provider: "unknown",
+            provider: r.type.split("_")[0] ?? "unknown",
             address: r.address,
             attributes: {},
             dependsOn: r.dependsOn ?? []

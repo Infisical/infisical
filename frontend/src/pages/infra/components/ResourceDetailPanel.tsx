@@ -144,10 +144,7 @@ export const ResourceDetailPanel = ({
       <div className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-3">
         <div className="flex items-center gap-2 overflow-hidden">
           {cycleTimer?.active ? (
-            <CycleTimer
-              durationMs={cycleTimer.durationMs}
-              nodeKey={cycleTimer.nodeKey}
-            />
+            <CycleTimer durationMs={cycleTimer.durationMs} nodeKey={cycleTimer.nodeKey} />
           ) : (
             <BoxIcon className="size-4 shrink-0 text-primary" />
           )}
@@ -195,6 +192,22 @@ export const ResourceDetailPanel = ({
                 <CopyIcon className="size-3 text-mineshaft-500 opacity-0 transition-opacity group-hover:opacity-100" />
               </button>
             </div>
+            {sourceLocation && (
+              <div>
+                <Link
+                  to="/organizations/$orgId/projects/infra/$projectId/editor"
+                  params={{ orgId, projectId }}
+                  search={{ file: sourceLocation.file, line: sourceLocation.line }}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-3 py-1.5 text-xs font-medium text-mineshaft-200 transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                >
+                  <CodeIcon className="size-3.5" />
+                  Go to code
+                  <span className="font-mono text-mineshaft-400">
+                    {sourceLocation.file}:{sourceLocation.line}
+                  </span>
+                </Link>
+              </div>
+            )}
             {costMap[resource.address] && (
               <div>
                 <p className="mb-1 text-[11px] font-semibold tracking-wider text-mineshaft-500 uppercase">
@@ -218,22 +231,6 @@ export const ResourceDetailPanel = ({
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
-            {sourceLocation && (
-              <div>
-                <Link
-                  to="/organizations/$orgId/projects/infra/$projectId/editor"
-                  params={{ orgId, projectId }}
-                  search={{ file: sourceLocation.file, line: sourceLocation.line }}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-3 py-1.5 text-xs font-medium text-mineshaft-200 transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                >
-                  <CodeIcon className="size-3.5" />
-                  Go to code
-                  <span className="font-mono text-mineshaft-400">
-                    {sourceLocation.file}:{sourceLocation.line}
-                  </span>
-                </Link>
               </div>
             )}
           </div>
