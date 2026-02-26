@@ -167,7 +167,8 @@ export const AUDIT_LOG_EVENT_CATEGORIES = [
   { key: "kms", label: "KMS", description: "KMS key and encryption events" },
   { key: "auth", label: "Authentication", description: "Login and auth events" },
   { key: "projects", label: "Projects", description: "Project and environment events" },
-  { key: "organizations", label: "Organizations", description: "Organization and sub-org events" }
+  { key: "organizations", label: "Organizations", description: "Organization and sub-org events" },
+  { key: "pam", label: "PAM", description: "Privileged access management sessions and resources" }
 ] as const;
 
 export interface CreateWidgetDTO {

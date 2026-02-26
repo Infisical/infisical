@@ -93,7 +93,8 @@ export const AuditLogEventCategory = {
   KMS: "kms",
   AUTH: "auth",
   PROJECTS: "projects",
-  ORGANIZATIONS: "organizations"
+  ORGANIZATIONS: "organizations",
+  PAM: "pam"
 } as const;
 
 export type TAuditLogEventCategory = (typeof AuditLogEventCategory)[keyof typeof AuditLogEventCategory];
