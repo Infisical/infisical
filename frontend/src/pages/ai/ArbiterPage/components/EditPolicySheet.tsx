@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusIcon, ShieldIcon, TrashIcon } from "lucide-react";
@@ -47,14 +47,26 @@ const inboundPolicyFormSchema = z.object({
   actions: z.array(actionFormSchema)
 });
 
-const editPolicyFormSchema = z.object({
-  selfActions: z.array(actionFormSchema),
+// --- Schemas for split forms ---
+const editActionsFormSchema = z.object({
+  selfActions: z.array(actionFormSchema)
+});
+
+const editInboundFormSchema = z.object({
   inboundPolicies: z.array(inboundPolicyFormSchema)
 });
 
-type TEditPolicyForm = z.infer<typeof editPolicyFormSchema>;
+type TEditActionsForm = z.infer<typeof editActionsFormSchema>;
+type TEditInboundForm = z.infer<typeof editInboundFormSchema>;
 
-type Props = {
+type ActionsSheetProps = {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  agentId: string | null;
+  projectId: string;
+};
+
+type InboundSheetProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   agentId: string | null;
@@ -94,7 +106,7 @@ const toGroupedActions = (
  * Convert grouped action form data back to flat API shape.
  * Deduplicates prompt policies by id, merging onActions.
  */
-const toFlatPolicies = (actions: TEditPolicyForm["selfActions"]) => {
+const toFlatPolicies = (actions: { value: string; conditions: z.infer<typeof conditionFormSchema>[] }[]) => {
   const allowedActions = actions.map((a) => a.value);
   const policyMap = new Map<
     string,
@@ -134,14 +146,14 @@ const ActionFields = ({
   control,
   baseName,
   onRemoveAction,
-  availableActions
+  availableActions,
+  readOnly
 }: {
-  control: TEditPolicyForm extends infer T
-    ? import("react-hook-form").Control<T & TEditPolicyForm>
-    : never;
-  baseName: `selfActions.${number}` | `inboundPolicies.${number}.actions.${number}`;
+  control: any;
+  baseName: string;
   onRemoveAction: () => void;
   availableActions?: string[];
+  readOnly?: boolean;
 }) => {
   const conditions = useFieldArray({
     control,
@@ -151,7 +163,15 @@ const ActionFields = ({
   return (
     <div className="space-y-3 rounded-md border border-border bg-container p-3">
       <div className="flex items-center gap-2">
-        {availableActions ? (
+        {readOnly ? (
+          <Controller
+            control={control}
+            name={`${baseName}.value`}
+            render={({ field }) => (
+              <span className="flex-1 font-mono text-xs font-medium">{field.value}</span>
+            )}
+          />
+        ) : availableActions ? (
           <Controller
             control={control}
             name={`${baseName}.value`}
@@ -186,9 +206,11 @@ const ActionFields = ({
             )}
           />
         )}
-        <UnstableIconButton variant="ghost" size="xs" onClick={onRemoveAction}>
-          <TrashIcon className="text-danger" />
-        </UnstableIconButton>
+        {!readOnly && (
+          <UnstableIconButton variant="ghost" size="xs" onClick={onRemoveAction}>
+            <TrashIcon className="text-danger" />
+          </UnstableIconButton>
+        )}
       </div>
 
       {conditions.fields.length > 0 && (
@@ -250,9 +272,7 @@ const InboundPolicyFields = ({
   availableActions
 }: {
   nestIndex: number;
-  control: TEditPolicyForm extends infer T
-    ? import("react-hook-form").Control<T & TEditPolicyForm>
-    : never;
+  control: any;
   availableActions: string[];
 }) => {
   const actions = useFieldArray({
@@ -313,9 +333,8 @@ const InboundPolicyFields = ({
   );
 };
 
-export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Props) => {
-  const [selectedTarget, setSelectedTarget] = useState<"self" | number>("self");
-
+// --- Edit Actions Sheet ---
+export const EditActionsSheet = ({ isOpen, onOpenChange, agentId, projectId }: ActionsSheetProps) => {
   const { data: policy, isPending } = useGetAgentPolicy({
     agentId: agentId ?? "",
     projectId
@@ -328,11 +347,10 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
     handleSubmit,
     reset,
     formState: { isSubmitting, isDirty }
-  } = useForm<TEditPolicyForm>({
-    resolver: zodResolver(editPolicyFormSchema),
+  } = useForm<TEditActionsForm>({
+    resolver: zodResolver(editActionsFormSchema),
     defaultValues: {
-      selfActions: [],
-      inboundPolicies: []
+      selfActions: []
     }
   });
 
@@ -342,13 +360,8 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
         selfActions: toGroupedActions(
           policy.selfPolicies.allowedActions,
           policy.selfPolicies.promptPolicies
-        ),
-        inboundPolicies: policy.inboundPolicies.map((ip) => ({
-          fromAgentId: ip.fromAgentId ?? "",
-          actions: toGroupedActions(ip.allowedToRequest, ip.promptPolicies)
-        }))
+        )
       });
-      setSelectedTarget("self");
     }
   }, [policy, reset]);
 
@@ -357,19 +370,150 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
     name: "selfActions"
   });
 
+  const onSubmit = async (formData: TEditActionsForm) => {
+    if (!agentId) return;
+    try {
+      const selfFlat = toFlatPolicies(formData.selfActions);
+      await updatePolicy.mutateAsync({
+        agentId,
+        projectId,
+        selfPolicies: selfFlat,
+        inboundPolicies: (policy?.inboundPolicies ?? []).map((ip) => ({
+          fromAgentId: ip.fromAgentId || undefined,
+          allowedToRequest: ip.allowedToRequest,
+          promptPolicies: ip.promptPolicies
+        }))
+      });
+      createNotification({ text: "Actions updated successfully", type: "success" });
+      onOpenChange(false);
+    } catch {
+      createNotification({ text: "Failed to update actions", type: "error" });
+    }
+  };
+
+  const currentAgent = agentId ? agentMap[agentId] : null;
+
+  return (
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent
+        className="flex w-[50vw] !max-w-none flex-col gap-y-0 overflow-hidden p-0"
+        side="right"
+      >
+        <SheetHeader className="mb-0 border-b border-border px-6 pt-6 pb-6">
+          <SheetTitle>Edit Action Conditions — {currentAgent?.name ?? agentId}</SheetTitle>
+          <SheetDescription>
+            Add conditions to evaluate when this agent performs actions.
+          </SheetDescription>
+        </SheetHeader>
+
+        {isPending && agentId ? (
+          <div className="flex items-center justify-center py-12 text-sm text-muted">
+            Loading policy...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6">
+              <div className="mb-4">
+                <div className="flex items-center gap-2">
+                  <ShieldIcon className="size-4 shrink-0 text-label" />
+                  <h3 className="text-sm font-semibold">{currentAgent?.name ?? agentId}</h3>
+                </div>
+                <p className="mt-0.5 text-xs text-accent">
+                  {currentAgent?.description ?? "Configure self-execution policies for this agent."}
+                </p>
+              </div>
+
+              <div>
+                <FieldTitle className="mb-2">Actions</FieldTitle>
+                {selfActions.fields.length === 0 ? (
+                  <div className="rounded-md border border-border p-6 text-center">
+                    <p className="text-sm text-muted">No actions registered for this agent.</p>
+                    <p className="mt-1 text-xs text-accent">
+                      Actions are registered by the agent at deployment time.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {selfActions.fields.map((field, idx) => (
+                      <ActionFields
+                        key={field.id}
+                        control={control}
+                        baseName={`selfActions.${idx}`}
+                        onRemoveAction={() => selfActions.remove(idx)}
+                        readOnly
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <SheetFooter className="flex flex-row items-center justify-end gap-x-4 border-t border-border px-6 py-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="project" disabled={!isDirty || isSubmitting}>
+                Save Changes
+              </Button>
+            </SheetFooter>
+          </form>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+// --- Edit Inbound Policies Sheet ---
+export const EditInboundPoliciesSheet = ({ isOpen, onOpenChange, agentId, projectId }: InboundSheetProps) => {
+  const { data: policy, isPending } = useGetAgentPolicy({
+    agentId: agentId ?? "",
+    projectId
+  });
+
+  const updatePolicy = useUpdateAgentPolicy();
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting, isDirty }
+  } = useForm<TEditInboundForm>({
+    resolver: zodResolver(editInboundFormSchema),
+    defaultValues: {
+      inboundPolicies: []
+    }
+  });
+
+  useEffect(() => {
+    if (policy) {
+      reset({
+        inboundPolicies: policy.inboundPolicies.map((ip) => ({
+          fromAgentId: ip.fromAgentId ?? "",
+          actions: toGroupedActions(ip.allowedToRequest, ip.promptPolicies)
+        }))
+      });
+    }
+  }, [policy, reset]);
+
   const inboundPolicies = useFieldArray({
     control,
     name: "inboundPolicies"
   });
 
   const watchedInbound = useWatch({ control, name: "inboundPolicies" });
-  const watchedSelfActions = useWatch({ control, name: "selfActions" });
-  const selfActionNames = (watchedSelfActions ?? []).map((a) => a.value).filter(Boolean);
 
-  const onSubmit = async (formData: TEditPolicyForm) => {
+  // Get self action names from the existing policy to use as available actions for inbound
+  const selfActionNames = policy?.selfPolicies.allowedActions ?? [];
+
+  const onSubmit = async (formData: TEditInboundForm) => {
     if (!agentId) return;
     try {
-      const selfFlat = toFlatPolicies(formData.selfActions);
+      const selfFlat = toFlatPolicies(
+        toGroupedActions(
+          policy?.selfPolicies.allowedActions ?? [],
+          policy?.selfPolicies.promptPolicies ?? []
+        )
+      );
       await updatePolicy.mutateAsync({
         agentId,
         projectId,
@@ -383,33 +527,14 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
           };
         })
       });
-      createNotification({ text: "Policy updated successfully", type: "success" });
+      createNotification({ text: "Inbound policies updated successfully", type: "success" });
       onOpenChange(false);
     } catch {
-      createNotification({ text: "Failed to update policy", type: "error" });
+      createNotification({ text: "Failed to update inbound policies", type: "error" });
     }
   };
 
   const currentAgent = agentId ? agentMap[agentId] : null;
-
-  const getTargetInfo = () => {
-    if (selectedTarget === "self") {
-      return {
-        name: currentAgent?.name ?? agentId ?? "",
-        description:
-          currentAgent?.description ?? "Configure self-execution policies for this agent."
-      };
-    }
-
-    const inbound = watchedInbound?.[selectedTarget];
-    const fromAgent = inbound?.fromAgentId ? agentMap[inbound.fromAgentId] : null;
-    return {
-      name: fromAgent?.name ?? "Unassigned Agent",
-      description: fromAgent?.description ?? "Select an agent to configure inbound policies."
-    };
-  };
-
-  const targetInfo = getTargetInfo();
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -418,9 +543,9 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
         side="right"
       >
         <SheetHeader className="mb-0 border-b border-border px-6 pt-6 pb-6">
-          <SheetTitle>Edit Policy — {currentAgent?.name ?? agentId}</SheetTitle>
+          <SheetTitle>Edit Inbound Policies — {currentAgent?.name ?? agentId}</SheetTitle>
           <SheetDescription>
-            Configure permissions and prompt policies for this agent.
+            Configure which agents can request actions from this agent and their conditions.
           </SheetDescription>
         </SheetHeader>
 
@@ -433,21 +558,6 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
             <div className="flex min-h-0 flex-1">
               {/* Left sidebar navigation */}
               <nav className="w-48 shrink-0 space-y-1 overflow-y-auto border-r border-border p-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTarget("self")}
-                  className={`w-full rounded-md px-3 py-2 text-left text-xs font-medium transition-colors ${
-                    selectedTarget === "self"
-                      ? "bg-primary/10 text-primary"
-                      : "text-label hover:bg-container"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <ShieldIcon className="size-3.5 shrink-0" />
-                    Self
-                  </div>
-                </button>
-
                 {inboundPolicies.fields.map((field, idx) => {
                   const fromId = watchedInbound?.[idx]?.fromAgentId;
                   const fromAgent = fromId ? agentMap[fromId] : null;
@@ -455,12 +565,7 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
                     <button
                       key={field.id}
                       type="button"
-                      onClick={() => setSelectedTarget(idx)}
-                      className={`w-full rounded-md px-3 py-2 text-left text-xs font-medium transition-colors ${
-                        selectedTarget === idx
-                          ? "bg-primary/10 text-primary"
-                          : "text-label hover:bg-container"
-                      }`}
+                      className="w-full rounded-md bg-primary/10 px-3 py-2 text-left text-xs font-medium text-primary transition-colors"
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span className="truncate">{fromAgent?.name ?? "Unassigned"}</span>
@@ -470,7 +575,6 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
                           onClick={(e) => {
                             e.stopPropagation();
                             inboundPolicies.remove(idx);
-                            setSelectedTarget("self");
                           }}
                         >
                           <TrashIcon className="size-3 text-danger" />
@@ -490,7 +594,6 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
                       fromAgentId: "",
                       actions: [{ value: "", conditions: [] }]
                     });
-                    setSelectedTarget(inboundPolicies.fields.length);
                   }}
                 >
                   <PlusIcon />
@@ -499,42 +602,37 @@ export const EditPolicySheet = ({ isOpen, onOpenChange, agentId, projectId }: Pr
               </nav>
 
               {/* Right content area */}
-              <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-4">
-                {/* Target header */}
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold">{targetInfo.name}</h3>
-                  <p className="mt-0.5 text-xs text-accent">{targetInfo.description}</p>
-                </div>
-
-                {selectedTarget === "self" ? (
-                  <div>
-                    <FieldTitle className="mb-2">Actions</FieldTitle>
-                    <div className="space-y-2">
-                      {selfActions.fields.map((field, idx) => (
-                        <ActionFields
-                          key={field.id}
-                          control={control}
-                          baseName={`selfActions.${idx}`}
-                          onRemoveAction={() => selfActions.remove(idx)}
-                        />
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        onClick={() => selfActions.append({ value: "", conditions: [] })}
-                      >
-                        <PlusIcon />
-                        Add Action
-                      </Button>
-                    </div>
+              <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-4">
+                {inboundPolicies.fields.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <ShieldIcon className="mb-2 size-8 text-muted" />
+                    <p className="text-sm text-muted">No inbound policies configured.</p>
+                    <p className="mt-1 text-xs text-accent">
+                      Add an inbound policy to allow other agents to request actions from this agent.
+                    </p>
                   </div>
                 ) : (
-                  <InboundPolicyFields
-                    nestIndex={selectedTarget}
-                    control={control}
-                    availableActions={selfActionNames}
-                  />
+                  inboundPolicies.fields.map((field, idx) => {
+                    const fromId = watchedInbound?.[idx]?.fromAgentId;
+                    const fromAgent = fromId ? agentMap[fromId] : null;
+                    return (
+                      <div key={field.id} className="rounded-md border border-border p-4">
+                        <div className="mb-3">
+                          <h4 className="text-sm font-medium">
+                            {fromAgent?.name ?? "Unassigned Agent"}
+                          </h4>
+                          <p className="text-xs text-accent">
+                            {fromAgent?.description ?? "Select an agent to configure inbound policies."}
+                          </p>
+                        </div>
+                        <InboundPolicyFields
+                          nestIndex={idx}
+                          control={control}
+                          availableActions={selfActionNames}
+                        />
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
