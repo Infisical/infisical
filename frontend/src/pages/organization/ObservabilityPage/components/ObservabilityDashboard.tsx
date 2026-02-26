@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   DndContext,
   DragOverlay,
@@ -15,6 +16,16 @@ import {
 import { arrayMove, SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { GripVertical, Plus, RotateCw } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+
+import { useOrganization, useUser } from "@app/context";
+import { ROUTE_PATHS } from "@app/const/routes";
+import {
+  useCreateWidgetView,
+  useDeleteWidgetView,
+  useListWidgetViews,
+  useUpdateWidgetView,
+  type WidgetViewItem
+} from "@app/hooks/api/observabilityWidgetViews";
 
 import type { LayoutItem, PanelItem, SubView, WidgetTemplate } from "../mock-data";
 import { DEFAULT_LAYOUT, TEMPLATES } from "../mock-data";
@@ -45,12 +56,49 @@ function DroppableGrid({ children, isOver }: { children: React.ReactNode; isOver
 }
 
 export function ObservabilityDashboard() {
-  const [activeView, setActiveView] = useState("org");
-  const [subViews, setSubViews] = useState<SubView[]>([]);
+  const { currentOrg } = useOrganization();
+  const { user } = useUser();
+  const orgId = currentOrg?.id ?? "";
+
+  const { data: persistedViews = [] } = useListWidgetViews(orgId);
+  const createViewMutation = useCreateWidgetView();
+  const updateViewMutation = useUpdateWidgetView();
+  const deleteViewMutation = useDeleteWidgetView();
+
+  const navigate = useNavigate({ from: ROUTE_PATHS.Organization.ObservabilityPage.path });
+  const activeView = useSearch({
+    from: ROUTE_PATHS.Organization.ObservabilityPage.id,
+    select: (s) => s.view || "org",
+    structuralSharing: true
+  });
+  const setActiveView = useCallback(
+    (view: string) => {
+      navigate({ search: (prev) => ({ ...prev, view: view === "org" ? "" : view }) });
+    },
+    [navigate]
+  );
+
   const [layouts, setLayouts] = useState<Record<string, LayoutItem[]>>({
     org: [...DEFAULT_LAYOUT],
     private: []
   });
+
+  // Sync persisted views into local layouts when they load
+  useEffect(() => {
+    if (persistedViews.length === 0) return;
+    setLayouts((prev) => {
+      const next = { ...prev };
+      for (const view of persistedViews) {
+        if (!(view.id in next)) {
+          const items = view.items;
+          next[view.id] = Array.isArray(items) ? (items as LayoutItem[]) : [];
+        }
+      }
+      return next;
+    });
+  }, [persistedViews]);
+
+  const subViews: SubView[] = persistedViews.map((v) => ({ id: v.id, name: v.name }));
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -66,39 +114,73 @@ export function ObservabilityDashboard() {
 
   const [editingWidget, setEditingWidget] = useState<EditingWidget | undefined>(undefined);
 
-  const layout = layouts[activeView] ?? [];
+  const layout = Array.isArray(layouts[activeView]) ? (layouts[activeView] as LayoutItem[]) : [];
   const setLayout = useCallback(
     (updater: LayoutItem[] | ((prev: LayoutItem[]) => LayoutItem[])) => {
       setLayouts((prev) => ({
         ...prev,
-        [activeView]: typeof updater === "function" ? updater(prev[activeView] ?? []) : updater
+        [activeView]: typeof updater === "function" ? updater(Array.isArray(prev[activeView]) ? (prev[activeView] as LayoutItem[]) : []) : updater
       }));
     },
     [activeView]
   );
 
-  const handleAddSubView = useCallback((name: string) => {
-    const id = `sub_${Date.now()}`;
-    setSubViews((prev) => [...prev, { id, name }]);
-    setLayouts((prev) => ({ ...prev, [id]: [] }));
-    setActiveView(id);
-  }, []);
+  // Persist layout changes for user-owned views
+  const persistLayoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (activeView === "org" || activeView === "private" || !orgId) return;
+    if (persistLayoutRef.current) clearTimeout(persistLayoutRef.current);
+    persistLayoutRef.current = setTimeout(() => {
+      updateViewMutation.mutate({ viewId: activeView, orgId, items: layout as WidgetViewItem[] });
+    }, 200);
+    return () => {
+      if (persistLayoutRef.current) clearTimeout(persistLayoutRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout, activeView, orgId]);
 
-  const handleRenameSubView = useCallback((id: string, name: string) => {
-    setSubViews((prev) => prev.map((sv) => (sv.id === id ? { ...sv, name } : sv)));
-  }, []);
+  const handleAddSubView = useCallback(
+    (name: string) => {
+      if (!orgId || !user?.id) return;
+      createViewMutation.mutate(
+        { name, orgId },
+        {
+          onSuccess(view) {
+            setLayouts((prev) => ({ ...prev, [view.id]: [] }));
+            setActiveView(view.id);
+          }
+        }
+      );
+    },
+    [orgId, user?.id, createViewMutation]
+  );
+
+  const handleRenameSubView = useCallback(
+    (id: string, name: string) => {
+      if (!orgId) return;
+      updateViewMutation.mutate({ viewId: id, orgId, name });
+    },
+    [orgId, updateViewMutation]
+  );
 
   const handleDeleteSubView = useCallback(
     (id: string) => {
-      setSubViews((prev) => prev.filter((sv) => sv.id !== id));
-      setLayouts((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      if (activeView === id) setActiveView("private");
+      if (!orgId) return;
+      deleteViewMutation.mutate(
+        { viewId: id, orgId },
+        {
+          onSuccess() {
+            setLayouts((prev) => {
+              const next = { ...prev };
+              delete next[id];
+              return next;
+            });
+            if (activeView === id) setActiveView("private");
+          }
+        }
+      );
     },
-    [activeView]
+    [orgId, activeView, deleteViewMutation]
   );
 
   const handleEditWidget = useCallback(
