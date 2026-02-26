@@ -14,7 +14,7 @@ const AGENT_POSITIONS = [
   { x: -200, y: -150 },
   { x: 250, y: -80 },
   { x: -260, y: 155 },
-  { x: 155, y: 245 }
+  { x: 100, y: 245 }
 ];
 
 // Per-agent line length adjustment (px to shrink from agent edge)
@@ -50,7 +50,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
   }, [currentEvent]);
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-md rounded-b-lg border border-border bg-bunker-900">
+    <div className="relative h-full w-full overflow-hidden rounded-md rounded-b-lg border border-border bg-bunker-900">
       {/* Grid/Network Background */}
       <svg className="absolute inset-0 h-full w-full">
         <defs>
@@ -69,7 +69,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
       </svg>
 
       {/* Central Governance Node */}
-      <div className="absolute z-10">
+      <div className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2" style={{ marginTop: -40 }}>
         <motion.div
           animate={{
             scale: currentEvent ? 1.03 : 1,
@@ -166,7 +166,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
               key={agent.id}
               className="absolute top-1/2 left-1/2"
               style={{
-                transform: `translate(${pos.x - 48}px, ${pos.y - 48}px)`
+                transform: `translate(${pos.x - 48}px, ${pos.y - 48 - 40}px)`
               }}
             >
               <motion.div
