@@ -218,7 +218,7 @@ export function LogsWidget({
             <div
               key={`${entry.ts.getTime()}-${i}`}
               className={twMerge(
-                "grid grid-cols-[80px_44px_130px_120px_1fr_60px] items-center px-3.5 py-0.5 transition-colors hover:bg-mineshaft-700",
+                "grid grid-cols-[80px_44px_130px_120px_1fr] items-center px-3.5 py-0.5 transition-colors hover:bg-mineshaft-700",
                 entry.level === "error" && "border-l-2 border-l-[#f85149]",
                 entry.level === "warn" && "border-l-2 border-l-[#d29922]",
                 entry.level === "info" && "border-l-2 border-l-transparent"
@@ -237,12 +237,6 @@ export function LogsWidget({
               <span className="truncate text-white" title={entry.message}>
                 {entry.message}
               </span>
-              <a
-                href="#"
-                className="text-right text-[10px] text-primary opacity-0 transition-opacity hover:opacity-100"
-              >
-                view -&gt;
-              </a>
             </div>
           ))
         )}
