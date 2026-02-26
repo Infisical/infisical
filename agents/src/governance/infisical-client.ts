@@ -58,6 +58,7 @@ export class InfisicalAgentGateClient {
     skillId: string,
     parameters: Record<string, unknown>,
     context: ActionContext,
+    agentReasoning?: string,
   ): Promise<PolicyEvaluationResponse> {
     const request: PolicyEvaluationRequest = {
       requestingAgentId: agentId,
@@ -68,6 +69,7 @@ export class InfisicalAgentGateClient {
         parameters,
       },
       context,
+      agentReasoning,
     };
 
     return this.evaluatePolicy(request);
@@ -83,6 +85,7 @@ export class InfisicalAgentGateClient {
     messageType: string,
     content: Record<string, unknown>,
     context: ActionContext,
+    agentReasoning?: string,
   ): Promise<PolicyEvaluationResponse> {
     const request: PolicyEvaluationRequest = {
       requestingAgentId,
@@ -93,6 +96,7 @@ export class InfisicalAgentGateClient {
         content,
       },
       context,
+      agentReasoning,
     };
 
     return this.evaluatePolicy(request);

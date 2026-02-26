@@ -19,6 +19,7 @@ export const agentGateAuditDALFactory = (db: TDbClient) => {
     result: "allowed" | "denied";
     policyEvaluations: TPolicyEvaluationResult[];
     context?: Record<string, unknown>;
+    agentReasoning?: string;
     executionStatus?: "pending" | "started" | "completed" | "failed";
   }): Promise<TAgentGateAuditLogs> => {
     try {

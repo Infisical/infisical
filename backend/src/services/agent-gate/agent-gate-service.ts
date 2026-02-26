@@ -360,12 +360,12 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
 
   const evaluatePolicy = async (dto: TEvaluatePolicyDTO): Promise<PolicyEvaluationResponse> => {
     const { projectId, request } = dto;
-    const { requestingAgentId, targetAgentId, action, context } = request;
+    const { requestingAgentId, targetAgentId, action, context, agentReasoning } = request;
 
     const targetPolicy = await agentGatePolicyDAL.findByProjectAndAgentId(projectId, targetAgentId);
     if (!targetPolicy) {
       const result = deny("structured", "unknown_agent", `Unknown agent: ${targetAgentId}`);
-      const auditLog = await createAuditLogInternal(projectId, request, result);
+      const auditLog = await createAuditLogInternal(projectId, request, result, agentReasoning);
       return { ...result, auditLogId: auditLog.id };
     }
 
@@ -379,14 +379,15 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
       result = deny("structured", "invalid_action", "Invalid action type");
     }
 
-    const auditLog = await createAuditLogInternal(projectId, request, result);
+    const auditLog = await createAuditLogInternal(projectId, request, result, agentReasoning);
     return { ...result, auditLogId: auditLog.id };
   };
 
   const createAuditLogInternal = async (
     projectId: string,
     request: TEvaluatePolicyDTO["request"],
-    result: PolicyEvaluationResult
+    result: PolicyEvaluationResult,
+    agentReasoning?: string
   ): Promise<TAgentGateAuditLogs> => {
     const actionName = request.action.type === "skill" ? request.action.skillId : request.action.messageType;
     return agentGateAuditDAL.createAuditLog({
@@ -400,6 +401,7 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
       result: result.allowed ? "allowed" : "denied",
       policyEvaluations: [result],
       context: request.context as Record<string, unknown>,
+      agentReasoning,
       executionStatus: result.allowed ? "pending" : undefined
     });
   };
@@ -485,6 +487,7 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
       result: "allowed" | "denied";
       policyEvaluations: PolicyEvaluationResult[];
       context?: ActionContext;
+      agentReasoning?: string;
     }
   ) => {
     return agentGateAuditDAL.createAuditLog({
@@ -498,6 +501,7 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
       result: log.result,
       policyEvaluations: log.policyEvaluations,
       context: log.context as Record<string, unknown> | undefined,
+      agentReasoning: log.agentReasoning,
       executionStatus: log.result === "allowed" ? "pending" : undefined
     });
   };

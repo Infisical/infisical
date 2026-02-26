@@ -30,6 +30,7 @@ export const AgentGateAuditLogsSchema = z.object({
   result: z.enum(["allowed", "denied"]),
   policyEvaluations: z.array(PolicyEvaluationResultSchema),
   context: z.record(z.unknown()).nullable().optional(),
+  agentReasoning: z.string().nullable().optional(),
   executionStatus: z.enum(["pending", "started", "completed", "failed"]).nullable().optional(),
   executionResult: z.record(z.unknown()).nullable().optional(),
   executionError: z.string().nullable().optional(),

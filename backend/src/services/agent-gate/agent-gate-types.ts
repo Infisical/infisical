@@ -40,6 +40,7 @@ export interface PolicyEvaluationRequest {
   targetAgentId: string;
   action: ActionRequest;
   context: ActionContext;
+  agentReasoning?: string;
 }
 
 export interface LlmEvaluation {
@@ -85,6 +86,7 @@ export interface GovernanceAuditLog {
   result: "allowed" | "denied";
   policyEvaluations: PolicyEvaluationResult[];
   context: ActionContext;
+  agentReasoning?: string;
 }
 
 export interface TCreateAgentPolicyDTO {

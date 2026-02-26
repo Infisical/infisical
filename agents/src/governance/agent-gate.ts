@@ -81,6 +81,7 @@ export class AgentGate {
     skillId: string,
     parameters: Record<string, unknown>,
     context: ActionContext,
+    agentReasoning?: string,
   ): Promise<{ result: PolicyEvaluationResponse; handle?: ExecutionHandle }> {
     const startTime = Date.now();
 
@@ -89,9 +90,10 @@ export class AgentGate {
       skillId,
       parameters,
       context,
+      agentReasoning,
     );
 
-    this.logAction("skill", skillId, undefined, result, context);
+    this.logAction("skill", skillId, undefined, result, context, agentReasoning);
 
     const elapsed = Date.now() - startTime;
     console.log(
@@ -119,6 +121,7 @@ export class AgentGate {
     messageType: string,
     content: Record<string, unknown>,
     context: ActionContext,
+    agentReasoning?: string,
   ): Promise<{ result: PolicyEvaluationResponse; handle?: ExecutionHandle }> {
     const startTime = Date.now();
 
@@ -128,9 +131,10 @@ export class AgentGate {
       messageType,
       content,
       context,
+      agentReasoning,
     );
 
-    this.logAction("communication", messageType, targetAgentId, result, context);
+    this.logAction("communication", messageType, targetAgentId, result, context, agentReasoning);
 
     const elapsed = Date.now() - startTime;
     console.log(
@@ -191,6 +195,7 @@ export class AgentGate {
     targetAgent: string | undefined,
     result: PolicyEvaluationResponse,
     context: ActionContext,
+    agentReasoning?: string,
   ): void {
     const log: GovernanceAuditLog = {
       id: result.auditLogId,
@@ -203,6 +208,7 @@ export class AgentGate {
       result: result.allowed ? "allowed" : "denied",
       policyEvaluations: [result],
       context,
+      agentReasoning,
     };
 
     this.auditLog.push(log);

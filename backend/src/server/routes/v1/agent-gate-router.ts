@@ -52,7 +52,8 @@ const PolicyEvaluationRequestSchema = z.object({
   requestingAgentId: z.string(),
   targetAgentId: z.string(),
   action: ActionRequestSchema,
-  context: ActionContextSchema
+  context: ActionContextSchema,
+  agentReasoning: z.string().optional().describe("The reasoning provided by the agent for taking this action")
 });
 
 const PolicyEvaluationResponseSchema = PolicyEvaluationResultSchema.extend({
@@ -333,7 +334,8 @@ export const registerAgentGateRouter = async (server: FastifyZodProvider) => {
         action: z.string(),
         result: z.enum(["allowed", "denied"]),
         policyEvaluations: z.array(PolicyEvaluationResultSchema),
-        context: ActionContextSchema.optional()
+        context: ActionContextSchema.optional(),
+        agentReasoning: z.string().optional().describe("The reasoning provided by the agent for taking this action")
       }),
       response: {
         200: AgentGateAuditLogsSchema

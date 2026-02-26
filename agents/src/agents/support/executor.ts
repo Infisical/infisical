@@ -294,6 +294,7 @@ Please try again with the correct format.`,
       parameters,
       this.getGovernanceContext(context, skillId, parameters),
       executor,
+      reasoning,
     );
 
     if (result.allowed) {
@@ -352,6 +353,7 @@ Please try again with the correct format.`,
         classification: context.classification,
       },
       context.governanceContext,
+      reasoning,
     );
 
     if (commResult.allowed) {

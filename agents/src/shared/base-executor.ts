@@ -131,6 +131,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     parameters: Record<string, unknown>,
     context: ActionContext,
     executor: () => Promise<T>,
+    agentReasoning?: string,
   ): Promise<
     | { allowed: true; result: T; governance: PolicyEvaluationResult }
     | { allowed: false; governance: PolicyEvaluationResult }
@@ -139,6 +140,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
       skillId,
       parameters,
       context,
+      agentReasoning,
     );
 
     if (!governance.allowed || !handle) {
@@ -223,6 +225,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     messageType: string,
     content: Record<string, unknown>,
     context: ActionContext,
+    agentReasoning?: string,
   ): Promise<
     | { allowed: true; governance: PolicyEvaluationResult; result: AgentMessageResult }
     | { allowed: false; governance: PolicyEvaluationResult }
@@ -232,6 +235,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
       messageType,
       content,
       context,
+      agentReasoning,
     );
 
     if (!governance.allowed || !handle) {

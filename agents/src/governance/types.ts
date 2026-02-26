@@ -3,6 +3,7 @@ export interface PolicyEvaluationRequest {
   targetAgentId: string; // Who is being asked (for skills, same as requesting)
   action: SkillInvocationRequest | CommunicationRequest;
   context: ActionContext;
+  agentReasoning?: string; // The reasoning provided by the agent for taking this action
 }
 
 export interface SkillInvocationRequest {
@@ -97,6 +98,7 @@ export interface GovernanceAuditLog {
   result: "allowed" | "denied";
   policyEvaluations: PolicyEvaluationResult[];
   context: ActionContext;
+  agentReasoning?: string;
   executionStatus?: "pending" | "started" | "completed" | "failed";
   executionResult?: Record<string, unknown>;
   executionError?: string;

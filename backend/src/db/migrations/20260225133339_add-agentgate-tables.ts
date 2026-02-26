@@ -32,6 +32,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("result", 20).notNullable();
       t.jsonb("policyEvaluations").notNullable();
       t.jsonb("context");
+      t.text("agentReasoning");
       // Execution tracking fields
       t.string("executionStatus", 20);
       t.jsonb("executionResult");

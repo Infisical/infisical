@@ -1,9 +1,94 @@
 import { Message } from "@a2a-js/sdk";
 import { RequestContext, ExecutionEventBus } from "@a2a-js/sdk/server";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { BaseAgentExecutor } from "../../shared/base-executor.js";
 import { ActionContext } from "../../governance/index.js";
 import { TicketClassification, CustomerTicket } from "../../shared/types.js";
 import { TRIAGE_SKILLS } from "../../shared/skills.js";
+import { getNextAction, LLMDecision } from "../../shared/llm-client.js";
+
+interface TriageTaskContext {
+  ticket: CustomerTicket;
+  classification?: TicketClassification;
+  severityAssessment?: { severity: string; reasoning: string };
+  governanceContext: ActionContext;
+  actionsPerformed: string[];
+  llmHistory: ChatCompletionMessageParam[];
+}
+
+const TRIAGE_AGENT_SYSTEM_PROMPT = `You are a Triage Agent for an e-commerce customer support system. Your job is to analyze incoming customer tickets, classify them, assess their severity, and route them to the appropriate agent.
+
+## Your Available Skills (use with action: "call_skill"):
+- classify_ticket: Analyze and classify the ticket. Parameters: { "ticketId": "string", "description": "string" }
+- assess_severity: Evaluate urgency and assign severity. Parameters: { "ticketId": "string", "classification": { "category": "string", "severity": "string", "requiresEscalation": boolean } }
+- route_ticket: Route the ticket to an agent. Parameters: { "ticketId": "string", "targetAgent": "support_agent" }
+
+## Agent Communications (use with action: "message_agent"):
+- support_agent: Send classified and triaged tickets for resolution. Use messageType: "ticket_routed"
+
+## IMPORTANT - Governance:
+- All your actions are subject to governance policies enforced by the system
+- Some actions may be DENIED - when this happens, read the denial reason carefully
+- Adapt your approach based on denial feedback
+
+## Workflow:
+1. First, classify the ticket to understand what type of issue it is (billing, shipping, product, account, other)
+2. Then, assess the severity based on the classification and issue details
+3. Finally, route the ticket to the support agent
+4. When routing is complete, mark the task as complete
+
+## Classification Categories:
+- billing: Payment issues, duplicate charges, refunds
+- shipping: Delivery problems, wrong items, tracking issues
+- product: Defective items, broken products, quality issues
+- account: Login problems, password resets, account access
+- other: General inquiries, other issues
+
+## Severity Levels:
+- low: General inquiries, non-urgent issues
+- medium: Standard issues requiring attention
+- high: Significant problems like wrong items, billing errors
+- critical: Urgent issues requiring immediate attention (keywords: urgent, immediately, asap)
+
+## Current Task Context:
+{{CONTEXT}}
+
+## Actions Performed So Far:
+{{ACTIONS}}
+
+## Response Format - use EXACTLY one of these JSON structures:
+
+For calling a skill:
+{
+  "action": "call_skill",
+  "reasoning": "Why I'm doing this",
+  "skillCall": {
+    "skillId": "the_skill_id",
+    "parameters": { "param1": "value1" },
+    "reasoning": "Specific reason for this skill"
+  }
+}
+
+For messaging another agent:
+{
+  "action": "message_agent",
+  "reasoning": "Why I'm doing this",
+  "agentMessage": {
+    "targetAgent": "support_agent",
+    "messageType": "ticket_routed",
+    "content": { "relevant": "data for the request" },
+    "reasoning": "Why contacting this agent"
+  }
+}
+
+For completing the task:
+{
+  "action": "complete",
+  "reasoning": "Task is done because...",
+  "finalResponse": "Summary of the triage result"
+}
+
+Only use action values: "call_skill", "message_agent", or "complete".`;
 
 export class TriageAgentExecutor extends BaseAgentExecutor {
   constructor() {
@@ -23,7 +108,6 @@ export class TriageAgentExecutor extends BaseAgentExecutor {
 
     const ticketData = this.extractTicketData(userMessage);
 
-    // Session ID flows through all agents for unified audit trail
     const governanceContext: ActionContext = {
       sessionId: ticketData.sessionId,
       ticketId: ticketData.ticketId,
@@ -31,113 +115,241 @@ export class TriageAgentExecutor extends BaseAgentExecutor {
       customerEmail: ticketData.customerEmail,
     };
 
+    const context: TriageTaskContext = {
+      ticket: ticketData,
+      governanceContext,
+      actionsPerformed: [],
+      llmHistory: [],
+    };
+
     this.log("Processing ticket", {
       sessionId: ticketData.sessionId,
       ticketId: ticketData.ticketId,
     });
 
-    this.log("SKILL: classify_ticket", { ticketId: ticketData.ticketId });
+    this.log("🤖 LLM-POWERED TRIAGE: Starting autonomous reasoning loop");
 
-    const classifyResult = await this.governedSkillExecution(
+    const maxIterations = 10;
+    let iteration = 0;
+
+    while (iteration < maxIterations) {
+      iteration++;
+      this.log(`🧠 LLM Decision Loop - Iteration ${iteration}`);
+
+      try {
+        const decision = await this.getNextLLMDecision(context);
+
+        this.log("LLM Decision", {
+          action: decision.action,
+          reasoning: decision.reasoning,
+        });
+
+        if (decision.action === "complete") {
+          this.log("🎉 LLM decided triage is complete", {
+            finalResponse: decision.finalResponse,
+          });
+
+          this.publishMessage(
+            eventBus,
+            JSON.stringify({
+              action: "triage_complete",
+              ticketId: context.ticket.ticketId,
+              classification: context.classification,
+              severityAssessment: context.severityAssessment,
+              actionsPerformed: context.actionsPerformed,
+              llmSummary: decision.finalResponse,
+            }),
+          );
+          break;
+        }
+
+        if (decision.action === "call_skill" && decision.skillCall) {
+          await this.executeSkillFromLLM(
+            eventBus,
+            taskId,
+            contextId,
+            context,
+            decision.skillCall,
+          );
+          continue;
+        }
+
+        if (decision.action === "message_agent" && decision.agentMessage) {
+          await this.executeAgentMessageFromLLM(
+            eventBus,
+            taskId,
+            contextId,
+            context,
+            decision.agentMessage,
+          );
+          continue;
+        }
+
+        this.log("⚠️ Unrecognized action from LLM", {
+          action: decision.action,
+        });
+        context.llmHistory.push({
+          role: "assistant",
+          content: JSON.stringify(decision),
+        });
+        context.llmHistory.push({
+          role: "user",
+          content: `Invalid action "${decision.action}". You must use one of: "call_skill", "message_agent", or "complete". Please try again with the correct format.`,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        this.log("LLM Error", { error: errorMessage });
+
+        context.llmHistory.push({
+          role: "assistant",
+          content: JSON.stringify({ error: errorMessage }),
+        });
+        context.llmHistory.push({
+          role: "user",
+          content: `The previous action failed with error: ${errorMessage}. Please try a different approach or complete the task with what you've accomplished.`,
+        });
+      }
+    }
+
+    if (iteration >= maxIterations) {
+      this.log("⚠️ Max iterations reached, forcing completion");
+      this.publishMessage(
+        eventBus,
+        JSON.stringify({
+          action: "triage_complete",
+          ticketId: context.ticket.ticketId,
+          classification: context.classification,
+          severityAssessment: context.severityAssessment,
+          actionsPerformed: context.actionsPerformed,
+          note: "Max iterations reached",
+        }),
+      );
+    }
+  }
+
+  private async getNextLLMDecision(
+    context: TriageTaskContext,
+  ): Promise<LLMDecision> {
+    const systemPrompt = TRIAGE_AGENT_SYSTEM_PROMPT.replace(
+      "{{CONTEXT}}",
+      JSON.stringify(
+        {
+          ticket: context.ticket,
+          classification: context.classification,
+          severityAssessment: context.severityAssessment,
+        },
+        null,
+        2,
+      ),
+    ).replace("{{ACTIONS}}", context.actionsPerformed.join("\n") || "None yet");
+
+    if (context.llmHistory.length === 0) {
+      context.llmHistory.push({
+        role: "user",
+        content: `New ticket received for triage. Customer: ${context.ticket.customerName}, Issue: ${context.ticket.issueDescription}. Please classify this ticket, assess its severity, and route it to the appropriate agent.`,
+      });
+    }
+
+    return getNextAction(systemPrompt, context.llmHistory);
+  }
+
+  private async executeSkillFromLLM(
+    eventBus: ExecutionEventBus,
+    taskId: string,
+    contextId: string,
+    context: TriageTaskContext,
+    skillCall: {
+      skillId: string;
+      parameters: Record<string, unknown>;
+      reasoning: string;
+    },
+  ): Promise<void> {
+    const { skillId, parameters, reasoning } = skillCall;
+
+    this.log(`SKILL: ${skillId}`, { parameters, reasoning });
+
+    const executor = this.getSkillExecutor(skillId, context, parameters);
+
+    const result = await this.governedSkillExecution(
       eventBus,
       taskId,
       contextId,
-      "classify_ticket",
-      {
-        ticketId: ticketData.ticketId,
-        description: ticketData.issueDescription,
-      },
-      governanceContext,
-      async () => {
-        await this.simulateDelay(500);
-        return this.classifyTicket(ticketData);
-      },
+      skillId,
+      parameters,
+      context.governanceContext,
+      executor,
+      reasoning,
     );
 
-    if (!classifyResult.allowed) {
-      this.log("SKILL: classify_ticket DENIED", {
-        reason: classifyResult.governance.reasoning,
+    if (result.allowed) {
+      context.actionsPerformed.push(`✅ ${skillId}: ${reasoning}`);
+      context.llmHistory.push({
+        role: "assistant",
+        content: JSON.stringify({ action: "call_skill", skillCall, reasoning }),
       });
-      return;
-    }
-
-    const classification = classifyResult.result;
-
-    this.log("SKILL: assess_severity", { ticketId: ticketData.ticketId });
-
-    const severityResult = await this.governedSkillExecution(
-      eventBus,
-      taskId,
-      contextId,
-      "assess_severity",
-      { ticketId: ticketData.ticketId, classification },
-      governanceContext,
-      async () => {
-        await this.simulateDelay(300);
-        return {
-          severity: classification.severity,
-          reasoning: this.getSeverityReasoning(classification, ticketData),
-        };
-      },
-    );
-
-    if (!severityResult.allowed) {
-      this.log("SKILL: assess_severity DENIED", {
-        reason: severityResult.governance.reasoning,
+      context.llmHistory.push({
+        role: "user",
+        content: `Skill ${skillId} executed successfully. Result: ${JSON.stringify(result.result)}. What's next?`,
       });
-      return;
-    }
 
-    this.log("SKILL: route_ticket", {
-      ticketId: ticketData.ticketId,
-      routeTo: "support_agent",
-      classification: classification.category,
-    });
-
-    const routeResult = await this.governedSkillExecution(
-      eventBus,
-      taskId,
-      contextId,
-      "route_ticket",
-      { ticketId: ticketData.ticketId, targetAgent: "support_agent" },
-      governanceContext,
-      async () => {
-        await this.simulateDelay(200);
-        return {
-          targetAgent: "support_agent",
-          classification: classification,
-          ticket: ticketData,
-          routedAt: new Date().toISOString(),
-        };
-      },
-    );
-
-    if (!routeResult.allowed) {
-      this.log("SKILL: route_ticket DENIED", {
-        reason: routeResult.governance.reasoning,
+      this.updateContextFromSkillResult(context, skillId, result.result);
+    } else {
+      context.actionsPerformed.push(
+        `❌ ${skillId}: DENIED - ${result.governance.reasoning}`,
+      );
+      context.llmHistory.push({
+        role: "assistant",
+        content: JSON.stringify({ action: "call_skill", skillCall, reasoning }),
       });
-      return;
+      context.llmHistory.push({
+        role: "user",
+        content: `Skill ${skillId} was DENIED by governance policy. Reason: ${result.governance.reasoning}. Try a different approach.`,
+      });
     }
+  }
+
+  private async executeAgentMessageFromLLM(
+    eventBus: ExecutionEventBus,
+    taskId: string,
+    contextId: string,
+    context: TriageTaskContext,
+    agentMessage: {
+      targetAgent: string;
+      messageType: string;
+      content: Record<string, unknown>;
+      reasoning: string;
+    },
+  ): Promise<void> {
+    const { targetAgent, messageType, content, reasoning } = agentMessage;
+
+    this.log(`COMM: ${targetAgent}`, { messageType, reasoning });
 
     const commResult = await this.governedAgentMessage(
       eventBus,
       taskId,
       contextId,
-      "support_agent",
-      "ticket_routed",
+      targetAgent,
+      messageType,
       {
         action: "ticket_routed",
-        targetAgent: "support_agent",
-        sessionId: ticketData.sessionId, // Pass sessionId to downstream agent
-        ticket: ticketData,
-        classification: classification,
+        targetAgent,
+        sessionId: context.governanceContext.sessionId,
+        ticket: context.ticket,
+        classification: context.classification,
+        ...content,
       },
-      governanceContext,
+      context.governanceContext,
+      reasoning,
     );
 
     if (commResult.allowed) {
       const supportTaskId = commResult.result?.targetTaskId;
       const supportResponse = commResult.result?.response;
+
+      context.actionsPerformed.push(
+        `✅ Message ${targetAgent}: ${messageType} - ${reasoning}`,
+      );
 
       this.log("Ticket forwarded to Support Agent", {
         supportTaskId,
@@ -147,13 +359,26 @@ export class TriageAgentExecutor extends BaseAgentExecutor {
             : "message",
       });
 
+      context.llmHistory.push({
+        role: "assistant",
+        content: JSON.stringify({
+          action: "message_agent",
+          agentMessage,
+          reasoning,
+        }),
+      });
+      context.llmHistory.push({
+        role: "user",
+        content: `Message to ${targetAgent} sent successfully. Support task ID: ${supportTaskId}. The ticket has been routed. You can now complete the triage task.`,
+      });
+
       this.publishMessage(
         eventBus,
         JSON.stringify({
           action: "ticket_routed_and_processed",
-          targetAgent: "support_agent",
-          ticket: ticketData,
-          classification: classification,
+          targetAgent,
+          ticket: context.ticket,
+          classification: context.classification,
           supportTaskId,
           supportResponse:
             supportResponse?.kind === "task"
@@ -166,16 +391,98 @@ export class TriageAgentExecutor extends BaseAgentExecutor {
         }),
       );
     } else {
+      context.actionsPerformed.push(
+        `❌ Message ${targetAgent}: DENIED - ${commResult.governance.reasoning}`,
+      );
+      context.llmHistory.push({
+        role: "assistant",
+        content: JSON.stringify({
+          action: "message_agent",
+          agentMessage,
+          reasoning,
+        }),
+      });
+      context.llmHistory.push({
+        role: "user",
+        content: `Communication with ${targetAgent} was DENIED by governance policy. Reason: ${commResult.governance.reasoning}. Try a different approach.`,
+      });
+
       this.publishMessage(
         eventBus,
         JSON.stringify({
           action: "ticket_routing_denied",
-          targetAgent: "support_agent",
-          ticket: ticketData,
-          classification: classification,
+          targetAgent,
+          ticket: context.ticket,
+          classification: context.classification,
           reason: commResult.governance.reasoning,
         }),
       );
+    }
+  }
+
+  private getSkillExecutor(
+    skillId: string,
+    context: TriageTaskContext,
+    parameters: Record<string, unknown>,
+  ): () => Promise<Record<string, unknown>> {
+    switch (skillId) {
+      case "classify_ticket":
+        return async () => {
+          await this.simulateDelay(500);
+          return this.classifyTicket(context.ticket) as unknown as Record<
+            string,
+            unknown
+          >;
+        };
+
+      case "assess_severity":
+        return async () => {
+          await this.simulateDelay(300);
+          const classification =
+            (parameters.classification as TicketClassification) ||
+            context.classification;
+          return {
+            severity: classification?.severity || "medium",
+            reasoning: this.getSeverityReasoning(
+              classification || {
+                category: "other",
+                severity: "medium",
+                requiresEscalation: false,
+              },
+              context.ticket,
+            ),
+          };
+        };
+
+      case "route_ticket":
+        return async () => {
+          await this.simulateDelay(200);
+          return {
+            targetAgent: parameters.targetAgent || "support_agent",
+            classification: context.classification,
+            ticket: context.ticket,
+            routedAt: new Date().toISOString(),
+          };
+        };
+
+      default:
+        return async () => ({ error: `Unknown skill: ${skillId}` });
+    }
+  }
+
+  private updateContextFromSkillResult(
+    context: TriageTaskContext,
+    skillId: string,
+    result: unknown,
+  ): void {
+    const res = result as Record<string, unknown>;
+
+    if (skillId === "classify_ticket" && res && !res.error) {
+      context.classification = res as unknown as TicketClassification;
+    }
+
+    if (skillId === "assess_severity" && res && !res.error) {
+      context.severityAssessment = res as { severity: string; reasoning: string };
     }
   }
 
