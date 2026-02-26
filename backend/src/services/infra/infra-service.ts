@@ -149,6 +149,22 @@ export const infraServiceFactory = ({
     return infraStateDAL.create({ projectId, content });
   };
 
+  const purgeState = async (projectId: string) => {
+    const existing = await infraStateDAL.find({ projectId });
+    if (existing.length === 0) {
+      throw new BadRequestError({ message: "No state to purge" });
+    }
+    await infraStateDAL.deleteById(existing[0].id);
+  };
+
+  const getStateHistory = async (projectId: string) => {
+    const runs = await infraRunDAL.find(
+      { projectId, status: InfraRunStatus.Success },
+      { limit: 50, sort: [["createdAt", "desc"]] }
+    );
+    return runs.filter((r) => r.type === InfraRunType.Apply || r.type === InfraRunType.Destroy);
+  };
+
   // ── Resources (parsed from state) ──
 
   const getResources = async (projectId: string) => {
@@ -626,6 +642,8 @@ export const infraServiceFactory = ({
     getGraph,
     getState,
     upsertState,
+    purgeState,
+    getStateHistory,
     listVariables,
     upsertVariable,
     deleteVariable,

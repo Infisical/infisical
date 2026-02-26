@@ -3,6 +3,7 @@ export {
   useDeleteInfraFile,
   useDeleteInfraVariable,
   useDenyInfraRun,
+  usePurgeInfraState,
   useTriggerInfraRun,
   useUpsertInfraFile,
   useUpsertInfraVariable
@@ -14,6 +15,8 @@ export {
   useInfraResources,
   useInfraRun,
   useInfraRuns,
+  useInfraState,
+  useInfraStateHistory,
   useInfraVariables
 } from "./queries";
 export type {

@@ -10,7 +10,9 @@ export const infraKeys = {
   run: (runId: string) => [{ runId }, "infra-run"] as const,
   resources: (projectId: string) => [{ projectId }, "infra-resources"] as const,
   graph: (projectId: string) => [{ projectId }, "infra-graph"] as const,
-  variables: (projectId: string) => [{ projectId }, "infra-variables"] as const
+  variables: (projectId: string) => [{ projectId }, "infra-variables"] as const,
+  state: (projectId: string) => [{ projectId }, "infra-state"] as const,
+  stateHistory: (projectId: string) => [{ projectId }, "infra-state-history"] as const
 };
 
 const fetchInfraFiles = async (projectId: string) => {
@@ -119,6 +121,47 @@ export const useInfraVariables = (
   useQuery({
     queryKey: infraKeys.variables(projectId),
     queryFn: () => fetchInfraVariables(projectId),
+    enabled: Boolean(projectId),
+    ...options
+  });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fetchInfraState = async (projectId: string): Promise<Record<string, any> | null> => {
+  try {
+    const { data } = await apiRequest.get(`/api/v1/infra/${projectId}/state`);
+    return data as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const useInfraState = (
+  projectId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  options?: Omit<UseQueryOptions<Record<string, any> | null>, "queryKey" | "queryFn">
+) =>
+  useQuery({
+    queryKey: infraKeys.state(projectId),
+    queryFn: () => fetchInfraState(projectId),
+    enabled: Boolean(projectId),
+    ...options
+  });
+
+const fetchInfraStateHistory = async (projectId: string) => {
+  const { data } = await apiRequest.get<{ runs: TInfraRun[] }>(
+    `/api/v1/infra/${projectId}/state/history`
+  );
+  return data.runs;
+};
+
+export const useInfraStateHistory = (
+  projectId: string,
+  options?: Omit<UseQueryOptions<TInfraRun[]>, "queryKey" | "queryFn">
+) =>
+  useQuery({
+    queryKey: infraKeys.stateHistory(projectId),
+    queryFn: () => fetchInfraStateHistory(projectId),
     enabled: Boolean(projectId),
     ...options
   });

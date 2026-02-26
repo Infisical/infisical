@@ -403,6 +403,32 @@ export const registerInfraRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // ── State Management (authenticated) ──
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/state/history",
+    config: { rateLimit: readLimit },
+    schema: { params: z.object({ projectId: z.string() }) },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const history = await server.services.infra.getStateHistory(req.params.projectId);
+      return { runs: history };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:projectId/state",
+    config: { rateLimit: writeLimit },
+    schema: { params: z.object({ projectId: z.string() }) },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.infra.purgeState(req.params.projectId);
+      return { success: true };
+    }
+  });
+
   // ── State Backend (for OpenTofu HTTP backend — no auth, called by tofu child process) ──
 
   server.route({

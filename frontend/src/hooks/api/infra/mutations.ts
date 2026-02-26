@@ -133,3 +133,19 @@ export const useDeleteInfraVariable = () => {
     }
   });
 };
+
+export const usePurgeInfraState = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId }: { projectId: string }) => {
+      await apiRequest.delete(`/api/v1/infra/${projectId}/state`);
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: infraKeys.state(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.resources(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.graph(projectId) });
+      queryClient.invalidateQueries({ queryKey: infraKeys.stateHistory(projectId) });
+    }
+  });
+};

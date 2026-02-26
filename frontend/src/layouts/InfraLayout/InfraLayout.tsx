@@ -64,6 +64,14 @@ export const InfraLayout = () => {
                   )}
                 </Link>
                 <Link
+                  to="/organizations/$orgId/projects/infra/$projectId/state"
+                  params={baseParams}
+                >
+                  {({ isActive }) => (
+                    <Tab value={isActive ? "selected" : ""}>State</Tab>
+                  )}
+                </Link>
+                <Link
                   to="/organizations/$orgId/projects/infra/$projectId/variables"
                   params={baseParams}
                 >
