@@ -468,10 +468,10 @@ export const infraServiceFactory = ({
       } else if (dto.mode === "destroy") {
         // Destroy mode — plan with -destroy flag, require approval before executing
 
-        await execCommand(binary, ["plan", "-destroy", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog);
+        await execCommand(binary, ["plan", "-destroy", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog, varEnv);
 
         try {
-          const jsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir);
+          const jsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir, varEnv);
           planJson = parsePlanJson(jsonOutput);
         } catch (parseErr) {
           logger.warn(parseErr, "Failed to parse plan JSON");
@@ -512,7 +512,7 @@ export const infraServiceFactory = ({
 
         // Approved — execute the destroy plan
         appendLog(`\n`);
-        await execCommand(binary, ["apply", "plan.tfplan"], tmpDir, appendLog);
+        await execCommand(binary, ["apply", "plan.tfplan"], tmpDir, appendLog, varEnv);
 
         // Reuse cached AI insight or generate fresh
         if (cachedAiInsight) {
