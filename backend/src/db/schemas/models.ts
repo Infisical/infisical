@@ -262,7 +262,8 @@ export enum TableName {
   QueueJobs = "queue_jobs",
 
   // Observability
-  ObservabilityWidget = "observability_widgets"
+  ObservabilityWidget = "observability_widgets",
+  ObservabilityWidgetView = "observability_widget_views"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
