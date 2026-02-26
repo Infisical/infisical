@@ -138,6 +138,19 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
           const isSource = currentEvent?.agentId === agent.id;
           const isTarget = currentEvent?.targetAgentId === agent.id;
 
+          // Shorten line to stop at circle/hexagon edges
+          const dx = -pos.x;
+          const dy = -pos.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const agentRadius = 40;
+          const centerRadius = 64;
+          const x1 = ux * agentRadius;
+          const y1 = uy * agentRadius;
+          const x2 = dx - ux * centerRadius;
+          const y2 = dy - uy * centerRadius;
+
           return (
             <div
               key={agent.id}
@@ -161,18 +174,16 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 }}
                 className="flex flex-col items-center"
               >
-                <div className="rounded-full bg-bunker-800">
-                  <div
-                    className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
-                      isActive
-                        ? currentEvent?.status === "approved"
-                          ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
-                          : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
-                        : "border-border"
-                    }`}
-                  >
-                    <div className="text-accent">{getIcon(agent.icon)}</div>
-                  </div>
+                <div
+                  className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
+                    isActive
+                      ? currentEvent?.status === "approved"
+                        ? "border-success bg-success/10 shadow-[0_0_15px_rgba(46,204,113,0.2)]"
+                        : "border-danger bg-danger/10 shadow-[0_0_15px_rgba(231,76,60,0.2)]"
+                      : "border-border"
+                  }`}
+                >
+                  <div className="text-accent">{getIcon(agent.icon)}</div>
                 </div>
                 <div className="mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
                   {agent.name}
@@ -182,10 +193,10 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
               {/* Connection Line to Center */}
               <svg className="absolute -z-10 overflow-visible" style={{ left: 48, top: 48 }}>
                 <line
-                  x1="0"
-                  y1="0"
-                  x2={-pos.x}
-                  y2={-pos.y}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
                   stroke={
                     isActive
                       ? currentEvent?.status === "approved"
@@ -211,20 +222,26 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   <motion.circle
                     r="3"
                     fill={currentEvent.status === "approved" ? "#2ecc71" : "#e74c3c"}
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: 0 }}
+                    transition={{ duration: 0.1, delay: 0.95 }}
                   >
-                    <animateMotion dur="1s" repeatCount="1" path={`M 0 0 L ${-pos.x} ${-pos.y}`} />
+                    <animateMotion dur="1s" repeatCount="1" path={`M ${x1} ${y1} L ${x2} ${y2}`} />
                   </motion.circle>
                 )}
                 {isTarget && isAgentToAgent && currentEvent && (
                   <motion.circle
                     r="3"
                     fill={currentEvent.status === "approved" ? "#2ecc71" : "#e74c3c"}
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: 0 }}
+                    transition={{ duration: 0.1, delay: 1.45 }}
                   >
                     <animateMotion
                       dur="1s"
                       repeatCount="1"
                       begin="0.5s"
-                      path={`M ${-pos.x} ${-pos.y} L 0 0`}
+                      path={`M ${x2} ${y2} L ${x1} ${y1}`}
                     />
                   </motion.circle>
                 )}
