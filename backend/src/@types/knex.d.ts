@@ -646,6 +646,14 @@ import {
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
 } from "@app/db/schemas/microsoft-teams-integrations";
+import { TNhiIdentities, TNhiIdentitiesInsert, TNhiIdentitiesUpdate } from "@app/db/schemas/nhi-identities";
+import {
+  TNhiRemediationActions,
+  TNhiRemediationActionsInsert,
+  TNhiRemediationActionsUpdate
+} from "@app/db/schemas/nhi-remediation-actions";
+import { TNhiScans, TNhiScansInsert, TNhiScansUpdate } from "@app/db/schemas/nhi-scans";
+import { TNhiSources, TNhiSourcesInsert, TNhiSourcesUpdate } from "@app/db/schemas/nhi-sources";
 import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
@@ -1604,5 +1612,18 @@ declare module "knex/types/tables" {
     >;
 
     [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
+
+    [TableName.NhiSource]: KnexOriginal.CompositeTableType<TNhiSources, TNhiSourcesInsert, TNhiSourcesUpdate>;
+    [TableName.NhiIdentity]: KnexOriginal.CompositeTableType<
+      TNhiIdentities,
+      TNhiIdentitiesInsert,
+      TNhiIdentitiesUpdate
+    >;
+    [TableName.NhiScan]: KnexOriginal.CompositeTableType<TNhiScans, TNhiScansInsert, TNhiScansUpdate>;
+    [TableName.NhiRemediationAction]: KnexOriginal.CompositeTableType<
+      TNhiRemediationActions,
+      TNhiRemediationActionsInsert,
+      TNhiRemediationActionsUpdate
+    >;
   }
 }

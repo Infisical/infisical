@@ -82,6 +82,7 @@ import { Route as sshLayoutImport } from './pages/ssh/layout'
 import { Route as secretScanningLayoutImport } from './pages/secret-scanning/layout'
 import { Route as secretManagerLayoutImport } from './pages/secret-manager/layout'
 import { Route as pamLayoutImport } from './pages/pam/layout'
+import { Route as nhiLayoutImport } from './pages/nhi/layout'
 import { Route as kmsLayoutImport } from './pages/kms/layout'
 import { Route as certManagerLayoutImport } from './pages/cert-manager/layout'
 import { Route as aiLayoutImport } from './pages/ai/layout'
@@ -96,6 +97,7 @@ import { Route as projectAppConnectionsPageRouteSecretManagerImport } from './pa
 import { Route as projectAccessControlPageRouteSecretManagerImport } from './pages/project/AccessControlPage/route-secret-manager'
 import { Route as projectAuditLogsPageRoutePamImport } from './pages/project/AuditLogsPage/route-pam'
 import { Route as projectAccessControlPageRoutePamImport } from './pages/project/AccessControlPage/route-pam'
+import { Route as projectAccessControlPageRouteNhiImport } from './pages/project/AccessControlPage/route-nhi'
 import { Route as projectAuditLogsPageRouteKmsImport } from './pages/project/AuditLogsPage/route-kms'
 import { Route as projectAccessControlPageRouteKmsImport } from './pages/project/AccessControlPage/route-kms'
 import { Route as projectAuditLogsPageRouteCertManagerImport } from './pages/project/AuditLogsPage/route-cert-manager'
@@ -116,6 +118,8 @@ import { Route as secretManagerSecretApprovalsPageRouteImport } from './pages/se
 import { Route as secretManagerIPAllowlistPageRouteImport } from './pages/secret-manager/IPAllowlistPage/route'
 import { Route as pamSettingsPageRouteImport } from './pages/pam/SettingsPage/route'
 import { Route as pamApprovalsPageRouteImport } from './pages/pam/ApprovalsPage/route'
+import { Route as nhiSourcesPageRouteImport } from './pages/nhi/SourcesPage/route'
+import { Route as nhiOverviewPageRouteImport } from './pages/nhi/OverviewPage/route'
 import { Route as kmsSettingsPageRouteImport } from './pages/kms/SettingsPage/route'
 import { Route as kmsOverviewPageRouteImport } from './pages/kms/OverviewPage/route'
 import { Route as kmsKmipPageRouteImport } from './pages/kms/KmipPage/route'
@@ -142,6 +146,10 @@ import { Route as projectRoleDetailsBySlugPageRoutePamImport } from './pages/pro
 import { Route as projectMemberDetailsByIDPageRoutePamImport } from './pages/project/MemberDetailsByIDPage/route-pam'
 import { Route as projectIdentityDetailsByIDPageRoutePamImport } from './pages/project/IdentityDetailsByIDPage/route-pam'
 import { Route as projectGroupDetailsByIDPageRoutePamImport } from './pages/project/GroupDetailsByIDPage/route-pam'
+import { Route as projectRoleDetailsBySlugPageRouteNhiImport } from './pages/project/RoleDetailsBySlugPage/route-nhi'
+import { Route as projectMemberDetailsByIDPageRouteNhiImport } from './pages/project/MemberDetailsByIDPage/route-nhi'
+import { Route as projectIdentityDetailsByIDPageRouteNhiImport } from './pages/project/IdentityDetailsByIDPage/route-nhi'
+import { Route as projectGroupDetailsByIDPageRouteNhiImport } from './pages/project/GroupDetailsByIDPage/route-nhi'
 import { Route as projectRoleDetailsBySlugPageRouteKmsImport } from './pages/project/RoleDetailsBySlugPage/route-kms'
 import { Route as projectMemberDetailsByIDPageRouteKmsImport } from './pages/project/MemberDetailsByIDPage/route-kms'
 import { Route as projectIdentityDetailsByIDPageRouteKmsImport } from './pages/project/IdentityDetailsByIDPage/route-kms'
@@ -162,6 +170,7 @@ import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport 
 import { Route as secretManagerIntegrationsDetailsByIDPageRouteImport } from './pages/secret-manager/IntegrationsDetailsByIDPage/route'
 import { Route as pamPamSessionsByIDPageRouteImport } from './pages/pam/PamSessionsByIDPage/route'
 import { Route as pamApprovalRequestDetailPageRouteImport } from './pages/pam/ApprovalRequestDetailPage/route'
+import { Route as nhiIdentityDetailPageRouteImport } from './pages/nhi/IdentityDetailPage/route'
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
 import { Route as certManagerPkiSyncDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSyncDetailsByIDPage/route'
 import { Route as certManagerDiscoveryDetailsByIDPageRouteImport } from './pages/cert-manager/DiscoveryDetailsByIDPage/route'
@@ -174,6 +183,7 @@ import { Route as secretScanningSecretScanningDataSourcesPageRouteImport } from 
 import { Route as secretManagerIntegrationsListPageRouteImport } from './pages/secret-manager/IntegrationsListPage/route'
 import { Route as pamPamSessionsPageRouteImport } from './pages/pam/PamSessionsPage/route'
 import { Route as pamPamResourcesPageRouteImport } from './pages/pam/PamResourcesPage/route'
+import { Route as nhiIdentitiesPageRouteImport } from './pages/nhi/IdentitiesPage/route'
 import { Route as certManagerPkiSubscribersPageRouteImport } from './pages/cert-manager/PkiSubscribersPage/route'
 import { Route as certManagerIntegrationsListPageRouteImport } from './pages/cert-manager/IntegrationsListPage/route'
 import { Route as certManagerDiscoveryPageRouteImport } from './pages/cert-manager/DiscoveryPage/route'
@@ -323,6 +333,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectI
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId',
   )()
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId',
+  )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId',
@@ -350,6 +364,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectI
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources',
+  )()
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersImport =
   createFileRoute(
@@ -968,6 +986,15 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectI
     } as any,
   )
 
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdImport.update(
+    {
+      id: '/nhi/$projectId',
+      path: '/nhi/$projectId',
+      getParentRoute: () => organizationProjectsPageRouteRoute,
+    } as any,
+  )
+
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute =
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdImport.update(
     {
@@ -1025,6 +1052,12 @@ const pamLayoutRoute = pamLayoutImport.update({
   id: '/_pam-layout',
   getParentRoute: () =>
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRoute,
+} as any)
+
+const nhiLayoutRoute = nhiLayoutImport.update({
+  id: '/_nhi-layout',
+  getParentRoute: () =>
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRoute,
 } as any)
 
 const kmsLayoutRoute = kmsLayoutImport.update({
@@ -1157,6 +1190,22 @@ const projectAccessControlPageRoutePamRoute =
     id: '/access-management',
     path: '/access-management',
     getParentRoute: () => pamLayoutRoute,
+  } as any)
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesImport.update(
+    {
+      id: '/discovered-identities',
+      path: '/discovered-identities',
+      getParentRoute: () => nhiLayoutRoute,
+    } as any,
+  )
+
+const projectAccessControlPageRouteNhiRoute =
+  projectAccessControlPageRouteNhiImport.update({
+    id: '/access-management',
+    path: '/access-management',
+    getParentRoute: () => nhiLayoutRoute,
   } as any)
 
 const projectAuditLogsPageRouteKmsRoute =
@@ -1327,6 +1376,18 @@ const pamApprovalsPageRouteRoute = pamApprovalsPageRouteImport.update({
   id: '/approvals',
   path: '/approvals',
   getParentRoute: () => pamLayoutRoute,
+} as any)
+
+const nhiSourcesPageRouteRoute = nhiSourcesPageRouteImport.update({
+  id: '/sources',
+  path: '/sources',
+  getParentRoute: () => nhiLayoutRoute,
+} as any)
+
+const nhiOverviewPageRouteRoute = nhiOverviewPageRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => nhiLayoutRoute,
 } as any)
 
 const kmsSettingsPageRouteRoute = kmsSettingsPageRouteImport.update({
@@ -1506,6 +1567,34 @@ const projectGroupDetailsByIDPageRoutePamRoute =
     getParentRoute: () => pamLayoutRoute,
   } as any)
 
+const projectRoleDetailsBySlugPageRouteNhiRoute =
+  projectRoleDetailsBySlugPageRouteNhiImport.update({
+    id: '/roles/$roleSlug',
+    path: '/roles/$roleSlug',
+    getParentRoute: () => nhiLayoutRoute,
+  } as any)
+
+const projectMemberDetailsByIDPageRouteNhiRoute =
+  projectMemberDetailsByIDPageRouteNhiImport.update({
+    id: '/members/$membershipId',
+    path: '/members/$membershipId',
+    getParentRoute: () => nhiLayoutRoute,
+  } as any)
+
+const projectIdentityDetailsByIDPageRouteNhiRoute =
+  projectIdentityDetailsByIDPageRouteNhiImport.update({
+    id: '/identities/$identityId',
+    path: '/identities/$identityId',
+    getParentRoute: () => nhiLayoutRoute,
+  } as any)
+
+const projectGroupDetailsByIDPageRouteNhiRoute =
+  projectGroupDetailsByIDPageRouteNhiImport.update({
+    id: '/groups/$groupId',
+    path: '/groups/$groupId',
+    getParentRoute: () => nhiLayoutRoute,
+  } as any)
+
 const projectRoleDetailsBySlugPageRouteKmsRoute =
   projectRoleDetailsBySlugPageRouteKmsImport.update({
     id: '/roles/$roleSlug',
@@ -1648,6 +1737,15 @@ const pamApprovalRequestDetailPageRouteRoute =
     getParentRoute: () => pamLayoutRoute,
   } as any)
 
+const nhiIdentityDetailPageRouteRoute = nhiIdentityDetailPageRouteImport.update(
+  {
+    id: '/$nhiIdentityId',
+    path: '/$nhiIdentityId',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRoute,
+  } as any,
+)
+
 const certManagerPkiSubscriberDetailsByIDPageRouteRoute =
   certManagerPkiSubscriberDetailsByIDPageRouteImport.update({
     id: '/$subscriberName',
@@ -1736,6 +1834,13 @@ const pamPamResourcesPageRouteRoute = pamPamResourcesPageRouteImport.update({
   path: '/',
   getParentRoute: () =>
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRoute,
+} as any)
+
+const nhiIdentitiesPageRouteRoute = nhiIdentitiesPageRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () =>
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRoute,
 } as any)
 
 const certManagerPkiSubscribersPageRouteRoute =
@@ -3038,6 +3143,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdImport
       parentRoute: typeof organizationProjectsPageRouteImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId'
+      path: '/nhi/$projectId'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdImport
+      parentRoute: typeof organizationProjectsPageRouteImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId'
       path: '/pam/$projectId'
@@ -3100,6 +3212,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/kms/$projectId'
       preLoaderRoute: typeof kmsLayoutImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout'
+      path: ''
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId'
+      preLoaderRoute: typeof nhiLayoutImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout'
@@ -3198,6 +3317,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/kms/$projectId/settings'
       preLoaderRoute: typeof kmsSettingsPageRouteImport
       parentRoute: typeof kmsLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview'
+      path: '/overview'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/overview'
+      preLoaderRoute: typeof nhiOverviewPageRouteImport
+      parentRoute: typeof nhiLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources'
+      path: '/sources'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/sources'
+      preLoaderRoute: typeof nhiSourcesPageRouteImport
+      parentRoute: typeof nhiLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals'
@@ -3367,6 +3500,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectAuditLogsPageRouteKmsImport
       parentRoute: typeof kmsLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/access-management': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/access-management'
+      path: '/access-management'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/access-management'
+      preLoaderRoute: typeof projectAccessControlPageRouteNhiImport
+      parentRoute: typeof nhiLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities'
+      path: '/discovered-identities'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/discovered-identities'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesImport
+      parentRoute: typeof nhiLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management'
       path: '/access-management'
@@ -3493,6 +3640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof certManagerPkiSubscribersPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/'
+      path: '/'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/discovered-identities/'
+      preLoaderRoute: typeof nhiIdentitiesPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/'
       path: '/'
@@ -3576,6 +3730,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
       preLoaderRoute: typeof certManagerPkiSubscriberDetailsByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/$nhiIdentityId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/$nhiIdentityId'
+      path: '/$nhiIdentityId'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/discovered-identities/$nhiIdentityId'
+      preLoaderRoute: typeof nhiIdentityDetailPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId'
@@ -3716,6 +3877,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/kms/$projectId/roles/$roleSlug'
       preLoaderRoute: typeof projectRoleDetailsBySlugPageRouteKmsImport
       parentRoute: typeof kmsLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/groups/$groupId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/groups/$groupId'
+      path: '/groups/$groupId'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/groups/$groupId'
+      preLoaderRoute: typeof projectGroupDetailsByIDPageRouteNhiImport
+      parentRoute: typeof nhiLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/identities/$identityId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/identities/$identityId'
+      path: '/identities/$identityId'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/identities/$identityId'
+      preLoaderRoute: typeof projectIdentityDetailsByIDPageRouteNhiImport
+      parentRoute: typeof nhiLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/members/$membershipId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/members/$membershipId'
+      path: '/members/$membershipId'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/members/$membershipId'
+      preLoaderRoute: typeof projectMemberDetailsByIDPageRouteNhiImport
+      parentRoute: typeof nhiLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/roles/$roleSlug': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/roles/$roleSlug'
+      path: '/roles/$roleSlug'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/roles/$roleSlug'
+      preLoaderRoute: typeof projectRoleDetailsBySlugPageRouteNhiImport
+      parentRoute: typeof nhiLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/groups/$groupId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/groups/$groupId'
@@ -4726,6 +4915,67 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectI
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRouteChildren,
   )
 
+interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteChildren {
+  nhiIdentitiesPageRouteRoute: typeof nhiIdentitiesPageRouteRoute
+  nhiIdentityDetailPageRouteRoute: typeof nhiIdentityDetailPageRouteRoute
+}
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteChildren =
+  {
+    nhiIdentitiesPageRouteRoute: nhiIdentitiesPageRouteRoute,
+    nhiIdentityDetailPageRouteRoute: nhiIdentityDetailPageRouteRoute,
+  }
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteChildren,
+  )
+
+interface nhiLayoutRouteChildren {
+  nhiOverviewPageRouteRoute: typeof nhiOverviewPageRouteRoute
+  nhiSourcesPageRouteRoute: typeof nhiSourcesPageRouteRoute
+  projectAccessControlPageRouteNhiRoute: typeof projectAccessControlPageRouteNhiRoute
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteWithChildren
+  projectGroupDetailsByIDPageRouteNhiRoute: typeof projectGroupDetailsByIDPageRouteNhiRoute
+  projectIdentityDetailsByIDPageRouteNhiRoute: typeof projectIdentityDetailsByIDPageRouteNhiRoute
+  projectMemberDetailsByIDPageRouteNhiRoute: typeof projectMemberDetailsByIDPageRouteNhiRoute
+  projectRoleDetailsBySlugPageRouteNhiRoute: typeof projectRoleDetailsBySlugPageRouteNhiRoute
+}
+
+const nhiLayoutRouteChildren: nhiLayoutRouteChildren = {
+  nhiOverviewPageRouteRoute: nhiOverviewPageRouteRoute,
+  nhiSourcesPageRouteRoute: nhiSourcesPageRouteRoute,
+  projectAccessControlPageRouteNhiRoute: projectAccessControlPageRouteNhiRoute,
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRoute:
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteWithChildren,
+  projectGroupDetailsByIDPageRouteNhiRoute:
+    projectGroupDetailsByIDPageRouteNhiRoute,
+  projectIdentityDetailsByIDPageRouteNhiRoute:
+    projectIdentityDetailsByIDPageRouteNhiRoute,
+  projectMemberDetailsByIDPageRouteNhiRoute:
+    projectMemberDetailsByIDPageRouteNhiRoute,
+  projectRoleDetailsBySlugPageRouteNhiRoute:
+    projectRoleDetailsBySlugPageRouteNhiRoute,
+}
+
+const nhiLayoutRouteWithChildren = nhiLayoutRoute._addFileChildren(
+  nhiLayoutRouteChildren,
+)
+
+interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRouteChildren {
+  nhiLayoutRoute: typeof nhiLayoutRouteWithChildren
+}
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRouteChildren =
+  {
+    nhiLayoutRoute: nhiLayoutRouteWithChildren,
+  }
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRouteChildren,
+  )
+
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesResourceTypeResourceIdAccountsAccountIdRouteChildren {
   pamPamAccountByIDPageRouteRoute: typeof pamPamAccountByIDPageRouteRoute
 }
@@ -5318,6 +5568,7 @@ interface organizationProjectsPageRouteRouteChildren {
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAiProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAiProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRouteWithChildren
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRouteWithChildren
@@ -5334,6 +5585,8 @@ const organizationProjectsPageRouteRouteChildren: organizationProjectsPageRouteR
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRouteWithChildren,
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRoute:
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRoute:
@@ -5742,6 +5995,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/ai/$projectId': typeof aiLayoutRouteWithChildren
   '/organizations/$orgId/projects/cert-manager/$projectId': typeof certManagerLayoutRouteWithChildren
   '/organizations/$orgId/projects/kms/$projectId': typeof kmsLayoutRouteWithChildren
+  '/organizations/$orgId/projects/nhi/$projectId': typeof nhiLayoutRouteWithChildren
   '/organizations/$orgId/projects/pam/$projectId': typeof pamLayoutRouteWithChildren
   '/organizations/$orgId/projects/secret-management/$projectId': typeof secretManagerLayoutRouteWithChildren
   '/organizations/$orgId/projects/secret-scanning/$projectId': typeof secretScanningLayoutRouteWithChildren
@@ -5758,6 +6012,8 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/overview': typeof nhiOverviewPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/sources': typeof nhiSourcesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approvals': typeof pamApprovalsPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/settings': typeof pamSettingsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
@@ -5782,6 +6038,8 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren
   '/organizations/$orgId/projects/kms/$projectId/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/audit-logs': typeof projectAuditLogsPageRouteKmsRoute
+  '/organizations/$orgId/projects/nhi/$projectId/access-management': typeof projectAccessControlPageRouteNhiRoute
+  '/organizations/$orgId/projects/nhi/$projectId/discovered-identities': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteWithChildren
   '/organizations/$orgId/projects/pam/$projectId/access-management': typeof projectAccessControlPageRoutePamRoute
   '/organizations/$orgId/projects/pam/$projectId/audit-logs': typeof projectAuditLogsPageRoutePamRoute
   '/organizations/$orgId/projects/pam/$projectId/resources': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteWithChildren
@@ -5800,6 +6058,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery/': typeof certManagerDiscoveryPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations/': typeof certManagerIntegrationsListPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/': typeof certManagerPkiSubscribersPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/discovered-identities/': typeof nhiIdentitiesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/resources/': typeof pamPamResourcesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
@@ -5812,6 +6071,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId': typeof certManagerDiscoveryDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/discovered-identities/$nhiIdentityId': typeof nhiIdentityDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
@@ -5832,6 +6092,10 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/kms/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteKmsRoute
+  '/organizations/$orgId/projects/nhi/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteNhiRoute
+  '/organizations/$orgId/projects/nhi/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteNhiRoute
+  '/organizations/$orgId/projects/nhi/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteNhiRoute
+  '/organizations/$orgId/projects/nhi/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteNhiRoute
   '/organizations/$orgId/projects/pam/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/projects/pam/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/projects/pam/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -6005,6 +6269,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/ai/$projectId': typeof aiLayoutRouteWithChildren
   '/organizations/$orgId/projects/cert-manager/$projectId': typeof certManagerLayoutRouteWithChildren
   '/organizations/$orgId/projects/kms/$projectId': typeof kmsLayoutRouteWithChildren
+  '/organizations/$orgId/projects/nhi/$projectId': typeof nhiLayoutRouteWithChildren
   '/organizations/$orgId/projects/pam/$projectId': typeof pamLayoutRouteWithChildren
   '/organizations/$orgId/projects/secret-management/$projectId': typeof secretManagerLayoutRouteWithChildren
   '/organizations/$orgId/projects/secret-scanning/$projectId': typeof secretScanningLayoutRouteWithChildren
@@ -6021,6 +6286,8 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/kms/$projectId/kmip': typeof kmsKmipPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/overview': typeof nhiOverviewPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/sources': typeof nhiSourcesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approvals': typeof pamApprovalsPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/settings': typeof pamSettingsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
@@ -6041,6 +6308,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/cert-manager/$projectId/audit-logs': typeof projectAuditLogsPageRouteCertManagerRoute
   '/organizations/$orgId/projects/kms/$projectId/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/audit-logs': typeof projectAuditLogsPageRouteKmsRoute
+  '/organizations/$orgId/projects/nhi/$projectId/access-management': typeof projectAccessControlPageRouteNhiRoute
   '/organizations/$orgId/projects/pam/$projectId/access-management': typeof projectAccessControlPageRoutePamRoute
   '/organizations/$orgId/projects/pam/$projectId/audit-logs': typeof projectAuditLogsPageRoutePamRoute
   '/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof projectAccessControlPageRouteSecretManagerRoute
@@ -6055,6 +6323,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery': typeof certManagerDiscoveryPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations': typeof certManagerIntegrationsListPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers': typeof certManagerPkiSubscribersPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/discovered-identities': typeof nhiIdentitiesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/resources': typeof pamPamResourcesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations': typeof secretManagerIntegrationsListPageRouteRoute
@@ -6067,6 +6336,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId': typeof certManagerDiscoveryDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/discovered-identities/$nhiIdentityId': typeof nhiIdentityDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
@@ -6087,6 +6357,10 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/kms/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteKmsRoute
   '/organizations/$orgId/projects/kms/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteKmsRoute
+  '/organizations/$orgId/projects/nhi/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteNhiRoute
+  '/organizations/$orgId/projects/nhi/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteNhiRoute
+  '/organizations/$orgId/projects/nhi/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteNhiRoute
+  '/organizations/$orgId/projects/nhi/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteNhiRoute
   '/organizations/$orgId/projects/pam/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/projects/pam/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/projects/pam/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -6269,6 +6543,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAiProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRouteWithChildren
@@ -6278,6 +6553,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout': typeof aiLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout': typeof certManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout': typeof kmsLayoutRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout': typeof nhiLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout': typeof pamLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout': typeof secretManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout': typeof secretScanningLayoutRouteWithChildren
@@ -6292,6 +6568,8 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/kmip': typeof kmsKmipPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/overview': typeof kmsOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings': typeof kmsSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview': typeof nhiOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources': typeof nhiSourcesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals': typeof pamApprovalsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings': typeof pamSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
@@ -6316,6 +6594,8 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/access-management': typeof projectAccessControlPageRouteKmsRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/audit-logs': typeof projectAuditLogsPageRouteKmsRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/access-management': typeof projectAccessControlPageRouteNhiRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management': typeof projectAccessControlPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs': typeof projectAuditLogsPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteWithChildren
@@ -6334,6 +6614,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/': typeof certManagerDiscoveryPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/': typeof certManagerIntegrationsListPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/': typeof certManagerPkiSubscribersPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/': typeof nhiIdentitiesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/': typeof pamPamResourcesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/': typeof pamPamSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
@@ -6346,6 +6627,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId': typeof certManagerDiscoveryDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/$nhiIdentityId': typeof nhiIdentityDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
@@ -6366,6 +6648,10 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteKmsRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteKmsRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteKmsRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/groups/$groupId': typeof projectGroupDetailsByIDPageRouteNhiRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteNhiRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteNhiRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteNhiRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -6548,6 +6834,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ai/$projectId'
     | '/organizations/$orgId/projects/cert-manager/$projectId'
     | '/organizations/$orgId/projects/kms/$projectId'
+    | '/organizations/$orgId/projects/nhi/$projectId'
     | '/organizations/$orgId/projects/pam/$projectId'
     | '/organizations/$orgId/projects/secret-management/$projectId'
     | '/organizations/$orgId/projects/secret-scanning/$projectId'
@@ -6564,6 +6851,8 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/organizations/$orgId/projects/kms/$projectId/overview'
     | '/organizations/$orgId/projects/kms/$projectId/settings'
+    | '/organizations/$orgId/projects/nhi/$projectId/overview'
+    | '/organizations/$orgId/projects/nhi/$projectId/sources'
     | '/organizations/$orgId/projects/pam/$projectId/approvals'
     | '/organizations/$orgId/projects/pam/$projectId/settings'
     | '/organizations/$orgId/projects/secret-management/$projectId/allowlist'
@@ -6588,6 +6877,8 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers'
     | '/organizations/$orgId/projects/kms/$projectId/access-management'
     | '/organizations/$orgId/projects/kms/$projectId/audit-logs'
+    | '/organizations/$orgId/projects/nhi/$projectId/access-management'
+    | '/organizations/$orgId/projects/nhi/$projectId/discovered-identities'
     | '/organizations/$orgId/projects/pam/$projectId/access-management'
     | '/organizations/$orgId/projects/pam/$projectId/audit-logs'
     | '/organizations/$orgId/projects/pam/$projectId/resources'
@@ -6606,6 +6897,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery/'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations/'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/'
+    | '/organizations/$orgId/projects/nhi/$projectId/discovered-identities/'
     | '/organizations/$orgId/projects/pam/$projectId/resources/'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/'
@@ -6618,6 +6910,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
+    | '/organizations/$orgId/projects/nhi/$projectId/discovered-identities/$nhiIdentityId'
     | '/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
@@ -6638,6 +6931,10 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/identities/$identityId'
     | '/organizations/$orgId/projects/kms/$projectId/members/$membershipId'
     | '/organizations/$orgId/projects/kms/$projectId/roles/$roleSlug'
+    | '/organizations/$orgId/projects/nhi/$projectId/groups/$groupId'
+    | '/organizations/$orgId/projects/nhi/$projectId/identities/$identityId'
+    | '/organizations/$orgId/projects/nhi/$projectId/members/$membershipId'
+    | '/organizations/$orgId/projects/nhi/$projectId/roles/$roleSlug'
     | '/organizations/$orgId/projects/pam/$projectId/groups/$groupId'
     | '/organizations/$orgId/projects/pam/$projectId/identities/$identityId'
     | '/organizations/$orgId/projects/pam/$projectId/members/$membershipId'
@@ -6810,6 +7107,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ai/$projectId'
     | '/organizations/$orgId/projects/cert-manager/$projectId'
     | '/organizations/$orgId/projects/kms/$projectId'
+    | '/organizations/$orgId/projects/nhi/$projectId'
     | '/organizations/$orgId/projects/pam/$projectId'
     | '/organizations/$orgId/projects/secret-management/$projectId'
     | '/organizations/$orgId/projects/secret-scanning/$projectId'
@@ -6826,6 +7124,8 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/organizations/$orgId/projects/kms/$projectId/overview'
     | '/organizations/$orgId/projects/kms/$projectId/settings'
+    | '/organizations/$orgId/projects/nhi/$projectId/overview'
+    | '/organizations/$orgId/projects/nhi/$projectId/sources'
     | '/organizations/$orgId/projects/pam/$projectId/approvals'
     | '/organizations/$orgId/projects/pam/$projectId/settings'
     | '/organizations/$orgId/projects/secret-management/$projectId/allowlist'
@@ -6846,6 +7146,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/audit-logs'
     | '/organizations/$orgId/projects/kms/$projectId/access-management'
     | '/organizations/$orgId/projects/kms/$projectId/audit-logs'
+    | '/organizations/$orgId/projects/nhi/$projectId/access-management'
     | '/organizations/$orgId/projects/pam/$projectId/access-management'
     | '/organizations/$orgId/projects/pam/$projectId/audit-logs'
     | '/organizations/$orgId/projects/secret-management/$projectId/access-management'
@@ -6860,6 +7161,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers'
+    | '/organizations/$orgId/projects/nhi/$projectId/discovered-identities'
     | '/organizations/$orgId/projects/pam/$projectId/resources'
     | '/organizations/$orgId/projects/pam/$projectId/sessions'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations'
@@ -6872,6 +7174,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
+    | '/organizations/$orgId/projects/nhi/$projectId/discovered-identities/$nhiIdentityId'
     | '/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
@@ -6892,6 +7195,10 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/identities/$identityId'
     | '/organizations/$orgId/projects/kms/$projectId/members/$membershipId'
     | '/organizations/$orgId/projects/kms/$projectId/roles/$roleSlug'
+    | '/organizations/$orgId/projects/nhi/$projectId/groups/$groupId'
+    | '/organizations/$orgId/projects/nhi/$projectId/identities/$identityId'
+    | '/organizations/$orgId/projects/nhi/$projectId/members/$membershipId'
+    | '/organizations/$orgId/projects/nhi/$projectId/roles/$roleSlug'
     | '/organizations/$orgId/projects/pam/$projectId/groups/$groupId'
     | '/organizations/$orgId/projects/pam/$projectId/identities/$identityId'
     | '/organizations/$orgId/projects/pam/$projectId/members/$membershipId'
@@ -7072,6 +7379,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId'
@@ -7081,6 +7389,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout'
@@ -7095,6 +7404,8 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/kmip'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist'
@@ -7119,6 +7430,8 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/audit-logs'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/access-management'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources'
@@ -7137,6 +7450,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/'
@@ -7149,6 +7463,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/$nhiIdentityId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId'
@@ -7169,6 +7484,10 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/roles/$roleSlug'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/groups/$groupId'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/identities/$identityId'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/members/$membershipId'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/roles/$roleSlug'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/groups/$groupId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/members/$membershipId'
@@ -7612,6 +7931,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId",
@@ -7749,6 +8069,13 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout"
       ]
     },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
+      ]
+    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects",
@@ -7840,6 +8167,20 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/members/$membershipId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/roles/$roleSlug"
+      ]
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout": {
+      "filePath": "nhi/layout.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/access-management",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/groups/$groupId",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/identities/$identityId",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/members/$membershipId",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/roles/$roleSlug"
       ]
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout": {
@@ -7954,6 +8295,14 @@ export const routeTree = rootRoute
       "filePath": "kms/SettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout"
     },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview": {
+      "filePath": "nhi/OverviewPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources": {
+      "filePath": "nhi/SourcesPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
+    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals": {
       "filePath": "pam/ApprovalsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout"
@@ -8065,6 +8414,18 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/audit-logs": {
       "filePath": "project/AuditLogsPage/route-kms.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/access-management": {
+      "filePath": "project/AccessControlPage/route-nhi.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/$nhiIdentityId"
+      ]
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management": {
       "filePath": "project/AccessControlPage/route-pam.tsx",
@@ -8230,6 +8591,10 @@ export const routeTree = rootRoute
       "filePath": "cert-manager/PkiSubscribersPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"
     },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/": {
+      "filePath": "nhi/IdentitiesPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities"
+    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/": {
       "filePath": "pam/PamResourcesPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources"
@@ -8277,6 +8642,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName": {
       "filePath": "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities/$nhiIdentityId": {
+      "filePath": "nhi/IdentityDetailPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId": {
       "filePath": "pam/ApprovalRequestDetailPage/route.tsx",
@@ -8357,6 +8726,22 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/roles/$roleSlug": {
       "filePath": "project/RoleDetailsBySlugPage/route-kms.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/groups/$groupId": {
+      "filePath": "project/GroupDetailsByIDPage/route-nhi.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/identities/$identityId": {
+      "filePath": "project/IdentityDetailsByIDPage/route-nhi.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/members/$membershipId": {
+      "filePath": "project/MemberDetailsByIDPage/route-nhi.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/roles/$roleSlug": {
+      "filePath": "project/RoleDetailsBySlugPage/route-nhi.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/groups/$groupId": {
       "filePath": "project/GroupDetailsByIDPage/route-pam.tsx",

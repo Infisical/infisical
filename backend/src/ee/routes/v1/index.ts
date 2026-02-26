@@ -25,6 +25,7 @@ import { registerKmipRouter } from "./kmip-router";
 import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
+import { registerNhiRouter } from "./nhi-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
@@ -239,4 +240,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/ai" }
   );
+
+  await server.register(registerNhiRouter, { prefix: "/nhi" });
 };

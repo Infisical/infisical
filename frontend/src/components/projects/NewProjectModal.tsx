@@ -84,6 +84,10 @@ const PROJECT_TYPE_MENU_ITEMS = [
   {
     label: "Agent Sentinel",
     value: ProjectType.AI
+  },
+  {
+    label: "Non-Human Identities",
+    value: ProjectType.NHI
   }
 ];
 

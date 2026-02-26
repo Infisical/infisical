@@ -259,7 +259,13 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
 
-  QueueJobs = "queue_jobs"
+  QueueJobs = "queue_jobs",
+
+  // NHI (Non-Human Identity)
+  NhiSource = "nhi_sources",
+  NhiIdentity = "nhi_identities",
+  NhiScan = "nhi_scans",
+  NhiRemediationAction = "nhi_remediation_actions"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -353,7 +359,8 @@ export enum ProjectType {
   SSH = "ssh",
   SecretScanning = "secret-scanning",
   PAM = "pam",
-  AI = "ai"
+  AI = "ai",
+  NHI = "nhi"
 }
 
 export enum ActionProjectType {
@@ -364,6 +371,7 @@ export enum ActionProjectType {
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
   AI = ProjectType.AI,
+  NHI = ProjectType.NHI,
   // project operations that happen on all types
   Any = "any"
 }

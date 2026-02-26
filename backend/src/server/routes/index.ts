@@ -79,6 +79,10 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { nhiIdentityDALFactory, nhiScanDALFactory, nhiSourceDALFactory } from "@app/ee/services/nhi/nhi-dal";
+import { nhiRemediationActionDALFactory } from "@app/ee/services/nhi/nhi-remediation-dal";
+import { nhiRemediationServiceFactory } from "@app/ee/services/nhi/nhi-remediation-service";
+import { nhiServiceFactory } from "@app/ee/services/nhi/nhi-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -2596,6 +2600,11 @@ export const registerRoutes = async (
     appConnectionDAL
   });
 
+  const nhiSourceDAL = nhiSourceDALFactory(db);
+  const nhiIdentityDAL = nhiIdentityDALFactory(db);
+  const nhiScanDAL = nhiScanDALFactory(db);
+  const nhiRemediationActionDAL = nhiRemediationActionDALFactory(db);
+
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamResourceDAL = pamResourceDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
@@ -2712,6 +2721,26 @@ export const registerRoutes = async (
     aiMcpActivityLogService,
     userDAL,
     permissionService,
+    gatewayV2Service
+  });
+
+  const nhiService = nhiServiceFactory({
+    nhiSourceDAL,
+    nhiIdentityDAL,
+    nhiScanDAL,
+    permissionService,
+    appConnectionService,
+    gatewayService,
+    gatewayV2Service
+  });
+
+  const nhiRemediationService = nhiRemediationServiceFactory({
+    nhiRemediationActionDAL,
+    nhiIdentityDAL,
+    nhiSourceDAL,
+    permissionService,
+    appConnectionService,
+    gatewayService,
     gatewayV2Service
   });
 
@@ -2918,7 +2947,9 @@ export const registerRoutes = async (
     aiMcpServer: aiMcpServerService,
     aiMcpEndpoint: aiMcpEndpointService,
     aiMcpActivityLog: aiMcpActivityLogService,
-    approvalPolicy: approvalPolicyService
+    approvalPolicy: approvalPolicyService,
+    nhi: nhiService,
+    nhiRemediation: nhiRemediationService
   });
 
   const cronJobs: CronJob[] = [];

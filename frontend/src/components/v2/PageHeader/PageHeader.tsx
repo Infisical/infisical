@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { ReactNode } from "@tanstack/react-router";
-import { LucideIcon } from "lucide-react";
+import { FingerprintIcon, LucideIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { InstanceIcon, OrgIcon, ProjectIcon, SubOrgIcon } from "@app/components/v3";
@@ -23,6 +23,7 @@ const SCOPE_BADGE: Record<NonNullable<Props["scope"]>, { icon: LucideIcon; class
   [ProjectType.PAM]: { className: "text-project", icon: ProjectIcon },
   [ProjectType.SecretScanning]: { className: "text-project", icon: ProjectIcon },
   [ProjectType.AI]: { className: "text-project", icon: ProjectIcon },
+  [ProjectType.NHI]: { className: "text-project", icon: FingerprintIcon },
   namespace: { className: "text-sub-org", icon: SubOrgIcon },
   instance: { className: "text-neutral", icon: InstanceIcon }
 };

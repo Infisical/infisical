@@ -27,6 +27,8 @@ import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operati
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TNhiRemediationServiceFactory } from "@app/ee/services/nhi/nhi-remediation-service";
+import { TNhiServiceFactory } from "@app/ee/services/nhi/nhi-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
@@ -383,6 +385,8 @@ declare module "fastify" {
       aiMcpEndpoint: TAiMcpEndpointServiceFactory;
       aiMcpActivityLog: TAiMcpActivityLogServiceFactory;
       approvalPolicy: TApprovalPolicyServiceFactory;
+      nhi: TNhiServiceFactory;
+      nhiRemediation: TNhiRemediationServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

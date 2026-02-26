@@ -1,4 +1,5 @@
 version: "3.9"
+name: infisical
 
 services:
   nginx:
@@ -77,6 +78,7 @@ services:
 
   backend:
     container_name: infisical-dev-api
+    image: infisical-dev-backend:first
     build:
       context: ./backend
       dockerfile: Dockerfile.dev.fips
@@ -141,6 +143,7 @@ services:
 
   frontend:
     container_name: infisical-dev-frontend
+    image: infisical-dev-frontend:first
     restart: unless-stopped
     depends_on:
       - backend

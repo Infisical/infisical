@@ -31,6 +31,7 @@ export * from "./integrations";
 export * from "./kms";
 export * from "./ldapConfig";
 export * from "./mfaSession";
+export * from "./nhi";
 export * from "./oidcConfig";
 export * from "./orgAdmin";
 export * from "./organization";

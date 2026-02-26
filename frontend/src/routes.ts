@@ -406,6 +406,22 @@ const pamAccessRoute = route(
   "pam/PamAccountAccessPage/route.tsx"
 );
 
+const nhiRoutes = route("/organizations/$orgId/projects/nhi/$projectId", [
+  layout("nhi-layout", "nhi/layout.tsx", [
+    route("/overview", "nhi/OverviewPage/route.tsx"),
+    route("/discovered-identities", [
+      index("nhi/IdentitiesPage/route.tsx"),
+      route("/$nhiIdentityId", "nhi/IdentityDetailPage/route.tsx")
+    ]),
+    route("/sources", "nhi/SourcesPage/route.tsx"),
+    route("/access-management", "project/AccessControlPage/route-nhi.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-nhi.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-nhi.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-nhi.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-nhi.tsx")
+  ])
+]);
+
 const organizationRoutes = route("/organizations/$orgId", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
@@ -487,7 +503,8 @@ export const routes = rootRoute("root.tsx", [
         sshRoutes,
         secretScanningRoutes,
         pamRoutes,
-        aiRoutes
+        aiRoutes,
+        nhiRoutes
       ])
     ])
   ])

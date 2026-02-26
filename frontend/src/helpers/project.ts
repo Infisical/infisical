@@ -81,6 +81,8 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
       return `/organizations/$orgId/projects/${type}/$projectId/resources` as const;
     case ProjectType.AI:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
+    case ProjectType.NHI:
+      return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }
@@ -94,7 +96,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
     [ProjectType.PAM]: "PAM",
-    [ProjectType.AI]: "Agent Sentinel"
+    [ProjectType.AI]: "Agent Sentinel",
+    [ProjectType.NHI]: "Non-Human Identities"
   };
   return titleConvert[type];
 };
@@ -107,7 +110,8 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.SSH]: "terminal",
     [ProjectType.SecretScanning]: "secret-scan",
     [ProjectType.PAM]: "groups",
-    [ProjectType.AI]: "moving-block"
+    [ProjectType.AI]: "moving-block",
+    [ProjectType.NHI]: "key-user"
   };
   return titleConvert[type];
 };
