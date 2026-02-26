@@ -436,9 +436,13 @@ export function ObservabilityDashboard({
 
   const removeWidget = useCallback(
     (uid: string) => {
-      setLayout((prev) => prev.filter((item) => item.uid !== uid));
+      const item = layout.find((i) => i.uid === uid);
+      if (item?.widgetId && item.tmpl.startsWith("custom_")) {
+        deleteWidgetMutation.mutate({ widgetId: item.widgetId, orgId });
+      }
+      setLayout((prev) => prev.filter((i) => i.uid !== uid));
     },
-    [setLayout]
+    [setLayout, layout, orgId, deleteWidgetMutation]
   );
 
   const handleDeleteWidget = useCallback(
@@ -771,6 +775,7 @@ export function ObservabilityDashboard({
           onExternalDragStart={handleExternalDragStart}
           onExternalDragEnd={handleExternalDragEnd}
           backendWidgets={backendWidgets}
+          orgId={orgId}
         />
       </div>
     </>

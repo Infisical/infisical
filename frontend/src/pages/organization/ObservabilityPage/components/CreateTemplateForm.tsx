@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 
 import { Button } from "@app/components/v3";
 import { useSubscription } from "@app/context";
+import { useCreateWidget } from "@app/hooks/api/observabilityWidgets";
 import { useGetUserProjects } from "@app/hooks/api/projects";
 import { subOrganizationsQuery } from "@app/hooks/api/subOrganizations";
 
@@ -18,6 +19,7 @@ export interface CreateTemplateResult {
   template: WidgetTemplate;
   panelItem: PanelItem;
   key: string;
+  widgetId?: string;
 }
 
 export interface EditingWidget {
@@ -26,8 +28,11 @@ export interface EditingWidget {
   template: WidgetTemplate;
 }
 
-type WidgetType = "resource_activity" | "stream";
+type WidgetType = "resource_activity" | "stream" | "metrics";
 type ScopeMode = "org" | "suborg" | "project";
+type MetricTypeKey = "status_count" | "expiring_soon" | "identity_count";
+type MetricStatus = "failed" | "pending" | "active" | "expired";
+type IdentityTypeKey = "user" | "machine" | "all";
 
 const ORG_ONLY_RESOURCES = new Set(
   RESOURCE_TYPES.filter((r) => r.orgOnly).map((r) => r.key)
@@ -51,22 +56,33 @@ function toggleSet(set: Set<string>, key: string): Set<string> {
   return next;
 }
 
+function parseRefreshSeconds(str: string): number {
+  if (str === "Off") return 3600;
+  if (str.endsWith("m")) return parseInt(str, 10) * 60;
+  return parseInt(str, 10);
+}
+
 export function CreateTemplateForm({
+  orgId,
   onSubmit,
   onCancel,
   editing
 }: {
+  orgId: string;
   onSubmit: (result: CreateTemplateResult) => void;
   onCancel: () => void;
   editing?: EditingWidget;
 }) {
   const isEditMode = !!editing;
+  const createWidget = useCreateWidget();
 
   const [title, setTitle] = useState(editing?.template.title ?? "");
   const [description, setDescription] = useState(editing?.template.description ?? "");
   const [widgetType, setWidgetType] = useState<WidgetType>(
-    editing?.template.isLogs ? "stream" : "resource_activity"
+    editing?.template.isLogs ? "stream" : editing?.template.isMetrics ? "metrics" : "resource_activity"
   );
+
+  // Resource activity state
   const [selectedResources, setSelectedResources] = useState<Set<string>>(
     new Set(editing?.template.filter?.resources ?? [])
   );
@@ -87,6 +103,14 @@ export function CreateTemplateForm({
   const [selectedSubOrgs, setSelectedSubOrgs] = useState<Set<string>>(
     new Set(editing?.template.filter?.subOrgIds ?? [])
   );
+
+  // Metrics state
+  const [metricType, setMetricType] = useState<MetricTypeKey>("status_count");
+  const [metricStatus, setMetricStatus] = useState<MetricStatus>("failed");
+  const [metricResourceTypes, setMetricResourceTypes] = useState<Set<string>>(new Set());
+  const [thresholdDays, setThresholdDays] = useState("7");
+  const [identityType, setIdentityType] = useState<IdentityTypeKey>("all");
+
   const [refreshInterval, setRefreshInterval] = useState(
     editing?.template.refresh ?? (widgetType === "stream" ? "5s" : "30s")
   );
@@ -146,12 +170,77 @@ export function CreateTemplateForm({
   );
 
   const canSubmit =
-    title.trim().length > 0 && (widgetType === "stream" || selectedResources.size > 0);
+    title.trim().length > 0 &&
+    (widgetType === "stream" || widgetType === "metrics" || selectedResources.size > 0);
 
-  function handleSubmit() {
-    if (!canSubmit) return;
+  const isSubmitting = createWidget.isPending;
+
+  async function handleSubmit() {
+    if (!canSubmit || isSubmitting) return;
 
     const key = editing?.tmplKey ?? `custom_${Date.now()}`;
+
+    if (widgetType === "metrics") {
+      let widgetId: string | undefined;
+
+      if (!isEditMode) {
+        const refreshSecs = parseRefreshSeconds(refreshInterval);
+        let config: Record<string, unknown>;
+
+        if (metricType === "status_count") {
+          config = {
+            metricType: "status_count",
+            status: metricStatus,
+            ...(metricResourceTypes.size > 0 && { resourceTypes: Array.from(metricResourceTypes) })
+          };
+        } else if (metricType === "expiring_soon") {
+          config = {
+            metricType: "expiring_soon",
+            thresholdDays: parseInt(thresholdDays, 10) || 7,
+            ...(metricResourceTypes.size > 0 && { resourceTypes: Array.from(metricResourceTypes) })
+          };
+        } else {
+          config = { metricType: "identity_count", identityType };
+        }
+
+        const widget = await createWidget.mutateAsync({
+          name: title.trim(),
+          description: description.trim() || undefined,
+          orgId,
+          type: "metrics",
+          config,
+          refreshInterval: refreshSecs,
+          icon: selectedIcon || "BarChart2",
+          color: selectedColor || "#3b82f6"
+        });
+
+        widgetId = widget.id;
+      }
+
+      const resolvedKey = isEditMode ? key : `custom_${widgetId}`;
+      const template: WidgetTemplate = {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        icon: selectedIcon || "BarChart2",
+        iconBg: selectedColor || "#1c2a3a",
+        refresh: refreshInterval,
+        stats: [],
+        dataKey: "metrics",
+        firstStatus: "",
+        isMetrics: true
+      };
+      const panelItem: PanelItem = {
+        id: resolvedKey,
+        icon: selectedIcon || "BarChart2",
+        bg: selectedColor || "#1c2a3a",
+        name: title.trim(),
+        desc: description.trim() || "Custom metrics counter.",
+        badge: "Custom",
+        category: "custom"
+      };
+      onSubmit({ template, panelItem, key: resolvedKey, widgetId });
+      return;
+    }
 
     if (widgetType === "stream") {
       const template: WidgetTemplate = {
@@ -260,7 +349,7 @@ export function CreateTemplateForm({
           Widget Type
         </label>
         <div className="flex gap-1 rounded-md border border-mineshaft-600 bg-mineshaft-700 p-0.5">
-          {(["resource_activity", "stream"] as const).map((t) => (
+          {(["resource_activity", "stream", "metrics"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -272,14 +361,16 @@ export function CreateTemplateForm({
                   : "text-mineshaft-300 hover:text-white"
               )}
             >
-              {t === "resource_activity" ? "Resource Activity" : "Stream"}
+              {t === "resource_activity" ? "Activity" : t === "stream" ? "Stream" : "Metrics"}
             </button>
           ))}
         </div>
         <p className="mt-1 text-[10px] leading-relaxed text-mineshaft-400">
           {widgetType === "resource_activity"
             ? "Displays a filterable table of resource events."
-            : "Shows a real-time scrolling log stream."}
+            : widgetType === "stream"
+              ? "Shows a real-time scrolling log stream."
+              : "Displays a single KPI counter backed by live data."}
         </p>
       </div>
 
@@ -612,6 +703,177 @@ export function CreateTemplateForm({
         </>
       )}
 
+      {widgetType === "metrics" && (
+        <>
+          {/* Metric Type */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium text-mineshaft-300">
+              Metric Type
+            </label>
+            <div className="flex gap-1 rounded-md border border-mineshaft-600 bg-mineshaft-700 p-0.5">
+              {(
+                [
+                  { key: "status_count", label: "Status Count" },
+                  { key: "expiring_soon", label: "Expiring Soon" },
+                  { key: "identity_count", label: "Identities" }
+                ] as const
+              ).map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setMetricType(m.key)}
+                  className={twMerge(
+                    "flex-1 rounded-[5px] py-1.5 text-[12px] font-medium transition-colors",
+                    metricType === m.key
+                      ? "bg-mineshaft-600 text-white"
+                      : "text-mineshaft-300 hover:text-white"
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] leading-relaxed text-mineshaft-400">
+              {metricType === "status_count"
+                ? "Count resources by their current status (failed, pending, etc.)."
+                : metricType === "expiring_soon"
+                  ? "Count resources expiring within a given number of days."
+                  : "Count user or machine identities in the organization."}
+            </p>
+          </div>
+
+          {/* Status Count options */}
+          {metricType === "status_count" && (
+            <>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-medium text-mineshaft-300">
+                  Status
+                </label>
+                <div className="flex gap-1 rounded-md border border-mineshaft-600 bg-mineshaft-700 p-0.5">
+                  {(["failed", "pending", "active", "expired"] as const).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setMetricStatus(s)}
+                      className={twMerge(
+                        "flex-1 rounded-[5px] py-1.5 text-[12px] font-medium capitalize transition-colors",
+                        metricStatus === s
+                          ? "bg-mineshaft-600 text-white"
+                          : "text-mineshaft-300 hover:text-white"
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-medium text-mineshaft-300">
+                  Resources <span className="font-normal text-mineshaft-400">(optional — defaults to all)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {RESOURCE_TYPES.map((r) => {
+                    const sel = metricResourceTypes.has(r.key);
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => setMetricResourceTypes(toggleSet(metricResourceTypes, r.key))}
+                        className={twMerge(
+                          "flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                          sel
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-mineshaft-600 bg-mineshaft-700 text-mineshaft-300 hover:border-mineshaft-500 hover:text-white"
+                        )}
+                      >
+                        <WidgetIcon name={r.icon} size={11} />
+                        {r.label}
+                        {sel && <Check size={10} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Expiring Soon options */}
+          {metricType === "expiring_soon" && (
+            <>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-mineshaft-300">
+                  Threshold Days
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={thresholdDays}
+                  onChange={(e) => setThresholdDays(e.target.value)}
+                  className="w-full rounded-md border border-mineshaft-600 bg-mineshaft-700 px-3 py-2 text-[13px] text-white outline-none placeholder:text-mineshaft-400 focus:border-primary"
+                />
+                <p className="mt-1 text-[10px] leading-relaxed text-mineshaft-400">
+                  Count resources expiring within this many days (1–365).
+                </p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-medium text-mineshaft-300">
+                  Resources <span className="font-normal text-mineshaft-400">(optional — defaults to all)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {RESOURCE_TYPES.map((r) => {
+                    const sel = metricResourceTypes.has(r.key);
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => setMetricResourceTypes(toggleSet(metricResourceTypes, r.key))}
+                        className={twMerge(
+                          "flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                          sel
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-mineshaft-600 bg-mineshaft-700 text-mineshaft-300 hover:border-mineshaft-500 hover:text-white"
+                        )}
+                      >
+                        <WidgetIcon name={r.icon} size={11} />
+                        {r.label}
+                        {sel && <Check size={10} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Identity Count options */}
+          {metricType === "identity_count" && (
+            <div>
+              <label className="mb-1.5 block text-[11px] font-medium text-mineshaft-300">
+                Identity Type
+              </label>
+              <div className="flex gap-1 rounded-md border border-mineshaft-600 bg-mineshaft-700 p-0.5">
+                {(["user", "machine", "all"] as const).map((it) => (
+                  <button
+                    key={it}
+                    type="button"
+                    onClick={() => setIdentityType(it)}
+                    className={twMerge(
+                      "flex-1 rounded-[5px] py-1.5 text-[12px] font-medium capitalize transition-colors",
+                      identityType === it
+                        ? "bg-mineshaft-600 text-white"
+                        : "text-mineshaft-300 hover:text-white"
+                    )}
+                  >
+                    {it === "all" ? "All" : it === "user" ? "Users" : "Machines"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       {/* Appearance (collapsible) */}
       <div>
         <button
@@ -688,10 +950,19 @@ export function CreateTemplateForm({
           variant="success"
           size="md"
           onClick={handleSubmit}
-          isDisabled={!canSubmit}
+          isDisabled={!canSubmit || isSubmitting}
           className="flex-1"
         >
-          {isEditMode ? "Save Changes" : "Create Widget"}
+          {isSubmitting ? (
+            <span className="flex items-center gap-2">
+              <Loader2 size={13} className="animate-spin" />
+              Creating...
+            </span>
+          ) : isEditMode ? (
+            "Save Changes"
+          ) : (
+            "Create Widget"
+          )}
         </Button>
         <Button variant="neutral" size="md" onClick={onCancel}>
           Cancel

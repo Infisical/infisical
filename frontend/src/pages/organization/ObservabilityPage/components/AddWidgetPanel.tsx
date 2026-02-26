@@ -119,7 +119,8 @@ export function AddWidgetPanel({
   editing,
   onExternalDragStart,
   onExternalDragEnd,
-  backendWidgets = []
+  backendWidgets = [],
+  orgId = ""
 }: {
   open: boolean;
   onClose: () => void;
@@ -132,6 +133,7 @@ export function AddWidgetPanel({
   onExternalDragStart?: () => void;
   onExternalDragEnd?: () => void;
   backendWidgets?: ObservabilityWidgetListItem[];
+  orgId?: string;
 }) {
   const [search, setSearch] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -247,6 +249,7 @@ export function AddWidgetPanel({
           {isEditMode ? (
             <CreateTemplateForm
               key={editing.uid}
+              orgId={orgId}
               editing={editing}
               onSubmit={(result) => {
                 onCreateTemplate?.(result);
@@ -320,6 +323,7 @@ export function AddWidgetPanel({
 
               {showCreateForm ? (
                 <CreateTemplateForm
+                  orgId={orgId}
                   onSubmit={(result) => {
                     onCreateTemplate?.(result);
                     setShowCreateForm(false);
