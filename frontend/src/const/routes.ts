@@ -69,6 +69,10 @@ export const ROUTE_PATHS = Object.freeze({
     NetworkingPage: setRoute(
       "/organizations/$orgId/networking",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking"
+    ),
+    ObservabilityPage: setRoute(
+      "/organizations/$orgId/observability",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/observability"
     )
   },
   SecretManager: {
