@@ -65,7 +65,10 @@ export const useGetWidgetData = (
           params
         })
         .then((r) => r.data),
-    refetchInterval: 30_000
+    refetchInterval: (query) => {
+      const data = query.state.data as ObservabilityWidgetDataResponse | undefined;
+      return data ? data.widget.refreshInterval * 1000 : 30_000;
+    }
   });
 
 export interface ObservabilityLogItem {
@@ -105,7 +108,10 @@ export const useGetWidgetLiveLogs = (widgetId: string | undefined, params?: { li
           params
         })
         .then((r) => r.data),
-    refetchInterval: 5_000
+    refetchInterval: (query) => {
+      const data = query.state.data as ObservabilityLiveLogsResponse | undefined;
+      return data ? data.widget.refreshInterval * 1000 : 5_000;
+    }
   });
 
 export interface ObservabilityMetricsResponse {
@@ -124,5 +130,8 @@ export const useGetWidgetMetrics = (widgetId: string | undefined) =>
       apiRequest
         .get<ObservabilityMetricsResponse>(`/api/v1/observability-widgets/${widgetId}/metrics`)
         .then((r) => r.data),
-    refetchInterval: 30_000
+    refetchInterval: (query) => {
+      const data = query.state.data as ObservabilityMetricsResponse | undefined;
+      return data ? data.widget.refreshInterval * 1000 : 30_000;
+    }
   });

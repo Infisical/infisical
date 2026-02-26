@@ -155,7 +155,11 @@ export function LogsWidget({
                   paused ? "bg-mineshaft-400" : "animate-pulse bg-green-500"
                 )}
               />
-              5s
+              {liveLogsData
+                ? liveLogsData.widget.refreshInterval < 60
+                  ? `${liveLogsData.widget.refreshInterval}s`
+                  : `${Math.round(liveLogsData.widget.refreshInterval / 60)}m`
+                : "5s"}
             </span>
           </div>
         </div>

@@ -223,7 +223,11 @@ export function TableWidget({
           </div>
           <div className="flex items-center gap-1.5">
             <span className="rounded border border-mineshaft-600 bg-bunker-800 px-1.5 py-0.5 text-[10px] text-mineshaft-300">
-              {template.refresh}
+              {widgetData
+                ? widgetData.widget.refreshInterval < 60
+                  ? `${widgetData.widget.refreshInterval}s`
+                  : `${Math.round(widgetData.widget.refreshInterval / 60)}m`
+                : template.refresh}
             </span>
             <button
               type="button"
