@@ -41,9 +41,13 @@ export const seedObservabilityDemo = async (
 
   const org = await knex(TableName.Organization).where({ id: orgId }).first();
   if (!org) {
-    throw new Error(`Organization ${orgId} not found.`);
+    const hint =
+      orgId === seedData1.organization.id
+        ? " Run `npm run seed-dev` first to create the default org, project, and user."
+        : "";
+    throw new Error(`Organization ${orgId} not found.${hint}`);
   }
-  log(`Found org: ${org.name}`);
+  log(`Found org: ${org.name} (${org.slug})`);
 
   let user: { id: string } | undefined;
   if (userEmail) {
@@ -380,8 +384,21 @@ export const seedObservabilityDemo = async (
     .onConflict("id")
     .merge();
 
-  log("Clearing existing widgets and inserting demo widgets...");
-  await knex(TableName.ObservabilityWidget).where({ orgId: org.id }).del();
+  const demoWidgetNames = [
+    "Critical Failures",
+    "Expiring Access & Certificates",
+    "Secret Sync Status",
+    "Failed Resources",
+    "Expiring in 7 Days",
+    "Pending Remediation",
+    "Machine Identities",
+    "Live Audit Logs"
+  ];
+  log("Replacing only demo widgets (preserving user-created widgets)...");
+  await knex(TableName.ObservabilityWidget)
+    .where({ orgId: org.id })
+    .whereIn("name", demoWidgetNames)
+    .del();
 
   await knex(TableName.ObservabilityWidget).insert([
     {
@@ -493,5 +510,5 @@ export const seedObservabilityDemo = async (
     }
   ]);
 
-  log("Done. Widgets with data: Critical Failures, Expiring Access, Secret Sync Status, Failed/Pending metrics, Machine Identities, Live Audit Logs.");
+  log("Done. Demo data added without touching existing user data. Widgets: Critical Failures, Expiring Access, Secret Sync Status, Failed/Pending metrics, Machine Identities, Live Audit Logs.");
 };

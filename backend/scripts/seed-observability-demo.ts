@@ -1,3 +1,10 @@
+/**
+ * Observability demo seed - runs on demand only (not part of default seed).
+ * Adds demo data (machine identities, tokens, webhooks, widgets) without touching
+ * existing user data. User-created widgets are preserved.
+ *
+ * Usage: npm run seed:observability-demo [orgId] [userEmail]
+ */
 import path from "path";
 
 import dotenv from "dotenv";
@@ -14,7 +21,7 @@ const run = async () => {
   const userEmail = process.argv[3]; // e.g. igor2.horta@gmail.com
   const connectionString = process.env.DB_CONNECTION_URI;
   if (!connectionString) {
-    throw new Error("DB_CONNECTION_URI is required");
+    throw new Error("DB_CONNECTION_URI is required. Set it in .env or .env.migration");
   }
   const db = knex({
     client: "pg",
@@ -25,7 +32,11 @@ const run = async () => {
   try {
     await seedObservabilityDemo(db, targetOrgId, userEmail);
     // eslint-disable-next-line no-console
-    console.log(`Observability demo data seeded for org ${targetOrgId}`);
+    console.log(`\nObservability demo data seeded for org ${targetOrgId}`);
+    if (!process.argv[2]) {
+      // eslint-disable-next-line no-console
+      console.log("Tip: Run with orgId and userEmail to target a specific org: npm run seed:observability-demo <orgId> <userEmail>");
+    }
   } finally {
     await db.destroy();
   }
