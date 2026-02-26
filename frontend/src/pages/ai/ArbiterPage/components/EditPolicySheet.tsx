@@ -471,6 +471,7 @@ export const EditActionsSheet = ({
   } = useForm<TEditActionsForm>({
     resolver: zodResolver(editActionsFormSchema),
     mode: "onSubmit",
+    reValidateMode: "onSubmit",
     defaultValues: {
       selfActions: []
     }
@@ -535,7 +536,10 @@ export const EditActionsSheet = ({
             Loading policy...
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex min-h-0 flex-1 flex-col bg-bunker-900"
+          >
             <div className="min-w-0 flex-1 overflow-y-auto p-6">
               {selfActions.fields.length === 0 ? (
                 <div className="rounded-md border border-border p-6 text-center">
@@ -560,7 +564,7 @@ export const EditActionsSheet = ({
               )}
             </div>
 
-            <SheetFooter className="flex flex-row items-center justify-end gap-x-4 border-t border-border px-6 py-4">
+            <SheetFooter className="flex flex-row items-center justify-end gap-x-4 border-t border-border bg-popover px-6 py-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
