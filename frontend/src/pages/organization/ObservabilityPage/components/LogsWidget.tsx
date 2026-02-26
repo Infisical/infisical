@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GripVertical, Pause, Play, Trash2 } from "lucide-react";
+import { GripVertical, Pause, Play } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import type { LogEntry } from "../mock-data";
@@ -17,7 +17,6 @@ export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<strin
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [paused, setPaused] = useState(false);
   const [activeLevels, setActiveLevels] = useState(new Set(["error", "warn", "info"]));
-  const [resourceFilter, setResourceFilter] = useState("");
   const [textFilter, setTextFilter] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
   const streamRef = useRef<HTMLDivElement>(null);
@@ -65,10 +64,9 @@ export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<strin
       logs.filter(
         (l) =>
           activeLevels.has(l.level) &&
-          (!resourceFilter || l.resource === resourceFilter) &&
           (!textFilter || l.message.toLowerCase().includes(textFilter.toLowerCase()))
       ),
-    [logs, activeLevels, resourceFilter, textFilter]
+    [logs, activeLevels, textFilter]
   );
 
   const fmtTs = (d: Date) => d.toISOString().slice(11, 23);
@@ -114,20 +112,6 @@ export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<strin
                 </button>
               ))}
             </div>
-            {/* Resource filter */}
-            <select
-              value={resourceFilter}
-              onChange={(e) => setResourceFilter(e.target.value)}
-              className="rounded-[5px] border border-mineshaft-600 bg-bunker-800 px-2 py-1 text-[12px] text-white outline-none"
-            >
-              <option value="">All resources</option>
-              <option value="secret_sync">secret_sync</option>
-              <option value="secret_rotation">secret_rotation</option>
-              <option value="mi_token_ttl">mi_token_ttl</option>
-              <option value="webhook">webhook</option>
-              <option value="pam_active">pam_active</option>
-              <option value="latest_login">latest_login</option>
-            </select>
             {/* Text filter */}
             <input
               type="text"
@@ -155,15 +139,6 @@ export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<strin
               />
               5s
             </span>
-            {/* Clear */}
-            <button
-              type="button"
-              onClick={() => setLogs([])}
-              className="flex h-[22px] w-[22px] items-center justify-center rounded text-mineshaft-300 transition-colors hover:bg-mineshaft-600 hover:text-white"
-              title="Clear"
-            >
-              <Trash2 size={12} />
-            </button>
           </div>
         </div>
       </div>
@@ -238,19 +213,6 @@ export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<strin
         )}
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-bunker-800 px-3.5 py-1.5">
-        <span className="text-[11px] text-mineshaft-300">{filteredLogs.length} entries</span>
-        <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-mineshaft-300">
-          <input
-            type="checkbox"
-            checked={autoScroll}
-            onChange={(e) => setAutoScroll(e.target.checked)}
-            className="accent-primary"
-          />
-          Auto-scroll
-        </label>
-      </div>
     </div>
   );
 }
