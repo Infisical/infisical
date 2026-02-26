@@ -21,7 +21,6 @@ const TRIAGE_AGENT_SYSTEM_PROMPT = `You are a Triage Agent for an e-commerce cus
 ## Your Available Skills (use with action: "call_skill"):
 - classify_ticket: Analyze and classify the ticket. Parameters: { "ticketId": "string", "description": "string" }
 - assess_severity: Evaluate urgency and assign severity. Parameters: { "ticketId": "string", "classification": { "category": "string", "severity": "string", "requiresEscalation": boolean } }
-- route_ticket: Route the ticket to an agent. Parameters: { "ticketId": "string", "targetAgent": "support_agent" }
 
 ## Agent Communications (use with action: "message_agent"):
 - support_agent: Send classified and triaged tickets for resolution. Use messageType: "ticket_routed"
@@ -34,8 +33,8 @@ const TRIAGE_AGENT_SYSTEM_PROMPT = `You are a Triage Agent for an e-commerce cus
 ## Workflow:
 1. First, classify the ticket to understand what type of issue it is (billing, shipping, product, account, other)
 2. Then, assess the severity based on the classification and issue details
-3. Finally, route the ticket to the support agent
-4. When routing is complete, mark the task as complete
+3. After classification and severity assessment, you MUST use "message_agent" to send the ticket to the support_agent with messageType "ticket_routed". This is how you hand off the ticket.
+4. Only after successfully messaging the support_agent, mark the task as complete
 
 ## Classification Categories:
 - billing: Payment issues, duplicate charges, refunds
@@ -451,17 +450,6 @@ export class TriageAgentExecutor extends BaseAgentExecutor {
               },
               context.ticket,
             ),
-          };
-        };
-
-      case "route_ticket":
-        return async () => {
-          await this.simulateDelay(200);
-          return {
-            targetAgent: parameters.targetAgent || "support_agent",
-            classification: context.classification,
-            ticket: context.ticket,
-            routedAt: new Date().toISOString(),
           };
         };
 

@@ -13,12 +13,6 @@ export const TRIAGE_SKILLS: AgentSkill[] = [
     description: 'Evaluates ticket urgency and assigns severity level (low, medium, high, critical)',
     tags: ['triage', 'severity'],
   },
-  {
-    id: 'route_ticket',
-    name: 'Route Ticket',
-    description: 'Routes the classified ticket to the appropriate agent for handling',
-    tags: ['triage', 'routing'],
-  },
 ];
 
 export const SUPPORT_SKILLS: AgentSkill[] = [

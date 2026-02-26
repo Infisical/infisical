@@ -1,81 +1,228 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AVS - Customer Support</title>
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-  </head>
-  <body>
-    <!-- Header -->
-    <header class="header">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AVS - Your Orders</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
       <div class="header-content">
-        <div class="logo">
+        <a href="#" class="logo">
           <span class="logo-text">avs</span>
-        </div>
-        <div class="header-center">
-          <span class="header-title">Customer Support</span>
-        </div>
-        <div class="header-right">
-          <span class="status-indicator"></span>
-          <span class="status-text">Online</span>
-        </div>
-      </div>
-    </header>
-
-    <!-- Chat Container -->
-    <main class="chat-container">
-      <!-- Messages Area -->
-      <div id="messagesArea" class="messages-area">
-        <!-- Welcome Message -->
-        <div class="message bot-message">
-          <div class="message-avatar">🤖</div>
-          <div class="message-content">
-            <div class="message-bubble">
-              <p>Hi! I'm AVS Support Assistant. I can help you with:</p>
-              <ul>
-                <li>Order issues (wrong items, missing packages)</li>
-                <li>Billing questions (charges, refunds)</li>
-                <li>Shipping updates and tracking</li>
-                <li>Returns and exchanges</li>
-              </ul>
-              <p>How can I help you today?</p>
-            </div>
-            <span class="message-time">Just now</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Input Area -->
-      <div class="input-area">
-        <div class="input-container">
-          <textarea
-            id="messageInput"
-            class="message-input"
-            placeholder="Type your message..."
-            rows="1"
-          ></textarea>
-          <button id="sendBtn" class="send-btn" disabled>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+        </a>
+        
+        <div class="search-bar">
+          <select class="search-category">
+            <option>All</option>
+            <option>Electronics</option>
+            <option>Computers</option>
+            <option>Audio</option>
+          </select>
+          <input type="text" class="search-input" placeholder="Search AVS">
+          <button class="search-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
             </svg>
           </button>
         </div>
-        <p class="input-hint">Press Enter to send, Shift+Enter for new line</p>
+        
+        <nav class="header-nav">
+          <a href="#" class="nav-item">
+            <span class="nav-small">Hello, Customer</span>
+            <span class="nav-large">Account & Lists</span>
+          </a>
+          <a href="#" class="nav-item">
+            <span class="nav-small">Returns</span>
+            <span class="nav-large">& Orders</span>
+          </a>
+          <a href="#" class="nav-item cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <span class="cart-count">0</span>
+          </a>
+        </nav>
       </div>
-    </main>
+    </div>
+    <div class="header-bottom">
+      <div class="header-content">
+        <nav class="sub-nav">
+          <a href="#">Today's Deals</a>
+          <a href="#">Customer Service</a>
+          <a href="#">Gift Cards</a>
+          <a href="#">Sell</a>
+        </nav>
+      </div>
+    </div>
+  </header>
 
-    <script src="app.js"></script>
-  </body>
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+      <a href="#">Your Account</a>
+      <span>›</span>
+      <span>Your Orders</span>
+    </div>
+
+    <!-- Page Title -->
+    <div class="page-header">
+      <h1>Your Orders</h1>
+      <div class="order-filters">
+        <span>3 orders</span>
+        <select class="filter-select">
+          <option>past 3 months</option>
+          <option>past 6 months</option>
+          <option>2024</option>
+          <option>2023</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Orders List -->
+    <div id="ordersList" class="orders-list">
+      <!-- Orders will be inserted here -->
+    </div>
+  </main>
+
+  <!-- Support Modal -->
+  <div id="supportModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2>Contact Us About This Order</h2>
+        <button class="modal-close" id="closeModal">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Order Info -->
+        <div class="modal-order-info">
+          <img id="modalProductImage" src="" alt="Product">
+          <div class="modal-order-details">
+            <h3 id="modalProductName"></h3>
+            <p id="modalOrderId"></p>
+          </div>
+        </div>
+
+        <!-- Support Form -->
+        <form id="supportForm" class="support-form">
+          <div class="form-group">
+            <label>What can we help you with?</label>
+            <div class="issue-options">
+              <label class="issue-option">
+                <input type="radio" name="issueType" value="wrong-item">
+                <span class="option-content">
+                  <span class="option-icon">📦</span>
+                  <span class="option-text">Wrong item received</span>
+                </span>
+              </label>
+              <label class="issue-option">
+                <input type="radio" name="issueType" value="billing">
+                <span class="option-content">
+                  <span class="option-icon">💳</span>
+                  <span class="option-text">Billing or charge issue</span>
+                </span>
+              </label>
+              <label class="issue-option">
+                <input type="radio" name="issueType" value="shipping">
+                <span class="option-content">
+                  <span class="option-icon">🚚</span>
+                  <span class="option-text">Shipping or delivery</span>
+                </span>
+              </label>
+              <label class="issue-option">
+                <input type="radio" name="issueType" value="damaged">
+                <span class="option-content">
+                  <span class="option-icon">💔</span>
+                  <span class="option-text">Damaged or defective</span>
+                </span>
+              </label>
+              <label class="issue-option">
+                <input type="radio" name="issueType" value="other">
+                <span class="option-content">
+                  <span class="option-icon">❓</span>
+                  <span class="option-text">Other issue</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="issueDetails">Tell us more about the issue</label>
+            <textarea id="issueDetails" rows="4" placeholder="Please describe your issue in detail..."></textarea>
+          </div>
+
+          <input type="hidden" id="formOrderId" value="">
+
+          <button type="submit" class="submit-btn" id="submitBtn" disabled>
+            <span class="btn-text">Submit</span>
+            <span class="btn-loading hidden">
+              <span class="spinner"></span>
+              Processing...
+            </span>
+          </button>
+        </form>
+
+        <!-- Response Section (shown after submit) -->
+        <div id="responseSection" class="response-section hidden">
+          <div class="response-icon">✅</div>
+          <h3>We're on it!</h3>
+          <p id="responseMessage"></p>
+          <button class="done-btn" id="doneBtn">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-top">
+      <a href="#">Back to top</a>
+    </div>
+    <div class="footer-main">
+      <div class="footer-content">
+        <div class="footer-col">
+          <h4>Get to Know Us</h4>
+          <a href="#">Careers</a>
+          <a href="#">About AVS</a>
+          <a href="#">Investor Relations</a>
+        </div>
+        <div class="footer-col">
+          <h4>Make Money with Us</h4>
+          <a href="#">Sell products on AVS</a>
+          <a href="#">Become an Affiliate</a>
+          <a href="#">Advertise Your Products</a>
+        </div>
+        <div class="footer-col">
+          <h4>AVS Payment Products</h4>
+          <a href="#">AVS Rewards Visa</a>
+          <a href="#">Shop with Points</a>
+          <a href="#">AVS Gift Cards</a>
+        </div>
+        <div class="footer-col">
+          <h4>Let Us Help You</h4>
+          <a href="#">Your Account</a>
+          <a href="#">Your Orders</a>
+          <a href="#">Returns & Replacements</a>
+          <a href="#">Help</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-logo">avs</div>
+      <p>© 2024 AVS Demo — Powered by Infisical AgentGate</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
 </html>

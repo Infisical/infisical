@@ -18,6 +18,8 @@ interface FulfillmentRequest {
   item?: string;
   customerEmail?: string;
   ticketId?: string;
+  ticket?: Record<string, unknown>;
+  classification?: Record<string, unknown>;
 }
 
 interface FulfillmentTaskContext {
@@ -160,6 +162,11 @@ export class FulfillmentAgentExecutor extends BaseAgentExecutor {
             JSON.stringify({
               action: "fulfillment_complete",
               orderId: request.orderId,
+              sessionId: request.sessionId,
+              ticketId: request.ticketId,
+              customerEmail: request.customerEmail,
+              ticket: request.ticket,
+              classification: request.classification,
               shipmentId: context.shipmentResult?.shipmentId,
               trackingNumber: context.shipmentResult?.trackingNumber,
               status: "shipped",
@@ -226,6 +233,11 @@ export class FulfillmentAgentExecutor extends BaseAgentExecutor {
         JSON.stringify({
           action: "fulfillment_complete",
           orderId: request.orderId,
+          sessionId: request.sessionId,
+          ticketId: request.ticketId,
+          customerEmail: request.customerEmail,
+          ticket: request.ticket,
+          classification: request.classification,
           shipmentId: context.shipmentResult?.shipmentId,
           trackingNumber: context.shipmentResult?.trackingNumber,
           status: context.shipmentResult ? "shipped" : "incomplete",
@@ -347,7 +359,12 @@ export class FulfillmentAgentExecutor extends BaseAgentExecutor {
         targetAgent,
         sessionId: context.governanceContext.sessionId,
         orderId: context.request.orderId,
+        ticketId: context.request.ticketId,
+        customerEmail: context.request.customerEmail,
+        ticket: context.request.ticket,
+        classification: context.request.classification,
         shipmentResult: context.shipmentResult,
+        trackingNumber: context.shipmentResult?.trackingNumber,
         ...content,
       },
       context.governanceContext,
@@ -553,6 +570,8 @@ export class FulfillmentAgentExecutor extends BaseAgentExecutor {
           item: data.item as string | undefined,
           customerEmail,
           ticketId,
+          ticket: data.ticket as Record<string, unknown> | undefined,
+          classification: data.classification as Record<string, unknown> | undefined,
         };
       }
       if (part.kind === "text") {
@@ -565,6 +584,8 @@ export class FulfillmentAgentExecutor extends BaseAgentExecutor {
             item: parsed.item,
             customerEmail: parsed.customerEmail || parsed.ticket?.customerEmail,
             ticketId: parsed.ticketId || parsed.ticket?.ticketId,
+            ticket: parsed.ticket,
+            classification: parsed.classification,
           };
         } catch {
           // Not JSON

@@ -19,6 +19,7 @@ import {
   composeEmail,
   LLMDecision,
 } from "../../shared/llm-client.js";
+import { sendTicketResolutionEmail } from "../../shared/email-service.js";
 
 interface SupportTaskContext {
   ticket: CustomerTicket;
@@ -161,6 +162,30 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
               llmSummary: decision.finalResponse,
             }),
           );
+
+          // Send resolution email notification
+          try {
+            await sendTicketResolutionEmail({
+              ticketId: context.ticket.ticketId,
+              orderId: context.ticket.orderId,
+              customerName: context.ticket.customerName,
+              customerEmail: context.ticket.customerEmail,
+              issueDescription: context.ticket.issueDescription,
+              resolution: {
+                summary: decision.finalResponse || "Your issue has been resolved.",
+                totalRefundIssued: context.totalRefundIssued || undefined,
+                reshipmentCreated: !!context.fulfillmentTrackingNumber,
+                trackingNumber: context.fulfillmentTrackingNumber,
+                actionsPerformed: context.actionsPerformed,
+              },
+            });
+            this.log("📧 Resolution email sent successfully");
+          } catch (emailError) {
+            this.log("⚠️ Failed to send resolution email", {
+              error: emailError instanceof Error ? emailError.message : "Unknown error",
+            });
+          }
+
           break;
         }
 
@@ -236,6 +261,29 @@ Please try again with the correct format.`,
           },
         }),
       );
+
+      // Send resolution email even when max iterations reached
+      try {
+        await sendTicketResolutionEmail({
+          ticketId: context.ticket.ticketId,
+          orderId: context.ticket.orderId,
+          customerName: context.ticket.customerName,
+          customerEmail: context.ticket.customerEmail,
+          issueDescription: context.ticket.issueDescription,
+          resolution: {
+            summary: "Your support ticket has been processed. Our team has taken the actions listed below to resolve your issue.",
+            totalRefundIssued: context.totalRefundIssued || undefined,
+            reshipmentCreated: !!context.fulfillmentTrackingNumber,
+            trackingNumber: context.fulfillmentTrackingNumber,
+            actionsPerformed: context.actionsPerformed,
+          },
+        });
+        this.log("📧 Resolution email sent successfully");
+      } catch (emailError) {
+        this.log("⚠️ Failed to send resolution email", {
+          error: emailError instanceof Error ? emailError.message : "Unknown error",
+        });
+      }
     }
   }
 
@@ -732,10 +780,75 @@ Please try again with the correct format.`,
           escalationApproved = true;
           approvedRefundAmount = data.approvedAmount as number;
         }
+        if (
+          data.action === "escalation_decision" ||
+          data._messageType === "escalation_decision"
+        ) {
+          if (data.ticket) {
+            ticket = data.ticket as CustomerTicket;
+          }
+          if (data.classification) {
+            classification = data.classification as TicketClassification;
+          }
+          if (data.sessionId) {
+            sessionId = data.sessionId as string;
+          }
+          if (data.approvedAmount) {
+            approvedRefundAmount = data.approvedAmount as number;
+            escalationApproved = true;
+          }
+          if (data.decision === "APPROVED" || data.decision === "approved") {
+            escalationApproved = true;
+          }
+        }
+        // Handle escalation completion messages (flagged for human or generic complete)
+        if (
+          data.action === "escalation_flagged_for_human" ||
+          data.action === "escalation_complete"
+        ) {
+          if (data.ticket) {
+            ticket = data.ticket as CustomerTicket;
+          }
+          if (data.classification) {
+            classification = data.classification as TicketClassification;
+          }
+          if (data.sessionId) {
+            sessionId = data.sessionId as string;
+          }
+          if (data.approvedAmount) {
+            approvedRefundAmount = data.approvedAmount as number;
+            escalationApproved = true;
+          }
+        }
         if (data.action === "fulfillment_complete") {
           ticket = data.ticket as CustomerTicket;
           classification = data.classification as TicketClassification;
           fulfillmentTrackingNumber = data.trackingNumber as string;
+        }
+        if (
+          data.action === "fulfillment_update" ||
+          data._messageType === "fulfillment_update"
+        ) {
+          if (data.ticket) {
+            ticket = data.ticket as CustomerTicket;
+          }
+          if (data.classification) {
+            classification = data.classification as TicketClassification;
+          }
+          if (data.sessionId) {
+            sessionId = data.sessionId as string;
+          }
+          if (data.trackingNumber) {
+            fulfillmentTrackingNumber = data.trackingNumber as string;
+          }
+          if (data.shipmentResult) {
+            const shipment = data.shipmentResult as {
+              trackingNumber?: string;
+            };
+            if (shipment.trackingNumber) {
+              fulfillmentTrackingNumber = shipment.trackingNumber;
+            }
+          }
         }
       }
       if (part.kind === "text") {
@@ -757,10 +870,64 @@ Please try again with the correct format.`,
             escalationApproved = true;
             approvedRefundAmount = parsed.approvedAmount;
           }
+          if (parsed.action === "escalation_decision") {
+            if (parsed.ticket) {
+              ticket = parsed.ticket;
+            }
+            if (parsed.classification) {
+              classification = parsed.classification;
+            }
+            if (parsed.sessionId) {
+              sessionId = parsed.sessionId;
+            }
+            if (parsed.approvedAmount) {
+              approvedRefundAmount = parsed.approvedAmount;
+              escalationApproved = true;
+            }
+            if (parsed.decision === "APPROVED" || parsed.decision === "approved") {
+              escalationApproved = true;
+            }
+          }
+          // Handle escalation completion messages (flagged for human or generic complete)
+          if (
+            parsed.action === "escalation_flagged_for_human" ||
+            parsed.action === "escalation_complete"
+          ) {
+            if (parsed.ticket) {
+              ticket = parsed.ticket;
+            }
+            if (parsed.classification) {
+              classification = parsed.classification;
+            }
+            if (parsed.sessionId) {
+              sessionId = parsed.sessionId;
+            }
+            if (parsed.approvedAmount) {
+              approvedRefundAmount = parsed.approvedAmount;
+              escalationApproved = true;
+            }
+          }
           if (parsed.action === "fulfillment_complete") {
             ticket = parsed.ticket;
             classification = parsed.classification;
             fulfillmentTrackingNumber = parsed.trackingNumber;
+          }
+          if (parsed.action === "fulfillment_update") {
+            if (parsed.ticket) {
+              ticket = parsed.ticket;
+            }
+            if (parsed.classification) {
+              classification = parsed.classification;
+            }
+            if (parsed.sessionId) {
+              sessionId = parsed.sessionId;
+            }
+            if (parsed.trackingNumber) {
+              fulfillmentTrackingNumber = parsed.trackingNumber;
+            }
+            if (parsed.shipmentResult?.trackingNumber) {
+              fulfillmentTrackingNumber = parsed.shipmentResult.trackingNumber;
+            }
           }
         } catch {
           // Not JSON
