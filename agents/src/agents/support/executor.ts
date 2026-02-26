@@ -27,6 +27,8 @@ interface SupportTaskContext {
   order?: OrderInfo;
   escalationApproved?: boolean;
   approvedRefundAmount?: number;
+  flaggedForHumanReview?: boolean;
+  humanReviewReason?: string;
   fulfillmentTrackingNumber?: string;
   governanceContext: ActionContext;
   totalRefundIssued: number;
@@ -126,6 +128,58 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
       classification: context.classification.category,
     });
 
+    // If ticket was flagged for human review, complete immediately with appropriate message
+    if (context.flaggedForHumanReview) {
+      this.log("🛑 Ticket flagged for human review - completing task", {
+        reason: context.humanReviewReason,
+      });
+
+      const resolutionMessage = `This ticket requires human manager review. ${context.humanReviewReason || "The requested action exceeds automated approval limits."}. A manager will review and process this request. The customer will be notified once the review is complete.`;
+
+      this.publishMessage(
+        eventBus,
+        JSON.stringify({
+          action: "ticket_pending_human_review",
+          ticketId: context.ticket.ticketId,
+          resolution: {
+            status: "pending_human_review",
+            reason: context.humanReviewReason,
+            actionsPerformed: [
+              "Escalation requested",
+              "Flagged for human review",
+            ],
+          },
+          llmSummary: resolutionMessage,
+        }),
+      );
+
+      // Send notification email about pending review
+      try {
+        await sendTicketResolutionEmail({
+          ticketId: context.ticket.ticketId,
+          orderId: context.ticket.orderId,
+          customerName: context.ticket.customerName,
+          customerEmail: context.ticket.customerEmail,
+          issueDescription: context.ticket.issueDescription,
+          resolution: {
+            summary: `Your request is being reviewed by a manager. ${context.humanReviewReason || "The requested action requires additional approval."}. You will receive an update once the review is complete.`,
+            actionsPerformed: [
+              "Escalation requested",
+              "Flagged for human review",
+            ],
+          },
+        });
+        this.log("📧 Human review notification email sent");
+      } catch (emailError) {
+        this.log("⚠️ Failed to send human review notification email", {
+          error:
+            emailError instanceof Error ? emailError.message : "Unknown error",
+        });
+      }
+
+      return;
+    }
+
     this.log("🤖 LLM-POWERED AGENT: Starting autonomous reasoning loop");
 
     const maxIterations = 15;
@@ -172,7 +226,8 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
               customerEmail: context.ticket.customerEmail,
               issueDescription: context.ticket.issueDescription,
               resolution: {
-                summary: decision.finalResponse || "Your issue has been resolved.",
+                summary:
+                  decision.finalResponse || "Your issue has been resolved.",
                 totalRefundIssued: context.totalRefundIssued || undefined,
                 reshipmentCreated: !!context.fulfillmentTrackingNumber,
                 trackingNumber: context.fulfillmentTrackingNumber,
@@ -182,7 +237,10 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
             this.log("📧 Resolution email sent successfully");
           } catch (emailError) {
             this.log("⚠️ Failed to send resolution email", {
-              error: emailError instanceof Error ? emailError.message : "Unknown error",
+              error:
+                emailError instanceof Error
+                  ? emailError.message
+                  : "Unknown error",
             });
           }
 
@@ -208,6 +266,52 @@ export class SupportAgentExecutor extends BaseAgentExecutor {
             context,
             decision.agentMessage,
           );
+
+          // Check if escalation response flagged for human review - exit loop
+          if (context.flaggedForHumanReview) {
+            this.log(
+              "🛑 Agent response indicates human review required - completing task",
+              {
+                reason: context.humanReviewReason,
+              },
+            );
+
+            this.publishMessage(
+              eventBus,
+              JSON.stringify({
+                action: "ticket_pending_human_review",
+                ticketId: context.ticket.ticketId,
+                orderId: context.ticket.orderId,
+                reason: context.humanReviewReason,
+                actionsPerformed: context.actionsPerformed,
+              }),
+            );
+
+            try {
+              await sendTicketResolutionEmail({
+                ticketId: context.ticket.ticketId,
+                orderId: context.ticket.orderId,
+                customerName: context.ticket.customerName,
+                customerEmail: context.ticket.customerEmail,
+                issueDescription: context.ticket.issueDescription,
+                resolution: {
+                  summary: `Your request is pending manager review. Reason: ${context.humanReviewReason}. We will contact you once a decision is made.`,
+                  actionsPerformed: context.actionsPerformed,
+                },
+              });
+              this.log("📧 Human review notification email sent");
+            } catch (emailError) {
+              this.log("⚠️ Failed to send human review email", {
+                error:
+                  emailError instanceof Error
+                    ? emailError.message
+                    : "Unknown error",
+              });
+            }
+
+            break;
+          }
+
           continue;
         }
 
@@ -271,7 +375,8 @@ Please try again with the correct format.`,
           customerEmail: context.ticket.customerEmail,
           issueDescription: context.ticket.issueDescription,
           resolution: {
-            summary: "Your support ticket has been processed. Our team has taken the actions listed below to resolve your issue.",
+            summary:
+              "Your support ticket has been processed. Our team has taken the actions listed below to resolve your issue.",
             totalRefundIssued: context.totalRefundIssued || undefined,
             reshipmentCreated: !!context.fulfillmentTrackingNumber,
             trackingNumber: context.fulfillmentTrackingNumber,
@@ -281,7 +386,8 @@ Please try again with the correct format.`,
         this.log("📧 Resolution email sent successfully");
       } catch (emailError) {
         this.log("⚠️ Failed to send resolution email", {
-          error: emailError instanceof Error ? emailError.message : "Unknown error",
+          error:
+            emailError instanceof Error ? emailError.message : "Unknown error",
         });
       }
     }
@@ -365,9 +471,22 @@ Please try again with the correct format.`,
         role: "assistant",
         content: JSON.stringify({ action: "call_skill", skillCall, reasoning }),
       });
+
+      // Build guidance message based on directive from policy
+      let guidance = `Skill ${skillId} was DENIED by governance policy. Reason: ${result.governance.reasoning}.`;
+      if (result.governance.directive) {
+        guidance += ` DIRECTIVE: ${result.governance.directive}.`;
+        if (result.governance.directiveMessage) {
+          guidance += ` ${result.governance.directiveMessage}`;
+        }
+      } else {
+        guidance +=
+          " You may need to request escalation or try a different approach.";
+      }
+
       context.llmHistory.push({
         role: "user",
-        content: `Skill ${skillId} was DENIED by governance policy. Reason: ${result.governance.reasoning}. You may need to request escalation or try a different approach.`,
+        content: guidance,
       });
     }
   }
@@ -733,6 +852,21 @@ Please try again with the correct format.`,
           approvedAmount: context.approvedRefundAmount,
         });
       }
+
+      // Check if escalation was flagged for human review
+      if (
+        response.action === "escalation_flagged_for_human" ||
+        response.flaggedForHuman === true
+      ) {
+        context.flaggedForHumanReview = true;
+        context.humanReviewReason =
+          (response.reason as string) ||
+          (response.llmSummary as string) ||
+          "Requires manager approval";
+        this.log("Escalation flagged for human review", {
+          reason: context.humanReviewReason,
+        });
+      }
     }
   }
 
@@ -754,6 +888,8 @@ Please try again with the correct format.`,
     let escalationApproved = false;
     let approvedRefundAmount: number | undefined;
     let fulfillmentTrackingNumber: string | undefined;
+    let flaggedForHumanReview = false;
+    let humanReviewReason: string | undefined;
 
     for (const part of message.parts) {
       if (part.kind === "data" && part.data) {
@@ -800,6 +936,18 @@ Please try again with the correct format.`,
           if (data.decision === "APPROVED" || data.decision === "approved") {
             escalationApproved = true;
           }
+          // Detect if flagged for human review
+          if (
+            data.decision === "FLAGGED_FOR_HUMAN_REVIEW" ||
+            data.flaggedForHuman === true
+          ) {
+            flaggedForHumanReview = true;
+            humanReviewReason =
+              (data.flagReason as string) ||
+              (data.reason as string) ||
+              (data.nextSteps as string) ||
+              "Requires manager approval";
+          }
         }
         // Handle escalation completion messages (flagged for human or generic complete)
         if (
@@ -818,6 +966,17 @@ Please try again with the correct format.`,
           if (data.approvedAmount) {
             approvedRefundAmount = data.approvedAmount as number;
             escalationApproved = true;
+          }
+          // Mark as flagged for human review
+          if (
+            data.action === "escalation_flagged_for_human" ||
+            data.flaggedForHuman === true
+          ) {
+            flaggedForHumanReview = true;
+            humanReviewReason =
+              (data.flagReason as string) ||
+              (data.reason as string) ||
+              "Requires manager approval";
           }
         }
         if (data.action === "fulfillment_complete") {
@@ -884,8 +1043,22 @@ Please try again with the correct format.`,
               approvedRefundAmount = parsed.approvedAmount;
               escalationApproved = true;
             }
-            if (parsed.decision === "APPROVED" || parsed.decision === "approved") {
+            if (
+              parsed.decision === "APPROVED" ||
+              parsed.decision === "approved"
+            ) {
               escalationApproved = true;
+            }
+            // Detect if flagged for human review
+            if (
+              parsed.decision === "FLAGGED_FOR_HUMAN_REVIEW" ||
+              parsed.flaggedForHuman === true
+            ) {
+              flaggedForHumanReview = true;
+              humanReviewReason =
+                parsed.reason ||
+                parsed.nextSteps ||
+                "Requires manager approval";
             }
           }
           // Handle escalation completion messages (flagged for human or generic complete)
@@ -905,6 +1078,14 @@ Please try again with the correct format.`,
             if (parsed.approvedAmount) {
               approvedRefundAmount = parsed.approvedAmount;
               escalationApproved = true;
+            }
+            // Mark as flagged for human review
+            if (
+              parsed.action === "escalation_flagged_for_human" ||
+              parsed.flaggedForHuman === true
+            ) {
+              flaggedForHumanReview = true;
+              humanReviewReason = parsed.reason || "Requires manager approval";
             }
           }
           if (parsed.action === "fulfillment_complete") {
@@ -959,13 +1140,19 @@ Please try again with the correct format.`,
         : undefined,
     };
 
-    this.log("Extracted context", { sessionId, ticketId: ticket.ticketId });
+    this.log("Extracted context", {
+      sessionId,
+      ticketId: ticket.ticketId,
+      flaggedForHumanReview,
+    });
 
     return {
       ticket,
       classification,
       escalationApproved,
       approvedRefundAmount,
+      flaggedForHumanReview,
+      humanReviewReason,
       fulfillmentTrackingNumber,
       governanceContext,
       totalRefundIssued: 0,

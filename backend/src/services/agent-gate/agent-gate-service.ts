@@ -7,6 +7,7 @@ import { TAgentGateAuditDALFactory } from "./agent-gate-audit-dal";
 import { TAgentGatePolicyDALFactory } from "./agent-gate-policy-dal";
 import {
   ActionContext,
+  AgentDirective,
   PolicyEvaluationResult,
   TAuditQueryDTO,
   TCreateAgentPolicyDTO,
@@ -29,6 +30,8 @@ interface LlmEvaluationResult {
     promptTokens: number;
     completionTokens: number;
   };
+  directive?: AgentDirective;
+  directiveMessage?: string;
 }
 
 export interface PolicyEvaluationResponse extends PolicyEvaluationResult {
@@ -152,7 +155,9 @@ function mockLlmEvaluation(
     return {
       allowed: false,
       reasoning: `Refund of $${amount} denied - customer waited ${daysWaiting} days (< 7), has ${loyaltyStatus} loyalty status, and no escalation approval. Escalation required.`,
-      usage: { promptTokens: 0, completionTokens: 0 }
+      usage: { promptTokens: 0, completionTokens: 0 },
+      directive: "escalate" as AgentDirective,
+      directiveMessage: `Request escalation approval for refund of $${amount}. If escalation is also denied or flagged for human review, complete the task as pending human review and notify the customer.`
     };
   }
 
@@ -241,12 +246,20 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
     evaluatedAt: new Date().toISOString()
   });
 
-  const deny = (policyType: "structured" | "prompt", policyId: string, reasoning: string): PolicyEvaluationResult => ({
+  const deny = (
+    policyType: "structured" | "prompt",
+    policyId: string,
+    reasoning: string,
+    directive?: AgentDirective,
+    directiveMessage?: string
+  ): PolicyEvaluationResult => ({
     allowed: false,
     policyType,
     policyId,
     reasoning,
-    evaluatedAt: new Date().toISOString()
+    evaluatedAt: new Date().toISOString(),
+    directive,
+    directiveMessage
   });
 
   const evaluateSelfSkill = async (
@@ -259,7 +272,11 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
     context: ActionContext
   ): Promise<PolicyEvaluationResult> => {
     if (!policy.selfPolicies.allowedActions.includes(skillId)) {
-      return deny("structured", "self_allowed_actions", `Action "${skillId}" is not in ${policy.agentId}'s allowed actions`);
+      return deny(
+        "structured",
+        "self_allowed_actions",
+        `Action "${skillId}" is not in ${policy.agentId}'s allowed actions`
+      );
     }
 
     for (const promptPolicy of policy.selfPolicies.promptPolicies) {
@@ -278,7 +295,9 @@ export const agentGateServiceFactory = ({ agentGatePolicyDAL, agentGateAuditDAL 
               promptTokens: llmResult.usage.promptTokens,
               completionTokens: llmResult.usage.completionTokens,
               reasoning: llmResult.reasoning
-            }
+            },
+            directive: llmResult.directive,
+            directiveMessage: llmResult.directiveMessage
           };
         }
 

@@ -39,6 +39,12 @@ export interface ActionContext {
   additionalContext?: Record<string, unknown>;
 }
 
+export type AgentDirective = 
+  | "continue"           // Keep trying other approaches
+  | "escalate"           // Request escalation from a higher authority
+  | "complete_pending"   // Complete task as pending human review
+  | "abort";             // Stop processing entirely
+
 export interface PolicyEvaluationResult {
   allowed: boolean;
   policyType: "structured" | "prompt";
@@ -51,6 +57,8 @@ export interface PolicyEvaluationResult {
     completionTokens: number;
     reasoning: string;
   };
+  directive?: AgentDirective;        // What the agent should do when denied
+  directiveMessage?: string;         // Message to include when following the directive
 }
 
 /**

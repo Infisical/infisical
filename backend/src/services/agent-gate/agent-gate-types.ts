@@ -50,6 +50,12 @@ export interface LlmEvaluation {
   reasoning: string;
 }
 
+export type AgentDirective =
+  | "continue" // Keep trying other approaches
+  | "escalate" // Request escalation from a higher authority
+  | "complete_pending" // Complete task as pending human review
+  | "abort"; // Stop processing entirely
+
 export interface PolicyEvaluationResult {
   allowed: boolean;
   policyType: "structured" | "prompt";
@@ -57,8 +63,9 @@ export interface PolicyEvaluationResult {
   reasoning: string;
   evaluatedAt: string;
   llmEvaluation?: LlmEvaluation;
+  directive?: AgentDirective; // What the agent should do when denied
+  directiveMessage?: string; // Message to include when following the directive
 }
-
 
 export interface AgentRegistration {
   agentId: string;

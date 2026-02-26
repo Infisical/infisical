@@ -17,19 +17,22 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 
 // Mock order data - synced with agents/src/shared/mock-data.ts
-const MOCK_ORDERS: Record<string, {
-  orderId: string;
-  customerEmail: string;
-  customerName: string;
-  items: Array<{ name: string; price: number; quantity: number }>;
-  totalAmount: number;
-  status: string;
-  trackingNumber: string;
-  orderDate: string;
-  shippedItem?: string;
-  expectedItem?: string;
-  loyaltyStatus: "standard" | "silver" | "gold" | "platinum";
-}> = {
+const MOCK_ORDERS: Record<
+  string,
+  {
+    orderId: string;
+    customerEmail: string;
+    customerName: string;
+    items: Array<{ name: string; price: number; quantity: number }>;
+    totalAmount: number;
+    status: string;
+    trackingNumber: string;
+    orderDate: string;
+    shippedItem?: string;
+    expectedItem?: string;
+    loyaltyStatus: "standard" | "silver" | "gold" | "platinum";
+  }
+> = {
   "ORD-8891": {
     orderId: "ORD-8891",
     customerEmail: "alice.johnson@email.com",
@@ -116,12 +119,16 @@ app.post("/api/support", async (req: Request, res: Response) => {
 });
 
 // Background ticket processing
-async function processTicketAsync(ticket: Record<string, unknown>): Promise<void> {
+async function processTicketAsync(
+  ticket: Record<string, unknown>,
+): Promise<void> {
   try {
     const factory = new ClientFactory();
     const triageClient: Client = await factory.createFromUrl(TRIAGE_AGENT_URL);
 
-    console.log(`[AVS] Connected to Triage Agent, sending ticket ${ticket.ticketId}...`);
+    console.log(
+      `[AVS] Connected to Triage Agent, sending ticket ${ticket.ticketId}...`,
+    );
 
     const result = await triageClient.sendMessage({
       message: {
@@ -133,13 +140,14 @@ async function processTicketAsync(ticket: Record<string, unknown>): Promise<void
     });
 
     if (result.kind === "task") {
-      console.log(`[AVS] Task created: ${result.id} - processing in background`);
+      console.log(
+        `[AVS] Task created: ${result.id} - processing in background`,
+      );
     }
   } catch (error) {
     console.error("[AVS] Background processing error:", error);
   }
 }
-
 
 app.listen(PORT, () => {
   console.log(`
