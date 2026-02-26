@@ -1,224 +1,257 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Building2,
-  ChevronRight,
-  LayoutDashboard,
-  Pencil,
-  Plus,
-  Trash2,
-  User
-} from "lucide-react";
+import { Building2, ChevronRight, Pencil, Plus, Trash2, User } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+
+import { Input } from "@app/components/v2";
 
 import type { SubView } from "../mock-data";
 
 interface SidebarNavProps {
   activeView: string;
   onChangeView: (id: string) => void;
-  subViews: SubView[];
-  onAddSubView: (name: string) => void;
-  onRenameSubView: (id: string, name: string) => void;
-  onDeleteSubView: (id: string) => void;
+  orgViews: SubView[];
+  privateViews: SubView[];
+  onAddOrgView: (name: string) => void;
+  onAddPrivateView: (name: string) => void;
+  onRenameView: (id: string, name: string) => void;
+  onDeleteView: (id: string) => void;
 }
 
 export function SidebarNav({
   activeView,
   onChangeView,
-  subViews,
-  onAddSubView,
-  onRenameSubView,
-  onDeleteSubView
+  orgViews,
+  privateViews,
+  onAddOrgView,
+  onAddPrivateView,
+  onRenameView,
+  onDeleteView
 }: SidebarNavProps) {
-  const [adding, setAdding] = useState(false);
+  const [addingOrg, setAddingOrg] = useState(false);
+  const [addingPrivate, setAddingPrivate] = useState(false);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [orgExpanded, setOrgExpanded] = useState(true);
   const [privateExpanded, setPrivateExpanded] = useState(true);
-  const addInputRef = useRef<HTMLInputElement>(null);
+  const addOrgInputRef = useRef<HTMLInputElement>(null);
+  const addPrivateInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (adding) addInputRef.current?.focus();
-  }, [adding]);
+    if (addingOrg) addOrgInputRef.current?.focus();
+  }, [addingOrg]);
+
+  useEffect(() => {
+    if (addingPrivate) addPrivateInputRef.current?.focus();
+  }, [addingPrivate]);
 
   useEffect(() => {
     if (editingId) editInputRef.current?.focus();
   }, [editingId]);
 
-  function handleAddSubmit() {
+  function handleAddOrgSubmit() {
     const trimmed = newName.trim();
     if (trimmed) {
-      onAddSubView(trimmed);
+      onAddOrgView(trimmed);
       setNewName("");
     }
-    setAdding(false);
+    setAddingOrg(false);
+  }
+
+  function handleAddPrivateSubmit() {
+    const trimmed = newName.trim();
+    if (trimmed) {
+      onAddPrivateView(trimmed);
+      setNewName("");
+    }
+    setAddingPrivate(false);
   }
 
   function handleEditSubmit(id: string) {
     const trimmed = editName.trim();
     if (trimmed) {
-      onRenameSubView(id, trimmed);
+      onRenameView(id, trimmed);
     }
     setEditingId(null);
   }
 
-  const isPrivateActive = activeView === "private" || subViews.some((s) => s.id === activeView);
+  const isOrgSectionActive = orgViews.some((v) => v.id === activeView);
+  const isPrivateSectionActive = privateViews.some((v) => v.id === activeView);
 
-  return (
-    <aside className="flex w-[220px] shrink-0 flex-col border-r border-mineshaft-600 bg-bunker-800">
-      <div className="flex items-center gap-2 px-4 pb-4 pt-5">
-        <LayoutDashboard size={16} className="text-mineshaft-300" />
-        <span className="text-[13px] font-semibold text-bunker-100">Views</span>
-      </div>
-
-      <nav className="flex flex-1 flex-col gap-0.5 px-2">
-        {/* Organization view */}
+  const renderSubView = (sv: SubView) => (
+    <div
+      key={sv.id}
+      className={twMerge(
+        "group/sub relative -ml-3 flex items-center border-l pl-3",
+        activeView === sv.id
+          ? "border-org-v1"
+          : "border-transparent hover:border-mineshaft-400"
+      )}
+    >
+      {editingId === sv.id ? (
+        <Input
+          ref={editInputRef}
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleEditSubmit(sv.id);
+            if (e.key === "Escape") setEditingId(null);
+          }}
+          onBlur={() => handleEditSubmit(sv.id)}
+          className="h-6 text-xs"
+        />
+      ) : (
         <button
           type="button"
-          onClick={() => onChangeView("org")}
+          onClick={() => onChangeView(sv.id)}
           className={twMerge(
-            "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors",
-            activeView === "org"
-              ? "bg-mineshaft-600 text-white"
-              : "text-mineshaft-300 hover:bg-mineshaft-700 hover:text-white"
+            "flex flex-1 items-center truncate text-left text-sm transition-colors",
+            activeView === sv.id ? "text-white" : "text-mineshaft-300/75 hover:text-mineshaft-200"
           )}
         >
-          {activeView === "org" && (
-            <span className="absolute left-0 h-5 w-[3px] rounded-r bg-primary" />
-          )}
-          <Building2 size={15} className={activeView === "org" ? "text-primary" : ""} />
-          <span className="flex-1 text-left">Organization</span>
-          <span className="rounded-full border border-[#6e1a1a] bg-[#2b0d0d] px-1.5 py-px text-[9px] font-bold text-red-400">
-            7
-          </span>
+          <span className="truncate">{sv.name}</span>
         </button>
-
-        {/* Private section */}
-        <div>
+      )}
+      {editingId !== sv.id && (
+        <div className="absolute right-0 flex items-center gap-1 opacity-0 transition-opacity group-hover/sub:opacity-100">
           <button
             type="button"
-            onClick={() => {
-              setPrivateExpanded(!privateExpanded);
-              onChangeView("private");
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingId(sv.id);
+              setEditName(sv.name);
             }}
-            className={twMerge(
-              "group relative flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors",
-              activeView === "private"
-                ? "bg-mineshaft-600 text-white"
-                : "text-mineshaft-300 hover:bg-mineshaft-700 hover:text-white"
-            )}
+            className="rounded p-0.5 text-mineshaft-400 hover:text-white"
+            title="Rename"
           >
-            {activeView === "private" && (
-              <span className="absolute left-0 h-5 w-[3px] rounded-r bg-primary" />
-            )}
-            <ChevronRight
-              size={13}
-              className={twMerge(
-                "shrink-0 transition-transform",
-                privateExpanded && "rotate-90",
-                isPrivateActive ? "text-primary" : ""
-              )}
-            />
-            <User
-              size={15}
-              className={isPrivateActive && activeView === "private" ? "text-primary" : ""}
-            />
-            <span className="flex-1 text-left">Private</span>
+            <Pencil size={12} />
           </button>
-
-          {privateExpanded && (
-            <div className="ml-5 mt-0.5 flex flex-col gap-0.5 border-l border-mineshaft-600 pl-2">
-              {subViews.map((sv) => (
-                <div key={sv.id} className="group/sub relative flex items-center">
-                  {editingId === sv.id ? (
-                    <input
-                      ref={editInputRef}
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleEditSubmit(sv.id);
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                      onBlur={() => handleEditSubmit(sv.id)}
-                      className="w-full rounded-md border border-primary bg-mineshaft-700 px-2 py-1 text-[12px] text-white outline-none"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onChangeView(sv.id)}
-                      className={twMerge(
-                        "flex flex-1 items-center truncate rounded-md px-2 py-1.5 text-left text-[12px] transition-colors",
-                        activeView === sv.id
-                          ? "bg-mineshaft-600 text-white"
-                          : "text-mineshaft-300 hover:bg-mineshaft-700 hover:text-white"
-                      )}
-                    >
-                      {activeView === sv.id && (
-                        <span className="absolute -left-2 h-4 w-[2px] rounded-r bg-primary" />
-                      )}
-                      <span className="truncate">{sv.name}</span>
-                    </button>
-                  )}
-                  {editingId !== sv.id && (
-                    <div className="absolute right-0 flex items-center gap-0.5 opacity-0 transition-opacity group-hover/sub:opacity-100">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingId(sv.id);
-                          setEditName(sv.name);
-                        }}
-                        className="rounded p-0.5 text-mineshaft-300 hover:text-white"
-                        title="Rename"
-                      >
-                        <Pencil size={10} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteSubView(sv.id);
-                        }}
-                        className="rounded p-0.5 text-mineshaft-300 hover:text-red-400"
-                        title="Delete"
-                      >
-                        <Trash2 size={10} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {adding ? (
-                <input
-                  ref={addInputRef}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAddSubmit();
-                    if (e.key === "Escape") {
-                      setAdding(false);
-                      setNewName("");
-                    }
-                  }}
-                  onBlur={handleAddSubmit}
-                  placeholder="View name..."
-                  className="rounded-md border border-primary bg-mineshaft-700 px-2 py-1 text-[12px] text-white outline-none placeholder:text-mineshaft-400"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAdding(true)}
-                  className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] text-mineshaft-400 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-200"
-                >
-                  <Plus size={11} />
-                  <span>New View</span>
-                </button>
-              )}
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteView(sv.id);
+            }}
+            className="rounded p-0.5 text-mineshaft-400 hover:text-red-400"
+            title="Delete"
+          >
+            <Trash2 size={12} />
+          </button>
         </div>
-      </nav>
-    </aside>
+      )}
+    </div>
+  );
+
+  return (
+    <nav className="flex shrink-0 flex-col gap-y-4">
+      {/* Organization section */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setOrgExpanded(!orgExpanded)}
+          className={twMerge(
+            "group relative flex h-5 w-full items-center gap-2 border-l px-3 text-sm transition-colors",
+            isOrgSectionActive
+              ? "border-org-v1 text-white"
+              : "border-transparent text-mineshaft-300/75 hover:border-mineshaft-400 hover:text-mineshaft-200"
+          )}
+        >
+          <ChevronRight
+            size={14}
+            className={twMerge("shrink-0 transition-transform", orgExpanded && "rotate-90")}
+          />
+          <Building2 size={14} className={isOrgSectionActive ? "text-org" : ""} />
+          <span>Organization</span>
+        </button>
+
+        {orgExpanded && (
+          <div className="ml-6 mt-3 flex flex-col gap-y-2 border-l border-mineshaft-600 pl-3">
+            {orgViews.map(renderSubView)}
+
+            {addingOrg ? (
+              <Input
+                ref={addOrgInputRef}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddOrgSubmit();
+                  if (e.key === "Escape") {
+                    setAddingOrg(false);
+                    setNewName("");
+                  }
+                }}
+                onBlur={handleAddOrgSubmit}
+                placeholder="View name..."
+                className="h-6 text-xs"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAddingOrg(true)}
+                className="flex items-center gap-1.5 text-sm text-mineshaft-400 transition-colors hover:text-mineshaft-200"
+              >
+                <Plus size={14} />
+                <span>New View</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Private section */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setPrivateExpanded(!privateExpanded)}
+          className={twMerge(
+            "group relative flex h-5 w-full items-center gap-2 border-l px-3 text-sm transition-colors",
+            isPrivateSectionActive
+              ? "border-org-v1 text-white"
+              : "border-transparent text-mineshaft-300/75 hover:border-mineshaft-400 hover:text-mineshaft-200"
+          )}
+        >
+          <ChevronRight
+            size={14}
+            className={twMerge("shrink-0 transition-transform", privateExpanded && "rotate-90")}
+          />
+          <User size={14} className={isPrivateSectionActive ? "text-org" : ""} />
+          <span>Private</span>
+        </button>
+
+        {privateExpanded && (
+          <div className="ml-6 mt-3 flex flex-col gap-y-2 border-l border-mineshaft-600 pl-3">
+            {privateViews.map(renderSubView)}
+
+            {addingPrivate ? (
+              <Input
+                ref={addPrivateInputRef}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddPrivateSubmit();
+                  if (e.key === "Escape") {
+                    setAddingPrivate(false);
+                    setNewName("");
+                  }
+                }}
+                onBlur={handleAddPrivateSubmit}
+                placeholder="View name..."
+                className="h-6 text-xs"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAddingPrivate(true)}
+                className="flex items-center gap-1.5 text-sm text-mineshaft-400 transition-colors hover:text-mineshaft-200"
+              >
+                <Plus size={14} />
+                <span>New View</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </nav>
   );
 }

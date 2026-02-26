@@ -2,7 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Layout, LayoutItem as RGLLayoutItem } from "react-grid-layout";
 import { GridLayout, useContainerWidth } from "react-grid-layout";
 import { GridBackground } from "react-grid-layout/extras";
-import { Plus, RotateCw } from "lucide-react";
+import { LayoutGrid, Plus } from "lucide-react";
+
+import {
+  Button,
+  EmptyMedia,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle
+} from "@app/components/v3";
 
 import { useOrganization } from "@app/context";
 import { useListWidgets } from "@app/hooks/api/observabilityWidgets";
@@ -80,20 +89,25 @@ const GRID_COLS = 12;
 const ROW_HEIGHT = 200;
 const GRID_MARGIN: [number, number] = [16, 16];
 
-export function ObservabilityDashboard() {
+interface ObservabilityDashboardProps {
+  panelOpen: boolean;
+  onPanelOpenChange: (open: boolean) => void;
+}
+
+export function ObservabilityDashboard({
+  panelOpen,
+  onPanelOpenChange
+}: ObservabilityDashboardProps) {
   const { width, containerRef, mounted } = useContainerWidth();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
   const { data: backendWidgets = [] } = useListWidgets(orgId);
 
-  const [activeView, setActiveView] = useState("org");
-  const [subViews, setSubViews] = useState<SubView[]>([]);
-  const [layouts, setLayouts] = useState<Record<string, LayoutItem[]>>({
-    org: [],
-    private: []
-  });
+  const [activeView, setActiveView] = useState<string | null>(null);
+  const [orgViews, setOrgViews] = useState<SubView[]>([]);
+  const [privateViews, setPrivateViews] = useState<SubView[]>([]);
+  const [layouts, setLayouts] = useState<Record<string, LayoutItem[]>>({});
 
-  const [panelOpen, setPanelOpen] = useState(false);
   const [isExternalDragging, setIsExternalDragging] = useState(false);
   const uidCounter = useRef(100);
 
@@ -121,13 +135,12 @@ export function ObservabilityDashboard() {
 
   const [editingWidget, setEditingWidget] = useState<EditingWidget | undefined>(undefined);
 
-  const layout = Array.isArray(layouts[activeView]) ? (layouts[activeView] as LayoutItem[]) : [];
+  const layout = activeView && Array.isArray(layouts[activeView]) ? layouts[activeView] : [];
   const setLayout = useCallback(
     (updater: LayoutItem[] | ((prev: LayoutItem[]) => LayoutItem[])) => {
+      if (!activeView) return;
       setLayouts((prev) => {
-        const currentLayout = Array.isArray(prev[activeView])
-          ? (prev[activeView] as LayoutItem[])
-          : [];
+        const currentLayout = Array.isArray(prev[activeView]) ? prev[activeView] : [];
         return {
           ...prev,
           [activeView]: typeof updater === "function" ? updater(currentLayout) : updater
@@ -137,28 +150,56 @@ export function ObservabilityDashboard() {
     [activeView]
   );
 
-  const handleAddSubView = useCallback((name: string) => {
-    const id = `view-${Date.now()}`;
-    setSubViews((prev) => [...prev, { id, name }]);
+  const handleAddOrgView = useCallback((name: string) => {
+    const id = `org-view-${Date.now()}`;
+    setOrgViews((prev) => [...prev, { id, name }]);
+    setLayouts((prev) => ({ ...prev, [id]: [...DEFAULT_LAYOUT] }));
+    setActiveView(id);
+  }, []);
+
+  const handleAddPrivateView = useCallback((name: string) => {
+    const id = `private-view-${Date.now()}`;
+    setPrivateViews((prev) => [...prev, { id, name }]);
     setLayouts((prev) => ({ ...prev, [id]: [] }));
     setActiveView(id);
   }, []);
 
-  const handleRenameSubView = useCallback((id: string, name: string) => {
-    setSubViews((prev) => prev.map((sv) => (sv.id === id ? { ...sv, name } : sv)));
+  const handleRenameView = useCallback((id: string, name: string) => {
+    setOrgViews((prev) => prev.map((sv) => (sv.id === id ? { ...sv, name } : sv)));
+    setPrivateViews((prev) => prev.map((sv) => (sv.id === id ? { ...sv, name } : sv)));
   }, []);
 
-  const handleDeleteSubView = useCallback(
+  const handleDeleteView = useCallback(
     (id: string) => {
-      setSubViews((prev) => prev.filter((sv) => sv.id !== id));
+      const isOrgView = orgViews.some((v) => v.id === id);
+      const isPrivateView = privateViews.some((v) => v.id === id);
+
+      if (isOrgView) {
+        setOrgViews((prev) => prev.filter((sv) => sv.id !== id));
+      }
+      if (isPrivateView) {
+        setPrivateViews((prev) => prev.filter((sv) => sv.id !== id));
+      }
+
       setLayouts((prev) => {
         const next = { ...prev };
         delete next[id];
         return next;
       });
-      if (activeView === id) setActiveView("private");
+
+      if (activeView === id) {
+        const remainingOrgViews = orgViews.filter((v) => v.id !== id);
+        const remainingPrivateViews = privateViews.filter((v) => v.id !== id);
+        if (remainingOrgViews.length > 0) {
+          setActiveView(remainingOrgViews[0].id);
+        } else if (remainingPrivateViews.length > 0) {
+          setActiveView(remainingPrivateViews[0].id);
+        } else {
+          setActiveView(null);
+        }
+      }
     },
-    [activeView]
+    [activeView, orgViews, privateViews]
   );
 
   const handleEditWidget = useCallback(
@@ -166,7 +207,7 @@ export function ObservabilityDashboard() {
       const template = allTemplates[tmplKey];
       if (!template) return;
       setEditingWidget({ uid, tmplKey, template });
-      setPanelOpen(true);
+      onPanelOpenChange(true);
     },
     [allTemplates]
   );
@@ -199,7 +240,7 @@ export function ObservabilityDashboard() {
           }
         ]);
       }
-      setPanelOpen(false);
+      onPanelOpenChange(false);
     },
     [setLayout, editingWidget, layout]
   );
@@ -222,7 +263,7 @@ export function ObservabilityDashboard() {
           h: 2
         }
       ]);
-      setPanelOpen(false);
+      onPanelOpenChange(false);
     },
     [allTemplates, setLayout, layout]
   );
@@ -368,13 +409,6 @@ export function ObservabilityDashboard() {
     [layout]
   );
 
-  const getViewLabel = () => {
-    if (activeView === "org") return "Organization";
-    if (activeView === "private") return "Private";
-    return subViews.find((s) => s.id === activeView)?.name ?? "View";
-  };
-  const viewLabel = getViewLabel();
-
   const gridRows = Math.max(
     6,
     Math.ceil(layout.reduce((max, item) => Math.max(max, item.y + item.h), 0) + 2)
@@ -383,135 +417,97 @@ export function ObservabilityDashboard() {
   return (
     <>
       <style>{resizeHandleStyles}</style>
-      <div className="flex min-h-0 flex-1">
+      <div className="flex gap-x-12">
         <SidebarNav
-          activeView={activeView}
+          activeView={activeView ?? ""}
           onChangeView={setActiveView}
-          subViews={subViews}
-          onAddSubView={handleAddSubView}
-          onRenameSubView={handleRenameSubView}
-          onDeleteSubView={handleDeleteSubView}
+          orgViews={orgViews}
+          privateViews={privateViews}
+          onAddOrgView={handleAddOrgView}
+          onAddPrivateView={handleAddPrivateView}
+          onRenameView={handleRenameView}
+          onDeleteView={handleDeleteView}
         />
 
         <main className="flex flex-1 flex-col overflow-hidden">
-          {/* Page Header */}
-          <div className="flex items-start justify-between px-8 pt-7 select-none">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1c2a3a] text-lg text-primary">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-[22px] font-semibold text-bunker-100">Observability</h1>
-                <p className="mt-0.5 text-[13px] text-mineshaft-300">{viewLabel} view</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-[12px] text-mineshaft-300">
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-                Live - refreshes every 30s
-              </div>
-              <button
-                type="button"
-                onClick={() => setLayout((prev) => [...prev])}
-                className="flex items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 px-2.5 py-1.5 text-mineshaft-300 transition-colors hover:bg-mineshaft-600 hover:text-white"
-              >
-                <RotateCw size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setPanelOpen(true)}
-                className="flex items-center gap-1.5 rounded-md bg-[#238636] px-3.5 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#2ea043]"
-              >
-                <Plus size={14} />
-                Add Widget
-              </button>
-            </div>
-          </div>
-
           {/* Grid */}
-          <div className="flex-1 overflow-auto px-8 pt-5 pb-8">
-            {layout.length > 0 || isExternalDragging ? (
-              <div
-                ref={containerRef as React.RefObject<HTMLDivElement>}
-                style={{ position: "relative" }}
-              >
-                {mounted && (
-                  <>
-                    {isExternalDragging && (
-                      <GridBackground
-                        width={width}
-                        cols={GRID_COLS}
-                        rowHeight={ROW_HEIGHT}
-                        margin={GRID_MARGIN}
-                        rows={gridRows}
-                        color="rgba(99, 102, 241, 0.12)"
-                        borderRadius={8}
-                      />
-                    )}
-                    <GridLayout
+          <div className="flex-1 overflow-auto pb-8">
+            <div
+              ref={containerRef as React.RefObject<HTMLDivElement>}
+              style={{ position: "relative", minHeight: "400px" }}
+            >
+              {mounted && (
+                <>
+                  {isExternalDragging && (
+                    <GridBackground
                       width={width}
-                      layout={rglLayout}
-                      gridConfig={{
-                        cols: GRID_COLS,
-                        rowHeight: ROW_HEIGHT,
-                        margin: GRID_MARGIN
-                      }}
-                      dragConfig={{
-                        enabled: true,
-                        handle: ".drag-handle"
-                      }}
-                      resizeConfig={{
-                        enabled: true,
-                        handles: ["se"]
-                      }}
-                      dropConfig={{
-                        enabled: true,
-                        defaultItem: { w: 6, h: 2 }
-                      }}
-                      onLayoutChange={handleLayoutChange}
-                      onDrop={handleDrop}
-                      onDropDragOver={handleDropDragOver}
-                    >
-                      {layout.map((item) => (
-                        <div key={item.uid} className={item.static ? "widget-locked" : undefined}>
-                          <WidgetCard
-                            item={item}
-                            templates={allTemplates}
-                            onRemove={removeWidget}
-                            onEdit={handleEditWidget}
-                            onToggleLock={toggleWidgetLock}
-                          />
-                        </div>
-                      ))}
-                    </GridLayout>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="mb-3 text-[28px] text-mineshaft-500">+</div>
-                <p className="mb-1 text-[14px] text-mineshaft-300">No widgets yet</p>
-                <button
-                  type="button"
-                  onClick={() => setPanelOpen(true)}
-                  className="text-[13px] font-medium text-primary transition-colors hover:text-primary/80"
-                >
-                  Add your first widget
-                </button>
-              </div>
-            )}
+                      cols={GRID_COLS}
+                      rowHeight={ROW_HEIGHT}
+                      margin={GRID_MARGIN}
+                      rows={gridRows}
+                      color="rgba(99, 102, 241, 0.12)"
+                      borderRadius={8}
+                    />
+                  )}
+                  <GridLayout
+                    width={width}
+                    layout={rglLayout}
+                    gridConfig={{
+                      cols: GRID_COLS,
+                      rowHeight: ROW_HEIGHT,
+                      margin: GRID_MARGIN
+                    }}
+                    dragConfig={{
+                      enabled: true,
+                      handle: ".drag-handle"
+                    }}
+                    resizeConfig={{
+                      enabled: true,
+                      handles: ["se"]
+                    }}
+                    dropConfig={{
+                      enabled: true,
+                      defaultItem: { w: 6, h: 2 }
+                    }}
+                    onLayoutChange={handleLayoutChange}
+                    onDrop={handleDrop}
+                    onDropDragOver={handleDropDragOver}
+                  >
+                    {layout.map((item) => (
+                      <div key={item.uid} className={item.static ? "widget-locked" : undefined}>
+                        <WidgetCard
+                          item={item}
+                          templates={allTemplates}
+                          onRemove={removeWidget}
+                          onEdit={handleEditWidget}
+                          onToggleLock={toggleWidgetLock}
+                        />
+                      </div>
+                    ))}
+                  </GridLayout>
+                  {layout.length === 0 && !isExternalDragging && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <UnstableEmpty className="min-h-[400px] w-full">
+                        <UnstableEmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <LayoutGrid />
+                          </EmptyMedia>
+                          <UnstableEmptyTitle>No widgets yet</UnstableEmptyTitle>
+                          <UnstableEmptyDescription>
+                            Add widgets to visualize organization activity, secrets access, and
+                            system health.
+                          </UnstableEmptyDescription>
+                        </UnstableEmptyHeader>
+                        <Button variant="org" onClick={() => onPanelOpenChange(true)}>
+                          <Plus />
+                          Add Widget
+                        </Button>
+                      </UnstableEmpty>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </main>
 
@@ -519,7 +515,7 @@ export function ObservabilityDashboard() {
         <AddWidgetPanel
           open={panelOpen}
           onClose={() => {
-            setPanelOpen(false);
+            onPanelOpenChange(false);
             setEditingWidget(undefined);
           }}
           onAdd={addWidget}
