@@ -136,8 +136,25 @@ export function ObservabilityDashboard({
     if (!activeView) return [];
     const { items } = activeView;
     if (!Array.isArray(items)) return [];
-    return items as LayoutItem[];
-  }, [activeView]);
+    const rawItems = items as LayoutItem[];
+
+    // Auto-assign widgetId to items that were saved without one (e.g. default views
+    // created before widgets existed, or items using legacy frontend-only templates).
+    const logsWidget = backendWidgets.find((w) => w.type === "logs");
+    const eventsWidgets = backendWidgets.filter((w) => w.type === "events");
+    let eventsIdx = 0;
+
+    return rawItems.map((item) => {
+      if (item.widgetId) return item;
+      if (item.tmpl === "logs" && logsWidget) {
+        return { ...item, widgetId: logsWidget.id };
+      }
+      if (item.tmpl !== "logs" && eventsIdx < eventsWidgets.length) {
+        return { ...item, widgetId: eventsWidgets[eventsIdx++].id };
+      }
+      return item;
+    });
+  }, [activeView, backendWidgets]);
 
   const [localLayout, setLocalLayout] = useState<LayoutItem[] | null>(null);
   const layout = localLayout ?? backendLayout;
