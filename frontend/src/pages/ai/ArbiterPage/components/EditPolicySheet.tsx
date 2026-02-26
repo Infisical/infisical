@@ -470,6 +470,7 @@ export const EditActionsSheet = ({
     formState: { isSubmitting, isDirty }
   } = useForm<TEditActionsForm>({
     resolver: zodResolver(editActionsFormSchema),
+    mode: "onSubmit",
     defaultValues: {
       selfActions: []
     }
@@ -550,7 +551,9 @@ export const EditActionsSheet = ({
                       key={field.id}
                       control={control}
                       baseName={`selfActions.${idx}`}
-                      actionDescription={ACTION_DESCRIPTIONS[watchedSelfActions?.[idx]?.value ?? ""]}
+                      actionDescription={
+                        ACTION_DESCRIPTIONS[watchedSelfActions?.[idx]?.value ?? ""]
+                      }
                     />
                   ))}
                 </div>
@@ -593,6 +596,8 @@ export const EditInboundPoliciesSheet = ({
     formState: { isSubmitting, isDirty }
   } = useForm<TEditInboundForm>({
     resolver: zodResolver(editInboundFormSchema),
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
     defaultValues: {
       inboundPolicies: []
     }
