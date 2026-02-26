@@ -16,14 +16,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 
-// Mock order data (matches frontend)
+// Mock order data - synced with agents/src/shared/mock-data.ts
 const MOCK_ORDERS: Record<string, {
   orderId: string;
   customerEmail: string;
   customerName: string;
   items: Array<{ name: string; price: number; quantity: number }>;
-  total: number;
+  totalAmount: number;
   status: string;
+  trackingNumber: string;
+  orderDate: string;
   shippedItem?: string;
   expectedItem?: string;
   loyaltyStatus: "standard" | "silver" | "gold" | "platinum";
@@ -33,8 +35,10 @@ const MOCK_ORDERS: Record<string, {
     customerEmail: "alice.johnson@email.com",
     customerName: "Alice Johnson",
     items: [{ name: 'MacBook Pro 16"', price: 2499, quantity: 1 }],
-    total: 2499,
+    totalAmount: 2499,
     status: "delivered",
+    trackingNumber: "TRK-OLD-12345",
+    orderDate: "2024-02-20",
     shippedItem: "Sony WH-1000XM5 Headphones",
     expectedItem: 'MacBook Pro 16"',
     loyaltyStatus: "standard",
@@ -47,21 +51,11 @@ const MOCK_ORDERS: Record<string, {
       { name: "iPhone 15 Pro", price: 1199, quantity: 1 },
       { name: "AirPods Pro", price: 249, quantity: 1 },
     ],
-    total: 1448,
+    totalAmount: 1448,
     status: "shipped",
+    trackingNumber: "TRK-5678",
+    orderDate: "2024-02-18",
     loyaltyStatus: "gold",
-  },
-  "ORD-5555": {
-    orderId: "ORD-5555",
-    customerEmail: "vip.customer@email.com",
-    customerName: "Victoria Important",
-    items: [
-      { name: "Apple Watch Ultra 2", price: 799, quantity: 1 },
-      { name: "Apple Watch Band", price: 49, quantity: 2 },
-    ],
-    total: 897,
-    status: "delivered",
-    loyaltyStatus: "platinum",
   },
 };
 
