@@ -2,18 +2,21 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TInfraFile, TInfraGraph, TInfraResource, TInfraRun } from "./types";
+import { TInfraFile, TInfraGraph, TInfraResource, TInfraRun, TInfraVariable } from "./types";
 
 export const infraKeys = {
   files: (projectId: string) => [{ projectId }, "infra-files"] as const,
   runs: (projectId: string) => [{ projectId }, "infra-runs"] as const,
   run: (runId: string) => [{ runId }, "infra-run"] as const,
   resources: (projectId: string) => [{ projectId }, "infra-resources"] as const,
-  graph: (projectId: string) => [{ projectId }, "infra-graph"] as const
+  graph: (projectId: string) => [{ projectId }, "infra-graph"] as const,
+  variables: (projectId: string) => [{ projectId }, "infra-variables"] as const
 };
 
 const fetchInfraFiles = async (projectId: string) => {
-  const { data } = await apiRequest.get<{ files: TInfraFile[] }>(`/api/v1/infra/${projectId}/files`);
+  const { data } = await apiRequest.get<{ files: TInfraFile[] }>(
+    `/api/v1/infra/${projectId}/files`
+  );
   return data.files;
 };
 
@@ -49,9 +52,10 @@ export type TInfraRunDetail = TInfraRun & {
 };
 
 const fetchInfraRun = async (projectId: string, runId: string) => {
-  const { data } = await apiRequest.get<{ run: TInfraRun; previousFileSnapshot: Record<string, string> | null }>(
-    `/api/v1/infra/${projectId}/runs/${runId}`
-  );
+  const { data } = await apiRequest.get<{
+    run: TInfraRun;
+    previousFileSnapshot: Record<string, string> | null;
+  }>(`/api/v1/infra/${projectId}/runs/${runId}`);
   return { ...data.run, previousFileSnapshot: data.previousFileSnapshot };
 };
 
@@ -97,6 +101,24 @@ export const useInfraGraph = (
   useQuery({
     queryKey: infraKeys.graph(projectId),
     queryFn: () => fetchInfraGraph(projectId),
+    enabled: Boolean(projectId),
+    ...options
+  });
+
+const fetchInfraVariables = async (projectId: string) => {
+  const { data } = await apiRequest.get<{ variables: TInfraVariable[] }>(
+    `/api/v1/infra/${projectId}/variables`
+  );
+  return data.variables;
+};
+
+export const useInfraVariables = (
+  projectId: string,
+  options?: Omit<UseQueryOptions<TInfraVariable[]>, "queryKey" | "queryFn">
+) =>
+  useQuery({
+    queryKey: infraKeys.variables(projectId),
+    queryFn: () => fetchInfraVariables(projectId),
     enabled: Boolean(projectId),
     ...options
   });

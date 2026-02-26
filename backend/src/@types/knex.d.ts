@@ -227,6 +227,9 @@ import {
   TInfraStates,
   TInfraStatesInsert,
   TInfraStatesUpdate,
+  TInfraVariables,
+  TInfraVariablesInsert,
+  TInfraVariablesUpdate,
   TInstanceRelayConfig,
   TInstanceRelayConfigInsert,
   TInstanceRelayConfigUpdate,
@@ -950,6 +953,7 @@ declare module "knex/types/tables" {
     [TableName.InfraFile]: KnexOriginal.CompositeTableType<TInfraFiles, TInfraFilesInsert, TInfraFilesUpdate>;
     [TableName.InfraRun]: KnexOriginal.CompositeTableType<TInfraRuns, TInfraRunsInsert, TInfraRunsUpdate>;
     [TableName.InfraState]: KnexOriginal.CompositeTableType<TInfraStates, TInfraStatesInsert, TInfraStatesUpdate>;
+    [TableName.InfraVariable]: KnexOriginal.CompositeTableType<TInfraVariables, TInfraVariablesInsert, TInfraVariablesUpdate>;
     [TableName.UserAction]: KnexOriginal.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.ApiKey]: KnexOriginal.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;

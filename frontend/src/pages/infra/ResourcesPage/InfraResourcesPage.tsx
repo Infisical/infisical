@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDownIcon, ChevronRightIcon, CloudIcon, CopyIcon, PackageIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDownIcon, ChevronRightIcon, CloudIcon, CopyIcon, DollarSignIcon, PackageIcon } from "lucide-react";
 
 import {
   Badge,
@@ -12,8 +12,8 @@ import {
   UnstableTableRow
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useInfraResources } from "@app/hooks/api/infra";
-import { TInfraResource } from "@app/hooks/api/infra/types";
+import { useInfraResources, useInfraRuns } from "@app/hooks/api/infra";
+import { TAiInsight, TInfraResource } from "@app/hooks/api/infra/types";
 
 const AttributesPanel = ({ attributes }: { attributes: Record<string, unknown> }) => {
   const entries = Object.entries(attributes).filter(
@@ -43,7 +43,7 @@ const AttributesPanel = ({ attributes }: { attributes: Record<string, unknown> }
   );
 };
 
-const ResourceRow = ({ resource }: { resource: TInfraResource }) => {
+const ResourceRow = ({ resource, costMap }: { resource: TInfraResource; costMap: Record<string, string> }) => {
   const [expanded, setExpanded] = useState(false);
 
   const handleCopyAddress = (e: React.MouseEvent) => {
@@ -82,11 +82,21 @@ const ResourceRow = ({ resource }: { resource: TInfraResource }) => {
             </button>
           </span>
         </UnstableTableCell>
+        <UnstableTableCell>
+          {costMap[resource.address] ? (
+            <Badge variant="neutral">
+              <DollarSignIcon className="size-3" />
+              {costMap[resource.address]}/mo
+            </Badge>
+          ) : (
+            <span className="text-xs text-mineshaft-600">—</span>
+          )}
+        </UnstableTableCell>
       </UnstableTableRow>
       {expanded && (
         <UnstableTableRow>
           <UnstableTableCell />
-          <UnstableTableCell colSpan={4}>
+          <UnstableTableCell colSpan={5}>
             <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800/50 px-4 py-3">
               <h4 className="mb-2 text-xs font-medium text-mineshaft-300">Attributes</h4>
               <AttributesPanel attributes={resource.attributes} />
@@ -101,6 +111,26 @@ const ResourceRow = ({ resource }: { resource: TInfraResource }) => {
 export const InfraResourcesPage = () => {
   const { currentProject } = useProject();
   const { data: resources, isLoading } = useInfraResources(currentProject.id);
+  const { data: runs } = useInfraRuns(currentProject.id);
+
+  // Build cost map from latest run's aiSummary
+  const costMap = useMemo<Record<string, string>>(() => {
+    if (!runs) return {};
+    const runWithCost = runs.find((r) => r.aiSummary);
+    if (!runWithCost?.aiSummary) return {};
+    try {
+      const insight = JSON.parse(runWithCost.aiSummary) as TAiInsight;
+      const map: Record<string, string> = {};
+      for (const c of [...insight.costs.estimated, ...insight.costs.aiEstimated]) {
+        if (c.monthlyCost && c.monthlyCost !== "$0.00") {
+          map[c.resource] = c.monthlyCost;
+        }
+      }
+      return map;
+    } catch {
+      return {};
+    }
+  }, [runs]);
 
   const providerCounts = (resources ?? []).reduce<Record<string, number>>((acc, r) => {
     acc[r.provider] = (acc[r.provider] || 0) + 1;
@@ -156,11 +186,12 @@ export const InfraResourcesPage = () => {
               <UnstableTableHead>Name</UnstableTableHead>
               <UnstableTableHead>Provider</UnstableTableHead>
               <UnstableTableHead>Address</UnstableTableHead>
+              <UnstableTableHead>Cost</UnstableTableHead>
             </UnstableTableRow>
           </UnstableTableHeader>
           <UnstableTableBody>
             {resources.map((r) => (
-              <ResourceRow key={r.address} resource={r} />
+              <ResourceRow key={r.address} resource={r} costMap={costMap} />
             ))}
           </UnstableTableBody>
         </UnstableTable>

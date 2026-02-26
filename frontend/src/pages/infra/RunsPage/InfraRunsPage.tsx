@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertTriangleIcon, ClockIcon, SparklesIcon } from "lucide-react";
+import { AlertTriangleIcon, ClockIcon } from "lucide-react";
 
 import {
   Badge,
@@ -107,7 +107,6 @@ export const InfraRunsPage = () => {
                 >
                   <UnstableTableCell className="font-mono text-xs">
                     {run.id.slice(0, 8)}
-                    {run.aiSummary && <SparklesIcon className="ml-1.5 inline size-3 text-primary" />}
                   </UnstableTableCell>
                   <UnstableTableCell>
                     <Badge variant={run.type === "destroy" ? "danger" : run.type === "apply" ? "success" : "info"}>{run.type}</Badge>

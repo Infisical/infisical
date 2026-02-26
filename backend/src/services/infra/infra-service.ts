@@ -11,27 +11,36 @@ import { logger } from "@app/lib/logger";
 import { TInfraFileDALFactory } from "./infra-file-dal";
 import { TInfraRunDALFactory } from "./infra-run-dal";
 import { TInfraStateDALFactory } from "./infra-state-dal";
+import { TInfraVariableDALFactory } from "./infra-variable-dal";
 import {
   InfraRunStatus,
   InfraRunType,
   TAiInsight,
   TCreateFileDTO,
   TDeleteFileDTO,
+  TDeleteVariableDTO,
   TListRunsDTO,
   TPlanJson,
-  TTriggerRunDTO
+  TTriggerRunDTO,
+  TUpsertVariableDTO
 } from "./infra-types";
 
 type TInfraServiceFactoryDep = {
   infraFileDAL: TInfraFileDALFactory;
   infraRunDAL: TInfraRunDALFactory;
   infraStateDAL: TInfraStateDALFactory;
+  infraVariableDAL: TInfraVariableDALFactory;
 };
 
 // Concurrency guard — one run at a time per project
 const activeRuns = new Set<string>();
 
-export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }: TInfraServiceFactoryDep) => {
+export const infraServiceFactory = ({
+  infraFileDAL,
+  infraRunDAL,
+  infraStateDAL,
+  infraVariableDAL
+}: TInfraServiceFactoryDep) => {
   // ── File CRUD ──
 
   const listFiles = async (projectId: string) => {
@@ -96,9 +105,9 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
       return snap !== currentSnapshot;
     });
     if (prevRun?.fileSnapshot) {
-      previousFileSnapshot = (typeof prevRun.fileSnapshot === "string"
-        ? JSON.parse(prevRun.fileSnapshot)
-        : prevRun.fileSnapshot) as Record<string, string>;
+      previousFileSnapshot = (
+        typeof prevRun.fileSnapshot === "string" ? JSON.parse(prevRun.fileSnapshot) : prevRun.fileSnapshot
+      ) as Record<string, string>;
     }
 
     return { ...run, previousFileSnapshot };
@@ -266,12 +275,7 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
   const triggerRun = async (
     dto: TTriggerRunDTO,
     onData: (chunk: string) => void,
-    onComplete: (run: {
-      id: string;
-      status: string;
-      planJson?: TPlanJson | null;
-      aiSummary?: string | null;
-    }) => void
+    onComplete: (run: { id: string; status: string; planJson?: TPlanJson | null; aiSummary?: string | null }) => void
   ) => {
     // Concurrency guard
     if (activeRuns.has(dto.projectId)) {
@@ -313,7 +317,8 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
       }
     }
 
-    const runType = dto.mode === "destroy" ? InfraRunType.Destroy : dto.mode === "apply" ? InfraRunType.Apply : InfraRunType.Plan;
+    const runType =
+      dto.mode === "destroy" ? InfraRunType.Destroy : dto.mode === "apply" ? InfraRunType.Apply : InfraRunType.Plan;
 
     const run = await infraRunDAL.create({
       projectId: dto.projectId,
@@ -351,12 +356,25 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
 
       const binary = await findTofu();
 
+      // Fetch project variables and build env map for tofu child process
+      const variables = await infraVariableDAL.find({ projectId: dto.projectId });
+      const varEnv: Record<string, string> = {};
+      for (const v of variables) {
+        varEnv[v.key] = v.value;
+      }
+
       // Init: capture output but only surface it if init fails
       let initOutput = "";
       try {
-        await execCommand(binary, ["init"], tmpDir, (chunk) => {
-          initOutput += chunk;
-        });
+        await execCommand(
+          binary,
+          ["init"],
+          tmpDir,
+          (chunk) => {
+            initOutput += chunk;
+          },
+          varEnv
+        );
       } catch (initErr) {
         // Surface init output so the user can see what went wrong
         fullLogs += initOutput;
@@ -369,12 +387,14 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
       let planJson: TPlanJson | null = null;
       let aiSummary: string | null = null;
 
+      let rawPlanJsonOutput: string | null = null;
+
       if (dto.mode === "plan") {
-        await execCommand(binary, ["plan", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog);
+        await execCommand(binary, ["plan", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog, varEnv);
 
         try {
-          const jsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir);
-          planJson = parsePlanJson(jsonOutput);
+          rawPlanJsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir, varEnv);
+          planJson = parsePlanJson(rawPlanJsonOutput);
         } catch (parseErr) {
           logger.warn(parseErr, "Failed to parse plan JSON");
         }
@@ -399,6 +419,9 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
         } catch (aiErr) {
           logger.warn(aiErr, "AI insight generation failed");
         }
+        // Build insight from plan JSON with static cost estimates
+        const insight = buildInsightFromCosts(planJson, rawPlanJsonOutput);
+        aiSummary = JSON.stringify(insight);
 
         await infraRunDAL.updateById(run.id, {
           status: InfraRunStatus.Success,
@@ -480,11 +503,11 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
         onComplete({ id: run.id, status: InfraRunStatus.Success, planJson, aiSummary });
       } else {
         // Apply mode — always run plan first to get fresh change data
-        await execCommand(binary, ["plan", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog);
+        await execCommand(binary, ["plan", "-out=plan.tfplan", "-compact-warnings"], tmpDir, appendLog, varEnv);
 
         try {
-          const jsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir);
-          planJson = parsePlanJson(jsonOutput);
+          rawPlanJsonOutput = await captureCommand(binary, ["show", "-json", "plan.tfplan"], tmpDir, varEnv);
+          planJson = parsePlanJson(rawPlanJsonOutput);
         } catch (parseErr) {
           logger.warn(parseErr, "Failed to parse plan JSON");
         }
@@ -509,25 +532,26 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
             planJson: planJson as unknown as string,
             aiSummary: JSON.stringify(cachedAiInsight)
           });
-          onComplete({ id: run.id, status: InfraRunStatus.AwaitingApproval, planJson, aiSummary: JSON.stringify(cachedAiInsight) });
+          onComplete({
+            id: run.id,
+            status: InfraRunStatus.AwaitingApproval,
+            planJson,
+            aiSummary: JSON.stringify(cachedAiInsight)
+          });
           activeRuns.delete(dto.projectId);
           await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
           return;
         }
 
         appendLog(`\n`);
-        await execCommand(binary, ["apply", "plan.tfplan"], tmpDir, appendLog);
+        await execCommand(binary, ["apply", "plan.tfplan"], tmpDir, appendLog, varEnv);
 
         // Generate AI insight or reuse cached
         if (cachedAiInsight) {
           aiSummary = JSON.stringify(cachedAiInsight);
         } else {
-          try {
-            const insight = await generateAiInsight(fullLogs, planJson);
-            if (insight) aiSummary = JSON.stringify(insight);
-          } catch (aiErr) {
-            logger.warn(aiErr, "AI insight generation failed");
-          }
+          const applyInsight = buildInsightFromCosts(planJson, rawPlanJsonOutput);
+          aiSummary = JSON.stringify(applyInsight);
         }
 
         await infraRunDAL.updateById(run.id, {
@@ -553,6 +577,42 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
     }
   };
 
+  // ── Variable CRUD ──
+
+  const listVariables = async (projectId: string) => {
+    const vars = await infraVariableDAL.find({ projectId });
+    // Mask sensitive values in the response
+    return vars.map((v) => ({
+      ...v,
+      value: v.sensitive ? "••••••••" : v.value
+    }));
+  };
+
+  const upsertVariable = async (dto: TUpsertVariableDTO) => {
+    const existing = await infraVariableDAL.find({ projectId: dto.projectId, key: dto.key });
+    if (existing.length > 0) {
+      const updated = await infraVariableDAL.updateById(existing[0].id, {
+        value: dto.value,
+        sensitive: dto.sensitive ?? existing[0].sensitive
+      });
+      return updated;
+    }
+    return infraVariableDAL.create({
+      projectId: dto.projectId,
+      key: dto.key,
+      value: dto.value,
+      sensitive: dto.sensitive ?? false
+    });
+  };
+
+  const deleteVariable = async (dto: TDeleteVariableDTO) => {
+    const existing = await infraVariableDAL.find({ projectId: dto.projectId, key: dto.key });
+    if (existing.length === 0) {
+      throw new BadRequestError({ message: `Variable "${dto.key}" not found` });
+    }
+    await infraVariableDAL.deleteById(existing[0].id);
+  };
+
   return {
     listFiles,
     upsertFile,
@@ -566,6 +626,9 @@ export const infraServiceFactory = ({ infraFileDAL, infraRunDAL, infraStateDAL }
     getGraph,
     getState,
     upsertState,
+    listVariables,
+    upsertVariable,
+    deleteVariable,
     triggerRun
   };
 };
@@ -591,9 +654,19 @@ async function findTofu(): Promise<string> {
   throw new Error("OpenTofu (tofu) binary not found");
 }
 
-function execCommand(binary: string, args: string[], cwd: string, onData: (chunk: string) => void): Promise<void> {
+function execCommand(
+  binary: string,
+  args: string[],
+  cwd: string,
+  onData: (chunk: string) => void,
+  extraEnv: Record<string, string> = {}
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(binary, args, { cwd, env: { ...process.env, TF_FORCE_COLOR: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(binary, args, {
+      cwd,
+      env: { ...process.env, TF_FORCE_COLOR: "1", ...extraEnv },
+      stdio: ["ignore", "pipe", "pipe"]
+    });
     proc.stdout.on("data", (data: Buffer) => onData(data.toString()));
     proc.stderr.on("data", (data: Buffer) => onData(data.toString()));
     proc.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`${binary} exited with code ${code}`))));
@@ -601,15 +674,26 @@ function execCommand(binary: string, args: string[], cwd: string, onData: (chunk
   });
 }
 
-function captureCommand(binary: string, args: string[], cwd: string): Promise<string> {
+function captureCommand(
+  binary: string,
+  args: string[],
+  cwd: string,
+  extraEnv: Record<string, string> = {}
+): Promise<string> {
   return new Promise((resolve, reject) => {
     let output = "";
-    const proc = spawn(binary, args, { cwd, env: { ...process.env }, stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(binary, args, {
+      cwd,
+      env: { ...process.env, ...extraEnv },
+      stdio: ["ignore", "pipe", "pipe"]
+    });
     proc.stdout.on("data", (data: Buffer) => {
       output += data.toString();
     });
     proc.stderr.on("data", () => {});
-    proc.on("close", (code) => (code === 0 ? resolve(output) : reject(new Error(`${binary} exited with code ${code}`))));
+    proc.on("close", (code) =>
+      code === 0 ? resolve(output) : reject(new Error(`${binary} exited with code ${code}`))
+    );
     proc.on("error", reject);
   });
 }
@@ -671,7 +755,11 @@ function parseDotGraph(dot: string): Map<string, Set<string>> {
   // Extract resource address from a DOT node label like "[root] infisical_project.tf-project (expand)"
   const extractAddress = (label: string): string | null => {
     // Remove [root] prefix and (expand)/(close) suffix
-    const cleaned = label.replace(/^\[root\]\s+/, "").replace(/\s+\(expand\)$/, "").replace(/\s+\(close\)$/, "").trim();
+    const cleaned = label
+      .replace(/^\[root\]\s+/, "")
+      .replace(/\s+\(expand\)$/, "")
+      .replace(/\s+\(close\)$/, "")
+      .trim();
     // Must be a resource address: type.name (with possible hyphens/underscores)
     if (/^[a-z][\w]*\.[\w-]+$/.test(cleaned)) {
       return cleaned;
@@ -775,13 +863,174 @@ Rules:
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) return null;
 
-  try {
-    return JSON.parse(text) as TAiInsight;
-  } catch {
-    logger.warn("Failed to parse AI insight JSON, returning as summary");
+  // Static monthly cost estimates for common AWS/GCP/Azure resource types (USD)
+  // These are approximate on-demand prices for typical configurations
+  const RESOURCE_COST_TABLE: Record<string, number> = {
+    // AWS Compute
+    aws_instance: 8.35, // t3.micro
+    aws_launch_template: 0,
+    aws_autoscaling_group: 0, // pricing from instances
+    aws_lambda_function: 0.2,
+    aws_ecs_service: 0,
+    aws_ecs_task_definition: 0,
+    // AWS Storage
+    aws_s3_bucket: 0.023, // per GB, estimate 1GB base
+    aws_ebs_volume: 2.4, // 30GB gp3
+    aws_efs_file_system: 0.3,
+    aws_dynamodb_table: 1.25,
+    // AWS Database
+    aws_db_instance: 12.41, // db.t3.micro
+    aws_rds_cluster: 29.2,
+    aws_elasticache_cluster: 11.52,
+    aws_redshift_cluster: 180.0,
+    // AWS Networking
+    aws_lb: 16.2, // ALB
+    aws_alb: 16.2,
+    aws_nat_gateway: 32.4,
+    aws_eip: 3.6,
+    aws_vpc: 0,
+    aws_subnet: 0,
+    aws_security_group: 0,
+    aws_route_table: 0,
+    aws_internet_gateway: 0,
+    aws_route53_zone: 0.5,
+    aws_cloudfront_distribution: 1.0,
+    aws_api_gateway_rest_api: 3.5,
+    aws_apigatewayv2_api: 1.0,
+    // AWS Other
+    aws_sqs_queue: 0.4,
+    aws_sns_topic: 0,
+    aws_kms_key: 1.0,
+    aws_secretsmanager_secret: 0.4,
+    aws_ecr_repository: 0,
+    aws_cloudwatch_log_group: 0.5,
+    aws_iam_role: 0,
+    aws_iam_policy: 0,
+    aws_iam_user: 0,
+    // GCP
+    google_compute_instance: 7.67,
+    google_storage_bucket: 0.02,
+    google_sql_database_instance: 25.55,
+    google_container_cluster: 72.0,
+    // Azure
+    azurerm_virtual_machine: 14.6,
+    azurerm_storage_account: 0.02,
+    azurerm_sql_database: 4.9,
+    azurerm_kubernetes_cluster: 72.0
+  };
+
+  function estimateResourceCosts(rawPlanJson: string): Array<{ resource: string; monthlyCost: number; type: string }> {
+    try {
+      const plan = JSON.parse(rawPlanJson) as {
+        resource_changes?: Array<{
+          address: string;
+          type: string;
+          change?: { actions?: string[] };
+        }>;
+        planned_values?: {
+          root_module?: {
+            resources?: Array<{ address: string; type: string; values?: Record<string, unknown> }>;
+            child_modules?: Array<{
+              resources?: Array<{ address: string; type: string; values?: Record<string, unknown> }>;
+            }>;
+          };
+        };
+      };
+
+      const costs: Array<{ resource: string; monthlyCost: number; type: string }> = [];
+
+      // Use resource_changes for the list of resources being created/updated
+      const changes = plan.resource_changes ?? [];
+      for (const rc of changes) {
+        const actions = rc.change?.actions ?? [];
+        // Skip resources being deleted or with no-op
+        if (actions.includes("delete") && !actions.includes("create")) continue;
+        if (actions.length === 1 && actions[0] === "no-op") continue;
+
+        const baseCost = RESOURCE_COST_TABLE[rc.type];
+        if (baseCost !== undefined && baseCost > 0) {
+          costs.push({ resource: rc.address, monthlyCost: baseCost, type: rc.type });
+        } else if (baseCost === undefined) {
+          // Unknown resource type — check if it looks like a billable resource (not IAM, not data sources)
+          // For unknown types, estimate $0 (free) rather than guessing
+          costs.push({ resource: rc.address, monthlyCost: 0, type: rc.type });
+        }
+      }
+
+      // If no resource_changes, fall back to planned_values
+      if (changes.length === 0 && plan.planned_values?.root_module) {
+        const allResources = [
+          ...(plan.planned_values.root_module.resources ?? []),
+          ...(plan.planned_values.root_module.child_modules ?? []).flatMap((m) => m.resources ?? [])
+        ];
+        for (const r of allResources) {
+          const baseCost = RESOURCE_COST_TABLE[r.type];
+          if (baseCost !== undefined && baseCost > 0) {
+            costs.push({ resource: r.address, monthlyCost: baseCost, type: r.type });
+          }
+        }
+      }
+
+      return costs;
+    } catch (err) {
+      logger.warn(err, "Failed to estimate resource costs from plan JSON");
+      return [];
+    }
+  }
+
+  function buildInsightFromCosts(planJson: TPlanJson | null, rawPlanJsonOutput: string | null): TAiInsight {
+    const estimated: TAiInsight["costs"]["estimated"] = [];
+    let totalMonthly = "N/A";
+    let deltaMonthly = "N/A";
+
+    // Estimate costs from the raw plan JSON
+    if (rawPlanJsonOutput) {
+      const costs = estimateResourceCosts(rawPlanJsonOutput);
+      let total = 0;
+      for (const c of costs) {
+        if (c.monthlyCost > 0) {
+          estimated.push({
+            resource: c.resource,
+            monthlyCost: `$${c.monthlyCost.toFixed(2)}`,
+            source: "estimate"
+          });
+          total += c.monthlyCost;
+        }
+      }
+      if (total > 0 || costs.length > 0) {
+        totalMonthly = `$${total.toFixed(2)}`;
+        deltaMonthly = `+$${total.toFixed(2)}`;
+      }
+    }
+
+    // Build a simple summary from plan changes
+    let summary = "No changes detected.";
+    if (planJson) {
+      const parts: string[] = [];
+      if (planJson.add > 0) parts.push(`**${planJson.add}** to add`);
+      if (planJson.change > 0) parts.push(`**${planJson.change}** to change`);
+      if (planJson.destroy > 0) parts.push(`**${planJson.destroy}** to destroy`);
+      if (parts.length > 0) {
+        summary = `Plan: ${parts.join(", ")}.`;
+        if (planJson.resources.length > 0) {
+          const resourceList = planJson.resources.map((r) => `- \`${r.address}\` (${r.action})`).join("\n");
+          summary += `\n\n${resourceList}`;
+        }
+      }
+      if (totalMonthly !== "N/A") {
+        summary += `\n\nEstimated cost: ${totalMonthly}/mo`;
+        if (deltaMonthly !== "N/A") summary += ` (${deltaMonthly})`;
+      }
+    }
+
     return {
-      summary: text,
-      costs: { estimated: [], aiEstimated: [], totalMonthly: "N/A", deltaMonthly: "N/A" },
+      summary,
+      costs: {
+        estimated,
+        aiEstimated: [],
+        totalMonthly,
+        deltaMonthly
+      },
       security: { issues: [], shouldApprove: false }
     };
   }

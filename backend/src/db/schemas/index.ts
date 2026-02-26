@@ -80,6 +80,7 @@ export * from "./incident-contacts";
 export * from "./infra-files";
 export * from "./infra-runs";
 export * from "./infra-states";
+export * from "./infra-variables";
 export * from "./instance-relay-config";
 export * from "./integration-auths";
 export * from "./integrations";

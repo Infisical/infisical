@@ -12,10 +12,12 @@ import {
   YAxis
 } from "recharts";
 import ReactMarkdown from "react-markdown";
+import { Link } from "@tanstack/react-router";
 import {
   ActivityIcon,
   AlertTriangleIcon,
   BoxIcon,
+  ChevronRightIcon,
   DollarSignIcon,
   PlayIcon,
   ShieldAlertIcon,
@@ -32,9 +34,14 @@ import {
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
-import { useProject } from "@app/context";
-import { useInfraFiles, useInfraGraph, useInfraResources, useInfraRuns } from "@app/hooks/api/infra";
-import { TAiInsight } from "@app/hooks/api/infra/types";
+import { useOrganization, useProject } from "@app/context";
+import {
+  useInfraFiles,
+  useInfraGraph,
+  useInfraResources,
+  useInfraRuns
+} from "@app/hooks/api/infra";
+import { TAiInsight, TInfraRun } from "@app/hooks/api/infra/types";
 import { ResourceTopologyGraph } from "../components/ResourceTopologyGraph";
 
 const RESOURCE_COLORS = [
@@ -47,8 +54,14 @@ const RESOURCE_COLORS = [
   "#6b7280"
 ];
 
-const STAT_ICONS = [BoxIcon, PlayIcon, AlertTriangleIcon, ActivityIcon];
-const STAT_ACCENTS = ["text-primary", "text-green-400", "text-yellow-400", "text-blue-400"];
+const STAT_ICONS = [BoxIcon, PlayIcon, AlertTriangleIcon, ActivityIcon, DollarSignIcon];
+const STAT_ACCENTS = [
+  "text-primary",
+  "text-green-400",
+  "text-yellow-400",
+  "text-blue-400",
+  "text-emerald-400"
+];
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -65,6 +78,7 @@ const formatDate = (dateStr: string) => {
 
 export const InfraDashboardPage = () => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { data: runs, isLoading: runsLoading } = useInfraRuns(currentProject.id);
   const { data: files, isLoading: filesLoading } = useInfraFiles(currentProject.id);
   const { data: resources, isLoading: resourcesLoading } = useInfraResources(currentProject.id);
@@ -174,14 +188,25 @@ export const InfraDashboardPage = () => {
     {
       label: "Last Run",
       value: visibleRuns && visibleRuns.length > 0 ? formatDate(visibleRuns[0].createdAt) : "—",
-      sub: visibleRuns && visibleRuns.length > 0 ? `${visibleRuns[0].type} — ${visibleRuns[0].status}` : "no runs yet"
+      sub:
+        visibleRuns && visibleRuns.length > 0
+          ? `${visibleRuns[0].type} — ${visibleRuns[0].status}`
+          : "no runs yet"
+    },
+    {
+      label: "Est. Monthly Cost",
+      value: latestAiInsight?.costs.totalMonthly ?? "—",
+      sub:
+        latestAiInsight?.costs.deltaMonthly && latestAiInsight.costs.deltaMonthly !== "N/A"
+          ? `${latestAiInsight.costs.deltaMonthly} delta`
+          : "from latest run"
     }
   ];
 
   const isLoading = runsLoading || filesLoading || resourcesLoading;
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-hidden">
+    <div className="flex flex-col gap-6">
       <div className="shrink-0">
         <h1 className="text-2xl font-semibold text-mineshaft-100">{currentProject.name}</h1>
         <p className="mt-1 text-sm text-mineshaft-400">
@@ -290,7 +315,7 @@ export const InfraDashboardPage = () => {
       )}
 
       {/* Stats grid */}
-      <div className="grid shrink-0 grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         {statCards.map((stat, idx) => (
           <UnstableCard key={stat.label} className="relative overflow-hidden">
             {isLoading ? (
@@ -434,21 +459,88 @@ export const InfraDashboardPage = () => {
 
       {/* Topology Graph — fills remaining height */}
       {graph && graph.nodes.length > 0 && (
-        <UnstableCard className="flex min-h-0 flex-1 flex-col">
+        <UnstableCard className="flex flex-col" style={{ minHeight: 420 }}>
           <UnstableCardHeader className="shrink-0">
             <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
               Resource Topology
             </UnstableCardTitle>
           </UnstableCardHeader>
-          <UnstableCardContent className="min-h-0 flex-1 pb-0">
-            <ResourceTopologyGraph
-              nodes={graph.nodes}
-              edges={graph.edges}
-              className="h-full"
-            />
+          <UnstableCardContent className="flex-1 pb-0">
+            <ResourceTopologyGraph nodes={graph.nodes} edges={graph.edges} className="h-[360px]" />
           </UnstableCardContent>
         </UnstableCard>
       )}
+      {/* Recent Runs */}
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
+            Recent Runs
+          </UnstableCardTitle>
+        </UnstableCardHeader>
+        <UnstableCardContent className="p-0">
+          {!runs || runs.length === 0 ? (
+            <div className="p-6 text-center text-sm text-mineshaft-500">
+              No runs yet. Go to the Editor to run your first plan.
+            </div>
+          ) : (
+            <div className="divide-y divide-mineshaft-600">
+              {runs.slice(0, 5).map((run: TInfraRun) => (
+                <Link
+                  key={run.id}
+                  to="/organizations/$orgId/projects/infra/$projectId/run/$runId"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id,
+                    runId: run.id
+                  }}
+                  className="flex items-center justify-between px-5 py-3 text-sm transition-colors hover:bg-mineshaft-700/30"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-block size-2 rounded-full ${
+                        run.status === "success"
+                          ? "bg-green-500"
+                          : run.status === "failed"
+                            ? "bg-red-500"
+                            : run.status === "awaiting_approval"
+                              ? "bg-yellow-500"
+                              : "bg-blue-500"
+                      }`}
+                    />
+                    <span className="font-mono text-xs text-mineshaft-300">
+                      {run.id.slice(0, 8)}
+                    </span>
+                    <Badge variant={run.type === "apply" ? "success" : "info"}>{run.type}</Badge>
+                    {run.status === "awaiting_approval" && (
+                      <Badge variant="warning">
+                        <AlertTriangleIcon className="size-3" />
+                        Needs Approval
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-mineshaft-400">
+                    <Badge
+                      variant={
+                        run.status === "success"
+                          ? "success"
+                          : run.status === "failed"
+                            ? "danger"
+                            : run.status === "awaiting_approval"
+                              ? "warning"
+                              : "info"
+                      }
+                    >
+                      {run.status === "awaiting_approval" ? "awaiting approval" : run.status}
+                    </Badge>
+                    <span>{formatDate(run.createdAt)}</span>
+                    <ChevronRightIcon className="size-3.5" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </UnstableCardContent>
+      </UnstableCard>
     </div>
   );
 };

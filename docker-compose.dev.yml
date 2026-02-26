@@ -79,7 +79,7 @@ services:
     container_name: infisical-dev-api
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev.fips
+      dockerfile: Dockerfile.dev
     depends_on:
       db:
         condition: service_started

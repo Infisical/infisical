@@ -37,6 +37,18 @@ export type TListRunsDTO = {
   offset?: number;
 };
 
+export type TUpsertVariableDTO = {
+  projectId: string;
+  key: string;
+  value: string;
+  sensitive?: boolean;
+};
+
+export type TDeleteVariableDTO = {
+  projectId: string;
+  key: string;
+};
+
 // Structured AI insight response
 export type TAiInsight = {
   summary: string;

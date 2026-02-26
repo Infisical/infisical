@@ -264,7 +264,8 @@ export enum TableName {
   // Infra
   InfraFile = "infra_files",
   InfraState = "infra_states",
-  InfraRun = "infra_runs"
+  InfraRun = "infra_runs",
+  InfraVariable = "infra_variables"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

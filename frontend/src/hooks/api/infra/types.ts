@@ -113,3 +113,12 @@ export function buildGraphFromPlanJson(planJson: TPlanJson): TInfraGraph {
 
   return { nodes, edges };
 }
+export type TInfraVariable = {
+  id: string;
+  projectId: string;
+  key: string;
+  value: string;
+  sensitive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};

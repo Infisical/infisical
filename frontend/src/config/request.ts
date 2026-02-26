@@ -15,7 +15,8 @@ export const apiRequest = axios.create({
   baseURL: "/",
   headers: {
     "Content-Type": "application/json"
-  }
+  },
+  timeout: 300000000 // 5 minutes
 });
 
 apiRequest.interceptors.request.use((config) => {

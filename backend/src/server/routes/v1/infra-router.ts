@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { InfraFilesSchema } from "@app/db/schemas/infra-files";
 import { InfraRunsSchema } from "@app/db/schemas/infra-runs";
+import { InfraVariablesSchema } from "@app/db/schemas/infra-variables";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -254,7 +255,11 @@ export const registerInfraRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
+      // Extend socket timeout for long-running tofu operations (5 minutes)
+      req.raw.socket.setTimeout(300_000);
+      reply.raw.setTimeout(300_000);
+
       let output = "";
       const result = await new Promise<{
         id: string;
@@ -326,6 +331,76 @@ export const registerInfraRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: () => ({ message: "WebSocket upgrade required" })
+  });
+
+  // ── Variable Endpoints ──
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/variables",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      response: {
+        200: z.object({
+          variables: InfraVariablesSchema.extend({
+            value: z.string()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const variables = await server.services.infra.listVariables(req.params.projectId);
+      return { variables };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:projectId/variables",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({ projectId: z.string() }),
+      body: z.object({
+        key: z.string().min(1).max(255),
+        value: z.string(),
+        sensitive: z.boolean().optional().default(false)
+      }),
+      response: {
+        200: z.object({ variable: InfraVariablesSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const variable = await server.services.infra.upsertVariable({
+        projectId: req.params.projectId,
+        key: req.body.key,
+        value: req.body.value,
+        sensitive: req.body.sensitive
+      });
+      return { variable };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:projectId/variables/:key",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({ projectId: z.string(), key: z.string() }),
+      response: {
+        200: z.object({ message: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.infra.deleteVariable({
+        projectId: req.params.projectId,
+        key: req.params.key
+      });
+      return { message: "Variable deleted" };
+    }
   });
 
   // ── State Backend (for OpenTofu HTTP backend — no auth, called by tofu child process) ──

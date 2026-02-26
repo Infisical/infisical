@@ -203,6 +203,7 @@ import { infraFileDALFactory } from "@app/services/infra/infra-file-dal";
 import { infraRunDALFactory } from "@app/services/infra/infra-run-dal";
 import { infraServiceFactory } from "@app/services/infra/infra-service";
 import { infraStateDALFactory } from "@app/services/infra/infra-state-dal";
+import { infraVariableDALFactory } from "@app/services/infra/infra-variable-dal";
 import {
   approvalRequestApprovalsDALFactory,
   approvalRequestDALFactory,
@@ -2785,7 +2786,8 @@ export const registerRoutes = async (
   const infraFileDAL = infraFileDALFactory(db);
   const infraRunDAL = infraRunDALFactory(db);
   const infraStateDAL = infraStateDALFactory(db);
-  const infraService = infraServiceFactory({ infraFileDAL, infraRunDAL, infraStateDAL });
+  const infraVariableDAL = infraVariableDALFactory(db);
+  const infraService = infraServiceFactory({ infraFileDAL, infraRunDAL, infraStateDAL, infraVariableDAL });
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
