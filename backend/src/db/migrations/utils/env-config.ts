@@ -26,6 +26,7 @@ const envSchema = z
     HSM_PIN: zpStr(z.string().optional()),
     HSM_KEY_LABEL: zpStr(z.string().optional()),
     HSM_SLOT: z.coerce.number().optional().default(0),
+    HSM_ENCRYPTION_STRATEGY: zpStr(z.enum(["AES", "RSA_PKCS"]).optional().default("AES")),
 
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
@@ -58,7 +59,8 @@ export const getMigrationHsmConfig = () => {
     HSM_PIN: parsedEnv.data.HSM_PIN,
     HSM_SLOT: parsedEnv.data.HSM_SLOT,
     HSM_LIB_PATH: parsedEnv.data.HSM_LIB_PATH,
-    HSM_KEY_LABEL: parsedEnv.data.HSM_KEY_LABEL
+    HSM_KEY_LABEL: parsedEnv.data.HSM_KEY_LABEL,
+    HSM_ENCRYPTION_STRATEGY: parsedEnv.data.HSM_ENCRYPTION_STRATEGY
   };
 };
 

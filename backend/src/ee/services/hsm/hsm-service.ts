@@ -3,11 +3,13 @@ import pkcs11js from "pkcs11js";
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
-import { HsmKeyType, HsmModule } from "./hsm-types";
+import { HsmKeyType, HsmModule, HsmEncryptionStrategy, HsmEncryptionProvider } from "./hsm-types";
+import { aesEncryptionProvider } from "./hsm-service-aes";
+import { rsaPkcsEncryptionProvider } from "./hsm-service-rsa-pkcs";
 
 type THsmServiceFactoryDep = {
   hsmModule: HsmModule;
-  envConfig: Pick<TEnvConfig, "HSM_PIN" | "HSM_SLOT" | "HSM_LIB_PATH" | "HSM_KEY_LABEL" | "isHsmConfigured">;
+  envConfig: Pick<TEnvConfig, "HSM_PIN" | "HSM_SLOT" | "HSM_LIB_PATH" | "HSM_KEY_LABEL" | "isHsmConfigured" | "HSM_ENCRYPTION_STRATEGY">;
 };
 
 export type THsmServiceFactory = ReturnType<typeof hsmServiceFactory>;
@@ -17,15 +19,18 @@ type SessionCallback<T> = (session: pkcs11js.Handle) => SyncOrAsync<T>;
 
 // eslint-disable-next-line no-empty-pattern
 export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envConfig }: THsmServiceFactoryDep) => {
-  // Constants for buffer structures
-  const IV_LENGTH = 16; // Luna HSM typically expects 16-byte IV for cbc
-  const BLOCK_SIZE = 16;
-  const HMAC_SIZE = 32;
-
-  const AES_KEY_SIZE = 256;
-  const HMAC_KEY_SIZE = 256;
-
   let pkcs11TestPassed = false;
+
+  // Select encryption provider based on strategy
+  const encryptionProvider: HsmEncryptionProvider = (() => {
+    switch (envConfig.HSM_ENCRYPTION_STRATEGY) {
+      case HsmEncryptionStrategy.RSA_PKCS:
+        return rsaPkcsEncryptionProvider({ pkcs11, envConfig });
+      case HsmEncryptionStrategy.AES:
+      default:
+        return aesEncryptionProvider({ pkcs11, envConfig });
+    }
+  })();
 
   const $withSession = async <T>(callbackWithSession: SessionCallback<T>): Promise<T> => {
     const RETRY_INTERVAL = 200; // 200ms between attempts
@@ -133,58 +138,6 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
     }
   };
 
-  const $findKey = (sessionHandle: pkcs11js.Handle, type: HsmKeyType) => {
-    const label = type === HsmKeyType.HMAC ? `${envConfig.HSM_KEY_LABEL}_HMAC` : envConfig.HSM_KEY_LABEL;
-    const keyType = type === HsmKeyType.HMAC ? pkcs11js.CKK_GENERIC_SECRET : pkcs11js.CKK_AES;
-
-    const template = [
-      { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
-      { type: pkcs11js.CKA_KEY_TYPE, value: keyType },
-      { type: pkcs11js.CKA_LABEL, value: label }
-    ];
-
-    try {
-      // Initialize search
-      pkcs11.C_FindObjectsInit(sessionHandle, template);
-
-      try {
-        // Find first matching object
-        const handles = pkcs11.C_FindObjects(sessionHandle, 1);
-
-        if (handles.length === 0) {
-          throw new Error("Failed to find master key");
-        }
-
-        return handles[0]; // Return the key handle
-      } finally {
-        // Always finalize the search operation
-        pkcs11.C_FindObjectsFinal(sessionHandle);
-      }
-    } catch (error) {
-      return null;
-    }
-  };
-
-  const $keyExists = (session: pkcs11js.Handle, type: HsmKeyType): boolean => {
-    try {
-      const key = $findKey(session, type);
-      // items(0) will throw an error if no items are found
-      // Return true only if we got a valid object with handle
-      return !!key && key.length > 0;
-    } catch (error) {
-      // If items(0) throws, it means no key was found
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
-      logger.error(error, "HSM: Failed while checking for HSM key presence");
-
-      if (error instanceof pkcs11js.Pkcs11Error) {
-        if (error.code === pkcs11js.CKR_OBJECT_HANDLE_INVALID) {
-          return false;
-        }
-      }
-
-      return false;
-    }
-  };
 
   const encrypt: {
     (data: Buffer, providedSession: pkcs11js.Handle): Promise<Buffer>;
@@ -195,58 +148,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
     }
 
     const $performEncryption = (sessionHandle: pkcs11js.Handle) => {
-      try {
-        const aesKey = $findKey(sessionHandle, HsmKeyType.AES);
-        if (!aesKey) {
-          throw new Error("HSM: Encryption failed, AES key not found");
-        }
-
-        const hmacKey = $findKey(sessionHandle, HsmKeyType.HMAC);
-        if (!hmacKey) {
-          throw new Error("HSM: Encryption failed, HMAC key not found");
-        }
-
-        const iv = Buffer.alloc(IV_LENGTH);
-        pkcs11.C_GenerateRandom(sessionHandle, iv);
-
-        const encryptMechanism = {
-          mechanism: pkcs11js.CKM_AES_CBC_PAD,
-          parameter: iv
-        };
-
-        pkcs11.C_EncryptInit(sessionHandle, encryptMechanism, aesKey);
-
-        // Calculate max buffer size (input length + potential full block of padding)
-        const maxEncryptedLength = Math.ceil(data.length / BLOCK_SIZE) * BLOCK_SIZE + BLOCK_SIZE;
-
-        // Encrypt the data - this returns the encrypted data directly
-        const encryptedData = pkcs11.C_Encrypt(sessionHandle, data, Buffer.alloc(maxEncryptedLength));
-
-        // Initialize HMAC
-        const hmacMechanism = {
-          mechanism: pkcs11js.CKM_SHA256_HMAC
-        };
-
-        pkcs11.C_SignInit(sessionHandle, hmacMechanism, hmacKey);
-
-        // Sign the IV and encrypted data
-        pkcs11.C_SignUpdate(sessionHandle, iv);
-        pkcs11.C_SignUpdate(sessionHandle, encryptedData);
-
-        // Get the HMAC
-        const hmac = Buffer.alloc(HMAC_SIZE);
-        pkcs11.C_SignFinal(sessionHandle, hmac);
-
-        // Combine encrypted data and HMAC [Encrypted Data | HMAC]
-        const finalBuffer = Buffer.alloc(encryptedData.length + hmac.length);
-        encryptedData.copy(finalBuffer);
-        hmac.copy(finalBuffer, encryptedData.length);
-
-        return Buffer.concat([iv, finalBuffer]);
-      } catch (error) {
-        logger.error(error, "HSM: Failed to perform encryption");
-        throw new Error(`HSM: Encryption failed: ${(error as Error)?.message}`);
-      }
+      return encryptionProvider.encrypt(data, sessionHandle);
     };
 
     if (providedSession) {
@@ -266,60 +168,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
     }
 
     const $performDecryption = (sessionHandle: pkcs11js.Handle) => {
-      try {
-        // structure is: [IV (16 bytes) | Encrypted Data (N bytes) | HMAC (32 bytes)]
-        const iv = encryptedBlob.subarray(0, IV_LENGTH);
-        const encryptedDataWithHmac = encryptedBlob.subarray(IV_LENGTH);
-
-        // Split encrypted data and HMAC
-        const hmac = encryptedDataWithHmac.subarray(-HMAC_SIZE); // Last 32 bytes are HMAC
-
-        const encryptedData = encryptedDataWithHmac.subarray(0, -HMAC_SIZE); // Everything except last 32 bytes
-
-        // Find the keys
-        const aesKey = $findKey(sessionHandle, HsmKeyType.AES);
-        if (!aesKey) {
-          throw new Error("HSM: Decryption failed, AES key not found");
-        }
-
-        const hmacKey = $findKey(sessionHandle, HsmKeyType.HMAC);
-        if (!hmacKey) {
-          throw new Error("HSM: Decryption failed, HMAC key not found");
-        }
-
-        // Verify HMAC first
-        const hmacMechanism = {
-          mechanism: pkcs11js.CKM_SHA256_HMAC
-        };
-
-        pkcs11.C_VerifyInit(sessionHandle, hmacMechanism, hmacKey);
-        pkcs11.C_VerifyUpdate(sessionHandle, iv);
-        pkcs11.C_VerifyUpdate(sessionHandle, encryptedData);
-
-        try {
-          pkcs11.C_VerifyFinal(sessionHandle, hmac);
-        } catch (error) {
-          logger.error(error, "HSM: HMAC verification failed");
-          throw new Error("HSM: Decryption failed"); // Generic error for failed verification
-        }
-
-        // Only decrypt if verification passed
-        const decryptMechanism = {
-          mechanism: pkcs11js.CKM_AES_CBC_PAD,
-          parameter: iv
-        };
-
-        pkcs11.C_DecryptInit(sessionHandle, decryptMechanism, aesKey);
-
-        const tempBuffer: Buffer = Buffer.alloc(encryptedData.length);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const decryptedData = pkcs11.C_Decrypt(sessionHandle, encryptedData, tempBuffer);
-
-        return Buffer.from(decryptedData);
-      } catch (error) {
-        logger.error(error, "HSM: Failed to perform decryption");
-        throw new Error("HSM: Decryption failed"); // Generic error for failed decryption, to avoid leaking details about why it failed (such as padding related errors)
-      }
+      return encryptionProvider.decrypt(encryptedBlob, sessionHandle);
     };
 
     if (providedSession) {
@@ -331,7 +180,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
   };
 
   // We test the core functionality of the PKCS#11 module that we are using throughout Infisical. This is to ensure that the user doesn't configure a faulty or unsupported HSM device.
-  const $testPkcs11Module = async (session: pkcs11js.Handle) => {
+  const $testPkcs11Module = (session: pkcs11js.Handle) => {
     try {
       if (!pkcs11 || !isInitialized) {
         throw new Error("PKCS#11 module is not initialized");
@@ -341,19 +190,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
         throw new Error("HSM: Attempted to run test without a valid session");
       }
 
-      const randomData = pkcs11.C_GenerateRandom(session, Buffer.alloc(500));
-
-      const encryptedData = await encrypt(randomData, session);
-      const decryptedData = await decrypt(encryptedData, session);
-
-      const randomDataHex = randomData.toString("hex");
-      const decryptedDataHex = decryptedData.toString("hex");
-
-      if (randomDataHex !== decryptedDataHex && Buffer.compare(randomData, decryptedData)) {
-        throw new Error("HSM: Startup test failed. Decrypted data does not match original data");
-      }
-
-      return true;
+      return encryptionProvider.testEncryptionDecryption(session);
     } catch (error) {
       logger.error(error, "HSM: Error testing PKCS#11 module");
       return false;
@@ -370,7 +207,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
     }
 
     try {
-      pkcs11TestPassed = await $withSession($testPkcs11Module);
+      pkcs11TestPassed = await $withSession((session) => Promise.resolve($testPkcs11Module(session)));
     } catch (err) {
       logger.error(err, "HSM: Error testing PKCS#11 module");
     }
@@ -382,81 +219,40 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
     if (!envConfig.isHsmConfigured || !pkcs11 || !isInitialized) return;
 
     try {
-      await $withSession(async (sessionHandle) => {
-        // Check if master key exists, create if not
-
-        const genericAttributes = [
-          { type: pkcs11js.CKA_TOKEN, value: true }, // Persistent storage
-          { type: pkcs11js.CKA_EXTRACTABLE, value: false }, // Cannot be extracted
-          { type: pkcs11js.CKA_SENSITIVE, value: true }, // Sensitive value
-          { type: pkcs11js.CKA_PRIVATE, value: true } // Requires authentication
-        ];
-
-        if (!$keyExists(sessionHandle, HsmKeyType.AES)) {
-          // Template for generating 256-bit AES master key
-          const keyTemplate = [
-            { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
-            { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_AES },
-            { type: pkcs11js.CKA_VALUE_LEN, value: AES_KEY_SIZE / 8 },
-            { type: pkcs11js.CKA_LABEL, value: envConfig.HSM_KEY_LABEL! },
-            { type: pkcs11js.CKA_ENCRYPT, value: true }, // Allow encryption
-            { type: pkcs11js.CKA_DECRYPT, value: true }, // Allow decryption
-            ...genericAttributes
-          ];
-
-          // Generate the key
-          pkcs11.C_GenerateKey(
-            sessionHandle,
-            {
-              mechanism: pkcs11js.CKM_AES_KEY_GEN
-            },
-            keyTemplate
-          );
-
-          logger.info(`HSM: Master key created successfully with label: ${envConfig.HSM_KEY_LABEL}`);
-        }
-
-        // Check if HMAC key exists, create if not
-        if (!$keyExists(sessionHandle, HsmKeyType.HMAC)) {
-          const hmacKeyTemplate = [
-            { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
-            { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_GENERIC_SECRET },
-            { type: pkcs11js.CKA_VALUE_LEN, value: HMAC_KEY_SIZE / 8 }, // 256-bit key
-            { type: pkcs11js.CKA_LABEL, value: `${envConfig.HSM_KEY_LABEL!}_HMAC` },
-            { type: pkcs11js.CKA_SIGN, value: true }, // Allow signing
-            { type: pkcs11js.CKA_VERIFY, value: true }, // Allow verification
-            ...genericAttributes
-          ];
-
-          // Generate the HMAC key
-          pkcs11.C_GenerateKey(
-            sessionHandle,
-            {
-              mechanism: pkcs11js.CKM_GENERIC_SECRET_KEY_GEN
-            },
-            hmacKeyTemplate
-          );
-
-          logger.info(`HSM: HMAC key created successfully with label: ${envConfig.HSM_KEY_LABEL}_HMAC`);
-        }
+      await $withSession((sessionHandle) => {
+        // Initialize keys using selected encryption provider
+        encryptionProvider.initializeKeys(sessionHandle);
 
         // Get slot info to check supported mechanisms
         const slotId = pkcs11.C_GetSessionInfo(sessionHandle).slotID;
         const mechanisms = pkcs11.C_GetMechanismList(slotId);
 
-        // Check for AES CBC PAD support
-        const hasAesCbc = mechanisms.includes(pkcs11js.CKM_AES_CBC_PAD);
-
-        if (!hasAesCbc) {
-          throw new Error(`Required mechanism CKM_AEC_CBC_PAD not supported by HSM`);
+        // Validate required mechanisms for selected strategy
+        if (envConfig.HSM_ENCRYPTION_STRATEGY === HsmEncryptionStrategy.AES) {
+          const hasAesCbc = mechanisms.includes(pkcs11js.CKM_AES_CBC_PAD);
+          if (!hasAesCbc) {
+            throw new Error("Required mechanism CKM_AES_CBC_PAD not supported by HSM");
+          }
+          logger.info("HSM: AES-CBC mechanism verified");
+        } else if (envConfig.HSM_ENCRYPTION_STRATEGY === HsmEncryptionStrategy.RSA_PKCS) {
+          const hasRsaPkcs = mechanisms.includes(pkcs11js.CKM_RSA_PKCS);
+          const hasRsaKeyGen = mechanisms.includes(pkcs11js.CKM_RSA_PKCS_KEY_PAIR_GEN);
+          if (!hasRsaPkcs || !hasRsaKeyGen) {
+            throw new Error("Required mechanisms CKM_RSA_PKCS or CKM_RSA_PKCS_KEY_PAIR_GEN not supported by HSM");
+          }
+          logger.info("HSM: RSA-PKCS mechanisms verified");
         }
 
         // Run test encryption/decryption
-        const testPassed = await $testPkcs11Module(sessionHandle);
+        const testPassed = $testPkcs11Module(sessionHandle);
 
         if (!testPassed) {
           throw new Error("PKCS#11 module test failed. Please ensure that the HSM is correctly configured.");
         }
+
+        logger.info(
+          `HSM service started with ${envConfig.HSM_ENCRYPTION_STRATEGY || "AES"} encryption strategy`
+        );
       });
     } catch (error) {
       logger.error(error, "HSM: Error initializing HSM service:");
