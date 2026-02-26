@@ -1,8 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   CheckCircle,
   CheckIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   Clock,
   DownloadIcon,
@@ -43,44 +42,59 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-
-import { AGENTS, DEMO_EVENTS, type DemoEvent } from "../data";
+import { useProject } from "@app/context";
+import { useQueryAgentGateAuditLogs } from "@app/hooks/api";
+import { TAgentGateAuditLog } from "@app/hooks/api/agentGate/types";
 
 type Session = {
   id: string;
   title: string;
   description: string;
-  events: DemoEvent[];
+  logs: TAgentGateAuditLog[];
   duration: number;
   approvedCount: number;
   deniedCount: number;
   createdAt: Date;
 };
 
-const agentNameMap = Object.fromEntries(AGENTS.map((a) => [a.id, a.name]));
+const formatAgentName = (id: string) =>
+  id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const buildSessions = (): Session[] => {
-  const involvedAgents = [...new Set(DEMO_EVENTS.map((e) => agentNameMap[e.agentId]))];
-  const approvedCount = DEMO_EVENTS.filter((e) => e.status === "approved").length;
-  const deniedCount = DEMO_EVENTS.filter((e) => e.status === "denied").length;
-  const firstTs = new Date(DEMO_EVENTS[0]?.timestamp ?? 0).getTime();
-  const lastTs = new Date(DEMO_EVENTS[DEMO_EVENTS.length - 1]?.timestamp ?? 0).getTime();
+const buildSessions = (logs: TAgentGateAuditLog[]): Session[] => {
+  const grouped = new Map<string, TAgentGateAuditLog[]>();
 
-  return [
-    {
-      id: "session-1",
-      title: "Billing Inquiry — Ticket #4021",
-      description: `${involvedAgents.join(" → ")} flow`,
-      events: DEMO_EVENTS,
+  for (const log of logs) {
+    const key = log.sessionId ?? log.id;
+    const group = grouped.get(key);
+    if (group) {
+      group.push(log);
+    } else {
+      grouped.set(key, [log]);
+    }
+  }
+
+  return Array.from(grouped.entries()).map(([sessionId, sessionLogs]) => {
+    const sorted = [...sessionLogs].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    const agents = [...new Set(sorted.map((l) => formatAgentName(l.requestingAgentId)))];
+    const approvedCount = sorted.filter((l) => l.result === "allowed").length;
+    const deniedCount = sorted.filter((l) => l.result === "denied").length;
+    const firstTs = new Date(sorted[0].timestamp).getTime();
+    const lastTs = new Date(sorted[sorted.length - 1].timestamp).getTime();
+
+    return {
+      id: sessionId,
+      title: `Session ${sessionId.slice(0, 8)}`,
+      description: `${agents.join(", ")} — ${sorted.length} events`,
+      logs: sorted,
       duration: Math.round((lastTs - firstTs) / 1000),
       approvedCount,
       deniedCount,
-      createdAt: new Date("2026-02-25T14:32:00Z")
-    }
-  ];
+      createdAt: new Date(sorted[0].timestamp)
+    };
+  });
 };
-
-const SESSIONS = buildSessions();
 
 const DECISION_STATUSES = ["Approved", "Denied"] as const;
 
@@ -144,47 +158,59 @@ const SessionRow = ({ session }: { session: Session }) => {
                 {/* Timeline line */}
                 <div className="absolute top-0 bottom-0 left-[15px] w-px bg-border" />
                 <div className="flex flex-col gap-0">
-                  {session.events.map((event, index) => (
-                    <div key={event.id} className="relative flex items-start gap-4 pb-6 last:pb-0">
-                      {/* Timeline node */}
-                      <div className="relative z-10 ml-[5px] flex shrink-0 items-center justify-center">
-                        {event.status === "approved" ? (
-                          <CheckCircle className="size-5 bg-card text-success" />
-                        ) : (
-                          <XCircle className="size-5 bg-card text-danger" />
-                        )}
-                      </div>
-                      {/* Event content */}
-                      <div className="-mt-0.5 flex min-w-0 flex-1 flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium capitalize">{event.agentId}</span>
-                          <span className="text-xs text-accent">{event.action}</span>
-                          <span className="ml-auto font-mono text-xs text-muted">
-                            {new Date(event.timestamp).toLocaleTimeString()}
-                          </span>
-                          <Badge
-                            variant={event.status === "approved" ? "success" : "danger"}
-                            className="text-[10px]"
-                          >
-                            {event.status.toUpperCase()}
-                          </Badge>
+                  {session.logs.map((log) => {
+                    const isApproved = log.result === "allowed";
+                    return (
+                      <div
+                        key={log.id}
+                        className="relative flex items-start gap-4 pb-6 last:pb-0"
+                      >
+                        {/* Timeline node */}
+                        <div className="relative z-10 ml-[5px] flex shrink-0 items-center justify-center">
+                          {isApproved ? (
+                            <CheckCircle className="size-5 bg-card text-success" />
+                          ) : (
+                            <XCircle className="size-5 bg-card text-danger" />
+                          )}
                         </div>
-                        <p className="text-xs text-accent">{event.details}</p>
-                        {event.reasoning && (
-                          <div className="flex items-center gap-1 text-xs text-muted">
-                            <Shield className="h-3 w-3 shrink-0" />
-                            <span>&quot;{event.reasoning}&quot;</span>
+                        {/* Event content */}
+                        <div className="-mt-0.5 flex min-w-0 flex-1 flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {formatAgentName(log.requestingAgentId)}
+                            </span>
+                            <span className="text-xs text-accent">{log.action}</span>
+                            <span className="ml-auto font-mono text-xs text-muted">
+                              {new Date(log.timestamp).toLocaleTimeString()}
+                            </span>
+                            <Badge
+                              variant={isApproved ? "success" : "danger"}
+                              className="text-[10px]"
+                            >
+                              {isApproved ? "APPROVED" : "DENIED"}
+                            </Badge>
                           </div>
-                        )}
-                        {event.targetAgentId && (
-                          <div className="text-xs text-muted">
-                            → Routed to{" "}
-                            <span className="font-medium capitalize">{event.targetAgentId}</span>
-                          </div>
-                        )}
+                          <p className="text-xs text-accent">
+                            {log.agentReasoning || `${log.actionType}: ${log.action}`}
+                          </p>
+                          {log.policyEvaluations?.[0]?.reasoning && (
+                            <div className="flex items-center gap-1 text-xs text-muted">
+                              <Shield className="h-3 w-3 shrink-0" />
+                              <span>&quot;{log.policyEvaluations[0].reasoning}&quot;</span>
+                            </div>
+                          )}
+                          {log.targetAgentId && (
+                            <div className="text-xs text-muted">
+                              → Target:{" "}
+                              <span className="font-medium">
+                                {formatAgentName(log.targetAgentId)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -196,8 +222,20 @@ const SessionRow = ({ session }: { session: Session }) => {
 };
 
 export const SessionsTab = () => {
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  const { data: auditData } = useQueryAgentGateAuditLogs({
+    projectId,
+    limit: 200
+  });
+
+  const sessions = useMemo(() => {
+    if (!auditData?.logs?.length) return [];
+    return buildSessions(auditData.logs);
+  }, [auditData?.logs]);
 
   const handleStatusToggle = useCallback(
     (status: string) =>
@@ -210,9 +248,15 @@ export const SessionsTab = () => {
   const isTableFiltered = statusFilter.length > 0;
   const isFiltered = search.length > 0 || statusFilter.length > 0;
 
-  const filteredSessions = SESSIONS.filter((session) =>
-    session.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredSessions = sessions.filter((session) => {
+    const matchesSearch = session.title.toLowerCase().includes(search.toLowerCase()) ||
+      session.description.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+    if (statusFilter.length === 0) return true;
+    if (statusFilter.includes("Approved") && session.approvedCount > 0) return true;
+    if (statusFilter.includes("Denied") && session.deniedCount > 0) return true;
+    return false;
+  });
 
   return (
     <UnstableCard>
