@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
+import { BellIcon, PencilIcon, PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -15,7 +15,8 @@ import {
   ModalContent,
   PageHeader,
   Select as V2Select,
-  SelectItem as V2SelectItem
+  SelectItem as V2SelectItem,
+  Switch
 } from "@app/components/v2";
 import {
   Badge,
@@ -36,10 +37,13 @@ import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
   useCreateNhiSource,
   useDeleteNhiSource,
+  useGetNhiNotificationSettings,
   useListNhiSources,
-  useTriggerNhiScan
+  useTriggerNhiScan,
+  useUpdateNhiNotificationSettings,
+  useUpdateNhiSource
 } from "@app/hooks/api/nhi";
-import { NhiProvider, NhiScanStatus } from "@app/hooks/api/nhi/types";
+import { NhiProvider, NhiScanSchedule, NhiScanStatus } from "@app/hooks/api/nhi/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -63,12 +67,22 @@ const PROVIDER_APP_MAP: Record<string, string> = {
   [NhiProvider.GitHub]: "github"
 };
 
+const MANUAL_SCHEDULE = "manual";
+
+const SCHEDULE_LABELS: Record<string, string> = {
+  [NhiScanSchedule.Every6Hours]: "Every 6 Hours",
+  [NhiScanSchedule.Every12Hours]: "Every 12 Hours",
+  [NhiScanSchedule.Daily]: "Daily",
+  [NhiScanSchedule.Weekly]: "Weekly"
+};
+
 const addSourceSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(255),
     provider: z.string().min(1, "Provider is required"),
     connectionId: z.string().uuid("Please select an app connection"),
-    orgName: z.string().optional()
+    orgName: z.string().optional(),
+    scanSchedule: z.string().optional()
   })
   .refine(
     (data) => {
@@ -82,6 +96,13 @@ const addSourceSchema = z
 
 type TAddSourceForm = z.infer<typeof addSourceSchema>;
 
+const editSourceSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(255),
+  scanSchedule: z.string().optional()
+});
+
+type TEditSourceForm = z.infer<typeof editSourceSchema>;
+
 export const NhiSourcesPage = () => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
@@ -91,12 +112,36 @@ export const NhiSourcesPage = () => {
   });
 
   const { data: allConnections = [] } = useListAppConnections();
+  const { data: notifSettings } = useGetNhiNotificationSettings(currentProject.id);
 
   const createSource = useCreateNhiSource();
   const deleteSource = useDeleteNhiSource();
   const triggerScan = useTriggerNhiScan();
+  const updateSource = useUpdateNhiSource();
+  const updateNotifSettings = useUpdateNhiNotificationSettings();
 
   const [sourceToDelete, setSourceToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [editingSource, setEditingSource] = useState<{
+    id: string;
+    name: string;
+    scanSchedule: string | null;
+  } | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Notification form state
+  const [scanNotifEnabled, setScanNotifEnabled] = useState(false);
+  const [scanChannels, setScanChannels] = useState("");
+  const [policyNotifEnabled, setPolicyNotifEnabled] = useState(false);
+  const [policyChannels, setPolicyChannels] = useState("");
+
+  useEffect(() => {
+    if (notifSettings) {
+      setScanNotifEnabled(notifSettings.isNhiScanNotificationEnabled);
+      setScanChannels(notifSettings.nhiScanChannels);
+      setPolicyNotifEnabled(notifSettings.isNhiPolicyNotificationEnabled);
+      setPolicyChannels(notifSettings.nhiPolicyChannels);
+    }
+  }, [notifSettings]);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addSource"] as const);
 
@@ -108,8 +153,33 @@ export const NhiSourcesPage = () => {
     formState: { isSubmitting }
   } = useForm<TAddSourceForm>({
     resolver: zodResolver(addSourceSchema),
-    defaultValues: { name: "", provider: NhiProvider.AWS, connectionId: "", orgName: "" }
+    defaultValues: {
+      name: "",
+      provider: NhiProvider.AWS,
+      connectionId: "",
+      orgName: "",
+      scanSchedule: MANUAL_SCHEDULE
+    }
   });
+
+  const {
+    control: editControl,
+    handleSubmit: handleEditSubmit,
+    reset: resetEdit,
+    formState: { isSubmitting: isEditSubmitting }
+  } = useForm<TEditSourceForm>({
+    resolver: zodResolver(editSourceSchema),
+    defaultValues: { name: "", scanSchedule: "" }
+  });
+
+  useEffect(() => {
+    if (editingSource) {
+      resetEdit({
+        name: editingSource.name,
+        scanSchedule: editingSource.scanSchedule || MANUAL_SCHEDULE
+      });
+    }
+  }, [editingSource, resetEdit]);
 
   const selectedProvider = useWatch({ control, name: "provider" });
   const isGitHub = selectedProvider === NhiProvider.GitHub;
@@ -126,6 +196,7 @@ export const NhiSourcesPage = () => {
         provider: string;
         connectionId: string;
         config?: Record<string, unknown>;
+        scanSchedule?: string | null;
       } = {
         projectId: currentProject.id,
         name: formData.name,
@@ -137,12 +208,32 @@ export const NhiSourcesPage = () => {
         payload.config = { orgName: formData.orgName.trim() };
       }
 
+      if (formData.scanSchedule && formData.scanSchedule !== MANUAL_SCHEDULE) {
+        payload.scanSchedule = formData.scanSchedule;
+      }
+
       await createSource.mutateAsync(payload);
       createNotification({ text: "Source added successfully", type: "success" });
       reset();
       handlePopUpToggle("addSource", false);
     } catch {
       createNotification({ text: "Failed to add source", type: "error" });
+    }
+  };
+
+  const onEditSource = async (formData: TEditSourceForm) => {
+    if (!editingSource) return;
+    try {
+      await updateSource.mutateAsync({
+        sourceId: editingSource.id,
+        projectId: currentProject.id,
+        name: formData.name,
+        scanSchedule: formData.scanSchedule && formData.scanSchedule !== MANUAL_SCHEDULE ? formData.scanSchedule : null
+      });
+      createNotification({ text: "Source updated", type: "success" });
+      setEditingSource(null);
+    } catch {
+      createNotification({ text: "Failed to update source", type: "error" });
     }
   };
 
@@ -169,6 +260,21 @@ export const NhiSourcesPage = () => {
     }
   };
 
+  const onSaveNotificationSettings = async () => {
+    try {
+      await updateNotifSettings.mutateAsync({
+        projectId: currentProject.id,
+        isNhiScanNotificationEnabled: scanNotifEnabled,
+        nhiScanChannels: scanChannels,
+        isNhiPolicyNotificationEnabled: policyNotifEnabled,
+        nhiPolicyChannels: policyChannels
+      });
+      createNotification({ text: "Notification settings saved", type: "success" });
+    } catch {
+      createNotification({ text: "Failed to save notification settings", type: "error" });
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -180,17 +286,90 @@ export const NhiSourcesPage = () => {
           title="Sources"
           description="Connect cloud accounts to discover non-human identities."
         />
-        <Button onClick={() => handlePopUpOpen("addSource")}>
-          <PlusIcon size={14} className="mr-1" />
-          Add Source
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowNotifications(!showNotifications)}>
+            <BellIcon size={14} className="mr-1" />
+            Notifications
+          </Button>
+          <Button onClick={() => handlePopUpOpen("addSource")}>
+            <PlusIcon size={14} className="mr-1" />
+            Add Source
+          </Button>
+        </div>
       </div>
+
+      {showNotifications && (
+        <div className="mt-4 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+          <h3 className="mb-3 text-sm font-medium text-mineshaft-100">Slack Notifications</h3>
+          {notifSettings && !notifSettings.isSlackConfigured ? (
+            <p className="text-sm text-mineshaft-400">
+              Slack integration is not configured for this project.{" "}
+              <a
+                href={`/organizations/${currentOrg.id}/settings`}
+                className="text-primary hover:underline"
+              >
+                Configure Slack integration
+              </a>{" "}
+              in your organization settings first.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-mineshaft-100">Scan completion notifications</p>
+                  <p className="text-xs text-mineshaft-400">
+                    Get notified when NHI scans complete with a summary of findings.
+                  </p>
+                </div>
+                <Switch isChecked={scanNotifEnabled} onCheckedChange={setScanNotifEnabled} />
+              </div>
+              {scanNotifEnabled && (
+                <Input
+                  value={scanChannels}
+                  onChange={(e) => setScanChannels(e.target.value)}
+                  placeholder="Slack channel IDs (comma-separated)"
+                  className="text-sm"
+                />
+              )}
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-mineshaft-100">Policy remediation notifications</p>
+                  <p className="text-xs text-mineshaft-400">
+                    Get notified when policies auto-remediate identities.
+                  </p>
+                </div>
+                <Switch isChecked={policyNotifEnabled} onCheckedChange={setPolicyNotifEnabled} />
+              </div>
+              {policyNotifEnabled && (
+                <Input
+                  value={policyChannels}
+                  onChange={(e) => setPolicyChannels(e.target.value)}
+                  placeholder="Slack channel IDs (comma-separated)"
+                  className="text-sm"
+                />
+              )}
+
+              <div className="flex justify-end">
+                <V2Button
+                  onClick={onSaveNotificationSettings}
+                  isLoading={updateNotifSettings.isPending}
+                  size="xs"
+                >
+                  Save Notification Settings
+                </V2Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <UnstableTable containerClassName="mt-4">
         <UnstableTableHeader>
           <UnstableTableRow>
             <UnstableTableHead>Name</UnstableTableHead>
             <UnstableTableHead>Provider</UnstableTableHead>
+            <UnstableTableHead>Schedule</UnstableTableHead>
             <UnstableTableHead>Status</UnstableTableHead>
             <UnstableTableHead>Identities Found</UnstableTableHead>
             <UnstableTableHead>Last Scanned</UnstableTableHead>
@@ -210,6 +389,15 @@ export const NhiSourcesPage = () => {
                   </Badge>
                 </UnstableTableCell>
                 <UnstableTableCell>
+                  {source.scanSchedule ? (
+                    <Badge variant="info">
+                      {SCHEDULE_LABELS[source.scanSchedule] || source.scanSchedule}
+                    </Badge>
+                  ) : (
+                    <span className="text-mineshaft-400">Manual</span>
+                  )}
+                </UnstableTableCell>
+                <UnstableTableCell>
                   <ScanStatusBadge status={source.lastScanStatus} />
                 </UnstableTableCell>
                 <UnstableTableCell>{source.lastIdentitiesFound ?? "-"}</UnstableTableCell>
@@ -227,6 +415,20 @@ export const NhiSourcesPage = () => {
                     >
                       <RefreshCwIcon size={12} className="mr-1" />
                       Scan Now
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() =>
+                        setEditingSource({
+                          id: source.id,
+                          name: source.name,
+                          scanSchedule: source.scanSchedule
+                        })
+                      }
+                    >
+                      <PencilIcon size={12} className="mr-1" />
+                      Edit
                     </Button>
                     <Button
                       size="xs"
@@ -253,6 +455,7 @@ export const NhiSourcesPage = () => {
         </UnstableEmpty>
       )}
 
+      {/* Add Source Modal */}
       <Modal
         isOpen={popUp.addSource.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSource", isOpen)}
@@ -348,6 +551,26 @@ export const NhiSourcesPage = () => {
                 )}
               />
             )}
+            <Controller
+              control={control}
+              name="scanSchedule"
+              render={({ field: { value, onChange } }) => (
+                <FormControl label="Scan Schedule">
+                  <V2Select
+                    value={value || MANUAL_SCHEDULE}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Manual (no schedule)"
+                  >
+                    <V2SelectItem value={MANUAL_SCHEDULE}>Manual</V2SelectItem>
+                    <V2SelectItem value={NhiScanSchedule.Every6Hours}>Every 6 Hours</V2SelectItem>
+                    <V2SelectItem value={NhiScanSchedule.Every12Hours}>Every 12 Hours</V2SelectItem>
+                    <V2SelectItem value={NhiScanSchedule.Daily}>Daily</V2SelectItem>
+                    <V2SelectItem value={NhiScanSchedule.Weekly}>Weekly</V2SelectItem>
+                  </V2Select>
+                </FormControl>
+              )}
+            />
             <div className="mt-4 flex justify-end gap-2">
               <V2Button
                 variant="outline_bg"
@@ -358,6 +581,54 @@ export const NhiSourcesPage = () => {
               </V2Button>
               <V2Button type="submit" isLoading={isSubmitting}>
                 Add Source
+              </V2Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Edit Source Modal */}
+      <Modal
+        isOpen={Boolean(editingSource)}
+        onOpenChange={(isOpen) => !isOpen && setEditingSource(null)}
+      >
+        <ModalContent title={`Edit Source: ${editingSource?.name ?? ""}`}>
+          <form onSubmit={handleEditSubmit(onEditSource)}>
+            <Controller
+              control={editControl}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
+                  <Input {...field} />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={editControl}
+              name="scanSchedule"
+              render={({ field: { value, onChange } }) => (
+                <FormControl label="Scan Schedule">
+                  <V2Select
+                    value={value || MANUAL_SCHEDULE}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Manual (no schedule)"
+                  >
+                    <V2SelectItem value={MANUAL_SCHEDULE}>Manual</V2SelectItem>
+                    <V2SelectItem value={NhiScanSchedule.Every6Hours}>Every 6 Hours</V2SelectItem>
+                    <V2SelectItem value={NhiScanSchedule.Every12Hours}>Every 12 Hours</V2SelectItem>
+                    <V2SelectItem value={NhiScanSchedule.Daily}>Daily</V2SelectItem>
+                    <V2SelectItem value={NhiScanSchedule.Weekly}>Weekly</V2SelectItem>
+                  </V2Select>
+                </FormControl>
+              )}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <V2Button variant="outline_bg" onClick={() => setEditingSource(null)} type="button">
+                Cancel
+              </V2Button>
+              <V2Button type="submit" isLoading={isEditSubmitting}>
+                Save Changes
               </V2Button>
             </div>
           </form>

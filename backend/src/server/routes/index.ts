@@ -84,6 +84,7 @@ import { nhiPolicyDALFactory, nhiPolicyExecutionDALFactory } from "@app/ee/servi
 import { nhiPolicyServiceFactory } from "@app/ee/services/nhi/nhi-policy-service";
 import { nhiRemediationActionDALFactory } from "@app/ee/services/nhi/nhi-remediation-dal";
 import { nhiRemediationServiceFactory } from "@app/ee/services/nhi/nhi-remediation-service";
+import { nhiScanQueueFactory } from "@app/ee/services/nhi/nhi-scan-queue";
 import { nhiServiceFactory } from "@app/ee/services/nhi/nhi-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
@@ -2743,7 +2744,9 @@ export const registerRoutes = async (
     nhiPolicyExecutionDAL,
     nhiIdentityDAL,
     nhiRemediationService,
-    permissionService
+    permissionService,
+    projectSlackConfigDAL,
+    kmsService
   });
 
   const nhiService = nhiServiceFactory({
@@ -2754,7 +2757,17 @@ export const registerRoutes = async (
     permissionService,
     appConnectionService,
     gatewayService,
-    gatewayV2Service
+    gatewayV2Service,
+    projectDAL,
+    projectSlackConfigDAL,
+    kmsService
+  });
+
+  const nhiScanQueue = nhiScanQueueFactory({
+    nhiSourceDAL,
+    nhiScanDAL,
+    nhiService,
+    queueService
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -2809,6 +2822,7 @@ export const registerRoutes = async (
   await healthAlert.init();
   await pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
+  nhiScanQueue.startNhiScanQueue();
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
@@ -2963,7 +2977,8 @@ export const registerRoutes = async (
     approvalPolicy: approvalPolicyService,
     nhi: nhiService,
     nhiRemediation: nhiRemediationService,
-    nhiPolicy: nhiPolicyService
+    nhiPolicy: nhiPolicyService,
+    projectSlackConfig: projectSlackConfigDAL
   });
 
   const cronJobs: CronJob[] = [];

@@ -30,6 +30,13 @@ export type TNhiRiskFactor = {
   description: string;
 };
 
+export enum NhiScanSchedule {
+  Every6Hours = "6h",
+  Every12Hours = "12h",
+  Daily = "daily",
+  Weekly = "weekly"
+}
+
 export type TNhiSource = {
   id: string;
   projectId: string;
@@ -41,6 +48,10 @@ export type TNhiSource = {
   lastScanMessage: string | null;
   lastScannedAt: string | null;
   lastIdentitiesFound: number | null;
+  scanSchedule: string | null;
+  lastScheduledScanAt: string | null;
+  orgId: string | null;
+  createdByUserId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -165,4 +176,12 @@ export type TNhiPolicyExecution = {
   identityName?: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TNhiNotificationSettings = {
+  isNhiScanNotificationEnabled: boolean;
+  nhiScanChannels: string;
+  isNhiPolicyNotificationEnabled: boolean;
+  nhiPolicyChannels: string;
+  isSlackConfigured: boolean;
 };

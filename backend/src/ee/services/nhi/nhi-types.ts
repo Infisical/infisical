@@ -55,6 +55,14 @@ export type TCreateNhiSourceDTO = {
   provider: string;
   connectionId: string;
   config?: Record<string, unknown>;
+  scanSchedule?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateNhiSourceDTO = {
+  sourceId: string;
+  projectId: string;
+  name?: string;
+  scanSchedule?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteNhiSourceDTO = {

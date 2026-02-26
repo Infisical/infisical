@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import {
   TNhiIdentity,
+  TNhiNotificationSettings,
   TNhiPolicy,
   TNhiPolicyExecution,
   TNhiRecommendedAction,
@@ -28,7 +29,10 @@ export const nhiKeys = {
     [...nhiKeys.all, "remediation-actions", identityId] as const,
   policies: (projectId: string) => [...nhiKeys.all, "policies", projectId] as const,
   policyExecutions: (policyId: string) => [...nhiKeys.all, "policy-executions", policyId] as const,
-  recentExecutions: (projectId: string) => [...nhiKeys.all, "recent-executions", projectId] as const
+  recentExecutions: (projectId: string) =>
+    [...nhiKeys.all, "recent-executions", projectId] as const,
+  notificationSettings: (projectId: string) =>
+    [...nhiKeys.all, "notification-settings", projectId] as const
 };
 
 export const useGetNhiStats = (
@@ -310,6 +314,30 @@ export const useListRecentExecutions = (
         { params: { projectId } }
       );
       return data.executions;
+    },
+    ...options
+  });
+
+export const useGetNhiNotificationSettings = (
+  projectId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TNhiNotificationSettings,
+      unknown,
+      TNhiNotificationSettings,
+      ReturnType<typeof nhiKeys.notificationSettings>
+    >,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey: nhiKeys.notificationSettings(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TNhiNotificationSettings>(
+        "/api/v1/nhi/notification-settings",
+        { params: { projectId } }
+      );
+      return data;
     },
     ...options
   });

@@ -52,3 +52,10 @@ export enum NhiPolicyExecutionStatus {
   Completed = "completed",
   Failed = "failed"
 }
+
+export enum NhiScanSchedule {
+  Every6Hours = "6h",
+  Every12Hours = "12h",
+  Daily = "daily",
+  Weekly = "weekly"
+}

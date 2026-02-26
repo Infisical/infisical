@@ -6,6 +6,7 @@ import { nhiKeys } from "./queries";
 import {
   NhiRemediationActionType,
   TNhiIdentity,
+  TNhiNotificationSettings,
   TNhiPolicy,
   TNhiRemediationAction,
   TNhiScan,
@@ -21,8 +22,33 @@ export const useCreateNhiSource = () => {
       provider: string;
       connectionId: string;
       config?: Record<string, unknown>;
+      scanSchedule?: string | null;
     }) => {
       const { data } = await apiRequest.post<{ source: TNhiSource }>("/api/v1/nhi/sources", params);
+      return data.source;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: nhiKeys.sources(projectId) });
+    }
+  });
+};
+
+export const useUpdateNhiSource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      sourceId,
+      ...params
+    }: {
+      sourceId: string;
+      projectId: string;
+      name?: string;
+      scanSchedule?: string | null;
+    }) => {
+      const { data } = await apiRequest.patch<{ source: TNhiSource }>(
+        `/api/v1/nhi/sources/${sourceId}`,
+        params
+      );
       return data.source;
     },
     onSuccess: (_, { projectId }) => {
@@ -198,6 +224,28 @@ export const useDeleteNhiPolicy = () => {
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: nhiKeys.policies(projectId) });
       queryClient.invalidateQueries({ queryKey: nhiKeys.recentExecutions(projectId) });
+    }
+  });
+};
+
+export const useUpdateNhiNotificationSettings = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      projectId: string;
+      isNhiScanNotificationEnabled?: boolean;
+      nhiScanChannels?: string;
+      isNhiPolicyNotificationEnabled?: boolean;
+      nhiPolicyChannels?: string;
+    }) => {
+      const { data } = await apiRequest.put<{ success: boolean }>(
+        "/api/v1/nhi/notification-settings",
+        params
+      );
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: nhiKeys.notificationSettings(projectId) });
     }
   });
 };

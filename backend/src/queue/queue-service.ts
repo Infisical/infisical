@@ -95,7 +95,8 @@ export enum QueueName {
   PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
-  PkiDiscoveryScan = "pki-discovery-scan"
+  PkiDiscoveryScan = "pki-discovery-scan",
+  NhiScheduledScan = "nhi-scheduled-scan"
 }
 
 export enum QueueJobs {
@@ -158,7 +159,9 @@ export enum QueueJobs {
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
-  PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan"
+  PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  NhiScheduledScanCheck = "nhi-scheduled-scan-check",
+  NhiRunScan = "nhi-run-scan"
 }
 
 export type TQueueOptions = {
@@ -488,6 +491,15 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
+      };
+  [QueueName.NhiScheduledScan]:
+    | {
+        name: QueueJobs.NhiScheduledScanCheck;
+        payload: undefined;
+      }
+    | {
+        name: QueueJobs.NhiRunScan;
+        payload: { sourceId: string };
       };
 };
 

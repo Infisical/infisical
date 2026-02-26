@@ -6,7 +6,26 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export const nhiSourceDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.NhiSource);
-  return orm;
+
+  const findDueForScan = async (tx?: Knex) => {
+    const dbInstance = tx || db;
+    return dbInstance(TableName.NhiSource)
+      .whereNotNull("scanSchedule")
+      .andWhere((qb) => {
+        void qb.whereNull("lastScheduledScanAt").orWhereRaw(
+          `CASE "scanSchedule"
+              WHEN '6h' THEN "lastScheduledScanAt" + interval '6 hours' < NOW()
+              WHEN '12h' THEN "lastScheduledScanAt" + interval '12 hours' < NOW()
+              WHEN 'daily' THEN "lastScheduledScanAt" + interval '1 day' < NOW()
+              WHEN 'weekly' THEN "lastScheduledScanAt" + interval '7 days' < NOW()
+              ELSE FALSE
+            END`
+        );
+      })
+      .select(selectAllTableCols(TableName.NhiSource));
+  };
+
+  return { ...orm, findDueForScan };
 };
 
 export const nhiIdentityDALFactory = (db: TDbClient) => {

@@ -8,7 +8,7 @@ import {
   NhiScansSchema,
   NhiSourcesSchema
 } from "@app/db/schemas";
-import { NhiIdentityStatus, NhiRemediationActionType } from "@app/ee/services/nhi/nhi-enums";
+import { NhiIdentityStatus, NhiRemediationActionType, NhiScanSchedule } from "@app/ee/services/nhi/nhi-enums";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -53,7 +53,8 @@ export const registerNhiRouter = async (server: FastifyZodProvider) => {
         name: z.string().min(1).max(255),
         provider: z.string(),
         connectionId: z.string().uuid(),
-        config: z.record(z.unknown()).optional()
+        config: z.record(z.unknown()).optional(),
+        scanSchedule: z.nativeEnum(NhiScanSchedule).nullable().optional()
       }),
       response: {
         200: z.object({
@@ -69,6 +70,7 @@ export const registerNhiRouter = async (server: FastifyZodProvider) => {
         provider: req.body.provider,
         connectionId: req.body.connectionId,
         config: req.body.config,
+        scanSchedule: req.body.scanSchedule ?? undefined,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -106,6 +108,121 @@ export const registerNhiRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
       return { source };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/sources/:sourceId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({
+        sourceId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string(),
+        name: z.string().min(1).max(255).optional(),
+        scanSchedule: z.nativeEnum(NhiScanSchedule).nullable().optional()
+      }),
+      response: {
+        200: z.object({
+          source: NhiSourcesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const source = await server.services.nhi.updateSource({
+        sourceId: req.params.sourceId,
+        projectId: req.body.projectId,
+        name: req.body.name,
+        scanSchedule: req.body.scanSchedule,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { source };
+    }
+  });
+
+  // --- Notification Settings ---
+
+  server.route({
+    method: "GET",
+    url: "/notification-settings",
+    config: { rateLimit: readLimit },
+    schema: {
+      querystring: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          isNhiScanNotificationEnabled: z.boolean(),
+          nhiScanChannels: z.string(),
+          isNhiPolicyNotificationEnabled: z.boolean(),
+          nhiPolicyChannels: z.string(),
+          isSlackConfigured: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.projectSlackConfig?.getIntegrationDetailsByProject(req.query.projectId);
+      if (!config) {
+        return {
+          isNhiScanNotificationEnabled: false,
+          nhiScanChannels: "",
+          isNhiPolicyNotificationEnabled: false,
+          nhiPolicyChannels: "",
+          isSlackConfigured: false
+        };
+      }
+      return {
+        isNhiScanNotificationEnabled: config.isNhiScanNotificationEnabled ?? false,
+        nhiScanChannels: config.nhiScanChannels ?? "",
+        isNhiPolicyNotificationEnabled: config.isNhiPolicyNotificationEnabled ?? false,
+        nhiPolicyChannels: config.nhiPolicyChannels ?? "",
+        isSlackConfigured: true
+      };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/notification-settings",
+    config: { rateLimit: writeLimit },
+    schema: {
+      body: z.object({
+        projectId: z.string(),
+        isNhiScanNotificationEnabled: z.boolean().optional(),
+        nhiScanChannels: z.string().max(255).optional(),
+        isNhiPolicyNotificationEnabled: z.boolean().optional(),
+        nhiPolicyChannels: z.string().max(255).optional()
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.projectSlackConfig?.getIntegrationDetailsByProject(req.body.projectId);
+      if (!config) {
+        return { success: false };
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (req.body.isNhiScanNotificationEnabled !== undefined)
+        updateData.isNhiScanNotificationEnabled = req.body.isNhiScanNotificationEnabled;
+      if (req.body.nhiScanChannels !== undefined) updateData.nhiScanChannels = req.body.nhiScanChannels;
+      if (req.body.isNhiPolicyNotificationEnabled !== undefined)
+        updateData.isNhiPolicyNotificationEnabled = req.body.isNhiPolicyNotificationEnabled;
+      if (req.body.nhiPolicyChannels !== undefined) updateData.nhiPolicyChannels = req.body.nhiPolicyChannels;
+
+      await server.services.projectSlackConfig?.updateById(config.id, updateData);
+      return { success: true };
     }
   });
 

@@ -18,6 +18,10 @@ export const NhiSourcesSchema = z.object({
   lastScannedAt: z.date().nullable().optional(),
   lastIdentitiesFound: z.number().nullable().optional(),
   config: z.unknown().nullable().optional(),
+  scanSchedule: z.string().nullable().optional(),
+  lastScheduledScanAt: z.date().nullable().optional(),
+  orgId: z.string().uuid().nullable().optional(),
+  createdByUserId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -4,6 +4,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 
 import { TNhiIdentityDALFactory } from "./nhi-dal";
 import {
@@ -12,6 +14,7 @@ import {
   NhiPolicyExecutionStatus,
   NhiRemediationActionType
 } from "./nhi-enums";
+import { sendNhiPolicyNotification } from "./nhi-notification-fns";
 import { TNhiPolicyDALFactory, TNhiPolicyExecutionDALFactory } from "./nhi-policy-dal";
 import { TNhiRemediationServiceFactory } from "./nhi-remediation-service";
 import {
@@ -29,6 +32,8 @@ type TNhiPolicyServiceDep = {
   nhiIdentityDAL: TNhiIdentityDALFactory;
   nhiRemediationService: Pick<TNhiRemediationServiceFactory, "executeRemediationInternal">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectSlackConfigDAL?: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
+  kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TNhiPolicyServiceFactory = ReturnType<typeof nhiPolicyServiceFactory>;
@@ -109,7 +114,9 @@ export const nhiPolicyServiceFactory = ({
   nhiPolicyExecutionDAL,
   nhiIdentityDAL,
   nhiRemediationService,
-  permissionService
+  permissionService,
+  projectSlackConfigDAL,
+  kmsService
 }: TNhiPolicyServiceDep) => {
   const checkProjectPermission = async ({
     actor,
@@ -332,6 +339,25 @@ export const nhiPolicyServiceFactory = ({
       status,
       statusMessage: statusMessage || null
     });
+
+    // Send Slack notification for policy execution
+    if (projectSlackConfigDAL && kmsService) {
+      try {
+        const identityRecord = await nhiIdentityDAL.findById(identity.id);
+        await sendNhiPolicyNotification({
+          projectId,
+          policyName: policy.name,
+          identityName: identityRecord?.name || identity.id,
+          actionTaken,
+          status,
+          statusMessage,
+          projectSlackConfigDAL,
+          kmsService
+        });
+      } catch (notifErr) {
+        logger.warn(notifErr, `NHI policy notification failed for policy ${policy.id}`);
+      }
+    }
   };
 
   // --- Policy evaluation (called after scan) ---

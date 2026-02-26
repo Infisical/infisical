@@ -18,7 +18,11 @@ export const ProjectSlackConfigsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   isSecretSyncErrorNotificationEnabled: z.boolean().default(false),
-  secretSyncErrorChannels: z.string().default("")
+  secretSyncErrorChannels: z.string().default(""),
+  isNhiScanNotificationEnabled: z.boolean().default(false),
+  nhiScanChannels: z.string().default(""),
+  isNhiPolicyNotificationEnabled: z.boolean().default(false),
+  nhiPolicyChannels: z.string().default("")
 });
 
 export type TProjectSlackConfigs = z.infer<typeof ProjectSlackConfigsSchema>;

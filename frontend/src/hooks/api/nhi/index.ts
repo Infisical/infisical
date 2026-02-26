@@ -6,11 +6,14 @@ export {
   useExecuteRemediation,
   useTriggerNhiScan,
   useUpdateNhiIdentity,
-  useUpdateNhiPolicy
+  useUpdateNhiNotificationSettings,
+  useUpdateNhiPolicy,
+  useUpdateNhiSource
 } from "./mutations";
 export {
   nhiKeys,
   useGetNhiIdentity,
+  useGetNhiNotificationSettings,
   useGetNhiScan,
   useGetNhiStats,
   useGetPolicyExecutions,
@@ -24,6 +27,7 @@ export {
 } from "./queries";
 export type {
   TNhiIdentity,
+  TNhiNotificationSettings,
   TNhiPolicy,
   TNhiPolicyExecution,
   TNhiRecommendedAction,
@@ -40,5 +44,6 @@ export {
   NhiProvider,
   NhiRemediationActionType,
   NhiRemediationStatus,
+  NhiScanSchedule,
   NhiScanStatus
 } from "./types";

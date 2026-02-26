@@ -10,11 +10,15 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TGitHubConnection } from "@app/services/app-connection/github/github-connection-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 
 import { scanAwsIamIdentities } from "./aws/aws-nhi-scanner";
 import { scanGitHubOrgIdentities } from "./github/github-nhi-scanner";
 import { TNhiIdentityDALFactory, TNhiScanDALFactory, TNhiSourceDALFactory } from "./nhi-dal";
 import { NhiProvider, NhiScanStatus } from "./nhi-enums";
+import { sendNhiScanNotification } from "./nhi-notification-fns";
 import { TNhiPolicyServiceFactory } from "./nhi-policy-service";
 import { computeRiskScore, TGitHubRiskMetadata } from "./nhi-risk-scoring";
 import { TRawNhiIdentity } from "./nhi-scanner-types";
@@ -28,7 +32,8 @@ import {
   TListNhiScansDTO,
   TListNhiSourcesDTO,
   TTriggerNhiScanDTO,
-  TUpdateNhiIdentityDTO
+  TUpdateNhiIdentityDTO,
+  TUpdateNhiSourceDTO
 } from "./nhi-types";
 
 type TNhiServiceFactoryDep = {
@@ -40,6 +45,9 @@ type TNhiServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  projectDAL?: Pick<TProjectDALFactory, "findById">;
+  projectSlackConfigDAL?: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
+  kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TNhiServiceFactory = ReturnType<typeof nhiServiceFactory>;
@@ -52,7 +60,10 @@ export const nhiServiceFactory = ({
   permissionService,
   appConnectionService,
   gatewayService,
-  gatewayV2Service
+  gatewayV2Service,
+  projectDAL,
+  projectSlackConfigDAL,
+  kmsService
 }: TNhiServiceFactoryDep) => {
   const checkProjectPermission = async ({
     actor,
@@ -90,6 +101,7 @@ export const nhiServiceFactory = ({
     provider,
     connectionId,
     config,
+    scanSchedule,
     actor,
     actorId,
     actorAuthMethod,
@@ -101,8 +113,35 @@ export const nhiServiceFactory = ({
       name,
       provider,
       connectionId,
-      ...(config ? { config } : {})
+      orgId: actorOrgId,
+      createdByUserId: actorId,
+      ...(config ? { config } : {}),
+      ...(scanSchedule ? { scanSchedule } : {})
     });
+  };
+
+  const updateSource = async ({
+    sourceId,
+    projectId,
+    name,
+    scanSchedule,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateNhiSourceDTO) => {
+    await checkProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId });
+
+    const source = await nhiSourceDAL.findById(sourceId);
+    if (!source) {
+      throw new NotFoundError({ message: `NHI source with ID ${sourceId} not found` });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (scanSchedule !== undefined) updateData.scanSchedule = scanSchedule;
+
+    return nhiSourceDAL.updateById(sourceId, updateData);
   };
 
   const deleteSource = async ({
@@ -242,6 +281,21 @@ export const nhiServiceFactory = ({
         lastScannedAt: new Date(),
         lastIdentitiesFound: rawIdentities.length
       });
+
+      // Send Slack notification for scan completion
+      if (projectSlackConfigDAL && kmsService) {
+        try {
+          await sendNhiScanNotification({
+            projectId: source.projectId,
+            sourceName: source.name,
+            identitiesFound: rawIdentities.length,
+            projectSlackConfigDAL,
+            kmsService
+          });
+        } catch (notifErr) {
+          logger.warn(notifErr, `NHI scan notification failed for source ${sourceId}`);
+        }
+      }
 
       // Evaluate automated remediation policies
       if (nhiPolicyService) {
@@ -439,8 +493,10 @@ export const nhiServiceFactory = ({
   return {
     listSources,
     createSource,
+    updateSource,
     deleteSource,
     triggerScan,
+    performScan,
     listScans,
     getScan,
     listIdentities,
