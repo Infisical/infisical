@@ -3,6 +3,7 @@ import {
   CheckCircle,
   CheckIcon,
   ChevronRightIcon,
+  CirclePlayIcon,
   Clock,
   DownloadIcon,
   FilterIcon,
@@ -167,7 +168,7 @@ const SessionRow = ({
               onReplay(session);
             }}
           >
-            <PlayIcon className="h-3.5 w-3.5" />
+            <CirclePlayIcon />
           </UnstableIconButton>
         </UnstableTableCell>
       </UnstableTableRow>
