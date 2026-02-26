@@ -39,7 +39,7 @@ const BUILT_IN_WIDGETS: BuiltInWidgetDef[] = [
       }
     },
     refreshInterval: 30,
-    icon: "Activity",
+    icon: "Clock",
     color: "#1c2a3a",
     layoutTmpl: "expiring-certs"
   },
@@ -136,39 +136,29 @@ export async function up(knex: Knex): Promise<void> {
       .first();
 
     if (defaultView) {
-      const updatedLayout = JSON.stringify([
-        {
-          uid: "default-all-failures",
-          tmpl: "all-failures",
-          widgetId: widgetIdMap["all-failures"],
-          x: 0,
-          y: 0,
-          w: 6,
-          h: 2
-        },
-        {
-          uid: "default-secret-syncs",
-          tmpl: "secret-syncs",
-          widgetId: widgetIdMap["secret-syncs"],
-          x: 6,
-          y: 0,
-          w: 6,
-          h: 2
-        },
-        {
-          uid: "default-live-logs",
-          tmpl: "logs",
-          widgetId: widgetIdMap["logs"],
-          x: 0,
-          y: 2,
-          w: 12,
-          h: 2
-        }
-      ]);
+      // Merge widgetIds into the existing layout by UID rather than replacing the
+      // entire layout, so that additional slots (e.g. metrics rows) are preserved.
+      const uidToWidgetId: Record<string, string> = {
+        "default-all-failures": widgetIdMap["all-failures"],
+        "default-secret-syncs": widgetIdMap["secret-syncs"],
+        "default-live-logs": widgetIdMap["logs"]
+      };
+
+      let existingItems: Record<string, unknown>[] = [];
+      try {
+        existingItems = JSON.parse(defaultView.items || "[]");
+      } catch {
+        existingItems = [];
+      }
+
+      const mergedItems = existingItems.map((item) => {
+        const wid = uidToWidgetId[(item as { uid: string }).uid];
+        return wid ? { ...item, widgetId: wid } : item;
+      });
 
       await knex(TableName.ObservabilityWidgetView)
         .where({ id: defaultView.id })
-        .update({ items: updatedLayout });
+        .update({ items: JSON.stringify(mergedItems) });
     }
   }
 }

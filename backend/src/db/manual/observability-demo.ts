@@ -421,7 +421,8 @@ export const seedObservabilityDemo = async (
       }),
       refreshInterval: 20,
       icon: "alert-triangle",
-      color: "#ef4444"
+      color: "#ef4444",
+      isBuiltIn: true
     },
     {
       name: "Expiring Access & Certificates",
@@ -438,7 +439,8 @@ export const seedObservabilityDemo = async (
       }),
       refreshInterval: 45,
       icon: "clock",
-      color: "#f59e0b"
+      color: "#f59e0b",
+      isBuiltIn: true
     },
     {
       name: "Secret Sync Status",
@@ -452,7 +454,8 @@ export const seedObservabilityDemo = async (
       }),
       refreshInterval: 30,
       icon: "refresh-cw",
-      color: "#3b82f6"
+      color: "#3b82f6",
+      isBuiltIn: true
     },
     {
       name: "Failed Resources",
@@ -465,7 +468,8 @@ export const seedObservabilityDemo = async (
       }),
       refreshInterval: 30,
       icon: "x-circle",
-      color: "#ef4444"
+      color: "#ef4444",
+      isBuiltIn: true
     },
     {
       name: "Expiring in 7 Days",
@@ -478,7 +482,8 @@ export const seedObservabilityDemo = async (
       }),
       refreshInterval: 60,
       icon: "timer",
-      color: "#f59e0b"
+      color: "#f59e0b",
+      isBuiltIn: true
     },
     {
       name: "Pending Remediation",
@@ -491,7 +496,8 @@ export const seedObservabilityDemo = async (
       }),
       refreshInterval: 45,
       icon: "clock",
-      color: "#8b5cf6"
+      color: "#8b5cf6",
+      isBuiltIn: true
     },
     {
       name: "Machine Identities",
@@ -504,7 +510,8 @@ export const seedObservabilityDemo = async (
       }),
       refreshInterval: 120,
       icon: "bot",
-      color: "#10b981"
+      color: "#10b981",
+      isBuiltIn: true
     },
     {
       name: "Active Users",
@@ -517,7 +524,8 @@ export const seedObservabilityDemo = async (
       }),
       refreshInterval: 120,
       icon: "users",
-      color: "#06b6d4"
+      color: "#06b6d4",
+      isBuiltIn: true
     },
     {
       name: "Live Audit Logs",
@@ -527,9 +535,64 @@ export const seedObservabilityDemo = async (
       config: JSON.stringify({ limit: 300 }),
       refreshInterval: 5,
       icon: "activity",
-      color: "#3b82f6"
+      color: "#3b82f6",
+      isBuiltIn: true
     }
   ]);
+
+  // Rebuild the default view layout so widget IDs are correctly wired.
+  // This repairs layouts that were wiped to 3 slots by the built-in migration.
+  const freshWidgets = await knex(TableName.ObservabilityWidget).where({ orgId: org.id });
+  const metricsWidgets = freshWidgets.filter((w) => w.type === ObservabilityWidgetType.Metrics);
+  const byName = (name: string) => freshWidgets.find((w) => w.name.toLowerCase() === name.toLowerCase());
+
+  const metricSlots = [
+    "Failed Resources",
+    "Expiring in 7 Days",
+    "Pending Remediation",
+    "Machine Identities",
+    "Active Users"
+  ];
+
+  const metricsRows = metricSlots
+    .map((name, i) => {
+      const w = byName(name) ?? metricsWidgets[i];
+      if (!w) return null;
+      return { uid: `default-metric-${i + 1}`, tmpl: "_backend_metrics", widgetId: w.id, x: (i % 4) * 3, y: Math.floor(i / 4), w: 3, h: 1 };
+    })
+    .filter(Boolean);
+
+  const allFailuresWidget = byName("Critical Failures");
+  const secretSyncsWidget = byName("Secret Sync Status");
+  const logsWidget = byName("Live Audit Logs");
+
+  const defaultLayout = [
+    ...metricsRows,
+    { uid: "default-all-failures", tmpl: "all-failures", widgetId: allFailuresWidget?.id, x: 0, y: 2, w: 6, h: 2 },
+    { uid: "default-secret-syncs", tmpl: "secret-syncs", widgetId: secretSyncsWidget?.id, x: 6, y: 2, w: 6, h: 2 },
+    { uid: "default-live-logs", tmpl: "logs", widgetId: logsWidget?.id, x: 0, y: 4, w: 12, h: 2 }
+  ];
+
+  const defaultView = await knex(TableName.ObservabilityWidgetView)
+    .where({ orgId: org.id, isDefault: true })
+    .first();
+
+  if (defaultView) {
+    await knex(TableName.ObservabilityWidgetView)
+      .where({ id: defaultView.id })
+      .update({ items: JSON.stringify(defaultLayout) });
+    log("Updated default view layout with fresh widget IDs.");
+  } else {
+    await knex(TableName.ObservabilityWidgetView).insert({
+      name: "Fail alerts",
+      orgId: org.id,
+      userId: null,
+      scope: "organization",
+      isDefault: true,
+      items: JSON.stringify(defaultLayout)
+    });
+    log("Created default view with full layout.");
+  }
 
   log("Done. Demo data added without touching existing user data. Widgets: Critical Failures, Expiring Access, Secret Sync Status, Failed/Pending/Machine/ActiveUsers metrics, Live Audit Logs.");
 };
