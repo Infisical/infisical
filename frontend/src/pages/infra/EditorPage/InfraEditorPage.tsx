@@ -77,7 +77,7 @@ export const InfraEditorPage = () => {
     if (remoteFiles && remoteFiles.length > 0) {
       setFiles(remoteFiles.map((f) => ({ name: f.name, content: f.content, dirty: false })));
     } else {
-      setFiles([{ name: "main.tf", content: DEFAULT_MAIN_TF, dirty: true }]);
+      setFiles([{ name: "main.tf", content: DEFAULT_MAIN_TF, dirty: false }]);
     }
     setInitialized(true);
   }, [remoteFiles, filesLoading, initialized]);
@@ -243,7 +243,9 @@ export const InfraEditorPage = () => {
             <span className="text-sm font-medium text-mineshaft-200">{currentProject.name}</span>
             <ChevronRightIcon className="size-3 text-mineshaft-600" />
             <span className="text-sm text-mineshaft-300">{activeFile?.name}</span>
-            {activeFile?.dirty && <span className="size-2 rounded-full bg-yellow-500" title="Unsaved changes" />}
+            {activeFile?.dirty && (
+              <span className="animate-pulse text-xs text-mineshaft-400">Saving...</span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -310,7 +312,6 @@ export const InfraEditorPage = () => {
                 >
                   <FileIcon className="size-3.5 shrink-0 text-mineshaft-500" />
                   <span className="flex-1 truncate">{file.name}</span>
-                  {file.dirty && <span className="size-1.5 shrink-0 rounded-full bg-yellow-500" />}
                   <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100">
                     <button
                       type="button"

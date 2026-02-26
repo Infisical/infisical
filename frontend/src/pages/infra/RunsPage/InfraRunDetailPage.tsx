@@ -316,7 +316,16 @@ export const InfraRunDetailPage = () => {
     return (
       <div className="flex flex-col items-center gap-4 pt-20">
         <p className="text-mineshaft-400">Run not found.</p>
-        <Button variant="outline" size="sm" onClick={() => navigate({ to: "/organizations/$orgId/projects/infra/$projectId/runs", params: { orgId: params.orgId, projectId: params.projectId } })}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            navigate({
+              to: "/organizations/$orgId/projects/infra/$projectId/runs",
+              params: { orgId: params.orgId, projectId: params.projectId }
+            })
+          }
+        >
           Back to Runs
         </Button>
       </div>
@@ -331,7 +340,12 @@ export const InfraRunDetailPage = () => {
           <button
             type="button"
             className="mb-2 flex items-center gap-1.5 text-xs text-mineshaft-400 hover:text-mineshaft-200"
-            onClick={() => navigate({ to: "/organizations/$orgId/projects/infra/$projectId/runs", params: { orgId: params.orgId, projectId: params.projectId } })}
+            onClick={() =>
+              navigate({
+                to: "/organizations/$orgId/projects/infra/$projectId/runs",
+                params: { orgId: params.orgId, projectId: params.projectId }
+              })
+            }
           >
             <ArrowLeftIcon className="size-3" />
             Back to Runs
@@ -340,7 +354,13 @@ export const InfraRunDetailPage = () => {
             <h1 className="text-2xl font-semibold text-mineshaft-100">
               Run <span className="font-mono text-lg text-mineshaft-300">{run.id.slice(0, 8)}</span>
             </h1>
-            <Badge variant={run.type === "destroy" ? "danger" : run.type === "apply" ? "success" : "info"}>{run.type}</Badge>
+            <Badge
+              variant={
+                run.type === "destroy" ? "danger" : run.type === "apply" ? "success" : "info"
+              }
+            >
+              {run.type}
+            </Badge>
             <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs text-mineshaft-400">
@@ -374,24 +394,24 @@ export const InfraRunDetailPage = () => {
       {planJson && (
         <div className="flex gap-4">
           <UnstableCard className="flex-1">
-            <UnstableCardContent className="flex items-center gap-3 p-4">
-              <div className="rounded-lg bg-green-500/10 p-2.5">
+            <UnstableCardContent className="flex items-center gap-3">
+              <div className="min-w-12 rounded-lg bg-green-500/10 p-2.5 text-center">
                 <span className="text-lg font-bold text-green-400">+{planJson.add}</span>
               </div>
               <span className="text-sm text-mineshaft-400">to add</span>
             </UnstableCardContent>
           </UnstableCard>
           <UnstableCard className="flex-1">
-            <UnstableCardContent className="flex items-center gap-3 p-4">
-              <div className="rounded-lg bg-yellow-500/10 p-2.5">
+            <UnstableCardContent className="flex items-center gap-3">
+              <div className="min-w-12 rounded-lg bg-yellow-500/10 p-2.5 text-center">
                 <span className="text-lg font-bold text-yellow-400">~{planJson.change}</span>
               </div>
               <span className="text-sm text-mineshaft-400">to change</span>
             </UnstableCardContent>
           </UnstableCard>
           <UnstableCard className="flex-1">
-            <UnstableCardContent className="flex items-center gap-3 p-4">
-              <div className="rounded-lg bg-red-500/10 p-2.5">
+            <UnstableCardContent className="flex items-center gap-3">
+              <div className="min-w-12 rounded-lg bg-red-500/10 p-2.5 text-center">
                 <span className="text-lg font-bold text-red-400">-{planJson.destroy}</span>
               </div>
               <span className="text-sm text-mineshaft-400">to destroy</span>
@@ -403,8 +423,12 @@ export const InfraRunDetailPage = () => {
       {/* Tabs */}
       <div className="flex border-b border-mineshaft-600">
         {(["changes", "topology", "logs", "ai"] as const)
-          .filter((tab) => !(tab === "changes" && (run.status === "failed" || run.status === "denied")))
-          .filter((tab) => !(tab === "topology" && (run.status === "failed" || run.status === "denied")))
+          .filter(
+            (tab) => !(tab === "changes" && (run.status === "failed" || run.status === "denied"))
+          )
+          .filter(
+            (tab) => !(tab === "topology" && (run.status === "failed" || run.status === "denied"))
+          )
           .map((tab) => (
             <button
               key={tab}
@@ -592,7 +616,7 @@ export const InfraRunDetailPage = () => {
             })()}
 
           <UnstableCard>
-            <UnstableCardHeader className="pb-2">
+            <UnstableCardHeader>
               <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-mineshaft-200">
                 <TerminalIcon className="size-4" />
                 Run Output

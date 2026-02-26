@@ -119,7 +119,7 @@ export const InfraStatePage = () => {
       {hasState ? (
         <div className="grid grid-cols-4 gap-4">
           <UnstableCard>
-            <UnstableCardContent className="flex items-start justify-between p-5">
+            <UnstableCardContent className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-mineshaft-400">Resources</p>
                 <p className="mt-1 text-2xl font-bold text-mineshaft-50">{resourceCount}</p>
@@ -131,7 +131,7 @@ export const InfraStatePage = () => {
             </UnstableCardContent>
           </UnstableCard>
           <UnstableCard>
-            <UnstableCardContent className="flex items-start justify-between p-5">
+            <UnstableCardContent className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-mineshaft-400">Serial</p>
                 <p className="mt-1 text-2xl font-bold text-mineshaft-50">
@@ -145,7 +145,7 @@ export const InfraStatePage = () => {
             </UnstableCardContent>
           </UnstableCard>
           <UnstableCard>
-            <UnstableCardContent className="flex items-start justify-between p-5">
+            <UnstableCardContent className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-mineshaft-400">Format Version</p>
                 <p className="mt-1 text-2xl font-bold text-mineshaft-50">
@@ -158,8 +158,8 @@ export const InfraStatePage = () => {
               </div>
             </UnstableCardContent>
           </UnstableCard>
-          <UnstableCard>
-            <UnstableCardContent className="p-5">
+          <UnstableCard className="h-full">
+            <UnstableCardContent>
               <p className="text-xs font-medium text-mineshaft-400">Lineage</p>
               <p className="mt-1 truncate font-mono text-xs text-mineshaft-300">
                 {stateVersion?.lineage ?? "—"}
@@ -172,10 +172,12 @@ export const InfraStatePage = () => {
         <UnstableCard>
           <UnstableCardContent className="flex flex-col items-center gap-3 p-8 text-center">
             <DatabaseIcon className="size-8 text-mineshaft-500" />
-            <p className="text-sm text-mineshaft-400">
-              No state exists yet. Run an Apply in the Editor to create infrastructure and
-              initialize state.
-            </p>
+            <div>
+              <p className="text-sm font-medium text-mineshaft-300">No state exists yet</p>
+              <p className="mt-1 text-xs text-mineshaft-500">
+                Run an Apply in the Editor to create infrastructure and initialize state.
+              </p>
+            </div>
           </UnstableCardContent>
         </UnstableCard>
       )}
@@ -221,25 +223,15 @@ export const InfraStatePage = () => {
         </UnstableCard>
       )}
 
-      {/* State History */}
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
-            State History
-          </UnstableCardTitle>
-        </UnstableCardHeader>
-        <UnstableCardContent className="p-0">
-          {historyLoading ? (
-            <div className="flex flex-col gap-2 p-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : !history || history.length === 0 ? (
-            <div className="p-6 text-center text-sm text-mineshaft-500">
-              No state changes yet. State is modified when Apply or Destroy runs complete
-              successfully.
-            </div>
-          ) : (
+      {/* State History — hidden when empty */}
+      {!historyLoading && history && history.length > 0 && (
+        <UnstableCard>
+          <UnstableCardHeader>
+            <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
+              State History
+            </UnstableCardTitle>
+          </UnstableCardHeader>
+          <UnstableCardContent className="p-0">
             <div className="divide-y divide-mineshaft-600">
               {history.map((run: TInfraRun) => {
                 const plan = run.planJson as TPlanJson | null;
@@ -259,16 +251,12 @@ export const InfraStatePage = () => {
                       <span className="font-mono text-xs text-mineshaft-300">
                         {run.id.slice(0, 8)}
                       </span>
-                      <Badge
-                        variant={run.type === "destroy" ? "danger" : "success"}
-                      >
+                      <Badge variant={run.type === "destroy" ? "danger" : "success"}>
                         {run.type}
                       </Badge>
                       {plan && (
                         <span className="flex items-center gap-2 text-xs">
-                          {plan.add > 0 && (
-                            <span className="text-green-400">+{plan.add}</span>
-                          )}
+                          {plan.add > 0 && <span className="text-green-400">+{plan.add}</span>}
                           {plan.change > 0 && (
                             <span className="text-yellow-400">~{plan.change}</span>
                           )}
@@ -290,9 +278,9 @@ export const InfraStatePage = () => {
                 );
               })}
             </div>
-          )}
-        </UnstableCardContent>
-      </UnstableCard>
+          </UnstableCardContent>
+        </UnstableCard>
+      )}
 
       {/* Raw State (collapsible) */}
       {hasState && (

@@ -4,6 +4,8 @@ import { ChevronDownIcon, ChevronRightIcon, CloudIcon, CopyIcon, DollarSignIcon,
 import {
   Badge,
   Skeleton,
+  UnstableCard,
+  UnstableCardContent,
   UnstableTable,
   UnstableTableBody,
   UnstableTableCell,
@@ -168,15 +170,17 @@ export const InfraResourcesPage = () => {
           ))}
         </div>
       ) : !resources || resources.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-mineshaft-600 p-12 text-center">
-          <PackageIcon className="size-10 text-mineshaft-500" />
-          <div>
-            <p className="text-sm font-medium text-mineshaft-300">No resources yet</p>
-            <p className="mt-1 text-xs text-mineshaft-500">
-              Resources will appear here after your first successful apply.
-            </p>
-          </div>
-        </div>
+        <UnstableCard>
+          <UnstableCardContent className="flex flex-col items-center gap-3 p-8 text-center">
+            <PackageIcon className="size-8 text-mineshaft-500" />
+            <div>
+              <p className="text-sm font-medium text-mineshaft-300">No resources yet</p>
+              <p className="mt-1 text-xs text-mineshaft-500">
+                Resources will appear here after your first successful apply.
+              </p>
+            </div>
+          </UnstableCardContent>
+        </UnstableCard>
       ) : (
         <UnstableTable>
           <UnstableTableHeader>

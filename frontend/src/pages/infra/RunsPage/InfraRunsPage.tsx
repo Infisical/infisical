@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertTriangleIcon, ClockIcon } from "lucide-react";
+import { AlertTriangleIcon, ClockIcon, PlayIcon } from "lucide-react";
 
 import {
   Badge,
   Skeleton,
+  UnstableCard,
+  UnstableCardContent,
   UnstableTable,
   UnstableTableBody,
   UnstableTableCell,
@@ -82,9 +84,17 @@ export const InfraRunsPage = () => {
           ))}
         </div>
       ) : !visibleRuns || visibleRuns.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-mineshaft-600 p-8 text-center text-sm text-mineshaft-400">
-          No runs yet. Go to the Editor tab to run your first plan or apply.
-        </div>
+        <UnstableCard>
+          <UnstableCardContent className="flex flex-col items-center gap-3 p-8 text-center">
+            <PlayIcon className="size-8 text-mineshaft-500" />
+            <div>
+              <p className="text-sm font-medium text-mineshaft-300">No runs yet</p>
+              <p className="mt-1 text-xs text-mineshaft-500">
+                Go to the Editor tab to run your first plan or apply.
+              </p>
+            </div>
+          </UnstableCardContent>
+        </UnstableCard>
       ) : (
         <UnstableTable>
           <UnstableTableHeader>

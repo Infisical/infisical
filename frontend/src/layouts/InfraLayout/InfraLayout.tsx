@@ -130,7 +130,9 @@ export const InfraLayout = () => {
         className={`flex-1 overflow-x-hidden bg-bunker-800 ${
           location.pathname.endsWith("/editor")
             ? "overflow-hidden"
-            : "overflow-y-auto px-12 pt-10 pb-4"
+            : location.pathname.endsWith("/overview")
+              ? "overflow-hidden px-12 pt-10 pb-4"
+              : "overflow-y-auto px-12 pt-10 pb-4"
         }`}
       >
         <Outlet />
