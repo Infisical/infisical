@@ -43,6 +43,7 @@ export const KeyStorePrefixes = {
   WaitUntilReadyKmsOrgKeyCreation: "wait-until-ready-kms-org-key-creation-",
   WaitUntilReadyKmsOrgDataKeyCreation: "wait-until-ready-kms-org-data-key-creation-",
   FolderTreeCheckpoint: (envId: string) => `folder-tree-checkpoint-${envId}`,
+  FolderTreeCheckpointCooldown: (envId: string) => `folder-tree-checkpoint-cooldown-${envId}`,
 
   WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>
     `wait-until-ready-project-environments-operation-${projectId}`,
