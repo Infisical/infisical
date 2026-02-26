@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Layout, LayoutItem as RGLLayoutItem } from "react-grid-layout";
 import { GridLayout, useContainerWidth } from "react-grid-layout";
 import { GridBackground } from "react-grid-layout/extras";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGrid, Plus } from "lucide-react";
 
 import {
@@ -13,6 +14,7 @@ import {
   UnstableEmptyTitle
 } from "@app/components/v3";
 
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { useListWidgets } from "@app/hooks/api/observabilityWidgets";
 import {
@@ -113,7 +115,24 @@ export function ObservabilityDashboard({
   const updateViewMutation = useUpdateWidgetView();
   const deleteViewMutation = useDeleteWidgetView();
 
-  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const navigate = useNavigate({ from: ROUTE_PATHS.Organization.ObservabilityPage.path });
+  const viewParam = useSearch({
+    from: ROUTE_PATHS.Organization.ObservabilityPage.id,
+    select: (s) => s.view
+  });
+
+  const setActiveViewId = useCallback(
+    (id: string | null) => {
+      void navigate({ search: (prev) => ({ ...prev, view: id ?? "" }) });
+    },
+    [navigate]
+  );
+
+  // Derive the active view ID: prefer URL param, fall back to first org view on load
+  const activeViewId = useMemo(() => {
+    if (viewParam && backendViews.some((v) => v.id === viewParam)) return viewParam;
+    return null;
+  }, [viewParam, backendViews]);
 
   const orgViews = useMemo(
     () => backendViews.filter((v) => v.scope === "organization"),
@@ -124,12 +143,13 @@ export function ObservabilityDashboard({
     [backendViews]
   );
 
+  // Seed the URL with the first org view when the page first loads with no view param
   useEffect(() => {
     if (!activeViewId && backendViews.length > 0) {
       const firstOrgView = backendViews.find((v) => v.scope === "organization");
       setActiveViewId(firstOrgView?.id ?? backendViews[0].id);
     }
-  }, [backendViews, activeViewId]);
+  }, [backendViews, activeViewId, setActiveViewId]);
 
   const activeView = backendViews.find((v) => v.id === activeViewId);
   const backendLayout: LayoutItem[] = useMemo(() => {
