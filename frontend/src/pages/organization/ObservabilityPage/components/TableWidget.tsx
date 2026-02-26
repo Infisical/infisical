@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -16,9 +16,12 @@ import { Tooltip } from "@app/components/v2";
 import { useGetWidgetData } from "@app/hooks/api/observabilityWidgets";
 
 import type { DataRow, StatItem, WidgetTemplate } from "../mock-data";
-import { PAGE_SIZE, queryRows } from "../mock-data";
+import { queryRows } from "../mock-data";
 import { StatusPill } from "./StatusPill";
 import { WidgetIcon } from "./WidgetIcon";
+
+const SERVER_PAGE_SIZE = 10;
+const CLIENT_PAGE_SIZE = 5;
 
 function parseScope(scope: string): { type: string; name: string } {
   const dash = scope.indexOf(" - ");
@@ -90,8 +93,15 @@ export function TableWidget({
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
+  useEffect(() => {
+    setPage(0);
+  }, [widgetId]);
+
+  const activePageSize = widgetId ? SERVER_PAGE_SIZE : CLIENT_PAGE_SIZE;
+  const serverParams = widgetId ? { limit: SERVER_PAGE_SIZE, offset: page * SERVER_PAGE_SIZE } : undefined;
   const { data: widgetData, isLoading: isWidgetLoading, refetch: refetchWidgetData } = useGetWidgetData(
-    widgetId
+    widgetId,
+    serverParams
   );
 
   const rawRows: DataRow[] = useMemo(() => {
@@ -102,7 +112,16 @@ export function TableWidget({
         status: item.status,
         desc: item.statusTooltip ?? "",
         scope: `${item.scope.type} - ${item.scope.displayName}`,
-        date: item.eventTimestamp,
+        date: (() => {
+          const d = new Date(item.eventTimestamp);
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          const yy = String(d.getFullYear()).slice(-2);
+          const hh = String(d.getHours()).padStart(2, "0");
+          const min = String(d.getMinutes()).padStart(2, "0");
+          const ss = String(d.getSeconds()).padStart(2, "0");
+          return `${mm}-${dd}-${yy} ${hh}:${min}:${ss}`;
+        })(),
         resource: item.resourceType
       }));
     }
@@ -123,11 +142,17 @@ export function TableWidget({
     return stats;
   }, [widgetId, widgetData]);
 
-  const rows = useMemo(() => sortRows(rawRows, sortKey, sortDir), [rawRows, sortKey, sortDir]);
+  // For server-side: rows are already the current page; total comes from API.
+  // For client-side (custom widgets): sort and slice locally.
+  const rows = useMemo(
+    () => (widgetId ? rawRows : sortRows(rawRows, sortKey, sortDir)),
+    [widgetId, rawRows, sortKey, sortDir]
+  );
 
-  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
-  const start = page * PAGE_SIZE;
-  const slice = rows.slice(start, start + PAGE_SIZE);
+  const totalCount = widgetId ? (widgetData?.totalCount ?? 0) : rows.length;
+  const totalPages = Math.ceil(totalCount / activePageSize);
+  const start = page * activePageSize;
+  const slice = widgetId ? rows : rows.slice(start, start + activePageSize);
 
   const goPage = useCallback(
     (dir: number) => {
@@ -339,11 +364,6 @@ export function TableWidget({
           ))}
         </div>
         <div className="flex items-center gap-2">
-          {rows.length > 0 && (
-            <span className="text-[11px] text-mineshaft-300">
-              {start + 1}&ndash;{Math.min(start + PAGE_SIZE, rows.length)} of {rows.length}
-            </span>
-          )}
           {totalPages > 1 && (
             <div className="flex items-center gap-1">
               <button
@@ -354,21 +374,9 @@ export function TableWidget({
               >
                 <ChevronLeft size={12} />
               </button>
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  type="button"
-                  key={`page-${i}`}
-                  onClick={() => setPage(i)}
-                  className={twMerge(
-                    "flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[11px] font-medium transition-colors",
-                    i === page
-                      ? "border border-primary bg-[#1c2a3a] text-primary"
-                      : "text-mineshaft-300 hover:bg-mineshaft-600 hover:text-white"
-                  )}
-                >
-                  {i + 1}
-                </button>
-              ))}
+              <span className="min-w-[64px] text-center text-[11px] text-mineshaft-300">
+                {page + 1} / {totalPages}
+              </span>
               <button
                 type="button"
                 disabled={page >= totalPages - 1}

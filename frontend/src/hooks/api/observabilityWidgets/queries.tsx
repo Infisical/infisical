@@ -38,7 +38,8 @@ export interface ObservabilityWidgetDataResponse {
 
 export const observabilityWidgetKeys = {
   list: (orgId: string) => [{ orgId }, "observability-widgets"] as const,
-  data: (widgetId: string) => ["observability-widget-data", widgetId] as const
+  data: (widgetId: string, params?: { limit?: number; offset?: number }) =>
+    ["observability-widget-data", widgetId, params] as const
 };
 
 export const useListWidgets = (orgId: string) =>
@@ -56,7 +57,7 @@ export const useGetWidgetData = (
   params?: { limit?: number; offset?: number }
 ) =>
   useQuery({
-    queryKey: observabilityWidgetKeys.data(widgetId!),
+    queryKey: observabilityWidgetKeys.data(widgetId!, params),
     enabled: !!widgetId,
     queryFn: () =>
       apiRequest
