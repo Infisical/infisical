@@ -70,6 +70,13 @@ export const observabilityWidgetServiceFactory = ({
       }
     }
 
+    if (dto.type === ObservabilityWidgetType.Metrics) {
+      const parseResult = NumberMetricsWidgetConfigSchema.safeParse(dto.config);
+      if (!parseResult.success) {
+        throw new BadRequestError({ message: "Invalid metrics widget configuration" });
+      }
+    }
+
     const widget = await observabilityWidgetDAL.create({
       name: dto.name,
       description: dto.description,
@@ -327,7 +334,23 @@ export const observabilityWidgetServiceFactory = ({
 
     const configParseResult = NumberMetricsWidgetConfigSchema.safeParse(widget.config);
     if (!configParseResult.success) {
-      throw new BadRequestError({ message: "Invalid metrics widget configuration" });
+      // Legacy widget with old config schema — return a zero placeholder so the UI
+      // can render without crashing. The widget can be deleted and re-created.
+      return {
+        widget: {
+          id: widget.id,
+          name: widget.name,
+          description: widget.description,
+          type: widget.type as ObservabilityWidgetType,
+          refreshInterval: widget.refreshInterval,
+          icon: widget.icon,
+          color: widget.color
+        },
+        value: 0,
+        label: "Unsupported config — please recreate this widget",
+        unit: undefined,
+        link: undefined
+      };
     }
 
     const config: TNumberMetricsWidgetConfig = configParseResult.data;

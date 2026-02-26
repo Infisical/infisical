@@ -392,12 +392,20 @@ export const seedObservabilityDemo = async (
     "Expiring in 7 Days",
     "Pending Remediation",
     "Machine Identities",
+    "Active Users",
     "Live Audit Logs"
   ];
   log("Replacing only demo widgets (preserving user-created widgets)...");
+  // Delete by name first
   await knex(TableName.ObservabilityWidget)
     .where({ orgId: org.id })
     .whereIn("name", demoWidgetNames)
+    .del();
+  // Also remove any leftover metrics widgets with legacy config schemas
+  // (widgets created by older versions of this seed that may fail validation)
+  await knex(TableName.ObservabilityWidget)
+    .where({ orgId: org.id, type: ObservabilityWidgetType.Metrics })
+    .whereRaw(`config->>'metricType' IS NULL`)
     .del();
 
   await knex(TableName.ObservabilityWidget).insert([
@@ -499,6 +507,19 @@ export const seedObservabilityDemo = async (
       color: "#10b981"
     },
     {
+      name: "Active Users",
+      description: "Total active user members in the organization",
+      orgId: org.id,
+      type: ObservabilityWidgetType.Metrics,
+      config: JSON.stringify({
+        metricType: MetricType.IdentityCount,
+        identityType: "user"
+      }),
+      refreshInterval: 120,
+      icon: "users",
+      color: "#06b6d4"
+    },
+    {
       name: "Live Audit Logs",
       description: "Real-time audit log stream across the organization",
       orgId: org.id,
@@ -510,5 +531,5 @@ export const seedObservabilityDemo = async (
     }
   ]);
 
-  log("Done. Demo data added without touching existing user data. Widgets: Critical Failures, Expiring Access, Secret Sync Status, Failed/Pending metrics, Machine Identities, Live Audit Logs.");
+  log("Done. Demo data added without touching existing user data. Widgets: Critical Failures, Expiring Access, Secret Sync Status, Failed/Pending/Machine/ActiveUsers metrics, Live Audit Logs.");
 };

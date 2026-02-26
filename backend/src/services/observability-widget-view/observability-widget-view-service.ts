@@ -11,13 +11,18 @@ type TObservabilityWidgetViewServiceFactoryDep = {
 };
 
 const DEFAULT_FAIL_ALERTS_LAYOUT = [
+  // Row 0 — 4 KPI counters
   { uid: "default-metric-1", tmpl: "_backend_metrics", x: 0, y: 0, w: 3, h: 1 },
   { uid: "default-metric-2", tmpl: "_backend_metrics", x: 3, y: 0, w: 3, h: 1 },
   { uid: "default-metric-3", tmpl: "_backend_metrics", x: 6, y: 0, w: 3, h: 1 },
   { uid: "default-metric-4", tmpl: "_backend_metrics", x: 9, y: 0, w: 3, h: 1 },
-  { uid: "default-all-failures", tmpl: "all-failures", x: 0, y: 1, w: 6, h: 2 },
-  { uid: "default-secret-syncs", tmpl: "secret-syncs", x: 6, y: 1, w: 6, h: 2 },
-  { uid: "default-live-logs", tmpl: "logs", x: 0, y: 3, w: 12, h: 2 }
+  // Row 1 — 5th KPI (Active Users)
+  { uid: "default-metric-5", tmpl: "_backend_metrics", x: 0, y: 1, w: 3, h: 1 },
+  // Rows 2-3 — event tables
+  { uid: "default-all-failures", tmpl: "all-failures", x: 0, y: 2, w: 6, h: 2 },
+  { uid: "default-secret-syncs", tmpl: "secret-syncs", x: 6, y: 2, w: 6, h: 2 },
+  // Row 4-5 — live logs
+  { uid: "default-live-logs", tmpl: "logs", x: 0, y: 4, w: 12, h: 2 }
 ];
 
 export const observabilityWidgetViewServiceFactory = ({
