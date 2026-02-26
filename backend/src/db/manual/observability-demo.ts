@@ -27,6 +27,9 @@ const OBS_SECRET_SYNC_FAILED_ID = "f9fd42f7-5a48-472f-b26e-85b1d4ec96d4";
 const OBS_SECRET_SYNC_PENDING_ID = "014b2012-9d4f-49ba-a9a3-ae7d4ccdb77e";
 const OBS_SECRET_SYNC_ACTIVE_ID = "8f08dd8c-f900-4316-af3e-2e61f4c2449c";
 
+const OBS_CERT_EXPIRING_SOON_ID = "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d";
+const OBS_CERT_EXPIRING_SOON_2_ID = "b2c3d4e5-f6a7-5b6c-9d0e-1f2a3b4c5d6e";
+
 const log = (msg: string) => {
   // eslint-disable-next-line no-console
   console.log(`[observability-demo] ${msg}`);
@@ -203,15 +206,15 @@ export const seedObservabilityDemo = async (
         // @ts-ignore
         id: OBS_IDENTITY_TOKEN_PENDING_ID,
         identityId: OBS_MACHINE_IDENTITY_ID,
-        name: "obs-identity-token-pending",
+        name: "obs-identity-token-expiring-soon",
         authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
-        accessTokenTTL: 60 * 60 * 24 * 40,
-        accessTokenMaxTTL: 60 * 60 * 24 * 40,
+        accessTokenTTL: 60 * 60 * 24 * 2,
+        accessTokenMaxTTL: 60 * 60 * 24 * 2,
         accessTokenNumUses: 8,
         accessTokenNumUsesLimit: 0,
-        accessTokenLastUsedAt: days(-1),
+        accessTokenLastUsedAt: now,
         isAccessTokenRevoked: false,
-        createdAt: days(-35),
+        createdAt: now,
         updatedAt: now
       },
       {
@@ -384,6 +387,55 @@ export const seedObservabilityDemo = async (
     .onConflict("id")
     .merge();
 
+  log("Seeding PKI certificates (expiring in 2 days)...");
+  const certProject =
+    (await knex(TableName.Project).where({ orgId: org.id, type: "cert-manager" }).first()) ??
+    (await knex(TableName.Project).where({ orgId: org.id }).orderBy("createdAt", "asc").first());
+  if (certProject) {
+    const certPlaceholder = Buffer.from("obs-seed-cert-placeholder");
+    await knex(TableName.Certificate)
+      .insert([
+        {
+          id: OBS_CERT_EXPIRING_SOON_ID,
+          projectId: certProject.id,
+          status: "active",
+          serialNumber: "obs-cert-expiring-soon-001",
+          friendlyName: "obs-api-tls-expiring-soon",
+          commonName: "api.demo.example.com",
+          notBefore: days(-60),
+          notAfter: days(2),
+          caId: null
+        },
+        {
+          id: OBS_CERT_EXPIRING_SOON_2_ID,
+          projectId: certProject.id,
+          status: "active",
+          serialNumber: "obs-cert-expiring-soon-002",
+          friendlyName: "obs-webhook-mtls-expiring-soon",
+          commonName: "webhook.demo.example.com",
+          notBefore: days(-90),
+          notAfter: days(2),
+          caId: null
+        }
+      ])
+      .onConflict("id")
+      .merge();
+
+    for (const certId of [OBS_CERT_EXPIRING_SOON_ID, OBS_CERT_EXPIRING_SOON_2_ID]) {
+      const existingBody = await knex(TableName.CertificateBody).where({ certId }).first();
+      if (!existingBody) {
+        await knex(TableName.CertificateBody).insert({
+          certId,
+          encryptedCertificate: certPlaceholder,
+          encryptedCertificateChain: null
+        });
+      }
+    }
+    log("Added 2 certificates expiring in 2 days.");
+  } else {
+    log("Skipping certificates: no project found.");
+  }
+
   const demoWidgetNames = [
     "Critical Failures",
     "Expiring Access & Certificates",
@@ -432,7 +484,8 @@ export const seedObservabilityDemo = async (
       config: JSON.stringify({
         resourceTypes: [
           ObservabilityResourceType.MachineIdentityToken,
-          ObservabilityResourceType.ServiceToken
+          ObservabilityResourceType.ServiceToken,
+          ObservabilityResourceType.PkiCertificate
         ],
         eventTypes: ["expired", "pending", "active"],
         thresholds: { expirationDays: 14 }
