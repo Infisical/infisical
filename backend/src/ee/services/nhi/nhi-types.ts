@@ -53,7 +53,7 @@ export type TCreateNhiSourceDTO = {
   projectId: string;
   name: string;
   provider: string;
-  connectionId: string;
+  connectionId?: string;
   config?: Record<string, unknown>;
   scanSchedule?: string;
 } & Omit<TProjectPermission, "projectId">;

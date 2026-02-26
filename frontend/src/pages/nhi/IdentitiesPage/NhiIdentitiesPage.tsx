@@ -36,13 +36,15 @@ const ALL_FILTER = "all";
 
 const PROVIDER_IMAGE_MAP: Record<string, string> = {
   [NhiProvider.AWS]: "Amazon Web Services.png",
-  [NhiProvider.GitHub]: "GitHub.png"
+  [NhiProvider.GitHub]: "GitHub.png",
+  [NhiProvider.GCP]: "Google Cloud Platform.png"
 };
 
 const PROVIDER_OPTIONS = [
   { label: "All Providers", value: ALL_FILTER },
   { label: "AWS", value: NhiProvider.AWS, image: PROVIDER_IMAGE_MAP[NhiProvider.AWS] },
-  { label: "GitHub", value: NhiProvider.GitHub, image: PROVIDER_IMAGE_MAP[NhiProvider.GitHub] }
+  { label: "GitHub", value: NhiProvider.GitHub, image: PROVIDER_IMAGE_MAP[NhiProvider.GitHub] },
+  { label: "GCP", value: NhiProvider.GCP, image: PROVIDER_IMAGE_MAP[NhiProvider.GCP] }
 ];
 
 const RISK_LEVEL_OPTIONS = [
@@ -60,7 +62,10 @@ const TYPE_OPTIONS = [
   { label: "IAM Access Key", value: NhiIdentityType.IamAccessKey },
   { label: "GitHub App", value: NhiIdentityType.GitHubAppInstallation },
   { label: "Deploy Key", value: NhiIdentityType.GitHubDeployKey },
-  { label: "Fine-grained PAT", value: NhiIdentityType.GitHubFinegrainedPat }
+  { label: "Fine-grained PAT", value: NhiIdentityType.GitHubFinegrainedPat },
+  { label: "GCP Service Account", value: NhiIdentityType.GcpServiceAccount },
+  { label: "GCP SA Key", value: NhiIdentityType.GcpServiceAccountKey },
+  { label: "GCP API Key", value: NhiIdentityType.GcpApiKey }
 ];
 
 const STATUS_OPTIONS = [
@@ -92,6 +97,12 @@ const formatIdentityType = (type: string) => {
       return "Deploy Key";
     case NhiIdentityType.GitHubFinegrainedPat:
       return "Fine-grained PAT";
+    case NhiIdentityType.GcpServiceAccount:
+      return "Service Account";
+    case NhiIdentityType.GcpServiceAccountKey:
+      return "SA Key";
+    case NhiIdentityType.GcpApiKey:
+      return "API Key";
     default:
       return type;
   }

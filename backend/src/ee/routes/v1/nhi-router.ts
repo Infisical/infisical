@@ -52,7 +52,7 @@ export const registerNhiRouter = async (server: FastifyZodProvider) => {
         projectId: z.string(),
         name: z.string().min(1).max(255),
         provider: z.string(),
-        connectionId: z.string().uuid(),
+        connectionId: z.string().uuid().optional(),
         config: z.record(z.unknown()).optional(),
         scanSchedule: z.nativeEnum(NhiScanSchedule).nullable().optional()
       }),

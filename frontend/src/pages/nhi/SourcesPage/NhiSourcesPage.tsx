@@ -64,7 +64,8 @@ const ScanStatusBadge = ({ status }: { status: string | null }) => {
 
 const PROVIDER_APP_MAP: Record<string, string> = {
   [NhiProvider.AWS]: "aws",
-  [NhiProvider.GitHub]: "github"
+  [NhiProvider.GitHub]: "github",
+  [NhiProvider.GCP]: "gcp"
 };
 
 const MANUAL_SCHEDULE = "manual";
@@ -80,10 +81,20 @@ const addSourceSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(255),
     provider: z.string().min(1, "Provider is required"),
-    connectionId: z.string().uuid("Please select an app connection"),
+    connectionId: z.string().optional(),
     orgName: z.string().optional(),
+    projectId: z.string().optional(),
     scanSchedule: z.string().optional()
   })
+  .refine(
+    (data) => {
+      if (data.provider !== NhiProvider.GCP) {
+        return Boolean(data.connectionId && data.connectionId.length > 0);
+      }
+      return true;
+    },
+    { message: "Please select an app connection", path: ["connectionId"] }
+  )
   .refine(
     (data) => {
       if (data.provider === NhiProvider.GitHub) {
@@ -92,6 +103,15 @@ const addSourceSchema = z
       return true;
     },
     { message: "GitHub organization name is required", path: ["orgName"] }
+  )
+  .refine(
+    (data) => {
+      if (data.provider === NhiProvider.GCP) {
+        return Boolean(data.projectId?.trim());
+      }
+      return true;
+    },
+    { message: "GCP project ID is required", path: ["projectId"] }
   );
 
 type TAddSourceForm = z.infer<typeof addSourceSchema>;
@@ -158,6 +178,7 @@ export const NhiSourcesPage = () => {
       provider: NhiProvider.AWS,
       connectionId: "",
       orgName: "",
+      projectId: "",
       scanSchedule: MANUAL_SCHEDULE
     }
   });
@@ -183,6 +204,7 @@ export const NhiSourcesPage = () => {
 
   const selectedProvider = useWatch({ control, name: "provider" });
   const isGitHub = selectedProvider === NhiProvider.GitHub;
+  const isGcp = selectedProvider === NhiProvider.GCP;
 
   const filteredConnections = allConnections.filter(
     (c) => c.app === PROVIDER_APP_MAP[selectedProvider]
@@ -194,18 +216,25 @@ export const NhiSourcesPage = () => {
         projectId: string;
         name: string;
         provider: string;
-        connectionId: string;
+        connectionId?: string;
         config?: Record<string, unknown>;
         scanSchedule?: string | null;
       } = {
         projectId: currentProject.id,
         name: formData.name,
-        provider: formData.provider,
-        connectionId: formData.connectionId
+        provider: formData.provider
       };
+
+      if (formData.provider !== NhiProvider.GCP && formData.connectionId) {
+        payload.connectionId = formData.connectionId;
+      }
 
       if (formData.provider === NhiProvider.GitHub && formData.orgName) {
         payload.config = { orgName: formData.orgName.trim() };
+      }
+
+      if (formData.provider === NhiProvider.GCP && formData.projectId) {
+        payload.config = { projectId: formData.projectId.trim() };
       }
 
       if (formData.scanSchedule && formData.scanSchedule !== MANUAL_SCHEDULE) {
@@ -469,7 +498,14 @@ export const NhiSourcesPage = () => {
                 <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
                   <Input
                     {...field}
-                    placeholder={isGitHub ? "e.g. My GitHub Org" : "e.g. Production AWS Account"}
+                    placeholder={
+                      // eslint-disable-next-line no-nested-ternary
+                      isGitHub
+                        ? "e.g. My GitHub Org"
+                        : isGcp
+                          ? "e.g. My GCP Project"
+                          : "e.g. Production AWS Account"
+                    }
                   />
                 </FormControl>
               )}
@@ -485,57 +521,76 @@ export const NhiSourcesPage = () => {
                       onChange(val);
                       setValue("connectionId", "");
                       setValue("orgName", "");
+                      setValue("projectId", "");
                     }}
                     className="w-full"
                   >
                     <V2SelectItem value={NhiProvider.AWS}>AWS</V2SelectItem>
                     <V2SelectItem value={NhiProvider.GitHub}>GitHub</V2SelectItem>
+                    <V2SelectItem value={NhiProvider.GCP}>GCP</V2SelectItem>
                   </V2Select>
                 </FormControl>
               )}
             />
-            <Controller
-              control={control}
-              name="connectionId"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="App Connection"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <div>
-                    <V2Select
-                      value={value}
-                      onValueChange={onChange}
-                      className="w-full"
-                      placeholder={
-                        isGitHub
-                          ? "Select a GitHub app connection..."
-                          : "Select an AWS app connection..."
-                      }
-                    >
-                      {filteredConnections.map((conn) => (
-                        <V2SelectItem key={conn.id} value={conn.id}>
-                          {conn.name}
-                        </V2SelectItem>
-                      ))}
-                    </V2Select>
-                    {filteredConnections.length === 0 && (
-                      <p className="mt-1 text-xs text-mineshaft-400">
-                        No {isGitHub ? "GitHub" : "AWS"} app connections found.{" "}
-                        <a
-                          href={`/organizations/${currentOrg.id}/app-connections`}
-                          className="text-primary hover:underline"
-                        >
-                          Create one first
-                        </a>
-                        .
-                      </p>
-                    )}
-                  </div>
-                </FormControl>
-              )}
-            />
+            {!isGcp && (
+              <Controller
+                control={control}
+                name="connectionId"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="App Connection"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <div>
+                      <V2Select
+                        value={value}
+                        onValueChange={onChange}
+                        className="w-full"
+                        placeholder={
+                          isGitHub
+                            ? "Select a GitHub app connection..."
+                            : "Select an AWS app connection..."
+                        }
+                      >
+                        {filteredConnections.map((conn) => (
+                          <V2SelectItem key={conn.id} value={conn.id}>
+                            {conn.name}
+                          </V2SelectItem>
+                        ))}
+                      </V2Select>
+                      {filteredConnections.length === 0 && (
+                        <p className="mt-1 text-xs text-mineshaft-400">
+                          No {isGitHub ? "GitHub" : "AWS"} app connections found.{" "}
+                          <a
+                            href={`/organizations/${currentOrg.id}/app-connections`}
+                            className="text-primary hover:underline"
+                          >
+                            Create one first
+                          </a>
+                          .
+                        </p>
+                      )}
+                    </div>
+                  </FormControl>
+                )}
+              />
+            )}
+            {isGcp && (
+              <Controller
+                control={control}
+                name="projectId"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="GCP Project ID"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input {...field} placeholder="e.g. infisical-prod-392817" />
+                  </FormControl>
+                )}
+              />
+            )}
             {isGitHub && (
               <Controller
                 control={control}

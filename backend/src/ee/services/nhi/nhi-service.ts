@@ -15,6 +15,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 
 import { scanAwsIamIdentities } from "./aws/aws-nhi-scanner";
+import { scanGcpMockIdentities } from "./gcp/gcp-nhi-scanner";
 import { scanGitHubOrgIdentities } from "./github/github-nhi-scanner";
 import { TNhiIdentityDALFactory, TNhiScanDALFactory, TNhiSourceDALFactory } from "./nhi-dal";
 import { NhiProvider, NhiScanStatus } from "./nhi-enums";
@@ -222,11 +223,23 @@ export const nhiServiceFactory = ({
     };
   };
 
+  const scanGcpSource = (source: { config: unknown }): TRawNhiIdentity[] => {
+    const sourceConfig = (source.config || {}) as Record<string, unknown>;
+    const projectId = (sourceConfig.projectId as string) || "infisical-prod-392817";
+    return scanGcpMockIdentities(projectId);
+  };
+
   const performScan = async (sourceId: string, scanId: string, orgServiceActor: OrgServiceActor) => {
     try {
       const source = await nhiSourceDAL.findById(sourceId);
-      if (!source || !source.connectionId) {
-        throw new Error("Source or connection not found");
+      if (!source) {
+        throw new Error("Source not found");
+      }
+
+      const isGcp = source.provider === NhiProvider.GCP;
+
+      if (!isGcp && !source.connectionId) {
+        throw new Error("Source connection not found");
       }
 
       const narrowedSource = { ...source, connectionId: source.connectionId, config: source.config };
@@ -234,7 +247,9 @@ export const nhiServiceFactory = ({
       let rawIdentities: TRawNhiIdentity[];
       const isGitHub = source.provider === NhiProvider.GitHub;
 
-      if (isGitHub) {
+      if (isGcp) {
+        rawIdentities = scanGcpSource(narrowedSource);
+      } else if (isGitHub) {
         rawIdentities = await scanGitHubSource(narrowedSource, orgServiceActor);
       } else {
         rawIdentities = await scanAwsSource(narrowedSource, orgServiceActor);

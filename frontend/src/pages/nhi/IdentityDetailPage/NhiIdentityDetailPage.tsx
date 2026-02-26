@@ -125,6 +125,12 @@ const formatIdentityType = (type: string) => {
       return "Deploy Key";
     case NhiIdentityType.GitHubFinegrainedPat:
       return "Fine-grained PAT";
+    case NhiIdentityType.GcpServiceAccount:
+      return "Service Account";
+    case NhiIdentityType.GcpServiceAccountKey:
+      return "SA Key";
+    case NhiIdentityType.GcpApiKey:
+      return "API Key";
     default:
       return type;
   }
@@ -134,6 +140,11 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const extractAccountId = (externalId: string, provider: string) => {
   if (provider === NhiProvider.GitHub) return null;
+  if (provider === NhiProvider.GCP) {
+    // GCP format: projects/PROJECT_ID/...
+    const match = externalId.match(/^projects\/([^/]+)/);
+    return match ? match[1] : null;
+  }
   // AWS ARN format: arn:aws:iam::ACCOUNT_ID:...
   const parts = externalId.split(":");
   return parts.length >= 5 ? parts[4] : null;
@@ -244,6 +255,79 @@ const extractGitHubAccessDetails = (metadata: Record<string, unknown>, identityT
       ];
       if (allPerms.length > 0) {
         details.push(["Permissions", allPerms.join(", ")]);
+      }
+    }
+  }
+
+  return details;
+};
+
+const extractGcpAccessDetails = (metadata: Record<string, unknown>, identityType: string) => {
+  const details: [string, string][] = [];
+
+  if (identityType === NhiIdentityType.GcpServiceAccount) {
+    if (typeof metadata.email === "string") {
+      details.push(["Email", metadata.email]);
+    }
+    if (typeof metadata.uniqueId === "string") {
+      details.push(["Unique ID", metadata.uniqueId]);
+    }
+    if (typeof metadata.description === "string") {
+      details.push(["Description", metadata.description]);
+    }
+    if (Array.isArray(metadata.roles) && metadata.roles.length > 0) {
+      details.push(["Roles", (metadata.roles as string[]).join(", ")]);
+    }
+    if (typeof metadata.disabled === "boolean") {
+      details.push(["Disabled", metadata.disabled ? "Yes" : "No"]);
+    }
+    if (typeof metadata.lastAuthenticated === "string") {
+      details.push(["Last Authenticated", new Date(metadata.lastAuthenticated).toUTCString()]);
+    }
+  }
+
+  if (identityType === NhiIdentityType.GcpServiceAccountKey) {
+    if (typeof metadata.serviceAccountEmail === "string") {
+      details.push(["Service Account", metadata.serviceAccountEmail]);
+    }
+    if (typeof metadata.keyAlgorithm === "string") {
+      details.push(["Key Algorithm", metadata.keyAlgorithm]);
+    }
+    if (typeof metadata.keyOrigin === "string") {
+      details.push(["Key Origin", metadata.keyOrigin]);
+    }
+    if (typeof metadata.keyType === "string") {
+      details.push(["Key Type", metadata.keyType]);
+    }
+    if (typeof metadata.validAfterTime === "string") {
+      details.push(["Valid After", new Date(metadata.validAfterTime).toUTCString()]);
+    }
+    if (typeof metadata.validBeforeTime === "string") {
+      details.push(["Valid Before", new Date(metadata.validBeforeTime).toUTCString()]);
+    }
+    if (typeof metadata.disabled === "boolean") {
+      details.push(["Disabled", metadata.disabled ? "Yes" : "No"]);
+    }
+  }
+
+  if (identityType === NhiIdentityType.GcpApiKey) {
+    if (typeof metadata.displayName === "string") {
+      details.push(["Display Name", metadata.displayName]);
+    }
+    if (typeof metadata.uid === "string") {
+      details.push(["UID", metadata.uid]);
+    }
+    if (typeof metadata.createTime === "string") {
+      details.push(["Created", new Date(metadata.createTime).toUTCString()]);
+    }
+    const restrictions = metadata.restrictions as Record<string, unknown> | undefined;
+    if (restrictions) {
+      const apiTargets = restrictions.apiTargets as Array<{ service: string }> | undefined;
+      if (apiTargets && apiTargets.length > 0) {
+        details.push(["API Restrictions", apiTargets.map((t) => t.service).join(", ")]);
+      }
+      if (!apiTargets || apiTargets.length === 0) {
+        details.push(["API Restrictions", "Unrestricted"]);
       }
     }
   }
@@ -407,10 +491,17 @@ export const NhiIdentityDetailPage = () => {
     : [];
 
   const isGitHub = identity.provider === NhiProvider.GitHub;
+  const isGcp = identity.provider === NhiProvider.GCP;
   const accountId = extractAccountId(identity.externalId, identity.provider);
-  const accessDetails = isGitHub
-    ? extractGitHubAccessDetails(identity.metadata, identity.type)
-    : extractAwsAccessDetails(identity.metadata);
+
+  let accessDetails: [string, string][];
+  if (isGcp) {
+    accessDetails = extractGcpAccessDetails(identity.metadata, identity.type);
+  } else if (isGitHub) {
+    accessDetails = extractGitHubAccessDetails(identity.metadata, identity.type);
+  } else {
+    accessDetails = extractAwsAccessDetails(identity.metadata);
+  }
 
   return (
     <>
@@ -465,7 +556,7 @@ export const NhiIdentityDetailPage = () => {
                 </Detail>
                 {accountId && (
                   <Detail>
-                    <DetailLabel>Account ID</DetailLabel>
+                    <DetailLabel>{isGcp ? "Project ID" : "Account ID"}</DetailLabel>
                     <DetailValue className="flex items-center gap-x-1">
                       <code className="text-sm">{accountId}</code>
                       <button
@@ -479,7 +570,8 @@ export const NhiIdentityDetailPage = () => {
                   </Detail>
                 )}
                 <Detail>
-                  <DetailLabel>{isGitHub ? "External ID" : "ARN"}</DetailLabel>
+                  {/* eslint-disable-next-line no-nested-ternary */}
+                  <DetailLabel>{isGitHub ? "External ID" : isGcp ? "Resource Path" : "ARN"}</DetailLabel>
                   <DetailValue className="flex items-start gap-x-1">
                     <code className="text-sm break-all">{identity.externalId}</code>
                     <button
@@ -768,9 +860,12 @@ export const NhiIdentityDetailPage = () => {
               <UnstableCardHeader className="border-b">
                 <UnstableCardTitle>Access Details</UnstableCardTitle>
                 <UnstableCardDescription>
-                  {isGitHub
-                    ? "Permissions and access configuration"
-                    : "Permissions and session configuration"}
+                  {/* eslint-disable-next-line no-nested-ternary */}
+                  {isGcp
+                    ? "GCP IAM roles and key configuration"
+                    : isGitHub
+                      ? "Permissions and access configuration"
+                      : "Permissions and session configuration"}
                 </UnstableCardDescription>
               </UnstableCardHeader>
               <UnstableCardContent>
@@ -850,8 +945,13 @@ export const NhiIdentityDetailPage = () => {
               <div className="rounded border border-red-500/20 bg-red-500/5 p-3">
                 <p className="text-sm text-red-300">
                   This action will be applied directly to{" "}
-                  {identity.provider === NhiProvider.GitHub ? "GitHub" : "AWS"} and may not be
-                  easily reversible.
+                  {/* eslint-disable-next-line no-nested-ternary */}
+                  {identity.provider === NhiProvider.GitHub
+                    ? "GitHub"
+                    : identity.provider === NhiProvider.GCP
+                      ? "GCP"
+                      : "AWS"}{" "}
+                  and may not be easily reversible.
                 </p>
               </div>
             </div>

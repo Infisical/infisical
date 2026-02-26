@@ -1,6 +1,7 @@
 export enum NhiProvider {
   AWS = "aws",
-  GitHub = "github"
+  GitHub = "github",
+  GCP = "gcp"
 }
 
 export enum NhiIdentityType {
@@ -9,7 +10,10 @@ export enum NhiIdentityType {
   IamAccessKey = "iam_access_key",
   GitHubAppInstallation = "github_app_installation",
   GitHubDeployKey = "github_deploy_key",
-  GitHubFinegrainedPat = "github_finegrained_pat"
+  GitHubFinegrainedPat = "github_finegrained_pat",
+  GcpServiceAccount = "gcp_service_account",
+  GcpServiceAccountKey = "gcp_service_account_key",
+  GcpApiKey = "gcp_api_key"
 }
 
 export enum NhiScanStatus {
