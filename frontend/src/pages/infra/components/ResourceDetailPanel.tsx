@@ -139,7 +139,7 @@ export const ResourceDetailPanel = ({
   const deps = resource.dependsOn ?? [];
 
   return (
-    <div className="flex h-full w-[380px] shrink-0 flex-col rounded-r-lg border border-mineshaft-600 bg-bunker-600">
+    <div className="flex h-auto w-[380px] shrink-0 flex-col rounded-r-lg border border-mineshaft-600 bg-bunker-600">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-3">
         <div className="flex items-center gap-2 overflow-hidden">

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
@@ -34,6 +34,8 @@ import {
 } from "@app/hooks/api/infra";
 import { TInfraRun, TPlanJson } from "@app/hooks/api/infra/types";
 
+// ── Helpers ──
+
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
   return d.toLocaleString();
@@ -51,6 +53,64 @@ const formatRelative = (dateStr: string) => {
   const diffDays = Math.floor(diffHrs / 24);
   return `${diffDays}d ago`;
 };
+
+// ── Animation helpers ──
+
+const useCountUp = (end: number, duration = 1200) => {
+  const [value, setValue] = useState(0);
+  const prevEnd = useRef(0);
+  useEffect(() => {
+    if (end === prevEnd.current) return;
+    const start = prevEnd.current;
+    prevEnd.current = end;
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setValue(Math.round(start + (end - start) * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [end, duration]);
+  return value;
+};
+
+const AnimatedNumber = ({ value }: { value: number }) => {
+  const display = useCountUp(value);
+  return <span>{display}</span>;
+};
+
+const GrowIn = ({
+  children,
+  delay = 0,
+  className
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) => {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  return (
+    <div
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "scale(1) translateY(0)" : "scale(0.92) translateY(8px)",
+        transition:
+          "opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
+      }}
+    >
+      {children}
+    </div>
+  );
+};
+
+// ── Main Component ──
 
 export const InfraStatePage = () => {
   const { currentOrg } = useOrganization();
@@ -99,7 +159,7 @@ export const InfraStatePage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-mineshaft-100">State</h1>
           <p className="mt-1 text-sm text-mineshaft-400">
-            OpenTofu state — tracks which real infrastructure resources are managed by this project.
+            State — tracks which real infrastructure resources are managed by this project.
           </p>
         </div>
         {hasState && (
@@ -115,58 +175,72 @@ export const InfraStatePage = () => {
         )}
       </div>
 
-      {/* State overview */}
+      {/* State overview stat cards */}
       {hasState ? (
         <div className="grid grid-cols-4 gap-4">
-          <UnstableCard>
-            <UnstableCardContent className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-mineshaft-400">Resources</p>
-                <p className="mt-1 text-2xl font-bold text-mineshaft-50">{resourceCount}</p>
-                <p className="mt-0.5 text-xs text-mineshaft-500">managed</p>
-              </div>
-              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-primary">
-                <BoxIcon className="size-5" />
-              </div>
-            </UnstableCardContent>
-          </UnstableCard>
-          <UnstableCard>
-            <UnstableCardContent className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-mineshaft-400">Serial</p>
-                <p className="mt-1 text-2xl font-bold text-mineshaft-50">
-                  {stateVersion?.serial ?? "—"}
+          <GrowIn delay={0}>
+            <UnstableCard className="h-full">
+              <UnstableCardContent className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-mineshaft-400">Resources</p>
+                  <p className="mt-1 text-2xl font-bold text-mineshaft-50">
+                    <AnimatedNumber value={resourceCount} />
+                  </p>
+                  <p className="mt-0.5 text-xs text-mineshaft-500">managed</p>
+                </div>
+                <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-primary">
+                  <BoxIcon className="size-5" />
+                </div>
+              </UnstableCardContent>
+            </UnstableCard>
+          </GrowIn>
+          <GrowIn delay={60}>
+            <UnstableCard className="h-full">
+              <UnstableCardContent className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-mineshaft-400">Serial</p>
+                  <p className="mt-1 text-2xl font-bold text-mineshaft-50">
+                    {stateVersion?.serial != null ? (
+                      <AnimatedNumber value={stateVersion.serial} />
+                    ) : (
+                      "—"
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-xs text-mineshaft-500">state version</p>
+                </div>
+                <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-blue-400">
+                  <DatabaseIcon className="size-5" />
+                </div>
+              </UnstableCardContent>
+            </UnstableCard>
+          </GrowIn>
+          <GrowIn delay={120}>
+            <UnstableCard className="h-full">
+              <UnstableCardContent className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-mineshaft-400">Format Version</p>
+                  <p className="mt-1 text-2xl font-bold text-mineshaft-50">
+                    {stateVersion?.version ?? "—"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-mineshaft-500">tofu state format</p>
+                </div>
+                <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-green-400">
+                  <DatabaseIcon className="size-5" />
+                </div>
+              </UnstableCardContent>
+            </UnstableCard>
+          </GrowIn>
+          <GrowIn delay={180}>
+            <UnstableCard className="h-full">
+              <UnstableCardContent>
+                <p className="text-xs font-medium text-mineshaft-400">Lineage</p>
+                <p className="mt-1 truncate font-mono text-xs text-mineshaft-300">
+                  {stateVersion?.lineage ?? "—"}
                 </p>
-                <p className="mt-0.5 text-xs text-mineshaft-500">state version</p>
-              </div>
-              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-blue-400">
-                <DatabaseIcon className="size-5" />
-              </div>
-            </UnstableCardContent>
-          </UnstableCard>
-          <UnstableCard>
-            <UnstableCardContent className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-mineshaft-400">Format Version</p>
-                <p className="mt-1 text-2xl font-bold text-mineshaft-50">
-                  {stateVersion?.version ?? "—"}
-                </p>
-                <p className="mt-0.5 text-xs text-mineshaft-500">tofu state format</p>
-              </div>
-              <div className="rounded-lg bg-mineshaft-700/50 p-2.5 text-green-400">
-                <DatabaseIcon className="size-5" />
-              </div>
-            </UnstableCardContent>
-          </UnstableCard>
-          <UnstableCard className="h-full">
-            <UnstableCardContent>
-              <p className="text-xs font-medium text-mineshaft-400">Lineage</p>
-              <p className="mt-1 truncate font-mono text-xs text-mineshaft-300">
-                {stateVersion?.lineage ?? "—"}
-              </p>
-              <p className="mt-0.5 text-xs text-mineshaft-500">unique state identifier</p>
-            </UnstableCardContent>
-          </UnstableCard>
+                <p className="mt-0.5 text-xs text-mineshaft-500">unique state identifier</p>
+              </UnstableCardContent>
+            </UnstableCard>
+          </GrowIn>
         </div>
       ) : (
         <UnstableCard>
@@ -182,137 +256,163 @@ export const InfraStatePage = () => {
         </UnstableCard>
       )}
 
-      {/* Current Resources */}
+      {/* Managed Resources */}
       {hasState && resources && resources.length > 0 && (
-        <UnstableCard>
-          <UnstableCardHeader>
-            <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
-              Managed Resources
-            </UnstableCardTitle>
-          </UnstableCardHeader>
-          <UnstableCardContent className="p-0">
-            <UnstableTable>
-              <UnstableTableHeader>
-                <UnstableTableRow>
-                  <UnstableTableHead>Type</UnstableTableHead>
-                  <UnstableTableHead>Name</UnstableTableHead>
-                  <UnstableTableHead>Provider</UnstableTableHead>
-                  <UnstableTableHead>Address</UnstableTableHead>
-                </UnstableTableRow>
-              </UnstableTableHeader>
-              <UnstableTableBody>
-                {resources.map((r) => (
-                  <UnstableTableRow key={r.address}>
-                    <UnstableTableCell>
-                      <Badge variant="info">{r.type}</Badge>
-                    </UnstableTableCell>
-                    <UnstableTableCell className="font-mono text-xs text-mineshaft-200">
-                      {r.name}
-                    </UnstableTableCell>
-                    <UnstableTableCell className="text-xs text-mineshaft-400">
-                      {r.provider}
-                    </UnstableTableCell>
-                    <UnstableTableCell className="font-mono text-xs text-mineshaft-300">
-                      {r.address}
-                    </UnstableTableCell>
-                  </UnstableTableRow>
-                ))}
-              </UnstableTableBody>
-            </UnstableTable>
-          </UnstableCardContent>
-        </UnstableCard>
-      )}
-
-      {/* State History — hidden when empty */}
-      {!historyLoading && history && history.length > 0 && (
-        <UnstableCard>
-          <UnstableCardHeader>
-            <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
-              State History
-            </UnstableCardTitle>
-          </UnstableCardHeader>
-          <UnstableCardContent className="p-0">
-            <div className="divide-y divide-mineshaft-600">
-              {history.map((run: TInfraRun) => {
-                const plan = run.planJson as TPlanJson | null;
-                return (
-                  <Link
-                    key={run.id}
-                    to="/organizations/$orgId/projects/infra/$projectId/run/$runId"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId,
-                      runId: run.id
-                    }}
-                    className="flex items-center justify-between px-5 py-3 text-sm transition-colors hover:bg-mineshaft-700/30"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="inline-block size-2 rounded-full bg-green-500" />
-                      <span className="font-mono text-xs text-mineshaft-300">
-                        {run.id.slice(0, 8)}
-                      </span>
-                      <Badge variant={run.type === "destroy" ? "danger" : "success"}>
-                        {run.type}
-                      </Badge>
-                      {plan && (
-                        <span className="flex items-center gap-2 text-xs">
-                          {plan.add > 0 && <span className="text-green-400">+{plan.add}</span>}
-                          {plan.change > 0 && (
-                            <span className="text-yellow-400">~{plan.change}</span>
-                          )}
-                          {plan.destroy > 0 && (
-                            <span className="text-red-400">-{plan.destroy}</span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-mineshaft-400">
-                      <span className="flex items-center gap-1">
-                        <ClockIcon className="size-3" />
-                        {formatRelative(run.createdAt)}
-                      </span>
-                      <span className="text-mineshaft-600">{formatDate(run.createdAt)}</span>
-                      <ChevronRightIcon className="size-3.5" />
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </UnstableCardContent>
-        </UnstableCard>
-      )}
-
-      {/* Raw State (collapsible) */}
-      {hasState && (
-        <UnstableCard>
-          <UnstableCardHeader>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 text-left"
-              onClick={() => setRawExpanded(!rawExpanded)}
-            >
-              {rawExpanded ? (
-                <ChevronDownIcon className="size-4 text-mineshaft-400" />
-              ) : (
-                <ChevronRightIcon className="size-4 text-mineshaft-400" />
-              )}
+        <GrowIn delay={360}>
+          <UnstableCard>
+            <UnstableCardHeader>
               <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
-                Raw State JSON
+                Managed Resources
               </UnstableCardTitle>
-              <Badge variant="warning">
-                <AlertTriangleIcon className="size-3" />
-                Advanced
-              </Badge>
-            </button>
-          </UnstableCardHeader>
-          {rawExpanded && (
-            <UnstableCardContent className="pt-0">
-              <pre className="max-h-[600px] overflow-auto rounded-md bg-[#1e1e1e] p-4 font-mono text-xs leading-5 text-mineshaft-300">
-                {JSON.stringify(state, null, 2)}
-              </pre>
+            </UnstableCardHeader>
+            <UnstableCardContent className="p-0">
+              <UnstableTable>
+                <UnstableTableHeader>
+                  <UnstableTableRow>
+                    <UnstableTableHead>Type</UnstableTableHead>
+                    <UnstableTableHead>Name</UnstableTableHead>
+                    <UnstableTableHead>Provider</UnstableTableHead>
+                    <UnstableTableHead>Address</UnstableTableHead>
+                  </UnstableTableRow>
+                </UnstableTableHeader>
+                <UnstableTableBody>
+                  {resources.map((r) => (
+                    <UnstableTableRow key={r.address}>
+                      <UnstableTableCell>
+                        <Badge variant="info">{r.type}</Badge>
+                      </UnstableTableCell>
+                      <UnstableTableCell className="font-mono text-xs text-mineshaft-200">
+                        {r.name}
+                      </UnstableTableCell>
+                      <UnstableTableCell className="text-xs text-mineshaft-400">
+                        {r.provider}
+                      </UnstableTableCell>
+                      <UnstableTableCell className="font-mono text-xs text-mineshaft-300">
+                        {r.address}
+                      </UnstableTableCell>
+                    </UnstableTableRow>
+                  ))}
+                </UnstableTableBody>
+              </UnstableTable>
             </UnstableCardContent>
-          )}
-        </UnstableCard>
+          </UnstableCard>
+        </GrowIn>
+      )}
+
+      {/* State History + Raw State JSON — side by side */}
+      {hasState && (
+        <div className="grid grid-cols-2 gap-4">
+          {/* State History */}
+          <GrowIn delay={240}>
+            <UnstableCard className="h-full">
+              <UnstableCardHeader>
+                <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-mineshaft-200">
+                  <ClockIcon className="size-4 text-mineshaft-400" />
+                  State History
+                </UnstableCardTitle>
+              </UnstableCardHeader>
+              <UnstableCardContent className="p-0">
+                {historyLoading ? (
+                  <div className="flex flex-col gap-2 p-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      // eslint-disable-next-line react/no-array-index-key
+                      <Skeleton key={i} className="h-10 w-full" />
+                    ))}
+                  </div>
+                ) : history && history.length > 0 ? (
+                  <div className="divide-y divide-mineshaft-600">
+                    {history.map((run: TInfraRun) => {
+                      const plan = run.planJson as TPlanJson | null;
+                      return (
+                        <Link
+                          key={run.id}
+                          to="/organizations/$orgId/projects/infra/$projectId/run/$runId"
+                          params={{
+                            orgId: currentOrg.id,
+                            projectId,
+                            runId: run.id
+                          }}
+                          className="flex items-center justify-between px-5 py-3 text-sm transition-colors hover:bg-mineshaft-700/30"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="inline-block size-2 rounded-full bg-green-500" />
+                            <span className="font-mono text-xs text-mineshaft-300">
+                              {run.id.slice(0, 8)}
+                            </span>
+                            <Badge variant={run.type === "destroy" ? "danger" : "success"}>
+                              {run.type}
+                            </Badge>
+                            {plan && (
+                              <span className="flex items-center gap-2 text-xs">
+                                {plan.add > 0 && (
+                                  <span className="text-green-400">+{plan.add}</span>
+                                )}
+                                {plan.change > 0 && (
+                                  <span className="text-yellow-400">~{plan.change}</span>
+                                )}
+                                {plan.destroy > 0 && (
+                                  <span className="text-red-400">-{plan.destroy}</span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-mineshaft-400">
+                            <span>{formatRelative(run.createdAt)}</span>
+                            <ChevronRightIcon className="size-3.5" />
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 p-8 text-center">
+                    <ClockIcon className="size-6 text-mineshaft-600" />
+                    <p className="text-xs text-mineshaft-500">No state changes yet</p>
+                  </div>
+                )}
+              </UnstableCardContent>
+            </UnstableCard>
+          </GrowIn>
+
+          {/* Raw State JSON */}
+          <GrowIn delay={300}>
+            <UnstableCard className="h-full">
+              <UnstableCardHeader>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 text-left"
+                  onClick={() => setRawExpanded(!rawExpanded)}
+                >
+                  {rawExpanded ? (
+                    <ChevronDownIcon className="size-4 text-mineshaft-400" />
+                  ) : (
+                    <ChevronRightIcon className="size-4 text-mineshaft-400" />
+                  )}
+                  <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
+                    Raw State JSON
+                  </UnstableCardTitle>
+                  <Badge variant="warning">
+                    <AlertTriangleIcon className="size-3" />
+                    Advanced
+                  </Badge>
+                </button>
+              </UnstableCardHeader>
+              {rawExpanded ? (
+                <UnstableCardContent className="pt-0">
+                  <pre className="max-h-[400px] overflow-auto rounded-md bg-[#1e1e1e] p-4 font-mono text-xs leading-5 text-mineshaft-300">
+                    {JSON.stringify(state, null, 2)}
+                  </pre>
+                </UnstableCardContent>
+              ) : (
+                <UnstableCardContent className="flex flex-col items-center gap-2 pt-0 text-center">
+                  <p className="text-xs text-mineshaft-500">
+                    Click the header to expand the raw state blob
+                  </p>
+                </UnstableCardContent>
+              )}
+            </UnstableCard>
+          </GrowIn>
+        </div>
       )}
     </div>
   );

@@ -19,13 +19,16 @@ import {
   Trash2Icon
 } from "lucide-react";
 
-import {
-  Button,
-  Skeleton,
-  UnstableIconButton
-} from "@app/components/v3";
+import { Button, Skeleton, UnstableIconButton } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useApproveInfraRun, useDeleteInfraFile, useDenyInfraRun, useInfraFiles, useTriggerInfraRun, useUpsertInfraFile } from "@app/hooks/api/infra";
+import {
+  useApproveInfraRun,
+  useDeleteInfraFile,
+  useDenyInfraRun,
+  useInfraFiles,
+  useTriggerInfraRun,
+  useUpsertInfraFile
+} from "@app/hooks/api/infra";
 import { TAiInsight, TPlanJson } from "@app/hooks/api/infra/types";
 
 import { InfraRunOverlay } from "./InfraRunOverlay";
@@ -36,7 +39,7 @@ type LocalFile = {
   dirty: boolean;
 };
 
-const DEFAULT_MAIN_TF = `# Infisical Infra — write your OpenTofu config here
+const DEFAULT_MAIN_TF = `# Infisical Infra — write your config here
 
 resource "local_file" "hello" {
   content  = "Hello from Infisical Infra!"
@@ -68,7 +71,10 @@ export const InfraEditorPage = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState<"plan" | "apply" | "destroy">("plan");
   const [initialized, setInitialized] = useState(false);
-  const [awaitingApproval, setAwaitingApproval] = useState<{ runId: string; mode: "apply" | "destroy" } | null>(null);
+  const [awaitingApproval, setAwaitingApproval] = useState<{
+    runId: string;
+    mode: "apply" | "destroy";
+  } | null>(null);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,16 +107,15 @@ export const InfraEditorPage = () => {
       editor.focus();
 
       // Add a temporary highlight decoration on the target line
-      highlightDecorationsRef.current = editor.deltaDecorations(
-        highlightDecorationsRef.current,
-        [{
+      highlightDecorationsRef.current = editor.deltaDecorations(highlightDecorationsRef.current, [
+        {
           range: new monaco.Range(line, 1, line, 1),
           options: {
             isWholeLine: true,
             className: "go-to-code-highlight"
           }
-        }]
-      );
+        }
+      ]);
       // Remove after the fade-out animation completes
       setTimeout(() => {
         highlightDecorationsRef.current = editor.deltaDecorations(
@@ -175,7 +180,9 @@ export const InfraEditorPage = () => {
 
   const handleFileContentChange = (value: string | undefined) => {
     if (value === undefined || !activeFile) return;
-    setFiles((prev) => prev.map((f, i) => (i === activeFileIndex ? { ...f, content: value, dirty: true } : f)));
+    setFiles((prev) =>
+      prev.map((f, i) => (i === activeFileIndex ? { ...f, content: value, dirty: true } : f))
+    );
     scheduleSave(activeFile.name, value);
   };
 
@@ -226,11 +233,16 @@ export const InfraEditorPage = () => {
   // Save all dirty files before running
   const saveAllFiles = async () => {
     const dirtyFiles = files.filter((f) => f.dirty);
-    await Promise.all(dirtyFiles.map((f) => upsertFile.mutateAsync({ projectId, name: f.name, content: f.content })));
+    await Promise.all(
+      dirtyFiles.map((f) => upsertFile.mutateAsync({ projectId, name: f.name, content: f.content }))
+    );
     setFiles((prev) => prev.map((f) => ({ ...f, dirty: false })));
   };
 
-  const handleRun = async (runMode: "plan" | "apply" | "destroy", options?: { approved?: boolean }) => {
+  const handleRun = async (
+    runMode: "plan" | "apply" | "destroy",
+    options?: { approved?: boolean }
+  ) => {
     setMode(runMode);
     setIsRunning(true);
     setOutput("");
@@ -242,14 +254,22 @@ export const InfraEditorPage = () => {
     await saveAllFiles();
 
     try {
-      const result = await triggerRun.mutateAsync({ projectId, mode: runMode, approved: options?.approved });
+      const result = await triggerRun.mutateAsync({
+        projectId,
+        mode: runMode,
+        approved: options?.approved
+      });
       setOutput(result.output);
       if (result.planJson) setPlanJson(result.planJson as TPlanJson);
       if (result.aiSummary) {
         try {
           setAiInsight(JSON.parse(result.aiSummary) as TAiInsight);
         } catch {
-          setAiInsight({ summary: result.aiSummary, costs: { estimated: [], aiEstimated: [], totalMonthly: "N/A", deltaMonthly: "N/A" }, security: { issues: [], shouldApprove: false } });
+          setAiInsight({
+            summary: result.aiSummary,
+            costs: { estimated: [], aiEstimated: [], totalMonthly: "N/A", deltaMonthly: "N/A" },
+            security: { issues: [], shouldApprove: false }
+          });
         }
       }
       if (result.status === "awaiting_approval") {
@@ -272,14 +292,22 @@ export const InfraEditorPage = () => {
     await approveRun.mutateAsync({ projectId, runId });
 
     try {
-      const result = await triggerRun.mutateAsync({ projectId, mode: approvalMode, approved: true });
+      const result = await triggerRun.mutateAsync({
+        projectId,
+        mode: approvalMode,
+        approved: true
+      });
       setOutput(result.output);
       if (result.planJson) setPlanJson(result.planJson as TPlanJson);
       if (result.aiSummary) {
         try {
           setAiInsight(JSON.parse(result.aiSummary) as TAiInsight);
         } catch {
-          setAiInsight({ summary: result.aiSummary, costs: { estimated: [], aiEstimated: [], totalMonthly: "N/A", deltaMonthly: "N/A" }, security: { issues: [], shouldApprove: false } });
+          setAiInsight({
+            summary: result.aiSummary,
+            costs: { estimated: [], aiEstimated: [], totalMonthly: "N/A", deltaMonthly: "N/A" },
+            security: { issues: [], shouldApprove: false }
+          });
         }
       }
     } catch (err: unknown) {
@@ -357,7 +385,9 @@ export const InfraEditorPage = () => {
           {/* File sidebar */}
           <div className="flex w-52 shrink-0 flex-col border-r border-mineshaft-600 bg-mineshaft-900">
             <div className="flex items-center justify-between border-b border-mineshaft-600 px-3 py-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-mineshaft-400">Explorer</span>
+              <span className="text-[11px] font-semibold tracking-wider text-mineshaft-400 uppercase">
+                Explorer
+              </span>
               <UnstableIconButton variant="ghost" size="xs" onClick={handleAddFile}>
                 <FilePlusIcon className="size-3.5" />
               </UnstableIconButton>

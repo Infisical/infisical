@@ -198,17 +198,27 @@ export const InfraDashboardPage = () => {
     }
   }, [visibleRuns]);
 
-  // Compute stats from real data
+  // Compute stats from real data — success rate excludes plans since they don't mutate state
   const stats = useMemo(() => {
     if (!visibleRuns) return null;
     const totalRuns = visibleRuns.length;
-    const successRuns = visibleRuns.filter((r) => r.status === "success").length;
-    const failedRuns = visibleRuns.filter((r) => r.status === "failed").length;
+    const mutatingRuns = visibleRuns.filter((r) => r.type !== "plan");
+    const mutatingTotal = mutatingRuns.length;
+    const successRuns = mutatingRuns.filter((r) => r.status === "success").length;
+    const failedRuns = mutatingRuns.filter((r) => r.status === "failed").length;
     const awaitingRuns = visibleRuns.filter((r) => r.status === "awaiting_approval").length;
     const totalFiles = files?.length ?? 0;
-    const successRate = totalRuns > 0 ? Math.round((successRuns / totalRuns) * 100) : 0;
+    const successRate = mutatingTotal > 0 ? Math.round((successRuns / mutatingTotal) * 100) : 0;
 
-    return { totalRuns, successRuns, failedRuns, awaitingRuns, totalFiles, successRate };
+    return {
+      totalRuns,
+      mutatingTotal,
+      successRuns,
+      failedRuns,
+      awaitingRuns,
+      totalFiles,
+      successRate
+    };
   }, [visibleRuns, files]);
 
   // Provider counts from resources
@@ -347,16 +357,14 @@ export const InfraDashboardPage = () => {
     <div className="flex h-full flex-col gap-6 overflow-hidden">
       <div className="shrink-0">
         <h1 className="text-2xl font-semibold text-mineshaft-100">{currentProject.name}</h1>
-        <p className="mt-1 text-sm text-mineshaft-400">
-          Infrastructure dashboard — powered by OpenTofu
-        </p>
+        <p className="mt-1 text-sm text-mineshaft-400">Infrastructure dashboard</p>
       </div>
 
       {/* Stats grid */}
       <div className="grid shrink-0 grid-cols-5 gap-4">
         {/* Resources */}
         <GrowIn delay={0}>
-          <UnstableCard className="relative overflow-hidden">
+          <UnstableCard className="relative h-full overflow-hidden">
             {isLoading ? (
               <UnstableCardContent>
                 <Skeleton className="h-16 w-full" />
@@ -392,7 +400,7 @@ export const InfraDashboardPage = () => {
 
         {/* Runs */}
         <GrowIn delay={60}>
-          <UnstableCard className="relative overflow-hidden">
+          <UnstableCard className="relative h-full overflow-hidden">
             {isLoading ? (
               <UnstableCardContent>
                 <Skeleton className="h-16 w-full" />
@@ -413,7 +421,7 @@ export const InfraDashboardPage = () => {
                   </div>
                   {stats && stats.totalRuns > 0 ? (
                     <div className="mt-1.5 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-red-500">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-red-500/30">
                         <AnimatedBar
                           percent={stats.successRate}
                           className="h-full rounded-full rounded-r-none bg-green-500"
@@ -434,7 +442,7 @@ export const InfraDashboardPage = () => {
 
         {/* Last Run */}
         <GrowIn delay={120}>
-          <UnstableCard className="relative overflow-hidden">
+          <UnstableCard className="relative h-full overflow-hidden">
             {isLoading ? (
               <UnstableCardContent>
                 <Skeleton className="h-16 w-full" />
@@ -481,7 +489,7 @@ export const InfraDashboardPage = () => {
 
         {/* Est. Monthly Cost */}
         <GrowIn delay={180}>
-          <UnstableCard className="relative overflow-hidden">
+          <UnstableCard className="relative h-full overflow-hidden">
             {isLoading ? (
               <UnstableCardContent>
                 <Skeleton className="h-16 w-full" />
@@ -523,7 +531,7 @@ export const InfraDashboardPage = () => {
 
         {/* Security */}
         <GrowIn delay={240}>
-          <UnstableCard className="relative overflow-hidden">
+          <UnstableCard className="relative h-full overflow-hidden">
             {isLoading ? (
               <UnstableCardContent>
                 <Skeleton className="h-16 w-full" />
@@ -692,10 +700,8 @@ export const InfraDashboardPage = () => {
             </UnstableCardContent>
           </UnstableCard>
         </GrowIn>
-        <GrowIn delay={180}>
-          <UnstableCard
-            className={twMerge("h-full", latestAiInsight ? "col-span-1" : "col-span-2")}
-          >
+        <GrowIn delay={180} className={latestAiInsight ? "col-span-1" : "col-span-2"}>
+          <UnstableCard className="h-full">
             <UnstableCardHeader>
               <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
                 Resource Types

@@ -22,7 +22,12 @@ import {
   UnstableTableRow
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useInfraFiles, useInfraGraph, useInfraResources, useInfraRuns } from "@app/hooks/api/infra";
+import {
+  useInfraFiles,
+  useInfraGraph,
+  useInfraResources,
+  useInfraRuns
+} from "@app/hooks/api/infra";
 import { TAiInsight, TInfraResource } from "@app/hooks/api/infra/types";
 
 import { AttributesPanel, ResourceDetailPanel } from "../components/ResourceDetailPanel";
@@ -189,7 +194,7 @@ export const InfraResourcesPage = () => {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-2xl font-semibold text-mineshaft-100">Resources</h1>
-          <p className="mt-1 text-sm text-mineshaft-400">0 resources managed by OpenTofu.</p>
+          <p className="mt-1 text-sm text-mineshaft-400">0 resources managed.</p>
         </div>
         <UnstableCard>
           <UnstableCardContent className="flex flex-col items-center gap-3 p-8 text-center">
@@ -259,7 +264,7 @@ export const InfraResourcesPage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-mineshaft-100">Resources</h1>
           <p className="mt-1 text-sm text-mineshaft-400">
-            {resources.length} resources managed by OpenTofu. Click a node to inspect.
+            {resources.length} resources managed. Click a node to inspect.
           </p>
         </div>
         <div className="flex items-center gap-2">
