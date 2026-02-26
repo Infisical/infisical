@@ -1,5 +1,15 @@
-import { useState } from "react";
-import { EyeOffIcon, LinkIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useCallback, useState } from "react";
+import {
+  CheckIcon,
+  EyeIcon,
+  EyeOffIcon,
+  KeyIcon,
+  LinkIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+  XIcon
+} from "lucide-react";
 
 import { Checkbox, Input, Skeleton } from "@app/components/v2";
 import {
@@ -21,6 +31,152 @@ import {
   useInfraVariables,
   useUpsertInfraVariable
 } from "@app/hooks/api/infra";
+import { TInfraVariable } from "@app/hooks/api/infra/types";
+
+type TEditingState = {
+  key: string;
+  value: string;
+  sensitive: boolean;
+} | null;
+
+const VariableRow = ({
+  variable,
+  onEdit,
+  onDelete,
+  isDeleting
+}: {
+  variable: TInfraVariable;
+  onEdit: (key: string, value: string, sensitive: boolean) => void;
+  onDelete: (key: string) => void;
+  isDeleting: boolean;
+}) => {
+  const [editing, setEditing] = useState<TEditingState>(null);
+  const [revealed, setRevealed] = useState(false);
+
+  const handleStartEdit = () => {
+    setEditing({
+      key: variable.key,
+      value: variable.sensitive ? "" : variable.value,
+      sensitive: variable.sensitive
+    });
+  };
+
+  const handleSave = () => {
+    if (!editing) return;
+    onEdit(editing.key, editing.value, editing.sensitive);
+    setEditing(null);
+  };
+
+  const handleCancel = () => {
+    setEditing(null);
+  };
+
+  if (editing) {
+    return (
+      <UnstableTableRow>
+        <UnstableTableCell>
+          <span className="font-mono text-xs text-mineshaft-200">{variable.key}</span>
+        </UnstableTableCell>
+        <UnstableTableCell>
+          <Input
+            value={editing.value}
+            onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+            placeholder={variable.sensitive ? "Enter new value" : "Value"}
+            className="font-mono text-xs"
+            autoFocus
+            type={editing.sensitive ? "password" : "text"}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") handleCancel();
+            }}
+          />
+        </UnstableTableCell>
+        <UnstableTableCell>
+          <Checkbox
+            id={`edit-sensitive-${variable.key}`}
+            isChecked={editing.sensitive}
+            onCheckedChange={(checked) => setEditing({ ...editing, sensitive: checked === true })}
+          >
+            Sensitive
+          </Checkbox>
+        </UnstableTableCell>
+        <UnstableTableCell>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleSave}
+              className="rounded p-1 text-green-400 transition-colors hover:bg-mineshaft-600 hover:text-green-300"
+            >
+              <CheckIcon className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="rounded p-1 text-mineshaft-400 transition-colors hover:bg-mineshaft-600 hover:text-mineshaft-200"
+            >
+              <XIcon className="size-4" />
+            </button>
+          </div>
+        </UnstableTableCell>
+      </UnstableTableRow>
+    );
+  }
+
+  return (
+    <UnstableTableRow className="group">
+      <UnstableTableCell>
+        <span className="font-mono text-xs text-mineshaft-200">{variable.key}</span>
+      </UnstableTableCell>
+      <UnstableTableCell>
+        {variable.sensitive ? (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-mineshaft-500">
+              {revealed ? variable.value : "••••••••••••"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setRevealed((p) => !p)}
+              className="text-mineshaft-500 transition-colors hover:text-mineshaft-300"
+            >
+              {revealed ? <EyeOffIcon className="size-3.5" /> : <EyeIcon className="size-3.5" />}
+            </button>
+          </div>
+        ) : (
+          <span className="font-mono text-xs text-mineshaft-300">{variable.value}</span>
+        )}
+      </UnstableTableCell>
+      <UnstableTableCell>
+        {variable.sensitive ? (
+          <Badge variant="warning">
+            <EyeOffIcon className="size-3" />
+            Sensitive
+          </Badge>
+        ) : (
+          <span className="text-xs text-mineshaft-600">—</span>
+        )}
+      </UnstableTableCell>
+      <UnstableTableCell>
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={handleStartEdit}
+            className="rounded p-1 text-mineshaft-400 transition-colors hover:bg-mineshaft-600 hover:text-mineshaft-200"
+          >
+            <PencilIcon className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(variable.key)}
+            disabled={isDeleting}
+            className="rounded p-1 text-red-400 transition-colors hover:bg-mineshaft-600 hover:text-red-300 disabled:opacity-50"
+          >
+            <Trash2Icon className="size-3.5" />
+          </button>
+        </div>
+      </UnstableTableCell>
+    </UnstableTableRow>
+  );
+};
 
 export const InfraVariablesPage = () => {
   const { currentProject } = useProject();
@@ -49,9 +205,19 @@ export const InfraVariablesPage = () => {
     setIsAdding(false);
   };
 
-  const handleDelete = async (key: string) => {
-    await deleteVariable.mutateAsync({ projectId, key });
-  };
+  const handleEdit = useCallback(
+    async (key: string, value: string, sensitive: boolean) => {
+      await upsertVariable.mutateAsync({ projectId, key, value, sensitive });
+    },
+    [projectId, upsertVariable]
+  );
+
+  const handleDelete = useCallback(
+    async (key: string) => {
+      await deleteVariable.mutateAsync({ projectId, key });
+    },
+    [projectId, deleteVariable]
+  );
 
   if (isLoading) {
     return (
@@ -62,15 +228,17 @@ export const InfraVariablesPage = () => {
     );
   }
 
+  const envVarCount = variables?.filter((v) => !v.key.startsWith("TF_VAR_")).length ?? 0;
+  const tfVarCount = variables?.filter((v) => v.key.startsWith("TF_VAR_")).length ?? 0;
+  const sensitiveCount = variables?.filter((v) => v.sensitive).length ?? 0;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-mineshaft-100">Variables</h1>
           <p className="mt-1 text-sm text-mineshaft-400">
-            Variables injected as{" "}
-            <code className="rounded bg-mineshaft-700 px-1 py-0.5 text-xs">TF_VAR_*</code>{" "}
-            environment variables during runs.
+            Environment variables and Terraform variables injected during runs.
           </p>
         </div>
         <Button
@@ -90,7 +258,7 @@ export const InfraVariablesPage = () => {
             <UnstableTableHead>Key</UnstableTableHead>
             <UnstableTableHead>Value</UnstableTableHead>
             <UnstableTableHead>Sensitive</UnstableTableHead>
-            <UnstableTableHead className="w-16" />
+            <UnstableTableHead className="w-20" />
           </UnstableTableRow>
         </UnstableTableHeader>
         <UnstableTableBody>
@@ -115,6 +283,7 @@ export const InfraVariablesPage = () => {
                   onChange={(e) => setNewValue(e.target.value)}
                   placeholder="Value"
                   className="font-mono text-xs"
+                  type={newSensitive ? "password" : "text"}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleAdd();
                     if (e.key === "Escape") setIsAdding(false);
@@ -148,38 +317,23 @@ export const InfraVariablesPage = () => {
             </UnstableTableRow>
           )}
           {variables?.map((v) => (
-            <UnstableTableRow key={v.id}>
-              <UnstableTableCell className="font-mono text-xs">{v.key}</UnstableTableCell>
-              <UnstableTableCell className="font-mono text-xs text-mineshaft-400">
-                {v.value}
-              </UnstableTableCell>
-              <UnstableTableCell>
-                {v.sensitive ? (
-                  <Badge variant="warning">
-                    <EyeOffIcon className="size-3" />
-                    Sensitive
-                  </Badge>
-                ) : (
-                  <span className="text-xs text-mineshaft-600">—</span>
-                )}
-              </UnstableTableCell>
-              <UnstableTableCell>
-                <Button
-                  variant="plain"
-                  size="xs"
-                  onClick={() => handleDelete(v.key)}
-                  isLoading={deleteVariable.isPending}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <Trash2Icon className="size-4" />
-                </Button>
-              </UnstableTableCell>
-            </UnstableTableRow>
+            <VariableRow
+              key={v.id}
+              variable={v}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              isDeleting={deleteVariable.isPending}
+            />
           ))}
           {(!variables || variables.length === 0) && !isAdding && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={4} className="text-center text-sm text-mineshaft-400">
-                No variables configured. Click &quot;Add Variable&quot; to get started.
+              <UnstableTableCell colSpan={4} className="py-8 text-center">
+                <div className="flex flex-col items-center gap-2">
+                  <KeyIcon className="size-8 text-mineshaft-500" />
+                  <p className="text-sm text-mineshaft-400">
+                    No variables configured. Click &quot;Add Variable&quot; to get started.
+                  </p>
+                </div>
               </UnstableTableCell>
             </UnstableTableRow>
           )}
@@ -188,15 +342,19 @@ export const InfraVariablesPage = () => {
 
       <UnstableAlert variant="info">
         <LinkIcon className="size-4" />
-        <UnstableAlertTitle>Environment Variables</UnstableAlertTitle>
-        <UnstableAlertDescription className="flex">
-          All variables are injected as environment variables into OpenTofu runs. Use names like{" "}
-          <code className="rounded bg-mineshaft-700 px-1 py-0.5 text-xs">AWS_ACCESS_KEY_ID</code>,{" "}
-          <code className="rounded bg-mineshaft-700 px-1 py-0.5 text-xs">
-            AWS_SECRET_ACCESS_KEY
-          </code>
-          , or <code className="rounded bg-mineshaft-700 px-1 py-0.5 text-xs">TF_VAR_*</code> for
-          Terraform variables.
+        <UnstableAlertTitle>How Variables Work</UnstableAlertTitle>
+        <UnstableAlertDescription>
+          <span className="flex flex-col gap-1">
+            <span>
+              Variables prefixed with{" "}
+              <code className="rounded bg-mineshaft-700 px-1 py-0.5 text-xs">TF_VAR_</code> are
+              passed as Terraform input variables. All other variables (e.g.{" "}
+              <code className="rounded bg-mineshaft-700 px-1 py-0.5 text-xs">
+                AWS_ACCESS_KEY_ID
+              </code>
+              ) are injected as environment variables for provider authentication.
+            </span>
+          </span>
         </UnstableAlertDescription>
       </UnstableAlert>
     </div>

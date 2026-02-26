@@ -880,63 +880,63 @@ Rules:
   };
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) return null;
-
-  // Static monthly cost estimates for common AWS/GCP/Azure resource types (USD)
-  // These are approximate on-demand prices for typical configurations
-  const RESOURCE_COST_TABLE: Record<string, number> = {
-    // AWS Compute
-    aws_instance: 8.35, // t3.micro
-    aws_launch_template: 0,
-    aws_autoscaling_group: 0, // pricing from instances
-    aws_lambda_function: 0.2,
-    aws_ecs_service: 0,
-    aws_ecs_task_definition: 0,
-    // AWS Storage
-    aws_s3_bucket: 0.023, // per GB, estimate 1GB base
-    aws_ebs_volume: 2.4, // 30GB gp3
-    aws_efs_file_system: 0.3,
-    aws_dynamodb_table: 1.25,
-    // AWS Database
-    aws_db_instance: 12.41, // db.t3.micro
-    aws_rds_cluster: 29.2,
-    aws_elasticache_cluster: 11.52,
-    aws_redshift_cluster: 180.0,
-    // AWS Networking
-    aws_lb: 16.2, // ALB
-    aws_alb: 16.2,
-    aws_nat_gateway: 32.4,
-    aws_eip: 3.6,
-    aws_vpc: 0,
-    aws_subnet: 0,
-    aws_security_group: 0,
-    aws_route_table: 0,
-    aws_internet_gateway: 0,
-    aws_route53_zone: 0.5,
-    aws_cloudfront_distribution: 1.0,
-    aws_api_gateway_rest_api: 3.5,
-    aws_apigatewayv2_api: 1.0,
-    // AWS Other
-    aws_sqs_queue: 0.4,
-    aws_sns_topic: 0,
-    aws_kms_key: 1.0,
-    aws_secretsmanager_secret: 0.4,
-    aws_ecr_repository: 0,
-    aws_cloudwatch_log_group: 0.5,
-    aws_iam_role: 0,
-    aws_iam_policy: 0,
-    aws_iam_user: 0,
-    // GCP
-    google_compute_instance: 7.67,
-    google_storage_bucket: 0.02,
-    google_sql_database_instance: 25.55,
-    google_container_cluster: 72.0,
-    // Azure
-    azurerm_virtual_machine: 14.6,
-    azurerm_storage_account: 0.02,
-    azurerm_sql_database: 4.9,
-    azurerm_kubernetes_cluster: 72.0
-  };
 }
+
+// Static monthly cost estimates for common AWS/GCP/Azure resource types (USD)
+// These are approximate on-demand prices for typical configurations
+const RESOURCE_COST_TABLE: Record<string, number> = {
+  // AWS Compute
+  aws_instance: 8.35, // t3.micro
+  aws_launch_template: 0,
+  aws_autoscaling_group: 0, // pricing from instances
+  aws_lambda_function: 0.2,
+  aws_ecs_service: 0,
+  aws_ecs_task_definition: 0,
+  // AWS Storage
+  aws_s3_bucket: 0.023, // per GB, estimate 1GB base
+  aws_ebs_volume: 2.4, // 30GB gp3
+  aws_efs_file_system: 0.3,
+  aws_dynamodb_table: 1.25,
+  // AWS Database
+  aws_db_instance: 12.41, // db.t3.micro
+  aws_rds_cluster: 29.2,
+  aws_elasticache_cluster: 11.52,
+  aws_redshift_cluster: 180.0,
+  // AWS Networking
+  aws_lb: 16.2, // ALB
+  aws_alb: 16.2,
+  aws_nat_gateway: 32.4,
+  aws_eip: 3.6,
+  aws_vpc: 0,
+  aws_subnet: 0,
+  aws_security_group: 0,
+  aws_route_table: 0,
+  aws_internet_gateway: 0,
+  aws_route53_zone: 0.5,
+  aws_cloudfront_distribution: 1.0,
+  aws_api_gateway_rest_api: 3.5,
+  aws_apigatewayv2_api: 1.0,
+  // AWS Other
+  aws_sqs_queue: 0.4,
+  aws_sns_topic: 0,
+  aws_kms_key: 1.0,
+  aws_secretsmanager_secret: 0.4,
+  aws_ecr_repository: 0,
+  aws_cloudwatch_log_group: 0.5,
+  aws_iam_role: 0,
+  aws_iam_policy: 0,
+  aws_iam_user: 0,
+  // GCP
+  google_compute_instance: 7.67,
+  google_storage_bucket: 0.02,
+  google_sql_database_instance: 25.55,
+  google_container_cluster: 72.0,
+  // Azure
+  azurerm_virtual_machine: 14.6,
+  azurerm_storage_account: 0.02,
+  azurerm_sql_database: 4.9,
+  azurerm_kubernetes_cluster: 72.0
+};
 
 function estimateResourceCosts(rawPlanJson: string): Array<{ resource: string; monthlyCost: number; type: string }> {
   try {
