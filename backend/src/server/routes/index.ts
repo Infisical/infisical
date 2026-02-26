@@ -417,6 +417,8 @@ import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-cr
 import { webAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { observabilityWidgetDALFactory } from "@app/services/observability-widget/observability-widget-dal";
 import { observabilityWidgetServiceFactory } from "@app/services/observability-widget/observability-widget-service";
+import { observabilityWidgetViewDALFactory } from "@app/services/observability-widget-view/observability-widget-view-dal";
+import { observabilityWidgetViewServiceFactory } from "@app/services/observability-widget-view/observability-widget-view-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
@@ -508,6 +510,7 @@ export const registerRoutes = async (
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const observabilityWidgetDAL = observabilityWidgetDALFactory(db);
+  const observabilityWidgetViewDAL = observabilityWidgetViewDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
 
   const identityDAL = identityDALFactory(db);
@@ -1539,6 +1542,10 @@ export const registerRoutes = async (
     observabilityWidgetDAL,
     auditLogDAL,
     db
+  });
+
+  const observabilityWidgetViewService = observabilityWidgetViewServiceFactory({
+    observabilityWidgetViewDAL
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
@@ -2819,6 +2826,7 @@ export const registerRoutes = async (
     integrationAuth: integrationAuthService,
     webhook: webhookService,
     observabilityWidget: observabilityWidgetService,
+    observabilityWidgetView: observabilityWidgetViewService,
     serviceToken: serviceTokenService,
     identityV1: identityService,
     identityV2: identityV2Service,
