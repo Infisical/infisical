@@ -1,24 +1,14 @@
 import { useEffect } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  BoltIcon,
-  PlusIcon,
-  ShieldIcon,
-  SquareTerminalIcon,
-  TrashIcon,
-  ZapIcon
-} from "lucide-react";
+import { PlusIcon, ShieldIcon, TrashIcon, ZapIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
-  FieldContent,
   FieldError,
-  FieldLabel,
-  FieldTitle,
   Select,
   SelectContent,
   SelectItem,
@@ -31,8 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
   TextArea,
-  UnstableIconButton,
-  UnstableInput
+  UnstableIconButton
 } from "@app/components/v3";
 import { useGetAgentPolicy, useUpdateAgentPolicy } from "@app/hooks/api";
 
@@ -270,16 +259,16 @@ const ReadOnlyActionFields = ({
   );
 };
 
-const ActionFields = ({
+const InboundActionCard = ({
   control,
   baseName,
-  onRemoveAction,
+  onRemove,
   availableActions
 }: {
   control: any;
   baseName: string;
-  onRemoveAction: () => void;
-  availableActions?: string[];
+  onRemove: () => void;
+  availableActions: string[];
 }) => {
   const conditions = useFieldArray({
     control,
@@ -287,16 +276,20 @@ const ActionFields = ({
   });
 
   return (
-    <div className="space-y-3 rounded-md border border-border bg-container p-3">
-      <div className="flex items-center gap-2">
-        {availableActions ? (
+    <div className="rounded-lg border border-border bg-card">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-border px-2 py-2">
+        <div className="flex size-8 items-center justify-center rounded-md bg-accent/10">
+          <ZapIcon className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
           <Controller
             control={control}
             name={`${baseName}.value`}
             render={({ field, fieldState: { error } }) => (
-              <div className="flex-1">
+              <div>
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="h-7 w-fit gap-1.5 border-none bg-transparent px-0 font-mono text-sm font-semibold shadow-none">
                     <SelectValue placeholder="Select action..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -312,84 +305,84 @@ const ActionFields = ({
               </div>
             )}
           />
-        ) : (
-          <Controller
-            control={control}
-            name={`${baseName}.value`}
-            render={({ field, fieldState: { error } }) => (
-              <div className="flex-1">
-                <UnstableInput {...field} placeholder="action_name" />
-                {error && <FieldError>{error.message}</FieldError>}
-              </div>
-            )}
-          />
-        )}
-        <UnstableIconButton variant="ghost" size="xs" onClick={onRemoveAction}>
-          <TrashIcon className="text-danger" />
+        </div>
+        <Badge variant="neutral">
+          {conditions.fields.length}{" "}
+          {conditions.fields.length === 1 ? "condition" : "conditions"}
+        </Badge>
+        <UnstableIconButton variant="ghost" size="xs" onClick={onRemove}>
+          <TrashIcon className="size-3.5 text-danger" />
         </UnstableIconButton>
       </div>
 
-      {conditions.fields.length > 0 && (
-        <div className="ml-3 space-y-2 border-l-2 border-border pl-3">
-          {conditions.fields.map((condField, condIdx) => (
-            <div key={condField.id} className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted">Condition</span>
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => conditions.remove(condIdx)}
-                >
-                  <TrashIcon className="size-3 text-danger" />
-                </UnstableIconButton>
-              </div>
-              <Controller
-                control={control}
-                name={`${baseName}.conditions.${condIdx}.prompt`}
-                render={({ field, fieldState: { error } }) => (
-                  <>
-                    <TextArea
-                      {...field}
-                      rows={2}
-                      placeholder="Describe the condition to evaluate..."
-                    />
-                    {error && <FieldError>{error.message}</FieldError>}
-                  </>
-                )}
-              />
+      {/* Conditions */}
+      <div className="space-y-4 p-4">
+        {conditions.fields.map((condField, condIdx) => (
+          <div key={condField.id}>
+            <div className="mb-1.5 font-mono text-[10px] tracking-widest text-muted uppercase">
+              Condition {condIdx + 1}
             </div>
-          ))}
-        </div>
-      )}
+            <div className="flex items-start gap-2">
+              <div className="flex min-w-0 flex-1 border-l-2 border-border pl-3">
+                <Controller
+                  control={control}
+                  name={`${baseName}.conditions.${condIdx}.prompt`}
+                  render={({ field, fieldState: { error } }) => (
+                    <div className="flex-1">
+                      <TextArea
+                        {...field}
+                        rows={2}
+                        placeholder="Describe the condition to evaluate..."
+                      />
+                      {error && <FieldError>{error.message}</FieldError>}
+                    </div>
+                  )}
+                />
+              </div>
+              <UnstableIconButton
+                variant="ghost"
+                size="xs"
+                className="mt-2"
+                onClick={() => conditions.remove(condIdx)}
+              >
+                <TrashIcon className="size-3.5 text-danger" />
+              </UnstableIconButton>
+            </div>
+          </div>
+        ))}
 
-      <Button
-        type="button"
-        variant="outline"
-        size="xs"
-        onClick={() =>
-          conditions.append({
-            id: `cond_${crypto.randomUUID().slice(0, 8)}`,
-            description: "",
-            prompt: "",
-            enforce: "llm"
-          })
-        }
-      >
-        <PlusIcon />
-        Add Condition
-      </Button>
+        <Button
+          onClick={() =>
+            conditions.append({
+              id: `cond_${crypto.randomUUID().slice(0, 8)}`,
+              description: "",
+              prompt: "",
+              enforce: "llm"
+            })
+          }
+          variant="outline"
+          size="sm"
+        >
+          <PlusIcon />
+          Add Evaluation Criteria
+        </Button>
+      </div>
     </div>
   );
 };
 
-const InboundPolicyFields = ({
+const InboundPolicyCard = ({
   nestIndex,
   control,
-  availableActions
+  availableActions,
+  onRemove,
+  fromAgent
 }: {
   nestIndex: number;
   control: any;
   availableActions: string[];
+  onRemove: () => void;
+  fromAgent: { name: string; description: string } | null;
 }) => {
   const actions = useFieldArray({
     control,
@@ -397,16 +390,19 @@ const InboundPolicyFields = ({
   });
 
   return (
-    <div className="space-y-4">
-      <div>
-        <FieldLabel>From Agent</FieldLabel>
-        <FieldContent>
+    <div className="rounded-lg border border-border">
+      {/* Inbound policy header */}
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+        <div className="flex size-8 items-center justify-center rounded-md bg-accent/10">
+          <ShieldIcon className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
           <Controller
             control={control}
             name={`inboundPolicies.${nestIndex}.fromAgentId`}
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="h-7 w-fit gap-1.5 border-none bg-transparent px-0 text-sm font-semibold shadow-none">
                   <SelectValue placeholder="Select agent..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -419,31 +415,38 @@ const InboundPolicyFields = ({
               </Select>
             )}
           />
-        </FieldContent>
+          {fromAgent && (
+            <div className="text-xs text-accent">{fromAgent.description}</div>
+          )}
+        </div>
+        <Badge variant="neutral">
+          {actions.fields.length} {actions.fields.length === 1 ? "action" : "actions"}
+        </Badge>
+        <UnstableIconButton variant="ghost" size="xs" onClick={onRemove}>
+          <TrashIcon className="size-3.5 text-danger" />
+        </UnstableIconButton>
       </div>
 
-      <div>
-        <FieldTitle className="mb-2">Allowed To Request</FieldTitle>
-        <div className="space-y-2">
-          {actions.fields.map((field, idx) => (
-            <ActionFields
-              key={field.id}
-              control={control}
-              baseName={`inboundPolicies.${nestIndex}.actions.${idx}`}
-              onRemoveAction={() => actions.remove(idx)}
-              availableActions={availableActions}
-            />
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            onClick={() => actions.append({ value: "", conditions: [] })}
-          >
-            <PlusIcon />
-            Add Action
-          </Button>
-        </div>
+      {/* Actions list */}
+      <div className="space-y-3 p-4">
+        {actions.fields.map((field, idx) => (
+          <InboundActionCard
+            key={field.id}
+            control={control}
+            baseName={`inboundPolicies.${nestIndex}.actions.${idx}`}
+            onRemove={() => actions.remove(idx)}
+            availableActions={availableActions}
+          />
+        ))}
+
+        <Button
+          onClick={() => actions.append({ value: "", conditions: [] })}
+          variant="outline"
+          size="sm"
+        >
+          <PlusIcon />
+          Add Action
+        </Button>
       </div>
     </div>
   );
@@ -677,92 +680,56 @@ export const EditInboundPoliciesSheet = ({
             Loading policy...
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-1">
-              {/* Left sidebar navigation */}
-              <nav className="w-48 shrink-0 space-y-1 overflow-y-auto border-r border-border p-3">
-                {inboundPolicies.fields.map((field, idx) => {
-                  const fromId = watchedInbound?.[idx]?.fromAgentId;
-                  const fromAgent = fromId ? agentMap[fromId] : null;
-                  return (
-                    <button
-                      key={field.id}
-                      type="button"
-                      className="w-full rounded-md bg-primary/10 px-3 py-2 text-left text-xs font-medium text-primary transition-colors"
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="truncate">{fromAgent?.name ?? "Unassigned"}</span>
-                        <UnstableIconButton
-                          variant="ghost"
-                          size="xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            inboundPolicies.remove(idx);
-                          }}
-                        >
-                          <TrashIcon className="size-3 text-danger" />
-                        </UnstableIconButton>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  className="w-full"
-                  onClick={() => {
-                    inboundPolicies.append({
-                      fromAgentId: "",
-                      actions: [{ value: "", conditions: [] }]
-                    });
-                  }}
-                >
-                  <PlusIcon />
-                  Add Inbound
-                </Button>
-              </nav>
-
-              {/* Right content area */}
-              <div className="min-w-0 flex-1 space-y-6 overflow-y-auto p-4">
-                {inboundPolicies.fields.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <ShieldIcon className="mb-2 size-8 text-muted" />
-                    <p className="text-sm text-muted">No inbound policies configured.</p>
-                    <p className="mt-1 text-xs text-accent">
-                      Add an inbound policy to allow other agents to request actions from this
-                      agent.
-                    </p>
-                  </div>
-                ) : (
-                  inboundPolicies.fields.map((field, idx) => {
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex min-h-0 flex-1 flex-col bg-bunker-900"
+          >
+            <div className="min-w-0 flex-1 overflow-y-auto p-6">
+              {inboundPolicies.fields.length === 0 ? (
+                <div className="rounded-md border border-border p-6 text-center">
+                  <ShieldIcon className="mx-auto mb-2 size-8 text-muted" />
+                  <p className="text-sm text-muted">No inbound policies configured.</p>
+                  <p className="mt-1 text-xs text-accent">
+                    Add an inbound policy to allow other agents to request actions from this
+                    agent.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {inboundPolicies.fields.map((field, idx) => {
                     const fromId = watchedInbound?.[idx]?.fromAgentId;
                     const fromAgent = fromId ? agentMap[fromId] : null;
                     return (
-                      <div key={field.id} className="rounded-md border border-border p-4">
-                        <div className="mb-3">
-                          <h4 className="text-sm font-medium">
-                            {fromAgent?.name ?? "Unassigned Agent"}
-                          </h4>
-                          <p className="text-xs text-accent">
-                            {fromAgent?.description ??
-                              "Select an agent to configure inbound policies."}
-                          </p>
-                        </div>
-                        <InboundPolicyFields
-                          nestIndex={idx}
-                          control={control}
-                          availableActions={selfActionNames}
-                        />
-                      </div>
+                      <InboundPolicyCard
+                        key={field.id}
+                        nestIndex={idx}
+                        control={control}
+                        availableActions={selfActionNames}
+                        onRemove={() => inboundPolicies.remove(idx)}
+                        fromAgent={fromAgent}
+                      />
                     );
-                  })
-                )}
-              </div>
+                  })}
+                </div>
+              )}
+
+              <Button
+                className="mt-4"
+                onClick={() => {
+                  inboundPolicies.append({
+                    fromAgentId: "",
+                    actions: [{ value: "", conditions: [] }]
+                  });
+                }}
+                variant="outline"
+                size="sm"
+              >
+                <PlusIcon />
+                Add Inbound Policy
+              </Button>
             </div>
 
-            <SheetFooter className="flex flex-row items-center justify-end gap-x-4 border-t border-border px-6 py-4">
+            <SheetFooter className="flex flex-row items-center justify-end gap-x-4 border-t border-border bg-popover px-6 py-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
