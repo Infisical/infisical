@@ -70,13 +70,6 @@ export const observabilityWidgetServiceFactory = ({
       }
     }
 
-    if (dto.type === ObservabilityWidgetType.Metrics) {
-      const parseResult = NumberMetricsWidgetConfigSchema.safeParse(dto.config);
-      if (!parseResult.success) {
-        throw new BadRequestError({ message: "Invalid metrics widget configuration" });
-      }
-    }
-
     const widget = await observabilityWidgetDAL.create({
       name: dto.name,
       description: dto.description,
