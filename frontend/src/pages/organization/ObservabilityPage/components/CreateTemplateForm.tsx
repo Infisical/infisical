@@ -445,29 +445,6 @@ export function CreateTemplateForm({
             </div>
           </div>
 
-          {/* Match count */}
-          {selectedResources.size > 0 && (
-            <div className="flex items-center gap-3 rounded-md border border-mineshaft-600 bg-bunker-800 px-3 py-2">
-              <span className="text-[11px] text-mineshaft-300">Matches:</span>
-              {EVENT_TYPES.map((s) =>
-                (statusCounts[s.key] ?? 0) > 0 ? (
-                  <span key={s.key} className="flex items-center gap-1 text-[11px]">
-                    <span
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: s.color }}
-                    />
-                    <span className="text-mineshaft-300">{s.label}</span>
-                    <span className="font-semibold" style={{ color: s.color }}>
-                      {statusCounts[s.key]}
-                    </span>
-                  </span>
-                ) : null
-              )}
-              <span className="ml-auto text-[11px] font-medium text-white">
-                {matchedTotal} total
-              </span>
-            </div>
-          )}
         </>
       )}
 
