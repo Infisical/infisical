@@ -64,6 +64,15 @@ export const NhiLayout = () => {
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Sources</Tab>}
                 </Link>
                 <Link
+                  to="/organizations/$orgId/projects/nhi/$projectId/policies"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Policies</Tab>}
+                </Link>
+                <Link
                   to="/organizations/$orgId/projects/nhi/$projectId/access-management"
                   params={{
                     orgId: currentOrg.id,

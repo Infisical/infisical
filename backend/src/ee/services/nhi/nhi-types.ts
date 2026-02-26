@@ -2,6 +2,53 @@ import { TProjectPermission } from "@app/lib/types";
 
 import { NhiIdentityStatus, NhiRemediationActionType } from "./nhi-enums";
 
+// --- Policy DTOs ---
+
+export type TCreateNhiPolicyDTO = {
+  projectId: string;
+  name: string;
+  description?: string;
+  isEnabled?: boolean;
+  conditionRiskFactors?: string[];
+  conditionMinRiskScore?: number;
+  conditionIdentityTypes?: string[];
+  conditionProviders?: string[];
+  actionRemediate?: string;
+  actionFlag?: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateNhiPolicyDTO = {
+  policyId: string;
+  projectId: string;
+  name?: string;
+  description?: string | null;
+  isEnabled?: boolean;
+  conditionRiskFactors?: string[] | null;
+  conditionMinRiskScore?: number | null;
+  conditionIdentityTypes?: string[] | null;
+  conditionProviders?: string[] | null;
+  actionRemediate?: string | null;
+  actionFlag?: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDeleteNhiPolicyDTO = {
+  policyId: string;
+  projectId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TListNhiPoliciesDTO = {
+  projectId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetPolicyExecutionsDTO = {
+  policyId: string;
+  projectId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TListRecentExecutionsDTO = {
+  projectId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TCreateNhiSourceDTO = {
   projectId: string;
   name: string;

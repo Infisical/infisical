@@ -41,3 +41,14 @@ export enum NhiRemediationStatus {
   Completed = "completed",
   Failed = "failed"
 }
+
+export enum NhiPolicyActionTaken {
+  Remediate = "remediate",
+  Flag = "flag",
+  RemediateAndFlag = "remediate_and_flag"
+}
+
+export enum NhiPolicyExecutionStatus {
+  Completed = "completed",
+  Failed = "failed"
+}

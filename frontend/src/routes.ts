@@ -414,6 +414,7 @@ const nhiRoutes = route("/organizations/$orgId/projects/nhi/$projectId", [
       route("/$nhiIdentityId", "nhi/IdentityDetailPage/route.tsx")
     ]),
     route("/sources", "nhi/SourcesPage/route.tsx"),
+    route("/policies", "nhi/PoliciesPage/route.tsx"),
     route("/access-management", "project/AccessControlPage/route-nhi.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-nhi.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-nhi.tsx"),

@@ -80,6 +80,8 @@ import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { nhiIdentityDALFactory, nhiScanDALFactory, nhiSourceDALFactory } from "@app/ee/services/nhi/nhi-dal";
+import { nhiPolicyDALFactory, nhiPolicyExecutionDALFactory } from "@app/ee/services/nhi/nhi-policy-dal";
+import { nhiPolicyServiceFactory } from "@app/ee/services/nhi/nhi-policy-service";
 import { nhiRemediationActionDALFactory } from "@app/ee/services/nhi/nhi-remediation-dal";
 import { nhiRemediationServiceFactory } from "@app/ee/services/nhi/nhi-remediation-service";
 import { nhiServiceFactory } from "@app/ee/services/nhi/nhi-service";
@@ -2604,6 +2606,8 @@ export const registerRoutes = async (
   const nhiIdentityDAL = nhiIdentityDALFactory(db);
   const nhiScanDAL = nhiScanDALFactory(db);
   const nhiRemediationActionDAL = nhiRemediationActionDALFactory(db);
+  const nhiPolicyDAL = nhiPolicyDALFactory(db);
+  const nhiPolicyExecutionDAL = nhiPolicyExecutionDALFactory(db);
 
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamResourceDAL = pamResourceDALFactory(db);
@@ -2724,20 +2728,29 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
-  const nhiService = nhiServiceFactory({
-    nhiSourceDAL,
+  const nhiRemediationService = nhiRemediationServiceFactory({
+    nhiRemediationActionDAL,
     nhiIdentityDAL,
-    nhiScanDAL,
+    nhiSourceDAL,
     permissionService,
     appConnectionService,
     gatewayService,
     gatewayV2Service
   });
 
-  const nhiRemediationService = nhiRemediationServiceFactory({
-    nhiRemediationActionDAL,
+  const nhiPolicyService = nhiPolicyServiceFactory({
+    nhiPolicyDAL,
+    nhiPolicyExecutionDAL,
     nhiIdentityDAL,
+    nhiRemediationService,
+    permissionService
+  });
+
+  const nhiService = nhiServiceFactory({
     nhiSourceDAL,
+    nhiIdentityDAL,
+    nhiScanDAL,
+    nhiPolicyService,
     permissionService,
     appConnectionService,
     gatewayService,
@@ -2949,7 +2962,8 @@ export const registerRoutes = async (
     aiMcpActivityLog: aiMcpActivityLogService,
     approvalPolicy: approvalPolicyService,
     nhi: nhiService,
-    nhiRemediation: nhiRemediationService
+    nhiRemediation: nhiRemediationService,
+    nhiPolicy: nhiPolicyService
   });
 
   const cronJobs: CronJob[] = [];

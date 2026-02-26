@@ -647,6 +647,12 @@ import {
   TMicrosoftTeamsIntegrationsUpdate
 } from "@app/db/schemas/microsoft-teams-integrations";
 import { TNhiIdentities, TNhiIdentitiesInsert, TNhiIdentitiesUpdate } from "@app/db/schemas/nhi-identities";
+import { TNhiPolicies, TNhiPoliciesInsert, TNhiPoliciesUpdate } from "@app/db/schemas/nhi-policies";
+import {
+  TNhiPolicyExecutions,
+  TNhiPolicyExecutionsInsert,
+  TNhiPolicyExecutionsUpdate
+} from "@app/db/schemas/nhi-policy-executions";
 import {
   TNhiRemediationActions,
   TNhiRemediationActionsInsert,
@@ -1624,6 +1630,12 @@ declare module "knex/types/tables" {
       TNhiRemediationActions,
       TNhiRemediationActionsInsert,
       TNhiRemediationActionsUpdate
+    >;
+    [TableName.NhiPolicy]: KnexOriginal.CompositeTableType<TNhiPolicies, TNhiPoliciesInsert, TNhiPoliciesUpdate>;
+    [TableName.NhiPolicyExecution]: KnexOriginal.CompositeTableType<
+      TNhiPolicyExecutions,
+      TNhiPolicyExecutionsInsert,
+      TNhiPolicyExecutionsUpdate
     >;
   }
 }

@@ -12,10 +12,7 @@ type TAwsRemediationResult = {
   details?: Record<string, unknown>;
 };
 
-const deactivateAccessKey = async (
-  iam: AWS.IAM,
-  metadata: Record<string, unknown>
-): Promise<TAwsRemediationResult> => {
+const deactivateAccessKey = async (iam: AWS.IAM, metadata: Record<string, unknown>): Promise<TAwsRemediationResult> => {
   const accessKeyId = metadata.accessKeyId as string;
   const userName = metadata.userName as string;
 
@@ -32,10 +29,7 @@ const deactivateAccessKey = async (
   };
 };
 
-const deleteAccessKey = async (
-  iam: AWS.IAM,
-  metadata: Record<string, unknown>
-): Promise<TAwsRemediationResult> => {
+const deleteAccessKey = async (iam: AWS.IAM, metadata: Record<string, unknown>): Promise<TAwsRemediationResult> => {
   const accessKeyId = metadata.accessKeyId as string;
   const userName = metadata.userName as string;
 

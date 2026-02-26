@@ -37,11 +37,7 @@ const getGitHubToken = async (config: TGitHubRemediationConfig): Promise<string>
   }
 };
 
-const makeGitHubApiCall = async (
-  config: TGitHubRemediationConfig,
-  method: string,
-  path: string
-): Promise<void> => {
+const makeGitHubApiCall = async (config: TGitHubRemediationConfig, method: string, path: string): Promise<void> => {
   const { connection, gatewayService, gatewayV2Service } = config;
   const token = await getGitHubToken(config);
   const apiBaseUrl = await getGitHubInstanceApiUrl(connection);
@@ -101,11 +97,7 @@ const revokeFinegrainedPat = async (
   const orgName = parts[1];
   const patId = parts[2];
 
-  await makeGitHubApiCall(
-    config,
-    "DELETE",
-    `/orgs/${encodeURIComponent(orgName)}/personal-access-tokens/${patId}`
-  );
+  await makeGitHubApiCall(config, "DELETE", `/orgs/${encodeURIComponent(orgName)}/personal-access-tokens/${patId}`);
 
   return {
     success: true,

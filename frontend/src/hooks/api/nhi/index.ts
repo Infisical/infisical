@@ -1,23 +1,31 @@
 export {
+  useCreateNhiPolicy,
   useCreateNhiSource,
+  useDeleteNhiPolicy,
   useDeleteNhiSource,
   useExecuteRemediation,
   useTriggerNhiScan,
-  useUpdateNhiIdentity
+  useUpdateNhiIdentity,
+  useUpdateNhiPolicy
 } from "./mutations";
 export {
   nhiKeys,
   useGetNhiIdentity,
   useGetNhiScan,
   useGetNhiStats,
+  useGetPolicyExecutions,
   useGetRecommendedActions,
   useListNhiIdentities,
+  useListNhiPolicies,
   useListNhiScans,
   useListNhiSources,
+  useListRecentExecutions,
   useListRemediationActions
 } from "./queries";
 export type {
   TNhiIdentity,
+  TNhiPolicy,
+  TNhiPolicyExecution,
   TNhiRecommendedAction,
   TNhiRemediationAction,
   TNhiRiskFactor,
@@ -28,6 +36,7 @@ export type {
 export {
   NhiIdentityStatus,
   NhiIdentityType,
+  NhiPolicyActionTaken,
   NhiProvider,
   NhiRemediationActionType,
   NhiRemediationStatus,

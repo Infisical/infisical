@@ -15,6 +15,7 @@ import { scanAwsIamIdentities } from "./aws/aws-nhi-scanner";
 import { scanGitHubOrgIdentities } from "./github/github-nhi-scanner";
 import { TNhiIdentityDALFactory, TNhiScanDALFactory, TNhiSourceDALFactory } from "./nhi-dal";
 import { NhiProvider, NhiScanStatus } from "./nhi-enums";
+import { TNhiPolicyServiceFactory } from "./nhi-policy-service";
 import { computeRiskScore, TGitHubRiskMetadata } from "./nhi-risk-scoring";
 import { TRawNhiIdentity } from "./nhi-scanner-types";
 import {
@@ -34,6 +35,7 @@ type TNhiServiceFactoryDep = {
   nhiSourceDAL: TNhiSourceDALFactory;
   nhiIdentityDAL: TNhiIdentityDALFactory;
   nhiScanDAL: TNhiScanDALFactory;
+  nhiPolicyService?: Pick<TNhiPolicyServiceFactory, "evaluatePolicies">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
@@ -46,6 +48,7 @@ export const nhiServiceFactory = ({
   nhiSourceDAL,
   nhiIdentityDAL,
   nhiScanDAL,
+  nhiPolicyService,
   permissionService,
   appConnectionService,
   gatewayService,
@@ -154,7 +157,7 @@ export const nhiServiceFactory = ({
       throw new Error("GitHub source requires orgName in config");
     }
 
-    const connection = await appConnectionService.connectAppConnectionById(
+    const connection = await appConnectionService.connectAppConnectionById<TGitHubConnection>(
       AppConnection.GitHub,
       source.connectionId,
       orgServiceActor
@@ -185,13 +188,15 @@ export const nhiServiceFactory = ({
         throw new Error("Source or connection not found");
       }
 
+      const narrowedSource = { ...source, connectionId: source.connectionId, config: source.config };
+
       let rawIdentities: TRawNhiIdentity[];
       const isGitHub = source.provider === NhiProvider.GitHub;
 
       if (isGitHub) {
-        rawIdentities = await scanGitHubSource(source, orgServiceActor);
+        rawIdentities = await scanGitHubSource(narrowedSource, orgServiceActor);
       } else {
-        rawIdentities = await scanAwsSource(source, orgServiceActor);
+        rawIdentities = await scanAwsSource(narrowedSource, orgServiceActor);
       }
 
       // Compute risk scores and upsert
@@ -237,6 +242,20 @@ export const nhiServiceFactory = ({
         lastScannedAt: new Date(),
         lastIdentitiesFound: rawIdentities.length
       });
+
+      // Evaluate automated remediation policies
+      if (nhiPolicyService) {
+        try {
+          await nhiPolicyService.evaluatePolicies({
+            projectId: source.projectId,
+            scanId,
+            sourceId,
+            orgServiceActor
+          });
+        } catch (policyErr) {
+          logger.warn(policyErr, `NHI policy evaluation failed for scan ${scanId}`);
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       logger.error(err, `NHI scan failed for source ${sourceId}`);

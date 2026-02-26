@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-import { NhiIdentitiesSchema, NhiRemediationActionsSchema, NhiScansSchema, NhiSourcesSchema } from "@app/db/schemas";
+import {
+  NhiIdentitiesSchema,
+  NhiPoliciesSchema,
+  NhiPolicyExecutionsSchema,
+  NhiRemediationActionsSchema,
+  NhiScansSchema,
+  NhiSourcesSchema
+} from "@app/db/schemas";
 import { NhiIdentityStatus, NhiRemediationActionType } from "@app/ee/services/nhi/nhi-enums";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -455,6 +462,204 @@ export const registerNhiRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
       return { actions };
+    }
+  });
+
+  // --- Policies ---
+
+  server.route({
+    method: "GET",
+    url: "/policies",
+    config: { rateLimit: readLimit },
+    schema: {
+      querystring: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          policies: NhiPoliciesSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const policies = await server.services.nhiPolicy.listPolicies({
+        projectId: req.query.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { policies };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/policies",
+    config: { rateLimit: writeLimit },
+    schema: {
+      body: z.object({
+        projectId: z.string(),
+        name: z.string().min(1).max(255),
+        description: z.string().max(1000).optional(),
+        isEnabled: z.boolean().optional(),
+        conditionRiskFactors: z.array(z.string()).optional(),
+        conditionMinRiskScore: z.number().int().min(0).max(100).optional(),
+        conditionIdentityTypes: z.array(z.string()).optional(),
+        conditionProviders: z.array(z.string()).optional(),
+        actionRemediate: z.nativeEnum(NhiRemediationActionType).nullable().optional(),
+        actionFlag: z.boolean().optional()
+      }),
+      response: {
+        200: z.object({
+          policy: NhiPoliciesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const policy = await server.services.nhiPolicy.createPolicy({
+        ...req.body,
+        actionRemediate: req.body.actionRemediate ?? undefined,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { policy };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/policies/:policyId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({
+        policyId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string(),
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().max(1000).nullable().optional(),
+        isEnabled: z.boolean().optional(),
+        conditionRiskFactors: z.array(z.string()).nullable().optional(),
+        conditionMinRiskScore: z.number().int().min(0).max(100).nullable().optional(),
+        conditionIdentityTypes: z.array(z.string()).nullable().optional(),
+        conditionProviders: z.array(z.string()).nullable().optional(),
+        actionRemediate: z.nativeEnum(NhiRemediationActionType).nullable().optional(),
+        actionFlag: z.boolean().optional()
+      }),
+      response: {
+        200: z.object({
+          policy: NhiPoliciesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const policy = await server.services.nhiPolicy.updatePolicy({
+        policyId: req.params.policyId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { policy };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/policies/:policyId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      params: z.object({
+        policyId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          policy: NhiPoliciesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const policy = await server.services.nhiPolicy.deletePolicy({
+        policyId: req.params.policyId,
+        projectId: req.query.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { policy };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/policies/:policyId/executions",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({
+        policyId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          executions: NhiPolicyExecutionsSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const executions = await server.services.nhiPolicy.getPolicyExecutions({
+        policyId: req.params.policyId,
+        projectId: req.query.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { executions };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/policy-executions",
+    config: { rateLimit: readLimit },
+    schema: {
+      querystring: z.object({
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          executions: NhiPolicyExecutionsSchema.extend({
+            policyName: z.string().nullable().optional(),
+            identityName: z.string().nullable().optional()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const executions = await server.services.nhiPolicy.listRecentExecutions({
+        projectId: req.query.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { executions };
     }
   });
 };

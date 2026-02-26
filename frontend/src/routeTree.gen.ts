@@ -119,6 +119,7 @@ import { Route as secretManagerIPAllowlistPageRouteImport } from './pages/secret
 import { Route as pamSettingsPageRouteImport } from './pages/pam/SettingsPage/route'
 import { Route as pamApprovalsPageRouteImport } from './pages/pam/ApprovalsPage/route'
 import { Route as nhiSourcesPageRouteImport } from './pages/nhi/SourcesPage/route'
+import { Route as nhiPoliciesPageRouteImport } from './pages/nhi/PoliciesPage/route'
 import { Route as nhiOverviewPageRouteImport } from './pages/nhi/OverviewPage/route'
 import { Route as kmsSettingsPageRouteImport } from './pages/kms/SettingsPage/route'
 import { Route as kmsOverviewPageRouteImport } from './pages/kms/OverviewPage/route'
@@ -1381,6 +1382,12 @@ const pamApprovalsPageRouteRoute = pamApprovalsPageRouteImport.update({
 const nhiSourcesPageRouteRoute = nhiSourcesPageRouteImport.update({
   id: '/sources',
   path: '/sources',
+  getParentRoute: () => nhiLayoutRoute,
+} as any)
+
+const nhiPoliciesPageRouteRoute = nhiPoliciesPageRouteImport.update({
+  id: '/policies',
+  path: '/policies',
   getParentRoute: () => nhiLayoutRoute,
 } as any)
 
@@ -3325,6 +3332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof nhiOverviewPageRouteImport
       parentRoute: typeof nhiLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/policies': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/policies'
+      path: '/policies'
+      fullPath: '/organizations/$orgId/projects/nhi/$projectId/policies'
+      preLoaderRoute: typeof nhiPoliciesPageRouteImport
+      parentRoute: typeof nhiLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources'
       path: '/sources'
@@ -4933,6 +4947,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectI
 
 interface nhiLayoutRouteChildren {
   nhiOverviewPageRouteRoute: typeof nhiOverviewPageRouteRoute
+  nhiPoliciesPageRouteRoute: typeof nhiPoliciesPageRouteRoute
   nhiSourcesPageRouteRoute: typeof nhiSourcesPageRouteRoute
   projectAccessControlPageRouteNhiRoute: typeof projectAccessControlPageRouteNhiRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRouteWithChildren
@@ -4944,6 +4959,7 @@ interface nhiLayoutRouteChildren {
 
 const nhiLayoutRouteChildren: nhiLayoutRouteChildren = {
   nhiOverviewPageRouteRoute: nhiOverviewPageRouteRoute,
+  nhiPoliciesPageRouteRoute: nhiPoliciesPageRouteRoute,
   nhiSourcesPageRouteRoute: nhiSourcesPageRouteRoute,
   projectAccessControlPageRouteNhiRoute: projectAccessControlPageRouteNhiRoute,
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsNhiProjectIdNhiLayoutDiscoveredIdentitiesRoute:
@@ -6013,6 +6029,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
   '/organizations/$orgId/projects/nhi/$projectId/overview': typeof nhiOverviewPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/policies': typeof nhiPoliciesPageRouteRoute
   '/organizations/$orgId/projects/nhi/$projectId/sources': typeof nhiSourcesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approvals': typeof pamApprovalsPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/settings': typeof pamSettingsPageRouteRoute
@@ -6287,6 +6304,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/kms/$projectId/overview': typeof kmsOverviewPageRouteRoute
   '/organizations/$orgId/projects/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
   '/organizations/$orgId/projects/nhi/$projectId/overview': typeof nhiOverviewPageRouteRoute
+  '/organizations/$orgId/projects/nhi/$projectId/policies': typeof nhiPoliciesPageRouteRoute
   '/organizations/$orgId/projects/nhi/$projectId/sources': typeof nhiSourcesPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approvals': typeof pamApprovalsPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/settings': typeof pamSettingsPageRouteRoute
@@ -6569,6 +6587,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/overview': typeof kmsOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings': typeof kmsSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview': typeof nhiOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/policies': typeof nhiPoliciesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources': typeof nhiSourcesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals': typeof pamApprovalsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings': typeof pamSettingsPageRouteRoute
@@ -6852,6 +6871,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/overview'
     | '/organizations/$orgId/projects/kms/$projectId/settings'
     | '/organizations/$orgId/projects/nhi/$projectId/overview'
+    | '/organizations/$orgId/projects/nhi/$projectId/policies'
     | '/organizations/$orgId/projects/nhi/$projectId/sources'
     | '/organizations/$orgId/projects/pam/$projectId/approvals'
     | '/organizations/$orgId/projects/pam/$projectId/settings'
@@ -7125,6 +7145,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/overview'
     | '/organizations/$orgId/projects/kms/$projectId/settings'
     | '/organizations/$orgId/projects/nhi/$projectId/overview'
+    | '/organizations/$orgId/projects/nhi/$projectId/policies'
     | '/organizations/$orgId/projects/nhi/$projectId/sources'
     | '/organizations/$orgId/projects/pam/$projectId/approvals'
     | '/organizations/$orgId/projects/pam/$projectId/settings'
@@ -7405,6 +7426,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/policies'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings'
@@ -8174,6 +8196,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/policies",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/access-management",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/discovered-identities",
@@ -8297,6 +8320,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/overview": {
       "filePath": "nhi/OverviewPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/policies": {
+      "filePath": "nhi/PoliciesPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/nhi/$projectId/_nhi-layout/sources": {

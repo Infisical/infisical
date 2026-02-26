@@ -3,7 +3,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { nhiKeys } from "./queries";
-import { NhiRemediationActionType, TNhiIdentity, TNhiRemediationAction, TNhiScan, TNhiSource } from "./types";
+import {
+  NhiRemediationActionType,
+  TNhiIdentity,
+  TNhiPolicy,
+  TNhiRemediationAction,
+  TNhiScan,
+  TNhiSource
+} from "./types";
 
 export const useCreateNhiSource = () => {
   const queryClient = useQueryClient();
@@ -114,6 +121,83 @@ export const useExecuteRemediation = () => {
       queryClient.invalidateQueries({ queryKey: nhiKeys.identityById(identityId) });
       queryClient.invalidateQueries({ queryKey: nhiKeys.identities(projectId) });
       queryClient.invalidateQueries({ queryKey: nhiKeys.stats(projectId) });
+    }
+  });
+};
+
+export const useCreateNhiPolicy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      projectId: string;
+      name: string;
+      description?: string;
+      isEnabled?: boolean;
+      conditionRiskFactors?: string[];
+      conditionMinRiskScore?: number;
+      conditionIdentityTypes?: string[];
+      conditionProviders?: string[];
+      actionRemediate?: string | null;
+      actionFlag?: boolean;
+    }) => {
+      const { data } = await apiRequest.post<{ policy: TNhiPolicy }>(
+        "/api/v1/nhi/policies",
+        params
+      );
+      return data.policy;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: nhiKeys.policies(projectId) });
+      queryClient.invalidateQueries({ queryKey: nhiKeys.recentExecutions(projectId) });
+    }
+  });
+};
+
+export const useUpdateNhiPolicy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      policyId,
+      ...params
+    }: {
+      policyId: string;
+      projectId: string;
+      name?: string;
+      description?: string | null;
+      isEnabled?: boolean;
+      conditionRiskFactors?: string[] | null;
+      conditionMinRiskScore?: number | null;
+      conditionIdentityTypes?: string[] | null;
+      conditionProviders?: string[] | null;
+      actionRemediate?: string | null;
+      actionFlag?: boolean;
+    }) => {
+      const { data } = await apiRequest.patch<{ policy: TNhiPolicy }>(
+        `/api/v1/nhi/policies/${policyId}`,
+        params
+      );
+      return data.policy;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: nhiKeys.policies(projectId) });
+      queryClient.invalidateQueries({ queryKey: nhiKeys.recentExecutions(projectId) });
+    }
+  });
+};
+
+export const useDeleteNhiPolicy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ policyId, projectId }: { policyId: string; projectId: string }) => {
+      const { data } = await apiRequest.delete<{ policy: TNhiPolicy }>(
+        `/api/v1/nhi/policies/${policyId}`,
+        { params: { projectId } }
+      );
+      return data.policy;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: nhiKeys.policies(projectId) });
+      queryClient.invalidateQueries({ queryKey: nhiKeys.recentExecutions(projectId) });
     }
   });
 };

@@ -51,19 +51,6 @@ import {
   TNhiRiskFactor
 } from "@app/hooks/api/nhi/types";
 
-const getSeverityBadgeVariant = (severity: string) => {
-  switch (severity) {
-    case "critical":
-      return "danger" as const;
-    case "high":
-      return "warning" as const;
-    case "medium":
-      return "info" as const;
-    default:
-      return "success" as const;
-  }
-};
-
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
     case NhiIdentityStatus.Active:
@@ -266,9 +253,7 @@ const handleCopy = (text: string) => {
 };
 
 const formatActionType = (actionType: string) =>
-  actionType
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  actionType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 const getRemediationActionDescription = (actionType: string) => {
   switch (actionType) {
@@ -551,7 +536,8 @@ export const NhiIdentityDetailPage = () => {
                 Security findings for this identity
                 {recommendedActions && recommendedActions.length > 0 && (
                   <span className="text-mineshaft-300">
-                    {" "}&mdash; click &quot;Fix&quot; to remediate directly
+                    {" "}
+                    &mdash; click &quot;Fix&quot; to remediate directly
                   </span>
                 )}
               </UnstableCardDescription>
@@ -583,7 +569,7 @@ export const NhiIdentityDetailPage = () => {
                         {fixAction && (
                           <Button
                             size="sm"
-                            variant="outline_bg"
+                            variant="outline"
                             className="shrink-0"
                             onClick={() => setConfirmAction(fixAction)}
                             isPending={
@@ -610,7 +596,9 @@ export const NhiIdentityDetailPage = () => {
             <UnstableCard>
               <UnstableCardHeader className="border-b">
                 <UnstableCardTitle>Remediation Activity</UnstableCardTitle>
-                <UnstableCardDescription>Actions that have been applied to this identity</UnstableCardDescription>
+                <UnstableCardDescription>
+                  Actions that have been applied to this identity
+                </UnstableCardDescription>
               </UnstableCardHeader>
               <UnstableCardContent>
                 <div className="space-y-3">
@@ -622,6 +610,7 @@ export const NhiIdentityDetailPage = () => {
                       <div
                         key={action.id}
                         className={`flex items-start gap-3 rounded-md border p-3 ${
+                          // eslint-disable-next-line no-nested-ternary
                           isCompleted
                             ? "border-green-500/20 bg-green-500/5"
                             : isFailed
@@ -629,9 +618,18 @@ export const NhiIdentityDetailPage = () => {
                               : "border-mineshaft-600 bg-mineshaft-800"
                         }`}
                       >
-                        {isCompleted && <CheckCircle2Icon size={18} className="mt-0.5 shrink-0 text-green-400" />}
-                        {isFailed && <XCircleIcon size={18} className="mt-0.5 shrink-0 text-red-400" />}
-                        {isRunning && <LoaderIcon size={18} className="mt-0.5 shrink-0 animate-spin text-yellow-400" />}
+                        {isCompleted && (
+                          <CheckCircle2Icon size={18} className="mt-0.5 shrink-0 text-green-400" />
+                        )}
+                        {isFailed && (
+                          <XCircleIcon size={18} className="mt-0.5 shrink-0 text-red-400" />
+                        )}
+                        {isRunning && (
+                          <LoaderIcon
+                            size={18}
+                            className="mt-0.5 shrink-0 animate-spin text-yellow-400"
+                          />
+                        )}
                         {!isCompleted && !isFailed && !isRunning && (
                           <ClockIcon size={18} className="mt-0.5 shrink-0 text-mineshaft-400" />
                         )}
@@ -641,13 +639,16 @@ export const NhiIdentityDetailPage = () => {
                               {formatActionType(action.actionType)}
                             </p>
                             <Badge
+                              // eslint-disable-next-line no-nested-ternary
                               variant={isCompleted ? "success" : isFailed ? "danger" : "neutral"}
                             >
                               {capitalize(action.status.replace("_", " "))}
                             </Badge>
                           </div>
                           {action.statusMessage && (
-                            <p className={`mt-1 text-xs ${isFailed ? "text-red-300" : "text-mineshaft-300"}`}>
+                            <p
+                              className={`mt-1 text-xs ${isFailed ? "text-red-300" : "text-mineshaft-300"}`}
+                            >
                               {action.statusMessage}
                             </p>
                           )}
@@ -720,10 +721,7 @@ export const NhiIdentityDetailPage = () => {
                 Confirm &amp; Apply
               </Button>
               <ModalClose asChild>
-                <Button
-                  variant="outline"
-                  isDisabled={executeRemediation.isPending}
-                >
+                <Button variant="outline" isDisabled={executeRemediation.isPending}>
                   Cancel
                 </Button>
               </ModalClose>
@@ -734,7 +732,7 @@ export const NhiIdentityDetailPage = () => {
           {confirmAction && (
             <div className="space-y-3">
               <div className="rounded border border-mineshaft-600 bg-mineshaft-800 p-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-mineshaft-400">
+                <p className="text-xs font-medium tracking-wider text-mineshaft-400 uppercase">
                   Target
                 </p>
                 <p className="mt-1 text-sm text-mineshaft-100">{identity.name}</p>
@@ -742,7 +740,7 @@ export const NhiIdentityDetailPage = () => {
               </div>
 
               <div className="rounded border border-mineshaft-600 bg-mineshaft-800 p-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-mineshaft-400">
+                <p className="text-xs font-medium tracking-wider text-mineshaft-400 uppercase">
                   What will happen
                 </p>
                 <p className="mt-1 text-sm text-mineshaft-200">

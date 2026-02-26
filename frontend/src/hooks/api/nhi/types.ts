@@ -127,3 +127,42 @@ export type TNhiRemediationAction = {
   createdAt: string;
   updatedAt: string;
 };
+
+export enum NhiPolicyActionTaken {
+  Remediate = "remediate",
+  Flag = "flag",
+  RemediateAndFlag = "remediate_and_flag"
+}
+
+export type TNhiPolicy = {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string | null;
+  isEnabled: boolean;
+  conditionRiskFactors: string[] | null;
+  conditionMinRiskScore: number | null;
+  conditionIdentityTypes: string[] | null;
+  conditionProviders: string[] | null;
+  actionRemediate: string | null;
+  actionFlag: boolean;
+  lastTriggeredAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TNhiPolicyExecution = {
+  id: string;
+  policyId: string;
+  identityId: string;
+  scanId: string;
+  projectId: string;
+  actionTaken: string;
+  remediationActionId: string | null;
+  status: string;
+  statusMessage: string | null;
+  policyName?: string | null;
+  identityName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};

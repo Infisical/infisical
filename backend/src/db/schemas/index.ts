@@ -97,6 +97,8 @@ export * from "./memberships";
 export * from "./microsoft-teams-integrations";
 export * from "./models";
 export * from "./nhi-identities";
+export * from "./nhi-policies";
+export * from "./nhi-policy-executions";
 export * from "./nhi-remediation-actions";
 export * from "./nhi-scans";
 export * from "./nhi-sources";

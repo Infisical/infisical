@@ -265,7 +265,9 @@ export enum TableName {
   NhiSource = "nhi_sources",
   NhiIdentity = "nhi_identities",
   NhiScan = "nhi_scans",
-  NhiRemediationAction = "nhi_remediation_actions"
+  NhiRemediationAction = "nhi_remediation_actions",
+  NhiPolicy = "nhi_policies",
+  NhiPolicyExecution = "nhi_policy_executions"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

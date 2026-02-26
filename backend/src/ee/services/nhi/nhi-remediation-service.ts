@@ -4,9 +4,11 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
+import { TGitHubConnection } from "@app/services/app-connection/github/github-connection-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { executeAwsRemediation } from "./aws/aws-nhi-remediation";
@@ -15,11 +17,7 @@ import { TNhiIdentityDALFactory, TNhiSourceDALFactory } from "./nhi-dal";
 import { NhiIdentityType, NhiProvider, NhiRemediationActionType, NhiRemediationStatus } from "./nhi-enums";
 import { TNhiRemediationActionDALFactory } from "./nhi-remediation-dal";
 import { computeRiskScore, NhiRiskFactor, TGitHubRiskMetadata } from "./nhi-risk-scoring";
-import {
-  TExecuteRemediationDTO,
-  TGetRecommendedActionsDTO,
-  TListRemediationActionsDTO
-} from "./nhi-types";
+import { TExecuteRemediationDTO, TGetRecommendedActionsDTO, TListRemediationActionsDTO } from "./nhi-types";
 
 type TNhiRemediationServiceDep = {
   nhiRemediationActionDAL: TNhiRemediationActionDALFactory;
@@ -205,18 +203,25 @@ export const nhiRemediationServiceFactory = ({
     return actions;
   };
 
-  const executeRemediation = async ({
+  /**
+   * Internal remediation execution that accepts an OrgServiceActor.
+   * Used by both the public API (executeRemediation) and automated policy evaluation.
+   */
+  const executeRemediationInternal = async ({
     identityId,
     projectId,
     actionType,
     riskFactor,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TExecuteRemediationDTO) => {
-    await checkProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId });
-
+    triggeredBy,
+    orgServiceActor
+  }: {
+    identityId: string;
+    projectId: string;
+    actionType: NhiRemediationActionType;
+    riskFactor?: string;
+    triggeredBy: string;
+    orgServiceActor: OrgServiceActor;
+  }) => {
     const identity = await nhiIdentityDAL.findById(identityId);
     if (!identity) {
       throw new NotFoundError({ message: `NHI identity with ID ${identityId} not found` });
@@ -234,7 +239,7 @@ export const nhiRemediationServiceFactory = ({
       sourceId: identity.sourceId,
       actionType,
       status: NhiRemediationStatus.InProgress,
-      triggeredBy: actorId,
+      triggeredBy,
       riskFactor: riskFactor || null,
       metadata: {}
     });
@@ -247,36 +252,22 @@ export const nhiRemediationServiceFactory = ({
         const connection = await appConnectionService.connectAppConnectionById(
           AppConnection.AWS,
           source.connectionId,
-          {
-            type: actor,
-            id: actorId,
-            authMethod: actorAuthMethod,
-            orgId: actorOrgId,
-            rootOrgId: actorOrgId,
-            parentOrgId: actorOrgId
-          }
+          orgServiceActor
         );
 
         const awsConnectionConfig: TAwsConnectionConfig = {
           app: AppConnection.AWS,
           method: connection.method,
           credentials: connection.credentials,
-          orgId: actorOrgId
+          orgId: orgServiceActor.orgId
         } as TAwsConnectionConfig;
 
         result = await executeAwsRemediation(awsConnectionConfig, actionType, metadata);
       } else if (identity.provider === NhiProvider.GitHub) {
-        const connection = await appConnectionService.connectAppConnectionById(
+        const connection = await appConnectionService.connectAppConnectionById<TGitHubConnection>(
           AppConnection.GitHub,
           source.connectionId,
-          {
-            type: actor,
-            id: actorId,
-            authMethod: actorAuthMethod,
-            orgId: actorOrgId,
-            rootOrgId: actorOrgId,
-            parentOrgId: actorOrgId
-          }
+          orgServiceActor
         );
 
         result = await executeGitHubRemediation(
@@ -306,7 +297,7 @@ export const nhiRemediationServiceFactory = ({
             actionType === NhiRemediationActionType.RemoveAdminPoliciesUser ||
             actionType === NhiRemediationActionType.RemoveAdminPoliciesRole
           ) {
-            const detachedPolicies = ((result.details?.detachedPolicies as string[]) || []);
+            const detachedPolicies = (result.details?.detachedPolicies as string[]) || [];
             updatedMetadata.policies = currentPolicies.filter((p) => !detachedPolicies.includes(p));
           } else if (actionType === NhiRemediationActionType.DeactivateAccessKey) {
             updatedMetadata.status = "Inactive";
@@ -355,6 +346,37 @@ export const nhiRemediationServiceFactory = ({
     }
   };
 
+  const executeRemediation = async ({
+    identityId,
+    projectId,
+    actionType,
+    riskFactor,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TExecuteRemediationDTO) => {
+    await checkProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId });
+
+    const orgServiceActor: OrgServiceActor = {
+      type: actor,
+      id: actorId,
+      authMethod: actorAuthMethod,
+      orgId: actorOrgId,
+      rootOrgId: actorOrgId,
+      parentOrgId: actorOrgId
+    };
+
+    return executeRemediationInternal({
+      identityId,
+      projectId,
+      actionType,
+      riskFactor,
+      triggeredBy: actorId,
+      orgServiceActor
+    });
+  };
+
   const listActions = async ({
     identityId,
     projectId,
@@ -369,6 +391,7 @@ export const nhiRemediationServiceFactory = ({
 
   return {
     executeRemediation,
+    executeRemediationInternal,
     getRecommendedActions,
     listActions
   };

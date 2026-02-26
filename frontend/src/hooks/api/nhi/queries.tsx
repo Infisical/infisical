@@ -2,7 +2,16 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TNhiIdentity, TNhiRecommendedAction, TNhiRemediationAction, TNhiScan, TNhiSource, TNhiStats } from "./types";
+import {
+  TNhiIdentity,
+  TNhiPolicy,
+  TNhiPolicyExecution,
+  TNhiRecommendedAction,
+  TNhiRemediationAction,
+  TNhiScan,
+  TNhiSource,
+  TNhiStats
+} from "./types";
 
 export const nhiKeys = {
   all: ["nhi"] as const,
@@ -13,8 +22,13 @@ export const nhiKeys = {
   identityById: (identityId: string) => [...nhiKeys.all, "identity", identityId] as const,
   scans: (sourceId: string) => [...nhiKeys.all, "scans", sourceId] as const,
   scanById: (scanId: string) => [...nhiKeys.all, "scan", scanId] as const,
-  recommendedActions: (identityId: string) => [...nhiKeys.all, "recommended-actions", identityId] as const,
-  remediationActions: (identityId: string) => [...nhiKeys.all, "remediation-actions", identityId] as const
+  recommendedActions: (identityId: string) =>
+    [...nhiKeys.all, "recommended-actions", identityId] as const,
+  remediationActions: (identityId: string) =>
+    [...nhiKeys.all, "remediation-actions", identityId] as const,
+  policies: (projectId: string) => [...nhiKeys.all, "policies", projectId] as const,
+  policyExecutions: (policyId: string) => [...nhiKeys.all, "policy-executions", policyId] as const,
+  recentExecutions: (projectId: string) => [...nhiKeys.all, "recent-executions", projectId] as const
 };
 
 export const useGetNhiStats = (
@@ -230,6 +244,72 @@ export const useListRemediationActions = (
         { params: { projectId } }
       );
       return data.actions;
+    },
+    ...options
+  });
+
+export const useListNhiPolicies = (
+  projectId: string,
+  options?: Omit<
+    UseQueryOptions<TNhiPolicy[], unknown, TNhiPolicy[], ReturnType<typeof nhiKeys.policies>>,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey: nhiKeys.policies(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ policies: TNhiPolicy[] }>("/api/v1/nhi/policies", {
+        params: { projectId }
+      });
+      return data.policies;
+    },
+    ...options
+  });
+
+export const useGetPolicyExecutions = (
+  { policyId, projectId }: { policyId: string; projectId: string },
+  options?: Omit<
+    UseQueryOptions<
+      TNhiPolicyExecution[],
+      unknown,
+      TNhiPolicyExecution[],
+      ReturnType<typeof nhiKeys.policyExecutions>
+    >,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey: nhiKeys.policyExecutions(policyId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ executions: TNhiPolicyExecution[] }>(
+        `/api/v1/nhi/policies/${policyId}/executions`,
+        { params: { projectId } }
+      );
+      return data.executions;
+    },
+    ...options
+  });
+
+export const useListRecentExecutions = (
+  projectId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TNhiPolicyExecution[],
+      unknown,
+      TNhiPolicyExecution[],
+      ReturnType<typeof nhiKeys.recentExecutions>
+    >,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey: nhiKeys.recentExecutions(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ executions: TNhiPolicyExecution[] }>(
+        "/api/v1/nhi/policy-executions",
+        { params: { projectId } }
+      );
+      return data.executions;
     },
     ...options
   });
