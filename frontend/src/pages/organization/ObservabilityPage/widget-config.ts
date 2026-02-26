@@ -149,7 +149,7 @@ export const TEMPLATES: Record<string, WidgetTemplate> = {
   "expiring-certs": {
     title: "Expiring Certificates",
     description: "Certificates expiring within 30 days",
-    icon: "Activity",
+    icon: "Clock",
     iconBg: "#1c2a3a",
     refresh: "30s",
     stats: [],

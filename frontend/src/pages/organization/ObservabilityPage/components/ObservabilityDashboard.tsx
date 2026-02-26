@@ -376,31 +376,38 @@ export function ObservabilityDashboard({
         }
 
         try {
-          const widgetType = getWidgetType(isLogsWidget, isMetricsWidget);
           const dims = getWidgetDimensions(isLogsWidget, isMetricsWidget);
+          let widgetId: string;
 
-          const widget = await createWidgetMutation.mutateAsync({
-            name: result.template.title,
-            description: result.template.description,
-            orgId,
-            subOrgId: filter?.subOrgIds?.[0] ?? null,
-            projectId: filter?.projectId ?? null,
-            type: widgetType,
-            config: {
-              resourceTypes: filter?.resources ?? [],
-              eventTypes
-            },
-            refreshInterval: parseRefreshInterval(result.template.refresh),
-            icon: result.template.icon,
-            color: result.template.iconBg
-          });
+          if (result.widgetId) {
+            // Form already created the widget (e.g. metrics type) — reuse its ID
+            widgetId = result.widgetId;
+          } else {
+            const widgetType = getWidgetType(isLogsWidget, isMetricsWidget);
+            const widget = await createWidgetMutation.mutateAsync({
+              name: result.template.title,
+              description: result.template.description,
+              orgId,
+              subOrgId: filter?.subOrgIds?.[0] ?? null,
+              projectId: filter?.projectId ?? null,
+              type: widgetType,
+              config: {
+                resourceTypes: filter?.resources ?? [],
+                eventTypes
+              },
+              refreshInterval: parseRefreshInterval(result.template.refresh),
+              icon: result.template.icon,
+              color: result.template.iconBg
+            });
+            widgetId = widget.id;
+          }
 
           const uid = genUid();
           const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
           const tmpl = isMetricsWidget ? "_backend_metrics" : "_backend_events";
           setLayout((prev) => [
             ...prev,
-            { uid, tmpl, widgetId: widget.id, x: 0, y: maxY, ...dims }
+            { uid, tmpl, widgetId, x: 0, y: maxY, ...dims }
           ]);
         } catch {
           // Fallback to local-only storage if API fails
