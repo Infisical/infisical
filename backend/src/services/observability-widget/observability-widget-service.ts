@@ -8,11 +8,13 @@ import {
   getLogLevel,
   getResourceTypeFromEventType
 } from "./live-logs-helpers";
+import { metricsResolverFactory } from "./metrics-resolvers";
 import { TObservabilityWidgetDALFactory } from "./observability-widget-dal";
 import { getSubOrgDescendants } from "./observability-widget-helpers";
 import {
   EventsWidgetConfigSchema,
   LiveLogsWidgetConfigSchema,
+  NumberMetricsWidgetConfigSchema,
   ObservabilityResourceType,
   ObservabilityWidgetType,
   ORG_ONLY_RESOURCE_TYPES,
@@ -21,8 +23,10 @@ import {
   TGetLiveLogsWidgetDataOptions,
   TGetWidgetDataOptions,
   TLiveLogsWidgetConfig,
+  TNumberMetricsWidgetConfig,
   TObservabilityLiveLogsResponse,
   TObservabilityLogItem,
+  TObservabilityMetricsResponse,
   TObservabilityWidgetDataResponse,
   TObservabilityWidgetItem,
   TResolverResult,
@@ -44,6 +48,7 @@ export const observabilityWidgetServiceFactory = ({
   db
 }: TObservabilityWidgetServiceFactoryDep) => {
   const resolverRegistry: TResolverRegistry = createResolverRegistry(db);
+  const metricsResolver = metricsResolverFactory(db);
 
   const createWidget = async (dto: TCreateObservabilityWidgetDTO) => {
     if (dto.type === ObservabilityWidgetType.Events) {
@@ -310,6 +315,47 @@ export const observabilityWidgetServiceFactory = ({
     };
   };
 
+  const getMetricsWidgetData = async (widgetId: string): Promise<TObservabilityMetricsResponse> => {
+    const widget = await observabilityWidgetDAL.findById(widgetId);
+    if (!widget) {
+      throw new NotFoundError({ message: "Widget not found" });
+    }
+
+    if (widget.type !== ObservabilityWidgetType.Metrics) {
+      throw new BadRequestError({ message: "Only metrics widget type is supported for metrics data retrieval" });
+    }
+
+    const configParseResult = NumberMetricsWidgetConfigSchema.safeParse(widget.config);
+    if (!configParseResult.success) {
+      throw new BadRequestError({ message: "Invalid metrics widget configuration" });
+    }
+
+    const config: TNumberMetricsWidgetConfig = configParseResult.data;
+
+    const result = await metricsResolver.resolve({
+      orgId: widget.orgId,
+      subOrgId: widget.subOrgId,
+      projectId: widget.projectId,
+      config
+    });
+
+    return {
+      widget: {
+        id: widget.id,
+        name: widget.name,
+        description: widget.description,
+        type: widget.type as ObservabilityWidgetType,
+        refreshInterval: widget.refreshInterval,
+        icon: widget.icon,
+        color: widget.color
+      },
+      value: result.value,
+      label: result.label,
+      unit: result.unit,
+      link: result.link
+    };
+  };
+
   return {
     createWidget,
     getWidget,
@@ -317,6 +363,7 @@ export const observabilityWidgetServiceFactory = ({
     updateWidget,
     deleteWidget,
     getWidgetData,
-    getLiveLogsWidgetData
+    getLiveLogsWidgetData,
+    getMetricsWidgetData
   };
 };

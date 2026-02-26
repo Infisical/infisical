@@ -7,6 +7,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import {
   EventsWidgetConfigSchema,
   LiveLogsWidgetConfigSchema,
+  NumberMetricsWidgetConfigSchema,
   ObservabilityItemStatus,
   ObservabilityResourceType,
   ObservabilityWidgetType
@@ -82,7 +83,7 @@ export const registerObservabilityWidgetRouter = async (server: FastifyZodProvid
         subOrgId: z.string().uuid().optional().nullable(),
         projectId: z.string().optional().nullable(),
         type: z.nativeEnum(ObservabilityWidgetType),
-        config: z.union([EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema]),
+        config: z.union([EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema, NumberMetricsWidgetConfigSchema]),
         refreshInterval: z.number().min(5).max(3600).default(30),
         icon: z.string().max(64).optional(),
         color: z.string().max(32).optional()
@@ -163,7 +164,7 @@ export const registerObservabilityWidgetRouter = async (server: FastifyZodProvid
       body: z.object({
         name: z.string().min(1).max(128).optional(),
         description: z.string().max(512).optional(),
-        config: z.union([EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema]).optional(),
+        config: z.union([EventsWidgetConfigSchema, LiveLogsWidgetConfigSchema, NumberMetricsWidgetConfigSchema]).optional(),
         refreshInterval: z.number().min(5).max(3600).optional(),
         icon: z.string().max(64).optional(),
         color: z.string().max(32).optional()
@@ -288,6 +289,42 @@ export const registerObservabilityWidgetRouter = async (server: FastifyZodProvid
       const data = await server.services.observabilityWidget.getLiveLogsWidgetData(req.params.widgetId, {
         limit: req.query.limit
       });
+      return data;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:widgetId/metrics",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      operationId: "getObservabilityWidgetMetrics",
+      params: z.object({
+        widgetId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          widget: z.object({
+            id: z.string(),
+            name: z.string(),
+            description: z.string().nullable().optional(),
+            type: z.nativeEnum(ObservabilityWidgetType),
+            refreshInterval: z.number(),
+            icon: z.string().nullable().optional(),
+            color: z.string().nullable().optional()
+          }),
+          value: z.number(),
+          label: z.string(),
+          unit: z.string().optional(),
+          link: z.string().optional()
+        })
+      }
+    },
+    handler: async (req) => {
+      const data = await server.services.observabilityWidget.getMetricsWidgetData(req.params.widgetId);
       return data;
     }
   });

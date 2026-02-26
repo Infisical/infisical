@@ -32,6 +32,16 @@ export enum ObservabilityItemStatus {
   Expired = "expired"
 }
 
+// Metric types for number-based metrics widget
+export enum MetricType {
+  StatusCount = "status_count",
+  ExpiringSoon = "expiring_soon",
+  IdentityCount = "identity_count"
+}
+
+// Identity types for identity count metrics
+export type TIdentityType = "user" | "machine" | "all";
+
 // Org-only resource types that cannot be used in project-scoped widgets
 export const ORG_ONLY_RESOURCE_TYPES: readonly ObservabilityResourceType[] = [
   ObservabilityResourceType.Gateway,
@@ -58,6 +68,15 @@ export const MetricsWidgetConfigSchema = z.object({
   aggregation: z.string()
 });
 
+// Number-based metrics widget config schema
+export const NumberMetricsWidgetConfigSchema = z.object({
+  metricType: z.nativeEnum(MetricType),
+  resourceTypes: z.nativeEnum(ObservabilityResourceType).array().optional(),
+  status: z.nativeEnum(ObservabilityItemStatus).optional(),
+  thresholdDays: z.number().min(1).max(365).optional(),
+  identityType: z.enum(["user", "machine", "all"]).optional()
+});
+
 export const LogsWidgetConfigSchema = z.object({
   logSource: z.string(),
   filters: z.record(z.unknown()).optional(),
@@ -80,6 +99,7 @@ export type TMetricsWidgetConfig = z.infer<typeof MetricsWidgetConfigSchema>;
 export type TLogsWidgetConfig = z.infer<typeof LogsWidgetConfigSchema>;
 export type TPieChartWidgetConfig = z.infer<typeof PieChartWidgetConfigSchema>;
 export type TLiveLogsWidgetConfig = z.infer<typeof LiveLogsWidgetConfigSchema>;
+export type TNumberMetricsWidgetConfig = z.infer<typeof NumberMetricsWidgetConfigSchema>;
 
 // Scope type for widget items
 export interface TObservabilityScope {
@@ -164,7 +184,13 @@ export interface TCreateObservabilityWidgetDTO {
   subOrgId?: string | null;
   projectId?: string | null;
   type: ObservabilityWidgetType;
-  config: TEventsWidgetConfig | TMetricsWidgetConfig | TLogsWidgetConfig | TPieChartWidgetConfig | TLiveLogsWidgetConfig;
+  config:
+    | TEventsWidgetConfig
+    | TMetricsWidgetConfig
+    | TLogsWidgetConfig
+    | TPieChartWidgetConfig
+    | TLiveLogsWidgetConfig
+    | TNumberMetricsWidgetConfig;
   refreshInterval?: number;
   icon?: string;
   color?: string;
@@ -174,7 +200,13 @@ export interface TCreateObservabilityWidgetDTO {
 export interface TUpdateObservabilityWidgetDTO {
   name?: string;
   description?: string;
-  config?: TEventsWidgetConfig | TMetricsWidgetConfig | TLogsWidgetConfig | TPieChartWidgetConfig | TLiveLogsWidgetConfig;
+  config?:
+    | TEventsWidgetConfig
+    | TMetricsWidgetConfig
+    | TLogsWidgetConfig
+    | TPieChartWidgetConfig
+    | TLiveLogsWidgetConfig
+    | TNumberMetricsWidgetConfig;
   refreshInterval?: number;
   icon?: string;
   color?: string;
@@ -244,4 +276,21 @@ export interface TObservabilityLiveLogsResponse {
 // Get live logs widget data options
 export interface TGetLiveLogsWidgetDataOptions {
   limit?: number;
+}
+
+// Metrics widget data response
+export interface TObservabilityMetricsResponse {
+  widget: {
+    id: string;
+    name: string;
+    description?: string | null;
+    type: ObservabilityWidgetType;
+    refreshInterval: number;
+    icon?: string | null;
+    color?: string | null;
+  };
+  value: number;
+  label: string;
+  unit?: string;
+  link?: string;
 }
