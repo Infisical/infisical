@@ -297,12 +297,12 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 y1="3"
                 x2="14"
                 y2="3"
-                stroke="#f1c40f"
+                stroke="var(--color-accent)"
                 strokeWidth="1"
                 strokeDasharray="3 2"
               />
             </svg>
-            <span className="font-mono text-[10px] text-muted">Idle / Evaluating</span>
+            <span className="font-mono text-[10px] text-muted">Idle / Inactive</span>
           </div>
         </div>
       </div>
