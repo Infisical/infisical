@@ -68,6 +68,7 @@ export type TAgentGateAuditLog = {
   action: string;
   result: "allowed" | "denied";
   policyEvaluations: TPolicyEvaluation[];
+  agentReasoning: string | null;
   context: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;

@@ -25,6 +25,7 @@ const mapAuditLogToEvent = (log: TAgentGateAuditLog): DemoEvent => ({
   details: `${log.actionType}: ${log.action}`,
   status: log.result === "allowed" ? "approved" : "denied",
   reasoning: log.policyEvaluations?.[0]?.reasoning ?? "",
+  agentReasoning: log.agentReasoning || undefined,
   timestamp: log.timestamp
 });
 

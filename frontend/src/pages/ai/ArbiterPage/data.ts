@@ -14,6 +14,7 @@ export type DemoEvent = {
   details: string;
   status: "approved" | "denied";
   reasoning: string;
+  agentReasoning?: string;
   timestamp: string;
 };
 

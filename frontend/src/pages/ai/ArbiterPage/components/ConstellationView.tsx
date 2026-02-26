@@ -175,7 +175,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   y: { duration: 5 + index * 0.8, repeat: Infinity, ease: "easeInOut" },
                   x: { duration: 7 + index, repeat: Infinity, ease: "easeInOut" }
                 }}
-                className="flex flex-col items-center"
+                className="relative flex flex-col items-center"
               >
                 <div
                   className={`flex h-20 w-20 items-center justify-center rounded-full border transition-shadow duration-500 ${
@@ -191,6 +191,22 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 <div className="mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
                   {agent.name}
                 </div>
+
+                {/* Agent reasoning label */}
+                <AnimatePresence>
+                  {isSource && currentEvent?.agentReasoning && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-full mt-2 w-44 text-center"
+                    >
+                      <div className="text-[10px] leading-tight text-accent">
+                        {currentEvent.agentReasoning}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
 
               {/* Connection Line to Center */}
