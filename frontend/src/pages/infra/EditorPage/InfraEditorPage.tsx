@@ -2,6 +2,7 @@ import Editor, { loader, type OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 
 // Load Monaco from the local bundle to avoid CSP violations.
 self.MonacoEnvironment = {
@@ -46,6 +47,9 @@ resource "local_file" "hello" {
 export const InfraEditorPage = () => {
   const { currentProject } = useProject();
   const projectId = currentProject.id;
+  const { file: searchFile, line: searchLine } = useSearch({
+    strict: false
+  }) as { file?: string; line?: number };
 
   // API hooks
   const { data: remoteFiles, isLoading: filesLoading } = useInfraFiles(projectId);
@@ -82,9 +86,79 @@ export const InfraEditorPage = () => {
     setInitialized(true);
   }, [remoteFiles, filesLoading, initialized]);
 
+  // Navigate to a specific file/line when arriving from a "Go to code" link.
+  // We store the pending target so `onMount` can pick it up if the editor
+  // hasn't loaded yet (e.g. first visit to the editor tab).
+  const pendingNavRef = useRef<{ line: number } | null>(null);
+  const didNavigateRef = useRef(false);
+
+  const highlightDecorationsRef = useRef<string[]>([]);
+
+  const applyNavigation = useCallback((editor: Parameters<OnMount>[0], line: number) => {
+    const goToLine = () => {
+      editor.revealLineInCenter(line);
+      editor.setPosition({ lineNumber: line, column: 1 });
+      editor.focus();
+
+      // Add a temporary highlight decoration on the target line
+      highlightDecorationsRef.current = editor.deltaDecorations(
+        highlightDecorationsRef.current,
+        [{
+          range: new monaco.Range(line, 1, line, 1),
+          options: {
+            isWholeLine: true,
+            className: "go-to-code-highlight"
+          }
+        }]
+      );
+      // Remove after the fade-out animation completes
+      setTimeout(() => {
+        highlightDecorationsRef.current = editor.deltaDecorations(
+          highlightDecorationsRef.current,
+          []
+        );
+      }, 2000);
+    };
+
+    // Monaco needs a moment after content changes to lay out lines correctly.
+    const dispose = editor.onDidChangeModelContent(() => {
+      dispose.dispose();
+      requestAnimationFrame(goToLine);
+    });
+
+    // If content didn't change (same file), the listener won't fire — apply directly with a small delay.
+    setTimeout(() => {
+      dispose.dispose();
+      goToLine();
+    }, 100);
+  }, []);
+
+  useEffect(() => {
+    if (!initialized || !searchFile || didNavigateRef.current) return;
+    const idx = files.findIndex((f) => f.name === searchFile);
+    if (idx === -1) return;
+    didNavigateRef.current = true;
+    setActiveFileIndex(idx);
+
+    if (searchLine) {
+      if (editorRef.current) {
+        applyNavigation(editorRef.current, searchLine);
+      } else {
+        // Editor hasn't mounted yet — defer until onMount
+        pendingNavRef.current = { line: searchLine };
+      }
+    }
+  }, [initialized, searchFile, searchLine, files, applyNavigation]);
+
   const handleEditorMount: OnMount = (editor) => {
     editorRef.current = editor;
-    editor.focus();
+    const pending = pendingNavRef.current;
+    if (pending) {
+      pendingNavRef.current = null;
+      applyNavigation(editor, pending.line);
+    } else {
+      editor.focus();
+    }
   };
 
   // Auto-save with debounce
@@ -370,6 +444,19 @@ export const InfraEditorPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Highlight animation for "Go to code" navigation */}
+      <style>{`
+        .go-to-code-highlight {
+          background-color: rgba(234, 179, 8, 0.25);
+          animation: go-to-code-fade 2s ease-out forwards;
+        }
+        @keyframes go-to-code-fade {
+          0% { background-color: rgba(234, 179, 8, 0.25); }
+          70% { background-color: rgba(234, 179, 8, 0.25); }
+          100% { background-color: transparent; }
+        }
+      `}</style>
 
       {/* Run overlay */}
       <InfraRunOverlay

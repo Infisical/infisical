@@ -63,6 +63,7 @@
     "@sindresorhus/slugify": "^2.2.1",
     "@tanstack/react-query": "^5.62.7",
     "@tanstack/react-router": "^1.95.1",
+    "@tanstack/router-zod-adapter": "^1.81.5",
     "@tanstack/virtual-file-routes": "^1.87.6",
     "@tanstack/zod-adapter": "^1.91.0",
     "@types/dagre": "^0.7.52",

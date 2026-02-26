@@ -1,4 +1,15 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import {
+  ActivityIcon,
+  AlertTriangleIcon,
+  BoxIcon,
+  DollarSignIcon,
+  PlayIcon,
+  ShieldAlertIcon,
+  SparklesIcon,
+  XIcon
+} from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -11,17 +22,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import ReactMarkdown from "react-markdown";
-import {
-  ActivityIcon,
-  AlertTriangleIcon,
-  BoxIcon,
-  DollarSignIcon,
-  PlayIcon,
-  ShieldAlertIcon,
-  SparklesIcon,
-  XIcon
-} from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
   Badge,
@@ -39,7 +40,9 @@ import {
   useInfraResources,
   useInfraRuns
 } from "@app/hooks/api/infra";
-import { TAiInsight } from "@app/hooks/api/infra/types";
+import { TAiInsight, TInfraResource } from "@app/hooks/api/infra/types";
+
+import { ResourceDetailPanel } from "../components/ResourceDetailPanel";
 import { ResourceTopologyGraph } from "../components/ResourceTopologyGraph";
 
 const RESOURCE_COLORS = [
@@ -81,6 +84,19 @@ export const InfraDashboardPage = () => {
   const { data: resources, isLoading: resourcesLoading } = useInfraResources(currentProject.id);
   const { data: graph } = useInfraGraph(currentProject.id);
   const [expandedSummary, setExpandedSummary] = useState(false);
+  const [graphFullscreen, setGraphFullscreen] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [autoCycling, setAutoCycling] = useState(true);
+  const cycleKeyRef = useRef(0); // bumped each cycle to restart the timer animation
+  const handleToggleGraphFullscreen = useCallback(() => setGraphFullscreen((p) => !p), []);
+  const handleNodeClick = useCallback((nodeId: string) => {
+    setAutoCycling(false);
+    setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId));
+  }, []);
+  const handleCloseDetail = useCallback(() => {
+    setAutoCycling(true);
+    setSelectedNodeId(null);
+  }, []);
 
   // Filter out denied runs — they are cancelled and should not appear
   const visibleRuns = useMemo(() => {
@@ -165,6 +181,52 @@ export const InfraDashboardPage = () => {
       color: RESOURCE_COLORS[i % RESOURCE_COLORS.length]
     }));
   }, [resources]);
+
+  // Resource lookup by address for detail panel
+  const resourceMap = useMemo(() => {
+    if (!resources) return new Map<string, TInfraResource>();
+    const map = new Map<string, TInfraResource>();
+    for (const r of resources) map.set(r.address, r);
+    return map;
+  }, [resources]);
+
+  const selectedResource = selectedNodeId ? (resourceMap.get(selectedNodeId) ?? null) : null;
+
+  // Build cost map from latest AI insight
+  const costMap = useMemo<Record<string, string>>(() => {
+    if (!latestAiInsight) return {};
+    try {
+      const map: Record<string, string> = {};
+      for (const c of [...latestAiInsight.costs.estimated, ...latestAiInsight.costs.aiEstimated]) {
+        if (c.monthlyCost && c.monthlyCost !== "$0.00") {
+          map[c.resource] = c.monthlyCost;
+        }
+      }
+      return map;
+    } catch {
+      return {};
+    }
+  }, [latestAiInsight]);
+
+  // Auto-cycle through nodes every 4s for a "live dashboard" feel.
+  // Pauses when the user manually selects a node; resumes on close.
+  const CYCLE_DURATION = 4000;
+  useEffect(() => {
+    const nodes = graph?.nodes;
+    if (!nodes || nodes.length === 0 || graphFullscreen || !autoCycling) return;
+
+    let idx = 0;
+    cycleKeyRef.current += 1;
+    setSelectedNodeId(nodes[0].id);
+
+    const interval = setInterval(() => {
+      idx = (idx + 1) % nodes.length;
+      cycleKeyRef.current += 1;
+      setSelectedNodeId(nodes[idx].id);
+    }, CYCLE_DURATION);
+
+    return () => clearInterval(interval);
+  }, [graph?.nodes, graphFullscreen, autoCycling]);
 
   const statCards = [
     {
@@ -433,6 +495,8 @@ export const InfraDashboardPage = () => {
                         borderRadius: "8px",
                         fontSize: "12px"
                       }}
+                      labelStyle={{ color: "#e5e5e5" }}
+                      itemStyle={{ color: "#e5e5e5" }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -460,17 +524,67 @@ export const InfraDashboardPage = () => {
       </div>
 
       {/* Topology Graph — fills remaining height */}
-      {graph && graph.nodes.length > 0 && (
+      {graph && graph.nodes.length > 0 && !graphFullscreen && (
         <UnstableCard className="flex min-h-0 flex-1 flex-col">
           <UnstableCardHeader className="shrink-0">
             <UnstableCardTitle className="text-sm font-medium text-mineshaft-200">
               Resource Topology
             </UnstableCardTitle>
           </UnstableCardHeader>
-          <UnstableCardContent className="min-h-0 flex-1">
-            <ResourceTopologyGraph nodes={graph.nodes} edges={graph.edges} className="h-full" />
+          <UnstableCardContent className="flex min-h-0 flex-1 gap-0 p-0">
+            <div className="min-w-0 flex-1">
+              <ResourceTopologyGraph
+                nodes={graph.nodes}
+                edges={graph.edges}
+                className={twMerge("h-full", selectedResource && "rounded-r-none border-r-0")}
+                onNodeClick={handleNodeClick}
+                selectedNodeId={selectedNodeId}
+                onToggleFullscreen={handleToggleGraphFullscreen}
+              />
+            </div>
+            {selectedResource && (
+              <ResourceDetailPanel
+                resource={selectedResource}
+                costMap={costMap}
+                onClose={handleCloseDetail}
+                cycleTimer={{
+                  durationMs: CYCLE_DURATION,
+                  active: autoCycling,
+                  nodeKey: String(cycleKeyRef.current)
+                }}
+                files={files}
+              />
+            )}
           </UnstableCardContent>
         </UnstableCard>
+      )}
+      {graph && graph.nodes.length > 0 && graphFullscreen && (
+        <div className="fixed inset-0 z-50 flex bg-bunker-800">
+          <div className="min-w-0 flex-1">
+            <ResourceTopologyGraph
+              nodes={graph.nodes}
+              edges={graph.edges}
+              className={twMerge("h-full", selectedResource && "rounded-r-none border-r-0")}
+              fullscreen
+              onNodeClick={handleNodeClick}
+              selectedNodeId={selectedNodeId}
+              onToggleFullscreen={handleToggleGraphFullscreen}
+            />
+          </div>
+          {selectedResource && (
+            <ResourceDetailPanel
+              resource={selectedResource}
+              costMap={costMap}
+              onClose={handleCloseDetail}
+              cycleTimer={{
+                durationMs: CYCLE_DURATION,
+                active: autoCycling,
+                nodeKey: String(cycleKeyRef.current)
+              }}
+              files={files}
+            />
+          )}
+        </div>
       )}
     </div>
   );

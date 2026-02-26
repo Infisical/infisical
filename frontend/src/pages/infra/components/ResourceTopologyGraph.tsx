@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Dagre from "@dagrejs/dagre";
 import {
   Background,
@@ -8,10 +8,13 @@ import {
   type Edge,
   MarkerType,
   type Node,
+  type NodeMouseHandler,
+  Panel,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow
 } from "@xyflow/react";
+import { MaximizeIcon, MinimizeIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import "@xyflow/react/dist/style.css";
@@ -30,6 +33,10 @@ type ResourceTopologyGraphProps = {
   compact?: boolean;
   className?: string;
   animate?: boolean; // enable staggered entrance animation
+  onNodeClick?: (nodeId: string) => void;
+  selectedNodeId?: string | null;
+  fullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 };
 
 // ── Layout helpers ──
@@ -125,7 +132,11 @@ const AnimatedInnerGraph = ({
   edges: inputEdges,
   actionMap,
   compact = false,
-  className
+  className,
+  onNodeClick,
+  selectedNodeId,
+  fullscreen,
+  onToggleFullscreen
 }: ResourceTopologyGraphProps) => {
   const { fitView } = useReactFlow();
   const cancelRef = useRef<(() => void) | null>(null);
@@ -146,7 +157,8 @@ const AnimatedInnerGraph = ({
         resourceType: n.type,
         resourceName: n.name,
         action: actionMap?.[n.id],
-        compact
+        compact,
+        selected: n.id === selectedNodeId
       }
     }));
 
@@ -178,7 +190,12 @@ const AnimatedInnerGraph = ({
     }
 
     return { layoutNodes: layout.nodes, layoutEdges: layout.edges, centerX: cx, centerY: cy };
-  }, [inputNodes, inputEdges, actionMap, compact]);
+  }, [inputNodes, inputEdges, actionMap, compact, selectedNodeId]);
+
+  const handleNodeClick: NodeMouseHandler = useCallback(
+    (_, node) => { onNodeClick?.(node.id); },
+    [onNodeClick]
+  );
 
   // State for animated positions — start at final positions (safe default)
   const [flowNodes, setFlowNodes] = useState<Node<ResourceNodeData>[]>(layoutNodes);
@@ -287,9 +304,22 @@ const AnimatedInnerGraph = ({
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}
         proOptions={{ hideAttribution: true }}
+        onNodeClick={handleNodeClick}
       >
         <Background color="#5d5f64" bgColor="#111419" variant={BackgroundVariant.Dots} />
         {!compact && <Controls position="bottom-left" showInteractive={false} />}
+        {onToggleFullscreen && (
+          <Panel position="top-right">
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="rounded-md bg-mineshaft-700/80 p-1.5 text-mineshaft-300 backdrop-blur transition-colors hover:bg-mineshaft-600 hover:text-mineshaft-100"
+              title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {fullscreen ? <MinimizeIcon className="size-4" /> : <MaximizeIcon className="size-4" />}
+            </button>
+          </Panel>
+        )}
       </ReactFlow>
     </div>
   );
@@ -302,7 +332,11 @@ const StaticInnerGraph = ({
   edges: inputEdges,
   actionMap,
   compact = false,
-  className
+  className,
+  onNodeClick,
+  selectedNodeId,
+  fullscreen,
+  onToggleFullscreen
 }: ResourceTopologyGraphProps) => {
   const { nodes, edges } = useMemo(() => {
     const w = compact ? NODE_WIDTH_COMPACT : NODE_WIDTH_NORMAL;
@@ -318,7 +352,8 @@ const StaticInnerGraph = ({
         resourceType: n.type,
         resourceName: n.name,
         action: actionMap?.[n.id],
-        compact
+        compact,
+        selected: n.id === selectedNodeId
       }
     }));
 
@@ -337,7 +372,12 @@ const StaticInnerGraph = ({
     });
 
     return dagreLayout(flowNodes, flowEdges, compact);
-  }, [inputNodes, inputEdges, actionMap, compact]);
+  }, [inputNodes, inputEdges, actionMap, compact, selectedNodeId]);
+
+  const handleNodeClick: NodeMouseHandler = useCallback(
+    (_, node) => { onNodeClick?.(node.id); },
+    [onNodeClick]
+  );
 
   if (inputNodes.length === 0) {
     return (
@@ -364,7 +404,7 @@ const StaticInnerGraph = ({
         edges={edges}
         nodeTypes={NODE_TYPES}
         colorMode="dark"
-        nodesDraggable={false}
+        nodesDraggable
         edgesReconnectable={false}
         nodesConnectable={false}
         connectionLineType={ConnectionLineType.Bezier}
@@ -372,9 +412,22 @@ const StaticInnerGraph = ({
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}
         proOptions={{ hideAttribution: true }}
+        onNodeClick={handleNodeClick}
       >
         <Background color="#5d5f64" bgColor="#111419" variant={BackgroundVariant.Dots} />
         {!compact && <Controls position="bottom-left" showInteractive={false} />}
+        {onToggleFullscreen && (
+          <Panel position="top-right">
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="rounded-md bg-mineshaft-700/80 p-1.5 text-mineshaft-300 backdrop-blur transition-colors hover:bg-mineshaft-600 hover:text-mineshaft-100"
+              title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {fullscreen ? <MinimizeIcon className="size-4" /> : <MaximizeIcon className="size-4" />}
+            </button>
+          </Panel>
+        )}
       </ReactFlow>
     </div>
   );

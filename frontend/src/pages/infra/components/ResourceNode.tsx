@@ -7,6 +7,7 @@ export type ResourceNodeData = {
   resourceName: string;
   action?: string; // create | update | delete | replace
   compact?: boolean;
+  selected?: boolean;
 };
 
 const ACTION_STYLES: Record<string, { border: string; bg: string; text: string }> = {
@@ -19,7 +20,7 @@ const ACTION_STYLES: Record<string, { border: string; bg: string; text: string }
 const DEFAULT_STYLE = { border: "border-mineshaft-500/60", bg: "bg-mineshaft-800", text: "text-mineshaft-300" };
 
 export const ResourceNode = ({ data }: NodeProps & { data: ResourceNodeData }) => {
-  const { resourceType, resourceName, action, compact } = data;
+  const { resourceType, resourceName, action, compact, selected } = data;
   const style = (action && ACTION_STYLES[action]) || DEFAULT_STYLE;
 
   return (
@@ -31,10 +32,11 @@ export const ResourceNode = ({ data }: NodeProps & { data: ResourceNodeData }) =
       />
       <div
         className={twMerge(
-          "overflow-hidden rounded-lg border shadow-lg",
+          "overflow-hidden rounded-lg border shadow-lg transition-all",
           style.border,
           style.bg,
-          compact ? "w-[150px] px-2.5 py-1.5" : "w-[200px] px-3 py-2"
+          compact ? "w-[150px] px-2.5 py-1.5" : "w-[200px] px-3 py-2",
+          selected && "border-primary ring-2 ring-primary/30"
         )}
       >
         <div className="flex items-center gap-1.5 overflow-hidden">
