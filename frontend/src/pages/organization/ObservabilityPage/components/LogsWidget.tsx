@@ -160,7 +160,16 @@ export function LogsWidget({ dragHandleProps }: { dragHandleProps?: Record<strin
           <span className="text-mineshaft-300">info</span>
           <span className="font-semibold text-[#58a6ff]">{counters.info}</span>
         </div>
-        <span className="ml-auto text-[11px] text-mineshaft-300">
+        <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] text-mineshaft-300">
+          <input
+            type="checkbox"
+            checked={autoScroll}
+            onChange={(e) => setAutoScroll(e.target.checked)}
+            className="accent-primary"
+          />
+          Auto-scroll
+        </label>
+        <span className="text-[11px] text-mineshaft-300">
           Scope: org - Admin Org
         </span>
       </div>
