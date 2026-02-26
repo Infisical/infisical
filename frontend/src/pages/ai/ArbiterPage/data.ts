@@ -15,6 +15,7 @@ export type DemoEvent = {
   status: "approved" | "denied";
   reasoning: string;
   agentReasoning?: string;
+  executionStatus?: "pending" | "started" | "completed" | "failed" | null;
   timestamp: string;
 };
 

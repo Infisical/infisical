@@ -14,11 +14,11 @@ const AGENT_POSITIONS = [
   { x: -200, y: -150 },
   { x: 250, y: -80 },
   { x: -260, y: 155 },
-  { x: 155, y: 245 }
+  { x: 100, y: 245 }
 ];
 
 // Per-agent line length adjustment (px to shrink from agent edge)
-const AGENT_LINE_INSET = [-10, -4, 2, 4];
+const AGENT_LINE_INSET = [-10, -4, 3, 6];
 
 const getIcon = (name: string) => {
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
@@ -50,7 +50,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
   }, [currentEvent]);
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-md rounded-b-lg border border-border bg-bunker-900">
+    <div className="relative h-full w-full overflow-hidden rounded-md rounded-b-lg border border-border bg-bunker-900">
       {/* Grid/Network Background */}
       <svg className="absolute inset-0 h-full w-full">
         <defs>
@@ -69,11 +69,14 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
       </svg>
 
       {/* Central Governance Node */}
-      <div className="absolute z-10">
+      <div
+        className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+        style={{ marginTop: -70 }}
+      >
         <motion.div
           animate={{
             scale: currentEvent ? 1.03 : 1,
-            filter: `drop-shadow(0 0 ${currentEvent ? 18 : 12}px ${statusColor.glow})`,
+            filter: `drop-shadow(0 0 ${currentEvent ? 18 : 18}px ${statusColor.glow})`,
             y: [0, -3, 0],
             x: [0, 2, 0, -2, 0]
           }}
@@ -110,30 +113,43 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
           </div>
 
           {/* Policy Decision Text */}
-          <AnimatePresence>
-            {currentEvent && (
+          <AnimatePresence mode="wait">
+            {/* {!currentEvent && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="absolute top-full mt-4 w-64 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1.5 text-center"
+                key="idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute top-full mt-4 animate-pulse font-mono text-[10px] tracking-widest text-muted text-warning uppercase"
               >
+                [IDLE]
+              </motion.div>
+            )} */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-full mt-4 w-32 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1.5 text-center"
+            >
+              {currentEvent ? (
                 <div
-                  className={`mb-1 font-mono text-xs ${
+                  className={`font-mono text-xs ${
                     currentEvent.status === "approved" ? "text-success" : "text-danger"
                   }`}
                 >
                   [{currentEvent.status.toUpperCase()}]
                 </div>
-                <div
+              ) : (
+                <div className="animate-pulse font-mono text-xs text-warning">[IDLE]</div>
+              )}
+              {/* <div
                   className={`text-[10px] leading-tight italic ${
                     currentEvent.status === "approved" ? "text-accent" : "text-danger"
                   }`}
                 >
                   &quot;{currentEvent.reasoning}&quot;
-                </div>
-              </motion.div>
-            )}
+                </div> */}
+            </motion.div>
           </AnimatePresence>
         </motion.div>
       </div>
@@ -166,7 +182,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
               key={agent.id}
               className="absolute top-1/2 left-1/2"
               style={{
-                transform: `translate(${pos.x - 48}px, ${pos.y - 48}px)`
+                transform: `translate(${pos.x - 48}px, ${pos.y - 48 - 70}px)`
               }}
             >
               <motion.div
@@ -199,22 +215,6 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 <div className="mt-2 w-24 text-center font-mono text-[10px] tracking-widest text-muted uppercase">
                   {agent.name}
                 </div>
-
-                {/* Agent reasoning label */}
-                <AnimatePresence>
-                  {isSource && currentEvent?.agentReasoning && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full mt-2 w-44 rounded bg-gradient-to-r from-accent/10 to-accent/5 px-1 py-1.5 text-center"
-                    >
-                      <div className="text-[10px] leading-tight text-accent italic">
-                        &quot;{currentEvent.agentReasoning}&quot;
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
 
               {/* Connection Line to Center */}
@@ -245,7 +245,7 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                 />
 
                 {/* Particle traveling along line: agent→center for source, center→agent for target */}
-                {isSource && currentEvent && (
+                {/* {isSource && currentEvent && (
                   <motion.circle
                     r="3"
                     fill={currentEvent.status === "approved" ? "#2ecc71" : "#e74c3c"}
@@ -255,8 +255,8 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                   >
                     <animateMotion dur="1s" repeatCount="1" path={`M ${x1} ${y1} L ${x2} ${y2}`} />
                   </motion.circle>
-                )}
-                {isTarget && isAgentToAgent && currentEvent && (
+                )} */}
+                {/* {isTarget && isAgentToAgent && currentEvent && (
                   <motion.circle
                     r="3"
                     fill={currentEvent.status === "approved" ? "#2ecc71" : "#e74c3c"}
@@ -271,11 +271,37 @@ export const ConstellationView = ({ currentEvent }: ConstellationViewProps) => {
                       path={`M ${x2} ${y2} L ${x1} ${y1}`}
                     />
                   </motion.circle>
-                )}
+                )} */}
               </svg>
             </div>
           );
         })}
+      </div>
+
+      {/* Agent Reasoning */}
+      <div className="absolute bottom-4 left-4 z-20 max-w-xs">
+        <AnimatePresence mode="popLayout">
+          {currentEvent?.agentReasoning && (
+            <motion.div
+              key={currentEvent.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                filter: `drop-shadow(0 0 ${currentEvent ? 18 : 12}px ${statusColor.glow})`
+              }}
+              exit={{ opacity: 0, y: -10 }}
+              className="rounded-md border border-border bg-gradient-to-r from-accent/10 to-accent/5 px-3 py-2 backdrop-blur-sm"
+            >
+              <div className="mb-1 font-mono text-[10px] tracking-widest text-muted uppercase">
+                {currentEvent.agentId.replace(/_/g, " ")}
+              </div>
+              <div className="text-xs leading-tight text-accent italic">
+                &quot;{currentEvent.agentReasoning}&quot;
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Legend */}
