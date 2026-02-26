@@ -47,7 +47,7 @@ export function MetricsWidget({
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="rounded border border-mineshaft-600 bg-bunker-800 px-1.5 py-0.5 text-[10px] text-mineshaft-300">
+            <span className="flex items-center gap-1 rounded border border-mineshaft-600 bg-bunker-800 px-1.5 py-0.5 text-[10px] text-mineshaft-300">
               <span className="inline-block h-[5px] w-[5px] animate-pulse rounded-full bg-blue-500" />
               {data
                 ? data.widget.refreshInterval < 60
