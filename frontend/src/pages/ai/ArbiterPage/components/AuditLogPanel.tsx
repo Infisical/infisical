@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Activity, CheckCircle, Shield, XCircle } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
   Badge,
@@ -19,9 +20,19 @@ import type { DemoEvent } from "../data";
 
 interface AuditLogPanelProps {
   events: DemoEvent[];
+  title?: string;
+  description?: string;
+  className?: string;
+  fillHeight?: boolean;
 }
 
-export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
+export const AuditLogPanel = ({
+  events,
+  title = "Event Log",
+  description = "Live event stream",
+  className,
+  fillHeight
+}: AuditLogPanelProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,18 +42,18 @@ export const AuditLogPanel = ({ events }: AuditLogPanelProps) => {
   }, [events]);
 
   return (
-    <UnstableCard className="w-full gap-y-0 lg:w-[420px] lg:shrink-0">
+    <UnstableCard className={twMerge("w-full gap-y-0 overflow-hidden lg:w-[420px] lg:shrink-0", className)}>
       <UnstableCardHeader className="!mb-0 border-b">
         <UnstableCardTitle className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-success" />
-          Event Log
+          {title}
         </UnstableCardTitle>
         <UnstableCardDescription className="flex items-center gap-1.5">
-          Live event stream
+          {description}
         </UnstableCardDescription>
       </UnstableCardHeader>
-      <UnstableCardContent className="-mx-5 !mt-0 -mb-5 py-0">
-        <div ref={scrollRef} className="h-[701px] space-y-2.5 overflow-y-auto px-5 py-4 pb-5">
+      <UnstableCardContent className="-mx-5 !mt-0 -mb-5 min-h-0 flex-1 py-0">
+        <div ref={scrollRef} className={`space-y-2.5 overflow-y-auto px-5 py-4 pb-5 ${fillHeight ? "h-full" : "h-[701px]"}`}>
           <AnimatePresence initial={false}>
             {events.map((event) => (
               <motion.div

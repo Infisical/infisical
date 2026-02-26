@@ -6,6 +6,7 @@ import {
   Clock,
   DownloadIcon,
   FilterIcon,
+  PlayIcon,
   SearchIcon,
   Shield,
   XCircle,
@@ -45,6 +46,8 @@ import {
 import { useProject } from "@app/context";
 import { useQueryAgentGateAuditLogs } from "@app/hooks/api";
 import { TAgentGateAuditLog } from "@app/hooks/api/agentGate/types";
+
+import { SessionReplayModal } from "./SessionReplayModal";
 
 type Session = {
   id: string;
@@ -98,7 +101,13 @@ const buildSessions = (logs: TAgentGateAuditLog[]): Session[] => {
 
 const DECISION_STATUSES = ["Approved", "Denied"] as const;
 
-const SessionRow = ({ session }: { session: Session }) => {
+const SessionRow = ({
+  session,
+  onReplay
+}: {
+  session: Session;
+  onReplay: (session: Session) => void;
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -149,11 +158,23 @@ const SessionRow = ({ session }: { session: Session }) => {
             })}
           </span>
         </UnstableTableCell>
+        <UnstableTableCell className={twMerge(isExpanded && "border-b-0")}>
+          <UnstableIconButton
+            size="xs"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReplay(session);
+            }}
+          >
+            <PlayIcon className="h-3.5 w-3.5" />
+          </UnstableIconButton>
+        </UnstableTableCell>
       </UnstableTableRow>
       {isExpanded && (
         <UnstableTableRow>
-          <UnstableTableCell colSpan={6} className="bg-card p-0">
-            <div className="border-t-1 border-border p-6">
+          <UnstableTableCell colSpan={7} className="bg-card p-0">
+            <div className="border-y-1 border-border p-6">
               <div className="relative">
                 {/* Timeline line */}
                 <div className="absolute top-0 bottom-0 left-[15px] w-px bg-border" />
@@ -161,10 +182,7 @@ const SessionRow = ({ session }: { session: Session }) => {
                   {session.logs.map((log) => {
                     const isApproved = log.result === "allowed";
                     return (
-                      <div
-                        key={log.id}
-                        className="relative flex items-start gap-4 pb-6 last:pb-0"
-                      >
+                      <div key={log.id} className="relative flex items-start gap-4 pb-6 last:pb-0">
                         {/* Timeline node */}
                         <div className="relative z-10 ml-[5px] flex shrink-0 items-center justify-center">
                           {isApproved ? (
@@ -226,6 +244,7 @@ export const SessionsTab = () => {
   const projectId = currentProject.id;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [replaySession, setReplaySession] = useState<Session | null>(null);
 
   const { data: auditData } = useQueryAgentGateAuditLogs({
     projectId,
@@ -249,7 +268,8 @@ export const SessionsTab = () => {
   const isFiltered = search.length > 0 || statusFilter.length > 0;
 
   const filteredSessions = sessions.filter((session) => {
-    const matchesSearch = session.title.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch =
+      session.title.toLowerCase().includes(search.toLowerCase()) ||
       session.description.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
     if (statusFilter.length === 0) return true;
@@ -259,90 +279,100 @@ export const SessionsTab = () => {
   });
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader>
-        <UnstableCardTitle>
-          Sessions
-          <DocumentationLinkBadge href="/" />
-        </UnstableCardTitle>
-        <UnstableCardDescription>
-          View agent session activity and arbiter decisions.
-        </UnstableCardDescription>
-        <UnstableCardAction>
-          <Button variant="project">
-            <DownloadIcon />
-            Export Sessions
-          </Button>
-        </UnstableCardAction>
-      </UnstableCardHeader>
-      <div className="flex gap-2">
-        <InputGroup className="flex-1">
-          <InputGroupAddon>
-            <SearchIcon />
-          </InputGroupAddon>
-          <InputGroupInput
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sessions by name..."
-          />
-        </InputGroup>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton variant={isTableFiltered ? "org" : "outline"}>
-              <FilterIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <UnstableDropdownMenuLabel>Filter by Decision</UnstableDropdownMenuLabel>
-            {DECISION_STATUSES.map((status) => (
-              <UnstableDropdownMenuCheckboxItem
-                key={status}
-                checked={statusFilter.includes(status)}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleStatusToggle(status);
-                }}
-              >
-                {status}
-              </UnstableDropdownMenuCheckboxItem>
-            ))}
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
-      </div>
-      {!filteredSessions.length ? (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
-              {isFiltered
-                ? "No sessions match the current filter"
-                : "No sessions have been recorded yet"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
-              {isFiltered
-                ? "Adjust your search or filter criteria."
-                : "Sessions will appear here once agents begin processing."}
-            </UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
-      ) : (
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead className="w-5" />
-              <UnstableTableHead>Session</UnstableTableHead>
-              <UnstableTableHead>Description</UnstableTableHead>
-              <UnstableTableHead>Decisions</UnstableTableHead>
-              <UnstableTableHead>Duration</UnstableTableHead>
-              <UnstableTableHead>Timestamp</UnstableTableHead>
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
-            {filteredSessions.map((session) => (
-              <SessionRow key={session.id} session={session} />
-            ))}
-          </UnstableTableBody>
-        </UnstableTable>
-      )}
-    </UnstableCard>
+    <>
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>
+            Sessions
+            <DocumentationLinkBadge href="/" />
+          </UnstableCardTitle>
+          <UnstableCardDescription>
+            View agent session activity and arbiter decisions.
+          </UnstableCardDescription>
+          <UnstableCardAction>
+            <Button variant="project">
+              <DownloadIcon />
+              Export Sessions
+            </Button>
+          </UnstableCardAction>
+        </UnstableCardHeader>
+        <div className="flex gap-2">
+          <InputGroup className="flex-1">
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search sessions by name..."
+            />
+          </InputGroup>
+          <UnstableDropdownMenu>
+            <UnstableDropdownMenuTrigger asChild>
+              <UnstableIconButton variant={isTableFiltered ? "org" : "outline"}>
+                <FilterIcon />
+              </UnstableIconButton>
+            </UnstableDropdownMenuTrigger>
+            <UnstableDropdownMenuContent align="end">
+              <UnstableDropdownMenuLabel>Filter by Decision</UnstableDropdownMenuLabel>
+              {DECISION_STATUSES.map((status) => (
+                <UnstableDropdownMenuCheckboxItem
+                  key={status}
+                  checked={statusFilter.includes(status)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleStatusToggle(status);
+                  }}
+                >
+                  {status}
+                </UnstableDropdownMenuCheckboxItem>
+              ))}
+            </UnstableDropdownMenuContent>
+          </UnstableDropdownMenu>
+        </div>
+        {!filteredSessions.length ? (
+          <UnstableEmpty className="border">
+            <UnstableEmptyHeader>
+              <UnstableEmptyTitle>
+                {isFiltered
+                  ? "No sessions match the current filter"
+                  : "No sessions have been recorded yet"}
+              </UnstableEmptyTitle>
+              <UnstableEmptyDescription>
+                {isFiltered
+                  ? "Adjust your search or filter criteria."
+                  : "Sessions will appear here once agents begin processing."}
+              </UnstableEmptyDescription>
+            </UnstableEmptyHeader>
+          </UnstableEmpty>
+        ) : (
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead className="w-5" />
+                <UnstableTableHead>Session</UnstableTableHead>
+                <UnstableTableHead>Description</UnstableTableHead>
+                <UnstableTableHead>Decisions</UnstableTableHead>
+                <UnstableTableHead>Duration</UnstableTableHead>
+                <UnstableTableHead>Timestamp</UnstableTableHead>
+                <UnstableTableHead className="w-10" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {filteredSessions.map((session) => (
+                <SessionRow key={session.id} session={session} onReplay={setReplaySession} />
+              ))}
+            </UnstableTableBody>
+          </UnstableTable>
+        )}
+      </UnstableCard>
+
+      <SessionReplayModal
+        isOpen={Boolean(replaySession)}
+        onClose={() => setReplaySession(null)}
+        logs={replaySession?.logs ?? []}
+        sessionTitle={replaySession?.title ?? ""}
+      />
+    </>
   );
 };
