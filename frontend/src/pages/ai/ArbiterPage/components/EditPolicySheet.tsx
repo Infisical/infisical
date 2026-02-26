@@ -1,7 +1,14 @@
 import { useEffect } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, ShieldIcon, SquareTerminalIcon, TrashIcon } from "lucide-react";
+import {
+  BoltIcon,
+  PlusIcon,
+  ShieldIcon,
+  SquareTerminalIcon,
+  TrashIcon,
+  ZapIcon
+} from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -30,6 +37,32 @@ import {
 import { useGetAgentPolicy, useUpdateAgentPolicy } from "@app/hooks/api";
 
 import { AGENTS } from "../data";
+
+const ACTION_DESCRIPTIONS: Record<string, string> = {
+  // Triage Agent
+  classify_ticket: "Categorizes incoming tickets by type and priority",
+  assess_severity: "Evaluates ticket urgency and impact level",
+  route_ticket: "Routes tickets to the appropriate handling agent",
+  // Support Agent
+  lookup_order_history: "Retrieves customer order history and details",
+  check_inventory: "Checks product availability and stock levels",
+  issue_refund: "Processes refund requests for customer orders",
+  access_payment_info: "Accesses customer payment and billing details",
+  compose_response: "Drafts a response message for the customer",
+  send_customer_email: "Sends an email communication to the customer",
+  request_escalation: "Requests case escalation to a senior agent",
+  // Escalation Agent
+  review_case: "Triggers manual review for high-risk tickets",
+  approve_refund: "Automatically processes refund requests",
+  override_policy: "Overrides standard policy for exceptional cases",
+  flag_for_human_review: "Flags case for human supervisor review",
+  // Fulfillment Agent
+  create_shipment: "Creates a new shipment for an order",
+  process_return: "Processes a product return request",
+  check_warehouse_inventory: "Checks warehouse stock and availability",
+  generate_shipping_label: "Generates a shipping label for a package",
+  update_tracking: "Updates shipment tracking information"
+};
 
 const conditionFormSchema = z.object({
   id: z.string().default(""),
@@ -164,7 +197,7 @@ const ReadOnlyActionFields = ({
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-border px-2 py-2">
         <div className="flex size-8 items-center justify-center rounded-md bg-accent/10">
-          <SquareTerminalIcon className="size-4" />
+          <ZapIcon className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
           <Controller
@@ -458,6 +491,8 @@ export const EditActionsSheet = ({
     name: "selfActions"
   });
 
+  const watchedSelfActions = useWatch({ control, name: "selfActions" });
+
   const onSubmit = async (formData: TEditActionsForm) => {
     if (!agentId) return;
     try {
@@ -515,6 +550,7 @@ export const EditActionsSheet = ({
                       key={field.id}
                       control={control}
                       baseName={`selfActions.${idx}`}
+                      actionDescription={ACTION_DESCRIPTIONS[watchedSelfActions?.[idx]?.value ?? ""]}
                     />
                   ))}
                 </div>
