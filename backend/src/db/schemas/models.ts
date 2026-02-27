@@ -223,6 +223,12 @@ export enum TableName {
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
+  PamDiscoverySource = "pam_discovery_sources",
+  PamDiscoveryRun = "pam_discovery_runs",
+  PamDiscoverySourceResource = "pam_discovery_source_resources",
+  PamDiscoverySourceAccount = "pam_discovery_source_accounts",
+  PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
+  PamAccountDependency = "pam_account_dependencies",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
 

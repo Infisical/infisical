@@ -39,6 +39,12 @@ export const WindowsAccountMetadataSchema = z.object({
   accountType: z.nativeEnum(WindowsAccountType)
 });
 
+// Resource Metadata
+export const WindowsResourceMetadataSchema = z.object({
+  osVersion: z.string().optional(),
+  osVersionDetail: z.string().optional()
+});
+
 export const WindowsResourceSchema = BaseWindowsResourceSchema.extend({
   connectionDetails: WindowsResourceConnectionDetailsSchema,
   rotationAccountCredentials: WindowsAccountCredentialsSchema.nullable().optional()

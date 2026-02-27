@@ -29,6 +29,8 @@ import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
+import { PAM_DISCOVERY_REGISTER_ROUTER_MAP } from "./pam-discovery-routers";
+import { registerPamDiscoveryRouter } from "./pam-discovery-routers/pam-discovery-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
@@ -199,6 +201,19 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (pamRouter) => {
       await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
       await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
+      await pamRouter.register(
+        async (pamDiscoveryRouter) => {
+          await pamDiscoveryRouter.register(registerPamDiscoveryRouter);
+
+          // Discovery-type-specific endpoints
+          await Promise.all(
+            Object.entries(PAM_DISCOVERY_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamDiscoveryRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+        },
+        { prefix: "/discovery" }
+      );
 
       await pamRouter.register(
         async (pamAccountRouter) => {

@@ -13,7 +13,11 @@ import {
   TPamResourceFactoryRotateAccountCredentials,
   TPamResourceFactoryValidateAccountCredentials
 } from "../pam-resource-types";
-import { TWindowsAccountCredentials, TWindowsResourceConnectionDetails } from "./windows-server-resource-types";
+import {
+  TWindowsAccountCredentials,
+  TWindowsResourceConnectionDetails,
+  TWindowsResourceMetadata
+} from "./windows-server-resource-types";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -58,7 +62,8 @@ const executeWithGateway = async <T>(
 
 export const windowsResourceFactory: TPamResourceFactory<
   TWindowsResourceConnectionDetails,
-  TWindowsAccountCredentials
+  TWindowsAccountCredentials,
+  TWindowsResourceMetadata
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {

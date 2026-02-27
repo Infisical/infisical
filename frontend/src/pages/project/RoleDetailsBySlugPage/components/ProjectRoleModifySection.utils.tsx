@@ -27,6 +27,7 @@ import {
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
+  ProjectPermissionPamDiscoveryActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -271,6 +272,14 @@ const PamAccountPolicyActionSchema = z.object({
 
 const PamSessionPolicyActionSchema = z.object({
   [ProjectPermissionPamSessionActions.Read]: z.boolean().optional()
+});
+
+const PamDiscoveryPolicyActionSchema = z.object({
+  [ProjectPermissionPamDiscoveryActions.RunScan]: z.boolean().optional(),
+  [ProjectPermissionPamDiscoveryActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPamDiscoveryActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPamDiscoveryActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPamDiscoveryActions.Delete]: z.boolean().optional()
 });
 
 const McpEndpointPolicyActionSchema = z.object({
@@ -541,6 +550,7 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PamDiscovery]: PamDiscoveryPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -1445,6 +1455,22 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRead) formVal[subject]![0][ProjectPermissionPamAccountActions.Read] = true;
     }
 
+    if (subject === ProjectPermissionSub.PamDiscovery) {
+      const canRead = action.includes(ProjectPermissionPamDiscoveryActions.Read);
+      const canCreate = action.includes(ProjectPermissionPamDiscoveryActions.Create);
+      const canDelete = action.includes(ProjectPermissionPamDiscoveryActions.Delete);
+      const canEdit = action.includes(ProjectPermissionPamDiscoveryActions.Edit);
+      const canRunScan = action.includes(ProjectPermissionPamDiscoveryActions.RunScan);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Create] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Delete] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Edit] = true;
+      if (canRunScan) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.RunScan] = true;
+    }
+
     if (subject === ProjectPermissionSub.McpEndpoints) {
       const canRead = action.includes(ProjectPermissionMcpEndpointActions.Read);
       const canCreate = action.includes(ProjectPermissionMcpEndpointActions.Create);
@@ -2217,6 +2243,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     title: "Sessions",
     actions: [{ label: "Read", value: ProjectPermissionPamSessionActions.Read }]
   },
+  [ProjectPermissionSub.PamDiscovery]: {
+    title: "Discovery",
+    actions: [
+      { label: "Read", value: ProjectPermissionPamDiscoveryActions.Read },
+      { label: "Create", value: ProjectPermissionPamDiscoveryActions.Create },
+      { label: "Modify", value: ProjectPermissionPamDiscoveryActions.Edit },
+      { label: "Remove", value: ProjectPermissionPamDiscoveryActions.Delete },
+      { label: "Run Scan", value: ProjectPermissionPamDiscoveryActions.RunScan }
+    ]
+  },
   [ProjectPermissionSub.ApprovalRequests]: {
     title: "Approval Requests",
     actions: [
@@ -2330,7 +2366,8 @@ const PamPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PamFolders]: enabled,
   [ProjectPermissionSub.PamResources]: enabled,
   [ProjectPermissionSub.PamAccounts]: enabled,
-  [ProjectPermissionSub.PamSessions]: enabled
+  [ProjectPermissionSub.PamSessions]: enabled,
+  [ProjectPermissionSub.PamDiscovery]: enabled
 });
 
 const AiPermissionSubjects = (enabled = false) => ({

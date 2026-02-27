@@ -5,12 +5,17 @@ import { PamResource } from "../pam-resource-enums";
 import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
-  TPamResourceFactoryValidateAccountCredentials
+  TPamResourceFactoryValidateAccountCredentials,
+  TPamResourceMetadata
 } from "../pam-resource-types";
 import { validatePamRoleConnection, validateTargetRoleAssumption } from "./aws-iam-federation";
 import { TAwsIamAccountCredentials, TAwsIamResourceConnectionDetails } from "./aws-iam-resource-types";
 
-export const awsIamResourceFactory: TPamResourceFactory<TAwsIamResourceConnectionDetails, TAwsIamAccountCredentials> = (
+export const awsIamResourceFactory: TPamResourceFactory<
+  TAwsIamResourceConnectionDetails,
+  TAwsIamAccountCredentials,
+  TPamResourceMetadata
+> = (
   resourceType: PamResource,
   connectionDetails: TAwsIamResourceConnectionDetails,
   // AWS IAM doesn't use gateway

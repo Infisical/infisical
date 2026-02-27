@@ -2,13 +2,22 @@ import { activeDirectoryResourceFactory } from "./active-directory/active-direct
 import { awsIamResourceFactory } from "./aws-iam/aws-iam-resource-factory";
 import { kubernetesResourceFactory } from "./kubernetes/kubernetes-resource-factory";
 import { PamResource } from "./pam-resource-enums";
-import { TPamAccountCredentials, TPamResourceConnectionDetails, TPamResourceFactory } from "./pam-resource-types";
+import {
+  TPamAccountCredentials,
+  TPamResourceConnectionDetails,
+  TPamResourceFactory,
+  TPamResourceMetadata
+} from "./pam-resource-types";
 import { redisResourceFactory } from "./redis/redis-resource-factory";
 import { sqlResourceFactory } from "./shared/sql/sql-resource-factory";
 import { sshResourceFactory } from "./ssh/ssh-resource-factory";
 import { windowsResourceFactory } from "./windows-server/windows-server-resource-factory";
 
-type TPamResourceFactoryImplementation = TPamResourceFactory<TPamResourceConnectionDetails, TPamAccountCredentials>;
+type TPamResourceFactoryImplementation = TPamResourceFactory<
+  TPamResourceConnectionDetails,
+  TPamAccountCredentials,
+  TPamResourceMetadata
+>;
 
 export const PAM_RESOURCE_FACTORY_MAP: Record<PamResource, TPamResourceFactoryImplementation> = {
   [PamResource.Postgres]: sqlResourceFactory as TPamResourceFactoryImplementation,
