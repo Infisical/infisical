@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useEffect, useMemo, useState } from "react";
-import { faFilter, faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faFilter, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -44,6 +44,12 @@ const SEARCH_DEBOUNCE_DELAY = 500;
 
 type CertificateRequestStatus = "pending" | "issued" | "failed";
 
+type MetadataFilterEntry = {
+  id: string;
+  key: string;
+  value: string;
+};
+
 type CertificateRequestFilters = {
   status?: CertificateRequestStatus;
 };
@@ -58,9 +64,11 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingProfileIds, setPendingProfileIds] = useState<string[]>([]);
   const [pendingFilters, setPendingFilters] = useState<CertificateRequestFilters>({});
+  const [pendingMetadataFilters, setPendingMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   const [appliedProfileIds, setAppliedProfileIds] = useState<string[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<CertificateRequestFilters>({});
+  const [appliedMetadataFilters, setAppliedMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(PAGE_SIZE);
@@ -82,6 +90,13 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
     return appliedProfileIds.length > 0 ? appliedProfileIds : undefined;
   }, [appliedProfileIds]);
 
+  const activeMetadataFilters = useMemo(() => {
+    const filtered = appliedMetadataFilters
+      .filter((m) => m.key.trim())
+      .map(({ key, value }) => ({ key, value }));
+    return filtered.length > 0 ? filtered : undefined;
+  }, [appliedMetadataFilters]);
+
   const queryParams: TListCertificateRequestsParams = useMemo(
     () => ({
       projectSlug: currentProject?.slug || "",
@@ -91,9 +106,18 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
       sortOrder: "desc",
       ...(debouncedSearch && { search: debouncedSearch }),
       ...(appliedFilters.status && { status: appliedFilters.status }),
-      ...(profileIds && { profileIds })
+      ...(profileIds && { profileIds }),
+      ...(activeMetadataFilters && { metadataFilter: activeMetadataFilters })
     }),
-    [currentProject?.slug, currentPage, perPage, debouncedSearch, appliedFilters.status, profileIds]
+    [
+      currentProject?.slug,
+      currentPage,
+      perPage,
+      debouncedSearch,
+      appliedFilters.status,
+      profileIds,
+      activeMetadataFilters
+    ]
   );
 
   const {
@@ -105,6 +129,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   const handleApplyFilters = () => {
     setAppliedFilters(pendingFilters);
     setAppliedProfileIds(pendingProfileIds);
+    setAppliedMetadataFilters(pendingMetadataFilters);
     setCurrentPage(1);
   };
 
@@ -112,8 +137,10 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
     setPendingSearch("");
     setPendingFilters({});
     setPendingProfileIds([]);
+    setPendingMetadataFilters([]);
     setAppliedFilters({});
     setAppliedProfileIds([]);
+    setAppliedMetadataFilters([]);
     setDebouncedSearch("");
     setCurrentPage(1);
   };
@@ -131,8 +158,13 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   };
 
   const isTableFiltered = useMemo(
-    () => Boolean(appliedFilters.status || appliedProfileIds.length),
-    [appliedFilters.status, appliedProfileIds.length]
+    () =>
+      Boolean(
+        appliedFilters.status ||
+          appliedProfileIds.length ||
+          appliedMetadataFilters.some((m) => m.key.trim())
+      ),
+    [appliedFilters.status, appliedProfileIds.length, appliedMetadataFilters]
   );
 
   const hasPendingChanges = useMemo(() => {
@@ -142,8 +174,17 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
     const profileIdsChanged =
       JSON.stringify([...pendingProfileIds].sort()) !==
       JSON.stringify([...appliedProfileIds].sort());
-    return statusChanged || profileIdsChanged;
-  }, [pendingFilters.status, appliedFilters.status, pendingProfileIds, appliedProfileIds]);
+    const metadataChanged =
+      JSON.stringify(pendingMetadataFilters) !== JSON.stringify(appliedMetadataFilters);
+    return statusChanged || profileIdsChanged || metadataChanged;
+  }, [
+    pendingFilters.status,
+    appliedFilters.status,
+    pendingProfileIds,
+    appliedProfileIds,
+    pendingMetadataFilters,
+    appliedMetadataFilters
+  ]);
 
   return (
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -287,6 +328,71 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                   <SelectItem value="issued">Issued</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-bunker-300 uppercase">Metadata</span>
+                  {pendingMetadataFilters.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingMetadataFilters([])}
+                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {pendingMetadataFilters.map((entry, idx) => (
+                  <div key={entry.id} className="flex items-center gap-1">
+                    <Input
+                      value={entry.key}
+                      onChange={(e) => {
+                        const updated = [...pendingMetadataFilters];
+                        updated[idx] = { ...updated[idx], key: e.target.value };
+                        setPendingMetadataFilters(updated);
+                      }}
+                      placeholder="Key"
+                      className="flex-1"
+                    />
+                    <Input
+                      value={entry.value}
+                      onChange={(e) => {
+                        const updated = [...pendingMetadataFilters];
+                        updated[idx] = { ...updated[idx], value: e.target.value };
+                        setPendingMetadataFilters(updated);
+                      }}
+                      placeholder="Value"
+                      className="flex-1"
+                    />
+                    <IconButton
+                      ariaLabel="Remove metadata filter"
+                      variant="plain"
+                      size="xs"
+                      onClick={() => {
+                        setPendingMetadataFilters(
+                          pendingMetadataFilters.filter((_, i) => i !== idx)
+                        );
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faTrash} size="xs" />
+                    </IconButton>
+                  </div>
+                ))}
+                <IconButton
+                  ariaLabel="Add metadata filter"
+                  variant="outline_bg"
+                  size="xs"
+                  className="rounded-md"
+                  onClick={() =>
+                    setPendingMetadataFilters([
+                      ...pendingMetadataFilters,
+                      { id: crypto.randomUUID(), key: "", value: "" }
+                    ])
+                  }
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </IconButton>
               </div>
 
               <div className="pt-2">

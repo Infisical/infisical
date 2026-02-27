@@ -24,6 +24,7 @@ import { CertificateRequestStatus } from "../certificate-request/certificate-req
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
@@ -105,6 +106,7 @@ type TCertificateIssuanceQueueFactoryDep = {
     TCertificateRequestServiceFactory,
     "attachCertificateToRequest" | "updateCertificateRequestStatus"
   >;
+  resourceMetadataDAL?: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -124,7 +126,8 @@ export const certificateIssuanceQueueFactory = ({
   pkiSyncDAL,
   pkiSyncQueue,
   certificateProfileDAL,
-  certificateRequestService
+  certificateRequestService,
+  resourceMetadataDAL
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -309,6 +312,22 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: acmeResult.id
             });
+
+            // Copy metadata from cert request to newly issued cert
+            if (resourceMetadataDAL) {
+              const certRequestMetadata = await resourceMetadataDAL.find({ certificateRequestId });
+              if (certRequestMetadata.length > 0) {
+                await resourceMetadataDAL.insertMany(
+                  certRequestMetadata.map(({ key, value, orgId }) => ({
+                    key,
+                    value: value || "",
+                    certificateId: acmeResult.id,
+                    orgId
+                  }))
+                );
+              }
+            }
+
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
           } catch (attachError) {
             logger.error(
@@ -375,6 +394,21 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: azureResult.certificateId
             });
+
+            if (resourceMetadataDAL) {
+              const certRequestMetadata = await resourceMetadataDAL.find({ certificateRequestId });
+              if (certRequestMetadata.length > 0) {
+                await resourceMetadataDAL.insertMany(
+                  certRequestMetadata.map(({ key, value, orgId }) => ({
+                    key,
+                    value: value || "",
+                    certificateId: azureResult.certificateId,
+                    orgId
+                  }))
+                );
+              }
+            }
+
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
           } catch (attachError) {
             logger.error(
@@ -424,6 +458,21 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: awsPcaResult.certificateId
             });
+
+            if (resourceMetadataDAL) {
+              const certRequestMetadata = await resourceMetadataDAL.find({ certificateRequestId });
+              if (certRequestMetadata.length > 0) {
+                await resourceMetadataDAL.insertMany(
+                  certRequestMetadata.map(({ key, value, orgId }) => ({
+                    key,
+                    value: value || "",
+                    certificateId: awsPcaResult.certificateId,
+                    orgId
+                  }))
+                );
+              }
+            }
+
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
           } catch (attachError) {
             logger.error(

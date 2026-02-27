@@ -56,7 +56,8 @@ describe("CertificateRequestService", () => {
       certificateRequestDAL: mockCertificateRequestDAL as TCertificateRequestDALFactory,
       certificateDAL: mockCertificateDAL,
       certificateService: mockCertificateService,
-      permissionService: mockPermissionService
+      permissionService: mockPermissionService,
+      resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) }
     });
   });
 

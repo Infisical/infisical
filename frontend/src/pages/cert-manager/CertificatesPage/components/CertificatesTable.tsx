@@ -11,6 +11,7 @@ import {
   faFilter,
   faLink,
   faMagnifyingGlass,
+  faPlus,
   faQuestionCircle,
   faRedo,
   faSearch,
@@ -81,6 +82,12 @@ enum CertificateStatus {
   Revoked = "revoked"
 }
 
+type MetadataFilterEntry = {
+  id: string;
+  key: string;
+  value: string;
+};
+
 type CertificateFilters = {
   status?: CertificateStatus;
 };
@@ -126,10 +133,12 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
   const [pendingSearch, setPendingSearch] = useState(externalFilter?.search || "");
   const [pendingProfileIds, setPendingProfileIds] = useState<string[]>([]);
   const [pendingFilters, setPendingFilters] = useState<CertificateFilters>({});
+  const [pendingMetadataFilters, setPendingMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
   const [appliedProfileIds, setAppliedProfileIds] = useState<string[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<CertificateFilters>({});
+  const [appliedMetadataFilters, setAppliedMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -157,13 +166,21 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     return appliedProfileIds;
   }, [appliedProfileIds]);
 
+  const activeMetadataFilters = useMemo(() => {
+    const filtered = appliedMetadataFilters
+      .filter((m) => m.key.trim())
+      .map(({ key, value }) => ({ key, value }));
+    return filtered.length > 0 ? filtered : undefined;
+  }, [appliedMetadataFilters]);
+
   const { data, isPending } = useListWorkspaceCertificates({
     projectId: currentProject?.id ?? "",
     offset: (page - 1) * perPage,
     limit: perPage,
     search: appliedSearch.trim() || undefined,
     status: backendStatus,
-    ...(profileIds && { profileIds })
+    ...(profileIds && { profileIds }),
+    ...(activeMetadataFilters && { metadataFilter: activeMetadataFilters })
   });
 
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
@@ -209,9 +226,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     setPendingSearch("");
     setPendingFilters({});
     setPendingProfileIds([]);
+    setPendingMetadataFilters([]);
     setAppliedSearch("");
     setAppliedFilters({});
     setAppliedProfileIds([]);
+    setAppliedMetadataFilters([]);
     setPage(1);
   };
 
@@ -223,7 +242,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     setPendingProfileIds([]);
   };
 
-  const isTableFiltered = Boolean(appliedFilters.status || appliedProfileIds.length);
+  const isTableFiltered = Boolean(
+    appliedFilters.status ||
+      appliedProfileIds.length ||
+      appliedMetadataFilters.some((m) => m.key.trim())
+  );
 
   const hasFilterChanges = useMemo(() => {
     const pendingStatus = pendingFilters.status ?? undefined;
@@ -232,8 +255,17 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     const profileIdsChanged =
       JSON.stringify([...pendingProfileIds].sort()) !==
       JSON.stringify([...appliedProfileIds].sort());
-    return statusChanged || profileIdsChanged;
-  }, [pendingFilters.status, appliedFilters.status, pendingProfileIds, appliedProfileIds]);
+    const metadataChanged =
+      JSON.stringify(pendingMetadataFilters) !== JSON.stringify(appliedMetadataFilters);
+    return statusChanged || profileIdsChanged || metadataChanged;
+  }, [
+    pendingFilters.status,
+    appliedFilters.status,
+    pendingProfileIds,
+    appliedProfileIds,
+    pendingMetadataFilters,
+    appliedMetadataFilters
+  ]);
 
   return (
     <div>
@@ -353,11 +385,77 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-bunker-300 uppercase">Metadata</span>
+                  {pendingMetadataFilters.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingMetadataFilters([])}
+                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {pendingMetadataFilters.map((entry, idx) => (
+                  <div key={entry.id} className="flex items-center gap-1">
+                    <Input
+                      value={entry.key}
+                      onChange={(e) => {
+                        const updated = [...pendingMetadataFilters];
+                        updated[idx] = { ...updated[idx], key: e.target.value };
+                        setPendingMetadataFilters(updated);
+                      }}
+                      placeholder="Key"
+                      className="flex-1"
+                    />
+                    <Input
+                      value={entry.value}
+                      onChange={(e) => {
+                        const updated = [...pendingMetadataFilters];
+                        updated[idx] = { ...updated[idx], value: e.target.value };
+                        setPendingMetadataFilters(updated);
+                      }}
+                      placeholder="Value"
+                      className="flex-1"
+                    />
+                    <IconButton
+                      ariaLabel="Remove metadata filter"
+                      variant="plain"
+                      size="xs"
+                      onClick={() => {
+                        setPendingMetadataFilters(
+                          pendingMetadataFilters.filter((_, i) => i !== idx)
+                        );
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faTrash} size="xs" />
+                    </IconButton>
+                  </div>
+                ))}
+                <IconButton
+                  ariaLabel="Add metadata filter"
+                  variant="outline_bg"
+                  size="xs"
+                  className="rounded-md"
+                  onClick={() =>
+                    setPendingMetadataFilters([
+                      ...pendingMetadataFilters,
+                      { id: crypto.randomUUID(), key: "", value: "" }
+                    ])
+                  }
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </IconButton>
+              </div>
+
               <div className="pt-2">
                 <Button
                   onClick={() => {
                     setAppliedFilters(pendingFilters);
                     setAppliedProfileIds(pendingProfileIds);
+                    setAppliedMetadataFilters(pendingMetadataFilters);
                     setPage(1);
                   }}
                   className="w-full bg-primary font-medium text-black hover:bg-primary-600"

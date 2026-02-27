@@ -1246,7 +1246,39 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe("Filter by profile IDs"),
         fromDate: z.coerce.date().optional().describe("Filter certificates created from this date"),
-        toDate: z.coerce.date().optional().describe("Filter certificates created until this date")
+        toDate: z.coerce.date().optional().describe("Filter certificates created until this date"),
+        metadataFilter: z
+          .string()
+          .optional()
+          .transform((val) => {
+            if (!val) return undefined;
+
+            const result: { key?: string; value?: string }[] = [];
+            const pairs = val.split("|");
+
+            for (const pair of pairs) {
+              const keyValuePair: { key?: string; value?: string } = {};
+              const parts = pair.split(/[,=]/);
+
+              for (let i = 0; i < parts.length; i += 2) {
+                const identifier = parts[i].trim().toLowerCase();
+                const pairValue = parts[i + 1]?.trim();
+
+                if (identifier === "key" && pairValue) {
+                  keyValuePair.key = pairValue;
+                } else if (identifier === "value" && pairValue) {
+                  keyValuePair.value = pairValue;
+                }
+              }
+
+              if (keyValuePair.key) {
+                result.push(keyValuePair as { key: string; value?: string });
+              }
+            }
+
+            return result.length ? (result as { key: string; value?: string }[]) : undefined;
+          })
+          .describe("Filter by metadata key-value pairs. Format: key=env,value=prod|key=team,value=backend")
       }),
       response: {
         200: z.object({

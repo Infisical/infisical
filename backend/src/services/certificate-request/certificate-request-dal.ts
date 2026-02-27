@@ -4,7 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName, TCertificateRequests, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
@@ -124,12 +124,13 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<TCertificateRequests[]> => {
     try {
-      const { offset = 0, limit = 20, search, status, fromDate, toDate, profileIds } = options;
+      const { offset = 0, limit = 20, search, status, fromDate, toDate, profileIds, metadataFilter } = options;
 
       let query = (tx || db)(TableName.CertificateRequests)
         .leftJoin(
@@ -169,6 +170,25 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.CertificateRequests))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"));
 
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = query.where((qb) => {
+          metadataFilter.forEach((meta) => {
+            void qb.whereExists((subQuery) => {
+              void subQuery
+                .select("certificateRequestId")
+                .from(TableName.ResourceMetadata)
+                .whereRaw(
+                  `"${TableName.ResourceMetadata}"."certificateRequestId" = "${TableName.CertificateRequests}"."id"`
+                )
+                .where(`${TableName.ResourceMetadata}.key`, meta.key);
+              if (meta.value !== undefined) {
+                void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
+              }
+            });
+          });
+        });
+      }
+
       if (processedRules) {
         query = applyProcessedPermissionRulesToQuery(
           query,
@@ -193,12 +213,13 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<number> => {
     try {
-      const { search, status, fromDate, toDate, profileIds } = options;
+      const { search, status, fromDate, toDate, profileIds, metadataFilter } = options;
 
       let query = (tx || db)(TableName.CertificateRequests)
         .leftJoin(
@@ -233,6 +254,25 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         query = query.where(`${TableName.CertificateRequests}.createdAt`, "<=", toDate);
       }
 
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = query.where((qb) => {
+          metadataFilter.forEach((meta) => {
+            void qb.whereExists((subQuery) => {
+              void subQuery
+                .select("certificateRequestId")
+                .from(TableName.ResourceMetadata)
+                .whereRaw(
+                  `"${TableName.ResourceMetadata}"."certificateRequestId" = "${TableName.CertificateRequests}"."id"`
+                )
+                .where(`${TableName.ResourceMetadata}.key`, meta.key);
+              if (meta.value !== undefined) {
+                void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
+              }
+            });
+          });
+        });
+      }
+
       if (processedRules) {
         query = applyProcessedPermissionRulesToQuery(
           query,
@@ -261,6 +301,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       profileIds?: string[];
       sortBy?: string;
       sortOrder?: "asc" | "desc";
+      metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
@@ -275,7 +316,8 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         toDate,
         profileIds,
         sortBy = "createdAt",
-        sortOrder = "desc"
+        sortOrder = "desc",
+        metadataFilter
       } = options;
 
       let query: Knex.QueryBuilder = (tx || db)(TableName.CertificateRequests)
@@ -322,6 +364,25 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
 
       if (toDate) {
         query = query.where(`${TableName.CertificateRequests}.createdAt`, "<=", toDate);
+      }
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = query.where((qb) => {
+          metadataFilter.forEach((meta) => {
+            void qb.whereExists((subQuery) => {
+              void subQuery
+                .select("certificateRequestId")
+                .from(TableName.ResourceMetadata)
+                .whereRaw(
+                  `"${TableName.ResourceMetadata}"."certificateRequestId" = "${TableName.CertificateRequests}"."id"`
+                )
+                .where(`${TableName.ResourceMetadata}.key`, meta.key);
+              if (meta.value !== undefined) {
+                void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
+              }
+            });
+          });
+        });
       }
 
       if (processedRules) {
@@ -376,6 +437,45 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdWithMetadata = async (id: string, tx?: Knex) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.CertificateRequests)
+        .leftJoin(
+          TableName.ResourceMetadata,
+          `${TableName.ResourceMetadata}.certificateRequestId`,
+          `${TableName.CertificateRequests}.id`
+        )
+        .select(selectAllTableCols(TableName.CertificateRequests))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
+        .where(`${TableName.CertificateRequests}.id`, id);
+
+      const docs = sqlNestRelationships({
+        data: await query,
+        key: "id",
+        parentMapper: (el) => el,
+        childrenMapper: [
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue || ""
+            })
+          }
+        ]
+      });
+
+      return docs[0] as (TCertificateRequests & { metadata: { id: string; key: string; value: string }[] }) | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate request by ID with metadata" });
+    }
+  };
+
   return {
     ...certificateRequestOrm,
     findByIdWithCertificate,
@@ -385,6 +485,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     findByProjectId,
     countByProjectId,
     findByProjectIdWithCertificate,
-    markExpiredApprovalRequests
+    markExpiredApprovalRequests,
+    findByIdWithMetadata
   };
 };

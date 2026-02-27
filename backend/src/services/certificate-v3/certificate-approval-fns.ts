@@ -24,6 +24,7 @@ import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/ce
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
 import {
@@ -61,6 +62,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   projectDAL: TProjectDALFactory;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest" | "getPolicyById">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
 };
 
 export type TCertificateApprovalService = {
@@ -83,7 +85,8 @@ export const certificateApprovalServiceFactory = (
     kmsService,
     projectDAL,
     certificatePolicyService,
-    certificateIssuanceQueue
+    certificateIssuanceQueue,
+    resourceMetadataDAL
   } = deps;
 
   const $validateProfileAndPermissions = async ({
@@ -389,6 +392,20 @@ export const certificateApprovalServiceFactory = (
           tx
         );
 
+        // Copy metadata from cert request to newly issued cert
+        const certReqMetadata = await resourceMetadataDAL.find({ certificateRequestId });
+        if (certReqMetadata.length > 0) {
+          await resourceMetadataDAL.insertMany(
+            certReqMetadata.map(({ key, value, orgId }) => ({
+              key,
+              value: value || "",
+              certificateId: certResult.certificateId,
+              orgId
+            })),
+            tx
+          );
+        }
+
         return { ...certResult, cert: signedCertRecord };
       });
 
@@ -513,6 +530,20 @@ export const certificateApprovalServiceFactory = (
         },
         tx
       );
+
+      // Copy metadata from cert request to newly issued cert
+      const selfSignedReqMetadata = await resourceMetadataDAL.find({ certificateRequestId });
+      if (selfSignedReqMetadata.length > 0) {
+        await resourceMetadataDAL.insertMany(
+          selfSignedReqMetadata.map(({ key, value, orgId }) => ({
+            key,
+            value: value || "",
+            certificateId: processResult.certificateData.id,
+            orgId
+          })),
+          tx
+        );
+      }
 
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         profile,
@@ -655,6 +686,20 @@ export const certificateApprovalServiceFactory = (
           },
           tx
         );
+
+        // Copy metadata from cert request to newly issued cert
+        const caSignedReqMetadata = await resourceMetadataDAL.find({ certificateRequestId });
+        if (caSignedReqMetadata.length > 0) {
+          await resourceMetadataDAL.insertMany(
+            caSignedReqMetadata.map(({ key, value, orgId }) => ({
+              key,
+              value: value || "",
+              certificateId: certResult.certificateId,
+              orgId
+            })),
+            tx
+          );
+        }
 
         return { ...certResult, cert: certificateRecord };
       });

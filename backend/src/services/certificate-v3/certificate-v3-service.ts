@@ -94,6 +94,7 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
@@ -104,6 +105,7 @@ import {
   TRenewalConfigResponse,
   TRenewCertificateDTO,
   TSignCertificateFromProfileDTO,
+  TUpdateCertificateMetadataDTO,
   TUpdateRenewalConfigDTO
 } from "./certificate-v3-types";
 
@@ -144,6 +146,7 @@ type TCertificateV3ServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -624,7 +627,8 @@ export const certificateV3ServiceFactory = ({
   certificateRequestDAL,
   userDAL,
   identityDAL,
-  approvalPolicyService
+  approvalPolicyService,
+  resourceMetadataDAL
 }: TCertificateV3ServiceFactoryDep) => {
   /**
    * Resolves requester name and email based on actor type
@@ -669,6 +673,7 @@ export const certificateV3ServiceFactory = ({
   const issueCertificateFromProfile = async ({
     profileId,
     certificateRequest,
+    metadata,
     actor,
     actorId,
     actorAuthMethod,
@@ -765,6 +770,18 @@ export const certificateV3ServiceFactory = ({
           },
           tx
         );
+
+        if (metadata && metadata.length > 0) {
+          await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value,
+              certificateRequestId: certRequest.id,
+              orgId: actorOrgId
+            })),
+            tx
+          );
+        }
 
         const requestData: TCertRequestRequestData = {
           profileId,
@@ -950,6 +967,27 @@ export const certificateV3ServiceFactory = ({
           locality: certificateRequest.locality
         });
 
+        if (metadata && metadata.length > 0) {
+          await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value,
+              certificateId: processResult.certificateData.id,
+              orgId: actorOrgId
+            })),
+            tx
+          );
+          await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value,
+              certificateRequestId: certRequestResult.id,
+              orgId: actorOrgId
+            })),
+            tx
+          );
+        }
+
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
           profile,
           resolvedTtl,
@@ -1131,6 +1169,27 @@ export const certificateV3ServiceFactory = ({
         locality: certificateRequest.locality
       });
 
+      if (metadata && metadata.length > 0) {
+        await resourceMetadataDAL.insertMany(
+          metadata.map(({ key, value }) => ({
+            key,
+            value,
+            certificateId: certResult.certificateId,
+            orgId: actorOrgId
+          })),
+          tx
+        );
+        await resourceMetadataDAL.insertMany(
+          metadata.map(({ key, value }) => ({
+            key,
+            value,
+            certificateRequestId: certRequestResult.id,
+            orgId: actorOrgId
+          })),
+          tx
+        );
+      }
+
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
     });
 
@@ -1182,6 +1241,7 @@ export const certificateV3ServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     enrollmentType,
+    metadata,
     removeRootsFromChain,
     basicConstraints
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
@@ -1306,6 +1366,18 @@ export const certificateV3ServiceFactory = ({
           },
           tx
         );
+
+        if (metadata && metadata.length > 0) {
+          await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value,
+              certificateRequestId: certRequest.id,
+              orgId: actorOrgId
+            })),
+            tx
+          );
+        }
 
         const requestData: TCertRequestRequestData = {
           profileId,
@@ -1483,6 +1555,27 @@ export const certificateV3ServiceFactory = ({
           enrollmentType: EnrollmentType.API
         });
 
+        if (metadata && metadata.length > 0) {
+          await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value,
+              certificateId: certResult.certificateId,
+              orgId: actorOrgId
+            })),
+            tx
+          );
+          await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value,
+              certificateRequestId: certRequestResult.id,
+              orgId: actorOrgId
+            })),
+            tx
+          );
+        }
+
         return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };
       });
 
@@ -1509,6 +1602,7 @@ export const certificateV3ServiceFactory = ({
   const orderCertificateFromProfile = async ({
     profileId,
     certificateOrder,
+    metadata,
     actor,
     actorId,
     actorAuthMethod,
@@ -1632,6 +1726,18 @@ export const certificateV3ServiceFactory = ({
           tx
         );
 
+        if (metadata && metadata.length > 0) {
+          await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value,
+              certificateRequestId: certRequest.id,
+              orgId: actorOrgId
+            })),
+            tx
+          );
+        }
+
         const requestData: TCertRequestRequestData = {
           profileId,
           profileName: profile.slug,
@@ -1748,6 +1854,17 @@ export const certificateV3ServiceFactory = ({
         state: certificateRequest.state,
         locality: certificateRequest.locality
       });
+
+      if (metadata && metadata.length > 0) {
+        await resourceMetadataDAL.insertMany(
+          metadata.map(({ key, value }) => ({
+            key,
+            value,
+            certificateRequestId: certRequest.id,
+            orgId: actorOrgId
+          }))
+        );
+      }
 
       await certificateIssuanceQueue.queueCertificateIssuance({
         certificateId: orderId,
@@ -2151,6 +2268,29 @@ export const certificateV3ServiceFactory = ({
         enrollmentType: EnrollmentType.API
       });
 
+      // Copy metadata from original cert to new cert and cert request
+      const originalMetadata = await resourceMetadataDAL.find({ certificateId: originalCert.id });
+      if (originalMetadata.length > 0) {
+        await resourceMetadataDAL.insertMany(
+          originalMetadata.map(({ key, value, orgId }) => ({
+            key,
+            value: value || "",
+            certificateId: newCert.id,
+            orgId
+          })),
+          tx
+        );
+        await resourceMetadataDAL.insertMany(
+          originalMetadata.map(({ key, value, orgId }) => ({
+            key,
+            value: value || "",
+            certificateRequestId: certRequestResult.id,
+            orgId
+          })),
+          tx
+        );
+      }
+
       return {
         certificate,
         certificateChain,
@@ -2196,6 +2336,19 @@ export const certificateV3ServiceFactory = ({
       });
 
       certificateRequestId = certificateRequest.id;
+
+      // Copy metadata from original cert to new cert request
+      const originalMetadataForExternal = await resourceMetadataDAL.find({ certificateId: originalCert.id });
+      if (originalMetadataForExternal.length > 0) {
+        await resourceMetadataDAL.insertMany(
+          originalMetadataForExternal.map(({ key, value, orgId }) => ({
+            key,
+            value: value || "",
+            certificateRequestId: certificateRequest.id,
+            orgId
+          }))
+        );
+      }
 
       await certificateIssuanceQueue.queueCertificateIssuance({
         certificateId: renewalOrderId,
@@ -2438,12 +2591,63 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
+  const updateCertificateMetadata = async ({
+    certificateId,
+    metadata,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateCertificateMetadataDTO) => {
+    const certificate = await certificateDAL.findById(certificateId);
+    if (!certificate) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: certificate.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Edit,
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificate.commonName,
+        altNames: certificate.altNames ?? undefined,
+        serialNumber: certificate.serialNumber
+      })
+    );
+
+    const updatedMetadata = await certificateDAL.transaction(async (tx) => {
+      await resourceMetadataDAL.delete({ certificateId }, tx);
+      if (metadata.length > 0) {
+        await resourceMetadataDAL.insertMany(
+          metadata.map(({ key, value }) => ({
+            key,
+            value,
+            certificateId,
+            orgId: actorOrgId
+          })),
+          tx
+        );
+      }
+      return metadata;
+    });
+
+    return { metadata: updatedMetadata };
+  };
+
   return {
     issueCertificateFromProfile,
     signCertificateFromProfile,
     orderCertificateFromProfile,
     renewCertificate,
     updateRenewalConfig,
-    disableRenewalConfig
+    disableRenewalConfig,
+    updateCertificateMetadata
   };
 };

@@ -20,7 +20,10 @@ export const ResourceMetadataSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   dynamicSecretId: z.string().uuid().nullable().optional(),
-  encryptedValue: zodBuffer.nullable().optional()
+  encryptedValue: zodBuffer.nullable().optional(),
+  certificateId: z.string().uuid().nullable().optional(),
+  certificateRequestId: z.string().uuid().nullable().optional(),
+  certificateRequestCreatedAt: z.date().nullable().optional()
 });
 
 export type TResourceMetadata = z.infer<typeof ResourceMetadataSchema>;

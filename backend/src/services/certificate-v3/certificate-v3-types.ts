@@ -35,6 +35,7 @@ export type TIssueCertificateFromProfileDTO = {
       pathLength?: number;
     };
   };
+  metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -47,6 +48,7 @@ export type TSignCertificateFromProfileDTO = {
   notBefore?: Date;
   notAfter?: Date;
   enrollmentType: EnrollmentType;
+  metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
   basicConstraints?: {
     isCA: boolean;
@@ -79,6 +81,7 @@ export type TOrderCertificateFromProfileDTO = {
     state?: string;
     locality?: string;
   };
+  metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -135,6 +138,11 @@ export type TDisableRenewalResponse = {
   projectId: string;
   commonName: string;
 };
+
+export type TUpdateCertificateMetadataDTO = {
+  certificateId: string;
+  metadata: Array<{ key: string; value: string }>;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TAltNameEntry = {
   type: CertSubjectAlternativeNameType;

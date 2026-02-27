@@ -68,4 +68,5 @@ export type TListCertificateRequestsDTO = TProjectPermission & {
   profileIds?: string[];
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  metadataFilter?: Array<{ key: string; value?: string }>;
 };
