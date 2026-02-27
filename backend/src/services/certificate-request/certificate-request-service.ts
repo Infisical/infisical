@@ -167,7 +167,14 @@ export const certificateRequestServiceFactory = ({
         projectId,
         acmeOrderId,
         ...restValidatedData,
-        altNames: altNamesInput ? JSON.stringify(altNamesInput) : null
+        altNames: altNamesInput ? JSON.stringify(altNamesInput) : null,
+        createdAt: new Date()
+      } as typeof restValidatedData & {
+        status: string;
+        projectId: string;
+        acmeOrderId?: string;
+        altNames: string | null;
+        createdAt: Date;
       },
       tx
     );
