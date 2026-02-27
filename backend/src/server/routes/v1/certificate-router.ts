@@ -473,7 +473,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
             for (const pair of pairs) {
               const keyValuePair: { key?: string; value?: string } = {};
-              const parts = pair.split(/[,=]/);
+              const parts = pair.split(",").flatMap((s) => s.split("="));
 
               for (let i = 0; i < parts.length; i += 2) {
                 const identifier = parts[i].trim().toLowerCase();
