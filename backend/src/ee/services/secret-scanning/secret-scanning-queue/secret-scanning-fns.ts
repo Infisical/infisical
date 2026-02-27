@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest";
-import { exec } from "child_process";
-import { mkdir, readFile, rm, writeFile } from "fs";
+import { execFile, spawn } from "child_process";
+import { createReadStream, mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -40,9 +40,8 @@ export async function cloneRepo(
   repoPath: string
 ): Promise<void> {
   const cloneUrl = `https://x-access-token:${installationAcccessToken}@github.com/${repositoryFullName}.git`;
-  const command = `git clone ${cloneUrl} ${repoPath} --bare`;
   return new Promise((resolve, reject) => {
-    exec(command, (error) => {
+    execFile("git", ["clone", cloneUrl, repoPath, "--bare"], (error) => {
       if (error) {
         reject(error);
       } else {
@@ -54,8 +53,7 @@ export async function cloneRepo(
 
 export function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `cd ${repoPath} && infisical scan --exit-code=77 -r "${outputPath}"`;
-    exec(command, (error) => {
+    execFile("infisical", ["scan", "--exit-code=77", "-r", outputPath], { cwd: repoPath }, (error) => {
       if (error && error.code !== 77) {
         reject(error);
       } else {
@@ -67,10 +65,24 @@ export function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Pr
 
 export function runInfisicalScan(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `cat "${inputPath}" | infisical scan --exit-code=77 --pipe -r "${outputPath}" ${configPath ? `-c "${configPath}"` : ""}`;
-    exec(command, (error) => {
-      if (error && error.code !== 77) {
-        reject(error);
+    const args = ["scan", "--exit-code=77", "--pipe", "-r", outputPath];
+    if (configPath) {
+      args.push("-c", configPath);
+    }
+
+    const child = spawn("infisical", args, { stdio: ["pipe", "pipe", "pipe"] });
+
+    const inputStream = createReadStream(inputPath);
+    inputStream.pipe(child.stdin);
+    inputStream.on("error", (err) => {
+      child.kill();
+      reject(err);
+    });
+
+    child.on("error", (err) => reject(err));
+    child.on("close", (code) => {
+      if (code !== 0 && code !== 77) {
+        reject(new Error(`infisical scan exited with code ${code}`));
       } else {
         resolve();
       }
