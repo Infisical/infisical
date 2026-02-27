@@ -310,6 +310,25 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
   ])
 ]);
 
+const infraRoutes = route("/organizations/$orgId/projects/infra/$projectId", [
+  layout("infra-layout", "infra/layout.tsx", [
+    route("/overview", "infra/DashboardPage/route.tsx"),
+    route("/runs", "infra/RunsPage/route.tsx"),
+    route("/run/$runId", "infra/RunsPage/route-detail.tsx"),
+    route("/resources", "infra/ResourcesPage/route.tsx"),
+    route("/state", "infra/StatePage/route.tsx"),
+    route("/variables", "infra/VariablesPage/route.tsx"),
+    route("/editor", "infra/EditorPage/route.tsx"),
+    route("/settings", "infra/SettingsPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-infra.tsx"),
+    route("/access-management", "project/AccessControlPage/route-infra.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-infra.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-infra.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-infra.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-infra.tsx")
+  ])
+]);
+
 const aiRoutes = route("/organizations/$orgId/projects/ai/$projectId", [
   layout("ai-layout", "ai/layout.tsx", [
     route("/mcp-servers/$serverId", "ai/MCPServerDetailPage/route.tsx"),
@@ -487,7 +506,8 @@ export const routes = rootRoute("root.tsx", [
         sshRoutes,
         secretScanningRoutes,
         pamRoutes,
-        aiRoutes
+        aiRoutes,
+        infraRoutes
       ])
     ])
   ])

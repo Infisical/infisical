@@ -145,6 +145,7 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
+import { TInfraService } from "@app/services/infra/infra-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 declare module "@fastify/request-context" {
@@ -383,6 +384,7 @@ declare module "fastify" {
       aiMcpEndpoint: TAiMcpEndpointServiceFactory;
       aiMcpActivityLog: TAiMcpActivityLogServiceFactory;
       approvalPolicy: TApprovalPolicyServiceFactory;
+      infra: TInfraService;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
