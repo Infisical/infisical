@@ -157,6 +157,10 @@ export const certificateRequestServiceFactory = ({
 
     const { altNames: altNamesInput, ...restValidatedData } = validatedData;
 
+    // Explicitly set createdAt to ensure millisecond precision matches when used in FK references.
+    // PostgreSQL's DEFAULT now() has microsecond precision, but JavaScript Date only has millisecond precision.
+    // This mismatch causes FK violations when the returned createdAt is used in composite FK references
+    // (e.g., resource_metadata referencing the partitioned certificate_requests table).
     const certificateRequest = await certificateRequestDAL.create(
       {
         status,
