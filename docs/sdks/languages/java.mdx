@@ -77,6 +77,21 @@ The SDK methods are organized into the following high-level categories:
 1. `Auth()`: Handles authentication methods.
 2. `Secrets()`: Manages CRUD operations for secrets.
 
+### `GetAccessToken`
+
+Returns the access token currently stored in the SDK session. This is useful when you need to retrieve the token that was set by a login method or `SetAccessToken`.
+
+```java
+public String GetAccessToken()
+```
+
+```java
+String token = sdk.GetAccessToken();
+```
+
+**Returns:**
+- `String`: The access token currently stored in the SDK, or `null` if no token has been set.
+
 ### `Auth`
 
 The `Auth` component provides methods for authentication:
@@ -108,17 +123,30 @@ sdk.Auth().UniversalAuthLogin(
 #### Revoking
 
 ```java
+// No-arg: revokes the current session token stored in the SDK
+public void RevokeToken()
+throws InfisicalException
+
+// Explicit: revokes a specific access token
 public void RevokeToken(
   String accessToken
 )
 throws InfisicalException
 ```
 
+The recommended approach is to call `RevokeToken()` without arguments, which revokes the token currently stored in the SDK session:
+
+```java
+sdk.Auth().RevokeToken();
+```
+
+Alternatively, you can pass an explicit access token to revoke:
+
 ```java
 sdk.Auth().RevokeToken("ACCESS_TOKEN");
 ```
 
-**Parameters:**
+**Parameters (explicit variant):**
 - `accessToken` (String): The access token to revoke.
 
 ### AWS Auth
