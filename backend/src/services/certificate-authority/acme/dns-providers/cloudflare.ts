@@ -104,23 +104,23 @@ export const cloudflareDeleteTxtRecord = async (
       }
 
       // Record not found - might not have propagated yet, retry with backoff
-      retryCount += 1;
-      if (retryCount < maxRetries) {
-        const delay = initialDelay * 2 ** (retryCount - 1);
+      if (retryCount + 1 < maxRetries) {
+        const delay = initialDelay * 2 ** retryCount;
         await new Promise((resolve) => {
           setTimeout(resolve, delay);
         });
       }
+      retryCount += 1;
     } catch (error) {
       lastError = error as Error;
-      retryCount += 1;
 
-      if (retryCount < maxRetries) {
-        const delay = initialDelay * 2 ** (retryCount - 1);
+      if (retryCount + 1 < maxRetries) {
+        const delay = initialDelay * 2 ** retryCount;
         await new Promise((resolve) => {
           setTimeout(resolve, delay);
         });
       }
+      retryCount += 1;
     }
   }
 
