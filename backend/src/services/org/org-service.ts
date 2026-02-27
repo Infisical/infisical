@@ -60,6 +60,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
 import { deleteOrgMembershipsFn } from "./org-fns";
+import { TOrgWithSubOrgs } from "./org-schema";
 import {
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
@@ -200,6 +201,10 @@ export const orgServiceFactory = ({
 
     // Filter out orgs where the membership object is an invitation
     return orgs.filter((org) => org.userStatus !== "invited");
+  };
+
+  const findAllAccessibleOrganizationsWithSubOrgs = async (userId: string): Promise<TOrgWithSubOrgs[]> => {
+    return orgDAL.listOrganizationsWithSubOrgs({ actorId: userId, actorType: ActorType.USER });
   };
 
   /*
@@ -1293,6 +1298,7 @@ export const orgServiceFactory = ({
     findAllWorkspaces,
     addGhostUser,
     updateOrgMembership,
+    findAllAccessibleOrganizationsWithSubOrgs,
     // incident contacts
     findIncidentContacts,
     createIncidentContact,
