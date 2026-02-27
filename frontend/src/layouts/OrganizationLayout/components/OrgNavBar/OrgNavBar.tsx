@@ -96,6 +96,16 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                       </Tab>
                     )}
                   </Link>
+                  <Link
+                    to="/organizations/$orgId/observability"
+                    params={{ orgId: currentOrg.id }}
+                  >
+                    {({ isActive }) => (
+                      <Tab variant={variant} value={isActive ? "selected" : ""}>
+                        Observability
+                      </Tab>
+                    )}
+                  </Link>
                   {isRootOrganization && (
                     <Link to="/organizations/$orgId/billing" params={{ orgId: currentOrg.id }}>
                       {({ isActive }) => (

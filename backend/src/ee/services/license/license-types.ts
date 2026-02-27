@@ -37,7 +37,7 @@ export type TFeatureSet = {
   tier: -1;
   workspaceLimit: null;
   workspacesUsed: number;
-  dynamicSecret: false;
+  dynamicSecret: true;
   memberLimit: null;
   membersUsed: number;
   identityLimit: null;
@@ -48,11 +48,11 @@ export type TFeatureSet = {
   secretVersioning: true;
   pitRecovery: false;
   ipAllowlisting: false;
-  rbac: false;
+  rbac: true | false;
   customRateLimits: false;
   customAlerts: false;
-  auditLogs: false;
-  auditLogsRetentionDays: 0;
+  auditLogs: true;
+  auditLogsRetentionDays: 30;
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   githubOrgSync: false;
@@ -67,7 +67,7 @@ export type TFeatureSet = {
   status: null;
   trial_end: null;
   has_used_trial: true;
-  secretApproval: false;
+  secretApproval: true | false;
   secretRotation: false;
   caCrl: false;
   instanceUserManagement: false;

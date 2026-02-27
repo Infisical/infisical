@@ -53,6 +53,8 @@ import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
+import { registerObservabilityWidgetRouter } from "./observability-widget-router";
+import { registerObservabilityWidgetViewRouter } from "./observability-widget-view-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
 import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
@@ -266,6 +268,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });
   await server.register(registerDashboardRouter, { prefix: "/dashboard" });
+  await server.register(registerObservabilityWidgetRouter, { prefix: "/observability-widgets" });
+  await server.register(registerObservabilityWidgetViewRouter, { prefix: "/observability-widget-views" });
   await server.register(registerCmekRouter, { prefix: "/kms" });
   await server.register(registerExternalGroupOrgRoleMappingRouter, { prefix: "/scim/group-org-role-mappings" });
 
