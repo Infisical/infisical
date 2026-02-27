@@ -2279,21 +2279,21 @@ export const certificateV3ServiceFactory = ({
       const originalMetadata = await resourceMetadataDAL.find({ certificateId: originalCert.id });
       if (originalMetadata.length > 0) {
         await resourceMetadataDAL.insertMany(
-          originalMetadata.map(({ key, value, orgId }) => ({
+          originalMetadata.map(({ key, value }) => ({
             key,
             value: value || "",
             certificateId: newCert.id,
-            orgId
+            orgId: actorOrgId
           })),
           tx
         );
         await resourceMetadataDAL.insertMany(
-          originalMetadata.map(({ key, value, orgId }) => ({
+          originalMetadata.map(({ key, value }) => ({
             key,
             value: value || "",
             certificateRequestId: certRequestResult.id,
             certificateRequestCreatedAt: certRequestResult.createdAt,
-            orgId
+            orgId: actorOrgId
           })),
           tx
         );
@@ -2349,12 +2349,12 @@ export const certificateV3ServiceFactory = ({
       const originalMetadataForExternal = await resourceMetadataDAL.find({ certificateId: originalCert.id });
       if (originalMetadataForExternal.length > 0) {
         await resourceMetadataDAL.insertMany(
-          originalMetadataForExternal.map(({ key, value, orgId }) => ({
+          originalMetadataForExternal.map(({ key, value }) => ({
             key,
             value: value || "",
             certificateRequestId: certificateRequest.id,
             certificateRequestCreatedAt: certificateRequest.createdAt,
-            orgId
+            orgId: actorOrgId
           }))
         );
       }
