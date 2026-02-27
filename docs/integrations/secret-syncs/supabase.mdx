@@ -37,6 +37,7 @@ description: "Learn how to configure a Supabase Sync for Infisical."
 
                 - **Supabase Connection**: The Supabase Connection to authenticate with.
                 - **Project**: The Supabase project to sync secrets to.
+                - **Branch**: The Supabase branch (if applicable) to sync secrets to.
             </Step>
             <Step title="Configure Sync Options">
                 Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
@@ -99,10 +100,19 @@ description: "Learn how to configure a Supabase Sync for Infisical."
                     },
                     "destinationConfig": {
                         "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                        "projectName": "Example Project"
+                        "projectName": "Example Project"          
                     }
                 }'
         ```
+
+        Supabase treats branches of a project as separate projects with their own project IDs. To select a branch (if applicable) to sync secrets to, add the following two fields in the `"destinationConfig"` JSON field:
+
+        ```bash
+        {
+            "projectBranchId": "pqwznrtvlmxybcjkshfd"
+            "projectBranchName": "staging"
+        }
+        ```  
 
         ### Sample response
 
@@ -153,7 +163,9 @@ description: "Learn how to configure a Supabase Sync for Infisical."
                 "destination": "supabase",
                 "destinationConfig": {
                     "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                    "projectName": "Example Project"
+                    "projectName": "Example Project",
+                    "projectBranchId": "pqwznrtvlmxybcjkshfd",
+                    "projectBranchName": "staging"
                 }
             }
         }
