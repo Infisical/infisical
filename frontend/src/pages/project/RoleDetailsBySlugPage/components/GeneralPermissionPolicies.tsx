@@ -1,10 +1,9 @@
-import { cloneElement, ReactNode, useState } from "react";
+import { cloneElement, ReactNode } from "react";
 import { Control, Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
   faChevronDown,
   faChevronRight,
   faDiagramProject,
-  faGripVertical,
   faInfoCircle,
   faPlus,
   faTrash
@@ -77,7 +76,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   onShowAccessTree
 }: Props<T>) => {
   const { control, watch } = useFormContext<TFormSchema>();
-  const { fields, remove, insert, move } = useFieldArray({
+  const { fields, remove, insert } = useFieldArray({
     control,
     name: `permissions.${subject}`
   });
@@ -89,39 +88,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   });
 
   const [isOpen, setIsOpen] = useToggle();
-  const [draggedItem, setDraggedItem] = useState<number | null>(null);
-  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
   if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return null;
-
-  const handleDragStart = (_: React.DragEvent, index: number) => {
-    setDraggedItem(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverItem(index);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-
-    if (draggedItem === null || dragOverItem === null || draggedItem === dragOverItem) {
-      setDraggedItem(null);
-      setDragOverItem(null);
-      return;
-    }
-
-    move(draggedItem, dragOverItem);
-
-    setDraggedItem(null);
-    setDragOverItem(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-    setDragOverItem(null);
-  };
 
   return (
     <div className="overflow-clip border border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md hover:bg-mineshaft-700">
@@ -194,12 +162,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                 key={el.id}
                 className={twMerge(
                   "relative rounded-md border-l-[6px] bg-mineshaft-800 px-5 py-4 transition-colors duration-300",
-                  isInverted ? "border-l-red-600/50" : "border-l-green-600/50",
-                  dragOverItem === rootIndex ? "border-2 border-primary/50" : "",
-                  draggedItem === rootIndex ? "opacity-50" : ""
+                  isInverted ? "border-l-red-600/50" : "border-l-green-600/50"
                 )}
-                onDragOver={(e) => handleDragOver(e, rootIndex)}
-                onDrop={handleDrop}
               >
                 {isConditionalSubjects(subject) && (
                   <div className="mb-4 flex items-center gap-3">
@@ -253,18 +217,6 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                           >
                             <FontAwesomeIcon icon={faTrash} />
                           </IconButton>
-                        </Tooltip>
-                      )}
-                      {!isDisabled && (
-                        <Tooltip position="left" content="Drag to reorder permission">
-                          <div
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, rootIndex)}
-                            onDragEnd={handleDragEnd}
-                            className="cursor-move text-bunker-300 hover:text-bunker-200"
-                          >
-                            <FontAwesomeIcon icon={faGripVertical} />
-                          </div>
                         </Tooltip>
                       )}
                     </div>
