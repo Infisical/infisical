@@ -81,12 +81,6 @@ export type TKmipRegisterDTO = {
   kmipMetadata?: Record<string, unknown> | null;
 } & KmipOperationBaseDTO;
 
-export type TSetupOrgKmipDTO = {
-  caKeyAlgorithm: CertKeyAlgorithm;
-} & Omit<TOrgPermission, "orgId">;
-
-export type TGetOrgKmipDTO = Omit<TOrgPermission, "orgId">;
-
 export type TGenerateOrgKmipServerCertificateDTO = {
   commonName: string;
   altNames: string;

@@ -56,23 +56,6 @@ Ensure the following network connectivity is in place:
 Follow these steps in order to set up KMIP integration with Infisical:
 
 <Steps>
-  <Step title="Enable KMIP at the Organization Level">
-    First, you need to enable KMIP for your entire Infisical organization and set up its PKI infrastructure.
-
-    Navigate to **Organization Settings > KMIP** and click **Setup KMIP**.
-    
-    ![KMIP org navigate](/images/platform/kms/kmip/kmip-org-setup-navigation.png)
-
-    In the modal, select the desired key algorithm to use for the KMIP PKI of your organization, then click **Continue**.
-    
-    ![KMIP org PKI setup](/images/platform/kms/kmip/kmip-org-setup-modal.png)
-
-    This generates the KMIP PKI for your organization, creating the cryptographic foundation that will be used for secure KMIP communications.
-    <Info>
-    You do not need to manage these certificates yourself; Infisical handles the PKI infrastructure for you.
-    </Info>
-  </Step>
-
   <Step title="Create a Machine Identity for the KMIP Server">
     The KMIP server needs a machine identity to authenticate with Infisical and proxy requests on behalf of clients.
 

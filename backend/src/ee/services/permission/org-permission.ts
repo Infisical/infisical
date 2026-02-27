@@ -34,8 +34,7 @@ export enum OrgPermissionAuditLogsActions {
 }
 
 export enum OrgPermissionKmipActions {
-  Proxy = "proxy",
-  Setup = "setup"
+  Proxy = "proxy"
 }
 
 export enum OrgPermissionMachineIdentityAuthTemplateActions {
@@ -436,8 +435,6 @@ const buildAdminPermission = () => {
   can(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
-
-  can(OrgPermissionKmipActions.Setup, OrgPermissionSubjects.Kmip);
 
   // the proxy assignment is temporary in order to prevent "more privilege" error during role assignment to MI
   can(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
