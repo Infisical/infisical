@@ -777,6 +777,7 @@ export const certificateV3ServiceFactory = ({
               key,
               value,
               certificateRequestId: certRequest.id,
+              certificateRequestCreatedAt: certRequest.createdAt,
               orgId: actorOrgId
             })),
             tx
@@ -982,6 +983,7 @@ export const certificateV3ServiceFactory = ({
               key,
               value,
               certificateRequestId: certRequestResult.id,
+              certificateRequestCreatedAt: certRequestResult.createdAt,
               orgId: actorOrgId
             })),
             tx
@@ -1184,6 +1186,7 @@ export const certificateV3ServiceFactory = ({
             key,
             value,
             certificateRequestId: certRequestResult.id,
+            certificateRequestCreatedAt: certRequestResult.createdAt,
             orgId: actorOrgId
           })),
           tx
@@ -1373,6 +1376,7 @@ export const certificateV3ServiceFactory = ({
               key,
               value,
               certificateRequestId: certRequest.id,
+              certificateRequestCreatedAt: certRequest.createdAt,
               orgId: actorOrgId
             })),
             tx
@@ -1570,6 +1574,7 @@ export const certificateV3ServiceFactory = ({
               key,
               value,
               certificateRequestId: certRequestResult.id,
+              certificateRequestCreatedAt: certRequestResult.createdAt,
               orgId: actorOrgId
             })),
             tx
@@ -1732,6 +1737,7 @@ export const certificateV3ServiceFactory = ({
               key,
               value,
               certificateRequestId: certRequest.id,
+              certificateRequestCreatedAt: certRequest.createdAt,
               orgId: actorOrgId
             })),
             tx
@@ -1861,6 +1867,7 @@ export const certificateV3ServiceFactory = ({
             key,
             value,
             certificateRequestId: certRequest.id,
+            certificateRequestCreatedAt: certRequest.createdAt,
             orgId: actorOrgId
           }))
         );
@@ -2285,6 +2292,7 @@ export const certificateV3ServiceFactory = ({
             key,
             value: value || "",
             certificateRequestId: certRequestResult.id,
+            certificateRequestCreatedAt: certRequestResult.createdAt,
             orgId
           })),
           tx
@@ -2345,6 +2353,7 @@ export const certificateV3ServiceFactory = ({
             key,
             value: value || "",
             certificateRequestId: certificateRequest.id,
+            certificateRequestCreatedAt: certificateRequest.createdAt,
             orgId
           }))
         );
