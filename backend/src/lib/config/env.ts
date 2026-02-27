@@ -1,3 +1,5 @@
+import fs from "fs";
+
 import { z } from "zod";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
@@ -10,6 +12,27 @@ import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
+
+/**
+ * Resolve Docker Compose / Swarm _FILE-suffixed env vars.
+ * For every env var that ends with _FILE, read the file it points to and
+ * set the base env var (without the suffix) to the file contents — unless
+ * the base var is already explicitly set.
+ * Example: ENCRYPTION_KEY_FILE=/run/secrets/enc_key → ENCRYPTION_KEY=<file contents>
+ */
+function resolveDockerSecrets() {
+  for (const [key, filePath] of Object.entries(process.env)) {
+    if (!key.endsWith("_FILE") || !filePath) continue;
+    const baseKey = key.slice(0, -5);
+    if (process.env[baseKey]) continue;
+    try {
+      process.env[baseKey] = fs.readFileSync(filePath, "utf8").trim();
+    } catch {
+      // Intentionally silent — downstream Zod schema will report missing required variable
+    }
+  }
+}
+resolveDockerSecrets();
 
 export const GITLAB_URL = "https://gitlab.com";
 
@@ -149,11 +172,10 @@ const envSchema = z
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
     DB_READ_REPLICAS: zpStr(z.string().describe("Postgres read replicas").optional()),
-    BCRYPT_SALT_ROUND: z.number().optional(), // note(daniel): this is deprecated, use SALT_ROUNDS instead. only keeping this for backwards compatibility.
+    BCRYPT_SALT_ROUND: z.number().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
-    // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
     QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
@@ -185,7 +207,6 @@ const envSchema = z
     ),
     ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.default("false").optional(),
     DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.default("false").optional(),
-    // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),
     SMTP_REQUIRE_TLS: zodStrBool.default("true"),
@@ -202,25 +223,19 @@ const envSchema = z
       .string()
       .min(32)
       .default("#5VihU%rbXHcHwWwCot5L3vyPsx$7dWYw^iGk!EJg2bC*f$PD$%KCqx^R@#^LSEf"),
-
-    // Ensure that the SITE_URL never ends with a trailing slash
     SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional(),
-    // Telemetry
     TELEMETRY_ENABLED: zodStrBool.default("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
     POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE")),
     LOOPS_API_KEY: zpStr(z.string().optional()),
-    // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
-    // jwt options
-    AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
+    AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET),
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
     JWT_SIGNUP_LIFETIME: zpStr(z.string().default("15m")),
     JWT_REFRESH_LIFETIME: zpStr(z.string().default("90d")),
     JWT_INVITE_LIFETIME: zpStr(z.string().default("1d")),
     JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
     JWT_PROVIDER_AUTH_LIFETIME: zpStr(z.string().default("15m")),
-    // Oauth
     CLIENT_ID_GOOGLE_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GOOGLE_LOGIN: zpStr(z.string().optional()),
     CLIENT_ID_GITHUB_LOGIN: zpStr(z.string().optional()),
@@ -232,59 +247,43 @@ const envSchema = z
         .string()
         .optional()
         .default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)
-    ), // fallback since URL_GITLAB_LOGIN has been renamed
+    ),
     DEFAULT_SAML_ORG_SLUG: zpStr(z.string().optional()).default(process.env.NEXT_PUBLIC_SAML_ORG_SLUG),
-    // integration client secrets
-    // heroku
     CLIENT_ID_HEROKU: zpStr(z.string().optional()),
     CLIENT_SECRET_HEROKU: zpStr(z.string().optional()),
-    // vercel
     CLIENT_ID_VERCEL: zpStr(z.string().optional()),
     CLIENT_SECRET_VERCEL: zpStr(z.string().optional()),
     CLIENT_SLUG_VERCEL: zpStr(z.string().optional()),
-    // netlify
     CLIENT_ID_NETLIFY: zpStr(z.string().optional()),
     CLIENT_SECRET_NETLIFY: zpStr(z.string().optional()),
-    // bit bucket
     CLIENT_ID_BITBUCKET: zpStr(z.string().optional()),
     CLIENT_SECRET_BITBUCKET: zpStr(z.string().optional()),
-    // gcp secret manager
     CLIENT_ID_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
     CLIENT_SECRET_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
-    // github oauth
     CLIENT_ID_GITHUB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITHUB: zpStr(z.string().optional()),
-    // github app
     CLIENT_ID_GITHUB_APP: zpStr(z.string().optional()),
     CLIENT_SECRET_GITHUB_APP: zpStr(z.string().optional()),
     CLIENT_PRIVATE_KEY_GITHUB_APP: zpStr(z.string().optional()),
     CLIENT_APP_ID_GITHUB_APP: z.coerce.number().optional(),
     CLIENT_SLUG_GITHUB_APP: zpStr(z.string().optional()),
-
-    // azure
     CLIENT_ID_AZURE: zpStr(z.string().optional()),
     CLIENT_SECRET_AZURE: zpStr(z.string().optional()),
-    // aws
     CLIENT_ID_AWS_INTEGRATION: zpStr(z.string().optional()),
     CLIENT_SECRET_AWS_INTEGRATION: zpStr(z.string().optional()),
-    // gitlab
     CLIENT_ID_GITLAB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB: zpStr(z.string().optional()),
     URL_GITLAB_URL: zpStr(z.string().optional().default(GITLAB_URL)),
-    // SECRET-SCANNING
     SECRET_SCANNING_WEBHOOK_PROXY: zpStr(z.string().optional()),
     SECRET_SCANNING_WEBHOOK_SECRET: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
-    // LICENSE
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
-
-    // GENERIC
     STANDALONE_MODE: z
       .enum(["true", "false"])
       .transform((val) => val === "true" || IS_PACKAGED)
@@ -295,26 +294,21 @@ const envSchema = z
     CAPTCHA_SITE_KEY: zpStr(z.string().optional()),
     INTERCOM_ID: zpStr(z.string().optional()),
     CDN_HOST: zpStr(z.string().optional()),
-
-    // TELEMETRY
     OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
     OTEL_EXPORT_OTLP_ENDPOINT: zpStr(z.string().optional()),
     OTEL_OTLP_PUSH_INTERVAL: z.coerce.number().default(30000),
     OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
     OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
     OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
-
     PYLON_API_KEY: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
     SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
-    IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default(
+    IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional().default(
       "x-identity-tls-cert-auth-client-cert"
-    ),
+    )),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
-
-    // Special Detection Feature
     PARAMS_FOLDER_SECRET_DETECTION_PATHS: zpStr(
       z
         .string()
@@ -325,26 +319,18 @@ const envSchema = z
         })
     ),
     PARAMS_FOLDER_SECRET_DETECTION_ENTROPY: z.coerce.number().optional().default(3.7),
-
     INFISICAL_PRIMARY_INSTANCE_URL: zpStr(z.string().optional()),
-
-    // HSM
     HSM_LIB_PATH: zpStr(z.string().optional()),
     HSM_PIN: zpStr(z.string().optional()),
     HSM_KEY_LABEL: zpStr(z.string().optional()),
     HSM_SLOT: z.coerce.number().optional().default(0),
-
     USE_PG_QUEUE: zodStrBool.default("false"),
     SHOULD_INIT_PG_QUEUE: zodStrBool.default("false"),
-
-    /* Gateway----------------------------------------------------------------------------- */
     GATEWAY_INFISICAL_STATIC_IP_ADDRESS: zpStr(z.string().optional()),
     GATEWAY_RELAY_ADDRESS: zpStr(z.string().optional()),
     GATEWAY_RELAY_REALM: zpStr(z.string().optional()),
     GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
-
     RELAY_AUTH_SECRET: zpStr(z.string().optional()),
-
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
@@ -352,81 +338,46 @@ const envSchema = z
     DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
     ),
-
-    // PAM AWS credentials (for AWS IAM PAM resource type)
     PAM_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     PAM_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
-    /* ----------------------------------------------------------------------------- */
-
-    /* App Connections ----------------------------------------------------------------------------- */
     ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
-
-    // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
-
-    // github oauth
     INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // github app
     INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
-
-    // github radar app
     INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET: zpStr(z.string().optional()),
-
-    // gitlab oauth
     INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // gcp app
     INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
-
-    // Legacy Single Multi Purpose Azure App Connection
     INF_APP_CONNECTION_AZURE_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Azure App Configuration App Connection
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Azure Key Vault App Connection
     INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Azure Client Secrets App Connection
     INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Azure DevOps App Connection
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // Heroku App Connection
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
-
-    // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
     DATADOG_ENV: zpStr(z.string().optional().default("prod")),
     DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
-
-    // PIT
     PIT_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("100")),
     PIT_TREE_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("200")),
-
-    /* CORS ----------------------------------------------------------------------------- */
     CORS_ALLOWED_ORIGINS: zpStr(
       z
         .string()
@@ -445,11 +396,7 @@ const envSchema = z
           return JSON.parse(val) as string[];
         })
     ),
-
-    /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),
-
-    /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
   .refine(
