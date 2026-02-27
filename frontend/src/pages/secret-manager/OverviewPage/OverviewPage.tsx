@@ -5,6 +5,7 @@ import { subject } from "@casl/ability";
 import { DragDropProvider, DragEndEvent, DragOverlay } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
@@ -26,7 +27,13 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
-import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
+import {
+  Button as ButtonV2,
+  DeleteActionModal,
+  Modal,
+  ModalContent,
+  PageHeader
+} from "@app/components/v2";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,6 +96,7 @@ import {
 } from "@app/hooks";
 import {
   useCreateFolder,
+  useCreateSecretBatch,
   useCreateSecretV3,
   useDeleteDynamicSecret,
   useDeleteFolder,
@@ -97,10 +105,14 @@ import {
   useGetImportedSecretsAllEnvs,
   useGetOrCreateFolder,
   useGetWsTags,
+  useUpdateSecretBatch,
   useUpdateSecretImport,
   useUpdateSecretV3
 } from "@app/hooks/api";
-import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
+import {
+  fetchDashboardProjectSecretsByKeys,
+  useGetProjectSecretsOverview
+} from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
@@ -113,7 +125,7 @@ import {
   SecretRotation as SecretRotationV2,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
-import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
+import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import {
   ApiErrorTypes,
   ProjectEnv,
@@ -133,6 +145,7 @@ import {
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
+import { ReplicateFolderFromBoard } from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/ReplicateFolderFromBoard";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
 import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
 import {
@@ -159,6 +172,13 @@ import {
   SecretRotationTableRow,
   SecretTableRow
 } from "./components";
+
+type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
+type TParsedFolderEnv = Record<
+  string,
+  Record<string, { value: string; comments: string[]; secretPath?: string }>
+>;
+type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 
 export enum EntryType {
   FOLDER = "folder",
@@ -494,9 +514,12 @@ export const OverviewPage = () => {
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? projectId : ""
   );
 
+  const queryClient = useQueryClient();
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
+  const { mutateAsync: createSecretBatch, isPending: isCreatingSecrets } = useCreateSecretBatch();
+  const { mutateAsync: updateSecretBatch, isPending: isUpdatingSecrets } = useUpdateSecretBatch();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
@@ -543,6 +566,8 @@ export const OverviewPage = () => {
     "createDynamicSecretLease",
     "deleteDynamicSecret",
     "snapshots",
+    "replicateFolder",
+    "confirmReplicateUpload",
     "deleteSecretImport",
     "addSecretImport"
   ] as const);
@@ -625,6 +650,244 @@ export const OverviewPage = () => {
         text: "Failed to create folder"
       });
     }
+  };
+
+  // Replicate Secrets Logic
+  const replicateCreateCount = (
+    (popUp.confirmReplicateUpload?.data as TSecOverwriteOpt)?.create || []
+  ).length;
+  const replicateUpdateCount = (
+    (popUp.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update || []
+  ).length;
+  const isReplicateNonConflicting = !replicateUpdateCount;
+  const isReplicateSubmitting = isCreatingSecrets || isUpdatingSecrets;
+
+  const handleParsedEnvMultiFolder = async (envByPath: TParsedFolderEnv) => {
+    if (Object.keys(envByPath).length === 0) {
+      createNotification({
+        type: "error",
+        text: "Failed to find secrets"
+      });
+      return;
+    }
+
+    try {
+      const allUpdateSecrets: TParsedEnv = [];
+      const allCreateSecrets: TParsedEnv = [];
+
+      await Promise.all(
+        Object.entries(envByPath).map(async ([folderPath, boardSecrets]) => {
+          let normalizedPath = folderPath;
+
+          if (normalizedPath === "/") {
+            normalizedPath = secretPath;
+          } else {
+            const baseSecretPath = secretPath.endsWith("/") ? secretPath.slice(0, -1) : secretPath;
+            const cleanFolderPath = folderPath.startsWith("/")
+              ? folderPath.substring(1)
+              : folderPath;
+            normalizedPath = `${baseSecretPath}/${cleanFolderPath}`;
+          }
+
+          const secretFolderKeys = Object.keys(boardSecrets);
+
+          if (secretFolderKeys.length === 0) return;
+
+          const batchSize = 50;
+          const secretBatches = Array.from(
+            { length: Math.ceil(secretFolderKeys.length / batchSize) },
+            (_, i) => secretFolderKeys.slice(i * batchSize, (i + 1) * batchSize)
+          );
+
+          const existingSecretLookup = new Set<string>();
+
+          await secretBatches.reduce(async (previous, batch) => {
+            await previous;
+            try {
+              const { secrets: batchSecrets } = await fetchDashboardProjectSecretsByKeys({
+                secretPath: normalizedPath,
+                environment: singleVisibleEnv!.slug,
+                projectId,
+                keys: batch
+              });
+
+              batchSecrets.forEach((secret) => {
+                existingSecretLookup.add(`${normalizedPath}-${secret.secretKey}`);
+              });
+            } catch (error) {
+              if (!(error instanceof AxiosError && error.response?.status === 404)) {
+                throw error;
+              }
+            }
+          }, Promise.resolve());
+
+          secretFolderKeys.forEach((secretKey) => {
+            const secretData = boardSecrets[secretKey];
+            const secretWithPath = {
+              ...secretData,
+              secretPath: normalizedPath,
+              secretKey
+            };
+
+            if (existingSecretLookup.has(`${normalizedPath}-${secretKey}`)) {
+              allUpdateSecrets.push(secretWithPath);
+            } else {
+              allCreateSecrets.push(secretWithPath);
+            }
+          });
+        })
+      );
+      handlePopUpOpen("confirmReplicateUpload", {
+        update: allUpdateSecrets,
+        create: allCreateSecrets
+      });
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        text: "Failed to check for secret conflicts",
+        type: "error"
+      });
+      handlePopUpClose("confirmReplicateUpload");
+    }
+  };
+
+  const handleSaveReplicateImport = async () => {
+    const { update, create } = popUp?.confirmReplicateUpload?.data as TSecOverwriteOpt;
+    const environment = singleVisibleEnv!.slug;
+
+    const groupedCreateSecrets: Record<
+      string,
+      Array<{
+        type: SecretType;
+        secretComment: string;
+        secretValue: string;
+        secretKey: string;
+      }>
+    > = {};
+
+    const groupedUpdateSecrets: Record<
+      string,
+      Array<{
+        type: SecretType;
+        secretComment: string;
+        secretValue: string;
+        secretKey: string;
+      }>
+    > = {};
+
+    const allPaths = new Set<string>();
+
+    create.forEach((secData) => {
+      if (secData.secretPath && secData.secretPath !== secretPath) {
+        allPaths.add(secData.secretPath);
+      }
+    });
+
+    const folderPaths = Array.from(allPaths).map((path) => {
+      const normalizedPath = path.endsWith("/") ? path.slice(0, -1) : path;
+      const segments = normalizedPath.split("/");
+      const folderName = segments[segments.length - 1];
+      const parentPath = segments.slice(0, -1).join("/");
+
+      return {
+        folderName,
+        fullPath: normalizedPath,
+        parentPath: parentPath || "/"
+      };
+    });
+
+    folderPaths.sort(
+      (a, b) => (a.fullPath.match(/\//g) || []).length - (b.fullPath.match(/\//g) || []).length
+    );
+
+    const createdFolders = new Set<string>();
+
+    await folderPaths.reduce(async (previousPromise, { folderName, fullPath, parentPath }) => {
+      await previousPromise;
+
+      if (createdFolders.has(fullPath)) return Promise.resolve();
+
+      try {
+        await createFolder({
+          name: folderName,
+          path: parentPath,
+          environment,
+          projectId
+        });
+
+        createdFolders.add(fullPath);
+      } catch (err) {
+        console.log(`Folder ${folderName} may already exist:`, err);
+      }
+
+      return Promise.resolve();
+    }, Promise.resolve());
+
+    if (create.length > 0) {
+      create.forEach((secData) => {
+        const path = secData.secretPath || secretPath;
+
+        if (!groupedCreateSecrets[path]) {
+          groupedCreateSecrets[path] = [];
+        }
+
+        groupedCreateSecrets[path].push({
+          type: SecretType.Shared,
+          secretComment: secData.comments.join("\n"),
+          secretValue: secData.value,
+          secretKey: secData.secretKey
+        });
+      });
+
+      await Promise.all(
+        Object.entries(groupedCreateSecrets).map(([path, batchSecrets]) =>
+          createSecretBatch({
+            secretPath: path,
+            projectId,
+            environment,
+            secrets: batchSecrets
+          })
+        )
+      );
+    }
+
+    if (update.length > 0) {
+      update.forEach((secData) => {
+        const path = secData.secretPath || secretPath;
+
+        if (!groupedUpdateSecrets[path]) {
+          groupedUpdateSecrets[path] = [];
+        }
+
+        groupedUpdateSecrets[path].push({
+          type: SecretType.Shared,
+          secretComment: secData.comments.join("\n"),
+          secretValue: secData.value,
+          secretKey: secData.secretKey
+        });
+      });
+
+      await Promise.all(
+        Object.entries(groupedUpdateSecrets).map(([path, batchSecrets]) =>
+          updateSecretBatch({
+            secretPath: path,
+            projectId,
+            environment,
+            secrets: batchSecrets
+          })
+        )
+      );
+    }
+
+    queryClient.invalidateQueries({
+      queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
+    });
+
+    handlePopUpClose("confirmReplicateUpload");
+    createNotification({
+      type: "success",
+      text: "Successfully replicated secrets"
+    });
   };
 
   const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
@@ -1357,8 +1620,10 @@ export const OverviewPage = () => {
                         text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
                       });
                     }}
+                    onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
                     isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
                     isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
+                    isReplicateSecretsAvailable={visibleEnvs.length === 1}
                     onAddSecretImport={handleAddSecretImport}
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
                     isSingleEnvSelected={isSingleEnvView}
@@ -1993,6 +2258,67 @@ export const OverviewPage = () => {
         secretPath={secretPath}
         initialParsedSecrets={importParsedSecrets}
       />
+      <ReplicateFolderFromBoard
+        isOpen={popUp.replicateFolder.isOpen}
+        onToggle={(isOpen) => handlePopUpToggle("replicateFolder", isOpen)}
+        onParsedEnv={handleParsedEnvMultiFolder}
+        environment={singleVisibleEnv?.slug ?? ""}
+        environments={userAvailableEnvs}
+        projectId={projectId}
+        secretPath={secretPath}
+      />
+      <Modal
+        isOpen={popUp?.confirmReplicateUpload?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("confirmReplicateUpload", open)}
+      >
+        <ModalContent
+          title="Confirm Secret Upload"
+          footerContent={[
+            <ButtonV2
+              isLoading={isReplicateSubmitting}
+              isDisabled={isReplicateSubmitting}
+              colorSchema={isReplicateNonConflicting ? "primary" : "danger"}
+              key="overwrite-btn"
+              onClick={handleSaveReplicateImport}
+            >
+              {isReplicateNonConflicting ? "Upload" : "Overwrite"}
+            </ButtonV2>,
+            <ButtonV2
+              key="keep-old-btn"
+              className="ml-4"
+              onClick={() => handlePopUpClose("confirmReplicateUpload")}
+              variant="outline_bg"
+              isDisabled={isReplicateSubmitting}
+            >
+              Cancel
+            </ButtonV2>
+          ]}
+        >
+          {isReplicateNonConflicting ? (
+            <div>
+              Are you sure you want to import {replicateCreateCount} secret
+              {replicateCreateCount > 1 ? "s" : ""} to this environment?
+            </div>
+          ) : (
+            <div className="flex flex-col text-gray-300">
+              <div>Your project already contains the following {replicateUpdateCount} secrets:</div>
+              <div className="mt-2 text-sm text-gray-400">
+                {(popUp?.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update
+                  ?.map((sec) => sec.secretKey)
+                  .join(", ")}
+              </div>
+              <div className="mt-6">
+                Are you sure you want to overwrite these secrets
+                {replicateCreateCount > 0
+                  ? ` and import ${replicateCreateCount} new
+                one${replicateCreateCount > 1 ? "s" : ""}`
+                  : ""}
+                ?
+              </div>
+            </div>
+          )}
+        </ModalContent>
+      </Modal>
       <AlertDialog
         open={popUp.deleteFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
