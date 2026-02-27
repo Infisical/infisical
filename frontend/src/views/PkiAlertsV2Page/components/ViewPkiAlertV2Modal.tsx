@@ -151,6 +151,15 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                     </div>
 
                     <div>
+                      <div className="mb-1 block text-sm font-medium text-gray-400">
+                        Daily Alerts
+                      </div>
+                      <span className="text-gray-300">
+                        {alert.notificationConfig?.enableDailyNotification ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+
+                    <div>
                       <div className="mb-1 block text-sm font-medium text-gray-400">Created</div>
                       <span className="text-gray-300">{formatDate(alert.createdAt)}</span>
                     </div>

@@ -45,7 +45,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     try {
       const serializedData = {
         ...data,
-        filters: data.filters ? JSON.stringify(data.filters) : null
+        filters: data.filters ? JSON.stringify(data.filters) : null,
+        notificationConfig: data.notificationConfig ? JSON.stringify(data.notificationConfig) : data.notificationConfig
       };
       const [res] = await (tx || db)(TableName.PkiAlertsV2).insert(serializedData).returning("*");
 
@@ -59,7 +60,12 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     try {
       const serializedData: Record<string, unknown> = {
         ...data,
-        filters: data.filters !== undefined ? JSON.stringify(data.filters) : undefined
+        filters: data.filters !== undefined ? JSON.stringify(data.filters) : undefined,
+        notificationConfig: (() => {
+          if (data.notificationConfig === undefined) return undefined;
+          if (data.notificationConfig) return JSON.stringify(data.notificationConfig);
+          return data.notificationConfig;
+        })()
       };
       Object.keys(serializedData).forEach((key) => {
         if (serializedData[key] === undefined) {
@@ -415,6 +421,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         }
       }
 
+      certCountQuery = certCountQuery.whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+
       if (options?.excludeAlerted && options?.alertId) {
         certCountQuery = certCountQuery.whereNotExists(
           (tx || db.replicaNode())
@@ -479,6 +487,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
               .whereNot(`${TableName.Certificate}.status`, "revoked");
           }
         }
+
+        certificateQuery = certificateQuery.whereNull(`${TableName.Certificate}.renewedByCertificateId`);
 
         if (options?.excludeAlerted && options?.alertId) {
           certificateQuery = certificateQuery.whereNotExists(

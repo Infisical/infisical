@@ -15,6 +15,7 @@ export const PkiAlertsV2Schema = z.object({
   alertBefore: z.string().nullable().optional(),
   filters: z.unknown().nullable().optional(),
   enabled: z.boolean().default(true).nullable().optional(),
+  notificationConfig: z.unknown().nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

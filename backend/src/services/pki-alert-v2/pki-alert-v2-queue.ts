@@ -26,7 +26,9 @@ export const pkiAlertV2QueueServiceFactory = ({
   pkiAlertHistoryDAL
 }: TPkiAlertV2QueueServiceFactoryDep) => {
   const appCfg = getConfig();
-  const calculateDeduplicationWindow = (alertBefore: string): number => {
+  const calculateDeduplicationWindow = (alertBefore: string, enableDailyNotification = false): number => {
+    if (enableDailyNotification) return 24;
+
     const alertDays = parseTimeToDays(alertBefore);
 
     if (alertDays === 0) {
@@ -67,6 +69,7 @@ export const pkiAlertV2QueueServiceFactory = ({
       eventType: string;
       alertBefore: string;
       filters: TPkiFilterRule[];
+      notificationConfig?: unknown;
     },
     projectId: string
   ): Promise<{ shouldNotify: boolean; certificateIds: string[] }> => {
@@ -89,7 +92,9 @@ export const pkiAlertV2QueueServiceFactory = ({
         .filter((cert) => cert.enrollmentType !== CertificateOrigin.CA)
         .map((cert) => cert.id);
 
-      const deduplicationHours = calculateDeduplicationWindow(alert.alertBefore);
+      const notifConfig = alert.notificationConfig as { enableDailyNotification?: boolean } | null | undefined;
+      const enableDailyNotification = notifConfig?.enableDailyNotification ?? false;
+      const deduplicationHours = calculateDeduplicationWindow(alert.alertBefore, enableDailyNotification);
       const recentlyAlertedIds = await pkiAlertHistoryDAL.findRecentlyAlertedCertificates(
         alert.id,
         allCertificateIds,
@@ -133,27 +138,30 @@ export const pkiAlertV2QueueServiceFactory = ({
     let notificationsSent = 0;
 
     for (const alert of alerts) {
-      const typedAlert = alert as {
-        id: string;
-        name: string;
-        eventType: string;
-        alertBefore: string;
-        filters: TPkiFilterRule[];
-      };
       try {
-        const { shouldNotify, certificateIds } = await evaluateAlert(typedAlert, projectId);
+        const { shouldNotify, certificateIds } = await evaluateAlert(
+          {
+            id: alert.id,
+            name: alert.name,
+            eventType: alert.eventType,
+            alertBefore: alert.alertBefore ?? "",
+            filters: (alert.filters ?? []) as TPkiFilterRule[],
+            notificationConfig: alert.notificationConfig
+          },
+          projectId
+        );
 
         if (shouldNotify && certificateIds.length > 0) {
-          await pkiAlertV2Service.sendAlertNotifications(typedAlert.id, certificateIds);
+          await pkiAlertV2Service.sendAlertNotifications(alert.id, certificateIds);
           notificationsSent += 1;
           logger.info(
-            `Sent notification for alert ${typedAlert.id} (${typedAlert.name}) with ${certificateIds.length} certificates`
+            `Sent notification for alert ${alert.id} (${alert.name}) with ${certificateIds.length} certificates`
           );
         }
 
         alertsProcessed += 1;
       } catch (error) {
-        logger.error(error, `Failed to process alert ${typedAlert.id} (${typedAlert.name})`);
+        logger.error(error, `Failed to process alert ${alert.id} (${alert.name})`);
       }
     }
 

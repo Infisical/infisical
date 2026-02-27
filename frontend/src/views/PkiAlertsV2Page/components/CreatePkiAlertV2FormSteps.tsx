@@ -390,6 +390,30 @@ export const CreatePkiAlertV2FormSteps = ({
               )}
             />
           )}
+
+          {watchedEventType === PkiAlertEventTypeV2.EXPIRATION && (
+            <Controller
+              control={control}
+              name="notificationConfig.enableDailyNotification"
+              render={({ field }) => (
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="daily-alerts" className="text-sm text-bunker-300">
+                      Daily Alerts
+                    </label>
+                    <p className="text-xs text-bunker-400">
+                      Send notifications daily from the alert threshold until expiry
+                    </p>
+                  </div>
+                  <Switch
+                    id="daily-alerts"
+                    isChecked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </div>
+              )}
+            />
+          )}
         </div>
       </Tab.Panel>
 
@@ -957,6 +981,11 @@ export const CreatePkiAlertV2FormSteps = ({
               {watchedEventType === PkiAlertEventTypeV2.EXPIRATION && (
                 <GenericFieldLabel label="Alert Before">
                   {formatAlertBefore(watch("alertBefore"))}
+                </GenericFieldLabel>
+              )}
+              {watchedEventType === PkiAlertEventTypeV2.EXPIRATION && (
+                <GenericFieldLabel label="Daily Alerts">
+                  {watch("notificationConfig.enableDailyNotification") ? "Enabled" : "Disabled"}
                 </GenericFieldLabel>
               )}
               {watch("description") && (

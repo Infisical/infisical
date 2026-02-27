@@ -39,7 +39,7 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TFormData)[] }[] = 
   {
     name: "Details",
     key: "basicInfo",
-    fields: ["eventType", "name", "description", "alertBefore"]
+    fields: ["eventType", "name", "description", "alertBefore", "notificationConfig"]
   },
   { name: "Filters", key: "filterRules", fields: ["filters"] },
   { name: "Preview", key: "preview", fields: [] },
@@ -72,6 +72,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
       alertBefore: "30d",
       filters: [],
       enabled: true,
+      notificationConfig: { enableDailyNotification: false },
       channels: []
     },
     reValidateMode: "onBlur"
@@ -104,6 +105,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
         alertBefore: editingAlert.alertBefore || "30d",
         filters: editingAlert.filters || [],
         enabled: editingAlert.enabled,
+        notificationConfig: editingAlert.notificationConfig ?? { enableDailyNotification: false },
         channels:
           editingAlert.channels?.map(({ createdAt, updatedAt, ...channel }) => {
             if (channel.channelType === PkiAlertChannelTypeV2.EMAIL) {
@@ -138,6 +140,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
         alertBefore: "30d",
         filters: [],
         enabled: true,
+        notificationConfig: { enableDailyNotification: false },
         channels: []
       });
     }

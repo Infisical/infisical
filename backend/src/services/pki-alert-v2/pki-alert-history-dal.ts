@@ -82,8 +82,10 @@ export const pkiAlertHistoryDALFactory = (db: TDbClient) => {
     try {
       if (certificateIds.length === 0) return [];
 
+      const DEDUP_DRIFT_BUFFER_MINUTES = 15;
       const cutoffDate = new Date();
       cutoffDate.setHours(cutoffDate.getHours() - withinHours);
+      cutoffDate.setMinutes(cutoffDate.getMinutes() + DEDUP_DRIFT_BUFFER_MINUTES);
 
       const results = (await db
         .replicaNode()

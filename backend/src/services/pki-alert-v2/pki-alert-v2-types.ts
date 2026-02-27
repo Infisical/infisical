@@ -112,6 +112,12 @@ export type TPkiWebhookPayload = {
   };
 };
 
+export const NotificationConfigSchema = z.object({
+  enableDailyNotification: z.boolean().default(false)
+});
+
+export type TNotificationConfig = z.infer<typeof NotificationConfigSchema>;
+
 export const PkiFilterRuleSchema = z.object({
   field: z.nativeEnum(PkiFilterField),
   operator: z.nativeEnum(PkiFilterOperator),
@@ -198,6 +204,7 @@ export const CreatePkiAlertV2Schema = z.object({
   alertBefore: z.string().refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'"),
   filters: PkiFiltersSchema,
   enabled: z.boolean().default(true),
+  notificationConfig: NotificationConfigSchema.nullable().optional(),
   channels: z
     .array(CreateChannelSchema)
     .min(1, "At least one notification channel is required")
@@ -291,6 +298,7 @@ export type TAlertV2Response = {
     createdAt: Date;
     updatedAt: Date;
   }>;
+  notificationConfig: { enableDailyNotification: boolean } | null;
   lastRun: TLastRun | null;
   createdAt: Date;
   updatedAt: Date;

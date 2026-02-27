@@ -42,6 +42,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: z.object({ enableDailyNotification: z.boolean() }).nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -116,6 +117,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
               alertBefore: z.string(),
               filters: z.array(PkiFilterRuleSchema),
               enabled: z.boolean(),
+              notificationConfig: z.object({ enableDailyNotification: z.boolean() }).nullable(),
               channels: z.array(
                 z.object({
                   id: z.string().uuid(),
@@ -180,6 +182,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: z.object({ enableDailyNotification: z.boolean() }).nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -247,6 +250,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: z.object({ enableDailyNotification: z.boolean() }).nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -317,6 +321,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: z.object({ enableDailyNotification: z.boolean() }).nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
