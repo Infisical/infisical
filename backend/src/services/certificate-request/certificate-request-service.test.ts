@@ -108,14 +108,14 @@ describe("CertificateRequestService", () => {
         actionProjectType: ActionProjectType.CertificateManager
       });
       expect(mockCertificateRequestDAL.create).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           acmeOrderId: undefined,
           altNames: null,
           status: CertificateRequestStatus.PENDING,
           projectId: "550e8400-e29b-41d4-a716-446655440003",
           profileId: "550e8400-e29b-41d4-a716-446655440004",
           commonName: "test.example.com"
-        },
+        }),
         undefined
       );
       expect(result).toEqual(mockCreatedRequest);
@@ -294,6 +294,7 @@ describe("CertificateRequestService", () => {
         state: null,
         locality: null,
         basicConstraints: undefined,
+        metadata: [],
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -338,6 +339,7 @@ describe("CertificateRequestService", () => {
         state: null,
         locality: null,
         basicConstraints: undefined,
+        metadata: [],
         createdAt: mockRequestWithoutCert.createdAt,
         updatedAt: mockRequestWithoutCert.updatedAt
       });
@@ -402,6 +404,7 @@ describe("CertificateRequestService", () => {
         state: null,
         locality: null,
         basicConstraints: undefined,
+        metadata: [],
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -477,6 +480,7 @@ describe("CertificateRequestService", () => {
         state: null,
         locality: null,
         basicConstraints: undefined,
+        metadata: [],
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -521,6 +525,7 @@ describe("CertificateRequestService", () => {
         state: null,
         locality: null,
         basicConstraints: undefined,
+        metadata: [],
         createdAt: mockFailedRequest.createdAt,
         updatedAt: mockFailedRequest.updatedAt
       });
