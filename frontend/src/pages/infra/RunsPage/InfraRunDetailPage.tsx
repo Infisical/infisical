@@ -989,11 +989,13 @@ export const InfraRunDetailPage = () => {
               {/* Cost Estimates & Security Findings — side by side */}
               {(aiInsight.costs.estimated.length > 0 ||
                 aiInsight.costs.aiEstimated.length > 0 ||
+                (aiInsight.costs.totalMonthly !== "N/A" && aiInsight.costs.totalMonthly !== "—") ||
                 aiInsight.security.issues.length > 0) && (
                 <div className="grid grid-cols-2 gap-4">
                   {/* Cost Estimates */}
                   {(aiInsight.costs.estimated.length > 0 ||
-                    aiInsight.costs.aiEstimated.length > 0) && (
+                    aiInsight.costs.aiEstimated.length > 0 ||
+                    (aiInsight.costs.totalMonthly !== "N/A" && aiInsight.costs.totalMonthly !== "—")) && (
                     <UnstableCard className="h-full">
                       <UnstableCardHeader>
                         <UnstableCardTitle className="flex items-center gap-2 text-sm font-medium text-mineshaft-200">

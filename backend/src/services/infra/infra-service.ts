@@ -443,7 +443,7 @@ export const infraServiceFactory = ({
 
         // AI analysis — pass static costs so Gemini can enrich with uncovered resources
         try {
-          const insight = await generateAiInsight(fullLogs, planJson, staticCosts);
+          const insight = await generateAiInsight(fullLogs, planJson, staticCosts, "plan");
           if (insight) {
             aiSummary = JSON.stringify(insight);
           }
@@ -491,11 +491,13 @@ export const infraServiceFactory = ({
         if (!dto.approved) {
           // First destroy attempt — require approval
           try {
-            const insight = await generateAiInsight(fullLogs, planJson);
+            const insight = await generateAiInsight(fullLogs, planJson, [], "destroy");
             if (insight) aiSummary = JSON.stringify(insight);
           } catch (aiErr) {
             logger.warn(aiErr, "AI insight generation failed");
           }
+          // Force correct costs: $0 total, negative delta for destroyed resources
+          if (aiSummary) aiSummary = overrideDestroyCosts(aiSummary, planJson);
 
           appendLog(`\n[infra] Destroy plan ready. Awaiting approval...\n`);
           await infraRunDAL.updateById(run.id, {
@@ -519,12 +521,14 @@ export const infraServiceFactory = ({
           aiSummary = JSON.stringify(cachedAiInsight);
         } else {
           try {
-            const insight = await generateAiInsight(fullLogs, planJson);
+            const insight = await generateAiInsight(fullLogs, planJson, [], "destroy");
             if (insight) aiSummary = JSON.stringify(insight);
           } catch (aiErr) {
             logger.warn(aiErr, "AI insight generation failed");
           }
         }
+        // Force correct costs: $0 total, negative delta for destroyed resources
+        if (aiSummary) aiSummary = overrideDestroyCosts(aiSummary, planJson);
 
         await infraRunDAL.updateById(run.id, {
           status: InfraRunStatus.Success,
@@ -585,7 +589,7 @@ export const infraServiceFactory = ({
         } else {
           const applyCosts = rawPlanJsonOutput ? estimateResourceCosts(rawPlanJsonOutput) : [];
           try {
-            const insight = await generateAiInsight(fullLogs, planJson, applyCosts);
+            const insight = await generateAiInsight(fullLogs, planJson, applyCosts, "apply");
             if (insight) aiSummary = JSON.stringify(insight);
           } catch (aiErr) {
             logger.warn(aiErr, "AI insight generation failed");
@@ -884,7 +888,8 @@ const aiInsightSchema = z.object({
 async function generateAiInsight(
   logs: string,
   planJson: TPlanJson | null,
-  staticCosts: Array<{ resource: string; monthlyCost: number; type: string }> = []
+  staticCosts: Array<{ resource: string; monthlyCost: number; type: string }> = [],
+  mode: "plan" | "apply" | "destroy" = "plan"
 ): Promise<TAiInsight | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -904,7 +909,9 @@ async function generateAiInsight(
     }
   }
 
-  const prompt = `OpenTofu plan/apply output:
+  const prompt = `Operation mode: ${mode.toUpperCase()}
+
+OpenTofu ${mode} output:
 ${truncatedLogs}
 
 Parsed resource changes (programmatic — already extracted, do not repeat):
@@ -915,13 +922,15 @@ ${planJson ? JSON.stringify(planJson, null, 2) : "Not available"}${costContext}`
     contents: prompt,
     config: {
       systemInstruction: `You are a DevOps and security expert embedded in Infisical Infra. You will receive:
-1. OpenTofu plan output (human-readable)
-2. Parsed resource changes (JSON, programmatic — already extracted, do not repeat)
-3. Cost estimates from pricing tables (if available)
+1. The operation mode (PLAN, APPLY, or DESTROY)
+2. OpenTofu output (human-readable)
+3. Parsed resource changes (JSON, programmatic — already extracted, do not repeat)
+4. Cost estimates from pricing tables (if available)
 
 Rules:
 - For costs: use provided static estimates for covered resources (put in "estimated"). For uncovered resources, estimate based on typical cloud pricing and set confidence level (put in "aiEstimated").
 - Infisical provider pricing: $18/mo per infisical_identity. All other infisical_* resources are free ($0). Do not estimate costs for infisical resources other than infisical_identity.
+- IMPORTANT for DESTROY operations: all resources are being deleted. totalMonthly MUST be "$0.00" after destroy. deltaMonthly must be negative (e.g. "-$36.00") showing the savings. Do NOT list deleted resources in "estimated" or "aiEstimated" — they no longer exist.
 - For security: flag networking misconfigurations, overly permissive access, unencrypted data stores, exposed credentials, missing logging/monitoring.
 - Set shouldApprove to true ONLY for critical or high severity security issues.`,
       responseMimeType: "application/json",
@@ -933,7 +942,9 @@ Rules:
   if (!text) return null;
 
   try {
-    return aiInsightSchema.parse(JSON.parse(text));
+    const parsed = aiInsightSchema.parse(JSON.parse(text));
+
+    return parsed;
   } catch (parseErr) {
     logger.warn(parseErr, "Failed to parse Gemini AI response");
     return {
@@ -1058,6 +1069,36 @@ function estimateResourceCosts(rawPlanJson: string): Array<{ resource: string; m
   } catch (err) {
     logger.warn(err, "Failed to estimate resource costs from plan JSON");
     return [];
+  }
+}
+
+/**
+ * For destroy runs, compute the correct cost fields deterministically from planJson + cost table.
+ * Overrides whatever AI returned — totalMonthly=$0.00, delta=negative of destroyed resource costs.
+ */
+function overrideDestroyCosts(aiSummaryJson: string, planJson: TPlanJson | null): string {
+  try {
+    const insight = JSON.parse(aiSummaryJson) as TAiInsight;
+
+    // Sum up costs of all resources being destroyed using the static cost table
+    let previousTotal = 0;
+    if (planJson?.resources) {
+      for (const r of planJson.resources) {
+        const cost = RESOURCE_COST_TABLE[r.type];
+        if (cost !== undefined && cost > 0) {
+          previousTotal += cost;
+        }
+      }
+    }
+
+    insight.costs.estimated = [];
+    insight.costs.aiEstimated = [];
+    insight.costs.totalMonthly = "$0.00";
+    insight.costs.deltaMonthly = previousTotal > 0 ? `-$${previousTotal.toFixed(2)}` : "$0.00";
+
+    return JSON.stringify(insight);
+  } catch {
+    return aiSummaryJson;
   }
 }
 

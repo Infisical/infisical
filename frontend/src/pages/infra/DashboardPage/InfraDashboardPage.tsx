@@ -233,7 +233,8 @@ export const InfraDashboardPage = () => {
       .slice(0, 3);
   }, [resources]);
 
-  // Cost delta info
+  // Cost delta info — if no resources exist, cost is $0 regardless of what AI insight says
+  const hasResources = (resources?.length ?? 0) > 0;
   const costDelta = useMemo(() => {
     if (!latestAiInsight) return null;
     const delta = latestAiInsight.costs.deltaMonthly;
@@ -499,9 +500,13 @@ export const InfraDashboardPage = () => {
                 <div>
                   <p className="text-xs font-medium text-mineshaft-400">Est. Monthly Cost</p>
                   <p className="mt-1 text-2xl font-bold text-mineshaft-50">
-                    {latestAiInsight?.costs.totalMonthly ?? "—"}
+                    {hasResources
+                      ? (latestAiInsight?.costs.totalMonthly ?? "—")
+                      : "$0.00"}
                   </p>
-                  {costDelta ? (
+                  {!hasResources ? (
+                    <p className="mt-0.5 text-xs text-mineshaft-500">no resources</p>
+                  ) : costDelta ? (
                     <div
                       className={twMerge(
                         "mt-0.5 flex items-center gap-1 text-xs",
