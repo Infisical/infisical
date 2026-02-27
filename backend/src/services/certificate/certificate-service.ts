@@ -223,6 +223,10 @@ export const certificateServiceFactory = ({
   }: TGetCertPrivateKeyDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate not found` });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -413,6 +417,10 @@ export const certificateServiceFactory = ({
    */
   const getCertBody = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -723,6 +731,10 @@ export const certificateServiceFactory = ({
   }: TGetCertBundleDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate not found` });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -850,6 +862,10 @@ export const certificateServiceFactory = ({
       throw new BadRequestError({ message: "Alias is required for PKCS12 keystore generation" });
     }
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
