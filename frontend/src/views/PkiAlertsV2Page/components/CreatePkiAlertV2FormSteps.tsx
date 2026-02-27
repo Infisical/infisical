@@ -398,9 +398,7 @@ export const CreatePkiAlertV2FormSteps = ({
               render={({ field }) => (
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm text-bunker-300">
-                      Daily Alerts
-                    </span>
+                    <span className="text-sm text-bunker-300">Daily Alerts</span>
                     <p className="text-xs text-bunker-400">
                       Send notifications daily from the alert threshold until expiry
                     </p>
