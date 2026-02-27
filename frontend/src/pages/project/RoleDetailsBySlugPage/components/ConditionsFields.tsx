@@ -1,16 +1,26 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { faInfoCircle, faPlus, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon, PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
   Button,
-  FormControl,
-  IconButton,
-  Input,
+  Field,
+  FieldContent,
+  FieldError,
   Select,
+  SelectContent,
   SelectItem,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstableInput
+} from "@app/components/v3";
 import {
   ConditionalProjectPermissionSubject,
   PermissionConditionOperators
@@ -44,35 +54,37 @@ export const ConditionsFields = ({
     name: `permissions.${subject}.${position}.conditions` as const
   });
 
+  if (isDisabled && items.fields.length === 0) {
+    return null;
+  }
+
   const conditionErrorMessage =
     (errors?.permissions as any)?.[subject]?.[position]?.conditions?.message ||
     (errors?.permissions as any)?.[subject]?.[position]?.conditions?.root?.message;
 
   return (
-    <div className="mt-6 border-t border-t-mineshaft-600 bg-mineshaft-800 pt-2">
+    <div className="mt-6 border-t border-t-border bg-card pt-2">
       <div className="flex w-full items-center justify-between">
-        <div className="mt-2.5 flex items-center text-gray-300">
+        <div className="mt-2.5 flex items-center text-foreground">
           <span>Conditions</span>
-          <Tooltip
-            className="max-w-sm"
-            content={
-              <>
-                <p>
-                  Conditions determine when a policy will be applied (always if no conditions are
-                  present).
-                </p>
-                <p className="mt-3">
-                  All conditions must evaluate to true for the policy to take effect.
-                </p>
-              </>
-            }
-          >
-            <FontAwesomeIcon size="xs" className="ml-1 text-mineshaft-400" icon={faInfoCircle} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <InfoIcon className="ml-1 size-4 text-muted" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm text-wrap">
+              <p>
+                Conditions determine when a policy will be applied (always if no conditions are
+                present).
+              </p>
+              <p className="mt-3">
+                All conditions must evaluate to true for the policy to take effect.
+              </p>
+            </TooltipContent>
           </Tooltip>
         </div>
         <Button
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          variant="outline_bg"
+          type="button"
+          variant="outline"
           size="xs"
           className="mt-2"
           isDisabled={isDisabled}
@@ -84,11 +96,21 @@ export const ConditionsFields = ({
             })
           }
         >
+          <PlusIcon className="size-4" />
           Add Condition
         </Button>
       </div>
       <div className="mt-2 flex flex-col space-y-2">
-        {Boolean(items.fields.length) &&
+        {items.fields.length === 0 ? (
+          <UnstableEmpty className="mt-2 border !p-8">
+            <UnstableEmptyHeader>
+              <UnstableEmptyTitle>No conditions configured</UnstableEmptyTitle>
+              <UnstableEmptyDescription>
+                Add conditions to control when this policy applies.
+              </UnstableEmptyDescription>
+            </UnstableEmptyHeader>
+          </UnstableEmpty>
+        ) : (
           items.fields.map((el, index) => {
             const condition =
               (watch(`permissions.${subject}.${position}.conditions.${index}` as const) as {
@@ -99,38 +121,39 @@ export const ConditionsFields = ({
             return (
               <div
                 key={el.id}
-                className="flex items-start gap-2 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md"
+                className="flex items-start gap-2 bg-card first:rounded-t-md last:rounded-b-md"
               >
                 <div className="w-1/4">
                   <Controller
                     control={control}
                     name={`permissions.${subject}.${position}.conditions.${index}.lhs` as const}
                     render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0"
-                      >
-                        <Select
-                          defaultValue={field.value}
-                          {...field}
-                          onValueChange={(e) => {
-                            setValue(
-                              `permissions.${subject}.${position}.conditions.${index}.operator` as const,
-                              PermissionConditionOperators.$IN as never
-                            );
-                            field.onChange(e);
-                          }}
-                          position="popper"
-                          className="w-full"
-                        >
-                          {selectOptions.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <Field data-invalid={Boolean(error?.message)} className="mb-0">
+                        <FieldContent>
+                          <Select
+                            value={field.value}
+                            onValueChange={(e) => {
+                              setValue(
+                                `permissions.${subject}.${position}.conditions.${index}.operator` as const,
+                                PermissionConditionOperators.$IN as never
+                              );
+                              field.onChange(e);
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              {selectOptions.map(({ value, label }) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FieldContent>
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
                     )}
                   />
                 </div>
@@ -141,32 +164,31 @@ export const ConditionsFields = ({
                       `permissions.${subject}.${position}.conditions.${index}.operator` as const
                     }
                     render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0 grow"
-                      >
-                        <Select
-                          position="popper"
-                          defaultValue={field.value}
-                          {...field}
-                          onValueChange={(e) => field.onChange(e)}
-                          className="w-full"
-                        >
-                          {renderOperatorSelectItems(condition.lhs)}
-                        </Select>
-                      </FormControl>
+                      <Field data-invalid={Boolean(error?.message)} className="mb-0 grow">
+                        <FieldContent>
+                          <Select value={field.value} onValueChange={(e) => field.onChange(e)}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              {renderOperatorSelectItems(condition.lhs)}
+                            </SelectContent>
+                          </Select>
+                        </FieldContent>
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
                     )}
                   />
                   <div>
-                    <Tooltip
-                      asChild
-                      content={getConditionOperatorHelperInfo(
-                        condition?.operator as PermissionConditionOperators
-                      )}
-                      className="max-w-xs"
-                    >
-                      <FontAwesomeIcon icon={faInfoCircle} size="xs" className="text-bunker-400" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-4 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-wrap">
+                        {getConditionOperatorHelperInfo(
+                          condition?.operator as PermissionConditionOperators
+                        )}
+                      </TooltipContent>
                     </Tooltip>
                   </div>
                 </div>
@@ -175,31 +197,31 @@ export const ConditionsFields = ({
                     control={control}
                     name={`permissions.${subject}.${position}.conditions.${index}.rhs` as const}
                     render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0 grow"
-                      >
-                        <Input {...field} />
-                      </FormControl>
+                      <Field data-invalid={Boolean(error?.message)} className="mb-0 grow">
+                        <FieldContent>
+                          <UnstableInput {...field} />
+                        </FieldContent>
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
                     )}
                   />
                 </div>
-                <IconButton
-                  ariaLabel="remove"
-                  variant="outline_bg"
+                <UnstableIconButton
+                  aria-label="remove"
+                  variant="outline"
                   className="p-2.5"
                   onClick={() => items.remove(index)}
                 >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
+                  <TrashIcon className="size-4" />
+                </UnstableIconButton>
               </div>
             );
-          })}
+          })
+        )}
       </div>
       {conditionErrorMessage && (
-        <div className="flex items-center space-x-2 py-2 text-sm text-gray-400">
-          <FontAwesomeIcon icon={faWarning} className="text-red" />
+        <div className="flex items-center space-x-2 py-2 text-sm text-muted">
+          <TriangleAlertIcon className="text-destructive size-4" />
           <span>{conditionErrorMessage}</span>
         </div>
       )}

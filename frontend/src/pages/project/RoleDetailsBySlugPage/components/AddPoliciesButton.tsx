@@ -1,14 +1,17 @@
-import { faAngleDown, faLayerGroup, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ChevronDownIcon, LayersIcon, PlusIcon, UploadIcon } from "lucide-react";
 
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  IconButton,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableButtonGroup,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableIconButton
+} from "@app/components/v3";
 import { useOrgPermission } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
@@ -40,75 +43,59 @@ export const AddPoliciesButton = ({ isDisabled, projectType, projectId }: Props)
 
   return (
     <div>
-      <Button
-        className="h-10 rounded-r-none"
-        variant="outline_bg"
-        leftIcon={<FontAwesomeIcon icon={faPlus} />}
-        isDisabled={isDisabled}
-        onClick={() => handlePopUpToggle("addPolicy")}
-      >
-        Add Policies
-      </Button>
-      <DropdownMenu
-        open={popUp.addPolicyOptions.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("addPolicyOptions", isOpen)}
-      >
-        <DropdownMenuTrigger asChild>
-          <IconButton
-            ariaLabel="Open policy template options"
-            variant="outline_bg"
-            className="rounded-l-none bg-mineshaft-600 p-3"
-          >
-            <FontAwesomeIcon icon={faAngleDown} />
-          </IconButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent sideOffset={2} align="end">
-          <div className="flex flex-col space-y-1 p-1.5">
-            <Button
-              leftIcon={<FontAwesomeIcon icon={faLayerGroup} className="pr-2" />}
+      <UnstableButtonGroup>
+        <Button
+          type="button"
+          className="rounded-r-none"
+          isDisabled={isDisabled}
+          variant="outline"
+          onClick={() => handlePopUpToggle("addPolicy")}
+        >
+          <PlusIcon />
+          Add Policies
+        </Button>
+        <UnstableDropdownMenu
+          open={popUp.addPolicyOptions.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("addPolicyOptions", isOpen)}
+        >
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton type="button" variant="outline">
+              <ChevronDownIcon />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end">
+            <UnstableDropdownMenuItem
               onClick={() => {
                 handlePopUpOpen("applyTemplate");
                 handlePopUpClose("addPolicyOptions");
               }}
               isDisabled={isDisabled}
-              variant="outline_bg"
-              className="h-10 text-left"
-              isFullWidth
             >
+              <LayersIcon />
               Add From Template
-            </Button>
+            </UnstableDropdownMenuItem>
             {hasVaultConnection && (
-              <Tooltip
-                content={
-                  !isOrgAdmin
-                    ? "Only organization admins can import policies from HashiCorp Vault"
-                    : undefined
-                }
-              >
-                <Button
-                  leftIcon={
-                    <img
-                      src="/images/integrations/Vault.png"
-                      alt="HashiCorp Vault"
-                      className="h-4 w-4"
-                    />
-                  }
-                  onClick={() => {
-                    handlePopUpOpen("importFromVault");
-                    handlePopUpClose("addPolicyOptions");
-                  }}
-                  isDisabled={isVaultImportDisabled}
-                  variant="outline_bg"
-                  className="h-10 text-left"
-                  isFullWidth
-                >
-                  Add from HashiCorp Vault
-                </Button>
+              <Tooltip open={!isOrgAdmin ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <UnstableDropdownMenuItem
+                    onClick={() => {
+                      handlePopUpOpen("importFromVault");
+                      handlePopUpClose("addPolicyOptions");
+                    }}
+                    isDisabled={isVaultImportDisabled}
+                  >
+                    <UploadIcon />
+                    Add from HashiCorp Vault
+                  </UnstableDropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  Only organization admins can import policies from HashiCorp Vault
+                </TooltipContent>
               </Tooltip>
             )}
-          </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
+      </UnstableButtonGroup>
       <PolicySelectionModal
         projectId={projectId}
         type={projectType}
