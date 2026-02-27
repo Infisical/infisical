@@ -74,6 +74,16 @@ export const auditLogQueueServiceFactory = async ({
           ? project.auditLogsRetentionDays
           : plan.auditLogsRetentionDays;
 
+      // Guard against undefined or NaN retention days which would produce
+      // an invalid Date ("0NaN-NaN-NaN...") and crash the INSERT query.
+      if (!ttlInDays || !Number.isFinite(ttlInDays) || ttlInDays <= 0) {
+        logger.warn(
+          { orgId, projectId, planRetention: plan.auditLogsRetentionDays, projectRetention: project?.auditLogsRetentionDays },
+          "Skipping audit log insert: could not determine a valid retention TTL"
+        );
+        return;
+      }
+
       const ttl = ttlInDays * MS_IN_DAY;
 
       const auditLog = await auditLogDAL.create({
