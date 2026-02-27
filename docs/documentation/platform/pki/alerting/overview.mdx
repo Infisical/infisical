@@ -24,6 +24,7 @@ Here's some guidance for each field in the alert configuration sequence:
 - **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
 - **Description**: An optional description for the alert.
 - **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+- **Daily Alerts**: When enabled for expiration alerts, notifications are sent daily from the alert threshold until the certificate expires. By default, alerts send a single notification when the threshold is first reached.
 - **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
 
 ### Notification Channels
