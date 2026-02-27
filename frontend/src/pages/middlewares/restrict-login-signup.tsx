@@ -17,7 +17,13 @@ import { useGtm } from "@app/hooks/useGtm";
 const QueryParamsSchema = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
   force: z.boolean().optional(),
-  org_id: z.string().optional().catch(undefined)
+  org_id: z.string().optional().catch(undefined),
+  auth_method: z.enum(["saml", "oidc"]).optional().catch(undefined),
+  org_slug: z
+    .string()
+    .regex(/^[a-z0-9-]+$/)
+    .optional()
+    .catch(undefined)
 });
 
 export const AuthConsentWrapper = () => {
@@ -74,7 +80,14 @@ export const AuthConsentWrapper = () => {
 export const Route = createFileRoute("/_restrict-login-signup")({
   validateSearch: zodValidator(QueryParamsSchema),
   search: {
-    middlewares: [stripSearchParams({ callback_port: undefined, force: undefined })]
+    middlewares: [
+      stripSearchParams({
+        callback_port: undefined,
+        force: undefined,
+        auth_method: undefined,
+        org_slug: undefined
+      })
+    ]
   },
   beforeLoad: async ({ context, location, search }) => {
     if (!context.serverConfig.initialized) {
