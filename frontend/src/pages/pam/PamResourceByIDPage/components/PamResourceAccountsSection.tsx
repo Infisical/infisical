@@ -64,10 +64,10 @@ const hasAccountType = (resourceType: PamResourceType) =>
 
 const getAccountType = (account: TPamAccount): string | undefined => {
   if (account.resource.resourceType === PamResourceType.Windows) {
-    return (account as TWindowsAccount).metadata?.accountType;
+    return (account as TWindowsAccount).internalMetadata?.accountType;
   }
   if (account.resource.resourceType === PamResourceType.ActiveDirectory) {
-    return (account as TActiveDirectoryAccount).metadata?.accountType;
+    return (account as TActiveDirectoryAccount).internalMetadata?.accountType;
   }
   return undefined;
 };

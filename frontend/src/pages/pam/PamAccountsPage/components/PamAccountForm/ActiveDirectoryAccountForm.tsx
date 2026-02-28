@@ -23,7 +23,7 @@ const formSchema = genericAccountFieldsSchema.extend({
     username: z.string().trim().min(1, "Username is required"),
     password: z.string().trim().min(1, "Password is required")
   }),
-  metadata: z.object({
+  internalMetadata: z.object({
     accountType: z.nativeEnum(ActiveDirectoryAccountType)
   }),
   rotationEnabled: z.boolean().default(false),
@@ -55,7 +55,7 @@ export const ActiveDirectoryAccountForm = ({ account, onSubmit }: Props) => {
             username: "",
             password: ""
           },
-          metadata: {
+          internalMetadata: {
             accountType: ActiveDirectoryAccountType.User
           }
         }
@@ -73,7 +73,7 @@ export const ActiveDirectoryAccountForm = ({ account, onSubmit }: Props) => {
         <GenericAccountFields />
         <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3">
           <Controller
-            name="metadata.accountType"
+            name="internalMetadata.accountType"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl

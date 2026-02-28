@@ -33,5 +33,5 @@ export type TActiveDirectoryResource = TBasePamResource & {
 // Accounts
 export type TActiveDirectoryAccount = TBasePamAccount & {
   credentials: TActiveDirectoryCredentials;
-  metadata: TActiveDirectoryAccountMetadata;
+  internalMetadata: TActiveDirectoryAccountMetadata;
 };

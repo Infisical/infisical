@@ -160,7 +160,7 @@ export type TCreatePamAccountDTO = Pick<
   "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId" | "requireMfa"
 > & {
   resourceType: PamResourceType;
-  metadata?: Record<string, unknown>;
+  internalMetadata?: Record<string, unknown>;
 };
 
 export type TUpdatePamAccountDTO = Partial<
@@ -168,7 +168,7 @@ export type TUpdatePamAccountDTO = Partial<
 > & {
   accountId: string;
   resourceType: PamResourceType;
-  metadata?: Record<string, unknown>;
+  internalMetadata?: Record<string, unknown>;
 };
 
 export type TDeletePamAccountDTO = {

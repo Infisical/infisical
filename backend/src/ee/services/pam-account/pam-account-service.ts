@@ -120,7 +120,7 @@ export const pamAccountServiceFactory = ({
       rotationEnabled,
       rotationIntervalSeconds,
       requireMfa,
-      metadata
+      internalMetadata
     }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -196,7 +196,7 @@ export const pamAccountServiceFactory = ({
         rotationEnabled,
         rotationIntervalSeconds,
         requireMfa,
-        metadata: metadata ?? null
+        internalMetadata: internalMetadata ?? null
       });
 
       return {
@@ -229,7 +229,7 @@ export const pamAccountServiceFactory = ({
       rotationEnabled,
       rotationIntervalSeconds,
       requireMfa,
-      metadata
+      internalMetadata
     }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -281,8 +281,8 @@ export const pamAccountServiceFactory = ({
       updateDoc.rotationIntervalSeconds = rotationIntervalSeconds;
     }
 
-    if (metadata !== undefined) {
-      updateDoc.metadata = metadata;
+    if (internalMetadata !== undefined) {
+      updateDoc.internalMetadata = internalMetadata;
     }
 
     if (credentials !== undefined) {
