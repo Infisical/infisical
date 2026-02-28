@@ -107,7 +107,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
               .map((s) => s.trim())
               .filter(Boolean)
           )
-          .optional()
+          .optional(),
+        filterMetadataKey: z.string().trim().optional(),
+        filterMetadataValue: z.string().trim().optional()
       }),
       response: {
         200: ListPamAccountsResponseSchema
@@ -115,7 +117,18 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } = req.query;
+      const {
+        projectId,
+        accountView,
+        limit,
+        offset,
+        search,
+        orderBy,
+        orderDirection,
+        filterResourceIds,
+        filterMetadataKey,
+        filterMetadataValue
+      } = req.query;
 
       const { accounts, totalCount } = await server.services.pamAccount.list({
         actorId: req.permission.id,
@@ -129,7 +142,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         search,
         orderBy,
         orderDirection,
-        filterResourceIds
+        filterResourceIds,
+        filterMetadataKey,
+        filterMetadataValue
       });
 
       await server.services.auditLog.createAuditLog({

@@ -44,6 +44,7 @@ import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TPamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -88,6 +89,7 @@ type TPamAccountServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -108,7 +110,8 @@ export const pamAccountServiceFactory = ({
   auditLogService,
   approvalPolicyDAL,
   approvalRequestGrantsDAL,
-  pamSessionExpirationService
+  pamSessionExpirationService,
+  resourceMetadataDAL
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
     {
@@ -120,7 +123,8 @@ export const pamAccountServiceFactory = ({
       rotationEnabled,
       rotationIntervalSeconds,
       requireMfa,
-      internalMetadata
+      internalMetadata,
+      metadata
     }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -199,8 +203,20 @@ export const pamAccountServiceFactory = ({
         internalMetadata: internalMetadata ?? null
       });
 
+      if (metadata && metadata.length > 0) {
+        await resourceMetadataDAL.insertMany(
+          metadata.map(({ key, value }) => ({
+            key,
+            value: value ?? "",
+            pamAccountId: account.id,
+            orgId: actor.orgId
+          }))
+        );
+      }
+
       return {
         ...(await decryptAccount(account, resource.projectId, kmsService)),
+        metadata: metadata?.map(({ key, value }) => ({ id: "", key, value: value ?? "" })) || [],
         resourceType: resource.resourceType,
         resource: {
           id: resource.id,
@@ -229,7 +245,8 @@ export const pamAccountServiceFactory = ({
       rotationEnabled,
       rotationIntervalSeconds,
       requireMfa,
-      internalMetadata
+      internalMetadata,
+      metadata
     }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -332,12 +349,31 @@ export const pamAccountServiceFactory = ({
     }
 
     // If nothing was updated, return the fetched account
-    if (Object.keys(updateDoc).length === 0) {
+    if (Object.keys(updateDoc).length === 0 && metadata === undefined) {
       return decryptAccount(account, account.projectId, kmsService);
     }
 
     try {
-      const updatedAccount = await pamAccountDAL.updateById(accountId, updateDoc);
+      const updatedAccount = await pamAccountDAL.transaction(async (tx) => {
+        if (metadata) {
+          await resourceMetadataDAL.delete({ pamAccountId: accountId }, tx);
+          if (metadata.length > 0) {
+            await resourceMetadataDAL.insertMany(
+              metadata.map(({ key, value }) => ({
+                key,
+                value: value ?? "",
+                pamAccountId: accountId,
+                orgId: actor.orgId
+              })),
+              tx
+            );
+          }
+        }
+        if (Object.keys(updateDoc).length > 0) {
+          return pamAccountDAL.updateById(accountId, updateDoc, tx);
+        }
+        return account;
+      });
 
       return {
         ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
@@ -428,7 +464,9 @@ export const pamAccountServiceFactory = ({
         search: params.search,
         orderBy: params.orderBy,
         orderDirection: params.orderDirection,
-        filterResourceIds: params.filterResourceIds
+        filterResourceIds: params.filterResourceIds,
+        filterMetadataKey: params.filterMetadataKey,
+        filterMetadataValue: params.filterMetadataValue
       });
 
     const decryptedAndPermittedAccounts: Array<
@@ -467,8 +505,14 @@ export const pamAccountServiceFactory = ({
       }
     }
 
+    const accountIds = decryptedAndPermittedAccounts.map((a) => a.id);
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds(accountIds);
+
     return {
-      accounts: decryptedAndPermittedAccounts,
+      accounts: decryptedAndPermittedAccounts.map((a) => ({
+        ...a,
+        metadata: metadataByAccountId[a.id] || []
+      })),
       totalCount
     };
   };
@@ -496,8 +540,11 @@ export const pamAccountServiceFactory = ({
 
     const decryptedAccount = await decryptAccount(accountWithResource, accountWithResource.projectId, kmsService);
 
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds([accountWithResource.id]);
+
     return {
       ...decryptedAccount,
+      metadata: metadataByAccountId[accountWithResource.id] || [],
       resourceType: accountWithResource.resource.resourceType,
       resource: {
         id: accountWithResource.resource.id,

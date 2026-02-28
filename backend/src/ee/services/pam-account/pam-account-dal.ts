@@ -23,7 +23,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       offset = 0,
       orderBy = PamAccountOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
-      filterResourceIds
+      filterResourceIds,
+      filterMetadataKey,
+      filterMetadataValue
     }: {
       projectId: string;
       folderId?: string | null;
@@ -34,6 +36,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       orderBy?: PamAccountOrderBy;
       orderDirection?: OrderByDirection;
       filterResourceIds?: string[];
+      filterMetadataKey?: string;
+      filterMetadataValue?: string;
     },
     tx?: Knex
   ) => {
@@ -65,6 +69,15 @@ export const pamAccountDALFactory = (db: TDbClient) => {
 
       if (filterResourceIds && filterResourceIds.length) {
         void query.whereIn(`${TableName.PamAccount}.resourceId`, filterResourceIds);
+      }
+
+      if (filterMetadataKey) {
+        void query.whereIn(`${TableName.PamAccount}.id`, (subQuery) => {
+          void subQuery.select("pamAccountId").from(TableName.ResourceMetadata).where("key", filterMetadataKey);
+          if (filterMetadataValue) {
+            void subQuery.where("value", filterMetadataValue);
+          }
+        });
       }
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
@@ -160,10 +173,26 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return accounts;
   };
 
+  const findMetadataByAccountIds = async (accountIds: string[], tx?: Knex) => {
+    if (!accountIds.length) return {};
+    const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
+      .select("id", "key", "value", "pamAccountId")
+      .whereIn("pamAccountId", accountIds);
+    const byAccountId: Record<string, Array<{ id: string; key: string; value: string }>> = {};
+    for (const row of rows) {
+      if (row.pamAccountId) {
+        if (!byAccountId[row.pamAccountId]) byAccountId[row.pamAccountId] = [];
+        byAccountId[row.pamAccountId].push({ id: row.id, key: row.key, value: row.value || "" });
+      }
+    }
+    return byAccountId;
+  };
+
   return {
     ...orm,
     findByProjectIdWithResourceDetails,
     findByIdWithResourceDetails,
-    findAccountsDueForRotation
+    findAccountsDueForRotation,
+    findMetadataByAccountIds
   };
 };

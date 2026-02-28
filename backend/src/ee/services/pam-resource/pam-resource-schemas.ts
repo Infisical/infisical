@@ -51,6 +51,8 @@ export const BaseUpdatePamResourceSchema = CoreUpdatePamResourceSchema;
 // Accounts
 export const BasePamAccountSchema = PamAccountsSchema.omit({
   encryptedCredentials: true
+}).extend({
+  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array().optional()
 });
 
 export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
@@ -72,7 +74,8 @@ export const BaseCreatePamAccountSchema = z.object({
   description: z.string().max(512).nullable().optional(),
   rotationEnabled: z.boolean(),
   rotationIntervalSeconds: z.number().min(3600).nullable().optional(),
-  requireMfa: z.boolean().optional().default(false)
+  requireMfa: z.boolean().optional().default(false),
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
 export const BaseUpdatePamAccountSchema = z.object({
@@ -80,5 +83,6 @@ export const BaseUpdatePamAccountSchema = z.object({
   description: z.string().max(512).nullable().optional(),
   rotationEnabled: z.boolean().optional(),
   rotationIntervalSeconds: z.number().min(3600).nullable().optional(),
-  requireMfa: z.boolean().optional()
+  requireMfa: z.boolean().optional(),
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });

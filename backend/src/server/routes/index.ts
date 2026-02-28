@@ -2650,7 +2650,8 @@ export const registerRoutes = async (
     smtpService,
     approvalRequestGrantsDAL,
     approvalPolicyDAL,
-    pamSessionExpirationService
+    pamSessionExpirationService,
+    resourceMetadataDAL
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({
