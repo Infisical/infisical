@@ -10,6 +10,7 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { isUuidV4 } from "@app/lib/validator";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertStatus } from "./certificate-types";
 
@@ -144,20 +145,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       }
 
       if (metadataFilter && metadataFilter.length > 0) {
-        query = query.where((qb) => {
-          metadataFilter.forEach((meta) => {
-            void qb.whereExists((subQuery) => {
-              void subQuery
-                .select("certificateId")
-                .from(TableName.ResourceMetadata)
-                .whereRaw(`"${TableName.ResourceMetadata}"."certificateId" = "${TableName.Certificate}"."id"`)
-                .where(`${TableName.ResourceMetadata}.key`, meta.key);
-              if (meta.value !== undefined) {
-                void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
-              }
-            });
-          });
-        });
+        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
       }
 
       const count = await query.count("*").first();
@@ -465,20 +453,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       }
 
       if (metadataFilter && metadataFilter.length > 0) {
-        query = query.where((qb) => {
-          metadataFilter.forEach((meta) => {
-            void qb.whereExists((subQuery) => {
-              void subQuery
-                .select("certificateId")
-                .from(TableName.ResourceMetadata)
-                .whereRaw(`"${TableName.ResourceMetadata}"."certificateId" = "${TableName.Certificate}"."id"`)
-                .where(`${TableName.ResourceMetadata}.key`, meta.key);
-              if (meta.value !== undefined) {
-                void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
-              }
-            });
-          });
-        });
+        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
       }
 
       if (permissionFilters) {

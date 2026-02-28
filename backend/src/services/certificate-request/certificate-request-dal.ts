@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertificateRequestStatus } from "./certificate-request-types";
 
@@ -171,22 +172,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"));
 
       if (metadataFilter && metadataFilter.length > 0) {
-        query = query.where((qb) => {
-          metadataFilter.forEach((meta) => {
-            void qb.whereExists((subQuery) => {
-              void subQuery
-                .select("certificateRequestId")
-                .from(TableName.ResourceMetadata)
-                .whereRaw(
-                  `"${TableName.ResourceMetadata}"."certificateRequestId" = "${TableName.CertificateRequests}"."id"`
-                )
-                .where(`${TableName.ResourceMetadata}.key`, meta.key);
-              if (meta.value !== undefined) {
-                void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
-              }
-            });
-          });
-        });
+        query = applyMetadataFilter(query, metadataFilter, "certificateRequestId", TableName.CertificateRequests);
       }
 
       if (processedRules) {
@@ -255,22 +241,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (metadataFilter && metadataFilter.length > 0) {
-        query = query.where((qb) => {
-          metadataFilter.forEach((meta) => {
-            void qb.whereExists((subQuery) => {
-              void subQuery
-                .select("certificateRequestId")
-                .from(TableName.ResourceMetadata)
-                .whereRaw(
-                  `"${TableName.ResourceMetadata}"."certificateRequestId" = "${TableName.CertificateRequests}"."id"`
-                )
-                .where(`${TableName.ResourceMetadata}.key`, meta.key);
-              if (meta.value !== undefined) {
-                void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
-              }
-            });
-          });
-        });
+        query = applyMetadataFilter(query, metadataFilter, "certificateRequestId", TableName.CertificateRequests);
       }
 
       if (processedRules) {
@@ -367,22 +338,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (metadataFilter && metadataFilter.length > 0) {
-        query = query.where((qb) => {
-          metadataFilter.forEach((meta) => {
-            void qb.whereExists((subQuery) => {
-              void subQuery
-                .select("certificateRequestId")
-                .from(TableName.ResourceMetadata)
-                .whereRaw(
-                  `"${TableName.ResourceMetadata}"."certificateRequestId" = "${TableName.CertificateRequests}"."id"`
-                )
-                .where(`${TableName.ResourceMetadata}.key`, meta.key);
-              if (meta.value !== undefined) {
-                void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
-              }
-            });
-          });
-        });
+        query = applyMetadataFilter(query, metadataFilter, "certificateRequestId", TableName.CertificateRequests);
       }
 
       if (processedRules) {
