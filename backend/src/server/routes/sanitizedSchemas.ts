@@ -297,6 +297,39 @@ export const InternalCertificateAuthorityResponseSchema = CertificateAuthorities
   notBefore: z.string().optional()
 });
 
+export const metadataFilterSchema = z
+  .string()
+  .optional()
+  .transform((val) => {
+    if (!val) return undefined;
+
+    const result: { key?: string; value?: string }[] = [];
+    const pairs = val.split("|");
+
+    for (const pair of pairs) {
+      const keyValuePair: { key?: string; value?: string } = {};
+      const parts = pair.split(",").flatMap((s) => s.split("="));
+
+      for (let i = 0; i < parts.length; i += 2) {
+        const identifier = parts[i].trim().toLowerCase();
+        const pairValue = parts[i + 1]?.trim();
+
+        if (identifier === "key" && pairValue) {
+          keyValuePair.key = pairValue;
+        } else if (identifier === "value" && pairValue) {
+          keyValuePair.value = pairValue;
+        }
+      }
+
+      if (keyValuePair.key) {
+        result.push(keyValuePair as { key: string; value?: string });
+      }
+    }
+
+    return result.length ? (result as { key: string; value?: string }[]) : undefined;
+  })
+  .describe("Filter by metadata key-value pairs. Format: key=env,value=prod|key=team,value=backend");
+
 export const SanitizedSecretSharingSchema = SecretSharingSchema.omit({
   encryptedSecret: true,
   hashedHex: true,

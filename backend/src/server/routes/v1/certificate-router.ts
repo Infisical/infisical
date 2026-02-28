@@ -28,7 +28,7 @@ import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certi
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
-import { booleanSchema } from "../sanitizedSchemas";
+import { booleanSchema, metadataFilterSchema } from "../sanitizedSchemas";
 
 type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertificateIssuanceResponse, "privateKey">;
 
@@ -462,38 +462,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           .describe("Comma-separated list of profile IDs"),
         sortBy: z.string().trim().optional(),
         sortOrder: z.enum(["asc", "desc"]).optional(),
-        metadataFilter: z
-          .string()
-          .optional()
-          .transform((val) => {
-            if (!val) return undefined;
-
-            const result: { key?: string; value?: string }[] = [];
-            const pairs = val.split("|");
-
-            for (const pair of pairs) {
-              const keyValuePair: { key?: string; value?: string } = {};
-              const parts = pair.split(",").flatMap((s) => s.split("="));
-
-              for (let i = 0; i < parts.length; i += 2) {
-                const identifier = parts[i].trim().toLowerCase();
-                const pairValue = parts[i + 1]?.trim();
-
-                if (identifier === "key" && pairValue) {
-                  keyValuePair.key = pairValue;
-                } else if (identifier === "value" && pairValue) {
-                  keyValuePair.value = pairValue;
-                }
-              }
-
-              if (keyValuePair.key) {
-                result.push(keyValuePair as { key: string; value?: string });
-              }
-            }
-
-            return result.length ? (result as { key: string; value?: string }[]) : undefined;
-          })
-          .describe("Filter by metadata key-value pairs. Format: key=env,value=prod|key=team,value=backend")
+        metadataFilter: metadataFilterSchema
       }),
       response: {
         200: z.object({
