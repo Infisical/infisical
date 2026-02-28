@@ -20,6 +20,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
@@ -45,7 +46,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PAM_RESOURCE_TYPE_MAP,
@@ -61,6 +62,8 @@ import { PamUpdateResourceModal } from "./PamUpdateResourceModal";
 
 type PamResourceFilter = {
   resourceTypes: PamResourceType[];
+  metadataKey: string;
+  metadataValue: string;
 };
 
 type Props = {
@@ -81,7 +84,9 @@ export const PamResourcesTable = ({ projectId }: Props) => {
   });
 
   const [filter, setFilter] = useState<PamResourceFilter>({
-    resourceTypes: []
+    resourceTypes: [],
+    metadataKey: "",
+    metadataValue: ""
   });
 
   const {
@@ -103,6 +108,9 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     initSearch
   });
 
+  const [debouncedMetadataKey] = useDebounce(filter.metadataKey);
+  const [debouncedMetadataValue] = useDebounce(filter.metadataValue);
+
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
     setUserTablePreference("pamResourcesTable", PreferenceKey.PerPage, newPerPage);
@@ -115,7 +123,9 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     search: debouncedSearch,
     orderBy,
     orderDirection,
-    filterResourceTypes: filter.resourceTypes.length ? filter.resourceTypes.join(",") : undefined
+    filterResourceTypes: filter.resourceTypes.length ? filter.resourceTypes.join(",") : undefined,
+    filterMetadataKey: debouncedMetadataKey || undefined,
+    filterMetadataValue: debouncedMetadataValue || undefined
   });
 
   const resources = data?.resources || [];
@@ -162,7 +172,7 @@ export const PamResourcesTable = ({ projectId }: Props) => {
   const getColSortIcon = (col: PamResourceOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
-  const isTableFiltered = Boolean(filter.resourceTypes.length);
+  const isTableFiltered = Boolean(filter.resourceTypes.length || filter.metadataKey);
   const isContentEmpty = !filteredResources.length;
   const isSearchEmpty = isContentEmpty && (Boolean(search) || isTableFiltered);
 
@@ -231,6 +241,26 @@ export const PamResourcesTable = ({ projectId }: Props) => {
                 </DropdownMenuItem>
               );
             })}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Metadata</DropdownMenuLabel>
+            <div className="flex flex-col gap-2 px-2 pb-2">
+              <Input
+                value={filter.metadataKey}
+                onChange={(e) => setFilter((prev) => ({ ...prev, metadataKey: e.target.value }))}
+                placeholder="Key"
+                size="xs"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+              <Input
+                value={filter.metadataValue}
+                onChange={(e) => setFilter((prev) => ({ ...prev, metadataValue: e.target.value }))}
+                placeholder="Value (optional)"
+                size="xs"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
         <OrgPermissionCan
