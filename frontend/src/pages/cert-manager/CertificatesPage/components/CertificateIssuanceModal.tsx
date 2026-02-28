@@ -39,6 +39,7 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { filterUsages, formatSubjectAltNames } from "./certificateUtils";
@@ -54,7 +55,15 @@ enum RequestMethod {
 
 const baseSchema = z.object({
   profileId: z.string().min(1, "Profile is required"),
-  ttl: z.string().trim().min(1, "TTL is required")
+  ttl: z.string().trim().min(1, "TTL is required"),
+  metadata: z
+    .array(
+      z.object({
+        key: z.string().trim().min(1, "Key is required"),
+        value: z.string().trim().default("")
+      })
+    )
+    .optional()
 });
 
 const csrSchema = baseSchema.extend({
@@ -301,12 +310,14 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
       try {
         if (formData.requestMethod === RequestMethod.CSR) {
+          const metadataEntries = formData.metadata?.filter((m) => m.key);
           const response = await issueCertificate({
             profileId: formProfileId,
             projectSlug: currentProject.slug,
             projectId: currentProject.id,
             csr: formData.csr,
-            attributes: { ttl }
+            attributes: { ttl },
+            ...(metadataEntries?.length && { metadata: metadataEntries })
           });
 
           handleIssuanceResponse(response);
@@ -320,9 +331,11 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           signatureAlgorithm,
           keyAlgorithm,
           keyUsages,
-          extendedKeyUsages
+          extendedKeyUsages,
+          metadata: formMetadata
         } = formData;
 
+        const managedMetadataEntries = formMetadata?.filter((m) => m.key);
         const request: any = {
           profileId: formProfileId,
           projectSlug: currentProject.slug,
@@ -333,7 +346,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             keyAlgorithm: keyAlgorithm || "",
             keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
             extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
-          }
+          },
+          ...(managedMetadataEntries?.length && { metadata: managedMetadataEntries })
         };
 
         if (constraints.shouldShowSubjectSection) {
@@ -807,6 +821,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                     </Accordion>
                   </>
                 )}
+
+                <MetadataForm control={control} />
               </>
             )}
 

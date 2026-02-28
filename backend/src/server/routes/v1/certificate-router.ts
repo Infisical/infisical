@@ -26,8 +26,9 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certificate-v3-types";
 import { ProjectFilterType } from "@app/services/project/project-types";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
-import { booleanSchema } from "../sanitizedSchemas";
+import { booleanSchema, metadataFilterSchema } from "../sanitizedSchemas";
 
 type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertificateIssuanceResponse, "privateKey">;
 
@@ -164,7 +165,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
                 .optional()
             })
             .optional(),
-          removeRootsFromChain: booleanSchema.default(false).optional()
+          removeRootsFromChain: booleanSchema.default(false).optional(),
+          metadata: ResourceMetadataNonEncryptionSchema.optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -193,7 +195,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { csr, attributes, ...requestBody } = req.body;
+      const { csr, attributes, metadata, ...requestBody } = req.body;
       const profile = await server.services.certificateProfile.getProfileById({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -243,6 +245,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           profileId: requestBody.profileId,
           certificateOrder: certificateOrderObject,
+          metadata,
           removeRootsFromChain: requestBody.removeRootsFromChain
         });
 
@@ -280,6 +283,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           notBefore: attributes?.notBefore ? new Date(attributes.notBefore) : undefined,
           notAfter: attributes?.notAfter ? new Date(attributes.notAfter) : undefined,
           enrollmentType: EnrollmentType.API,
+          metadata,
           removeRootsFromChain: requestBody.removeRootsFromChain,
           basicConstraints: attributes?.basicConstraints
         });
@@ -343,6 +347,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         profileId: requestBody.profileId,
         certificateRequest: mappedCertificateRequest,
+        metadata,
         removeRootsFromChain: requestBody.removeRootsFromChain
       });
 
@@ -401,6 +406,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             })
             .nullable()
             .optional(),
+          metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
           createdAt: z.date(),
           updatedAt: z.date()
         })
@@ -455,7 +461,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe("Comma-separated list of profile IDs"),
         sortBy: z.string().trim().optional(),
-        sortOrder: z.enum(["asc", "desc"]).optional()
+        sortOrder: z.enum(["asc", "desc"]).optional(),
+        metadataFilter: metadataFilterSchema
       }),
       response: {
         200: z.object({
@@ -514,7 +521,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         toDate: req.query.toDate,
         profileIds: req.query.profileIds,
         sortBy: req.query.sortBy,
-        sortOrder: req.query.sortOrder
+        sortOrder: req.query.sortOrder,
+        metadataFilter: req.query.metadataFilter
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1073,7 +1081,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               .optional(),
             caName: z.string().nullable().optional(),
             caType: z.enum(["internal", "external"]).nullable().optional(),
-            profileName: z.string().nullable().optional()
+            profileName: z.string().nullable().optional(),
+            metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional()
           })
         })
       }
@@ -1103,6 +1112,57 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       return {
         certificate: cert
       };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:id/metadata",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "updateCertificateMetadata",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Update certificate metadata",
+      params: z.object({
+        id: z.string().trim().describe(CERTIFICATES.GET.id)
+      }),
+      body: z.object({
+        metadata: ResourceMetadataNonEncryptionSchema
+      }),
+      response: {
+        200: z.object({
+          metadata: z.array(z.object({ key: z.string(), value: z.string() }))
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.certificateV3.updateCertificateMetadata({
+        certificateId: req.params.id,
+        metadata: req.body.metadata,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.UPDATE_CERTIFICATE_METADATA,
+          metadata: {
+            certificateId: req.params.id,
+            commonName: result.commonName,
+            metadataCount: req.body.metadata.length
+          }
+        }
+      });
+
+      return { metadata: result.metadata };
     }
   });
 

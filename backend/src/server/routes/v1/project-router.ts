@@ -46,6 +46,7 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 import {
   integrationAuthPubSchema,
   InternalCertificateAuthorityResponseSchema,
+  metadataFilterSchema,
   SanitizedProjectSchema
 } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
@@ -1246,7 +1247,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe("Filter by profile IDs"),
         fromDate: z.coerce.date().optional().describe("Filter certificates created from this date"),
-        toDate: z.coerce.date().optional().describe("Filter certificates created until this date")
+        toDate: z.coerce.date().optional().describe("Filter certificates created until this date"),
+        metadataFilter: metadataFilterSchema
       }),
       response: {
         200: z.object({

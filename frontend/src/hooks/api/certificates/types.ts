@@ -54,6 +54,7 @@ export type TCertificate = {
     issuerOrganization?: string;
     [key: string]: unknown;
   } | null;
+  metadata?: Array<{ key: string; value: string }>;
 };
 
 export type TCertificateByIdResponse = {
@@ -147,6 +148,7 @@ export type TUnifiedCertificateIssuanceDTO = {
     notAfter?: string;
   };
   removeRootsFromChain?: boolean;
+  metadata?: Array<{ key: string; value: string }>;
 };
 
 export type TUnifiedCertificateResponse = {
@@ -190,6 +192,13 @@ export type TCertificateRequestDetails = {
   } | null;
   createdAt: string;
   updatedAt: string;
+  metadata?: Array<{ key: string; value: string }>;
+};
+
+export type TUpdateCertificateMetadataDTO = {
+  certificateId: string;
+  projectId: string;
+  metadata: Array<{ key: string; value: string }>;
 };
 
 export type TCertificateRequestListItem = {
@@ -228,4 +237,5 @@ export type TListCertificateRequestsParams = {
   profileIds?: string[];
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  metadataFilter?: Array<{ key: string; value?: string }>;
 };

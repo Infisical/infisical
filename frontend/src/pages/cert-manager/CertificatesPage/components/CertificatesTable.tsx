@@ -70,6 +70,10 @@ import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import {
+  type MetadataFilterEntry,
+  MetadataFilterSection
+} from "../../components/MetadataFilterSection";
+import {
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
   isExpiringWithinOneDay
@@ -126,10 +130,12 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
   const [pendingSearch, setPendingSearch] = useState(externalFilter?.search || "");
   const [pendingProfileIds, setPendingProfileIds] = useState<string[]>([]);
   const [pendingFilters, setPendingFilters] = useState<CertificateFilters>({});
+  const [pendingMetadataFilters, setPendingMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
   const [appliedProfileIds, setAppliedProfileIds] = useState<string[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<CertificateFilters>({});
+  const [appliedMetadataFilters, setAppliedMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -157,13 +163,21 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     return appliedProfileIds;
   }, [appliedProfileIds]);
 
+  const activeMetadataFilters = useMemo(() => {
+    const filtered = appliedMetadataFilters
+      .filter((m) => m.key.trim())
+      .map(({ key, value }) => ({ key, value }));
+    return filtered.length > 0 ? filtered : undefined;
+  }, [appliedMetadataFilters]);
+
   const { data, isPending } = useListWorkspaceCertificates({
     projectId: currentProject?.id ?? "",
     offset: (page - 1) * perPage,
     limit: perPage,
     search: appliedSearch.trim() || undefined,
     status: backendStatus,
-    ...(profileIds && { profileIds })
+    ...(profileIds && { profileIds }),
+    ...(activeMetadataFilters && { metadataFilter: activeMetadataFilters })
   });
 
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
@@ -209,9 +223,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     setPendingSearch("");
     setPendingFilters({});
     setPendingProfileIds([]);
+    setPendingMetadataFilters([]);
     setAppliedSearch("");
     setAppliedFilters({});
     setAppliedProfileIds([]);
+    setAppliedMetadataFilters([]);
     setPage(1);
   };
 
@@ -223,7 +239,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     setPendingProfileIds([]);
   };
 
-  const isTableFiltered = Boolean(appliedFilters.status || appliedProfileIds.length);
+  const isTableFiltered = Boolean(
+    appliedFilters.status ||
+      appliedProfileIds.length ||
+      appliedMetadataFilters.some((m) => m.key.trim())
+  );
 
   const hasFilterChanges = useMemo(() => {
     const pendingStatus = pendingFilters.status ?? undefined;
@@ -232,8 +252,17 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     const profileIdsChanged =
       JSON.stringify([...pendingProfileIds].sort()) !==
       JSON.stringify([...appliedProfileIds].sort());
-    return statusChanged || profileIdsChanged;
-  }, [pendingFilters.status, appliedFilters.status, pendingProfileIds, appliedProfileIds]);
+    const metadataChanged =
+      JSON.stringify(pendingMetadataFilters) !== JSON.stringify(appliedMetadataFilters);
+    return statusChanged || profileIdsChanged || metadataChanged;
+  }, [
+    pendingFilters.status,
+    appliedFilters.status,
+    pendingProfileIds,
+    appliedProfileIds,
+    pendingMetadataFilters,
+    appliedMetadataFilters
+  ]);
 
   return (
     <div>
@@ -353,11 +382,17 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                 </Select>
               </div>
 
+              <MetadataFilterSection
+                entries={pendingMetadataFilters}
+                onChange={setPendingMetadataFilters}
+              />
+
               <div className="pt-2">
                 <Button
                   onClick={() => {
                     setAppliedFilters(pendingFilters);
                     setAppliedProfileIds(pendingProfileIds);
+                    setAppliedMetadataFilters(pendingMetadataFilters);
                     setPage(1);
                   }}
                   className="w-full bg-primary font-medium text-black hover:bg-primary-600"

@@ -15,6 +15,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 
 import { ActorType } from "../auth/auth-type";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 import {
   CertificateRequestStatus,
@@ -31,6 +32,7 @@ type TCertificateRequestServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
 };
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
@@ -120,7 +122,8 @@ export const certificateRequestServiceFactory = ({
   certificateRequestDAL,
   certificateDAL,
   certificateService,
-  permissionService
+  permissionService,
+  resourceMetadataDAL
 }: TCertificateRequestServiceFactoryDep) => {
   const createCertificateRequest = async ({
     acmeOrderId,
@@ -154,13 +157,24 @@ export const certificateRequestServiceFactory = ({
 
     const { altNames: altNamesInput, ...restValidatedData } = validatedData;
 
+    // Explicitly set createdAt to ensure millisecond precision matches when used in FK references.
+    // PostgreSQL's DEFAULT now() has microsecond precision, but JavaScript Date only has millisecond precision.
+    // This mismatch causes FK violations when the returned createdAt is used in composite FK references
+    // (e.g., resource_metadata referencing the partitioned certificate_requests table).
     const certificateRequest = await certificateRequestDAL.create(
       {
         status,
         projectId,
         acmeOrderId,
         ...restValidatedData,
-        altNames: altNamesInput ? JSON.stringify(altNamesInput) : null
+        altNames: altNamesInput ? JSON.stringify(altNamesInput) : null,
+        createdAt: new Date()
+      } as typeof restValidatedData & {
+        status: string;
+        projectId: string;
+        acmeOrderId?: string;
+        altNames: string | null;
+        createdAt: Date;
       },
       tx
     );
@@ -233,6 +247,9 @@ export const certificateRequestServiceFactory = ({
       pathLength?: number;
     } | null;
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
+    const requestMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     // If no certificate is attached, return basic info
     if (!certificateRequest.certificate) {
       return {
@@ -250,6 +267,7 @@ export const certificateRequestServiceFactory = ({
           state: certificateRequest.state || null,
           locality: certificateRequest.locality || null,
           basicConstraints: parsedBasicConstraints,
+          metadata: requestMetadata,
           createdAt: certificateRequest.createdAt,
           updatedAt: certificateRequest.updatedAt
         },
@@ -302,6 +320,7 @@ export const certificateRequestServiceFactory = ({
         state: certificateRequest.state || null,
         locality: certificateRequest.locality || null,
         basicConstraints: parsedBasicConstraints,
+        metadata: requestMetadata,
         createdAt: certificateRequest.createdAt,
         updatedAt: certificateRequest.updatedAt
       },
@@ -353,7 +372,8 @@ export const certificateRequestServiceFactory = ({
     toDate,
     profileIds,
     sortBy,
-    sortOrder
+    sortOrder,
+    metadataFilter
   }: TListCertificateRequestsDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -384,7 +404,8 @@ export const certificateRequestServiceFactory = ({
       toDate,
       profileIds,
       sortBy,
-      sortOrder
+      sortOrder,
+      metadataFilter
     };
 
     const [certificateRequests, totalCount] = await Promise.all([

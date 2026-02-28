@@ -4,12 +4,13 @@ import { TDbClient } from "@app/db";
 import { TableName, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { isUuidV4 } from "@app/lib/validator";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertStatus } from "./certificate-types";
 
@@ -55,7 +56,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     status,
     profileIds,
     fromDate,
-    toDate
+    toDate,
+    metadataFilter
   }: {
     projectId: string;
     friendlyName?: string;
@@ -65,6 +67,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     profileIds?: string[];
     fromDate?: Date;
     toDate?: Date;
+    metadataFilter?: Array<{ key: string; value?: string }>;
   }) => {
     try {
       interface CountResult {
@@ -139,6 +142,10 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       if (profileIds) {
         query = query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+      }
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
       }
 
       const count = await query.count("*").first();
@@ -350,6 +357,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         profileIds?: string[];
         fromDate?: Date;
         toDate?: Date;
+        metadataFilter?: Array<{ key: string; value?: string }>;
       }
     >,
     options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
@@ -362,7 +370,17 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"));
 
-      const { friendlyName, commonName, search, status, profileIds, fromDate, toDate, ...regularFilters } = filter;
+      const {
+        friendlyName,
+        commonName,
+        search,
+        status,
+        profileIds,
+        fromDate,
+        toDate,
+        metadataFilter,
+        ...regularFilters
+      } = filter;
 
       Object.entries(regularFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -432,6 +450,10 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       if (profileIds) {
         query = query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+      }
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
       }
 
       if (permissionFilters) {
@@ -526,6 +548,45 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdWithMetadata = async (id: string, tx?: Knex) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Certificate)
+        .leftJoin(
+          TableName.ResourceMetadata,
+          `${TableName.ResourceMetadata}.certificateId`,
+          `${TableName.Certificate}.id`
+        )
+        .select(selectAllTableCols(TableName.Certificate))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
+        .where(`${TableName.Certificate}.id`, id);
+
+      const docs = sqlNestRelationships({
+        data: await query,
+        key: "id",
+        parentMapper: (el) => el,
+        childrenMapper: [
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue || ""
+            })
+          }
+        ]
+      });
+
+      return docs[0] as (TCertificates & { metadata: { id: string; key: string; value: string }[] }) | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate by ID with metadata" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
@@ -538,6 +599,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findActiveCertificatesForSync,
     findCertificatesEligibleForRenewal,
     findWithPrivateKeyInfo,
-    findWithFullDetails
+    findWithFullDetails,
+    findByIdWithMetadata
   };
 };

@@ -31,7 +31,8 @@ export const certKeys = {
     params.toDate,
     params.profileIds,
     params.sortBy,
-    params.sortOrder
+    params.sortOrder,
+    params.metadataFilter
   ]
 };
 
@@ -116,7 +117,12 @@ export const useListCertificateRequests = (params: TListCertificateRequestsParam
             toDate: (params.toDate || new Date(now)).toISOString(),
             profileIds: params.profileIds?.join(","),
             sortBy: params.sortBy,
-            sortOrder: params.sortOrder
+            sortOrder: params.sortOrder,
+            ...(params.metadataFilter?.length && {
+              metadataFilter: params.metadataFilter
+                .map((m) => (m.value ? `key=${m.key},value=${m.value}` : `key=${m.key}`))
+                .join("|")
+            })
           }
         }
       );
