@@ -838,7 +838,8 @@
                     "group": "Web Access",
                     "pages": [
                       "documentation/platform/pam/product-reference/web-access/overview",
-                      "documentation/platform/pam/product-reference/web-access/postgresql"
+                      "documentation/platform/pam/product-reference/web-access/postgresql",
+                      "documentation/platform/pam/product-reference/web-access/ssh"
                     ]
                   }
                 ]

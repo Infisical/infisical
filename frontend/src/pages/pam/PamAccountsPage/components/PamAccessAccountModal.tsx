@@ -87,7 +87,9 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
 
   if (!account) return null;
 
-  const showWebAccess = account.resource.resourceType === PamResourceType.Postgres;
+  const showWebAccess =
+    account.resource.resourceType === PamResourceType.Postgres ||
+    account.resource.resourceType === PamResourceType.SSH;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>

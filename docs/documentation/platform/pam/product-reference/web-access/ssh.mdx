@@ -1,0 +1,55 @@
+---
+title: "SSH Web Access"
+sidebarTitle: "SSH"
+description: "Connect to SSH servers directly from your browser with an interactive terminal."
+---
+
+The SSH web access terminal provides a browser-based interactive shell for SSH servers. It is designed for quick interactive sessions — running commands, debugging, and administrative tasks.
+
+## Connecting
+
+<Steps>
+  <Step title="Navigate to Account">
+    Go to the **Resources** tab in your PAM project, open the SSH resource, and find the account you want to access. Click the **Connect** button next to the account.
+
+    ![Account Connect Button](/images/pam/product-reference/web-access/ssh-account-connect-button.png)
+
+    Alternatively, if you are on the account page, click the **Access** button.
+
+    ![Account Page Access Button](/images/pam/product-reference/web-access/ssh-account-page-access-button.png)
+  </Step>
+
+  <Step title="Connect in Browser">
+    In the connect modal, click **Connect in Browser** to open the web access terminal.
+
+    ![Connect in Browser](/images/pam/product-reference/web-access/ssh-connect-in-browser.png)
+  </Step>
+
+  <Step title="End Session">
+    Click the **Disconnect** button from the web access terminal status bar or type `exit` or `logout`.
+  </Step>
+</Steps>
+
+![Web Access Terminal](/images/pam/product-reference/web-access/ssh-web-access-terminal.png)
+
+## Usage
+
+Once connected, you have a full interactive shell.
+
+## Authentication Methods
+
+All three SSH [authentication methods](/documentation/platform/pam/getting-started/resources/ssh#authentication-methods) are supported:
+
+- **Password** — username and password
+- **SSH Key** — public/private key pair
+- **Certificate** — SSH certificates
+
+Credentials are injected automatically from the PAM account configuration. You never need to enter or see them.
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Is this a real SSH session?">
+        Yes. Unlike the PostgreSQL web access terminal which is a custom SQL REPL, the SSH terminal is a real SSH shell session proxied through the Infisical Gateway. You get a full interactive shell with all the capabilities of a native SSH connection.
+    </Accordion>
+</AccordionGroup>
