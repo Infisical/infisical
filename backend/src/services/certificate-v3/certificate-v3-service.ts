@@ -95,6 +95,11 @@ import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import {
+  copyMetadataFromCertificate,
+  insertMetadataForCertificate,
+  insertMetadataForCertificateRequest
+} from "../resource-metadata/resource-metadata-fns";
 import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
@@ -772,16 +777,13 @@ export const certificateV3ServiceFactory = ({
         );
 
         if (metadata && metadata.length > 0) {
-          await resourceMetadataDAL.insertMany(
-            metadata.map(({ key, value }) => ({
-              key,
-              value,
-              certificateRequestId: certRequest.id,
-              certificateRequestCreatedAt: certRequest.createdAt,
-              orgId: actorOrgId
-            })),
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequest.id,
+            certificateRequestCreatedAt: certRequest.createdAt,
+            orgId: actorOrgId,
             tx
-          );
+          });
         }
 
         const requestData: TCertRequestRequestData = {
@@ -969,25 +971,19 @@ export const certificateV3ServiceFactory = ({
         });
 
         if (metadata && metadata.length > 0) {
-          await resourceMetadataDAL.insertMany(
-            metadata.map(({ key, value }) => ({
-              key,
-              value,
-              certificateId: processResult.certificateData.id,
-              orgId: actorOrgId
-            })),
+          await insertMetadataForCertificate(resourceMetadataDAL, {
+            metadata,
+            certificateId: processResult.certificateData.id,
+            orgId: actorOrgId,
             tx
-          );
-          await resourceMetadataDAL.insertMany(
-            metadata.map(({ key, value }) => ({
-              key,
-              value,
-              certificateRequestId: certRequestResult.id,
-              certificateRequestCreatedAt: certRequestResult.createdAt,
-              orgId: actorOrgId
-            })),
+          });
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequestResult.id,
+            certificateRequestCreatedAt: certRequestResult.createdAt,
+            orgId: actorOrgId,
             tx
-          );
+          });
         }
 
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
@@ -1172,25 +1168,19 @@ export const certificateV3ServiceFactory = ({
       });
 
       if (metadata && metadata.length > 0) {
-        await resourceMetadataDAL.insertMany(
-          metadata.map(({ key, value }) => ({
-            key,
-            value,
-            certificateId: certResult.certificateId,
-            orgId: actorOrgId
-          })),
+        await insertMetadataForCertificate(resourceMetadataDAL, {
+          metadata,
+          certificateId: certResult.certificateId,
+          orgId: actorOrgId,
           tx
-        );
-        await resourceMetadataDAL.insertMany(
-          metadata.map(({ key, value }) => ({
-            key,
-            value,
-            certificateRequestId: certRequestResult.id,
-            certificateRequestCreatedAt: certRequestResult.createdAt,
-            orgId: actorOrgId
-          })),
+        });
+        await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+          metadata,
+          certificateRequestId: certRequestResult.id,
+          certificateRequestCreatedAt: certRequestResult.createdAt,
+          orgId: actorOrgId,
           tx
-        );
+        });
       }
 
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
@@ -1371,16 +1361,13 @@ export const certificateV3ServiceFactory = ({
         );
 
         if (metadata && metadata.length > 0) {
-          await resourceMetadataDAL.insertMany(
-            metadata.map(({ key, value }) => ({
-              key,
-              value,
-              certificateRequestId: certRequest.id,
-              certificateRequestCreatedAt: certRequest.createdAt,
-              orgId: actorOrgId
-            })),
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequest.id,
+            certificateRequestCreatedAt: certRequest.createdAt,
+            orgId: actorOrgId,
             tx
-          );
+          });
         }
 
         const requestData: TCertRequestRequestData = {
@@ -1560,25 +1547,19 @@ export const certificateV3ServiceFactory = ({
         });
 
         if (metadata && metadata.length > 0) {
-          await resourceMetadataDAL.insertMany(
-            metadata.map(({ key, value }) => ({
-              key,
-              value,
-              certificateId: certResult.certificateId,
-              orgId: actorOrgId
-            })),
+          await insertMetadataForCertificate(resourceMetadataDAL, {
+            metadata,
+            certificateId: certResult.certificateId,
+            orgId: actorOrgId,
             tx
-          );
-          await resourceMetadataDAL.insertMany(
-            metadata.map(({ key, value }) => ({
-              key,
-              value,
-              certificateRequestId: certRequestResult.id,
-              certificateRequestCreatedAt: certRequestResult.createdAt,
-              orgId: actorOrgId
-            })),
+          });
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequestResult.id,
+            certificateRequestCreatedAt: certRequestResult.createdAt,
+            orgId: actorOrgId,
             tx
-          );
+          });
         }
 
         return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };
@@ -1732,16 +1713,13 @@ export const certificateV3ServiceFactory = ({
         );
 
         if (metadata && metadata.length > 0) {
-          await resourceMetadataDAL.insertMany(
-            metadata.map(({ key, value }) => ({
-              key,
-              value,
-              certificateRequestId: certRequest.id,
-              certificateRequestCreatedAt: certRequest.createdAt,
-              orgId: actorOrgId
-            })),
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequest.id,
+            certificateRequestCreatedAt: certRequest.createdAt,
+            orgId: actorOrgId,
             tx
-          );
+          });
         }
 
         const requestData: TCertRequestRequestData = {
@@ -1862,15 +1840,12 @@ export const certificateV3ServiceFactory = ({
       });
 
       if (metadata && metadata.length > 0) {
-        await resourceMetadataDAL.insertMany(
-          metadata.map(({ key, value }) => ({
-            key,
-            value,
-            certificateRequestId: certRequest.id,
-            certificateRequestCreatedAt: certRequest.createdAt,
-            orgId: actorOrgId
-          }))
-        );
+        await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+          metadata,
+          certificateRequestId: certRequest.id,
+          certificateRequestCreatedAt: certRequest.createdAt,
+          orgId: actorOrgId
+        });
       }
 
       await certificateIssuanceQueue.queueCertificateIssuance({
@@ -2276,28 +2251,14 @@ export const certificateV3ServiceFactory = ({
       });
 
       // Copy metadata from original cert to new cert and cert request
-      const originalMetadata = await resourceMetadataDAL.find({ certificateId: originalCert.id });
-      if (originalMetadata.length > 0) {
-        await resourceMetadataDAL.insertMany(
-          originalMetadata.map(({ key, value }) => ({
-            key,
-            value: value || "",
-            certificateId: newCert.id,
-            orgId: actorOrgId
-          })),
-          tx
-        );
-        await resourceMetadataDAL.insertMany(
-          originalMetadata.map(({ key, value }) => ({
-            key,
-            value: value || "",
-            certificateRequestId: certRequestResult.id,
-            certificateRequestCreatedAt: certRequestResult.createdAt,
-            orgId: actorOrgId
-          })),
-          tx
-        );
-      }
+      await copyMetadataFromCertificate(resourceMetadataDAL, {
+        sourceCertificateId: originalCert.id,
+        targetCertificateId: newCert.id,
+        targetCertificateRequestId: certRequestResult.id,
+        targetCertificateRequestCreatedAt: certRequestResult.createdAt,
+        orgId: actorOrgId,
+        tx
+      });
 
       return {
         certificate,
@@ -2346,18 +2307,12 @@ export const certificateV3ServiceFactory = ({
       certificateRequestId = certificateRequest.id;
 
       // Copy metadata from original cert to new cert request
-      const originalMetadataForExternal = await resourceMetadataDAL.find({ certificateId: originalCert.id });
-      if (originalMetadataForExternal.length > 0) {
-        await resourceMetadataDAL.insertMany(
-          originalMetadataForExternal.map(({ key, value }) => ({
-            key,
-            value: value || "",
-            certificateRequestId: certificateRequest.id,
-            certificateRequestCreatedAt: certificateRequest.createdAt,
-            orgId: actorOrgId
-          }))
-        );
-      }
+      await copyMetadataFromCertificate(resourceMetadataDAL, {
+        sourceCertificateId: originalCert.id,
+        targetCertificateRequestId: certificateRequest.id,
+        targetCertificateRequestCreatedAt: certificateRequest.createdAt,
+        orgId: actorOrgId
+      });
 
       await certificateIssuanceQueue.queueCertificateIssuance({
         certificateId: renewalOrderId,
@@ -2633,17 +2588,12 @@ export const certificateV3ServiceFactory = ({
 
     const updatedMetadata = await certificateDAL.transaction(async (tx) => {
       await resourceMetadataDAL.delete({ certificateId }, tx);
-      if (metadata.length > 0) {
-        await resourceMetadataDAL.insertMany(
-          metadata.map(({ key, value }) => ({
-            key,
-            value,
-            certificateId,
-            orgId: actorOrgId
-          })),
-          tx
-        );
-      }
+      await insertMetadataForCertificate(resourceMetadataDAL, {
+        metadata,
+        certificateId,
+        orgId: actorOrgId,
+        tx
+      });
       return metadata;
     });
 

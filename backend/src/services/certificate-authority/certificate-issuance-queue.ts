@@ -25,6 +25,7 @@ import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
@@ -315,17 +316,10 @@ export const certificateIssuanceQueueFactory = ({
 
             // Copy metadata from cert request to newly issued cert
             if (resourceMetadataDAL) {
-              const certRequestMetadata = await resourceMetadataDAL.find({ certificateRequestId });
-              if (certRequestMetadata.length > 0) {
-                await resourceMetadataDAL.insertMany(
-                  certRequestMetadata.map(({ key, value, orgId }) => ({
-                    key,
-                    value: value || "",
-                    certificateId: acmeResult.id,
-                    orgId
-                  }))
-                );
-              }
+              await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+                certificateRequestId,
+                certificateId: acmeResult.id
+              });
             }
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
@@ -396,17 +390,10 @@ export const certificateIssuanceQueueFactory = ({
             });
 
             if (resourceMetadataDAL) {
-              const certRequestMetadata = await resourceMetadataDAL.find({ certificateRequestId });
-              if (certRequestMetadata.length > 0) {
-                await resourceMetadataDAL.insertMany(
-                  certRequestMetadata.map(({ key, value, orgId }) => ({
-                    key,
-                    value: value || "",
-                    certificateId: azureResult.certificateId,
-                    orgId
-                  }))
-                );
-              }
+              await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+                certificateRequestId,
+                certificateId: azureResult.certificateId
+              });
             }
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
@@ -460,17 +447,10 @@ export const certificateIssuanceQueueFactory = ({
             });
 
             if (resourceMetadataDAL) {
-              const certRequestMetadata = await resourceMetadataDAL.find({ certificateRequestId });
-              if (certRequestMetadata.length > 0) {
-                await resourceMetadataDAL.insertMany(
-                  certRequestMetadata.map(({ key, value, orgId }) => ({
-                    key,
-                    value: value || "",
-                    certificateId: awsPcaResult.certificateId,
-                    orgId
-                  }))
-                );
-              }
+              await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+                certificateRequestId,
+                certificateId: awsPcaResult.certificateId
+              });
             }
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
