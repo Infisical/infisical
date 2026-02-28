@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.ResourceMetadata, "certificateRequestId"))) {
     await knex.schema.alterTable(TableName.ResourceMetadata, (tb) => {
       tb.uuid("certificateRequestId");
-      tb.datetime("certificateRequestCreatedAt", { precision: 3 });
+      tb.datetime("certificateRequestCreatedAt");
       tb.foreign(["certificateRequestId", "certificateRequestCreatedAt"])
         .references(["id", "createdAt"])
         .inTable(TableName.CertificateRequests)
