@@ -750,6 +750,9 @@ export const certificateV3ServiceFactory = ({
       });
 
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
+        // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
+        // (resource_metadata references the partitioned certificate_requests table via [id, createdAt]).
+        const certRequestCreatedAt = new Date();
         const certRequest = await certificateRequestDAL.create(
           {
             projectId: profile.projectId,
@@ -771,8 +774,9 @@ export const certificateV3ServiceFactory = ({
             locality: certificateRequest.locality || null,
             basicConstraints: certificateRequest.basicConstraints
               ? JSON.stringify(certificateRequest.basicConstraints)
-              : null
-          },
+              : null,
+            createdAt: certRequestCreatedAt
+          } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
         );
 
@@ -1337,6 +1341,8 @@ export const certificateV3ServiceFactory = ({
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, enrollmentType);
 
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
+        // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
+        const certRequestCreatedAt = new Date();
         const certRequest = await certificateRequestDAL.create(
           {
             projectId: profile.projectId,
@@ -1355,8 +1361,9 @@ export const certificateV3ServiceFactory = ({
             ttl: validity.ttl,
             enrollmentType,
             status: CertificateRequestStatus.PENDING_APPROVAL,
-            basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null
-          },
+            basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
+            createdAt: certRequestCreatedAt
+          } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
         );
 
@@ -1687,6 +1694,8 @@ export const certificateV3ServiceFactory = ({
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
+        // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
+        const certRequestCreatedAt = new Date();
         const certRequest = await certificateRequestDAL.create(
           {
             projectId: profile.projectId,
@@ -1707,8 +1716,9 @@ export const certificateV3ServiceFactory = ({
             country: certificateRequest.country || null,
             state: certificateRequest.state || null,
             locality: certificateRequest.locality || null,
-            status: CertificateRequestStatus.PENDING_APPROVAL
-          },
+            status: CertificateRequestStatus.PENDING_APPROVAL,
+            createdAt: certRequestCreatedAt
+          } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
         );
 
