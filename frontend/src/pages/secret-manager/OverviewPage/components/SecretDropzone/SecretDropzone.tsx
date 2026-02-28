@@ -22,7 +22,7 @@ import {
   UnstableEmptyHeader,
   UnstableEmptyTitle
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { CsvColumnMapDialog } from "./CsvColumnMapDialog";
@@ -36,11 +36,19 @@ type Props = {
 };
 
 export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
+  const { currentProject } = useProject();
   const [isDragActive, setDragActive] = useToggle();
   const [isPasteOpen, setIsPasteOpen] = useState(false);
   const [csvData, setCsvData] = useState<{ headers: string[]; matrix: string[][] } | null>(null);
 
-  const handleParsedSecrets = (env: TParsedEnv) => {
+  const handleParsedSecrets = (inputEnv: TParsedEnv) => {
+    // Apply auto-capitalization to secret keys when enabled for the project
+    const env: TParsedEnv = currentProject?.autoCapitalization
+      ? (Object.fromEntries(
+          Object.entries(inputEnv).map(([key, value]) => [key.toUpperCase(), value])
+        ) as TParsedEnv)
+      : inputEnv;
+
     if (!Object.keys(env).length) {
       createNotification({
         type: "error",
