@@ -37,7 +37,7 @@ import { TWindowsResource } from "./windows-server/windows-server-resource-types
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithResourceDetails">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithResourceDetails" | "findMetadataByAccountIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<
@@ -70,7 +70,14 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const canReadResources = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+    // Fetch metadata for permission check
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([resource.id]);
+    const resourceMetadata = metadataByResourceId[resource.id] || [];
+
+    const canReadResources = permission.can(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.PamResources, { name: resource.name, metadata: resourceMetadata })
+    );
 
     if (!canReadResources) {
       // Check if user can read at least one account in this resource
@@ -80,12 +87,16 @@ export const pamResourceServiceFactory = ({
         filterResourceIds: [id]
       });
 
+      const accountIds = accounts.map((a) => a.id);
+      const accountMetadata = await pamAccountDAL.findMetadataByAccountIds(accountIds);
+
       const hasAccountAccess = accounts.some((account) => {
         return permission.can(
           ProjectPermissionPamAccountActions.Read,
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
-            accountName: account.name
+            accountName: account.name,
+            metadata: accountMetadata[account.id] || []
           })
         );
       });
@@ -93,7 +104,7 @@ export const pamResourceServiceFactory = ({
       if (!hasAccountAccess) {
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionActions.Read,
-          ProjectPermissionSub.PamResources
+          subject(ProjectPermissionSub.PamResources, { name: resource.name, metadata: resourceMetadata })
         );
       }
     }
@@ -104,10 +115,9 @@ export const pamResourceServiceFactory = ({
       });
     }
 
-    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([resource.id]);
     return {
       ...(await decryptResource(resource, resource.projectId, kmsService)),
-      metadata: metadataByResourceId[resource.id] || []
+      metadata: resourceMetadata
     };
   };
 
@@ -133,7 +143,13 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.PamResources);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.PamResources, {
+        name,
+        metadata: (metadata || []).map(({ key, value }) => ({ key, value: value ?? "" }))
+      })
+    );
 
     const factory = PAM_RESOURCE_FACTORY_MAP[resourceType](
       resourceType,
@@ -234,7 +250,29 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PamResources);
+    // Fetch current metadata for permission check
+    const existingMetadata = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+    const currentMetadata = existingMetadata[resourceId] || [];
+
+    // Check permission against current state
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: currentMetadata
+      })
+    );
+
+    // If metadata is changing, also check permission against proposed state
+    if (metadata) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.PamResources, {
+          name: name ?? resource.name,
+          metadata: metadata.map(({ key, value }) => ({ key, value: value ?? "" }))
+        })
+      );
+    }
 
     const updateDoc: Partial<TPamResources> = {};
 
@@ -382,7 +420,15 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.PamResources);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([id]);
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: metadataByResourceId[id] || []
+      })
+    );
 
     try {
       const deletedResource = await pamResourceDAL.deleteById(id);
@@ -410,26 +456,75 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
+    // Check what kind of PamResources read rules the user has
     const canReadResources = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
 
     if (canReadResources) {
-      const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
-      const resourceIds = resources.map((r) => r.id);
-      const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(resourceIds);
-      return {
-        resources: await Promise.all(
-          resources.map(async (resource) => ({
-            ...(await decryptResource(resource, projectId, kmsService)),
-            metadata: metadataByResourceId[resource.id] || []
-          }))
-        ),
-        totalCount
-      };
+      // Check if rules have conditions
+      const resourceRules = permission.rulesFor(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+      const hasConditions = resourceRules.some((rule) => rule.conditions || rule.inverted);
+
+      if (!hasConditions) {
+        // TIER 1: Unconditional access — fast path with DB pagination (existing behavior)
+        const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
+        const resourceIds = resources.map((r) => r.id);
+        const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(resourceIds);
+        return {
+          resources: await Promise.all(
+            resources.map(async (resource) => ({
+              ...(await decryptResource(resource, projectId, kmsService)),
+              metadata: metadataByResourceId[resource.id] || []
+            }))
+          ),
+          totalCount
+        };
+      }
+
+      // TIER 2: Conditional access — fetch all, filter per-resource
+      const { resources: allResources } = await pamResourceDAL.findByProjectId({
+        projectId,
+        search: params.search,
+        orderBy: params.orderBy,
+        orderDirection: params.orderDirection,
+        filterResourceTypes: params.filterResourceTypes,
+        filterMetadataKey: params.filterMetadataKey,
+        filterMetadataValue: params.filterMetadataValue
+      });
+
+      if (allResources.length > 0) {
+        const allResourceIds = allResources.map((r) => r.id);
+        const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(allResourceIds);
+
+        const permittedResources = allResources.filter((resource) =>
+          permission.can(
+            ProjectPermissionActions.Read,
+            subject(ProjectPermissionSub.PamResources, {
+              name: resource.name,
+              metadata: metadataByResourceId[resource.id] || []
+            })
+          )
+        );
+
+        if (permittedResources.length > 0) {
+          const totalCount = permittedResources.length;
+          const offset = params.offset || 0;
+          const limit = params.limit || 100;
+          const paginatedResources = permittedResources.slice(offset, offset + limit);
+
+          return {
+            resources: await Promise.all(
+              paginatedResources.map(async (resource) => ({
+                ...(await decryptResource(resource, projectId, kmsService)),
+                metadata: metadataByResourceId[resource.id] || []
+              }))
+            ),
+            totalCount
+          };
+        }
+      }
     }
 
-    // Fallback: include resources where the user can read at least one account.
-    // Fetch all resources (without pagination) so we can filter by account-level access
-    // and then apply pagination on the permitted results.
+    // TIER 3: Account-level fallback
     const { resources: allResources } = await pamResourceDAL.findByProjectId({
       projectId,
       search: params.search,
@@ -454,11 +549,18 @@ export const pamResourceServiceFactory = ({
       return { resources: [], totalCount: 0 };
     }
 
+    // Fetch account metadata for permission checks
+    const allAccountIds = allAccounts.map((a) => a.id);
+    const accountMetadata = await pamAccountDAL.findMetadataByAccountIds(allAccountIds);
+
     // Group accounts by resource ID
-    const accountsByResourceId = new Map<string, Array<{ accountName: string }>>();
+    const accountsByResourceId = new Map<
+      string,
+      Array<{ accountName: string; metadata: Array<{ id: string; key: string; value: string }> }>
+    >();
     for (const account of allAccounts) {
       const existing = accountsByResourceId.get(account.resourceId) || [];
-      existing.push({ accountName: account.name });
+      existing.push({ accountName: account.name, metadata: accountMetadata[account.id] || [] });
       accountsByResourceId.set(account.resourceId, existing);
     }
 
@@ -470,7 +572,8 @@ export const pamResourceServiceFactory = ({
           ProjectPermissionPamAccountActions.Read,
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
-            accountName: account.accountName
+            accountName: account.accountName,
+            metadata: account.metadata
           })
         )
       );
