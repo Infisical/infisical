@@ -8,7 +8,7 @@ import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
 import { TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
 import { TPkiAlertV2ServiceFactory } from "./pki-alert-v2-service";
-import { CertificateOrigin, PkiAlertEventType, TPkiFilterRule } from "./pki-alert-v2-types";
+import { CertificateOrigin, PkiAlertEventType, TNotificationConfig, TPkiFilterRule } from "./pki-alert-v2-types";
 
 type TPkiAlertV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -69,7 +69,7 @@ export const pkiAlertV2QueueServiceFactory = ({
       eventType: string;
       alertBefore: string;
       filters: TPkiFilterRule[];
-      notificationConfig?: unknown;
+      notificationConfig?: TNotificationConfig | null;
     },
     projectId: string
   ): Promise<{ shouldNotify: boolean; certificateIds: string[] }> => {
@@ -92,8 +92,7 @@ export const pkiAlertV2QueueServiceFactory = ({
         .filter((cert) => cert.enrollmentType !== CertificateOrigin.CA)
         .map((cert) => cert.id);
 
-      const notifConfig = alert.notificationConfig as { enableDailyNotification?: boolean } | null | undefined;
-      const enableDailyNotification = notifConfig?.enableDailyNotification ?? false;
+      const enableDailyNotification = alert.notificationConfig?.enableDailyNotification ?? false;
       const deduplicationHours = calculateDeduplicationWindow(alert.alertBefore, enableDailyNotification);
       const recentlyAlertedIds = await pkiAlertHistoryDAL.findRecentlyAlertedCertificates(
         alert.id,
@@ -146,7 +145,7 @@ export const pkiAlertV2QueueServiceFactory = ({
             eventType: alert.eventType,
             alertBefore: alert.alertBefore ?? "",
             filters: (alert.filters ?? []) as TPkiFilterRule[],
-            notificationConfig: alert.notificationConfig
+            notificationConfig: alert.notificationConfig as TNotificationConfig | null
           },
           projectId
         );
