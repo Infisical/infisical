@@ -7,6 +7,7 @@ import {
 } from "@app/db/schemas";
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSecretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
@@ -26,7 +27,6 @@ import {
   TListMembershipGroupDTO,
   TUpdateMembershipGroupDTO
 } from "./membership-group-types";
-import { newNamespaceMembershipGroupFactory } from "./namespace/namespace-membership-group-factory";
 import { newOrgMembershipGroupFactory } from "./org/org-membership-group-factory";
 import { newProjectMembershipGroupFactory } from "./project/project-membership-group-factory";
 
@@ -40,6 +40,7 @@ type TMembershipGroupServiceFactoryDep = {
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
+  groupDAL: Pick<TGroupDALFactory, "findById">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -53,14 +54,15 @@ export const membershipGroupServiceFactory = ({
   secretApprovalPolicyApproverDAL,
   membershipRoleDAL,
   orgDAL,
-  permissionService
+  permissionService,
+  groupDAL
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
       orgDAL,
-      permissionService
+      permissionService,
+      groupDAL
     }),
-    [AccessScope.Namespace]: newNamespaceMembershipGroupFactory({}),
     [AccessScope.Project]: newProjectMembershipGroupFactory({
       membershipGroupDAL,
       orgDAL,

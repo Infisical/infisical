@@ -10,7 +10,8 @@ import { cn } from "@app/components/v3/utils";
 const iconButtonVariants = cva(
   cn(
     "inline-flex items-center active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&>svg]:shrink-0",
-    "focus-visible:ring-ring outline-0 focus-visible:ring-2"
+    "focus-visible:ring-ring outline-0 focus-visible:ring-2",
+    "data-[state=open]:bg-foreground/5"
   ),
   {
     variants: {
@@ -20,19 +21,19 @@ const iconButtonVariants = cva(
         accent:
           "border-accent/10 bg-accent/40 text-foreground hover:bg-accent/50 hover:border-accent/20",
         outline: "text-foreground hover:bg-foreground/20 border-border hover:border-foreground/50",
-        ghost: "text-foreground hover:bg-foreground/40 border-transparent",
+        ghost: "text-foreground hover:bg-foreground/10 border-transparent",
         project:
-          "border-project/65 bg-project/20 text-foreground hover:bg-project/30 hover:border-kms",
-        org: "border-org/65 bg-org/20 text-foreground hover:bg-org/30 hover:border-org",
+          "border-project/25 bg-project/10 text-foreground hover:bg-project/15 hover:border-project/30",
+        org: "border-org/25 bg-org/10 text-foreground hover:bg-org/15 hover:border-org/30",
         "sub-org":
-          "border-sub-org/65 bg-sub-org/20 text-foreground hover:bg-sub-org/30 hover:border-namespace",
+          "border-sub-org/25 bg-sub-org/10 text-foreground hover:bg-sub-org/15 hover:border-sub-org/30",
         success:
-          "border-success/65 bg-success/20 text-foreground hover:bg-success/30 hover:border-success",
-        info: "border-info/65 bg-info/20 text-foreground hover:bg-info/30 hover:border-info",
+          "border-success/25 bg-success/10 text-foreground hover:bg-success/15 hover:border-success/30",
+        info: "border-info/25 bg-info/10 text-foreground hover:bg-info/15 hover:border-info/30",
         warning:
-          "border-warning/65 bg-warning/20 text-foreground hover:bg-warning/30 hover:border-warning",
+          "border-warning/25 bg-warning/10 text-foreground hover:bg-warning/15 hover:border-warning/30",
         danger:
-          "border-danger/65 bg-danger/20 text-foreground hover:bg-danger/30 hover:border-danger"
+          "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30"
       },
       size: {
         xs: "h-7 w-7 [&>svg]:size-4 rounded-sm [&>svg]:stroke-[1.75]",
@@ -72,6 +73,7 @@ const UnstableIconButton = forwardRef<HTMLButtonElement, UnstableIconButtonProps
       isPending = false,
       disabled = false,
       isDisabled = false,
+      type = "button",
       children,
       ...props
     },
@@ -83,6 +85,7 @@ const UnstableIconButton = forwardRef<HTMLButtonElement, UnstableIconButtonProps
       <Comp
         ref={ref}
         data-slot="button"
+        type={type}
         className={cn(iconButtonVariants({ variant, size, isPending }), className)}
         disabled={isPending || disabled || isDisabled}
         {...props}

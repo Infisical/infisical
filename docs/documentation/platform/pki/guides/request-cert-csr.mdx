@@ -1,0 +1,274 @@
+---
+title: "Issue a Certificate with CSR"
+description: "Learn how to issue certificates using a Certificate Signing Request (CSR) to maintain control of your private keys"
+---
+
+import RequestCertSetup from "/snippets/documentation/platform/pki/guides/request-cert-setup.mdx";
+
+The [API enrollment method](/documentation/platform/pki/enrollment-methods/api) supports issuing certificates using a Certificate Signing Request (CSR). This allows you to manage your own private key externally while having Infisical sign the certificate.
+
+## When to Use CSR-Based Issuance
+
+CSR-based certificate issuance is recommended when:
+
+- You need to maintain control of your private key
+- Your security policy requires keys to be generated on the target system
+- You're integrating with Hardware Security Modules (HSMs)
+- You want to use a specific key that already exists
+- You're working with systems that generate their own CSRs (e.g., load balancers, network appliances)
+
+## Generating a CSR
+
+Prior to requesting a certificate, a Certificate Signing Request (CSR) must be generated. While multiple tools and workflows are available, the example below illustrates how to generate a CSR using OpenSSL.
+
+### Generate a New Key and CSR
+
+```bash
+# Generate a new RSA private key and CSR
+openssl req -new -newkey rsa:2048 -nodes \
+  -keyout private.key \
+  -out request.csr \
+  -subj "/CN=service.example.com/O=My Organization/C=US"
+```
+
+### Generate CSR from Existing Key
+
+```bash
+# Generate CSR from an existing private key
+openssl req -new -key private.key -out request.csr \
+  -subj "/CN=service.example.com"
+```
+
+### Generate CSR with Subject Alternative Names
+
+```bash
+# Generate CSR with SANs
+openssl req -new -newkey rsa:2048 -nodes \
+  -keyout private.key \
+  -out request.csr \
+  -subj "/CN=service.example.com" \
+  -addext "subjectAltName=DNS:service.example.com,DNS:www.service.example.com,IP:192.168.1.1"
+```
+
+### Generate CSR with ECDSA Key
+
+```bash
+# Generate ECDSA P-256 key and CSR
+openssl ecparam -genkey -name prime256v1 -out private.key
+openssl req -new -key private.key -out request.csr \
+  -subj "/CN=service.example.com"
+```
+
+### Verify Your CSR
+
+Before submitting, verify your CSR contents:
+
+```bash
+openssl req -in request.csr -noout -text
+```
+
+## CSR Format Requirements
+
+Your CSR must meet the following requirements:
+
+- **Format**: PEM-encoded PKCS#10 Certificate Signing Request
+- **Required header**: `-----BEGIN CERTIFICATE REQUEST-----`
+- **Required footer**: `-----END CERTIFICATE REQUEST-----`
+
+### Supported Key Algorithms
+
+| Algorithm | Supported Sizes/Curves |
+|-----------|------------------------|
+| RSA | 2048, 3072, 4096 bits |
+| ECDSA | P-256, P-384, P-521 |
+
+### Supported Signature Algorithms
+
+| Key Type | Supported Hash Algorithms |
+|----------|---------------------------|
+| RSA | SHA-256, SHA-384, SHA-512 |
+| ECDSA | SHA-256, SHA-384, SHA-512 |
+
+## Guide
+
+<Steps>
+  <RequestCertSetup />
+  <Step title="Create a certificate profile">
+    Next, follow the guide [here](/documentation/platform/pki/certificates/profiles#guide-to-creating-a-certificate-profile) to create a [certificate profile](/documentation/platform/pki/certificates/profiles)
+    that will be referenced when requesting a certificate.
+
+    The certificate profile specifies which certificate policy and issuing CA should be used to validate an incoming certificate request and issue a certificate.
+    You should specify the certificate policy from Step 2, the issuing CA from Step 1, and the **API** option in the **Enrollment Method** dropdown when creating the certificate profile.
+
+    <Note>
+      CSR-based issuance requires a Certificate Authority. Self-signed certificates are not supported when using a CSR.
+    </Note>
+  </Step>
+  <Step title="Issue a certificate with your CSR">
+    <Tabs>
+      <Tab title="Infisical UI">
+        To issue a certificate using your CSR, navigate to your Project > Certificates > Certificate Requests and click **Request**.
+
+        ![pki certificates](/images/platform/pki/certificate/cert-issue.png)
+
+        Select **CSR (Certificate Signing Request)** as the **Request Method**, then choose your certificate profile.
+
+        ![pki certificate issue modal](/images/platform/pki/certificate/cert-issue-modal.png)
+
+        Paste your PEM-encoded CSR into the text area and specify the TTL for the certificate.
+
+        ![pki certificate issue modal csr](/images/platform/pki/certificate/cert-issue-modal-csr.png)
+
+        <Note>
+          When using a CSR, the subject attributes, subject alternative names, and key algorithm are extracted from your CSR. You only need to specify the TTL for the certificate.
+        </Note>
+      </Tab>
+      <Tab title="API">
+        To issue a certificate with a CSR, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint with your PEM-encoded CSR.
+
+        ### Sample request
+
+        ```bash Request
+        curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
+          --header 'Authorization: Bearer <access-token>' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "profileId": "<certificate-profile-id>",
+              "csr": "-----BEGIN CERTIFICATE REQUEST-----\nMIICvDCCAaQCAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBE9oaW8xEDAOBgNV\nBAcMB0NvbHVtYnMxFzAVBgNVBAoMDk15IE9yZ2FuaXphdGlvbjEcMBoGA1UEAwwT\nc2VydmljZS5leGFtcGxlLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoC\nggEBAK...\n-----END CERTIFICATE REQUEST-----",
+              "attributes": {
+                  "ttl": "365d"
+              }
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "certificate": {
+            "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+            "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+            "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+            "serialNumber": "123456789012345679",
+            "certificateId": "990i4567-e29b-41d4-a716-446655440004"
+          },
+          "certificateRequestId": "..."
+        }
+        ```
+
+        <Note>
+          No private key is returned when using CSR-based issuance since you manage your own key externally.
+        </Note>
+
+        When sending the CSR via API:
+        - Replace actual newlines in the PEM content with `\n` in the JSON string
+        - Include the full PEM headers (`-----BEGIN CERTIFICATE REQUEST-----`) and footers (`-----END CERTIFICATE REQUEST-----`)
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+<Tip>
+  Your CSR must comply with the [certificate policy](/documentation/platform/pki/certificates/policies) attached to the profile. The policy validates subject attributes, SANs, key algorithms, signature algorithms, key usages, and basic constraints. If your CSR doesn't comply with the policy, you'll receive an error message indicating which constraint was violated.
+</Tip>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="When should I use Managed vs CSR?">
+    **Use Managed (recommended for most cases)** when:
+    - You want Infisical to handle key generation and storage
+    - You need server-side auto-renewal capabilities
+    - You're deploying certificates via certificate syncs to cloud providers
+    - You want the simplest setup with minimal configuration
+    - You don't have specific requirements for key custody
+
+    **Use CSR** when:
+    - Your security policy requires private keys to be generated on the target system
+    - You're using a Hardware Security Module (HSM) that generates and stores keys
+    - You need to reuse an existing private key
+    - You have compliance requirements that mandate key generation in a specific location
+    - You're integrating with systems that generate their own CSRs (e.g., load balancers, appliances)
+
+    <Note>
+      Certificates issued via CSR are **not eligible for server-side auto-renewal** since Infisical doesn't have access to the private key. You'll need to handle renewal by generating a new CSR and requesting a new certificate.
+    </Note>
+  </Accordion>
+
+  <Accordion title="How do I renew a certificate issued via CSR?">
+    Certificates issued via CSR cannot be automatically renewed by Infisical since the private key is managed externally. To renew:
+
+    1. Generate a new CSR using your existing private key (or generate a new key pair if desired)
+    2. Request a new certificate using the new CSR
+    3. Deploy the new certificate before the old one expires
+
+    ```bash
+    # Generate a new CSR with your existing key
+    openssl req -new -key private.key -out request.csr \
+      -subj "/CN=service.example.com"
+    ```
+
+    <Tip>
+      Set up alerts for certificate expiration to ensure timely renewal.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Why am I getting a CSR format error in the UI?">
+    **Error**: "CSR cannot be empty" or invalid format error
+
+    **Solution**: Ensure your CSR:
+    - Starts with `-----BEGIN CERTIFICATE REQUEST-----`
+    - Ends with `-----END CERTIFICATE REQUEST-----`
+    - Contains valid base64-encoded content
+
+    The UI accepts multiline PEM format directly—you can paste your CSR as-is from the file without any formatting changes.
+
+    Verify your CSR is valid:
+    ```bash
+    openssl req -in request.csr -noout -text
+    ```
+  </Accordion>
+
+  <Accordion title="Why am I getting a CSR format error via API?">
+
+    **Solution**: When sending CSR via API JSON:
+    - Replace actual newlines with `\n` in the JSON string
+    - Include full PEM headers and footers
+    - Ensure proper JSON escaping
+
+    Example format:
+    ```json
+    {
+      "csr": "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...base64content...\n-----END CERTIFICATE REQUEST-----"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Why is my CSR failing policy validation?">
+    Policy validation errors occur when your CSR doesn't comply with the certificate policy attached to the profile. Common errors include:
+
+    - **Subject attributes**: "Missing required {attribute} attribute" or "{attribute} value does not match allowed patterns"
+    - **Subject Alternative Names**: "{type} SAN is not allowed by template policy" or "Required {type} SAN not found"
+    - **Key algorithm**: "Key algorithm is not allowed by template policy"
+    - **Signature algorithm**: "Signature algorithm is not allowed by template policy"
+
+    **Solution**:
+    1. Review your certificate policy configuration in Project > Certificates > Certificate Policies
+    2. Ensure your CSR includes all required attributes and SANs
+    3. Ensure values match allowed patterns configured in the policy
+    4. Verify your key algorithm is in the policy's allowed list (common options: RSA_2048, RSA_4096, ECDSA_P256, ECDSA_P384)
+
+    Example generating a CSR with full subject and SANs:
+    ```bash
+    openssl req -new -key key.pem -out request.csr \
+      -subj "/CN=service.example.com/O=My Organization/OU=Engineering/C=US/ST=California/L=San Francisco" \
+      -addext "subjectAltName=DNS:service.example.com,DNS:api.example.com"
+    ```
+  </Accordion>
+
+  <Accordion title="Why can't I use CSR with self-signed certificates?">
+    **Error**: "Self-signed certificates are not supported for CSR signing"
+
+    **Solution**: CSR-based issuance requires a Certificate Authority to sign the certificate.
+  </Accordion>
+</AccordionGroup>

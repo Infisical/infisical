@@ -4,11 +4,18 @@ import * as React from "react";
 
 import { cn } from "@app/components/v3/utils";
 
-function UnstableTable({ className, ...props }: React.ComponentProps<"table">) {
+const UnstableTable = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"table"> & { containerClassName?: string }
+>(({ className, containerClassName, ...props }, ref) => {
   return (
     <div
+      ref={ref}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto rounded-md border border-border bg-container"
+      className={cn(
+        "relative thin-scrollbar w-full overflow-x-auto rounded-md border border-border bg-container",
+        containerClassName
+      )}
     >
       <table
         data-slot="table"
@@ -17,7 +24,9 @@ function UnstableTable({ className, ...props }: React.ComponentProps<"table">) {
       />
     </div>
   );
-}
+});
+
+UnstableTable.displayName = "UnstableTable";
 
 function UnstableTableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
@@ -31,7 +40,11 @@ function UnstableTableHeader({ className, ...props }: React.ComponentProps<"thea
 
 function UnstableTableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
-    <tbody data-slot="table-body" className={cn("[&>tr]:last:border-b-0", className)} {...props} />
+    <tbody
+      data-slot="table-body"
+      className={cn("[&>tr:last-of-type]:border-b-0 [&>tr:last-of-type>td]:border-b-0", className)}
+      {...props}
+    />
   );
 }
 
@@ -45,27 +58,37 @@ function UnstableTableFooter({ className, ...props }: React.ComponentProps<"tfoo
   );
 }
 
-function UnstableTableRow({ className, ...props }: React.ComponentProps<"tr">) {
-  return (
-    <tr
-      data-slot="table-row"
-      className={cn(
-        "border-b border-border transition-colors hover:bg-foreground/5 data-[state=selected]:bg-foreground/5",
-        props.onClick && "cursor-pointer",
-        className
-      )}
-      {...props}
-    />
-  );
-}
+const UnstableTableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr">>(
+  ({ className, ...props }, ref) => {
+    return (
+      <tr
+        ref={ref}
+        data-slot="table-row"
+        className={cn(
+          "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
+          props.onClick && "cursor-pointer",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
 
-function UnstableTableHead({ className, ...props }: React.ComponentProps<"th">) {
+UnstableTableRow.displayName = "UnstableTableRow";
+
+function UnstableTableHead({
+  className,
+  isTruncatable,
+  ...props
+}: React.ComponentProps<"th"> & { isTruncatable?: boolean }) {
   return (
     <th
       data-slot="table-head"
       className={cn(
-        "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
         "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg]:size-4",
+        isTruncatable && "truncate",
         className
       )}
       {...props}
@@ -82,7 +105,7 @@ function UnstableTableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "h-[40px] px-3 align-middle whitespace-nowrap text-mineshaft-200 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "h-[40px] border-b border-border px-3 align-middle whitespace-nowrap text-mineshaft-200 [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
         className
       )}

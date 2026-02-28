@@ -33,6 +33,13 @@ export const useCreateSecretImport = () => {
         queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getImportedFoldersAllEnvs({
+          projectId,
+          environment,
+          path: path ?? "/"
+        })
+      });
+      queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
       });
     }
@@ -60,6 +67,13 @@ export const useUpdateSecretImport = () => {
         queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getImportedFoldersAllEnvs({
+          projectId,
+          environment,
+          path: path ?? "/"
+        })
+      });
+      queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
       });
     }
@@ -67,6 +81,8 @@ export const useUpdateSecretImport = () => {
 };
 
 export const useResyncSecretReplication = () => {
+  const queryClient = useQueryClient();
+
   return useMutation<object, object, TResyncSecretReplicationDTO>({
     mutationFn: async ({ environment, projectId, path, id }) => {
       const { data } = await apiRequest.post(`/api/v2/secret-imports/${id}/replication-resync`, {
@@ -75,6 +91,24 @@ export const useResyncSecretReplication = () => {
         projectId
       });
       return data;
+    },
+    onSuccess: (_, { environment, projectId, path }) => {
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getProjectSecretImports({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getImportedFoldersAllEnvs({
+          projectId,
+          environment,
+          path: path ?? "/"
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
+      });
     }
   });
 };
@@ -99,6 +133,13 @@ export const useDeleteSecretImport = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretImportKeys.getImportedFoldersAllEnvs({
+          projectId,
+          environment,
+          path: path ?? "/"
+        })
       });
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })

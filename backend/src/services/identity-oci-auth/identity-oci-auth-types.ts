@@ -9,7 +9,7 @@ export type TLoginOciAuthDTO = {
     "x-date"?: string;
     date?: string;
   };
-  subOrganizationName?: string;
+  organizationSlug?: string;
 };
 
 export type TAttachOciAuthDTO = {

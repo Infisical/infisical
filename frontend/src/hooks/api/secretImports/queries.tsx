@@ -150,6 +150,31 @@ export const useGetImportedSecretsAllEnvs = ({
   environments,
   path = "/"
 }: TGetSecretImportsAllEnvs) => {
+  const selectImportedSecrets = useCallback(
+    ({ data, env }: { data: Awaited<ReturnType<typeof fetchImportedSecrets>>; env: string }) => {
+      return data.map((el) => ({
+        environment: el.environment,
+        secretPath: el.secretPath,
+        environmentInfo: el.environmentInfo,
+        folderId: el.folderId,
+        secrets: el.secrets.map((encSecret) => ({
+          id: encSecret.id,
+          env: encSecret.environment,
+          key: encSecret.secretKey,
+          isEmpty: encSecret.isEmpty,
+          secretValueHidden: encSecret.secretValueHidden,
+          tags: encSecret.tags,
+          comment: encSecret.secretComment,
+          createdAt: encSecret.createdAt,
+          updatedAt: encSecret.updatedAt,
+          version: encSecret.version,
+          sourceEnv: env
+        }))
+      }));
+    },
+    []
+  );
+
   const secretImports = useQueries({
     queries: environments.map((env) => ({
       queryKey: secretImportKeys.getImportedFoldersAllEnvs({
@@ -157,33 +182,12 @@ export const useGetImportedSecretsAllEnvs = ({
         projectId,
         path
       }),
-      queryFn: () => fetchImportedSecrets(projectId, env, path).catch(() => []),
+      queryFn: () =>
+        fetchImportedSecrets(projectId, env, path)
+          .catch(() => [])
+          .then((data) => ({ data, env })),
       enabled: Boolean(projectId) && Boolean(env),
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      select: useCallback(
-        (data: Awaited<ReturnType<typeof fetchImportedSecrets>>) =>
-          data.map((el) => ({
-            environment: el.environment,
-            secretPath: el.secretPath,
-            environmentInfo: el.environmentInfo,
-            folderId: el.folderId,
-            secrets: el.secrets.map((encSecret) => {
-              return {
-                id: encSecret.id,
-                env: encSecret.environment,
-                key: encSecret.secretKey,
-                secretValueHidden: encSecret.secretValueHidden,
-                tags: encSecret.tags,
-                comment: encSecret.secretComment,
-                createdAt: encSecret.createdAt,
-                updatedAt: encSecret.updatedAt,
-                version: encSecret.version,
-                sourceEnv: env
-              };
-            })
-          })),
-        []
-      )
+      select: selectImportedSecrets
     }))
   });
 

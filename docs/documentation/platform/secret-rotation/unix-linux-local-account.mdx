@@ -4,11 +4,11 @@ description: "Learn how to automatically rotate Unix/Linux local account passwor
 ---
 
 <Note>
-    Due to how Unix/Linux local account passwords are rotated, retired credentials will not be able to
-    authenticate with the SSH provider during their [inactive period](./overview#how-rotation-works).
+  **Rotation Type: [Single-Phase](/documentation/platform/secret-rotation/overview#single-phase-rotation)**
 
-    This is a limitation of the SSH provider and cannot be
-    rectified by Infisical.
+  This rotation updates a single credential set in place. Old credentials become invalid immediately upon rotation. This means that clients using the previous credentials will fail to authenticate until they retrieve the new credentials.
+
+  This is a limitation of the SSH provider and cannot be rectified by Infisical.
 </Note>
 
 ## Prerequisites
@@ -45,6 +45,7 @@ description: "Learn how to automatically rotate Unix/Linux local account passwor
             - **Login as Target** - Infisical will use the provided SSH username and password to log in and rotate its own password.
             - **Login as Root** - Infisical will use the SSH Connection's credentials to log in and rotate the provided user's password.
         - **Username** - The target SSH username whose password will be rotated.
+        - **Use Sudo** - If true, uses sudo when executing the password rotation command. Defaults to false.
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
         - **Password Requirements** - The constraints to apply when generating new passwords.
 

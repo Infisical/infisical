@@ -12,6 +12,7 @@
         "./src/*"
       ]
     },
+    "types": [],
 
     /* Bundler mode */
     "moduleResolution": "bundler",

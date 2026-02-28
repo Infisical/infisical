@@ -127,7 +127,8 @@ const secretSharingPermissionSchema = z
 const subOrganizationPermissionSchema = z
   .object({
     [OrgPermissionSubOrgActions.Create]: z.boolean().optional(),
-    [OrgPermissionSubOrgActions.DirectAccess]: z.boolean().optional()
+    [OrgPermissionSubOrgActions.DirectAccess]: z.boolean().optional(),
+    [OrgPermissionSubOrgActions.LinkGroup]: z.boolean().optional()
   })
   .optional();
 

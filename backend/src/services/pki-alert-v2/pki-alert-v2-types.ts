@@ -32,7 +32,8 @@ export enum PkiAlertEventType {
 export enum PkiAlertChannelType {
   EMAIL = "email",
   WEBHOOK = "webhook",
-  SLACK = "slack"
+  SLACK = "slack",
+  PAGERDUTY = "pagerduty"
 }
 
 export enum PkiFilterOperator {
@@ -57,6 +58,60 @@ export enum CertificateOrigin {
   CA = "ca"
 }
 
+export enum PkiAlertRunStatus {
+  SUCCESS = "success",
+  FAILED = "failed"
+}
+
+export enum PkiWebhookEventType {
+  CERTIFICATE_EXPIRATION = "com.infisical.pki.certificate.expiration",
+  CERTIFICATE_TEST = "com.infisical.pki.certificate.test"
+}
+
+// Alert info used across event types
+export type TAlertInfo = {
+  id: string;
+  name: string;
+  alertBefore: string;
+  projectId: string;
+};
+
+// Certificate data for webhook payloads
+export type TCertificateData = {
+  id: string;
+  serialNumber: string;
+  commonName: string;
+  san: string[];
+  profileName: string | null;
+  notBefore: string;
+  notAfter: string;
+  status: string;
+  daysUntilExpiry: number;
+};
+
+export type TPkiWebhookPayload = {
+  // Required CloudEvents attributes
+  specversion: "1.0";
+  type: PkiWebhookEventType;
+  source: string;
+  id: string;
+
+  // Optional CloudEvents attributes
+  time: string;
+  datacontenttype: "application/json";
+  subject: string;
+
+  // Event data
+  data: {
+    alert: TAlertInfo;
+    certificates: TCertificateData[];
+    metadata: {
+      totalCertificates: number;
+      viewUrl: string;
+    };
+  };
+};
+
 export const PkiFilterRuleSchema = z.object({
   field: z.nativeEnum(PkiFilterField),
   operator: z.nativeEnum(PkiFilterOperator),
@@ -73,21 +128,49 @@ export const EmailChannelConfigSchema = z.object({
 });
 
 export const WebhookChannelConfigSchema = z.object({
-  url: z.string().url(),
-  method: z.enum(["POST", "PUT"]).default("POST"),
-  headers: z.record(z.string()).optional()
+  url: z
+    .string()
+    .url()
+    .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS"),
+  signingSecret: z.string().max(256).optional().nullable()
 });
 
+// Response type for webhook config - signingSecret is replaced with hasSigningSecret
+export type TWebhookChannelConfigResponse = {
+  url: string;
+  hasSigningSecret: boolean;
+};
+
 export const SlackChannelConfigSchema = z.object({
-  webhookUrl: z.string().url(),
-  channel: z.string().optional(),
-  mentionUsers: z.array(z.string()).optional()
+  webhookUrl: z
+    .string()
+    .url()
+    .refine((url) => url.startsWith("https://"), "Slack webhook URL must use HTTPS")
+    .refine((url) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.hostname === "hooks.slack.com";
+      } catch {
+        return false;
+      }
+    }, "Slack webhook URL must be from hooks.slack.com")
 });
+
+export const pagerDutyIntegrationKeyRegex = new RE2("^[a-f0-9]{32}$", "i");
+
+export const PagerDutyChannelConfigSchema = z.object({
+  integrationKey: z
+    .string()
+    .refine((val) => pagerDutyIntegrationKeyRegex.test(val), "Integration key must be a 32-character hex string")
+});
+
+export type TPagerDutyChannelConfig = z.infer<typeof PagerDutyChannelConfigSchema>;
 
 export const ChannelConfigSchema = z.union([
   EmailChannelConfigSchema,
   WebhookChannelConfigSchema,
-  SlackChannelConfigSchema
+  SlackChannelConfigSchema,
+  PagerDutyChannelConfigSchema
 ]);
 
 export type TEmailChannelConfig = z.infer<typeof EmailChannelConfigSchema>;
@@ -96,6 +179,7 @@ export type TSlackChannelConfig = z.infer<typeof SlackChannelConfigSchema>;
 export type TChannelConfig = z.infer<typeof ChannelConfigSchema>;
 
 export const CreateChannelSchema = z.object({
+  id: z.string().uuid().optional(),
   channelType: z.nativeEnum(PkiAlertChannelType),
   config: ChannelConfigSchema,
   enabled: z.boolean().default(true)
@@ -114,7 +198,11 @@ export const CreatePkiAlertV2Schema = z.object({
   alertBefore: z.string().refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'"),
   filters: PkiFiltersSchema,
   enabled: z.boolean().default(true),
-  channels: z.array(CreateChannelSchema).min(1, "At least one channel is required")
+  channels: z
+    .array(CreateChannelSchema)
+    .min(1, "At least one notification channel is required")
+    .max(10)
+    .refine((channels) => channels.some((ch) => ch.enabled), "At least one notification channel must be enabled")
 });
 
 export type TCreatePkiAlertV2 = z.infer<typeof CreatePkiAlertV2Schema>;
@@ -173,6 +261,19 @@ export type TCertificatePreview = {
   status: string;
 };
 
+// Channel config type for responses (webhook has hasSigningSecret instead of signingSecret)
+export type TChannelConfigResponse =
+  | TEmailChannelConfig
+  | TWebhookChannelConfigResponse
+  | TSlackChannelConfig
+  | TPagerDutyChannelConfig;
+
+export type TLastRun = {
+  timestamp: Date;
+  status: PkiAlertRunStatus;
+  error: string | null;
+};
+
 export type TAlertV2Response = {
   id: string;
   name: string;
@@ -185,11 +286,12 @@ export type TAlertV2Response = {
   channels: Array<{
     id: string;
     channelType: PkiAlertChannelType;
-    config: TChannelConfig;
+    config: TChannelConfigResponse;
     enabled: boolean;
     createdAt: Date;
     updatedAt: Date;
   }>;
+  lastRun: TLastRun | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -202,4 +304,79 @@ export type TListAlertsV2Response = {
 export type TListMatchingCertificatesResponse = {
   certificates: TCertificatePreview[];
   total: number;
+};
+
+export type TTestWebhookConfigDTO = TGenericPermission & {
+  projectId: string;
+  url: string;
+  signingSecret?: string;
+};
+
+export type TChannelResult = { success: boolean; error?: string };
+
+// Slack Block Kit types
+export type TSlackBlock =
+  | { type: "header"; text: { type: "plain_text"; text: string; emoji?: boolean } }
+  | { type: "section"; text: { type: "mrkdwn"; text: string } }
+  | { type: "section"; fields: Array<{ type: "mrkdwn"; text: string }> }
+  | { type: "context"; elements: Array<{ type: "mrkdwn"; text: string }> }
+  | { type: "divider" }
+  | {
+      type: "actions";
+      elements: Array<{
+        type: "button";
+        text: { type: "plain_text"; text: string; emoji?: boolean };
+        url: string;
+        style?: "primary" | "danger";
+      }>;
+    };
+
+export type TSlackPayload = {
+  text: string;
+  blocks: TSlackBlock[];
+  attachments?: Array<{
+    color: string;
+    blocks: TSlackBlock[];
+  }>;
+};
+
+export type TBuildSlackPayloadParams = {
+  alert: TAlertInfo;
+  certificates: TCertificatePreview[];
+  appUrl?: string;
+};
+
+export type TPagerDutyPayload = {
+  routing_key: string;
+  event_action: "trigger";
+  dedup_key: string;
+  payload: {
+    summary: string;
+    severity: "critical" | "error" | "warning" | "info";
+    source: string;
+    timestamp: string;
+    component: string;
+    group: string;
+    class: string;
+    custom_details: {
+      alert_name: string;
+      alert_before: string;
+      total_certificates: number;
+      certificates: Array<{
+        common_name: string;
+        serial_number: string;
+        expires_at: string;
+        days_until_expiry: number;
+      }>;
+      view_url: string;
+    };
+  };
+  links: Array<{ href: string; text: string }>;
+};
+
+export type TBuildPagerDutyPayloadParams = {
+  alert: TAlertInfo;
+  certificates: TCertificatePreview[];
+  integrationKey: string;
+  appUrl?: string;
 };

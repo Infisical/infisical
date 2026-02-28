@@ -13,6 +13,17 @@ import {
 } from "../approval-policy-types";
 import { TPamAccessPolicy, TPamAccessPolicyInputs, TPamAccessRequestData } from "./pam-access-policy-types";
 
+// Helper function to check if a value matches any of the patterns in an array
+const matchesAnyPattern = (value: string, patterns: string[]): boolean => {
+  return patterns.some((pattern) => picomatch(pattern)(value));
+};
+
+// Helper function to calculate specificity score for a pattern
+const calculateSpecificity = (pattern: string): { wildcardCount: number; length: number } => {
+  const wildcardCount = (pattern.match(/\*/g) || []).length;
+  return { wildcardCount, length: pattern.length };
+};
+
 export const pamAccessPolicyFactory: TApprovalResourceFactory<
   TPamAccessPolicyInputs,
   TPamAccessPolicy,
@@ -25,28 +36,64 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
   ) => {
     const policies = await approvalPolicyDAL.findByProjectId(policyType, projectId);
 
-    let bestMatch: { policy: TPamAccessPolicy; wildcardCount: number; pathLength: number } | null = null;
-
-    const normalizedAccountPath = inputs.accountPath.startsWith("/") ? inputs.accountPath.slice(1) : inputs.accountPath;
+    let bestMatch: { policy: TPamAccessPolicy; wildcardCount: number; patternLength: number } | null = null;
 
     for (const policy of policies) {
       const p = policy as TPamAccessPolicy;
       for (const c of p.conditions.conditions) {
-        // Find the most specific path pattern
-        // TODO(andrey): Make matching logic more advanced by accounting for wildcard positions
-        for (const pathPattern of c.accountPaths) {
-          const normalizedPathPattern = pathPattern.startsWith("/") ? pathPattern.slice(1) : pathPattern;
-          if (picomatch(normalizedPathPattern)(normalizedAccountPath)) {
-            const wildcardCount = (pathPattern.match(/\*/g) || []).length;
-            const pathLength = pathPattern.length;
+        let conditionMatches = false;
+        let totalWildcards = 0;
+        let totalPatternLength = 0;
 
-            if (
-              !bestMatch ||
-              wildcardCount < bestMatch.wildcardCount ||
-              (wildcardCount === bestMatch.wildcardCount && pathLength > bestMatch.pathLength)
-            ) {
-              bestMatch = { policy: p, wildcardCount, pathLength };
+        const hasResourceNames = c.resourceNames && c.resourceNames.length > 0;
+        const hasAccountNames = c.accountNames && c.accountNames.length > 0;
+
+        if (hasResourceNames || hasAccountNames) {
+          let resourceMatches = true;
+          let accountMatches = true;
+
+          if (hasResourceNames && inputs.resourceName) {
+            resourceMatches = matchesAnyPattern(inputs.resourceName, c.resourceNames!);
+            if (resourceMatches) {
+              for (const pattern of c.resourceNames!) {
+                if (picomatch(pattern)(inputs.resourceName)) {
+                  const spec = calculateSpecificity(pattern);
+                  totalWildcards += spec.wildcardCount;
+                  totalPatternLength += spec.length;
+                  break;
+                }
+              }
             }
+          } else if (hasResourceNames && !inputs.resourceName) {
+            resourceMatches = false;
+          }
+
+          if (hasAccountNames && inputs.accountName) {
+            accountMatches = matchesAnyPattern(inputs.accountName, c.accountNames!);
+            if (accountMatches) {
+              for (const pattern of c.accountNames!) {
+                if (picomatch(pattern)(inputs.accountName)) {
+                  const spec = calculateSpecificity(pattern);
+                  totalWildcards += spec.wildcardCount;
+                  totalPatternLength += spec.length;
+                  break;
+                }
+              }
+            }
+          } else if (hasAccountNames && !inputs.accountName) {
+            accountMatches = false;
+          }
+
+          conditionMatches = resourceMatches && accountMatches;
+        }
+
+        if (conditionMatches) {
+          if (
+            !bestMatch ||
+            totalWildcards < bestMatch.wildcardCount ||
+            (totalWildcards === bestMatch.wildcardCount && totalPatternLength > bestMatch.patternLength)
+          ) {
+            bestMatch = { policy: p, wildcardCount: totalWildcards, patternLength: totalPatternLength };
           }
         }
       }
@@ -69,16 +116,32 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
       revokedAt: null
     });
 
-    const normalizedAccountPath = inputs.accountPath.startsWith("/") ? inputs.accountPath.slice(1) : inputs.accountPath;
-
     // TODO(andrey): Move some of this check to be part of SQL query
     return grants.some((grant) => {
       const grantAttributes = grant.attributes as TPamAccessPolicyInputs;
-      const normalizedGrantPath = grantAttributes.accountPath.startsWith("/")
-        ? grantAttributes.accountPath.slice(1)
-        : grantAttributes.accountPath;
-      const isMatch = picomatch(normalizedGrantPath);
-      return isMatch(normalizedAccountPath) && (!grant.expiresAt || grant.expiresAt > new Date());
+
+      if (inputs.resourceName || inputs.accountName) {
+        let resourceMatches = true;
+        let accountMatches = true;
+
+        if (inputs.resourceName && grantAttributes.resourceName) {
+          resourceMatches = picomatch(grantAttributes.resourceName)(inputs.resourceName);
+        } else if (inputs.resourceName && !grantAttributes.resourceName) {
+          resourceMatches = false;
+        }
+
+        if (inputs.accountName && grantAttributes.accountName) {
+          accountMatches = picomatch(grantAttributes.accountName)(inputs.accountName);
+        } else if (inputs.accountName && !grantAttributes.accountName) {
+          accountMatches = false;
+        }
+
+        if (resourceMatches && accountMatches && (!grant.expiresAt || grant.expiresAt > new Date())) {
+          return true;
+        }
+      }
+
+      return false;
     });
   };
 

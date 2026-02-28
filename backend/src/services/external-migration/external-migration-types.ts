@@ -2,6 +2,11 @@ import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
+export enum KvVersion {
+  V1 = "1",
+  V2 = "2"
+}
+
 export enum VaultMappingType {
   Namespace = "namespace",
   KeyVault = "key-vault",

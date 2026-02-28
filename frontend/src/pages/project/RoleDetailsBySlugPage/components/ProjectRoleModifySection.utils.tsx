@@ -28,10 +28,13 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamSessionActions,
+  ProjectPermissionPkiCertificateInstallationActions,
+  ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
@@ -70,7 +73,7 @@ const CertificateAuthorityPolicyActionSchema = z.object({
   [ProjectPermissionCertificateAuthorityActions.Delete]: z.boolean().optional(),
   [ProjectPermissionCertificateAuthorityActions.Edit]: z.boolean().optional(),
   [ProjectPermissionCertificateAuthorityActions.Read]: z.boolean().optional(),
-  [ProjectPermissionCertificateAuthorityActions.Renew]: z.boolean().optional(),
+  [ProjectPermissionCertificateAuthorityActions.IssueCACertificate]: z.boolean().optional(),
   [ProjectPermissionCertificateAuthorityActions.SignIntermediate]: z.boolean().optional()
 });
 
@@ -252,10 +255,10 @@ const CertificatePolicyPolicyActionSchema = z.object({
 });
 
 const SecretEventsPolicyActionSchema = z.object({
-  [ProjectPermissionSecretEventActions.SubscribeCreated]: z.boolean().optional(),
-  [ProjectPermissionSecretEventActions.SubscribeUpdated]: z.boolean().optional(),
-  [ProjectPermissionSecretEventActions.SubscribeDeleted]: z.boolean().optional(),
-  [ProjectPermissionSecretEventActions.SubscribeImportMutations]: z.boolean().optional()
+  [ProjectPermissionSecretEventActions.SubscribeToCreationEvents]: z.boolean().optional(),
+  [ProjectPermissionSecretEventActions.SubscribeToUpdateEvents]: z.boolean().optional(),
+  [ProjectPermissionSecretEventActions.SubscribeToDeletionEvents]: z.boolean().optional(),
+  [ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents]: z.boolean().optional()
 });
 
 const PamAccountPolicyActionSchema = z.object({
@@ -297,6 +300,10 @@ const ApprovalRequestPolicyActionSchema = z.object({
 const ApprovalRequestGrantPolicyActionSchema = z.object({
   [ProjectPermissionApprovalRequestGrantActions.Read]: z.boolean().optional(),
   [ProjectPermissionApprovalRequestGrantActions.Revoke]: z.boolean().optional()
+});
+
+const SecretApprovalRequestPolicyActionSchema = z.object({
+  [ProjectPermissionSecretApprovalRequestActions.Read]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -453,6 +460,24 @@ export const projectRoleFormSchema = z.object({
         .default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PkiDiscovery]: z
+        .object({
+          read: z.boolean().optional(),
+          create: z.boolean().optional(),
+          edit: z.boolean().optional(),
+          delete: z.boolean().optional(),
+          "run-scan": z.boolean().optional()
+        })
+        .array()
+        .default([]),
+      [ProjectPermissionSub.PkiCertificateInstallations]: z
+        .object({
+          read: z.boolean().optional(),
+          edit: z.boolean().optional(),
+          delete: z.boolean().optional()
+        })
+        .array()
+        .default([]),
       [ProjectPermissionSub.CertificateTemplates]: PkiTemplatePolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -502,7 +527,7 @@ export const projectRoleFormSchema = z.object({
         SecretScanningFindingPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretScanningConfigs]:
         SecretScanningConfigPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.SecretEvents]: SecretEventsPolicyActionSchema.extend({
+      [ProjectPermissionSub.SecretEventSubscriptions]: SecretEventsPolicyActionSchema.extend({
         conditions: ConditionSchema
       })
         .array()
@@ -528,7 +553,9 @@ export const projectRoleFormSchema = z.object({
         []
       ),
       [ProjectPermissionSub.ApprovalRequestGrants]:
-        ApprovalRequestGrantPolicyActionSchema.array().default([])
+        ApprovalRequestGrantPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretApprovalRequest]:
+        SecretApprovalRequestPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -552,7 +579,7 @@ type TConditionalFields =
   | ProjectPermissionSub.Identity
   | ProjectPermissionSub.SecretSyncs
   | ProjectPermissionSub.PkiSyncs
-  | ProjectPermissionSub.SecretEvents
+  | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.McpEndpoints;
@@ -575,7 +602,7 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.CertificatePolicies ||
   subject === ProjectPermissionSub.SecretSyncs ||
   subject === ProjectPermissionSub.PkiSyncs ||
-  subject === ProjectPermissionSub.SecretEvents ||
+  subject === ProjectPermissionSub.SecretEventSubscriptions ||
   subject === ProjectPermissionSub.AppConnections ||
   subject === ProjectPermissionSub.PamAccounts ||
   subject === ProjectPermissionSub.McpEndpoints;
@@ -687,7 +714,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SshHostGroups,
         ProjectPermissionSub.SecretSyncs,
         ProjectPermissionSub.PkiSyncs,
-        ProjectPermissionSub.SecretEvents,
+        ProjectPermissionSub.SecretEventSubscriptions,
         ProjectPermissionSub.AppConnections,
         ProjectPermissionSub.PamFolders,
         ProjectPermissionSub.PamResources,
@@ -838,26 +865,26 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
-        if (subject === ProjectPermissionSub.SecretEvents) {
+        if (subject === ProjectPermissionSub.SecretEventSubscriptions) {
           const canSubscribeCreate = action.includes(
-            ProjectPermissionSecretEventActions.SubscribeCreated
+            ProjectPermissionSecretEventActions.SubscribeToCreationEvents
           );
           const canSubscribeUpdate = action.includes(
-            ProjectPermissionSecretEventActions.SubscribeUpdated
+            ProjectPermissionSecretEventActions.SubscribeToUpdateEvents
           );
           const canSubscribeDelete = action.includes(
-            ProjectPermissionSecretEventActions.SubscribeDeleted
+            ProjectPermissionSecretEventActions.SubscribeToDeletionEvents
           );
           const canSubscribeImportMutations = action.includes(
-            ProjectPermissionSecretEventActions.SubscribeImportMutations
+            ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
           );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
-            "subscribe-on-created": canSubscribeCreate,
-            "subscribe-on-deleted": canSubscribeDelete,
-            "subscribe-on-updated": canSubscribeUpdate,
-            "subscribe-on-import-mutations": canSubscribeImportMutations,
+            "subscribe-to-creation-events": canSubscribeCreate,
+            "subscribe-to-deletion-events": canSubscribeDelete,
+            "subscribe-to-update-events": canSubscribeUpdate,
+            "subscribe-to-import-mutation-events": canSubscribeImportMutations,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : []
           });
 
@@ -925,7 +952,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canCreate = action.includes(ProjectPermissionCertificateAuthorityActions.Create);
           const canEdit = action.includes(ProjectPermissionCertificateAuthorityActions.Edit);
           const canDelete = action.includes(ProjectPermissionCertificateAuthorityActions.Delete);
-          const canRenew = action.includes(ProjectPermissionCertificateAuthorityActions.Renew);
+          const canIssue = action.includes(
+            ProjectPermissionCertificateAuthorityActions.IssueCACertificate
+          );
           const canSignIntermediate = action.includes(
             ProjectPermissionCertificateAuthorityActions.SignIntermediate
           );
@@ -936,7 +965,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionCertificateAuthorityActions.Create]: canCreate,
             [ProjectPermissionCertificateAuthorityActions.Edit]: canEdit,
             [ProjectPermissionCertificateAuthorityActions.Delete]: canDelete,
-            [ProjectPermissionCertificateAuthorityActions.Renew]: canRenew,
+            [ProjectPermissionCertificateAuthorityActions.IssueCACertificate]: canIssue,
             [ProjectPermissionCertificateAuthorityActions.SignIntermediate]: canSignIntermediate,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
@@ -1012,6 +1041,39 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.PkiDiscovery) {
+      const canRead = action.includes(ProjectPermissionPkiDiscoveryActions.Read);
+      const canCreate = action.includes(ProjectPermissionPkiDiscoveryActions.Create);
+      const canEdit = action.includes(ProjectPermissionPkiDiscoveryActions.Edit);
+      const canDelete = action.includes(ProjectPermissionPkiDiscoveryActions.Delete);
+      const canRunScan = action.includes(ProjectPermissionPkiDiscoveryActions.RunScan);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.Edit] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.Delete] = true;
+      if (canRunScan) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.RunScan] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.PkiCertificateInstallations) {
+      const canRead = action.includes(ProjectPermissionPkiCertificateInstallationActions.Read);
+      const canEdit = action.includes(ProjectPermissionPkiCertificateInstallationActions.Edit);
+      const canDelete = action.includes(ProjectPermissionPkiCertificateInstallationActions.Delete);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead)
+        formVal[subject]![0][ProjectPermissionPkiCertificateInstallationActions.Read] = true;
+      if (canEdit)
+        formVal[subject]![0][ProjectPermissionPkiCertificateInstallationActions.Edit] = true;
+      if (canDelete)
+        formVal[subject]![0][ProjectPermissionPkiCertificateInstallationActions.Delete] = true;
       return;
     }
 
@@ -1445,6 +1507,14 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRevoke)
         formVal[subject]![0][ProjectPermissionApprovalRequestGrantActions.Revoke] = true;
     }
+
+    if (subject === ProjectPermissionSub.SecretApprovalRequest) {
+      const canRead = action.includes(ProjectPermissionSecretApprovalRequestActions.Read);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionSecretApprovalRequestActions.Read] = true;
+    }
   });
 
   return formVal;
@@ -1522,6 +1592,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
       const caslActions = Object.keys(actions).filter(
         (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );
+
       const caslConditions =
         "conditions" in actions
           ? convertFormOperatorToCaslCondition(actions.conditions)
@@ -1776,7 +1847,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: ProjectPermissionCertificateAuthorityActions.Create },
       { label: "Modify", value: ProjectPermissionCertificateAuthorityActions.Edit },
       { label: "Remove", value: ProjectPermissionCertificateAuthorityActions.Delete },
-      { label: "Renew", value: ProjectPermissionCertificateAuthorityActions.Renew },
+      {
+        label: "Issue CA Certificate",
+        value: ProjectPermissionCertificateAuthorityActions.IssueCACertificate
+      },
       {
         label: "Sign Intermediate",
         value: ProjectPermissionCertificateAuthorityActions.SignIntermediate
@@ -1963,6 +2037,24 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.PkiDiscovery]: {
+    title: "PKI Discovery",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" },
+      { label: "Run Scan", value: "run-scan" }
+    ]
+  },
+  [ProjectPermissionSub.PkiCertificateInstallations]: {
+    title: "Certificate Installations",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
   [ProjectPermissionSub.Kmip]: {
     title: "KMIP",
     actions: [
@@ -2047,24 +2139,24 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
-  [ProjectPermissionSub.SecretEvents]: {
-    title: "Secret Events",
+  [ProjectPermissionSub.SecretEventSubscriptions]: {
+    title: "Secret Event Subscriptions",
     actions: [
       {
-        label: "Subscribe on Created",
-        value: ProjectPermissionSecretEventActions.SubscribeCreated
+        label: "Subscribe to Creation Events",
+        value: ProjectPermissionSecretEventActions.SubscribeToCreationEvents
       },
       {
-        label: "Subscribe on Deleted",
-        value: ProjectPermissionSecretEventActions.SubscribeDeleted
+        label: "Subscribe to Deletion Events",
+        value: ProjectPermissionSecretEventActions.SubscribeToDeletionEvents
       },
       {
-        label: "Subscribe on Updated",
-        value: ProjectPermissionSecretEventActions.SubscribeUpdated
+        label: "Subscribe to Update Events",
+        value: ProjectPermissionSecretEventActions.SubscribeToUpdateEvents
       },
       {
-        label: "Subscribe on Import Mutations",
-        value: ProjectPermissionSecretEventActions.SubscribeImportMutations
+        label: "Subscribe to Import Mutation Events",
+        value: ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
       }
     ]
   },
@@ -2161,6 +2253,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.McpActivityLogs]: {
     title: "MCP Activity Logs",
     actions: [{ label: "Read", value: ProjectPermissionActions.Read }]
+  },
+  [ProjectPermissionSub.SecretApprovalRequest]: {
+    title: "Secret Approval Requests",
+    actions: [{ label: "Read", value: ProjectPermissionSecretApprovalRequestActions.Read }]
   }
 };
 
@@ -2193,7 +2289,8 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
-  [ProjectPermissionSub.SecretEvents]: enabled
+  [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
+  [ProjectPermissionSub.SecretApprovalRequest]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({
@@ -2210,7 +2307,9 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.CertificateTemplates]: false, // Hidden from UI, accessible via API only
   [ProjectPermissionSub.CertificateProfiles]: enabled,
   [ProjectPermissionSub.CertificatePolicies]: enabled,
-  [ProjectPermissionSub.Certificates]: enabled
+  [ProjectPermissionSub.Certificates]: enabled,
+  [ProjectPermissionSub.PkiDiscovery]: enabled,
+  [ProjectPermissionSub.PkiCertificateInstallations]: enabled
 });
 
 const SshPermissionSubjects = (enabled = false) => ({
@@ -2254,7 +2353,10 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretScanningSubject(),
     ...PamPermissionSubjects(),
     ...AiPermissionSubjects(),
-    [ProjectPermissionSub.AppConnections]: true
+    [ProjectPermissionSub.AppConnections]: true,
+    // Approval Requests / Grants are not used in Secret Manager (secret approvals use SecretApproval policy)
+    [ProjectPermissionSub.ApprovalRequests]: false,
+    [ProjectPermissionSub.ApprovalRequestGrants]: false
   },
   [ProjectType.KMS]: {
     ...SharedPermissionSubjects,

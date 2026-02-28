@@ -47,8 +47,11 @@ export const useUpdatePamResource = () => {
 
       return data.resource;
     },
-    onSuccess: ({ projectId }) => {
+    onSuccess: ({ projectId }, { resourceId, resourceType }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: pamKeys.getResource(resourceType, resourceId)
+      });
     }
   });
 };
@@ -98,8 +101,9 @@ export const useUpdatePamAccount = () => {
 
       return data.account;
     },
-    onSuccess: ({ projectId }) => {
+    onSuccess: ({ projectId }, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
     }
   });
 };
@@ -122,7 +126,8 @@ export const useDeletePamAccount = () => {
 
 export type TAccessPamAccountDTO = {
   accountId: string;
-  accountPath: string;
+  resourceName: string;
+  accountName: string;
   projectId: string;
   duration: string;
 };
@@ -143,12 +148,19 @@ export type TAccessPamAccountResponse = {
 
 export const useAccessPamAccount = () => {
   return useMutation({
-    mutationFn: async ({ accountId, accountPath, projectId, duration }: TAccessPamAccountDTO) => {
+    mutationFn: async ({
+      accountId,
+      resourceName,
+      accountName,
+      projectId,
+      duration
+    }: TAccessPamAccountDTO) => {
       const { data } = await apiRequest.post<TAccessPamAccountResponse>(
         "/api/v1/pam/accounts/access",
         {
           accountId,
-          accountPath,
+          resourceName,
+          accountName,
           projectId,
           duration
         }

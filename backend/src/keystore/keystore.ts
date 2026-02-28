@@ -14,6 +14,7 @@ export const PgSqlLock = {
   BootUpMigration: 2023,
   SuperAdminInit: 2024,
   KmsRootKeyInit: 2025,
+  SanitizedSchemaGeneration: 2026,
   OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
   OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
@@ -25,7 +26,9 @@ export const PgSqlLock = {
   OrgRelayConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-relay-config-init:${orgId}`),
   GatewayPamSessionKey: (gatewayId: string) => pgAdvisoryLockHashText(`gateway-pam-session-key:${gatewayId}`),
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`),
-  PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`)
+  PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
+  CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
+  AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -90,7 +93,13 @@ export const KeyStorePrefixes = {
 
   // AI MCP Endpoint OAuth
   AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
-  AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const
+  AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const,
+
+  // Project SSE Connection Rate Limiting
+  ProjectSSEConnectionsSet: (projectId: string) => `project-sse-connections:${projectId}` as const,
+  ProjectSSEConnectionsLockoutKey: (projectId: string) => `project-sse-connections:lockout:${projectId}` as const,
+  ProjectSSEConnection: (projectId: string, connectionId: string) =>
+    `project-sse-conn:${projectId}:${connectionId}` as const
 };
 
 export const KeyStoreTtls = {
@@ -100,7 +109,8 @@ export const KeyStoreTtls = {
   ProjectPermissionCacheInSeconds: 300, // 5 minutes
   ProjectPermissionDalVersionTtl: "15m", // Project permission DAL version TTL
   MfaSessionInSeconds: 300, // 5 minutes
-  WebAuthnChallengeInSeconds: 300 // 5 minutes
+  WebAuthnChallengeInSeconds: 300, // 5 minutes
+  ProjectSSEConnectionTtlSeconds: 180 // Must be > heartbeat interval (60s) * 2
 };
 
 type TDeleteItems = {
@@ -135,6 +145,11 @@ export type TKeyStoreFactory = {
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
+  // list operations
+  listPush: (key: string, value: string) => Promise<number>;
+  listRange: (key: string, start: number, stop: number) => Promise<string[]>;
+  listRemove: (key: string, count: number, value: string) => Promise<number>;
+  listLength: (key: string) => Promise<number>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -267,6 +282,16 @@ export const keyStoreFactory = (
   const pgGetIntItem = async (key: string, prefix?: string) =>
     keyValueStoreDAL.findOneInt(prefix ? `${prefix}:${key}` : key);
 
+  // List operations
+  const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
+
+  const listRange = async (key: string, start: number, stop: number) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).lrange(key, start, stop);
+
+  const listRemove = async (key: string, count: number, value: string) => primaryRedis.lrem(key, count, value);
+
+  const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
+
   const waitTillReady = async ({
     key,
     waitingCb,
@@ -306,6 +331,10 @@ export const keyStoreFactory = (
     deleteItemsByKeyIn,
     getItems,
     pgGetIntItem,
-    pgIncrementBy
+    pgIncrementBy,
+    listPush,
+    listRange,
+    listRemove,
+    listLength
   };
 };

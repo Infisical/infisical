@@ -19,7 +19,8 @@ export type ApprovalPolicyStep = {
 };
 
 export type PamAccessPolicyConditions = {
-  accountPaths: string[];
+  resourceNames?: string[];
+  accountNames?: string[];
 }[];
 
 export type PamAccessPolicyConstraints = {
@@ -95,7 +96,7 @@ export type TDeleteApprovalPolicyDTO = {
 export type TCheckPolicyMatchDTO = {
   policyType: ApprovalPolicyType;
   projectId: string;
-  inputs: { accountPath: string } | { profileName: string };
+  inputs: { resourceName: string; accountName: string } | { profileName: string };
 };
 
 export type TCheckPolicyMatchResult = {

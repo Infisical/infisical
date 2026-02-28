@@ -3,9 +3,13 @@ import acme from "acme-client";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyUsage,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -21,6 +25,7 @@ import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
+import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
@@ -61,7 +66,7 @@ export type TIssueCertificateFromProfileJobData = {
   profileId: string;
   caId: string;
   commonName?: string;
-  altNames?: string[];
+  altNames?: Array<{ type: string; value: string }>;
   ttl: string;
   signatureAlgorithm: string;
   keyAlgorithm: string;
@@ -71,6 +76,11 @@ export type TIssueCertificateFromProfileJobData = {
   originalCertificateId?: string;
   certificateRequestId?: string;
   csr?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -148,6 +158,19 @@ export const certificateIssuanceQueueFactory = ({
     certificateProfileDAL
   });
 
+  const awsPcaFns = AwsPcaCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL
+  });
+
   /**
    * Queue a certificate issuance job using pgBoss
    */
@@ -165,7 +188,12 @@ export const certificateIssuanceQueueFactory = ({
     isRenewal,
     originalCertificateId,
     certificateRequestId,
-    csr
+    csr,
+    organization,
+    organizationalUnit,
+    country,
+    state,
+    locality
   }: TIssueCertificateFromProfileJobData) => {
     const jobData: TIssueCertificateFromProfileJobData = {
       certificateId,
@@ -181,13 +209,21 @@ export const certificateIssuanceQueueFactory = ({
       isRenewal,
       originalCertificateId,
       certificateRequestId,
-      csr
+      csr,
+      organization,
+      organizationalUnit,
+      country,
+      state,
+      locality
     };
 
-    await queueService.queuePg(QueueJobs.CaIssueCertificateFromProfile, jobData, {
-      retryLimit: 3,
-      retryDelay: 5,
-      retryBackoff: true
+    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
+      jobId: `certificate-issuance-${certificateId}`,
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 5000
+      }
     });
   };
 
@@ -209,7 +245,12 @@ export const certificateIssuanceQueueFactory = ({
       isRenewal,
       originalCertificateId,
       certificateRequestId,
-      csr
+      csr,
+      organization,
+      organizationalUnit,
+      country,
+      state,
+      locality
     } = data;
 
     try {
@@ -238,7 +279,7 @@ export const certificateIssuanceQueueFactory = ({
 
           const [, generatedCsr] = await acme.crypto.createCsr(
             {
-              altNames: altNames ? [...altNames] : [],
+              altNames: altNames ? altNames.map((san) => san.value) : [],
               commonName: commonName || ""
             },
             skLeaf
@@ -250,7 +291,7 @@ export const certificateIssuanceQueueFactory = ({
           caId,
           profileId,
           commonName: commonName || "",
-          altNames: altNames || [],
+          altNames: altNames?.map((san) => san.value) || [],
           csr: Buffer.from(certificateCsr),
           csrPrivateKey: skLeaf,
           keyUsages: keyUsages as CertKeyUsage[],
@@ -314,7 +355,7 @@ export const certificateIssuanceQueueFactory = ({
           caId,
           profileId,
           commonName: commonName || "",
-          altNames: altNames || [],
+          altNames: altNames?.map((san) => san.value) || [],
           keyUsages: keyUsages as CertKeyUsage[],
           extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
           validity: { ttl },
@@ -333,6 +374,55 @@ export const certificateIssuanceQueueFactory = ({
             await certificateRequestService.attachCertificateToRequest({
               certificateRequestId,
               certificateId: azureResult.certificateId
+            });
+            logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
+          } catch (attachError) {
+            logger.error(
+              attachError,
+              `Failed to attach certificate to request [certificateRequestId=${certificateRequestId}]`
+            );
+            try {
+              await certificateRequestService.updateCertificateRequestStatus({
+                certificateRequestId,
+                status: CertificateRequestStatus.FAILED,
+                errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
+              });
+            } catch (statusUpdateError) {
+              logger.error(
+                statusUpdateError,
+                `Failed to update certificate request status [certificateRequestId=${certificateRequestId}]`
+              );
+            }
+          }
+        }
+      } else if (ca.externalCa?.type === CaType.AWS_PCA) {
+        const awsPcaParams = {
+          caId,
+          profileId,
+          commonName: commonName || "",
+          altNames: (altNames || []) as Array<{ type: CertSubjectAlternativeNameType; value: string }>,
+          keyUsages: keyUsages as CertKeyUsage[],
+          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+          validity: { ttl },
+          signatureAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
+          isRenewal,
+          originalCertificateId,
+          ...(csr && { csr }),
+          organization,
+          organizationalUnit,
+          country,
+          state,
+          locality
+        };
+
+        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(awsPcaParams);
+
+        if (certificateRequestId && certificateRequestService && awsPcaResult?.certificateId) {
+          try {
+            await certificateRequestService.attachCertificateToRequest({
+              certificateRequestId,
+              certificateId: awsPcaResult.certificateId
             });
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
           } catch (attachError) {
@@ -382,26 +472,12 @@ export const certificateIssuanceQueueFactory = ({
     }
   };
 
-  const initializeCertificateIssuanceQueue = async () => {
-    await queueService.startPg(
-      QueueJobs.CaIssueCertificateFromProfile,
-      async ([job]) => {
-        const data = job.data as TIssueCertificateFromProfileJobData;
-        await processCertificateIssuanceJobs(data);
-      },
-      {
-        workerCount: 2,
-        batchSize: 1,
-        pollingIntervalSeconds: 1
-      }
-    );
-
-    logger.info("Certificate issuance queue worker initialized successfully");
-  };
+  queueService.start(QueueName.CertificateIssuance, async (job) => {
+    await processCertificateIssuanceJobs(job.data);
+  });
 
   return {
     queueCertificateIssuance,
-    initializeCertificateIssuanceQueue,
     processCertificateIssuanceJobs
   };
 };

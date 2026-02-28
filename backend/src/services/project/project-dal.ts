@@ -32,7 +32,6 @@ export const projectDALFactory = (db: TDbClient) => {
           `${TableName.IdentityGroupMembership}.groupId`,
           `${TableName.Groups}.id`
         )
-        .where(`${TableName.Groups}.orgId`, orgId)
         .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
@@ -95,7 +94,6 @@ export const projectDALFactory = (db: TDbClient) => {
       const userGroupSubquery = db
         .replicaNode()(TableName.Groups)
         .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.Groups}.orgId`, orgId)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
@@ -359,7 +357,6 @@ export const projectDALFactory = (db: TDbClient) => {
     const { limit = 20, offset = 0, sortBy = SearchProjectSortBy.NAME, sortDir = SortDirection.ASC } = dto;
     const groupMembershipSubquery = db(TableName.Groups)
       .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-      .where(`${TableName.Groups}.orgId`, dto.orgId)
       .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
       .select(db.ref("id").withSchema(TableName.Groups));
 
@@ -370,7 +367,6 @@ export const projectDALFactory = (db: TDbClient) => {
         `${TableName.IdentityGroupMembership}.groupId`,
         `${TableName.Groups}.id`
       )
-      .where(`${TableName.Groups}.orgId`, dto.orgId)
       .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId)
       .select(db.ref("id").withSchema(TableName.Groups));
 

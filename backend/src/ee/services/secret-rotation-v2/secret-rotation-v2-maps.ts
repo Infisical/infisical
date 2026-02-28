@@ -14,7 +14,10 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.RedisCredentials]: "Redis Credentials",
   [SecretRotation.MongoDBCredentials]: "MongoDB Credentials",
   [SecretRotation.DatabricksServicePrincipalSecret]: "Databricks Service Principal Secret",
-  [SecretRotation.UnixLinuxLocalAccount]: "Unix/Linux Local Account"
+  [SecretRotation.UnixLinuxLocalAccount]: "Unix/Linux Local Account",
+  [SecretRotation.DbtServiceToken]: "DBT Service Token",
+  [SecretRotation.WindowsLocalAccount]: "Windows Local Account",
+  [SecretRotation.OpenRouterApiKey]: "OpenRouter API Key"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -30,5 +33,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.RedisCredentials]: AppConnection.Redis,
   [SecretRotation.MongoDBCredentials]: AppConnection.MongoDB,
   [SecretRotation.DatabricksServicePrincipalSecret]: AppConnection.Databricks,
-  [SecretRotation.UnixLinuxLocalAccount]: AppConnection.SSH
+  [SecretRotation.UnixLinuxLocalAccount]: AppConnection.SSH,
+  [SecretRotation.DbtServiceToken]: AppConnection.Dbt,
+  [SecretRotation.WindowsLocalAccount]: AppConnection.SMB,
+  [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter
 };

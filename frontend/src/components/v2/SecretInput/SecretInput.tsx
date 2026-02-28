@@ -22,7 +22,7 @@ const syntaxHighlight = (
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
     return <span className="ph-no-capture text-red/75">Error loading secret value.</span>;
-  if (isImport && !content) return "IMPORTED";
+  if (isImport && !content) return "EMPTY";
   if (placeholder && (content === "" || !content)) return placeholder;
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
@@ -179,12 +179,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <div className="relative overflow-hidden">
           <pre aria-hidden className="pointer-events-none relative z-10 m-0">
             <code className={`inline-block w-full ${commonClassName}`}>
-              <span
-                className={twMerge(
-                  "whitespace-break-spaces",
-                  placeholder && !value && "text-gray-500/50"
-                )}
-              >
+              <span className={twMerge("whitespace-break-spaces", !value && "text-muted")}>
                 {syntaxHighlight(
                   value,
                   isVisible || (isSecretFocused && !valueAlwaysHidden),

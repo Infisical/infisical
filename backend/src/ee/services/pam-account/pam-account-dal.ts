@@ -106,6 +106,44 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdWithResourceDetails = async (accountId: string, tx?: Knex) => {
+    try {
+      const dbInstance = tx || db.replicaNode();
+      const result = await dbInstance(TableName.PamAccount)
+        .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+        .where(`${TableName.PamAccount}.id`, accountId)
+        .select(selectAllTableCols(TableName.PamAccount))
+        .select(
+          db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
+          db.ref("resourceType").withSchema(TableName.PamResource),
+          db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource)
+        )
+        .first();
+
+      if (!result) return null;
+
+      const { resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, ...account } = result as {
+        resourceId: string;
+        resourceName: string;
+        resourceType: string;
+        encryptedRotationAccountCredentials: Buffer | null;
+      } & typeof result;
+
+      return {
+        ...account,
+        resourceId,
+        resource: {
+          id: resourceId,
+          name: resourceName,
+          resourceType,
+          encryptedRotationAccountCredentials
+        }
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PAM account by ID with resource details" });
+    }
+  };
+
   const findAccountsDueForRotation = async (tx?: Knex) => {
     const dbClient = tx || db.replicaNode();
 
@@ -125,6 +163,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findByProjectIdWithResourceDetails,
+    findByIdWithResourceDetails,
     findAccountsDueForRotation
   };
 };

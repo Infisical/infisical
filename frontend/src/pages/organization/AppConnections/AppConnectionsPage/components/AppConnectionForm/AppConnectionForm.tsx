@@ -16,13 +16,16 @@ import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
+import { AzureDNSConnectionForm } from "./AzureDNSConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
+import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
+import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
@@ -43,11 +46,13 @@ import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
+import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -154,6 +159,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
     case AppConnection.DNSMadeEasy:
       return <DNSMadeEasyConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.AzureDNS:
+      return <AzureDNSConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Bitbucket:
       return <BitbucketConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Zabbix:
@@ -182,6 +189,14 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Dbt:
+      return <DbtConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.SMB:
+      return <SmbConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.OpenRouter:
+      return <OpenRouterConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.CircleCI:
+      return <CircleCIConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -320,6 +335,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.DNSMadeEasy:
       return <DNSMadeEasyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.AzureDNS:
+      return <AzureDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Bitbucket:
       return <BitbucketConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Zabbix:
@@ -346,6 +363,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Dbt:
+      return <DbtConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.SMB:
+      return <SmbConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.OpenRouter:
+      return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.CircleCI:
+      return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

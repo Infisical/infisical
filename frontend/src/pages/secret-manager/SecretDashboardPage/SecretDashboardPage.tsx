@@ -395,8 +395,13 @@ const Page = () => {
       message
     });
 
-    if (!isProtectedBranch) {
-      pendingChanges.secrets.forEach((secret) => {
+    // Check if there are only folder changes (no secret changes)
+    // Folder changes are not affected by approval policies, so they're saved directly
+    const hasOnlyFolderChanges = changes.folders.length > 0 && changes.secrets.length === 0;
+    const requiresApproval = isProtectedBranch && !hasOnlyFolderChanges;
+
+    if (!requiresApproval) {
+      changes.secrets.forEach((secret) => {
         if (secret.type === "update" && secret.secretValue !== undefined) {
           queryClient.setQueryData(
             dashboardKeys.getSecretValue({
@@ -413,7 +418,7 @@ const Page = () => {
     }
 
     createNotification({
-      text: isProtectedBranch
+      text: requiresApproval
         ? "Requested changes have been sent for review"
         : "Changes saved successfully",
       type: "success"

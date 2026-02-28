@@ -45,6 +45,12 @@ export enum CertExtendedKeyUsage {
   OCSP_SIGNING = "ocsp_signing"
 }
 
+export enum CertSource {
+  Issued = "issued",
+  Discovered = "discovered",
+  Imported = "imported"
+}
+
 export enum CertificateRequestStatus {
   PENDING_APPROVAL = "pending_approval",
   PENDING = "pending",

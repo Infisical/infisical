@@ -21,6 +21,7 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeMemberFromGroup"]>,
     data?: object
   ) => void;
+  isLinkedGroup?: boolean;
 };
 
 export const GroupMembershipIdentityRow = ({
@@ -29,7 +30,8 @@ export const GroupMembershipIdentityRow = ({
     joinedGroupAt,
     id
   },
-  handlePopUpOpen
+  handlePopUpOpen,
+  isLinkedGroup = false
 }: Props) => {
   return (
     <UnstableTableRow key={`group-identity-${id}`}>
@@ -39,32 +41,34 @@ export const GroupMembershipIdentityRow = ({
       <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
       <UnstableTableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</UnstableTableCell>
       <UnstableTableCell>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger>
-            <UnstableIconButton variant="ghost" size="xs">
-              <MoreHorizontalIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-              {(isAllowed) => (
-                <UnstableDropdownMenuItem
-                  variant="danger"
-                  onClick={() =>
-                    handlePopUpOpen("removeMemberFromGroup", {
-                      memberType: GroupMemberType.MACHINE_IDENTITY,
-                      identityId: id,
-                      name
-                    })
-                  }
-                  isDisabled={!isAllowed}
-                >
-                  Remove Identity From Group
-                </UnstableDropdownMenuItem>
-              )}
-            </OrgPermissionCan>
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+        {!isLinkedGroup && (
+          <UnstableDropdownMenu>
+            <UnstableDropdownMenuTrigger>
+              <UnstableIconButton variant="ghost" size="xs">
+                <MoreHorizontalIcon />
+              </UnstableIconButton>
+            </UnstableDropdownMenuTrigger>
+            <UnstableDropdownMenuContent align="end">
+              <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
+                {(isAllowed) => (
+                  <UnstableDropdownMenuItem
+                    variant="danger"
+                    onClick={() =>
+                      handlePopUpOpen("removeMemberFromGroup", {
+                        memberType: GroupMemberType.MACHINE_IDENTITY,
+                        identityId: id,
+                        name
+                      })
+                    }
+                    isDisabled={!isAllowed}
+                  >
+                    Remove Identity From Group
+                  </UnstableDropdownMenuItem>
+                )}
+              </OrgPermissionCan>
+            </UnstableDropdownMenuContent>
+          </UnstableDropdownMenu>
+        )}
       </UnstableTableCell>
     </UnstableTableRow>
   );

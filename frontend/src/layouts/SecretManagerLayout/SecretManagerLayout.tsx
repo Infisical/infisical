@@ -117,15 +117,6 @@ export const SecretManagerLayout = () => {
                   </Link>
                 )}
                 <Link
-                  to="/organizations/$orgId/projects/secret-management/$projectId/app-connections"
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId: currentProject.id
-                  }}
-                >
-                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>App Connections</Tab>}
-                </Link>
-                <Link
                   to="/organizations/$orgId/projects/secret-management/$projectId/access-management"
                   params={{
                     orgId: currentOrg.id,

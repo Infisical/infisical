@@ -113,13 +113,16 @@
                       "integrations/app-connections/azure-adcs",
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
+                      "integrations/app-connections/azure-dns",
                       "integrations/app-connections/azure-key-vault",
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
                       "integrations/app-connections/checkly",
+                      "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
+                      "integrations/app-connections/dbt",
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/flyio",
@@ -141,6 +144,7 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
+                      "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
@@ -151,6 +155,7 @@
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
+                      "integrations/app-connections/smb",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -221,6 +226,7 @@
                       {
                         "group": "OIDC",
                         "pages": [
+                          "documentation/platform/sso/okta-oidc",
                           {
                             "group": "Keycloak OIDC",
                             "pages": [
@@ -313,7 +319,9 @@
                   "self-hosting/deployment-options/standalone-infisical",
                   "self-hosting/deployment-options/docker-swarm",
                   "self-hosting/deployment-options/docker-compose",
-                  "self-hosting/deployment-options/kubernetes-helm"
+                  "self-hosting/deployment-options/kubernetes-helm",
+                  "self-hosting/deployment-options/aws-native",
+                  "self-hosting/deployment-options/gcp-native"
                 ]
               },
               {
@@ -450,15 +458,18 @@
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
+                      "documentation/platform/secret-rotation/dbt-service-token",
                       "documentation/platform/secret-rotation/ldap-password",
-                      "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
+                      "documentation/platform/secret-rotation/openrouter-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
-                      "documentation/platform/secret-rotation/redis-credentials"
+                      "documentation/platform/secret-rotation/redis-credentials",
+                      "documentation/platform/secret-rotation/unix-linux-local-account",
+                      "documentation/platform/secret-rotation/windows-local-account"
                     ]
                   },
                   {
@@ -555,6 +566,7 @@
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
                       "integrations/secret-syncs/checkly",
+                      "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/chef",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
@@ -680,6 +692,7 @@
                     "pages": [
                       "documentation/platform/pki/guides/request-cert-agent",
                       "documentation/platform/pki/guides/request-cert-api",
+                      "documentation/platform/pki/guides/request-cert-csr",
                       "documentation/platform/pki/guides/request-cert-acme",
                       "documentation/platform/pki/guides/certificate-approvals"
                     ]
@@ -715,7 +728,22 @@
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
-                  "documentation/platform/pki/alerting",
+                  {
+                    "group": "Discovery",
+                    "pages": [
+                      "documentation/platform/pki/discovery/overview",
+                      "documentation/platform/pki/discovery/network"
+                    ]
+                  },
+                  {
+                    "group": "Alerting",
+                    "pages": [
+                      "documentation/platform/pki/alerting/overview",
+                      "documentation/platform/pki/alerting/webhook-alerts",
+                      "documentation/platform/pki/alerting/slack-alerts",
+                      "documentation/platform/pki/alerting/pagerduty-alerts"
+                    ]
+                  },
                   "documentation/platform/pki/approvals"
                 ]
               },
@@ -737,9 +765,11 @@
                 "pages": [
                   "documentation/platform/pki/certificate-syncs/overview",
                   "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
+                  "documentation/platform/pki/certificate-syncs/aws-elastic-load-balancer",
                   "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
                   "documentation/platform/pki/certificate-syncs/azure-key-vault",
-                  "documentation/platform/pki/certificate-syncs/chef"
+                  "documentation/platform/pki/certificate-syncs/chef",
+                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate"
                 ]
               },
               {
@@ -748,7 +778,8 @@
                   "documentation/platform/pki/ca/acme-ca",
                   "documentation/platform/pki/ca/lets-encrypt",
                   "documentation/platform/pki/ca/digicert",
-                  "documentation/platform/pki/ca/azure-adcs"
+                  "documentation/platform/pki/ca/azure-adcs",
+                  "documentation/platform/pki/ca/aws-pca"
                 ]
               }
             ]
@@ -782,10 +813,12 @@
                         "group": "Resources",
                         "pages": [
                           "documentation/platform/pam/getting-started/resources",
+                          "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
                           "documentation/platform/pam/getting-started/resources/redis",
-                          "documentation/platform/pam/getting-started/resources/ssh"
+                          "documentation/platform/pam/getting-started/resources/ssh",
+                          "documentation/platform/pam/getting-started/resources/windows-server"
                         ]
                       },
                       "documentation/platform/pam/getting-started/accounts"
@@ -797,9 +830,17 @@
               {
                 "group": "Product Reference",
                 "pages": [
+                  "documentation/platform/pam/product-reference/access-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
-                  "documentation/platform/pam/product-reference/credential-rotation"
+                  "documentation/platform/pam/product-reference/credential-rotation",
+                  {
+                    "group": "Web Access",
+                    "pages": [
+                      "documentation/platform/pam/product-reference/web-access/overview",
+                      "documentation/platform/pam/product-reference/web-access/postgresql"
+                    ]
+                  }
                 ]
               }
             ]
@@ -924,6 +965,17 @@
                   "api-reference/endpoints/identities/get-by-id",
                   "api-reference/endpoints/identities/list",
                   "api-reference/endpoints/identities/search"
+                ]
+              },
+              {
+                "group": "Organization Roles",
+                "pages": [
+                  "api-reference/endpoints/organization-roles/create",
+                  "api-reference/endpoints/organization-roles/update",
+                  "api-reference/endpoints/organization-roles/delete",
+                  "api-reference/endpoints/organization-roles/get",
+                  "api-reference/endpoints/organization-roles/get-by-slug",
+                  "api-reference/endpoints/organization-roles/list"
                 ]
               },
               {
@@ -1264,6 +1316,17 @@
                     ]
                   },
                   {
+                    "group": "CircleCI",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/circleci/list",
+                      "api-reference/endpoints/app-connections/circleci/get-by-id",
+                      "api-reference/endpoints/app-connections/circleci/get-by-name",
+                      "api-reference/endpoints/app-connections/circleci/create",
+                      "api-reference/endpoints/app-connections/circleci/update",
+                      "api-reference/endpoints/app-connections/circleci/delete"
+                    ]
+                  },
+                  {
                     "group": "Chef",
                     "pages": [
                       "api-reference/endpoints/app-connections/chef/list",
@@ -1297,6 +1360,18 @@
                       "api-reference/endpoints/app-connections/databricks/create",
                       "api-reference/endpoints/app-connections/databricks/update",
                       "api-reference/endpoints/app-connections/databricks/delete"
+                    ]
+                  },
+                  {
+                    "group": "DBT",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/dbt/list",
+                      "api-reference/endpoints/app-connections/dbt/available",
+                      "api-reference/endpoints/app-connections/dbt/get-by-id",
+                      "api-reference/endpoints/app-connections/dbt/get-by-name",
+                      "api-reference/endpoints/app-connections/dbt/create",
+                      "api-reference/endpoints/app-connections/dbt/update",
+                      "api-reference/endpoints/app-connections/dbt/delete"
                     ]
                   },
                   {
@@ -1527,7 +1602,18 @@
                       "api-reference/endpoints/app-connections/okta/delete"
                     ]
                   },
-
+                  {
+                    "group": "OpenRouter",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/openrouter/list",
+                      "api-reference/endpoints/app-connections/openrouter/available",
+                      "api-reference/endpoints/app-connections/openrouter/get-by-id",
+                      "api-reference/endpoints/app-connections/openrouter/get-by-name",
+                      "api-reference/endpoints/app-connections/openrouter/create",
+                      "api-reference/endpoints/app-connections/openrouter/update",
+                      "api-reference/endpoints/app-connections/openrouter/delete"
+                    ]
+                  },
                   {
                     "group": "OracleDB",
                     "pages": [
@@ -1658,6 +1744,18 @@
                       "api-reference/endpoints/app-connections/windmill/create",
                       "api-reference/endpoints/app-connections/windmill/update",
                       "api-reference/endpoints/app-connections/windmill/delete"
+                    ]
+                  },
+                  {
+                    "group": "SMB",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/smb/list",
+                      "api-reference/endpoints/app-connections/smb/available",
+                      "api-reference/endpoints/app-connections/smb/get-by-id",
+                      "api-reference/endpoints/app-connections/smb/get-by-name",
+                      "api-reference/endpoints/app-connections/smb/create",
+                      "api-reference/endpoints/app-connections/smb/update",
+                      "api-reference/endpoints/app-connections/smb/delete"
                     ]
                   },
                   {
@@ -2004,6 +2102,19 @@
                     ]
                   },
                   {
+                    "group": "DBT Service Token",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/create",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/delete",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-by-id",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-by-name",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/list",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/update"
+                    ]
+                  },
+                  {
                     "group": "LDAP Password",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/ldap-password/create",
@@ -2014,20 +2125,6 @@
                       "api-reference/endpoints/secret-rotations/ldap-password/list",
                       "api-reference/endpoints/secret-rotations/ldap-password/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/ldap-password/update"
-                    ]
-                  },
-                  {
-                    "group": "Unix/Linux Local Account",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
                     ]
                   },
                   {
@@ -2119,6 +2216,34 @@
                       "api-reference/endpoints/secret-rotations/redis-credentials/list",
                       "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/redis-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Unix/Linux Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
+                    ]
+                  },
+                  {
+                    "group": "Windows Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/windows-local-account/create",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/list",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/update",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
                     ]
                   }
                 ]
@@ -2250,6 +2375,19 @@
                       "api-reference/endpoints/secret-syncs/checkly/delete",
                       "api-reference/endpoints/secret-syncs/checkly/sync-secrets",
                       "api-reference/endpoints/secret-syncs/checkly/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "CircleCI",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/circleci/list",
+                      "api-reference/endpoints/secret-syncs/circleci/get-by-id",
+                      "api-reference/endpoints/secret-syncs/circleci/get-by-name",
+                      "api-reference/endpoints/secret-syncs/circleci/create",
+                      "api-reference/endpoints/secret-syncs/circleci/update",
+                      "api-reference/endpoints/secret-syncs/circleci/delete",
+                      "api-reference/endpoints/secret-syncs/circleci/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/circleci/remove-secrets"
                     ]
                   },
                   {
@@ -2610,6 +2748,16 @@
                     ]
                   },
                   {
+                    "group": "AWS PCA",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/aws-pca/list",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/create",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/read",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/update",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/delete"
+                    ]
+                  },
+                  {
                     "group": "Internal",
                     "pages": [
                       "api-reference/endpoints/certificate-authorities/internal/list",
@@ -2641,7 +2789,8 @@
                   "api-reference/endpoints/certificates/delete",
                   "api-reference/endpoints/certificates/cert-body",
                   "api-reference/endpoints/certificates/bundle",
-                  "api-reference/endpoints/certificates/private-key"
+                  "api-reference/endpoints/certificates/private-key",
+                  "api-reference/endpoints/certificates/import-certificate"
                 ]
               },
               {
@@ -2677,6 +2826,28 @@
                 ]
               },
               {
+                "group": "Certificate Discovery",
+                "pages": [
+                  "api-reference/endpoints/pki-discovery/create",
+                  "api-reference/endpoints/pki-discovery/list",
+                  "api-reference/endpoints/pki-discovery/read",
+                  "api-reference/endpoints/pki-discovery/update",
+                  "api-reference/endpoints/pki-discovery/delete",
+                  "api-reference/endpoints/pki-discovery/trigger-scan",
+                  "api-reference/endpoints/pki-discovery/latest-scan",
+                  "api-reference/endpoints/pki-discovery/scan-history"
+                ]
+              },
+              {
+                "group": "Certificate Installations",
+                "pages": [
+                  "api-reference/endpoints/pki-installations/list",
+                  "api-reference/endpoints/pki-installations/read",
+                  "api-reference/endpoints/pki-installations/update",
+                  "api-reference/endpoints/pki-installations/delete"
+                ]
+              },
+              {
                 "group": "Certificate Syncs",
                 "pages": [
                   "api-reference/endpoints/pki/syncs/list",
@@ -2695,6 +2866,18 @@
                       "api-reference/endpoints/pki/syncs/aws-certificate-manager/delete",
                       "api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates",
                       "api-reference/endpoints/pki/syncs/aws-certificate-manager/remove-certificates"
+                    ]
+                  },
+                  {
+                    "group": "AWS Elastic Load Balancer",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/list",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/get-by-id",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/create",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/update",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/delete",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/remove-certificates"
                     ]
                   },
                   {
@@ -2731,6 +2914,18 @@
                       "api-reference/endpoints/pki/syncs/chef/delete",
                       "api-reference/endpoints/pki/syncs/chef/sync-certificates",
                       "api-reference/endpoints/pki/syncs/chef/remove-certificates"
+                    ]
+                  },
+                  {
+                    "group": "Cloudflare Custom SSL",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/list",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/get-by-id",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/create",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/update",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/delete",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
                     ]
                   }
                 ]
@@ -2809,6 +3004,21 @@
             ]
           },
           {
+            "group": "Secret Sharing",
+            "pages": [
+              {
+                "group": "Shared Secrets",
+                "pages": [
+                  "api-reference/endpoints/shared-secrets/list",
+                  "api-reference/endpoints/shared-secrets/get-by-id",
+                  "api-reference/endpoints/shared-secrets/create",
+                  "api-reference/endpoints/shared-secrets/delete",
+                  "api-reference/endpoints/shared-secrets/access"
+                ]
+              }
+            ]
+          },
+          {
             "group": "Infisical KMS",
             "pages": [
               {
@@ -2872,15 +3082,6 @@
               "sdks/languages/php",
               "sdks/languages/ruby"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "Changelog",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": ["changelog/overview"]
           }
         ]
       }
@@ -3023,7 +3224,7 @@
         "items": [
           {
             "label": "Changelog",
-            "href": "https://www.infisical.com/docs/changelog"
+            "href": "https://github.com/Infisical/infisical/releases"
           },
           {
             "label": "Status",
@@ -3130,6 +3331,10 @@
     {
       "source": "/documentation/platform/pki/est",
       "destination": "/documentation/platform/pki/enrollment-methods/est"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting",
+      "destination": "/documentation/platform/pki/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/integrations/create-auth",
@@ -3310,6 +3515,11 @@
     {
       "source": "/integrations/cloud/teamcity",
       "destination": "/integrations/secret-syncs/teamcity"
+    },
+    {
+      "source": "/changelog/:slug*",
+      "destination": "/documentation/getting-started/overview",
+      "permanent": true
     }
   ]
 }

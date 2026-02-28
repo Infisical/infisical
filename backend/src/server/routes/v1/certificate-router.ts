@@ -131,12 +131,12 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             .optional(),
           attributes: z
             .object({
-              commonName: validateTemplateRegexField.optional(),
-              organization: validateTemplateRegexField.optional(),
-              organizationalUnit: validateTemplateRegexField.optional(),
-              country: validateTemplateRegexField.optional(),
-              state: validateTemplateRegexField.optional(),
-              locality: validateTemplateRegexField.optional(),
+              commonName: validateTemplateRegexField.nullish(),
+              organization: validateTemplateRegexField.nullish(),
+              organizationalUnit: validateTemplateRegexField.nullish(),
+              country: validateTemplateRegexField.nullish(),
+              state: validateTemplateRegexField.nullish(),
+              locality: validateTemplateRegexField.nullish(),
               keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
               extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
               altNames: z
@@ -152,8 +152,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               ttl: z
                 .string()
                 .trim()
-                .min(1, "TTL cannot be empty")
-                .refine((val) => ms(val) > 0, "TTL must be a positive number"),
+                .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
+                .optional(),
               notBefore: validateCaDateField.optional(),
               notAfter: validateCaDateField.optional(),
               basicConstraints: z
@@ -220,7 +220,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         const certificateOrderObject = {
           altNames: attributes?.altNames || [],
           validity: { ttl: attributes?.ttl || "" },
-          commonName: attributes?.commonName,
+          ...(attributes?.commonName !== undefined && { commonName: attributes.commonName ?? undefined }),
           keyUsages: attributes?.keyUsages,
           extendedKeyUsages: attributes?.extendedKeyUsages,
           notBefore: attributes?.notBefore ? new Date(attributes.notBefore) : undefined,
@@ -228,7 +228,12 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           signatureAlgorithm: attributes?.signatureAlgorithm,
           keyAlgorithm: attributes?.keyAlgorithm,
           csr,
-          basicConstraints: attributes?.basicConstraints
+          basicConstraints: attributes?.basicConstraints,
+          organization: attributes?.organization ?? undefined,
+          organizationalUnit: attributes?.organizationalUnit ?? undefined,
+          country: attributes?.country ?? undefined,
+          state: attributes?.state ?? undefined,
+          locality: attributes?.locality ?? undefined
         };
 
         const data = await server.services.certificateV3.orderCertificateFromProfile({
@@ -301,12 +306,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
 
       const certificateRequestForService: CertificateRequestForService = {
-        commonName: attributes?.commonName,
-        organization: attributes?.organization,
-        organizationalUnit: attributes?.organizationalUnit,
-        country: attributes?.country,
-        state: attributes?.state,
-        locality: attributes?.locality,
         keyUsages: attributes?.keyUsages,
         extendedKeyUsages: attributes?.extendedKeyUsages,
         altNames: attributes?.altNames,
@@ -317,6 +316,23 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         keyAlgorithm: attributes?.keyAlgorithm,
         basicConstraints: attributes?.basicConstraints
       };
+
+      // Only include subject fields when explicitly provided (null or string).
+      // Omitting the key lets applyProfileDefaults use the profile default.
+      // Sending null (converted to undefined here) signals "clear the default".
+      const subjectFields = [
+        "commonName",
+        "organization",
+        "organizationalUnit",
+        "country",
+        "state",
+        "locality"
+      ] as const;
+      for (const field of subjectFields) {
+        if (attributes?.[field] !== undefined) {
+          certificateRequestForService[field] = attributes[field] ?? undefined;
+        }
+      }
 
       const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
 
@@ -1032,7 +1048,33 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: CertificatesSchema.extend({
+            subject: z
+              .object({
+                commonName: z.string().optional(),
+                organization: z.string().optional(),
+                organizationalUnit: z.string().optional(),
+                country: z.string().optional(),
+                state: z.string().optional(),
+                locality: z.string().optional()
+              })
+              .optional(),
+            fingerprints: z
+              .object({
+                sha256: z.string(),
+                sha1: z.string().optional()
+              })
+              .optional(),
+            basicConstraints: z
+              .object({
+                isCA: z.boolean(),
+                pathLength: z.number().optional()
+              })
+              .optional(),
+            caName: z.string().nullable().optional(),
+            caType: z.enum(["internal", "external"]).nullable().optional(),
+            profileName: z.string().nullable().optional()
+          })
         })
       }
     },

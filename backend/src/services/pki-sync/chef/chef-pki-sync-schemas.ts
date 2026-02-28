@@ -81,7 +81,7 @@ export const ChefPkiSyncSchema = PkiSyncSchema.extend({
 });
 
 export const CreateChefPkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64),
+  name: z.string().trim().min(1).max(256),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: ChefPkiSyncConfigSchema,
@@ -93,7 +93,7 @@ export const CreateChefPkiSyncSchema = z.object({
 });
 
 export const UpdateChefPkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64).optional(),
+  name: z.string().trim().min(1).max(256).optional(),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: ChefPkiSyncConfigSchema.optional(),

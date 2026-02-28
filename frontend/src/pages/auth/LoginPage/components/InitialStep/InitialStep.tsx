@@ -438,9 +438,9 @@ export const InitialStep = ({
       )}
       {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
         <div className="mt-2 flex flex-row text-sm text-bunker-400">
-          <Link to="/verify-email">
+          <Link to="/account-recovery">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              Forgot password? Recover your account
+              Recover your account
             </span>
           </Link>
         </div>

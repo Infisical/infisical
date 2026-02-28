@@ -12,6 +12,7 @@ import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
+import { useGtm } from "@app/hooks/useGtm";
 
 const QueryParamsSchema = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
@@ -21,6 +22,7 @@ const QueryParamsSchema = z.object({
 
 export const AuthConsentWrapper = () => {
   const { config } = useServerConfig();
+  useGtm();
   const [hasConsented, setHasConsented] = useState(() => {
     const consentInfo = sessionStorage.getItem(SessionStorageKeys.AUTH_CONSENT);
     if (!consentInfo) {

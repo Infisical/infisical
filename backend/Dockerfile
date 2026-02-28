@@ -78,6 +78,10 @@ RUN ARCH=$(dpkg --print-architecture) && \
 RUN npm ci --only-production && npm cache clean --force
 
 COPY --from=build /app .
+RUN rm -rf ./bdd ./e2e-test
+
+# Install smbclient for Windows SMB operations
+RUN apt-get update && apt-get install -y smbclient
 
 # Install Infisical CLI
 RUN apt-get update && apt-get install -y curl bash && \

@@ -38,6 +38,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   SecretUpdateMode,
+  TGetSecretReferencesDTO,
   TGetSecretsRawByFolderMappingsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
@@ -54,6 +55,7 @@ import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   conditionallyHideSecretValue,
@@ -89,6 +91,7 @@ import {
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
+  TRedactSecretVersionValueDTO,
   TStartSecretsV2MigrationDTO,
   TUpdateBulkSecretDTO,
   TUpdateManySecretRawDTO,
@@ -131,6 +134,7 @@ type TSecretServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
+  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -154,7 +158,8 @@ export const secretServiceFactory = ({
   secretV2BridgeService,
   secretApprovalRequestService,
   licenseService,
-  reminderService
+  reminderService,
+  secretVersionV2DAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -1261,6 +1266,19 @@ export const secretServiceFactory = ({
     return secretV2BridgeService.getSecretReferenceTree(dto);
   };
 
+  const getSecretReferenceDependencyTree = async (dto: TGetSecretReferencesDTO) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+
+    if (!shouldUseSecretV2Bridge) {
+      throw new BadRequestError({
+        message: "Project version does not support secret references",
+        name: "SecretReferencesNotSupported"
+      });
+    }
+
+    return secretV2BridgeService.getSecretReferenceDependencyTree(dto);
+  };
+
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
     const { environment, secretPath, secretName, projectId } = dto;
     const plan = await licenseService.getPlan(dto.actorOrgId);
@@ -1383,10 +1401,12 @@ export const secretServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
+    personalOverridesBehavior,
     viewSecretValue,
     environment,
     includeImports,
     expandSecretReferences,
+    expandPersonalOverrides,
     recursive,
     tagSlugs = [],
     throwOnMissingReadValuePermission = true,
@@ -1397,6 +1417,8 @@ export const secretServiceFactory = ({
       const { secrets, imports } = await secretV2BridgeService.getSecrets({
         projectId,
         expandSecretReferences,
+        personalOverridesBehavior,
+        expandPersonalOverrides,
         actorId,
         actor,
         actorOrgId,
@@ -1565,6 +1587,7 @@ export const secretServiceFactory = ({
     viewSecretValue,
     projectId,
     expandSecretReferences,
+    expandPersonalOverrides,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1586,6 +1609,7 @@ export const secretServiceFactory = ({
         actorId,
         version,
         expandSecretReferences,
+        expandPersonalOverrides,
         type,
         secretName
       });
@@ -2588,7 +2612,10 @@ export const secretServiceFactory = ({
         if ((err as Error).message === "BadRequest: Failed to find secret") {
           return null;
         }
+
+        logger.error(err);
       });
+
     if (secretVersionV2) return secretVersionV2;
 
     const secret = await secretDAL.findById(secretId);
@@ -2643,16 +2670,22 @@ export const secretServiceFactory = ({
         }
       );
 
-      return decryptSecretRaw(
-        {
-          secretValueHidden,
-          ...el,
-          workspace: folder.projectId,
-          environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path
-        },
-        botKey
-      );
+      return {
+        ...decryptSecretRaw(
+          {
+            secretValueHidden,
+            ...el,
+            workspace: folder.projectId,
+            environment: folder.environment.envSlug,
+            secretPath: folderWithPath.path
+          },
+          botKey
+        ),
+        redactedByActor: null,
+        isRedacted: false,
+        redactedAt: null,
+        redactedByUserId: null
+      };
     });
   };
 
@@ -3501,8 +3534,36 @@ export const secretServiceFactory = ({
       skipMultilineEncoding: v.skipMultilineEncoding,
       tags: v.tags?.map((tag) => tag.slug),
       metadata: v.secretMetadata,
-      secretValue: v.secretValue
+      secretValue: v.secretValue,
+      isRedacted: v.isRedacted,
+      redactedAt: v.redactedAt,
+      redactedByUserId: v.redactedByUserId
     }));
+  };
+
+  const redactSecretVersionValue = async (dto: TRedactSecretVersionValueDTO) => {
+    const { versionId, ...rest } = dto;
+
+    const version = await secretVersionV2DAL.findOne({ id: versionId });
+
+    if (!version) {
+      throw new NotFoundError({ message: `Secret version with ID '${versionId}' not found` });
+    }
+
+    const project = await projectDAL.findById(version.projectId);
+    if (!project) {
+      throw new NotFoundError({ message: `Project with ID '${version.projectId}' not found` });
+    }
+
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(project.id);
+    if (!shouldUseSecretV2Bridge) {
+      throw new BadRequestError({
+        message: "Project version not supported",
+        name: "UnsupportedProjectVersionError"
+      });
+    }
+
+    return secretV2BridgeService.redactSecretVersionValue({ versionId, ...rest });
   };
 
   return {
@@ -3537,6 +3598,8 @@ export const secretServiceFactory = ({
     getSecretByIdRaw,
     getAccessibleSecrets,
     getSecretVersionsV2ByIds,
-    getChangeVersions
+    getChangeVersions,
+    redactSecretVersionValue,
+    getSecretReferenceDependencyTree
   };
 };

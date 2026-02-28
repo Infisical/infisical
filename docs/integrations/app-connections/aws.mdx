@@ -214,6 +214,121 @@ Infisical supports two methods for connecting to AWS.
                                     - Tag-related permissions: Manages certificate tags for identification and organization
                                 </Note>
                             </Accordion>
+                            <Accordion title="AWS Elastic Load Balancer">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Elastic Load Balancers:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowCertificateManagerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm:ListCertificates",
+                                                "acm:DescribeCertificate",
+                                                "acm:ImportCertificate",
+                                                "acm:DeleteCertificate",
+                                                "acm:ListTagsForCertificate"
+                                            ],
+                                            "Resource": "*"
+                                        },
+                                        {
+                                            "Sid": "AllowElasticLoadBalancerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "elasticloadbalancing:DescribeLoadBalancers",
+                                                "elasticloadbalancing:DescribeListeners",
+                                                "elasticloadbalancing:DescribeListenerCertificates",
+                                                "elasticloadbalancing:AddListenerCertificates",
+                                                "elasticloadbalancing:RemoveListenerCertificates",
+                                                "elasticloadbalancing:ModifyListener"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    **ACM Permissions:**
+                                    - **ListCertificates**: Lists all certificates in the account
+                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
+                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
+                                    - **DescribeCertificate**: Retrieves certificate details for comparison during sync
+                                    - **ListTagsForCertificate**: Retrieves certificate tags for identification
+
+                                    **ELB Permissions:**
+                                    - **DescribeLoadBalancers**: Lists available load balancers for selection
+                                    - **DescribeListeners**: Lists HTTPS/TLS listeners on load balancers
+                                    - **DescribeListenerCertificates**: Lists certificates attached to listeners
+                                    - **AddListenerCertificates**: Attaches certificates to listeners
+                                    - **RemoveListenerCertificates**: Removes certificates from listeners
+                                    - **ModifyListener**: Sets the default certificate on listeners
+                                </Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="External Certificate Authority">
+                        <AccordionGroup>
+                            <Accordion title="AWS Private CA">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to issue certificates via AWS Private CA.
+
+                                For a **single CA**, scope the `Resource` to that CA's ARN:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAwsPrivateCAAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm-pca:DescribeCertificateAuthority",
+                                                "acm-pca:GetCertificateAuthorityCertificate",
+                                                "acm-pca:IssueCertificate",
+                                                "acm-pca:GetCertificate",
+                                                "acm-pca:RevokeCertificate"
+                                            ],
+                                            "Resource": "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/your-ca-id"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                For **multiple CAs**, list each ARN in the `Resource` array:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAwsPrivateCAAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm-pca:DescribeCertificateAuthority",
+                                                "acm-pca:GetCertificateAuthorityCertificate",
+                                                "acm-pca:IssueCertificate",
+                                                "acm-pca:GetCertificate",
+                                                "acm-pca:RevokeCertificate"
+                                            ],
+                                            "Resource": [
+                                                "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/ca-id-1",
+                                                "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/ca-id-2"
+                                            ]
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    - **DescribeCertificateAuthority**: Validates the CA status and configuration
+                                    - **GetCertificateAuthorityCertificate**: Retrieves the CA certificate and chain
+                                    - **IssueCertificate**: Issues certificates from the private CA
+                                    - **GetCertificate**: Retrieves issued certificates
+                                    - **RevokeCertificate**: Revokes previously issued certificates
+
+                                    Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
+                                </Note>
+                            </Accordion>
                         </AccordionGroup>
                     </Tab>
                 </Tabs>
@@ -226,7 +341,7 @@ Infisical supports two methods for connecting to AWS.
             <Step title="Setup AWS Connection in Infisical">
                 <Tabs>
                     <Tab title="Infisical UI">
-                        1. Navigate to the **App Connections** page in the desired project.
+                        1. Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
                         ![App Connections Tab](/images/app-connections/general/add-connection.png)
 
                         2. Select the **AWS Connection** option.
@@ -430,6 +545,121 @@ Infisical supports two methods for connecting to AWS.
                                     - Tag-related permissions: Manages certificate tags for identification and organization
                                 </Note>
                             </Accordion>
+                            <Accordion title="AWS Elastic Load Balancer">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Elastic Load Balancers:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowCertificateManagerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm:ListCertificates",
+                                                "acm:DescribeCertificate",
+                                                "acm:ImportCertificate",
+                                                "acm:DeleteCertificate",
+                                                "acm:ListTagsForCertificate"
+                                            ],
+                                            "Resource": "*"
+                                        },
+                                        {
+                                            "Sid": "AllowElasticLoadBalancerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "elasticloadbalancing:DescribeLoadBalancers",
+                                                "elasticloadbalancing:DescribeListeners",
+                                                "elasticloadbalancing:DescribeListenerCertificates",
+                                                "elasticloadbalancing:AddListenerCertificates",
+                                                "elasticloadbalancing:RemoveListenerCertificates",
+                                                "elasticloadbalancing:ModifyListener"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    **ACM Permissions:**
+                                    - **ListCertificates**: Lists all certificates in the account
+                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
+                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
+                                    - **DescribeCertificate**: Retrieves certificate details for comparison during sync
+                                    - **ListTagsForCertificate**: Retrieves certificate tags for identification
+
+                                    **ELB Permissions:**
+                                    - **DescribeLoadBalancers**: Lists available load balancers for selection
+                                    - **DescribeListeners**: Lists HTTPS/TLS listeners on load balancers
+                                    - **DescribeListenerCertificates**: Lists certificates attached to listeners
+                                    - **AddListenerCertificates**: Attaches certificates to listeners
+                                    - **RemoveListenerCertificates**: Removes certificates from listeners
+                                    - **ModifyListener**: Sets the default certificate on listeners
+                                </Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="External CA">
+                        <AccordionGroup>
+                            <Accordion title="AWS Private CA">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to issue certificates via AWS Private CA.
+
+                                For a **single CA**, scope the `Resource` to that CA's ARN:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAwsPrivateCAAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm-pca:DescribeCertificateAuthority",
+                                                "acm-pca:GetCertificateAuthorityCertificate",
+                                                "acm-pca:IssueCertificate",
+                                                "acm-pca:GetCertificate",
+                                                "acm-pca:RevokeCertificate"
+                                            ],
+                                            "Resource": "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/your-ca-id"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                For **multiple CAs**, list each ARN in the `Resource` array:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAwsPrivateCAAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm-pca:DescribeCertificateAuthority",
+                                                "acm-pca:GetCertificateAuthorityCertificate",
+                                                "acm-pca:IssueCertificate",
+                                                "acm-pca:GetCertificate",
+                                                "acm-pca:RevokeCertificate"
+                                            ],
+                                            "Resource": [
+                                                "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/ca-id-1",
+                                                "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/ca-id-2"
+                                            ]
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    - **DescribeCertificateAuthority**: Validates the CA status and configuration
+                                    - **GetCertificateAuthorityCertificate**: Retrieves the CA certificate and chain
+                                    - **IssueCertificate**: Issues certificates from the private CA
+                                    - **GetCertificate**: Retrieves issued certificates
+                                    - **RevokeCertificate**: Revokes previously issued certificates
+
+                                    Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
+                                </Note>
+                            </Accordion>
                         </AccordionGroup>
                     </Tab>
                 </Tabs>
@@ -444,7 +674,7 @@ Infisical supports two methods for connecting to AWS.
             <Step title="Setup AWS Connection in Infisical">
                 <Tabs>
                     <Tab title="Infisical UI">
-                        1. Navigate to the **App Connections** page in the desired project.
+                        1. Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
                         ![App Connections Tab](/images/app-connections/general/add-connection.png)
 
                         2. Select the **AWS Connection** option.

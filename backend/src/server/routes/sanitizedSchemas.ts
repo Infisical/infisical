@@ -6,9 +6,11 @@ import {
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
   InternalCertificateAuthoritiesSchema,
+  OrgRolesSchema,
   ProjectRolesSchema,
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
+  SecretSharingSchema,
   SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -211,6 +213,10 @@ export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivile
   )
 });
 
+export const SanitizedOrgRoleSchema = OrgRolesSchema.extend({
+  permissions: UnpackedPermissionSchema.array()
+});
+
 export const SanitizedRoleSchema = ProjectRolesSchema.omit({ version: true }).extend({
   permissions: UnpackedPermissionSchema.array()
 });
@@ -289,4 +295,16 @@ export const InternalCertificateAuthorityResponseSchema = CertificateAuthorities
   requireTemplateForIssuance: z.boolean().optional(),
   notAfter: z.string().optional(),
   notBefore: z.string().optional()
+});
+
+export const SanitizedSecretSharingSchema = SecretSharingSchema.omit({
+  encryptedSecret: true,
+  hashedHex: true,
+  iv: true,
+  tag: true,
+  encryptedValue: true,
+  password: true,
+  identifier: true // we map identifier -> id
+}).extend({
+  id: z.string() // override from uuid -> string
 });

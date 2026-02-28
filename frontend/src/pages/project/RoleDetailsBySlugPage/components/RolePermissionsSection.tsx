@@ -41,11 +41,13 @@ import {
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
+  ProjectTypePermissionSubjects,
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
 import { SecretEventPermissionConditions } from "./SecretEventPermissionConditions";
 import { SecretPermissionConditions } from "./SecretPermissionConditions";
+import { SecretRotationPermissionConditions } from "./SecretRotationPermissionConditions";
 import { SecretSyncPermissionConditions } from "./SecretSyncPermissionConditions";
 import { SshHostPermissionConditions } from "./SshHostPermissionConditions";
 
@@ -89,7 +91,7 @@ export const renderConditionalComponents = (
       return <PkiSyncPermissionConditions isDisabled={isDisabled} />;
     }
 
-    if (subject === ProjectPermissionSub.SecretEvents) {
+    if (subject === ProjectPermissionSub.SecretEventSubscriptions) {
       return <SecretEventPermissionConditions isDisabled={isDisabled} />;
     }
 
@@ -119,6 +121,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.McpEndpoints) {
       return <McpEndpointPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.SecretRotation) {
+      return <SecretRotationPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
@@ -233,6 +239,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
                 .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
+                .filter((subject) => ProjectTypePermissionSubjects[currentProject.type][subject])
                 .filter(
                   (subject) =>
                     // Hide Native Integrations policy if project has no integrations

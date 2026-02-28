@@ -49,6 +49,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
   );
 
   const isEmpty = !isPending && !data?.pages?.[0].length;
+  const totalLoaded = data?.pages?.reduce((sum, page) => sum + page.length, 0) ?? 0;
 
   return (
     <div>
@@ -101,7 +102,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
           isDisabled={isFetchingNextPage || !hasNextPage}
           onClick={() => fetchNextPage()}
         >
-          {hasNextPage ? "Load More" : "End of logs"}
+          {hasNextPage ? `Load More (${totalLoaded} loaded)` : `End of logs (${totalLoaded} total)`}
         </Button>
       )}
     </div>

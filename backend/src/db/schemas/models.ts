@@ -70,6 +70,7 @@ export enum TableName {
   ProjectTemplates = "project_templates",
   ProjectTemplateUserMembership = "project_template_user_memberships",
   ProjectTemplateGroupMembership = "project_template_group_memberships",
+  ProjectTemplateIdentityMembership = "project_template_identity_memberships",
   Secret = "secrets",
   SecretReference = "secret_references",
   SecretSharing = "secret_sharing",
@@ -232,6 +233,13 @@ export enum TableName {
   PkiAcmeAuth = "pki_acme_auths",
   PkiAcmeChallenge = "pki_acme_challenges",
 
+  // PKI Discovery
+  PkiDiscoveryConfig = "pki_discovery_configs",
+  PkiCertificateInstallation = "pki_certificate_installations",
+  PkiDiscoveryInstallation = "pki_discovery_installations",
+  PkiCertificateInstallationCert = "pki_certificate_installation_certs",
+  PkiDiscoveryScanHistory = "pki_discovery_scan_history",
+
   // AI
   AiMcpServer = "ai_mcp_servers",
   AiMcpServerTool = "ai_mcp_server_tools",
@@ -249,7 +257,9 @@ export enum TableName {
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
   ApprovalRequestApprovals = "approval_request_approvals",
-  ApprovalRequestGrants = "approval_request_grants"
+  ApprovalRequestGrants = "approval_request_grants",
+
+  QueueJobs = "queue_jobs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -381,7 +391,6 @@ export enum SortDirection {
 
 export enum AccessScope {
   Organization = "organization",
-  Namespace = "namespace",
   Project = "project"
 }
 
@@ -389,11 +398,6 @@ export type AccessScopeData =
   | {
       scope: AccessScope.Organization;
       orgId: string;
-    }
-  | {
-      scope: AccessScope.Namespace;
-      orgId: string;
-      namespaceId: string;
     }
   | {
       scope: AccessScope.Project;

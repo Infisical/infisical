@@ -427,7 +427,7 @@ export const certificateApprovalServiceFactory = (
 
     const caType = (targetCa.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
-    if (caType !== CaType.ACME && caType !== CaType.AZURE_AD_CS) {
+    if (caType !== CaType.ACME && caType !== CaType.AZURE_AD_CS && caType !== CaType.AWS_PCA) {
       return null;
     }
 
@@ -441,11 +441,16 @@ export const certificateApprovalServiceFactory = (
       signatureAlgorithm: certRequest.signatureAlgorithm || "",
       keyAlgorithm: certRequest.keyAlgorithm || "",
       commonName: certRequest.commonName || "",
-      altNames: altNames?.map((san) => san.value) || [],
+      altNames: altNames?.map((san) => ({ type: san.type, value: san.value })) || [],
       keyUsages: certRequest.keyUsages || [],
       extendedKeyUsages: certRequest.extendedKeyUsages || [],
       certificateRequestId,
-      csr: certRequest.csr || undefined
+      csr: certRequest.csr || undefined,
+      organization: certRequest.organization || undefined,
+      organizationalUnit: certRequest.organizationalUnit || undefined,
+      country: certRequest.country || undefined,
+      state: certRequest.state || undefined,
+      locality: certRequest.locality || undefined
     });
 
     return {

@@ -65,6 +65,12 @@ import {
   TValidateAzureDevOpsConnectionCredentialsSchema
 } from "./azure-devops/azure-devops-types";
 import {
+  TAzureDnsConnection,
+  TAzureDnsConnectionConfig,
+  TAzureDnsConnectionInput,
+  TValidateAzureDnsConnectionCredentialsSchema
+} from "./azure-dns/azure-dns-connection-types";
+import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
@@ -89,6 +95,12 @@ import {
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
 import {
+  TCircleCIConnection,
+  TCircleCIConnectionConfig,
+  TCircleCIConnectionInput,
+  TValidateCircleCIConnectionCredentialsSchema
+} from "./circleci";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -100,6 +112,12 @@ import {
   TDatabricksConnectionInput,
   TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
+import {
+  TDbtConnection,
+  TDbtConnectionConfig,
+  TDbtConnectionInput,
+  TValidateDbtConnectionCredentialsSchema
+} from "./dbt";
 import {
   TDigitalOceanConnection,
   TDigitalOceanConnectionConfig,
@@ -205,6 +223,12 @@ import {
   TValidateOktaConnectionCredentialsSchema
 } from "./okta";
 import {
+  TOpenRouterConnection,
+  TOpenRouterConnectionConfig,
+  TOpenRouterConnectionInput,
+  TValidateOpenRouterConnectionCredentialsSchema
+} from "./open-router";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -227,6 +251,12 @@ import {
   TRenderConnectionInput,
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
+import {
+  TSmbConnection,
+  TSmbConnectionConfig,
+  TSmbConnectionInput,
+  TValidateSmbConnectionCredentialsSchema
+} from "./smb";
 import {
   TSshConnection,
   TSshConnectionConfig,
@@ -304,6 +334,7 @@ export type TAppConnection = { id: string } & (
   | TCloudflareConnection
   | TBitbucketConnection
   | TDNSMadeEasyConnection
+  | TAzureDnsConnection
   | TZabbixConnection
   | TRailwayConnection
   | TChecklyConnection
@@ -317,6 +348,10 @@ export type TAppConnection = { id: string } & (
   | TChefConnection
   | TOctopusDeployConnection
   | TSshConnection
+  | TDbtConnection
+  | TSmbConnection
+  | TOpenRouterConnection
+  | TCircleCIConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -357,6 +392,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
   | TDNSMadeEasyConnectionInput
+  | TAzureDnsConnectionInput
   | TZabbixConnectionInput
   | TRailwayConnectionInput
   | TChecklyConnectionInput
@@ -370,6 +406,10 @@ export type TAppConnectionInput = { id: string } & (
   | TChefConnectionInput
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
+  | TDbtConnectionInput
+  | TSmbConnectionInput
+  | TOpenRouterConnectionInput
+  | TCircleCIConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -428,6 +468,7 @@ export type TAppConnectionConfig =
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
   | TDNSMadeEasyConnectionConfig
+  | TAzureDnsConnectionConfig
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
@@ -440,7 +481,11 @@ export type TAppConnectionConfig =
   | TMongoDBConnectionConfig
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
-  | TSshConnectionConfig;
+  | TSshConnectionConfig
+  | TDbtConnectionConfig
+  | TSmbConnectionConfig
+  | TOpenRouterConnectionConfig
+  | TCircleCIConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -476,6 +521,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
   | TValidateDNSMadeEasyConnectionCredentialsSchema
+  | TValidateAzureDnsConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
@@ -488,7 +534,11 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateMongoDBConnectionCredentialsSchema
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
-  | TValidateSshConnectionCredentialsSchema;
+  | TValidateSshConnectionCredentialsSchema
+  | TValidateDbtConnectionCredentialsSchema
+  | TValidateSmbConnectionCredentialsSchema
+  | TValidateOpenRouterConnectionCredentialsSchema
+  | TValidateCircleCIConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
@@ -498,6 +548,17 @@ export type TListAwsConnectionKmsKeys = {
 
 export type TListAwsConnectionIamUsers = {
   connectionId: string;
+};
+
+export type TListAwsConnectionLoadBalancers = {
+  connectionId: string;
+  region: AWSRegion;
+};
+
+export type TListAwsConnectionListeners = {
+  connectionId: string;
+  region: AWSRegion;
+  loadBalancerArn: string;
 };
 
 export type TAppConnectionCredentialsValidator = (

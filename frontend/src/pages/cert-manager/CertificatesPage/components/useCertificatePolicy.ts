@@ -33,6 +33,25 @@ const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   }
 };
 
+const parseTtlToMs = (ttl: string): number => {
+  const match = ttl.match(/^(\d+)([dhmy])$/);
+  if (!match) return 0;
+  const value = parseInt(match[1], 10);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  switch (match[2]) {
+    case "h":
+      return value * 60 * 60 * 1000;
+    case "d":
+      return value * msPerDay;
+    case "m":
+      return value * 30 * msPerDay;
+    case "y":
+      return value * 365 * msPerDay;
+    default:
+      return 0;
+  }
+};
+
 export type TemplateConstraints = {
   allowedKeyUsages: string[];
   allowedExtendedKeyUsages: string[];
@@ -161,9 +180,37 @@ export const useCertificatePolicy = (
         maxPathLength
       };
 
-      // Set TTL if available
-      if (templateData.validity?.max) {
-        setValue("ttl", convertTemplateTtlToCertificateTtl(templateData.validity.max));
+      // Pre-populate from profile defaults
+      const defaults = selectedProfile?.defaults;
+      const profileTtlDays = defaults?.ttlDays;
+      const policyMaxValidity = templateData.validity?.max;
+
+      // Set TTL: use min(profile.defaults.ttlDays, policy.maxValidity)
+      if (profileTtlDays && policyMaxValidity) {
+        const profileTtlMs = profileTtlDays * 24 * 60 * 60 * 1000;
+        const policyMaxMs = parseTtlToMs(policyMaxValidity);
+        const ttl = profileTtlMs <= policyMaxMs ? `${profileTtlDays}d` : policyMaxValidity;
+        setValue("ttl", convertTemplateTtlToCertificateTtl(ttl));
+      } else if (profileTtlDays) {
+        setValue("ttl", `${profileTtlDays}d`);
+      } else if (policyMaxValidity) {
+        setValue("ttl", convertTemplateTtlToCertificateTtl(policyMaxValidity));
+      }
+
+      // Set algorithm defaults
+      if (defaults?.keyAlgorithm) {
+        setValue("keyAlgorithm", defaults.keyAlgorithm);
+      }
+      if (defaults?.signatureAlgorithm) {
+        setValue("signatureAlgorithm", defaults.signatureAlgorithm);
+      }
+
+      // Set basic constraints defaults
+      if (defaults?.basicConstraints) {
+        setValue("basicConstraints.isCA", defaults.basicConstraints.isCA);
+        if (defaults.basicConstraints.pathLength !== undefined) {
+          setValue("basicConstraints.pathLength", defaults.basicConstraints.pathLength);
+        }
       }
 
       // Handle SAN types
@@ -193,10 +240,61 @@ export const useCertificatePolicy = (
         newConstraints.allowedSubjectAttributeTypes =
           subjectTypes.length > 0 ? subjectTypes : [CertSubjectAttributeType.COMMON_NAME];
 
+        // Pre-populate subject attributes from profile defaults
+        const defaultSubjectAttrs: Array<{ type: CertSubjectAttributeType; value: string }> = [];
+        if (defaults?.commonName) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.COMMON_NAME,
+            value: defaults.commonName
+          });
+        }
+        if (defaults?.organization) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.ORGANIZATION,
+            value: defaults.organization
+          });
+        }
+        if (defaults?.organizationalUnit) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.ORGANIZATIONAL_UNIT,
+            value: defaults.organizationalUnit
+          });
+        }
+        if (defaults?.country) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.COUNTRY,
+            value: defaults.country
+          });
+        }
+        if (defaults?.state) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.STATE,
+            value: defaults.state
+          });
+        }
+        if (defaults?.locality) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.LOCALITY,
+            value: defaults.locality
+          });
+        }
+
         const currentSubjectAttrs = watch("subjectAttributes");
         if (!currentSubjectAttrs || currentSubjectAttrs.length === 0) {
-          const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
-          setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
+          if (defaultSubjectAttrs.length > 0) {
+            // Filter to only allowed attribute types
+            const filteredDefaults = defaultSubjectAttrs.filter((attr) =>
+              newConstraints.allowedSubjectAttributeTypes.includes(attr.type)
+            );
+            const subjectValue =
+              filteredDefaults.length > 0
+                ? filteredDefaults
+                : [{ type: newConstraints.allowedSubjectAttributeTypes[0], value: "" }];
+            setValue("subjectAttributes", subjectValue);
+          } else {
+            const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
+            setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
+          }
         }
       } else {
         newConstraints.shouldShowSubjectSection = false;
@@ -204,26 +302,43 @@ export const useCertificatePolicy = (
         setValue("subjectAttributes", undefined);
       }
 
+      // Set isCA if template requires it
+      if (templateRequiresCA) {
+        setValue("basicConstraints.isCA", true);
+      }
+
       setConstraints(newConstraints);
 
-      // Set initial required usages
+      // Set initial usages: merge required usages with profile defaults
       const initialKeyUsages: Record<string, boolean> = {};
       const initialExtendedKeyUsages: Record<string, boolean> = {};
 
+      // Start with profile default key usages
+      if (defaults?.keyUsages) {
+        defaults.keyUsages.forEach((usage: string) => {
+          initialKeyUsages[usage] = true;
+        });
+      }
+
+      // Required usages always override (ensure they're checked)
       (templateData.keyUsages?.required || []).forEach((usage: string) => {
         initialKeyUsages[usage] = true;
       });
 
+      // Start with profile default extended key usages
+      if (defaults?.extendedKeyUsages) {
+        defaults.extendedKeyUsages.forEach((usage: string) => {
+          initialExtendedKeyUsages[usage] = true;
+        });
+      }
+
+      // Required extended key usages always override
       (templateData.extendedKeyUsages?.required || []).forEach((usage: string) => {
         initialExtendedKeyUsages[usage] = true;
       });
 
       setValue("keyUsages", initialKeyUsages);
       setValue("extendedKeyUsages", initialExtendedKeyUsages);
-
-      if (templateRequiresCA) {
-        setValue("basicConstraints.isCA", true);
-      }
     }
   }, [templateData, selectedProfile, setValue, watch, isModalOpen]);
 

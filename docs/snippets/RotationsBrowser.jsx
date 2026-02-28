@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics"];
 
   const rotations = [
     {
@@ -14,6 +14,7 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate AWS IAM user access keys.",
       category: "Cloud Providers",
+      rotationType: "Dual-Phase",
     },
     {
       name: "Azure Client Secret",
@@ -21,6 +22,7 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/azure-client-secret",
       description: "Learn how to automatically rotate Azure client secrets.",
       category: "Cloud Providers",
+      rotationType: "Dual-Phase",
     },
     {
       name: "Databricks Service Principal Secret",
@@ -29,6 +31,15 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate Databricks service principal OAuth secrets.",
       category: "Cloud Providers",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "DBT Service Token",
+      slug: "dbt-service-token",
+      path: "/documentation/platform/secret-rotation/dbt-service-token",
+      description: "Learn how to automatically rotate DBT service tokens.",
+      category: "Data Analytics",
+      rotationType: "Dual-Phase",
     },
     {
       name: "Auth0 Client Secret",
@@ -36,6 +47,7 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/auth0-client-secret",
       description: "Learn how to automatically rotate Auth0 client secrets.",
       category: "Identity & Auth",
+      rotationType: "Single-Phase",
     },
     {
       name: "Okta Client Secret",
@@ -43,6 +55,7 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/okta-client-secret",
       description: "Learn how to automatically rotate Okta client secrets.",
       category: "Identity & Auth",
+      rotationType: "Dual-Phase",
     },
     {
       name: "LDAP Password",
@@ -50,6 +63,7 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/ldap-password",
       description: "Learn how to automatically rotate LDAP user passwords.",
       category: "Identity & Auth",
+      rotationType: "Single-Phase",
     },
     {
       name: "Unix/Linux Local Account",
@@ -57,6 +71,7 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/unix-linux-local-account",
       description: "Learn how to automatically rotate Unix/Linux local account passwords.",
       category: "Networking & DNS",
+      rotationType: "Single-Phase",
     },
     {
       name: "MySQL",
@@ -65,6 +80,7 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate MySQL database credentials.",
       category: "Databases",
+      rotationType: "Dual-Phase",
     },
     {
       name: "PostgreSQL",
@@ -73,6 +89,7 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate PostgreSQL database credentials.",
       category: "Databases",
+      rotationType: "Dual-Phase",
     },
     {
       name: "Redis",
@@ -81,6 +98,7 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate Redis database credentials.",
       category: "Databases",
+      rotationType: "Dual-Phase",
     },
     {
       name: "Microsoft SQL Server",
@@ -89,6 +107,7 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate Microsoft SQL Server credentials.",
       category: "Databases",
+      rotationType: "Dual-Phase",
     },
     {
       name: "Oracle Database",
@@ -97,6 +116,7 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate Oracle Database credentials.",
       category: "Databases",
+      rotationType: "Dual-Phase",
     },
     {
       name: "MongoDB Credentials",
@@ -104,6 +124,24 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/mongodb-credentials",
       description: "Learn how to automatically rotate MongoDB credentials.",
       category: "Databases",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Windows Local Account",
+      slug: "windows-local-account",
+      path: "/documentation/platform/secret-rotation/windows-local-account",
+      description: "Learn how to automatically rotate Windows local account passwords.",
+      category: "Networking & DNS",
+      rotationType: "Single-Phase",
+    },
+    {
+      name: "OpenRouter API Key",
+      slug: "openrouter-api-key",
+      path: "/documentation/platform/secret-rotation/openrouter-api-key",
+      description:
+        "Learn how to automatically rotate OpenRouter API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
     },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
@@ -205,9 +243,18 @@ export const RotationsBrowser = () => {
                   <h3 className="text-base font-medium text-gray-900 leading-none m-0">
                     {rotation.name}
                   </h3>
-                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0">
-                    {rotation.category}
-                  </span>
+                  <div className="ml-3 flex items-center gap-2 flex-shrink-0">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      rotation.rotationType === "Dual-Phase"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-orange-100 text-orange-700"
+                    }`}>
+                      {rotation.rotationType}
+                    </span>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                      {rotation.category}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {rotation.description}

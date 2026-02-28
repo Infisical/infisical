@@ -23,6 +23,8 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
+import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
+import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TAcmeConfigData, TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
@@ -36,6 +38,7 @@ import {
   IssuerType,
   TCertificateProfile,
   TCertificateProfileCertificate,
+  TCertificateProfileDefaults,
   TCertificateProfileInsert,
   TCertificateProfileUpdate,
   TCertificateProfileWithConfigs
@@ -224,6 +227,7 @@ export type TCertificateProfileCreateData = Omit<
 type TCertificateProfileServiceFactoryDep = {
   certificateProfileDAL: TCertificateProfileDALFactory;
   certificatePolicyDAL: TCertificatePolicyDALFactory;
+  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateRequestAgainstPolicy">;
   apiEnrollmentConfigDAL: TApiEnrollmentConfigDALFactory;
   estEnrollmentConfigDAL: TEstEnrollmentConfigDALFactory;
   acmeEnrollmentConfigDAL: TAcmeEnrollmentConfigDALFactory;
@@ -250,17 +254,21 @@ const convertDalToService = (dalResult: Record<string, unknown>): TCertificatePr
     parsedExternalConfigs = dalResult.externalConfigs as Record<string, unknown>;
   }
 
+  const parsedDefaults = (dalResult.defaults as TCertificateProfileDefaults) ?? null;
+
   return {
     ...dalResult,
     enrollmentType: dalResult.enrollmentType as EnrollmentType,
     issuerType: dalResult.issuerType as IssuerType,
-    externalConfigs: parsedExternalConfigs
+    externalConfigs: parsedExternalConfigs,
+    defaults: parsedDefaults
   } as TCertificateProfile;
 };
 
 export const certificateProfileServiceFactory = ({
   certificateProfileDAL,
   certificatePolicyDAL,
+  certificatePolicyService,
   apiEnrollmentConfigDAL,
   estEnrollmentConfigDAL,
   acmeEnrollmentConfigDAL,
@@ -330,6 +338,31 @@ export const certificateProfileServiceFactory = ({
 
     validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
 
+    // Validate defaults against policy constraints
+    if (data.defaults && data.certificatePolicyId) {
+      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
+      if (policy) {
+        const request: TCertificateRequest = {
+          commonName: data.defaults.commonName,
+          organization: data.defaults.organization,
+          organizationalUnit: data.defaults.organizationalUnit,
+          country: data.defaults.country,
+          state: data.defaults.state,
+          locality: data.defaults.locality,
+          keyUsages: data.defaults.keyUsages,
+          extendedKeyUsages: data.defaults.extendedKeyUsages,
+          signatureAlgorithm: data.defaults.signatureAlgorithm,
+          keyAlgorithm: data.defaults.keyAlgorithm,
+          validity: data.defaults.ttlDays ? { ttl: `${data.defaults.ttlDays}d` } : undefined,
+          basicConstraints: data.defaults.basicConstraints
+        };
+        const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
+        if (!result.isValid) {
+          throw new BadRequestError({ message: `Profile defaults violate policy: ${result.errors.join("; ")}` });
+        }
+      }
+    }
+
     // Validate external configs
     await validateExternalConfigs(
       data.externalConfigs,
@@ -349,8 +382,13 @@ export const certificateProfileServiceFactory = ({
         message: "API enrollment requires API configuration"
       });
     }
-    // TODO: acme type currently doesn't require config obj, but add a check in the future if
-    //       we have options
+    if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+      if (data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification) {
+        throw new ForbiddenRequestError({
+          message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
+        });
+      }
+    }
 
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
@@ -397,6 +435,7 @@ export const certificateProfileServiceFactory = ({
         const acmeConfig = await acmeEnrollmentConfigDAL.create(
           {
             skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false,
+            skipEabBinding: data.acmeConfig.skipEabBinding ?? false,
             encryptedEabSecret
           },
           tx
@@ -499,6 +538,46 @@ export const certificateProfileServiceFactory = ({
       );
     }
 
+    if (finalEnrollmentType === EnrollmentType.ACME && data.acmeConfig && existingProfile.acmeConfigId) {
+      const existingAcmeConfig = await acmeEnrollmentConfigDAL.findById(existingProfile.acmeConfigId);
+      if (existingAcmeConfig) {
+        const finalSkipEabBinding = data.acmeConfig.skipEabBinding ?? existingAcmeConfig.skipEabBinding;
+        const finalSkipDnsOwnershipVerification =
+          data.acmeConfig.skipDnsOwnershipVerification ?? existingAcmeConfig.skipDnsOwnershipVerification;
+
+        if (finalSkipEabBinding && finalSkipDnsOwnershipVerification) {
+          throw new ForbiddenRequestError({
+            message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
+          });
+        }
+      }
+    }
+    // Validate defaults against policy constraints if provided
+    if (data.defaults) {
+      const policyId = data.certificatePolicyId || existingProfile.certificatePolicyId;
+      const policy = await certificatePolicyDAL.findById(policyId);
+      if (policy) {
+        const request: TCertificateRequest = {
+          commonName: data.defaults.commonName,
+          organization: data.defaults.organization,
+          organizationalUnit: data.defaults.organizationalUnit,
+          country: data.defaults.country,
+          state: data.defaults.state,
+          locality: data.defaults.locality,
+          keyUsages: data.defaults.keyUsages,
+          extendedKeyUsages: data.defaults.extendedKeyUsages,
+          signatureAlgorithm: data.defaults.signatureAlgorithm,
+          keyAlgorithm: data.defaults.keyAlgorithm,
+          validity: data.defaults.ttlDays ? { ttl: `${data.defaults.ttlDays}d` } : undefined,
+          basicConstraints: data.defaults.basicConstraints
+        };
+        const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
+        if (!result.isValid) {
+          throw new BadRequestError({ message: `Profile defaults violate policy: ${result.errors.join("; ")}` });
+        }
+      }
+    }
+
     const updatedData =
       finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
 
@@ -545,13 +624,16 @@ export const certificateProfileServiceFactory = ({
       }
 
       if (acmeConfig && existingProfile.acmeConfigId) {
-        await acmeEnrollmentConfigDAL.updateById(
-          existingProfile.acmeConfigId,
-          {
-            skipDnsOwnershipVerification: acmeConfig.skipDnsOwnershipVerification ?? false
-          },
-          tx
-        );
+        const acmeUpdateData: { skipDnsOwnershipVerification?: boolean; skipEabBinding?: boolean } = {};
+        if (acmeConfig.skipDnsOwnershipVerification !== undefined) {
+          acmeUpdateData.skipDnsOwnershipVerification = acmeConfig.skipDnsOwnershipVerification;
+        }
+        if (acmeConfig.skipEabBinding !== undefined) {
+          acmeUpdateData.skipEabBinding = acmeConfig.skipEabBinding;
+        }
+        if (Object.keys(acmeUpdateData).length > 0) {
+          await acmeEnrollmentConfigDAL.updateById(existingProfile.acmeConfigId, acmeUpdateData, tx);
+        }
       }
 
       const profileResult = await certificateProfileDAL.updateById(profileId, profileUpdateData, tx);

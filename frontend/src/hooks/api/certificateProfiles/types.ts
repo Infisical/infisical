@@ -9,6 +9,21 @@ export enum IssuerType {
   SELF_SIGNED = "self-signed"
 }
 
+export type TCertificateProfileDefaults = {
+  ttlDays?: number;
+  commonName?: string;
+  keyAlgorithm?: string;
+  signatureAlgorithm?: string;
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
+  basicConstraints?: { isCA: boolean; pathLength?: number };
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+};
+
 export type TCertificateProfile = {
   id: string;
   projectId: string;
@@ -23,6 +38,7 @@ export type TCertificateProfile = {
   createdAt: string;
   updatedAt: string;
   externalConfigs?: Record<string, unknown> | null;
+  defaults?: TCertificateProfileDefaults | null;
   certificateAuthority?: {
     id: string;
     projectId?: string;
@@ -63,6 +79,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     id: string;
     directoryUrl: string;
     skipDnsOwnershipVerification?: boolean;
+    skipEabBinding?: boolean;
   };
 };
 
@@ -83,8 +100,12 @@ export type TCreateCertificateProfileDTO = {
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: unknown;
+  acmeConfig?: {
+    skipDnsOwnershipVerification?: boolean;
+    skipEabBinding?: boolean;
+  };
   externalConfigs?: Record<string, unknown> | null;
+  defaults?: TCertificateProfileDefaults | null;
 };
 
 export type TUpdateCertificateProfileDTO = {
@@ -102,8 +123,12 @@ export type TUpdateCertificateProfileDTO = {
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: unknown;
+  acmeConfig?: {
+    skipDnsOwnershipVerification?: boolean;
+    skipEabBinding?: boolean;
+  };
   externalConfigs?: Record<string, unknown> | null;
+  defaults?: TCertificateProfileDefaults | null;
 };
 
 export type TDeleteCertificateProfileDTO = {

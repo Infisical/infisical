@@ -11,6 +11,7 @@ import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-r
 import { registerGatewayV2Router } from "./gateway-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
+import { registerSecretVersionRouter } from "./secret-version-router";
 
 export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
@@ -54,4 +55,6 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/secret-scanning" }
   );
+
+  await server.register(registerSecretVersionRouter, { prefix: "/secret-versions" });
 };

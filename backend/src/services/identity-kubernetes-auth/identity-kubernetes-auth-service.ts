@@ -85,7 +85,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -153,7 +153,6 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
-    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
     const callbackResult = await withGatewayProxy(
       async (port, httpsAgent) => {
@@ -168,15 +167,7 @@ export const identityKubernetesAuthServiceFactory = ({
         protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
         targetHost: inputs.targetHost,
         targetPort: inputs.targetPort,
-        relayHost,
-        relayPort: Number(relayPort),
-        identityId: relayDetails.identityId,
-        orgId: relayDetails.orgId,
-        tlsOptions: {
-          ca: relayDetails.certChain,
-          cert: relayDetails.certificate,
-          key: relayDetails.privateKey.toString()
-        },
+        relayDetails,
         // only needed for TCP protocol, because the gateway as reviewer will use the pod's CA cert for auth directly
         ...(!inputs.reviewTokenThroughGateway
           ? {
@@ -256,7 +247,7 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
-  const login = async ({ identityId, jwt: serviceAccountJwt, subOrganizationName }: TLoginKubernetesAuthDTO) => {
+  const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
     const appCfg = getConfig();
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
     if (!identityKubernetesAuth) {
@@ -271,7 +262,7 @@ export const identityKubernetesAuthServiceFactory = ({
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
@@ -544,23 +535,23 @@ export const identityKubernetesAuthServiceFactory = ({
           });
       }
 
-      if (subOrganizationName) {
+      if (organizationSlug) {
         if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
           if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
           }
 
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
+          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+            actorType: ActorType.IDENTITY,
+            actorId: identity.id,
+            orgId: subOrg.id
           });
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`
             });
           }
 

@@ -8,12 +8,14 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamAccountHeader } from "../PamAccountHeader";
+import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { KubernetesAccountForm } from "./KubernetesAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 import { RedisAccountForm } from "./RedisAccountForm";
 import { SshAccountForm } from "./SshAccountForm";
+import { WindowsAccountForm } from "./WindowsAccountForm";
 
 type FormProps = {
   onComplete: (account: TPamAccount) => void;
@@ -40,14 +42,21 @@ const CreateForm = ({
   const createPamAccount = useCreatePamAccount();
 
   const onSubmit = async (
-    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials" | "requireMfa">
+    formData: DiscriminativePick<
+      TPamAccount,
+      "name" | "description" | "credentials" | "requireMfa"
+    > & {
+      metadata?: Record<string, unknown>;
+    }
   ) => {
+    const { metadata, ...rest } = formData;
     const account = await createPamAccount.mutateAsync({
-      ...formData,
+      ...rest,
       folderId,
       resourceId,
       resourceType,
-      projectId
+      projectId,
+      metadata
     });
     createNotification({
       text: "Successfully created account",
@@ -97,6 +106,22 @@ const CreateForm = ({
           resourceType={resourceType}
         />
       );
+    case PamResourceType.Windows:
+      return (
+        <WindowsAccountForm
+          onSubmit={onSubmit}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
+    case PamResourceType.ActiveDirectory:
+      return (
+        <ActiveDirectoryAccountForm
+          onSubmit={onSubmit}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -106,12 +131,19 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   const updatePamAccount = useUpdatePamAccount();
 
   const onSubmit = async (
-    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials" | "requireMfa">
+    formData: DiscriminativePick<
+      TPamAccount,
+      "name" | "description" | "credentials" | "requireMfa"
+    > & {
+      metadata?: Record<string, unknown>;
+    }
   ) => {
+    const { metadata, ...rest } = formData;
     const updatedAccount = await updatePamAccount.mutateAsync({
       accountId: account.id,
       resourceType: account.resource.resourceType,
-      ...formData
+      ...rest,
+      metadata
     });
     createNotification({
       text: "Successfully updated account",
@@ -138,6 +170,10 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       return <KubernetesAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.AwsIam:
       return <AwsIamAccountForm account={account as any} onSubmit={onSubmit} />;
+    case PamResourceType.Windows:
+      return <WindowsAccountForm account={account as any} onSubmit={onSubmit} />;
+    case PamResourceType.ActiveDirectory:
+      return <ActiveDirectoryAccountForm account={account as any} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
   }

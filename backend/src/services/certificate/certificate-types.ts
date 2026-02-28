@@ -169,6 +169,18 @@ export const mapLegacyAltNameType = (legacyType: TAltNameType): CertSubjectAlter
       throw new Error(`Unknown legacy alt name type: ${legacyType}`);
   }
 };
+
+const SAN_TYPE_TO_X509_TYPE: Record<CertSubjectAlternativeNameType, TAltNameType> = {
+  [CertSubjectAlternativeNameType.IP_ADDRESS]: TAltNameType.IP,
+  [CertSubjectAlternativeNameType.EMAIL]: TAltNameType.EMAIL,
+  [CertSubjectAlternativeNameType.URI]: TAltNameType.URL,
+  [CertSubjectAlternativeNameType.DNS_NAME]: TAltNameType.DNS
+};
+
+export const mapSanTypeToX509Type = (sanType: CertSubjectAlternativeNameType): TAltNameType => {
+  return SAN_TYPE_TO_X509_TYPE[sanType] ?? TAltNameType.DNS;
+};
+
 export type TAltNameMapping = {
   type: TAltNameType;
   value: string;
@@ -185,3 +197,28 @@ export enum CertificateOrderStatus {
   VALID = "valid",
   INVALID = "invalid"
 }
+
+export type TCertificateSubject = {
+  commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+};
+
+export type TCertificateFingerprints = {
+  sha256: string;
+  sha1?: string;
+};
+
+export type TCertificateBasicConstraints = {
+  isCA: boolean;
+  pathLength?: number;
+};
+
+export type TParsedCertificateBody = {
+  subject?: TCertificateSubject;
+  fingerprints?: TCertificateFingerprints;
+  basicConstraints?: TCertificateBasicConstraints;
+};

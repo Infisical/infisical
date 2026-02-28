@@ -1,29 +1,133 @@
+import { subject } from "@casl/ability";
+import { ArrowDownToLineIcon, RefreshCcwIcon } from "lucide-react";
+
+import { ProjectPermissionCan } from "@app/components/permissions";
+import {
+  Button,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
+import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
+import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
+import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+import { UsePopUpState } from "@app/hooks/usePopUp";
+
 import { CaCertificatesTable } from "./CaCertificatesTable";
 
 type Props = {
   caId: string;
   caName: string;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["renewCa", "installCaCert", "generateRootCaCert"]>,
+    data?: object
+  ) => void;
 };
 
-export const CaCertificatesSection = ({ caId, caName }: Props) => {
-  return (
-    <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">CA Certificates</h3>
-        {/* <IconButton
-          ariaLabel="copy icon"
-          variant="plain"
-          className="group relative"
-          onClick={() => {
-            // handlePopUpOpen("addIdentityToProject");
-          }}
+export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) => {
+  const { data } = useGetCa({
+    caId,
+    type: CaType.INTERNAL
+  });
+
+  const ca = data as TInternalCertificateAuthority;
+
+  const renderActionButton = () => {
+    if (!ca) return null;
+
+    if (ca.status === CaStatus.ACTIVE) {
+      return (
+        <ProjectPermissionCan
+          I={ProjectPermissionCertificateAuthorityActions.IssueCACertificate}
+          a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
         >
-          <FontAwesomeIcon icon={faPlus} />
-        </IconButton> */}
-      </div>
-      <div className="py-4">
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              variant="project"
+              size="xs"
+              onClick={() => {
+                if (
+                  ca.configuration.type === InternalCaType.INTERMEDIATE &&
+                  !ca.configuration.parentCaId
+                ) {
+                  handlePopUpOpen("installCaCert", {
+                    caId: ca.id,
+                    isParentCaExternal: true
+                  });
+                  return;
+                }
+
+                handlePopUpOpen("renewCa", {
+                  caId: ca.id
+                });
+              }}
+            >
+              <RefreshCcwIcon />
+              Renew CA
+            </Button>
+          )}
+        </ProjectPermissionCan>
+      );
+    }
+
+    if (ca.status === CaStatus.PENDING_CERTIFICATE) {
+      return (
+        <ProjectPermissionCan
+          I={ProjectPermissionCertificateAuthorityActions.Create}
+          a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
+        >
+          {(isAllowed) => {
+            if (ca.configuration.type === InternalCaType.ROOT) {
+              return (
+                <Button
+                  isDisabled={!isAllowed}
+                  variant="project"
+                  size="xs"
+                  onClick={() => {
+                    handlePopUpOpen("generateRootCaCert", {
+                      caId: ca.id
+                    });
+                  }}
+                >
+                  Generate Certificate
+                </Button>
+              );
+            }
+            return (
+              <Button
+                isDisabled={!isAllowed}
+                variant="project"
+                size="xs"
+                onClick={() => {
+                  handlePopUpOpen("installCaCert", {
+                    caId: ca.id
+                  });
+                }}
+              >
+                <ArrowDownToLineIcon />
+                Install CA Certificate
+              </Button>
+            );
+          }}
+        </ProjectPermissionCan>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <UnstableCard className="w-full">
+      <UnstableCardHeader className="border-b">
+        <UnstableCardTitle>CA Certificates</UnstableCardTitle>
+        <UnstableCardAction>{renderActionButton()}</UnstableCardAction>
+      </UnstableCardHeader>
+      <UnstableCardContent>
         <CaCertificatesTable caId={caId} caName={caName} />
-      </div>
-    </div>
+      </UnstableCardContent>
+    </UnstableCard>
   );
 };

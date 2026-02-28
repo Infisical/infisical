@@ -1,4 +1,5 @@
-export { CertificateRequestStatus, CertStatus } from "./enums";
+export { certKeyAlgorithmToNameMap, certSignatureAlgorithmToNameMap } from "./constants";
+export { CertificateRequestStatus, CertKeyAlgorithm, CertSource, CertStatus } from "./enums";
 export {
   useDeleteCert,
   useDownloadCertPkcs12,
@@ -11,10 +12,13 @@ export {
   useGetCert,
   useGetCertBody,
   useGetCertBundle,
+  useGetCertificateById,
   useGetCertificateRequest,
   useListCertificateRequests
 } from "./queries";
 export type {
+  TCertificate,
+  TCertificateByIdResponse,
   TCertificateRequestDetails,
   TCertificateRequestListItem,
   TListCertificateRequestsParams,

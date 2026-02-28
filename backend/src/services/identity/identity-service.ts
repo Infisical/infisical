@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -8,12 +9,13 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { ActorType } from "../auth/auth-type";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -40,8 +42,9 @@ type TIdentityServiceFactoryDep = {
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
 };
 
@@ -54,6 +57,7 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseService,
+  licenseDAL,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -105,16 +109,23 @@ export const identityServiceFactory = ({
         });
     }
 
-    const plan = await licenseService.getPlan(orgId);
-
-    if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-      // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-      throw new BadRequestError({
-        message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
-      });
-    }
-
     const identity = await identityDAL.transaction(async (tx) => {
+      // Acquire advisory lock to prevent race conditions when checking identity limits
+      // This ensures that concurrent requests cannot bypass the identity limit check
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateIdentity(orgId)]);
+
+      // Check identity limit inside the transaction after acquiring the lock
+      // We count directly from the database to get the accurate count, not the cached plan value
+      const plan = await licenseService.getPlan(orgId);
+      if (plan?.slug !== "enterprise" && plan?.identityLimit) {
+        const currentIdentityCount = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
+        if (currentIdentityCount >= plan.identityLimit) {
+          throw new BadRequestError({
+            message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
+          });
+        }
+      }
+
       const newIdentity = await identityDAL.create({ name, hasDeleteProtection, orgId }, tx);
       const membership = await membershipIdentityDAL.create(
         {
@@ -176,10 +187,10 @@ export const identityServiceFactory = ({
   }: TUpdateIdentityDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
-    const identityOrgMembership = await membershipIdentityDAL.findOne({
-      actorIdentityId: id,
-      scope: AccessScope.Organization,
-      scopeOrgId: actorOrgId
+    const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: id,
+      orgId: actorOrgId
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
@@ -456,10 +467,10 @@ export const identityServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TListProjectIdentitiesByIdentityIdDTO) => {
-    const identityOrgMembership = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityId,
-      scope: AccessScope.Organization,
-      scopeOrgId: actorOrgId
+    const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: identityId,
+      orgId: actorOrgId
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 

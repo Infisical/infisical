@@ -33,7 +33,6 @@ import {
 
 type Props = {
   projectTemplate: TProjectTemplate;
-  isInfisicalTemplate: boolean;
 };
 
 const formSchema = z.object({
@@ -68,7 +67,7 @@ const addGroupFormSchema = z.object({
 
 type TAddGroupForm = z.infer<typeof addGroupFormSchema>;
 
-export const ProjectTemplateGroupsSection = ({ projectTemplate, isInfisicalTemplate }: Props) => {
+export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
@@ -138,15 +137,6 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate, isInfisicalTempl
       }));
   }, [orgGroups, currentGroups]);
 
-  const getRoleNames = (roleSlugs: string[]) => {
-    return roleSlugs
-      .map((slug) => {
-        const role = availableRoles.find((r) => r.slug === slug);
-        return role?.name || slug;
-      })
-      .join(", ");
-  };
-
   const getGroupName = (groupSlug: string) => {
     const group = orgGroups?.find((g) => g.slug.toLowerCase() === groupSlug.toLowerCase());
     return group?.name || groupSlug;
@@ -196,52 +186,49 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate, isInfisicalTempl
           <div>
             <h2 className="text-lg font-medium">Project Groups</h2>
             <p className="text-sm text-mineshaft-400">
-              {isInfisicalTemplate
-                ? "Groups that will be automatically added to projects created from this template"
-                : "Add groups that will be automatically added to projects created from this template"}
+              Add groups that will be automatically added to projects created from this template
             </p>
           </div>
-          {!isInfisicalTemplate && (
-            <OrgPermissionCan
-              I={OrgPermissionActions.Edit}
-              a={OrgPermissionSubjects.ProjectTemplates}
-            >
-              {(isAllowed) => (
-                <div className="flex gap-3">
-                  {isAllowed && isDirty && (
-                    <>
-                      <Button
-                        onClick={handleDiscard}
-                        colorSchema="secondary"
-                        variant="plain"
-                        type="button"
-                      >
-                        Discard
-                      </Button>
-                      <Button
-                        type="submit"
-                        colorSchema="primary"
-                        variant="solid"
-                        leftIcon={<FontAwesomeIcon icon={faSave} />}
-                      >
-                        Save
-                      </Button>
-                    </>
-                  )}
-                  <Button
-                    onClick={() => setIsAddGroupModalOpen(true)}
-                    colorSchema="primary"
-                    variant="outline_bg"
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    isDisabled={!isAllowed || availableOrgGroups.length === 0}
-                    type="button"
-                  >
-                    Add Group
-                  </Button>
-                </div>
-              )}
-            </OrgPermissionCan>
-          )}
+
+          <OrgPermissionCan
+            I={OrgPermissionActions.Edit}
+            a={OrgPermissionSubjects.ProjectTemplates}
+          >
+            {(isAllowed) => (
+              <div className="flex gap-3">
+                {isAllowed && isDirty && (
+                  <>
+                    <Button
+                      onClick={handleDiscard}
+                      colorSchema="secondary"
+                      variant="plain"
+                      type="button"
+                    >
+                      Discard
+                    </Button>
+                    <Button
+                      type="submit"
+                      colorSchema="primary"
+                      variant="solid"
+                      leftIcon={<FontAwesomeIcon icon={faSave} />}
+                    >
+                      Save
+                    </Button>
+                  </>
+                )}
+                <Button
+                  onClick={() => setIsAddGroupModalOpen(true)}
+                  colorSchema="primary"
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  isDisabled={!isAllowed || availableOrgGroups.length === 0}
+                  type="button"
+                >
+                  Add Group
+                </Button>
+              </div>
+            )}
+          </OrgPermissionCan>
         </div>
         {errors.groups && <span className="my-4 text-sm text-red">{errors.groups.message}</span>}
         <TableContainer>
@@ -250,7 +237,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate, isInfisicalTempl
               <Tr>
                 <Th>Group</Th>
                 <Th>Roles</Th>
-                {!isInfisicalTemplate && <Th className="w-16" />}
+                <Th className="w-16" />
               </Tr>
             </THead>
             <TBody>
@@ -269,93 +256,79 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate, isInfisicalTempl
                       />
                     </Td>
                     <Td>
-                      {isInfisicalTemplate ? (
-                        <Controller
-                          control={control}
-                          name={`groups.${pos}.roles`}
-                          render={({ field }) => (
-                            <span className="text-sm">{getRoleNames(field.value)}</span>
-                          )}
-                        />
-                      ) : (
-                        <OrgPermissionCan
-                          I={OrgPermissionActions.Edit}
-                          a={OrgPermissionSubjects.ProjectTemplates}
-                        >
-                          {(isAllowed) => (
-                            <Controller
-                              control={control}
-                              name={`groups.${pos}.roles`}
-                              render={({ field, fieldState: { error } }) => {
-                                // Include orphaned roles
-                                const availableRoleSlugs = new Set(
-                                  availableRoles.map((r) => r.slug)
-                                );
-                                const orphanedRoles = field.value
-                                  .filter((slug) => !availableRoleSlugs.has(slug))
-                                  .map((slug) => ({ slug, name: slug }));
-                                const allOptions = [...availableRoles, ...orphanedRoles];
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Edit}
+                        a={OrgPermissionSubjects.ProjectTemplates}
+                      >
+                        {(isAllowed) => (
+                          <Controller
+                            control={control}
+                            name={`groups.${pos}.roles`}
+                            render={({ field, fieldState: { error } }) => {
+                              // Include orphaned roles
+                              const availableRoleSlugs = new Set(availableRoles.map((r) => r.slug));
+                              const orphanedRoles = field.value
+                                .filter((slug) => !availableRoleSlugs.has(slug))
+                                .map((slug) => ({ slug, name: slug }));
+                              const allOptions = [...availableRoles, ...orphanedRoles];
 
-                                const selectedValues = allOptions.filter((role) =>
-                                  field.value.includes(role.slug)
-                                );
+                              const selectedValues = allOptions.filter((role) =>
+                                field.value.includes(role.slug)
+                              );
 
-                                return (
-                                  <FormControl
-                                    isError={Boolean(error?.message)}
-                                    errorText={error?.message}
-                                    className="mb-0"
-                                  >
-                                    <FilterableSelect
-                                      isMulti
-                                      isDisabled={!isAllowed}
-                                      options={allOptions}
-                                      value={selectedValues}
-                                      onChange={(selected) => {
-                                        field.onChange(
-                                          (selected as { slug: string; name: string }[]).map(
-                                            (s) => s.slug
-                                          )
-                                        );
-                                      }}
-                                      getOptionValue={(option) => option.slug}
-                                      getOptionLabel={(option) => option.name}
-                                      placeholder="Select roles..."
-                                      menuPosition="fixed"
-                                    />
-                                  </FormControl>
-                                );
-                              }}
-                            />
-                          )}
-                        </OrgPermissionCan>
-                      )}
+                              return (
+                                <FormControl
+                                  isError={Boolean(error?.message)}
+                                  errorText={error?.message}
+                                  className="mb-0"
+                                >
+                                  <FilterableSelect
+                                    isMulti
+                                    isDisabled={!isAllowed}
+                                    options={allOptions}
+                                    value={selectedValues}
+                                    onChange={(selected) => {
+                                      field.onChange(
+                                        (selected as { slug: string; name: string }[]).map(
+                                          (s) => s.slug
+                                        )
+                                      );
+                                    }}
+                                    getOptionValue={(option) => option.slug}
+                                    getOptionLabel={(option) => option.name}
+                                    placeholder="Select roles..."
+                                    menuPosition="fixed"
+                                  />
+                                </FormControl>
+                              );
+                            }}
+                          />
+                        )}
+                      </OrgPermissionCan>
                     </Td>
-                    {!isInfisicalTemplate && (
-                      <Td>
-                        <OrgPermissionCan
-                          I={OrgPermissionActions.Edit}
-                          a={OrgPermissionSubjects.ProjectTemplates}
-                        >
-                          {(isAllowed) => (
-                            <IconButton
-                              onClick={() => remove(pos)}
-                              colorSchema="danger"
-                              variant="plain"
-                              ariaLabel="Remove group"
-                              isDisabled={!isAllowed}
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
-                          )}
-                        </OrgPermissionCan>
-                      </Td>
-                    )}
+                    <Td>
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Edit}
+                        a={OrgPermissionSubjects.ProjectTemplates}
+                      >
+                        {(isAllowed) => (
+                          <IconButton
+                            onClick={() => remove(pos)}
+                            colorSchema="danger"
+                            variant="plain"
+                            ariaLabel="Remove group"
+                            isDisabled={!isAllowed}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        )}
+                      </OrgPermissionCan>
+                    </Td>
                   </Tr>
                 ))
               ) : (
                 <Tr>
-                  <Td colSpan={isInfisicalTemplate ? 2 : 3}>
+                  <Td colSpan={3}>
                     <EmptyState title="No groups assigned to this template" icon={faUsers} />
                   </Td>
                 </Tr>

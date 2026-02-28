@@ -6,6 +6,7 @@ import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
 
+import { registerAccountRecoveryRouter } from "./account-recovery-router";
 import { registerAdminRouter } from "./admin-router";
 import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
@@ -29,6 +30,7 @@ import { registerDeprecatedSecretImportRouter } from "./deprecated-secret-import
 import { registerDeprecatedSecretTagRouter } from "./deprecated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
+import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
@@ -53,6 +55,7 @@ import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
+import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
@@ -60,6 +63,7 @@ import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { PKI_SYNC_REGISTER_ROUTER_MAP, registerPkiSyncRouter } from "./pki-sync-routers";
 import { registerProjectEnvRouter } from "./project-env-router";
+import { registerProjectGroupMembershipsRouter } from "./project-group-memberships-router";
 import { registerProjectIdentityRouter } from "./project-identity-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
@@ -99,14 +103,17 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     { prefix: "/auth" }
   );
   await server.register(registerPasswordRouter, { prefix: "/password" });
+  await server.register(registerAccountRecoveryRouter, { prefix: "/account-recovery" });
   await server.register(
     async (orgRouter) => {
       await orgRouter.register(registerOrgRouter);
       await orgRouter.register(registerOrgIdentityRouter);
       await orgRouter.register(registerIdentityOrgMembershipRouter);
+      await orgRouter.register(registerGroupOrgMembershipRouter);
     },
     { prefix: "/organization" }
   );
+  await server.register(registerOrganizationMembershipsRouter, { prefix: "/organizations" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
@@ -150,9 +157,13 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     { prefix: "/projects" }
   );
 
-  await server.register(registerIdentityProjectMembershipRouter, {
-    prefix: "/projects/:projectId/memberships"
-  });
+  await server.register(
+    async (membershipsRouter) => {
+      await membershipsRouter.register(registerIdentityProjectMembershipRouter);
+      await membershipsRouter.register(registerProjectGroupMembershipsRouter);
+    },
+    { prefix: "/projects/:projectId/memberships" }
+  );
 
   await server.register(
     async (pkiRouter) => {
@@ -247,10 +258,10 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (secretSharingRouter) => {
-      await secretSharingRouter.register(registerSecretSharingRouter, { prefix: "/shared" });
+      await secretSharingRouter.register(registerSecretSharingRouter);
       await secretSharingRouter.register(registerSecretRequestsRouter, { prefix: "/requests" });
     },
-    { prefix: "/secret-sharing" }
+    { prefix: "/shared-secrets" }
   );
 
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });

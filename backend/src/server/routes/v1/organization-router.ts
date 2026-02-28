@@ -266,12 +266,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const users = await server.services.org.findAllOrgMembers(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
+      const users = await server.services.org.findAllOrgMembers({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
       return { users: users.map((el) => ({ ...el, status: el.status || OrgMembershipStatus.Accepted })) };
     }
   });
@@ -473,7 +474,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/groups",
     schema: {
+      deprecated: true,
       operationId: "listOrganizationGroups",
+      description: "Deprecated: Use GET /api/v1/organizations/memberships/groups instead.",
       params: z.object({
         organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_GROUPS.organizationId)
       }),

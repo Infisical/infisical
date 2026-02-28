@@ -128,12 +128,12 @@ These permissions allow Infisical to list, import, tag, and manage certificates 
 
 ## Certificate Management
 
-Your AWS Certificate Manager Certificate Sync will:
+The AWS Certificate Manager Certificate Sync provides:
 
 - **Automatic Deployment**: Deploy certificates in Infisical to AWS Certificate Manager.
 - **Certificate Updates**: Update certificates in AWS Certificate Manager when renewals occur.
 - **Expiration Handling**: Optionally remove expired certificates from AWS Certificate Manager (if enabled).
-- **Tagging**: Automatically tag certificates with an InfisicalCertificate tag for easy identification and management
+- **Tagging**: Automatically tag certificates with an InfisicalCertificate tag for easy identification and management.
 
 <Note>
   AWS Certificate Manager Certificate Syncs support both automatic and manual
@@ -152,9 +152,11 @@ You can manually trigger certificate synchronization to AWS Certificate Manager 
 
 To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
 
-<Note>
+## FAQ
+
+<Accordion title="Can I import certificates from AWS Certificate Manager back into Infisical?">
   AWS Certificate Manager does not support importing certificates back into
   Infisical due to security limitations where private keys cannot be extracted
   from AWS Certificate Manager. Only certificates imported into ACM (not
   AWS-issued certificates) can be managed by the sync.
-</Note>
+</Accordion>

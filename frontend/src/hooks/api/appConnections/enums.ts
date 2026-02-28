@@ -8,6 +8,7 @@ export enum AppConnection {
   AzureClientSecrets = "azure-client-secrets",
   AzureDevOps = "azure-devops",
   AzureADCS = "azure-adcs",
+  AzureDNS = "azure-dns",
   Databricks = "databricks",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",
@@ -44,5 +45,9 @@ export enum AppConnection {
   LaravelForge = "laravel-forge",
   Chef = "chef",
   OctopusDeploy = "octopus-deploy",
-  SSH = "ssh"
+  SSH = "ssh",
+  Dbt = "dbt",
+  SMB = "smb",
+  OpenRouter = "open-router",
+  CircleCI = "circleci"
 }

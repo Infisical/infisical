@@ -17,6 +17,8 @@ import {
 } from "@app/context";
 import {
   TAiMcpEndpointToolConfig,
+  TAiMcpServerTool,
+  useBulkUpdateEndpointTools,
   useDisableEndpointTool,
   useEnableEndpointTool,
   useListAiMcpServers,
@@ -37,6 +39,7 @@ type ServerToolsSectionProps = {
   searchQuery: string;
   toolConfigs: TAiMcpEndpointToolConfig[];
   onToolToggle: (serverToolId: string, isEnabled: boolean) => void;
+  onToggleAllTools: (tools: TAiMcpServerTool[], enableAll: boolean) => void;
   isUpdating: boolean;
   canEdit: boolean;
 };
@@ -48,6 +51,7 @@ const ServerToolsSection = ({
   searchQuery,
   toolConfigs,
   onToolToggle,
+  onToggleAllTools,
   isUpdating,
   canEdit
 }: ServerToolsSectionProps) => {
@@ -73,9 +77,20 @@ const ServerToolsSection = ({
   const enabledCount = tools.filter((tool) => enabledToolIds.has(tool.id)).length;
   const totalCount = tools.length;
 
+  // Count enabled filtered tools for the toggle all switch
+  const enabledFilteredCount = filteredTools.filter((tool) => enabledToolIds.has(tool.id)).length;
+  const allFilteredEnabled =
+    filteredTools.length > 0 && enabledFilteredCount === filteredTools.length;
+
   // Check if tool is enabled
   const isToolEnabled = (toolId: string) => {
     return enabledToolIds.has(toolId);
+  };
+
+  const handleToggleAll = () => {
+    // If all filtered tools are enabled, disable them all; otherwise enable them all
+    const shouldEnableAll = !allFilteredEnabled;
+    onToggleAllTools(filteredTools, shouldEnableAll);
   };
 
   if (filteredTools.length === 0 && searchQuery) {
@@ -111,7 +126,20 @@ const ServerToolsSection = ({
 
       {isExpanded && filteredTools.length > 0 && (
         <div className="border-t border-mineshaft-600">
-          <div className="grid grid-cols-[1fr_auto] gap-2 border-b border-mineshaft-600 px-4 py-2 text-xs font-medium tracking-wider text-bunker-300 uppercase">
+          <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-b border-mineshaft-600 bg-mineshaft-700 px-4 py-2">
+            <span className="text-sm text-bunker-300">Enable all tools</span>
+            <Tooltip content={allFilteredEnabled ? "Disable all tools" : "Enable all tools"}>
+              <div>
+                <Switch
+                  id={`toggle-all-${serverId}`}
+                  isChecked={allFilteredEnabled}
+                  onCheckedChange={handleToggleAll}
+                  isDisabled={isUpdating || !canEdit}
+                />
+              </div>
+            </Tooltip>
+          </div>
+          <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-b border-mineshaft-600 px-4 py-2 text-xs font-medium tracking-wider text-bunker-300 uppercase">
             <span>Tool Name</span>
             <span>Enabled</span>
           </div>
@@ -163,6 +191,7 @@ export const MCPEndpointToolSelectionSection = ({ endpointId, projectId, serverI
   const { data: toolConfigs = [] } = useListEndpointTools({ endpointId });
   const enableTool = useEnableEndpointTool();
   const disableTool = useDisableEndpointTool();
+  const bulkUpdateTools = useBulkUpdateEndpointTools();
 
   const connectedServers =
     serversData?.servers.filter((server) => serverIds.includes(server.id)) || [];
@@ -182,6 +211,26 @@ export const MCPEndpointToolSelectionSection = ({ endpointId, projectId, serverI
       });
     }
   };
+
+  const handleToggleAllTools = async (tools: TAiMcpServerTool[], enableAll: boolean) => {
+    try {
+      await bulkUpdateTools.mutateAsync({
+        endpointId,
+        tools: tools.map((tool) => ({
+          serverToolId: tool.id,
+          isEnabled: enableAll
+        }))
+      });
+    } catch (error) {
+      console.error("Failed to update tools:", error);
+      createNotification({
+        text: "Failed to update tool configuration",
+        type: "error"
+      });
+    }
+  };
+
+  const isUpdating = enableTool.isPending || disableTool.isPending || bulkUpdateTools.isPending;
 
   return (
     <div className="flex w-full flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-4">
@@ -224,7 +273,8 @@ export const MCPEndpointToolSelectionSection = ({ endpointId, projectId, serverI
               searchQuery={searchQuery}
               toolConfigs={toolConfigs}
               onToolToggle={handleToolToggle}
-              isUpdating={enableTool.isPending || disableTool.isPending}
+              onToggleAllTools={handleToggleAllTools}
+              isUpdating={isUpdating}
               canEdit={canEdit}
             />
           ))

@@ -1,14 +1,27 @@
 import { useState } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, PlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, Modal, ModalContent, Tooltip } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  Button as ButtonV2,
+  DeleteActionModal,
+  Modal,
+  ModalContent,
+  Tooltip
+} from "@app/components/v2";
+import {
+  Button,
+  DocumentationLinkBadge,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
@@ -94,88 +107,95 @@ export const IdentitySection = withPermission(
     };
 
     return (
-      <div>
-        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-1 items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">
+      <>
+        <div className="flex flex-col gap-4">
+          <UnstableCard>
+            <UnstableCardHeader>
+              <UnstableCardTitle>
                 {isSubOrganization ? "Sub-" : ""}Organization Machine Identities
-              </p>
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
-            </div>
-            <div className="flex items-center">
-              <OrgPermissionCan
-                I={OrgPermissionIdentityActions.Create}
-                a={OrgPermissionSubjects.Identity}
-              >
-                {(isAllowed) => (
-                  <Button
-                    variant="outline_bg"
-                    type="submit"
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() => {
-                      if (!isMoreIdentitiesAllowed && !isEnterprise) {
-                        handlePopUpOpen("upgradePlan", {
-                          description:
-                            "You can add more machine identities if you upgrade your Infisical Pro plan."
-                        });
-                        return;
-                      }
-
-                      if (!isSubOrganization) {
-                        setWizardStep(IdentityWizardSteps.CreateIdentity);
-                      }
-
-                      handlePopUpOpen("identity");
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    {isSubOrganization
-                      ? "Add Machine Identity to Sub-Organization"
-                      : "Create Organization Machine Identity"}
-                  </Button>
-                )}
-              </OrgPermissionCan>
-            </div>
-          </div>
-          <IdentityTable handlePopUpOpen={handlePopUpOpen} />
-        </div>
-        {/* Identity Auth Templates Section */}
-        <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">
-                Machine Identity Auth Templates
-              </p>
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/auth-templates" />
-            </div>
-            <OrgPermissionCan
-              I={OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates}
-              a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
-            >
-              {(isAllowed) => (
-                <Button
-                  variant="outline_bg"
-                  type="submit"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    if (subscription && !subscription.machineIdentityAuthTemplates) {
-                      handlePopUpOpen("upgradePlan", {
-                        isEnterpriseFeature: true,
-                        text: "Your current plan does not include access to creating Machine Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
-                      });
-                      return;
-                    }
-                    handlePopUpOpen("createTemplate");
-                  }}
-                  isDisabled={!isAllowed}
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
+              </UnstableCardTitle>
+              <UnstableCardDescription>
+                Create and manage {isSubOrganization ? "sub-" : ""}organization machine identities
+              </UnstableCardDescription>
+              <UnstableCardAction>
+                <OrgPermissionCan
+                  I={OrgPermissionIdentityActions.Create}
+                  a={OrgPermissionSubjects.Identity}
                 >
-                  Create Template
-                </Button>
-              )}
-            </OrgPermissionCan>
-          </div>
-          <IdentityAuthTemplatesTable handlePopUpOpen={handlePopUpOpen} />
+                  {(isAllowed) => (
+                    <Button
+                      variant={isSubOrganization ? "sub-org" : "org"}
+                      onClick={() => {
+                        if (!isMoreIdentitiesAllowed && !isEnterprise) {
+                          handlePopUpOpen("upgradePlan", {
+                            description:
+                              "You can add more machine identities if you upgrade your Infisical Pro plan."
+                          });
+                          return;
+                        }
+
+                        if (!isSubOrganization) {
+                          setWizardStep(IdentityWizardSteps.CreateIdentity);
+                        }
+
+                        handlePopUpOpen("identity");
+                      }}
+                      isDisabled={!isAllowed}
+                    >
+                      <PlusIcon />
+                      {isSubOrganization
+                        ? "Add Machine Identity to Sub-Organization"
+                        : "Create Organization Machine Identity"}
+                    </Button>
+                  )}
+                </OrgPermissionCan>
+              </UnstableCardAction>
+            </UnstableCardHeader>
+            <UnstableCardContent>
+              <IdentityTable handlePopUpOpen={handlePopUpOpen} />
+            </UnstableCardContent>
+          </UnstableCard>
+          <UnstableCard>
+            <UnstableCardHeader>
+              <UnstableCardTitle>
+                Machine Identity Auth Templates
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/auth-templates" />
+              </UnstableCardTitle>
+              <UnstableCardDescription>
+                Create and manage machine identity authentication templates
+              </UnstableCardDescription>
+              <UnstableCardAction>
+                <OrgPermissionCan
+                  I={OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates}
+                  a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
+                >
+                  {(isAllowed) => (
+                    <Button
+                      variant={isSubOrganization ? "sub-org" : "org"}
+                      onClick={() => {
+                        if (subscription && !subscription.machineIdentityAuthTemplates) {
+                          handlePopUpOpen("upgradePlan", {
+                            isEnterpriseFeature: true,
+                            text: "Your current plan does not include access to creating Machine Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
+                          });
+                          return;
+                        }
+                        handlePopUpOpen("createTemplate");
+                      }}
+                      isDisabled={!isAllowed}
+                    >
+                      <PlusIcon />
+                      Create Template
+                    </Button>
+                  )}
+                </OrgPermissionCan>
+              </UnstableCardAction>
+            </UnstableCardHeader>
+            <UnstableCardContent>
+              <IdentityAuthTemplatesTable handlePopUpOpen={handlePopUpOpen} />
+            </UnstableCardContent>
+          </UnstableCard>
         </div>
         <IdentityAuthTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <MachineAuthTemplateUsagesModal
@@ -216,7 +236,7 @@ export const IdentitySection = withPermission(
             {isSubOrganization && (
               <div className="mb-4 flex items-center justify-center gap-x-2">
                 <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-                  <Button
+                  <ButtonV2
                     variant="outline_bg"
                     onClick={() => {
                       setWizardStep(IdentityWizardSteps.CreateIdentity);
@@ -230,8 +250,8 @@ export const IdentitySection = withPermission(
                     )}
                   >
                     Create New
-                  </Button>
-                  <Button
+                  </ButtonV2>
+                  <ButtonV2
                     variant="outline_bg"
                     onClick={() => {
                       setWizardStep(IdentityWizardSteps.LinkIdentity);
@@ -245,7 +265,7 @@ export const IdentitySection = withPermission(
                     )}
                   >
                     Assign Existing
-                  </Button>
+                  </ButtonV2>
                 </div>
                 <Tooltip
                   className="max-w-sm"
@@ -325,7 +345,7 @@ export const IdentitySection = withPermission(
           text={popUp.upgradePlan.data?.text}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         />
-      </div>
+      </>
     );
   },
   { action: OrgPermissionIdentityActions.Read, subject: OrgPermissionSubjects.Identity }

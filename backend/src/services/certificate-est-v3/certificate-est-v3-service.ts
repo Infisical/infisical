@@ -10,6 +10,7 @@ import { getCaCertChain, getCaCertChains } from "@app/services/certificate-autho
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -140,7 +141,12 @@ export const certificateEstV3ServiceFactory = ({
 
     await validateEstClientCertificate(estConfig, profile.projectId, sslClientCert);
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    const ttl = policy?.validity?.max || "90d";
+    const ttl = resolveEffectiveTtl({
+      requestTtl: undefined, // EST doesn't accept TTL in request
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: "90d"
+    });
 
     const result = await certificateV3Service.signCertificateFromProfile({
       actor: ActorType.EST_ACCOUNT,
@@ -271,7 +277,12 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    const ttl = policy?.validity?.max || "90d";
+    const ttl = resolveEffectiveTtl({
+      requestTtl: undefined, // EST doesn't accept TTL in request
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: "90d"
+    });
 
     const result = await certificateV3Service.signCertificateFromProfile({
       actor: ActorType.EST_ACCOUNT,

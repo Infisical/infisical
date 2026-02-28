@@ -7,7 +7,7 @@ export interface TIdentityV2Factory {
   onDeleteIdentityGuard: (arg: TDeleteIdentityV2DTO) => Promise<void>;
   onListIdentityGuard: (arg: TListIdentityV2DTO) => Promise<(arg: { identityId: string }) => boolean>;
   onGetIdentityByIdGuard: (arg: TGetIdentityByIdV2DTO) => Promise<void>;
-  getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
+  getScopeField: (scope: AccessScopeData) => { key: "orgId" | "projectId"; value: string };
 }
 
 export enum IdentityOrderBy {
