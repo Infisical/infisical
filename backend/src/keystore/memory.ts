@@ -112,6 +112,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     },
     listLength: async (key) => {
       return listStore[key]?.length ?? 0;
-    }
+    },
+    isRedisClusterMode: () => false
   };
 };

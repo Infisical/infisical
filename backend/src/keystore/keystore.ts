@@ -1,4 +1,5 @@
-import { Cluster, Redis } from "ioredis";
+import type { Cluster } from "ioredis";
+import { Redis } from "ioredis";
 import { Knex } from "knex";
 
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
@@ -28,7 +29,11 @@ export const PgSqlLock = {
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`),
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
   CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
-  AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`)
+  AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
+  KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
+  KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
+  KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
+  KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -160,6 +165,7 @@ export type TKeyStoreFactory = {
     settings?: Partial<Settings>
   ): Promise<{ release: () => Promise<ExecutionResult> }>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
+  isRedisClusterMode: () => boolean;
 };
 
 const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {
@@ -177,6 +183,9 @@ export const keyStoreFactory = (
   keyValueStoreDAL: TKeyValueStoreDALFactory
 ): TKeyStoreFactory => {
   const primaryRedis = buildRedisFromConfig(redisConfigKeys);
+  // Detect if Redis is running in cluster mode - affects distributed locking behavior
+  const isClusterMode = Boolean(redisConfigKeys.REDIS_CLUSTER_HOSTS && redisConfigKeys.REDIS_CLUSTER_HOSTS.length > 0);
+
   const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
     if (redisConfigKeys.REDIS_URL) {
       const primaryNode = new URL(redisConfigKeys?.REDIS_URL);
@@ -335,6 +344,7 @@ export const keyStoreFactory = (
     listPush,
     listRange,
     listRemove,
-    listLength
+    listLength,
+    isRedisClusterMode: () => isClusterMode
   };
 };
