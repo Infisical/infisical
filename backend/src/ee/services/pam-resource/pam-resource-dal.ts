@@ -32,7 +32,9 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       offset = 0,
       orderBy = PamResourceOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
-      filterResourceTypes
+      filterResourceTypes,
+      filterMetadataKey,
+      filterMetadataValue
     }: {
       projectId: string;
       search?: string;
@@ -41,6 +43,8 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       orderBy?: PamResourceOrderBy;
       orderDirection?: OrderByDirection;
       filterResourceTypes?: string[];
+      filterMetadataKey?: string;
+      filterMetadataValue?: string;
     },
     tx?: Knex
   ) => {
@@ -61,6 +65,15 @@ export const pamResourceDALFactory = (db: TDbClient) => {
 
       if (filterResourceTypes && filterResourceTypes.length) {
         void query.whereIn(`${TableName.PamResource}.resourceType`, filterResourceTypes);
+      }
+
+      if (filterMetadataKey) {
+        void query.whereIn(`${TableName.PamResource}.id`, (subQuery) => {
+          void subQuery.select("pamResourceId").from(TableName.ResourceMetadata).where("key", filterMetadataKey);
+          if (filterMetadataValue) {
+            void subQuery.where("value", filterMetadataValue);
+          }
+        });
       }
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
@@ -84,6 +97,21 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findMetadataByResourceIds = async (resourceIds: string[], tx?: Knex) => {
+    if (!resourceIds.length) return {};
+    const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
+      .select("id", "key", "value", "pamResourceId")
+      .whereIn("pamResourceId", resourceIds);
+    const byResourceId: Record<string, Array<{ id: string; key: string; value: string }>> = {};
+    for (const row of rows) {
+      if (row.pamResourceId) {
+        if (!byResourceId[row.pamResourceId]) byResourceId[row.pamResourceId] = [];
+        byResourceId[row.pamResourceId].push({ id: row.id, key: row.key, value: row.value || "" });
+      }
+    }
+    return byResourceId;
+  };
+
   const findByAdServerResourceId = async (adServerResourceId: string, tx?: Knex) => {
     try {
       const resources = await (tx || db.replicaNode())(TableName.PamResource)
@@ -97,5 +125,5 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, findByProjectId, findByAdServerResourceId };
+  return { ...orm, findById, findByProjectId, findMetadataByResourceIds, findByAdServerResourceId };
 };

@@ -107,7 +107,9 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
               .map((s) => s.trim())
               .filter(Boolean)
           )
-          .optional()
+          .optional(),
+        filterMetadataKey: z.string().trim().optional(),
+        filterMetadataValue: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -118,7 +120,17 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, limit, offset, search, orderBy, orderDirection, filterResourceTypes } = req.query;
+      const {
+        projectId,
+        limit,
+        offset,
+        search,
+        orderBy,
+        orderDirection,
+        filterResourceTypes,
+        filterMetadataKey,
+        filterMetadataValue
+      } = req.query;
 
       const { resources, totalCount } = await server.services.pamResource.list({
         actorId: req.permission.id,
@@ -131,7 +143,9 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
         search,
         orderBy,
         orderDirection,
-        filterResourceTypes
+        filterResourceTypes,
+        filterMetadataKey,
+        filterMetadataValue
       });
 
       await server.services.auditLog.createAuditLog({

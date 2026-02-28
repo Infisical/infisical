@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { PamAccountsSchema, PamResourcesSchema } from "@app/db/schemas";
 import { slugSchema } from "@app/server/lib/schemas";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 export const GatewayAccessResponseSchema = z.object({
   sessionId: z.string(),
@@ -20,11 +21,14 @@ export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
   encryptedRotationAccountCredentials: true,
   resourceType: true
+}).extend({
+  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array().optional()
 });
 
 const CoreCreatePamResourceSchema = z.object({
   projectId: z.string().uuid(),
-  name: slugSchema({ field: "name" })
+  name: slugSchema({ field: "name" }),
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
 export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.extend({
@@ -34,7 +38,8 @@ export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.ex
 export const BaseCreatePamResourceSchema = CoreCreatePamResourceSchema;
 
 const CoreUpdatePamResourceSchema = z.object({
-  name: slugSchema({ field: "name" }).optional()
+  name: slugSchema({ field: "name" }).optional(),
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
 export const BaseUpdateGatewayPamResourceSchema = CoreUpdatePamResourceSchema.extend({

@@ -23,12 +23,14 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
     gatewayId?: T["gatewayId"];
     name: T["name"];
     rotationAccountCredentials?: T["rotationAccountCredentials"];
+    metadata?: Array<{ key: string; value?: string }>;
   }>;
   updateResourceSchema: z.ZodType<{
     connectionDetails?: T["connectionDetails"];
     gatewayId?: T["gatewayId"];
     name?: T["name"];
     rotationAccountCredentials?: T["rotationAccountCredentials"];
+    metadata?: Array<{ key: string; value?: string }>;
   }>;
   resourceResponseSchema: z.ZodTypeAny;
 }) => {

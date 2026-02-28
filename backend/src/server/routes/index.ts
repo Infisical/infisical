@@ -2618,7 +2618,8 @@ export const registerRoutes = async (
     pamAccountDAL,
     permissionService,
     kmsService,
-    gatewayV2Service
+    gatewayV2Service,
+    resourceMetadataDAL
   });
 
   const mfaSessionService = mfaSessionServiceFactory({

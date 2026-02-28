@@ -14,6 +14,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -43,6 +44,7 @@ type TPamResourceServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFactory>;
@@ -52,7 +54,8 @@ export const pamResourceServiceFactory = ({
   pamAccountDAL,
   permissionService,
   kmsService,
-  gatewayV2Service
+  gatewayV2Service,
+  resourceMetadataDAL
 }: TPamResourceServiceFactoryDep) => {
   const getById = async (id: string, resourceType: PamResource, actor: OrgServiceActor) => {
     const resource = await pamResourceDAL.findById(id);
@@ -101,7 +104,11 @@ export const pamResourceServiceFactory = ({
       });
     }
 
-    return decryptResource(resource, resource.projectId, kmsService);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([resource.id]);
+    return {
+      ...(await decryptResource(resource, resource.projectId, kmsService)),
+      metadata: metadataByResourceId[resource.id] || []
+    };
   };
 
   const create = async (
@@ -112,7 +119,8 @@ export const pamResourceServiceFactory = ({
       name,
       projectId,
       rotationAccountCredentials,
-      adServerResourceId
+      adServerResourceId,
+      metadata
     }: TCreateResourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -164,14 +172,31 @@ export const pamResourceServiceFactory = ({
     }
 
     try {
-      const resource = await pamResourceDAL.create({
-        resourceType,
-        encryptedConnectionDetails,
-        gatewayId,
-        name,
-        projectId,
-        encryptedRotationAccountCredentials,
-        adServerResourceId: adServerResourceId ?? null
+      const resource = await pamResourceDAL.transaction(async (tx) => {
+        const newResource = await pamResourceDAL.create(
+          {
+            resourceType,
+            encryptedConnectionDetails,
+            gatewayId,
+            name,
+            projectId,
+            encryptedRotationAccountCredentials,
+            adServerResourceId: adServerResourceId ?? null
+          },
+          tx
+        );
+        if (metadata && metadata.length > 0) {
+          await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value: value ?? "",
+              pamResourceId: newResource.id,
+              orgId: actor.orgId
+            })),
+            tx
+          );
+        }
+        return newResource;
       });
 
       return await decryptResource(resource, projectId, kmsService);
@@ -192,7 +217,8 @@ export const pamResourceServiceFactory = ({
       name,
       rotationAccountCredentials,
       gatewayId,
-      adServerResourceId
+      adServerResourceId,
+      metadata
     }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -306,12 +332,31 @@ export const pamResourceServiceFactory = ({
     }
 
     // If nothing was updated, return the fetched resource
-    if (Object.keys(updateDoc).length === 0) {
+    if (Object.keys(updateDoc).length === 0 && metadata === undefined) {
       return decryptResource(resource, resource.projectId, kmsService);
     }
 
     try {
-      const updatedResource = await pamResourceDAL.updateById(resourceId, updateDoc);
+      const updatedResource = await pamResourceDAL.transaction(async (tx) => {
+        if (metadata) {
+          await resourceMetadataDAL.delete({ pamResourceId: resourceId }, tx);
+          if (metadata.length > 0) {
+            await resourceMetadataDAL.insertMany(
+              metadata.map(({ key, value }) => ({
+                key,
+                value: value ?? "",
+                pamResourceId: resourceId,
+                orgId: actor.orgId
+              })),
+              tx
+            );
+          }
+        }
+        if (Object.keys(updateDoc).length > 0) {
+          return pamResourceDAL.updateById(resourceId, updateDoc, tx);
+        }
+        return resource;
+      });
 
       return await decryptResource(updatedResource, resource.projectId, kmsService);
     } catch (err) {
@@ -369,8 +414,15 @@ export const pamResourceServiceFactory = ({
 
     if (canReadResources) {
       const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
+      const resourceIds = resources.map((r) => r.id);
+      const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(resourceIds);
       return {
-        resources: await Promise.all(resources.map((resource) => decryptResource(resource, projectId, kmsService))),
+        resources: await Promise.all(
+          resources.map(async (resource) => ({
+            ...(await decryptResource(resource, projectId, kmsService)),
+            metadata: metadataByResourceId[resource.id] || []
+          }))
+        ),
         totalCount
       };
     }
@@ -383,7 +435,9 @@ export const pamResourceServiceFactory = ({
       search: params.search,
       orderBy: params.orderBy,
       orderDirection: params.orderDirection,
-      filterResourceTypes: params.filterResourceTypes
+      filterResourceTypes: params.filterResourceTypes,
+      filterMetadataKey: params.filterMetadataKey,
+      filterMetadataValue: params.filterMetadataValue
     });
 
     if (allResources.length === 0) {
@@ -427,9 +481,15 @@ export const pamResourceServiceFactory = ({
     const limit = params.limit || 100;
     const paginatedResources = permittedResources.slice(offset, offset + limit);
 
+    const paginatedResourceIds = paginatedResources.map((r) => r.id);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(paginatedResourceIds);
+
     return {
       resources: await Promise.all(
-        paginatedResources.map((resource) => decryptResource(resource, projectId, kmsService))
+        paginatedResources.map(async (resource) => ({
+          ...(await decryptResource(resource, projectId, kmsService)),
+          metadata: metadataByResourceId[resource.id] || []
+        }))
       ),
       totalCount
     };
