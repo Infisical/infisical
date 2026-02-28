@@ -58,14 +58,17 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
   const updateById = async (id: string, data: TPkiAlertsV2Update, tx?: Knex): Promise<TPkiAlertsV2> => {
     try {
+      let serializedNotificationConfig: unknown;
+      if (data.notificationConfig !== undefined) {
+        serializedNotificationConfig = data.notificationConfig
+          ? JSON.stringify(data.notificationConfig)
+          : data.notificationConfig;
+      }
+
       const serializedData: Record<string, unknown> = {
         ...data,
         filters: data.filters !== undefined ? JSON.stringify(data.filters) : undefined,
-        notificationConfig: (() => {
-          if (data.notificationConfig === undefined) return undefined;
-          if (data.notificationConfig) return JSON.stringify(data.notificationConfig);
-          return data.notificationConfig;
-        })()
+        notificationConfig: serializedNotificationConfig
       };
       Object.keys(serializedData).forEach((key) => {
         if (serializedData[key] === undefined) {
