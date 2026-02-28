@@ -2597,7 +2597,7 @@ export const certificateV3ServiceFactory = ({
       return metadata;
     });
 
-    return { metadata: updatedMetadata };
+    return { metadata: updatedMetadata, projectId: certificate.projectId, commonName: certificate.commonName };
   };
 
   return {

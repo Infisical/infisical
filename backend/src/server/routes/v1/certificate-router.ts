@@ -1149,7 +1149,20 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
-      return result;
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.UPDATE_CERTIFICATE_METADATA,
+          metadata: {
+            certificateId: req.params.id,
+            commonName: result.commonName,
+            metadataCount: req.body.metadata.length
+          }
+        }
+      });
+
+      return { metadata: result.metadata };
     }
   });
 
