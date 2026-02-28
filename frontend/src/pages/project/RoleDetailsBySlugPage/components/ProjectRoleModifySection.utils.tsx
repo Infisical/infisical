@@ -533,7 +533,12 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.PamFolders]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.PamResources]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PamResources]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.PamAccounts]: PamAccountPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -582,6 +587,7 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
+  | ProjectPermissionSub.PamResources
   | ProjectPermissionSub.McpEndpoints;
 
 export const isConditionalSubjects = (
@@ -605,6 +611,7 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretEventSubscriptions ||
   subject === ProjectPermissionSub.AppConnections ||
   subject === ProjectPermissionSub.PamAccounts ||
+  subject === ProjectPermissionSub.PamResources ||
   subject === ProjectPermissionSub.McpEndpoints;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
