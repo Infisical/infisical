@@ -11,7 +11,6 @@ import {
   faFilter,
   faLink,
   faMagnifyingGlass,
-  faPlus,
   faQuestionCircle,
   faRedo,
   faSearch,
@@ -71,6 +70,10 @@ import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import {
+  type MetadataFilterEntry,
+  MetadataFilterSection
+} from "../../components/MetadataFilterSection";
+import {
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
   isExpiringWithinOneDay
@@ -81,12 +84,6 @@ enum CertificateStatus {
   Expired = "expired",
   Revoked = "revoked"
 }
-
-type MetadataFilterEntry = {
-  id: string;
-  key: string;
-  value: string;
-};
 
 type CertificateFilters = {
   status?: CertificateStatus;
@@ -385,70 +382,10 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-bunker-300 uppercase">Metadata</span>
-                  {pendingMetadataFilters.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingMetadataFilters([])}
-                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {pendingMetadataFilters.map((entry, idx) => (
-                  <div key={entry.id} className="flex items-center gap-1">
-                    <Input
-                      value={entry.key}
-                      onChange={(e) => {
-                        const updated = [...pendingMetadataFilters];
-                        updated[idx] = { ...updated[idx], key: e.target.value };
-                        setPendingMetadataFilters(updated);
-                      }}
-                      placeholder="Key"
-                      className="flex-1"
-                    />
-                    <Input
-                      value={entry.value}
-                      onChange={(e) => {
-                        const updated = [...pendingMetadataFilters];
-                        updated[idx] = { ...updated[idx], value: e.target.value };
-                        setPendingMetadataFilters(updated);
-                      }}
-                      placeholder="Value"
-                      className="flex-1"
-                    />
-                    <IconButton
-                      ariaLabel="Remove metadata filter"
-                      variant="plain"
-                      size="xs"
-                      onClick={() => {
-                        setPendingMetadataFilters(
-                          pendingMetadataFilters.filter((_, i) => i !== idx)
-                        );
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faTrash} size="xs" />
-                    </IconButton>
-                  </div>
-                ))}
-                <IconButton
-                  ariaLabel="Add metadata filter"
-                  variant="outline_bg"
-                  size="xs"
-                  className="rounded-md"
-                  onClick={() =>
-                    setPendingMetadataFilters([
-                      ...pendingMetadataFilters,
-                      { id: crypto.randomUUID(), key: "", value: "" }
-                    ])
-                  }
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </IconButton>
-              </div>
+              <MetadataFilterSection
+                entries={pendingMetadataFilters}
+                onChange={setPendingMetadataFilters}
+              />
 
               <div className="pt-2">
                 <Button

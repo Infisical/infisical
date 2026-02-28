@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useEffect, useMemo, useState } from "react";
-import { faFilter, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faFilter, faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -37,18 +37,16 @@ import {
 } from "@app/hooks/api/certificates";
 
 import { CertificateIssuanceModal } from "../../CertificatesPage/components/CertificateIssuanceModal";
+import {
+  type MetadataFilterEntry,
+  MetadataFilterSection
+} from "../../components/MetadataFilterSection";
 import { CertificateRequestRow } from "./CertificateRequestRow";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_DELAY = 500;
 
 type CertificateRequestStatus = "pending" | "issued" | "failed";
-
-type MetadataFilterEntry = {
-  id: string;
-  key: string;
-  value: string;
-};
 
 type CertificateRequestFilters = {
   status?: CertificateRequestStatus;
@@ -330,70 +328,10 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-bunker-300 uppercase">Metadata</span>
-                  {pendingMetadataFilters.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingMetadataFilters([])}
-                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {pendingMetadataFilters.map((entry, idx) => (
-                  <div key={entry.id} className="flex items-center gap-1">
-                    <Input
-                      value={entry.key}
-                      onChange={(e) => {
-                        const updated = [...pendingMetadataFilters];
-                        updated[idx] = { ...updated[idx], key: e.target.value };
-                        setPendingMetadataFilters(updated);
-                      }}
-                      placeholder="Key"
-                      className="flex-1"
-                    />
-                    <Input
-                      value={entry.value}
-                      onChange={(e) => {
-                        const updated = [...pendingMetadataFilters];
-                        updated[idx] = { ...updated[idx], value: e.target.value };
-                        setPendingMetadataFilters(updated);
-                      }}
-                      placeholder="Value"
-                      className="flex-1"
-                    />
-                    <IconButton
-                      ariaLabel="Remove metadata filter"
-                      variant="plain"
-                      size="xs"
-                      onClick={() => {
-                        setPendingMetadataFilters(
-                          pendingMetadataFilters.filter((_, i) => i !== idx)
-                        );
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faTrash} size="xs" />
-                    </IconButton>
-                  </div>
-                ))}
-                <IconButton
-                  ariaLabel="Add metadata filter"
-                  variant="outline_bg"
-                  size="xs"
-                  className="rounded-md"
-                  onClick={() =>
-                    setPendingMetadataFilters([
-                      ...pendingMetadataFilters,
-                      { id: crypto.randomUUID(), key: "", value: "" }
-                    ])
-                  }
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </IconButton>
-              </div>
+              <MetadataFilterSection
+                entries={pendingMetadataFilters}
+                onChange={setPendingMetadataFilters}
+              />
 
               <div className="pt-2">
                 <Button
