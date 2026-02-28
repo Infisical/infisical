@@ -18,6 +18,7 @@ import { CopyButton } from "@app/components/v2/CopyButton";
 import { useProject } from "@app/context";
 import { PamResourceType, TAwsIamResource } from "@app/hooks/api/pam";
 import { slugSchema } from "@app/lib/schemas";
+import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 type Props = {
   resource?: TAwsIamResource;
@@ -39,7 +40,14 @@ const AwsIamConnectionDetailsSchema = z.object({
 const formSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
   resourceType: z.literal(PamResourceType.AwsIam),
-  connectionDetails: AwsIamConnectionDetailsSchema
+  connectionDetails: AwsIamConnectionDetailsSchema,
+  metadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().default("")
+    })
+    .array()
+    .optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -200,6 +208,8 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+
+        <MetadataForm control={control} />
 
         <div className="mt-6 flex items-center">
           <Button

@@ -121,6 +121,8 @@ export type TListPamResourcesDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
   filterResourceTypes?: string;
+  filterMetadataKey?: string;
+  filterMetadataValue?: string;
 };
 
 export type TCreatePamResourceDTO = Pick<
@@ -128,6 +130,7 @@ export type TCreatePamResourceDTO = Pick<
   "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"
 > & {
   adServerResourceId?: string | null;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TUpdatePamResourceDTO = Partial<
@@ -136,6 +139,7 @@ export type TUpdatePamResourceDTO = Partial<
   resourceId: string;
   resourceType: PamResourceType;
   adServerResourceId?: string | null;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TDeletePamResourceDTO = {
@@ -153,6 +157,8 @@ export type TListPamAccountsDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
   filterResourceIds?: string;
+  filterMetadataKey?: string;
+  filterMetadataValue?: string;
 };
 
 export type TCreatePamAccountDTO = Pick<
@@ -161,6 +167,7 @@ export type TCreatePamAccountDTO = Pick<
 > & {
   resourceType: PamResourceType;
   internalMetadata?: Record<string, unknown>;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TUpdatePamAccountDTO = Partial<
@@ -169,6 +176,7 @@ export type TUpdatePamAccountDTO = Partial<
   accountId: string;
   resourceType: PamResourceType;
   internalMetadata?: Record<string, unknown>;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TDeletePamAccountDTO = {

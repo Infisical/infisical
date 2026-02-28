@@ -3,14 +3,26 @@ import { z } from "zod";
 
 import { FormControl, Input, TextArea } from "@app/components/v2";
 import { slugSchema } from "@app/lib/schemas";
+import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 export const genericAccountFieldsSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
-  description: z.string().max(512).nullable().optional()
+  description: z.string().max(512).nullable().optional(),
+  metadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().default("")
+    })
+    .array()
+    .optional()
 });
 
 export const GenericAccountFields = () => {
-  const { control } = useFormContext<{ name: string; description: string }>();
+  const { control } = useFormContext<{
+    name: string;
+    description: string;
+    metadata?: { key: string; value: string }[];
+  }>();
 
   return (
     <>
@@ -41,6 +53,7 @@ export const GenericAccountFields = () => {
           </FormControl>
         )}
       />
+      <MetadataForm control={control} />
     </>
   );
 };

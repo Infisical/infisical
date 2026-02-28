@@ -47,6 +47,7 @@ const CreateForm = ({
       "name" | "description" | "credentials" | "requireMfa"
     > & {
       internalMetadata?: Record<string, unknown>;
+      metadata?: { key: string; value: string }[];
     }
   ) => {
     const { internalMetadata, ...rest } = formData;
@@ -136,6 +137,7 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       "name" | "description" | "credentials" | "requireMfa"
     > & {
       internalMetadata?: Record<string, unknown>;
+      metadata?: { key: string; value: string }[];
     }
   ) => {
     const { internalMetadata, ...rest } = formData;
