@@ -17,7 +17,8 @@ export const PkiAlertsV2Schema = z.object({
   enabled: z.boolean().default(true).nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  notificationConfig: z.unknown().nullable().optional()
 });
 
 export type TPkiAlertsV2 = z.infer<typeof PkiAlertsV2Schema>;
