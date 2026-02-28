@@ -188,7 +188,7 @@ export const pamResourceServiceFactory = ({
     }
 
     try {
-      const resource = await pamResourceDAL.transaction(async (tx) => {
+      const { resource, insertedMetadata } = await pamResourceDAL.transaction(async (tx) => {
         const newResource = await pamResourceDAL.create(
           {
             resourceType,
@@ -201,8 +201,9 @@ export const pamResourceServiceFactory = ({
           },
           tx
         );
+        let metadataRows: Awaited<ReturnType<typeof resourceMetadataDAL.insertMany>> | undefined;
         if (metadata && metadata.length > 0) {
-          await resourceMetadataDAL.insertMany(
+          metadataRows = await resourceMetadataDAL.insertMany(
             metadata.map(({ key, value }) => ({
               key,
               value: value ?? "",
@@ -212,10 +213,13 @@ export const pamResourceServiceFactory = ({
             tx
           );
         }
-        return newResource;
+        return { resource: newResource, insertedMetadata: metadataRows };
       });
 
-      return await decryptResource(resource, projectId, kmsService);
+      return {
+        ...(await decryptResource(resource, projectId, kmsService)),
+        metadata: insertedMetadata?.map(({ id, key, value }) => ({ id, key, value: value ?? "" })) ?? []
+      };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({

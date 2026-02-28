@@ -191,33 +191,42 @@ export const pamAccountServiceFactory = ({
     });
 
     try {
-      const account = await pamAccountDAL.create({
-        projectId: resource.projectId,
-        resourceId: resource.id,
-        encryptedCredentials,
-        name,
-        description,
-        folderId,
-        rotationEnabled,
-        rotationIntervalSeconds,
-        requireMfa,
-        internalMetadata: internalMetadata ?? null
-      });
-
-      if (metadata && metadata.length > 0) {
-        await resourceMetadataDAL.insertMany(
-          metadata.map(({ key, value }) => ({
-            key,
-            value: value ?? "",
-            pamAccountId: account.id,
-            orgId: actor.orgId
-          }))
+      const { account, insertedMetadata } = await pamAccountDAL.transaction(async (tx) => {
+        const newAccount = await pamAccountDAL.create(
+          {
+            projectId: resource.projectId,
+            resourceId: resource.id,
+            encryptedCredentials,
+            name,
+            description,
+            folderId,
+            rotationEnabled,
+            rotationIntervalSeconds,
+            requireMfa,
+            internalMetadata: internalMetadata ?? null
+          },
+          tx
         );
-      }
+
+        let metadataRows: Awaited<ReturnType<typeof resourceMetadataDAL.insertMany>> | undefined;
+        if (metadata && metadata.length > 0) {
+          metadataRows = await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value: value ?? "",
+              pamAccountId: newAccount.id,
+              orgId: actor.orgId
+            })),
+            tx
+          );
+        }
+
+        return { account: newAccount, insertedMetadata: metadataRows };
+      });
 
       return {
         ...(await decryptAccount(account, resource.projectId, kmsService)),
-        metadata: metadata?.map(({ key, value }) => ({ id: "", key, value: value ?? "" })) || [],
+        metadata: insertedMetadata?.map(({ id, key, value }) => ({ id, key, value: value ?? "" })) ?? [],
         resourceType: resource.resourceType,
         resource: {
           id: resource.id,
@@ -393,8 +402,11 @@ export const pamAccountServiceFactory = ({
         return account;
       });
 
+      const freshMeta = await pamAccountDAL.findMetadataByAccountIds([accountId]);
+
       return {
         ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
+        metadata: freshMeta[accountId] || [],
         resourceType: resource.resourceType,
         resource: {
           id: resource.id,

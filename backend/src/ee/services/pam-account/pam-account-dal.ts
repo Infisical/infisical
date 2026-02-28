@@ -73,7 +73,11 @@ export const pamAccountDALFactory = (db: TDbClient) => {
 
       if (filterMetadataKey) {
         void query.whereIn(`${TableName.PamAccount}.id`, (subQuery) => {
-          void subQuery.select("pamAccountId").from(TableName.ResourceMetadata).where("key", filterMetadataKey);
+          void subQuery
+            .select("pamAccountId")
+            .from(TableName.ResourceMetadata)
+            .whereNotNull("pamAccountId")
+            .where("key", filterMetadataKey);
           if (filterMetadataValue) {
             void subQuery.where("value", filterMetadataValue);
           }
