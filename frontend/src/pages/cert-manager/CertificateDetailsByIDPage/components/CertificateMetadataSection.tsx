@@ -155,7 +155,7 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
         {!isEditing && metadata.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {metadata.map((item) => (
-              <Badge key={`${item.key}-${item.value}`} variant="neutral">
+              <Badge key={`${item.key}=${item.value}`} variant="neutral">
                 {item.key}
                 {item.value ? `: ${item.value}` : ""}
               </Badge>
