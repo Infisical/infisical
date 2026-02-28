@@ -107,7 +107,7 @@ type TCertificateIssuanceQueueFactoryDep = {
     TCertificateRequestServiceFactory,
     "attachCertificateToRequest" | "updateCertificateRequestStatus"
   >;
-  resourceMetadataDAL?: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -315,12 +315,10 @@ export const certificateIssuanceQueueFactory = ({
             });
 
             // Copy metadata from cert request to newly issued cert
-            if (resourceMetadataDAL) {
-              await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
-                certificateRequestId,
-                certificateId: acmeResult.id
-              });
-            }
+            await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+              certificateRequestId,
+              certificateId: acmeResult.id
+            });
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
           } catch (attachError) {
@@ -389,12 +387,10 @@ export const certificateIssuanceQueueFactory = ({
               certificateId: azureResult.certificateId
             });
 
-            if (resourceMetadataDAL) {
-              await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
-                certificateRequestId,
-                certificateId: azureResult.certificateId
-              });
-            }
+            await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+              certificateRequestId,
+              certificateId: azureResult.certificateId
+            });
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
           } catch (attachError) {
@@ -446,12 +442,10 @@ export const certificateIssuanceQueueFactory = ({
               certificateId: awsPcaResult.certificateId
             });
 
-            if (resourceMetadataDAL) {
-              await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
-                certificateRequestId,
-                certificateId: awsPcaResult.certificateId
-              });
-            }
+            await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+              certificateRequestId,
+              certificateId: awsPcaResult.certificateId
+            });
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
           } catch (attachError) {
