@@ -148,7 +148,7 @@ export const applyMetadataFilter = <T extends Knex.QueryBuilder>(
         void subQuery
           .select(joinColumn)
           .from(TableName.ResourceMetadata)
-          .whereRaw(`"${TableName.ResourceMetadata}"."${joinColumn}" = "${parentTable}"."id"`)
+          .whereRaw(`??.?? = ??.??`, [TableName.ResourceMetadata, joinColumn, parentTable, "id"])
           .where(`${TableName.ResourceMetadata}.key`, meta.key);
         if (meta.value !== undefined) {
           void subQuery.where(`${TableName.ResourceMetadata}.value`, meta.value);
