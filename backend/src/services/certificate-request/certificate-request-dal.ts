@@ -4,7 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName, TCertificateRequests, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
-import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
@@ -393,45 +393,6 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByIdWithMetadata = async (id: string, tx?: Knex) => {
-    try {
-      const query = (tx || db.replicaNode())(TableName.CertificateRequests)
-        .leftJoin(
-          TableName.ResourceMetadata,
-          `${TableName.ResourceMetadata}.certificateRequestId`,
-          `${TableName.CertificateRequests}.id`
-        )
-        .select(selectAllTableCols(TableName.CertificateRequests))
-        .select(
-          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
-          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
-        )
-        .where(`${TableName.CertificateRequests}.id`, id);
-
-      const docs = sqlNestRelationships({
-        data: await query,
-        key: "id",
-        parentMapper: (el) => el,
-        childrenMapper: [
-          {
-            key: "metadataId",
-            label: "metadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
-              id: metadataId,
-              key: metadataKey,
-              value: metadataValue || ""
-            })
-          }
-        ]
-      });
-
-      return docs[0] as (TCertificateRequests & { metadata: { id: string; key: string; value: string }[] }) | undefined;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find certificate request by ID with metadata" });
-    }
-  };
-
   return {
     ...certificateRequestOrm,
     findByIdWithCertificate,
@@ -441,7 +402,6 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     findByProjectId,
     countByProjectId,
     findByProjectIdWithCertificate,
-    markExpiredApprovalRequests,
-    findByIdWithMetadata
+    markExpiredApprovalRequests
   };
 };
