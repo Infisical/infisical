@@ -267,13 +267,13 @@ export const pamResourceServiceFactory = ({
       })
     );
 
-    // If metadata is changing, also check permission against proposed state
-    if (metadata) {
+    // If any conditionable field is changing, also check permission against proposed state
+    if (metadata || name) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Edit,
         subject(ProjectPermissionSub.PamResources, {
           name: name ?? resource.name,
-          metadata: metadata.map(({ key, value }) => ({ key, value: value ?? "" }))
+          metadata: metadata ? metadata.map(({ key, value }) => ({ key, value: value ?? "" })) : currentMetadata
         })
       );
     }

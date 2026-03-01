@@ -288,14 +288,14 @@ export const pamAccountServiceFactory = ({
       })
     );
 
-    // If metadata is changing, check against proposed state
-    if (metadata) {
+    // If any conditionable field is changing, also check permission against proposed state
+    if (metadata || name) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Edit,
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
           accountName: name ?? account.name,
-          metadata: metadata.map(({ key, value }) => ({ key, value: value ?? "" }))
+          metadata: metadata ? metadata.map(({ key, value }) => ({ key, value: value ?? "" })) : currentMetadata
         })
       );
     }
