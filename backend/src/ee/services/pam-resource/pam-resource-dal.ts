@@ -5,6 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { PamResourceOrderBy } from "./pam-resource-enums";
 
@@ -33,8 +34,7 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       orderBy = PamResourceOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       filterResourceTypes,
-      filterMetadataKey,
-      filterMetadataValue
+      metadataFilter
     }: {
       projectId: string;
       search?: string;
@@ -43,8 +43,7 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       orderBy?: PamResourceOrderBy;
       orderDirection?: OrderByDirection;
       filterResourceTypes?: string[];
-      filterMetadataKey?: string;
-      filterMetadataValue?: string;
+      metadataFilter?: Array<{ key: string; value?: string }>;
     },
     tx?: Knex
   ) => {
@@ -67,18 +66,7 @@ export const pamResourceDALFactory = (db: TDbClient) => {
         void query.whereIn(`${TableName.PamResource}.resourceType`, filterResourceTypes);
       }
 
-      if (filterMetadataKey) {
-        void query.whereIn(`${TableName.PamResource}.id`, (subQuery) => {
-          void subQuery
-            .select("pamResourceId")
-            .from(TableName.ResourceMetadata)
-            .whereNotNull("pamResourceId")
-            .where("key", filterMetadataKey);
-          if (filterMetadataValue) {
-            void subQuery.where("value", filterMetadataValue);
-          }
-        });
-      }
+      applyMetadataFilter(query, metadataFilter, "pamResourceId", TableName.PamResource);
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
 

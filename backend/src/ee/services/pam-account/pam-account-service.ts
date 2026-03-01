@@ -509,8 +509,7 @@ export const pamAccountServiceFactory = ({
         orderBy: params.orderBy,
         orderDirection: params.orderDirection,
         filterResourceIds: params.filterResourceIds,
-        filterMetadataKey: params.filterMetadataKey,
-        filterMetadataValue: params.filterMetadataValue
+        metadataFilter: params.metadataFilter
       });
 
     const decryptedAndPermittedAccounts: Array<

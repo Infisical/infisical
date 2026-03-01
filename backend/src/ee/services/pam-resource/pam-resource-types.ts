@@ -117,8 +117,7 @@ export type TListResourcesDTO = {
   limit?: number;
   offset?: number;
   filterResourceTypes?: string[];
-  filterMetadataKey?: string;
-  filterMetadataValue?: string;
+  metadataFilter?: Array<{ key: string; value?: string }>;
 } & TProjectPermission;
 
 // Resource factory

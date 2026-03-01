@@ -38,6 +38,7 @@ import { OrderByDirection } from "@app/lib/types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { metadataFilterSchema } from "@app/server/routes/sanitizedSchemas";
 
 const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedPostgresResourceSchema,
@@ -108,8 +109,7 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
               .filter(Boolean)
           )
           .optional(),
-        filterMetadataKey: z.string().trim().optional(),
-        filterMetadataValue: z.string().trim().optional()
+        metadataFilter: metadataFilterSchema
       }),
       response: {
         200: z.object({
@@ -120,17 +120,8 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const {
-        projectId,
-        limit,
-        offset,
-        search,
-        orderBy,
-        orderDirection,
-        filterResourceTypes,
-        filterMetadataKey,
-        filterMetadataValue
-      } = req.query;
+      const { projectId, limit, offset, search, orderBy, orderDirection, filterResourceTypes, metadataFilter } =
+        req.query;
 
       const { resources, totalCount } = await server.services.pamResource.list({
         actorId: req.permission.id,
@@ -144,8 +135,7 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
         orderBy,
         orderDirection,
         filterResourceTypes,
-        filterMetadataKey,
-        filterMetadataValue
+        metadataFilter
       });
 
       await server.services.auditLog.createAuditLog({

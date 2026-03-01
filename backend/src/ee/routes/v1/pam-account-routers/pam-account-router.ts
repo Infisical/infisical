@@ -21,6 +21,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { metadataFilterSchema } from "@app/server/routes/sanitizedSchemas";
 
 const SanitizedAccountSchema = z.discriminatedUnion("resourceType", [
   SanitizedKubernetesAccountWithResourceSchema,
@@ -108,8 +109,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
               .filter(Boolean)
           )
           .optional(),
-        filterMetadataKey: z.string().trim().optional(),
-        filterMetadataValue: z.string().trim().optional()
+        metadataFilter: metadataFilterSchema
       }),
       response: {
         200: ListPamAccountsResponseSchema
@@ -126,8 +126,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         orderBy,
         orderDirection,
         filterResourceIds,
-        filterMetadataKey,
-        filterMetadataValue
+        metadataFilter
       } = req.query;
 
       const { accounts, totalCount } = await server.services.pamAccount.list({
@@ -143,8 +142,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         orderBy,
         orderDirection,
         filterResourceIds,
-        filterMetadataKey,
-        filterMetadataValue
+        metadataFilter
       });
 
       await server.services.auditLog.createAuditLog({

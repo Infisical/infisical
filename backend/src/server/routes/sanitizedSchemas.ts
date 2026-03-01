@@ -19,6 +19,40 @@ import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-meta
 
 import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
 
+/**
+ * Parses a pipe-delimited metadata filter string into an array of filter entries.
+ * Format: "key=env,value=prod|key=team"
+ * Each pipe-separated segment contains comma-separated key=value pairs.
+ * The "value" field is optional per entry.
+ */
+export const metadataFilterSchema = z
+  .string()
+  .optional()
+  .transform((val) => {
+    if (!val) return undefined;
+
+    return val
+      .split("|")
+      .map((segment) => {
+        const parts = segment.split(",").reduce(
+          (acc, part) => {
+            const [k, ...rest] = part.split("=");
+            if (k) acc[k.trim()] = rest.join("=").trim();
+            return acc;
+          },
+          {} as Record<string, string>
+        );
+
+        if (!parts.key) return null;
+
+        return {
+          key: parts.key,
+          ...(parts.value !== undefined && parts.value !== "" ? { value: parts.value } : {})
+        };
+      })
+      .filter(Boolean) as Array<{ key: string; value?: string }>;
+  });
+
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
 export const integrationAuthPubSchema = IntegrationAuthsSchema.pick({

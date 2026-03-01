@@ -501,8 +501,7 @@ export const pamResourceServiceFactory = ({
       orderBy: params.orderBy,
       orderDirection: params.orderDirection,
       filterResourceTypes: params.filterResourceTypes,
-      filterMetadataKey: params.filterMetadataKey,
-      filterMetadataValue: params.filterMetadataValue
+      metadataFilter: params.metadataFilter
     });
 
     if (allResources.length === 0) {

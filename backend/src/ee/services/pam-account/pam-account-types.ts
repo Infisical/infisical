@@ -40,8 +40,7 @@ export type TListAccountsDTO = {
   limit?: number;
   offset?: number;
   filterResourceIds?: string[];
-  filterMetadataKey?: string;
-  filterMetadataValue?: string;
+  metadataFilter?: Array<{ key: string; value?: string }>;
 } & TProjectPermission;
 
 export type TGetAccountByIdDTO = {

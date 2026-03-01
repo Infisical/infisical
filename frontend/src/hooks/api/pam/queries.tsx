@@ -67,6 +67,19 @@ export const useListPamResourceOptions = (
   });
 };
 
+const serializeMetadataFilter = (
+  filter?: Array<{ key: string; value: string }>
+): string | undefined => {
+  if (!filter || filter.length === 0) return undefined;
+  return filter
+    .map((entry) => {
+      const parts = [`key=${entry.key}`];
+      if (entry.value) parts.push(`value=${entry.value}`);
+      return parts.join(",");
+    })
+    .join("|");
+};
+
 type TListPamResourcesResponse = {
   resources: TPamResource[];
   totalCount: number;
@@ -87,8 +100,12 @@ export const useListPamResources = (
   return useQuery({
     queryKey: pamKeys.listResources(params),
     queryFn: async () => {
+      const { metadataFilter, ...rest } = params;
       const { data } = await apiRequest.get<TListPamResourcesResponse>("/api/v1/pam/resources", {
-        params
+        params: {
+          ...rest,
+          metadataFilter: serializeMetadataFilter(metadataFilter)
+        }
       });
 
       return data;
@@ -167,8 +184,12 @@ export const useListPamAccounts = (
   return useQuery({
     queryKey: pamKeys.listAccounts(params),
     queryFn: async () => {
+      const { metadataFilter, ...rest } = params;
       const { data } = await apiRequest.get<TListPamAccountsResponse>("/api/v1/pam/accounts", {
-        params
+        params: {
+          ...rest,
+          metadataFilter: serializeMetadataFilter(metadataFilter)
+        }
       });
 
       return data;

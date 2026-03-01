@@ -121,8 +121,7 @@ export type TListPamResourcesDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
   filterResourceTypes?: string;
-  filterMetadataKey?: string;
-  filterMetadataValue?: string;
+  metadataFilter?: Array<{ key: string; value: string }>;
 };
 
 export type TCreatePamResourceDTO = Pick<
@@ -157,8 +156,7 @@ export type TListPamAccountsDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
   filterResourceIds?: string;
-  filterMetadataKey?: string;
-  filterMetadataValue?: string;
+  metadataFilter?: Array<{ key: string; value: string }>;
 };
 
 export type TCreatePamAccountDTO = Pick<
