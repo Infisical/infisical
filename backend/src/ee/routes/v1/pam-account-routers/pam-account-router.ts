@@ -19,9 +19,9 @@ import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { metadataFilterSchema } from "@app/server/routes/sanitizedSchemas";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { metadataFilterSchema } from "@app/server/routes/sanitizedSchemas";
 
 const SanitizedAccountSchema = z.discriminatedUnion("resourceType", [
   SanitizedKubernetesAccountWithResourceSchema,

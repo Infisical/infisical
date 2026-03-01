@@ -66,7 +66,9 @@ export const pamResourceDALFactory = (db: TDbClient) => {
         void query.whereIn(`${TableName.PamResource}.resourceType`, filterResourceTypes);
       }
 
-      applyMetadataFilter(query, metadataFilter, "pamResourceId", TableName.PamResource);
+      if (metadataFilter && metadataFilter.length > 0) {
+        void applyMetadataFilter(query, metadataFilter, "pamResourceId", TableName.PamResource);
+      }
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
 

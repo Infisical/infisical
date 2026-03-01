@@ -49,10 +49,6 @@ import {
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, usePopUp, useToggle } from "@app/hooks";
-import {
-  MetadataFilterEntry,
-  MetadataFilterSection
-} from "@app/pages/cert-manager/components/MetadataFilterSection";
 import { ApprovalPolicyType, useCheckPolicyMatch } from "@app/hooks/api/approvalPolicies";
 import {
   PamResourceType,
@@ -62,6 +58,10 @@ import {
   TWindowsAccount,
   useListPamAccounts
 } from "@app/hooks/api/pam";
+import {
+  MetadataFilterEntry,
+  MetadataFilterSection
+} from "@app/pages/cert-manager/components/MetadataFilterSection";
 
 import { PamAccessAccountModal } from "../../PamAccountsPage/components/PamAccessAccountModal";
 import { PamAddAccountModal } from "../../PamAccountsPage/components/PamAddAccountModal";
@@ -123,10 +123,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const handleClearFilters = () => {
     setPendingMetadataEntries([]);
     setAppliedMetadataEntries([]);
-  };
-
-  const handleClearMetadata = () => {
-    setPendingMetadataEntries([]);
   };
 
   const { data: accountsData, isPending } = useListPamAccounts({
@@ -268,25 +264,10 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   </span>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-bunker-300 uppercase">Metadata</span>
-                    {pendingMetadataEntries.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleClearMetadata}
-                        className="cursor-pointer text-xs text-primary hover:text-primary-600"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <MetadataFilterSection
-                    entries={pendingMetadataEntries}
-                    onChange={setPendingMetadataEntries}
-                    className=""
-                  />
-                </div>
+                <MetadataFilterSection
+                  entries={pendingMetadataEntries}
+                  onChange={setPendingMetadataEntries}
+                />
 
                 <div className="pt-2">
                   <V2Button

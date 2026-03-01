@@ -37,8 +37,8 @@ import {
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { metadataFilterSchema } from "@app/server/routes/sanitizedSchemas";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedPostgresResourceSchema,

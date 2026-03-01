@@ -185,10 +185,6 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     setPendingResourceTypes([]);
   };
 
-  const handleClearMetadata = () => {
-    setPendingMetadataEntries([]);
-  };
-
   const resourceTypeOptions = Object.entries(PAM_RESOURCE_TYPE_MAP).map(
     ([type, { name, image }]) => ({
       value: type as PamResourceType,
@@ -288,25 +284,10 @@ export const PamResourcesTable = ({ projectId }: Props) => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-bunker-300 uppercase">Metadata</span>
-                  {pendingMetadataEntries.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleClearMetadata}
-                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <MetadataFilterSection
-                  entries={pendingMetadataEntries}
-                  onChange={setPendingMetadataEntries}
-                  className=""
-                />
-              </div>
+              <MetadataFilterSection
+                entries={pendingMetadataEntries}
+                onChange={setPendingMetadataEntries}
+              />
 
               <div className="pt-2">
                 <Button

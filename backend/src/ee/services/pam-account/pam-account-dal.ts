@@ -70,7 +70,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         void query.whereIn(`${TableName.PamAccount}.resourceId`, filterResourceIds);
       }
 
-      applyMetadataFilter(query, metadataFilter, "pamAccountId", TableName.PamAccount);
+      if (metadataFilter && metadataFilter.length > 0) {
+        void applyMetadataFilter(query, metadataFilter, "pamAccountId", TableName.PamAccount);
+      }
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
 
