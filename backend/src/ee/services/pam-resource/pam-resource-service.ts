@@ -400,7 +400,12 @@ export const pamResourceServiceFactory = ({
         return resource;
       });
 
-      return await decryptResource(updatedResource, resource.projectId, kmsService);
+      const freshMeta = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+
+      return {
+        ...(await decryptResource(updatedResource, resource.projectId, kmsService)),
+        metadata: freshMeta[resourceId] || []
+      };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
