@@ -375,7 +375,11 @@ export const pamResourceServiceFactory = ({
 
     // If nothing was updated, return the fetched resource
     if (Object.keys(updateDoc).length === 0 && metadata === undefined) {
-      return decryptResource(resource, resource.projectId, kmsService);
+      const existingMeta = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+      return {
+        ...(await decryptResource(resource, resource.projectId, kmsService)),
+        metadata: existingMeta[resourceId] || []
+      };
     }
 
     try {
