@@ -624,7 +624,15 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PamResources);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: metadataByResourceId[resourceId] || []
+      })
+    );
 
     // Check if metadata already exists with CA
     if (resource.encryptedResourceMetadata) {
@@ -692,7 +700,15 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([adServerResourceId]);
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: metadataByResourceId[adServerResourceId] || []
+      })
+    );
 
     const relatedResources = await pamResourceDAL.findByAdServerResourceId(adServerResourceId);
 
