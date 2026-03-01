@@ -377,7 +377,18 @@ export const pamAccountServiceFactory = ({
 
     // If nothing was updated, return the fetched account
     if (Object.keys(updateDoc).length === 0 && metadata === undefined) {
-      return decryptAccount(account, account.projectId, kmsService);
+      const existingMeta = await pamAccountDAL.findMetadataByAccountIds([accountId]);
+      return {
+        ...(await decryptAccount(account, account.projectId, kmsService)),
+        metadata: existingMeta[accountId] || [],
+        resourceType: resource.resourceType,
+        resource: {
+          id: resource.id,
+          name: resource.name,
+          resourceType: resource.resourceType,
+          rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
+        }
+      };
     }
 
     try {
