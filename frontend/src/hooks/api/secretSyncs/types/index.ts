@@ -12,6 +12,7 @@ import { TCamundaSync } from "./camunda-sync";
 import { TChecklySync } from "./checkly-sync";
 import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
+import { TKoyebSync } from "./koyeb-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
@@ -79,7 +80,8 @@ export type TSecretSync =
   | TLaravelForgeSync
   | TChefSync
   | TOctopusDeploySync
-  | TCircleCISync;
+  | TCircleCISync
+  | TKoyebSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

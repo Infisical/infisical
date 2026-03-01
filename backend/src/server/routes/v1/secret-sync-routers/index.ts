@@ -28,6 +28,7 @@ import { registerNetlifySyncRouter } from "./netlify-sync-router";
 import { registerNorthflankSyncRouter } from "./northflank-sync-router";
 import { registerOctopusDeploySyncRouter } from "./octopus-deploy-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
+import { registerKoyebSyncRouter } from "./koyeb-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
 import { registerSupabaseSyncRouter } from "./supabase-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
@@ -73,5 +74,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.LaravelForge]: registerLaravelForgeSyncRouter,
   [SecretSync.Chef]: registerChefSyncRouter,
   [SecretSync.OctopusDeploy]: registerOctopusDeploySyncRouter,
-  [SecretSync.CircleCI]: registerCircleCISyncRouter
+  [SecretSync.CircleCI]: registerCircleCISyncRouter,
+  [SecretSync.Koyeb]: registerKoyebSyncRouter
 };

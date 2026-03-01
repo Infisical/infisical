@@ -77,6 +77,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
     case SecretSync.CircleCI:
+    case SecretSync.Koyeb:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

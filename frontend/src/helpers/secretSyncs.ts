@@ -133,6 +133,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.CircleCI]: {
     name: "CircleCI",
     image: "CircleCI.png"
+  },
+  [SecretSync.Koyeb]: {
+    name: "Koyeb",
+    image: "Koyeb.png"
   }
 };
 
@@ -171,7 +175,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.LaravelForge]: AppConnection.LaravelForge,
   [SecretSync.Chef]: AppConnection.Chef,
   [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
-  [SecretSync.CircleCI]: AppConnection.CircleCI
+  [SecretSync.CircleCI]: AppConnection.CircleCI,
+  [SecretSync.Koyeb]: AppConnection.Koyeb
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

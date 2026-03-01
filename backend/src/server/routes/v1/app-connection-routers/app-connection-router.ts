@@ -129,6 +129,10 @@ import {
 } from "@app/services/app-connection/railway";
 import { RedisConnectionListItemSchema, SanitizedRedisConnectionSchema } from "@app/services/app-connection/redis";
 import {
+  KoyebConnectionListItemSchema,
+  SanitizedKoyebConnectionSchema
+} from "@app/services/app-connection/koyeb/koyeb-connection-schema";
+import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
@@ -206,7 +210,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSmbConnectionSchema.options,
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
-  ...SanitizedOpenRouterConnectionSchema.options
+  ...SanitizedOpenRouterConnectionSchema.options,
+  ...SanitizedKoyebConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -260,7 +265,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SmbConnectionListItemSchema,
   SshConnectionListItemSchema,
   DbtConnectionListItemSchema,
-  OpenRouterConnectionListItemSchema
+  OpenRouterConnectionListItemSchema,
+  KoyebConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

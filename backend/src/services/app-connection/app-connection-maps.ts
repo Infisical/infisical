@@ -51,7 +51,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Dbt]: "DBT",
   [AppConnection.SMB]: "SMB",
   [AppConnection.OpenRouter]: "OpenRouter",
-  [AppConnection.CircleCI]: "CircleCI"
+  [AppConnection.CircleCI]: "CircleCI",
+  [AppConnection.Koyeb]: "Koyeb"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -105,5 +106,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Dbt]: AppConnectionPlanType.Regular,
   [AppConnection.SMB]: AppConnectionPlanType.Regular,
   [AppConnection.OpenRouter]: AppConnectionPlanType.Regular,
-  [AppConnection.CircleCI]: AppConnectionPlanType.Regular
+  [AppConnection.CircleCI]: AppConnectionPlanType.Regular,
+  [AppConnection.Koyeb]: AppConnectionPlanType.Regular
 };

@@ -150,6 +150,12 @@ import {
   TRailwaySyncWithCredentials
 } from "./railway/railway-sync-types";
 import {
+  TKoyebSync,
+  TKoyebSyncInput,
+  TKoyebSyncListItem,
+  TKoyebSyncWithCredentials
+} from "./koyeb/koyeb-sync-types";
+import {
   TRenderSync,
   TRenderSyncInput,
   TRenderSyncListItem,
@@ -210,7 +216,8 @@ export type TSecretSync =
   | TNorthflankSync
   | TBitbucketSync
   | TOctopusDeploySync
-  | TCircleCISync;
+  | TCircleCISync
+  | TKoyebSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -247,7 +254,8 @@ export type TSecretSyncWithCredentials =
   | TBitbucketSyncWithCredentials
   | TLaravelForgeSyncWithCredentials
   | TOctopusDeploySyncWithCredentials
-  | TCircleCISyncWithCredentials;
+  | TCircleCISyncWithCredentials
+  | TKoyebSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -284,7 +292,8 @@ export type TSecretSyncInput =
   | TBitbucketSyncInput
   | TLaravelForgeSyncInput
   | TOctopusDeploySyncInput
-  | TCircleCISyncInput;
+  | TCircleCISyncInput
+  | TKoyebSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -321,7 +330,8 @@ export type TSecretSyncListItem =
   | TNorthflankSyncListItem
   | TBitbucketSyncListItem
   | TOctopusDeploySyncListItem
-  | TCircleCISyncListItem;
+  | TCircleCISyncListItem
+  | TKoyebSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

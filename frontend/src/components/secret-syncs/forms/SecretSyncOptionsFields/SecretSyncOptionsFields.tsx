@@ -81,6 +81,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
     case SecretSync.CircleCI:
+    case SecretSync.Koyeb:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:
