@@ -105,6 +105,35 @@ sdk.Auth().UniversalAuthLogin(
 - `clientId` (string): The client ID of your Machine Identity.
 - `clientSecret` (string): The client secret of your Machine Identity.
 
+#### Revoking
+
+```java
+// No-arg: revokes the current session token stored in the SDK
+public void RevokeToken()
+throws InfisicalException
+
+// Explicit: revokes a specific access token
+public void RevokeToken(
+  String accessToken
+)
+throws InfisicalException
+```
+
+The recommended approach is to call `RevokeToken()` without arguments, which revokes the token currently stored in the SDK session:
+
+```java
+sdk.Auth().RevokeToken();
+```
+
+Alternatively, you can pass an explicit access token to revoke:
+
+```java
+sdk.Auth().RevokeToken("ACCESS_TOKEN");
+```
+
+**Parameters (explicit variant):**
+- `accessToken` (String): The access token to revoke.
+
 ### AWS Auth
 
 ```java
