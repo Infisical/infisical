@@ -58,6 +58,7 @@ import { NORTHFLANK_SYNC_LIST_OPTION, NorthflankSyncFns } from "./northflank";
 import { OCTOPUS_DEPLOY_SYNC_LIST_OPTION, OctopusDeploySyncFns } from "./octopus-deploy";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
+import { KOYEB_SYNC_LIST_OPTION, KoyebSyncFns } from "./koyeb";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -102,7 +103,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.LaravelForge]: LARAVEL_FORGE_SYNC_LIST_OPTION,
   [SecretSync.Chef]: CHEF_SYNC_LIST_OPTION,
   [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
-  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION
+  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
+  [SecretSync.Koyeb]: KOYEB_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -329,6 +331,8 @@ export const SecretSyncFns = {
         return OctopusDeploySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:
         return CircleCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Koyeb:
+        return KoyebSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -463,6 +467,9 @@ export const SecretSyncFns = {
       case SecretSync.CircleCI:
         secretMap = await CircleCISyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Koyeb:
+        secretMap = await KoyebSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -566,6 +573,8 @@ export const SecretSyncFns = {
         return OctopusDeploySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:
         return CircleCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Koyeb:
+        return KoyebSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

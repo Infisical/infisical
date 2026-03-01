@@ -220,6 +220,10 @@ export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.CircleCI;
 };
 
+export type TKoyebConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Koyeb;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -271,7 +275,8 @@ export type TAppConnectionOption =
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
   | TDbtConnectionOption
-  | TSmbConnectionOption;
+  | TSmbConnectionOption
+  | TKoyebConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -325,4 +330,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Dbt]: TDbtConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
+  [AppConnection.Koyeb]: TKoyebConnectionOption;
 };

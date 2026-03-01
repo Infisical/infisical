@@ -118,6 +118,8 @@ import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
+import { ValidateKoyebConnectionCredentialsSchema } from "./koyeb/koyeb-connection-schema";
+import { koyebConnectionService } from "./koyeb/koyeb-connection-service";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
@@ -200,7 +202,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
   [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema,
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
-  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema
+  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
+  [AppConnection.Koyeb]: ValidateKoyebConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -921,6 +924,7 @@ export const appConnectionServiceFactory = ({
     chef: chefConnectionService(connectAppConnectionById, licenseService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
-    circleci: circleciConnectionService(connectAppConnectionById)
+    circleci: circleciConnectionService(connectAppConnectionById),
+    koyeb: koyebConnectionService(connectAppConnectionById)
   };
 };

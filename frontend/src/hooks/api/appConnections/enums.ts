@@ -49,5 +49,6 @@ export enum AppConnection {
   Dbt = "dbt",
   SMB = "smb",
   OpenRouter = "open-router",
-  CircleCI = "circleci"
+  CircleCI = "circleci",
+  Koyeb = "koyeb"
 }
