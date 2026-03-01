@@ -51,7 +51,6 @@ import {
   PamResourceType,
   useListPamResources
 } from "@app/hooks/api/pam";
-
 import {
   MetadataFilterEntry,
   MetadataFilterSection
@@ -61,6 +60,13 @@ import { PamAddResourceModal } from "./PamAddResourceModal";
 import { PamDeleteResourceModal } from "./PamDeleteResourceModal";
 import { PamResourceRow } from "./PamResourceRow";
 import { PamUpdateResourceModal } from "./PamUpdateResourceModal";
+
+const ResourceTypeOptionLabel = ({ label, image }: { label: string; image?: string }) => (
+  <div className="flex items-center gap-2">
+    <img alt={`${label} resource type`} src={`/images/integrations/${image}`} className="h-4 w-4" />
+    <span>{label}</span>
+  </div>
+);
 
 type Props = {
   projectId: string;
@@ -274,16 +280,7 @@ export const PamResourcesTable = ({ projectId }: Props) => {
                     setPendingResourceTypes(types);
                   }}
                   options={resourceTypeOptions}
-                  formatOptionLabel={(option) => (
-                    <div className="flex items-center gap-2">
-                      <img
-                        alt={`${option.label} resource type`}
-                        src={`/images/integrations/${(option as { image?: string }).image}`}
-                        className="h-4 w-4"
-                      />
-                      <span>{option.label}</span>
-                    </div>
-                  )}
+                  formatOptionLabel={ResourceTypeOptionLabel}
                   placeholder="Select resource types..."
                   className="w-full border-mineshaft-600 bg-mineshaft-700 text-bunker-200"
                   isMulti

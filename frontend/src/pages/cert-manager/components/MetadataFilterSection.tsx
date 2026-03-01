@@ -18,11 +18,10 @@ type Props = {
 
 let nextId = 0;
 
-export const createMetadataFilterEntry = (key = "", value = ""): MetadataFilterEntry => ({
-  id: `mf-${Date.now()}-${nextId++}`,
-  key,
-  value
-});
+export const createMetadataFilterEntry = (key = "", value = ""): MetadataFilterEntry => {
+  nextId += 1;
+  return { id: `mf-${Date.now()}-${nextId}`, key, value };
+};
 
 export const MetadataFilterSection = ({ entries, onChange, className }: Props) => {
   const handleAdd = () => {
@@ -47,6 +46,7 @@ export const MetadataFilterSection = ({ entries, onChange, className }: Props) =
 
   return (
     <div
+      role="presentation"
       className={twMerge("flex flex-col gap-2", className)}
       onClick={stopPropagation}
       onKeyDown={stopPropagation}
