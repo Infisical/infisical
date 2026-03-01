@@ -492,52 +492,9 @@ export const pamResourceServiceFactory = ({
           totalCount
         };
       }
-
-      // TIER 2: Conditional access — fetch all, filter per-resource
-      const { resources: allResources } = await pamResourceDAL.findByProjectId({
-        projectId,
-        search: params.search,
-        orderBy: params.orderBy,
-        orderDirection: params.orderDirection,
-        filterResourceTypes: params.filterResourceTypes,
-        filterMetadataKey: params.filterMetadataKey,
-        filterMetadataValue: params.filterMetadataValue
-      });
-
-      if (allResources.length > 0) {
-        const allResourceIds = allResources.map((r) => r.id);
-        const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(allResourceIds);
-
-        const permittedResources = allResources.filter((resource) =>
-          permission.can(
-            ProjectPermissionActions.Read,
-            subject(ProjectPermissionSub.PamResources, {
-              name: resource.name,
-              metadata: metadataByResourceId[resource.id] || []
-            })
-          )
-        );
-
-        if (permittedResources.length > 0) {
-          const totalCount = permittedResources.length;
-          const offset = params.offset || 0;
-          const limit = params.limit || 100;
-          const paginatedResources = permittedResources.slice(offset, offset + limit);
-
-          return {
-            resources: await Promise.all(
-              paginatedResources.map(async (resource) => ({
-                ...(await decryptResource(resource, projectId, kmsService)),
-                metadata: metadataByResourceId[resource.id] || []
-              }))
-            ),
-            totalCount
-          };
-        }
-      }
     }
 
-    // TIER 3: Account-level fallback
+    // Fetch all resources once for both Tier 2 and Tier 3
     const { resources: allResources } = await pamResourceDAL.findByProjectId({
       projectId,
       search: params.search,
@@ -550,6 +507,39 @@ export const pamResourceServiceFactory = ({
 
     if (allResources.length === 0) {
       return { resources: [], totalCount: 0 };
+    }
+
+    // TIER 2: Conditional access — filter per-resource
+    if (canReadResources) {
+      const allResourceIds = allResources.map((r) => r.id);
+      const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(allResourceIds);
+
+      const permittedResources = allResources.filter((resource) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.PamResources, {
+            name: resource.name,
+            metadata: metadataByResourceId[resource.id] || []
+          })
+        )
+      );
+
+      if (permittedResources.length > 0) {
+        const totalCount = permittedResources.length;
+        const offset = params.offset || 0;
+        const limit = params.limit || 100;
+        const paginatedResources = permittedResources.slice(offset, offset + limit);
+
+        return {
+          resources: await Promise.all(
+            paginatedResources.map(async (resource) => ({
+              ...(await decryptResource(resource, projectId, kmsService)),
+              metadata: metadataByResourceId[resource.id] || []
+            }))
+          ),
+          totalCount
+        };
+      }
     }
 
     // Fetch all accounts for the project (flat view, no pagination) for permission checking
