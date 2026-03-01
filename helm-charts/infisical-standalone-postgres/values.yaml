@@ -177,6 +177,12 @@ redis:
   auth:
     # -- Redis password
     password: "mysecretpassword"
+    # -- Redis existingSecret. The name of an existing secret to use for the redis password
+    # -- NOTE: When it's set, the previous `auth.password` parameter is ignored. You must add REDIS_URL to your env secret .. see kubeSecretRef
+    # existingSecret: "my-existing-secret"
+    # -- existingSecret password key. Password key to be retrieved from existing secret
+    # -- NOTE: ignored unless `auth.existingSecret` parameter is set
+    # existingSecretPasswordKey: "password"
 
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone

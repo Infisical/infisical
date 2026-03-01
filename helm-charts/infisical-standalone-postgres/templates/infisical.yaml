@@ -69,7 +69,7 @@ spec:
         - name: DB_CONNECTION_URI
           value: {{ include "infisical.postgresDBConnectionString" . }}
         {{- end }}
-        {{- if .Values.redis.enabled }}
+        {{- if and .Values.redis.enabled (not .Values.redis.auth.existingSecret) }}
         - name: REDIS_URL
           value: {{ include "infisical.redisConnectionString" . }}
         {{- end }}
