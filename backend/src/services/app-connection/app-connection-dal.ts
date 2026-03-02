@@ -6,6 +6,7 @@ import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCo
 import { transformUsageToProjects } from "@app/services/app-connection/app-connection-fns";
 
 import { TAppConnection } from "./app-connection-types";
+import { AppConnectionCredentialRotationStatus } from "./credential-rotation";
 import { AppConnectionCredentialRotationRotateAtUtcSchema } from "./credential-rotation/app-connection-credential-rotation-schemas";
 
 export type TAppConnectionDALFactory = ReturnType<typeof appConnectionDALFactory>;
@@ -26,7 +27,8 @@ export const appConnectionDALFactory = (db: TDbClient) => {
       .select(selectAllTableCols(TableName.AppConnection))
       .select(
         db.ref("rotationInterval").withSchema(TableName.AppConnectionCredentialRotation).as("rotationInterval"),
-        db.ref("rotateAtUtc").withSchema(TableName.AppConnectionCredentialRotation).as("rotateAtUtc")
+        db.ref("rotateAtUtc").withSchema(TableName.AppConnectionCredentialRotation).as("rotateAtUtc"),
+        db.ref("rotationStatus").withSchema(TableName.AppConnectionCredentialRotation).as("rotationStatus")
       )
       .select(
         // project
@@ -51,6 +53,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
         if (parsedRotationAtUtc.success) {
           rotation = {
             rotationInterval: connection.rotationInterval,
+            rotationStatus: connection.rotationStatus as AppConnectionCredentialRotationStatus,
             rotateAtUtc: parsedRotationAtUtc.data
           };
         }

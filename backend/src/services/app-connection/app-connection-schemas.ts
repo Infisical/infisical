@@ -7,6 +7,7 @@ import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connec
 import { TAppConnectionBaseConfig } from "@app/services/app-connection/app-connection-types";
 
 import { AppConnection } from "./app-connection-enums";
+import { AppConnectionCredentialRotationStatus } from "./credential-rotation/app-connection-credential-rotation-enums";
 import { CreateAppConnectionCredentialRotationSchema } from "./credential-rotation/app-connection-credential-rotation-schemas";
 
 export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
@@ -17,6 +18,7 @@ export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
   rotation: z
     .object({
       rotationInterval: z.number(),
+      rotationStatus: z.nativeEnum(AppConnectionCredentialRotationStatus),
       rotateAtUtc: z.object({
         hours: z.number(),
         minutes: z.number()
