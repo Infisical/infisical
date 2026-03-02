@@ -18,11 +18,17 @@ export const AzureAdCsExternalConfigSchema = z.object({
 export const AcmeExternalConfigSchema = z.object({});
 
 /**
+ * External configuration schema for AWS PCA Certificate Authority
+ */
+export const AwsPcaExternalConfigSchema = z.object({});
+
+/**
  * Map of CA types to their corresponding external configuration schemas
  */
 export const ExternalConfigSchemaMap = {
   [CaType.AZURE_AD_CS]: AzureAdCsExternalConfigSchema,
   [CaType.ACME]: AcmeExternalConfigSchema,
+  [CaType.AWS_PCA]: AwsPcaExternalConfigSchema,
   [CaType.INTERNAL]: z.object({}).optional() // Internal CAs don't use external configs
 } as const;
 
@@ -43,7 +49,7 @@ export const createExternalConfigSchema = (caType?: CaType | null) => {
  * Union type of all possible external configuration schemas
  */
 export const ExternalConfigUnionSchema = z
-  .union([AzureAdCsExternalConfigSchema, AcmeExternalConfigSchema, z.object({})])
+  .union([AzureAdCsExternalConfigSchema, AcmeExternalConfigSchema, AwsPcaExternalConfigSchema, z.object({})])
   .nullable()
   .optional();
 

@@ -1,7 +1,7 @@
-import { cloneElement, useMemo, useState } from "react";
+import { cloneElement, useMemo } from "react";
 import { Control, Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { components, MultiValueProps, MultiValueRemoveProps, OptionProps } from "react-select";
-import { CheckIcon, GripVerticalIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { CheckIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -182,7 +182,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   onShowAccessTree
 }: Props<T>) => {
   const { control, watch } = useFormContext<TFormSchema>();
-  const { fields, remove, insert, move } = useFieldArray({
+  const { fields, remove, insert } = useFieldArray({
     control,
     name: `permissions.${subject}`
   });
@@ -193,39 +193,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
     name: `permissions.${subject}`
   });
 
-  const [draggedItem, setDraggedItem] = useState<number | null>(null);
-  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
-
   if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return null;
-
-  const handleDragStart = (_: React.DragEvent, index: number) => {
-    setDraggedItem(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverItem(index);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-
-    if (draggedItem === null || dragOverItem === null || draggedItem === dragOverItem) {
-      setDraggedItem(null);
-      setDragOverItem(null);
-      return;
-    }
-
-    move(draggedItem, dragOverItem);
-
-    setDraggedItem(null);
-    setDragOverItem(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-    setDragOverItem(null);
-  };
 
   return (
     <UnstableAccordionItem value={subject}>
@@ -287,12 +255,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                 key={el.id}
                 className={twMerge(
                   "relative rounded-md border border-l-[6px] border-border bg-card px-5 py-4 transition-colors duration-300",
-                  isInverted ? "border-l-red-600/50" : "border-l-green-600/50",
-                  dragOverItem === rootIndex ? "border-2 border-primary/50" : "",
-                  draggedItem === rootIndex ? "opacity-50" : ""
+                  isInverted ? "border-l-red-600/50" : "border-l-green-600/50"
                 )}
-                onDragOver={(e) => handleDragOver(e, rootIndex)}
-                onDrop={handleDrop}
               >
                 <div className="flex items-center gap-3">
                   {isConditionalSubjects(subject) && (
@@ -339,21 +303,6 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                         </UnstableIconButton>
                       </TooltipTrigger>
                       <TooltipContent side="top">Remove Rule</TooltipContent>
-                    </Tooltip>
-                  )}
-                  {!isDisabled && isConditionalSubjects(subject) && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, rootIndex)}
-                          onDragEnd={handleDragEnd}
-                          className="cursor-move text-muted hover:text-foreground"
-                        >
-                          <GripVerticalIcon className="size-4" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">Drag to reorder permission</TooltipContent>
                     </Tooltip>
                   )}
                 </div>

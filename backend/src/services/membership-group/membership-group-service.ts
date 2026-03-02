@@ -27,7 +27,6 @@ import {
   TListMembershipGroupDTO,
   TUpdateMembershipGroupDTO
 } from "./membership-group-types";
-import { newNamespaceMembershipGroupFactory } from "./namespace/namespace-membership-group-factory";
 import { newOrgMembershipGroupFactory } from "./org/org-membership-group-factory";
 import { newProjectMembershipGroupFactory } from "./project/project-membership-group-factory";
 
@@ -64,7 +63,6 @@ export const membershipGroupServiceFactory = ({
       permissionService,
       groupDAL
     }),
-    [AccessScope.Namespace]: newNamespaceMembershipGroupFactory({}),
     [AccessScope.Project]: newProjectMembershipGroupFactory({
       membershipGroupDAL,
       orgDAL,

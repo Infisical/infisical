@@ -8,6 +8,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import {
   CreatePkiAlertV2Schema,
   createSecureAlertBeforeValidator,
+  NotificationConfigSchema,
   PkiAlertChannelType,
   PkiAlertEventType,
   PkiAlertRunStatus,
@@ -42,6 +43,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -116,6 +118,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
               alertBefore: z.string(),
               filters: z.array(PkiFilterRuleSchema),
               enabled: z.boolean(),
+              notificationConfig: NotificationConfigSchema.nullable(),
               channels: z.array(
                 z.object({
                   id: z.string().uuid(),
@@ -180,6 +183,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -247,6 +251,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -317,6 +322,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),

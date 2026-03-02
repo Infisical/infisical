@@ -52,6 +52,7 @@ const SanitizedProjectTemplateSchema = ProjectTemplatesSchema.extend({
   identities: z
     .object({
       identityId: z.string().uuid(),
+      identityName: z.string(),
       roles: z.string().array()
     })
     .array()
