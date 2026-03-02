@@ -1,7 +1,9 @@
+import { Fragment } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { InfoIcon, PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
+  Badge,
   Button,
   Field,
   FieldContent,
@@ -119,102 +121,115 @@ export const ConditionsFields = ({
                 operator: string;
               }) || {};
             return (
-              <div
-                key={el.id}
-                className="flex items-start gap-2 bg-card first:rounded-t-md last:rounded-b-md"
-              >
-                <div className="w-1/4">
-                  <Controller
-                    control={control}
-                    name={`permissions.${subject}.${position}.conditions.${index}.lhs` as const}
-                    render={({ field, fieldState: { error } }) => (
-                      <Field data-invalid={Boolean(error?.message)} className="mb-0">
-                        <FieldContent>
-                          <Select
-                            value={field.value}
-                            onValueChange={(e) => {
-                              setValue(
-                                `permissions.${subject}.${position}.conditions.${index}.operator` as const,
-                                PermissionConditionOperators.$IN as never
-                              );
-                              field.onChange(e);
-                            }}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              {selectOptions.map(({ value, label }) => (
-                                <SelectItem key={value} value={value}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FieldContent>
-                        <FieldError>{error?.message}</FieldError>
-                      </Field>
+              <Fragment key={el.id}>
+                <div className="flex items-center gap-2 bg-card first:rounded-t-md last:rounded-b-md">
+                  <div className="flex w-1/4 items-center gap-2">
+                    {index > 0 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="shrink-0">
+                            <Badge variant="neutral" className="text-xs">
+                              and
+                            </Badge>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-wrap">
+                          All conditions must be true for this policy to apply
+                        </TooltipContent>
+                      </Tooltip>
                     )}
-                  />
-                </div>
-                <div className="flex w-44 items-center space-x-2">
-                  <Controller
-                    control={control}
-                    name={
-                      `permissions.${subject}.${position}.conditions.${index}.operator` as const
-                    }
-                    render={({ field, fieldState: { error } }) => (
-                      <Field data-invalid={Boolean(error?.message)} className="mb-0 grow">
-                        <FieldContent>
-                          <Select value={field.value} onValueChange={(e) => field.onChange(e)}>
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              {renderOperatorSelectItems(condition.lhs)}
-                            </SelectContent>
-                          </Select>
-                        </FieldContent>
-                        <FieldError>{error?.message}</FieldError>
-                      </Field>
-                    )}
-                  />
-                  <div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="size-4 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs text-wrap">
-                        {getConditionOperatorHelperInfo(
-                          condition?.operator as PermissionConditionOperators
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
+                    <Controller
+                      control={control}
+                      name={`permissions.${subject}.${position}.conditions.${index}.lhs` as const}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error?.message)} className="mb-0 flex-1">
+                          <FieldContent>
+                            <Select
+                              value={field.value}
+                              onValueChange={(e) => {
+                                setValue(
+                                  `permissions.${subject}.${position}.conditions.${index}.operator` as const,
+                                  PermissionConditionOperators.$IN as never
+                                );
+                                field.onChange(e);
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                {selectOptions.map(({ value, label }) => (
+                                  <SelectItem key={value} value={value}>
+                                    {label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FieldContent>
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
                   </div>
+                  <div className="flex w-44 items-center space-x-2">
+                    <Controller
+                      control={control}
+                      name={
+                        `permissions.${subject}.${position}.conditions.${index}.operator` as const
+                      }
+                      render={({ field, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error?.message)} className="mb-0 grow">
+                          <FieldContent>
+                            <Select value={field.value} onValueChange={(e) => field.onChange(e)}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                {renderOperatorSelectItems(condition.lhs)}
+                              </SelectContent>
+                            </Select>
+                          </FieldContent>
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                    <div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-4 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs text-wrap">
+                          {getConditionOperatorHelperInfo(
+                            condition?.operator as PermissionConditionOperators
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                  <div className="grow">
+                    <Controller
+                      control={control}
+                      name={`permissions.${subject}.${position}.conditions.${index}.rhs` as const}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error?.message)} className="mb-0 grow">
+                          <FieldContent>
+                            <UnstableInput {...field} />
+                          </FieldContent>
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                  </div>
+                  <UnstableIconButton
+                    aria-label="remove"
+                    variant="outline"
+                    className="p-2.5"
+                    onClick={() => items.remove(index)}
+                  >
+                    <TrashIcon className="size-4" />
+                  </UnstableIconButton>
                 </div>
-                <div className="grow">
-                  <Controller
-                    control={control}
-                    name={`permissions.${subject}.${position}.conditions.${index}.rhs` as const}
-                    render={({ field, fieldState: { error } }) => (
-                      <Field data-invalid={Boolean(error?.message)} className="mb-0 grow">
-                        <FieldContent>
-                          <UnstableInput {...field} />
-                        </FieldContent>
-                        <FieldError>{error?.message}</FieldError>
-                      </Field>
-                    )}
-                  />
-                </div>
-                <UnstableIconButton
-                  aria-label="remove"
-                  variant="outline"
-                  className="p-2.5"
-                  onClick={() => items.remove(index)}
-                >
-                  <TrashIcon className="size-4" />
-                </UnstableIconButton>
-              </div>
+              </Fragment>
             );
           })
         )}

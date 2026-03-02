@@ -73,7 +73,7 @@ export const ProjectTemplateEditRoleForm = ({
 
   const hasPermissions = useMemo(
     () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
-    [JSON.stringify(permissions)]
+    [permissions]
   );
 
   const onSubmit = async (form: TFormSchema) => {

@@ -1,4 +1,4 @@
-import { cloneElement, useMemo } from "react";
+import { cloneElement, Fragment, useMemo } from "react";
 import { Control, Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { components, MultiValueProps, MultiValueRemoveProps, OptionProps } from "react-select";
 import { CheckIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
@@ -251,66 +251,85 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
             const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted` as any);
 
             return (
-              <div
-                key={el.id}
-                className={twMerge(
-                  "relative rounded-md border border-l-[6px] border-border bg-card px-5 py-4 transition-colors duration-300",
-                  isInverted ? "border-l-red-600/50" : "border-l-green-600/50"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  {isConditionalSubjects(subject) && (
-                    <Controller
-                      defaultValue={false as any}
-                      name={`permissions.${subject}.${rootIndex}.inverted`}
-                      render={({ field }) => (
-                        <Select
-                          value={String(field.value)}
-                          onValueChange={(val) => field.onChange(val === "true")}
-                          disabled={isDisabled}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            <SelectItem value="false">Allow</SelectItem>
-                            <SelectItem value="true">Forbid</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  )}
-                  <div className="flex-1">
-                    <ActionsMultiSelect
-                      subject={subject}
-                      rootIndex={rootIndex}
-                      actions={actions}
-                      isDisabled={isDisabled}
-                      control={control}
-                    />
-                  </div>
-                  {!isDisabled && (
+              <Fragment key={el.id}>
+                {rootIndex > 0 && (
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="flex-1 border-t border-border" />
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <UnstableIconButton
-                          aria-label="Remove rule"
-                          variant="danger"
-                          size="xs"
-                          onClick={() => remove(rootIndex)}
-                          isDisabled={isDisabled}
-                        >
-                          <TrashIcon className="size-4" />
-                        </UnstableIconButton>
+                        <div className="flex items-center">
+                          <Badge variant="neutral" className="text-xs">
+                            or
+                          </Badge>
+                        </div>
                       </TooltipTrigger>
-                      <TooltipContent side="top">Remove Rule</TooltipContent>
+                      <TooltipContent side="top" className="max-w-xs text-wrap">
+                        At least one rule must match for this permission to apply
+                      </TooltipContent>
                     </Tooltip>
+                    <div className="flex-1 border-t border-border" />
+                  </div>
+                )}
+                <div
+                  className={twMerge(
+                    "relative rounded-md border border-l-[6px] border-border bg-card px-5 py-4 transition-colors duration-300",
+                    isInverted ? "border-l-red-600/50" : "border-l-green-600/50"
                   )}
+                >
+                  <div className="flex items-center gap-3">
+                    {isConditionalSubjects(subject) && (
+                      <Controller
+                        defaultValue={false as any}
+                        name={`permissions.${subject}.${rootIndex}.inverted`}
+                        render={({ field }) => (
+                          <Select
+                            value={String(field.value)}
+                            onValueChange={(val) => field.onChange(val === "true")}
+                            disabled={isDisabled}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              <SelectItem value="false">Allow</SelectItem>
+                              <SelectItem value="true">Forbid</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    )}
+                    <div className="flex-1">
+                      <ActionsMultiSelect
+                        subject={subject}
+                        rootIndex={rootIndex}
+                        actions={actions}
+                        isDisabled={isDisabled}
+                        control={control}
+                      />
+                    </div>
+                    {!isDisabled && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <UnstableIconButton
+                            aria-label="Remove rule"
+                            variant="danger"
+                            size="xs"
+                            onClick={() => remove(rootIndex)}
+                            isDisabled={isDisabled}
+                          >
+                            <TrashIcon className="size-4" />
+                          </UnstableIconButton>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Remove Rule</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                  {children &&
+                    cloneElement(children, {
+                      position: rootIndex
+                    })}
                 </div>
-                {children &&
-                  cloneElement(children, {
-                    position: rootIndex
-                  })}
-              </div>
+              </Fragment>
             );
           })}
         </div>
