@@ -5,7 +5,7 @@ import { faArrowRight, faChevronRight, faMagnifyingGlass } from "@fortawesome/fr
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
-import { addSeconds, formatISO } from "date-fns";
+import { addSeconds, format, formatISO } from "date-fns";
 import { jwtDecode } from "jwt-decode";
 
 import { Mfa } from "@app/components/auth/Mfa";
@@ -333,7 +333,13 @@ export const SelectOrganizationSection = () => {
           <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
             <div className="flex flex-col items-start">
               <p className="truncate">{selectedRootOrg.name}</p>
-              <p className="text-xs text-mineshaft-400">Root organization</p>
+              <p className="text-xs text-mineshaft-400">
+                Root organization
+                {(() => {
+                  const joined = selectedRootOrg.userJoinedAt ?? organizations.data?.find((o) => o.id === selectedRootOrg.id)?.userJoinedAt;
+                  return joined ? <> · Member since {format(new Date(joined), "MMM d yyyy")}</> : null;
+                })()}
+              </p>
             </div>
             <button
               type="button"
@@ -357,18 +363,18 @@ export const SelectOrganizationSection = () => {
             </p>
           ) : (
             filteredSubOrgs.map((sub) => (
-              <button
-                key={sub.id}
-                type="button"
-                onClick={() => handleLoginById(sub.id)}
-                className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
-              >
-                <p className="truncate">{sub.name}</p>
-                <FontAwesomeIcon
-                  icon={faArrowRight}
-                  className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
-                />
-              </button>
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => handleLoginById(sub.id)}
+                  className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
+                >
+                  <p className="truncate">{sub.name}</p>
+                  <FontAwesomeIcon
+                    icon={faArrowRight}
+                    className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
+                  />
+                </button>
             ))
           )}
         </div>
@@ -398,6 +404,14 @@ export const SelectOrganizationSection = () => {
                   <div className="pointer-events-none relative z-10 flex items-center justify-between px-4 py-3">
                     <div className="flex flex-col gap-1.5">
                       <p className="truncate transition-colors">{org.name}</p>
+                      {(() => {
+                        const joined = org.userJoinedAt ?? organizations.data?.find((o) => o.id === org.id)?.userJoinedAt;
+                        return joined ? (
+                          <p className="text-xs text-mineshaft-400">
+                            Member since {format(new Date(joined), "MMM d yyyy")}
+                          </p>
+                        ) : null;
+                      })()}
                       <button
                         type="button"
                         onClick={() => setSelectedRootOrg(org)}
@@ -423,7 +437,17 @@ export const SelectOrganizationSection = () => {
                   aria-label={`Login to ${org.name}`}
                   className="group flex h-14 w-full items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
                 >
-                  <p className="truncate transition-colors">{org.name}</p>
+                  <div className="flex flex-col items-start">
+                    <p className="truncate transition-colors">{org.name}</p>
+                    {(() => {
+                      const joined = org.userJoinedAt ?? organizations.data?.find((o) => o.id === org.id)?.userJoinedAt;
+                      return joined ? (
+                        <p className="text-xs text-mineshaft-400">
+                          Member since {format(new Date(joined), "MMM d yyyy")}
+                        </p>
+                      ) : null;
+                    })()}
+                  </div>
                   <FontAwesomeIcon
                     icon={faArrowRight}
                     className="text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500"
@@ -546,7 +570,7 @@ export const SelectOrganizationSection = () => {
                   >
                     All organizations
                   </button>
-                  <span className="text-mineshaft-600">›</span>
+                  <span className="text-white">›</span>
                   <span className="font-medium text-gray-300">{selectedRootOrg.name}</span>
                 </nav>
               </div>

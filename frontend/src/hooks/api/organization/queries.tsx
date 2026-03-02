@@ -27,6 +27,7 @@ export type TOrgWithSubOrgs = {
   name: string;
   slug: string;
   createdAt: string;
+  userJoinedAt?: string | null;
   subOrganizations: { id: string; name: string; slug: string }[];
 };
 
