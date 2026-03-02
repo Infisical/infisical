@@ -204,7 +204,7 @@ export const orgServiceFactory = ({
   };
 
   const findAllAccessibleOrganizationsWithSubOrgs = async (userId: string): Promise<TOrgWithSubOrgs[]> => {
-    return orgDAL.listOrganizationsWithSubOrgs({ actorId: userId, actorType: ActorType.USER });
+    return orgDAL.listOrganizationsWithSubOrgs({ actorId: userId });
   };
 
   /*
