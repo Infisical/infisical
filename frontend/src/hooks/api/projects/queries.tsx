@@ -555,58 +555,22 @@ export const useListWorkspaceCertificates = ({
       metadataFilter
     }),
     queryFn: async () => {
-      const params = new URLSearchParams({
-        offset: String(offset),
-        limit: String(limit)
-      });
-
-      if (friendlyName) {
-        params.append("friendlyName", friendlyName);
-      }
-      if (commonName) {
-        params.append("commonName", commonName);
-      }
-      if (forPkiSync) {
-        params.append("forPkiSync", "true");
-      }
-      if (search) {
-        params.append("search", search);
-      }
-      if (status) {
-        if (Array.isArray(status)) {
-          status.forEach((statusValue) => {
-            params.append("status", statusValue);
-          });
-        } else {
-          params.append("status", status);
-        }
-      }
-      if (fromDate) {
-        params.append("fromDate", fromDate.toISOString());
-      }
-      if (toDate) {
-        params.append("toDate", toDate.toISOString());
-      }
-      if (profileIds && profileIds.length > 0) {
-        profileIds.forEach((id) => {
-          params.append("profileIds", id);
-        });
-      }
-      if (metadataFilter && metadataFilter.length > 0) {
-        params.append(
-          "metadataFilter",
-          metadataFilter
-            .map((m) => (m.value ? `key=${m.key},value=${m.value}` : `key=${m.key}`))
-            .join("|")
-        );
-      }
-
       const {
         data: { certificates, totalCount }
-      } = await apiRequest.get<{ certificates: TCertificate[]; totalCount: number }>(
-        `/api/v1/projects/${projectId}/certificates`,
+      } = await apiRequest.post<{ certificates: TCertificate[]; totalCount: number }>(
+        `/api/v1/projects/${projectId}/certificates/search`,
         {
-          params
+          offset,
+          limit,
+          ...(friendlyName && { friendlyName }),
+          ...(commonName && { commonName }),
+          ...(forPkiSync && { forPkiSync }),
+          ...(search && { search }),
+          ...(status && { status: Array.isArray(status) ? status.join(",") : status }),
+          ...(profileIds && profileIds.length > 0 && { profileIds }),
+          ...(fromDate && { fromDate: fromDate.toISOString() }),
+          ...(toDate && { toDate: toDate.toISOString() }),
+          ...(metadataFilter && metadataFilter.length > 0 && { metadata: metadataFilter })
         }
       );
 
