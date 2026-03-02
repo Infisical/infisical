@@ -3,12 +3,13 @@ import { z } from "zod";
 import { OrganizationsSchema } from "@app/db/schemas";
 
 /** Minimal org fields (id, name, slug) – e.g. for sub-org list items or summaries */
-export const orgBasicSchema = OrganizationsSchema.pick({
+const orgBasicSchema = OrganizationsSchema.pick({
   id: true,
   name: true,
   slug: true
 });
-export type TOrgBasic = z.infer<typeof orgBasicSchema>;
+
+type TOrgBasic = z.infer<typeof orgBasicSchema>;
 
 /** Root org with accessible sub-orgs (basic info only) */
 export type TOrgWithSubOrgs = TOrgBasic & {
