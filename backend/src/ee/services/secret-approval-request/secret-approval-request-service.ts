@@ -1185,7 +1185,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (isSoftEnforcement) {
       const cfg = getConfig();
-      const env = await projectEnvDAL.findOne({ id: policy.envId });
+      const env = await projectEnvDAL.findOne({ slug: environment, projectId });
       const requestedByUser = await userDAL.findOne({ id: actorId });
       const approverUsers = await userDAL.find({
         $in: {
@@ -1615,7 +1615,7 @@ export const secretApprovalRequestServiceFactory = ({
       return { ...doc, commits: approvalCommits };
     });
 
-    const env = await projectEnvDAL.findOne({ id: policy.envId });
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     const user = await userDAL.findById(actorId);
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
@@ -2023,7 +2023,7 @@ export const secretApprovalRequestServiceFactory = ({
       : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
     const user = await userDAL.findById(actorId);
-    const env = await projectEnvDAL.findOne({ id: policy.envId });
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
     const approvalPath = `${projectPath}/approval`;

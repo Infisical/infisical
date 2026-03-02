@@ -336,58 +336,82 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           }
         };
 
-        if (
-          constraints.shouldShowSubjectSection &&
-          subjectAttributes &&
-          subjectAttributes.length > 0
-        ) {
-          const cnAttr = subjectAttributes.find(
-            (attr) => attr.type === CertSubjectAttributeType.COMMON_NAME
-          );
-          if (cnAttr?.value) {
-            request.attributes.commonName = cnAttr.value;
-          }
+        if (constraints.shouldShowSubjectSection) {
+          const defaults = actualSelectedProfile?.defaults;
 
-          const orgAttr = subjectAttributes.find(
-            (attr) => attr.type === CertSubjectAttributeType.ORGANIZATION
-          );
-          if (orgAttr?.value) {
-            request.attributes.organization = orgAttr.value;
-          }
+          if (subjectAttributes && subjectAttributes.length > 0) {
+            const cnAttr = subjectAttributes.find(
+              (attr) => attr.type === CertSubjectAttributeType.COMMON_NAME
+            );
+            if (cnAttr?.value) {
+              request.attributes.commonName = cnAttr.value;
+            } else if (defaults?.commonName) {
+              request.attributes.commonName = null;
+            }
 
-          const ouAttr = subjectAttributes.find(
-            (attr) => attr.type === CertSubjectAttributeType.ORGANIZATIONAL_UNIT
-          );
-          if (ouAttr?.value) {
-            request.attributes.organizationUnit = ouAttr.value;
-          }
+            const orgAttr = subjectAttributes.find(
+              (attr) => attr.type === CertSubjectAttributeType.ORGANIZATION
+            );
+            if (orgAttr?.value) {
+              request.attributes.organization = orgAttr.value;
+            } else if (defaults?.organization) {
+              request.attributes.organization = null;
+            }
 
-          const countryAttr = subjectAttributes.find(
-            (attr) => attr.type === CertSubjectAttributeType.COUNTRY
-          );
-          if (countryAttr?.value) {
-            request.attributes.country = countryAttr.value;
-          }
+            const ouAttr = subjectAttributes.find(
+              (attr) => attr.type === CertSubjectAttributeType.ORGANIZATIONAL_UNIT
+            );
+            if (ouAttr?.value) {
+              request.attributes.organizationUnit = ouAttr.value;
+            } else if (defaults?.organizationalUnit) {
+              request.attributes.organizationUnit = null;
+            }
 
-          const stateAttr = subjectAttributes.find(
-            (attr) => attr.type === CertSubjectAttributeType.STATE
-          );
-          if (stateAttr?.value) {
-            request.attributes.state = stateAttr.value;
-          }
+            const countryAttr = subjectAttributes.find(
+              (attr) => attr.type === CertSubjectAttributeType.COUNTRY
+            );
+            if (countryAttr?.value) {
+              request.attributes.country = countryAttr.value;
+            } else if (defaults?.country) {
+              request.attributes.country = null;
+            }
 
-          const localityAttr = subjectAttributes.find(
-            (attr) => attr.type === CertSubjectAttributeType.LOCALITY
-          );
-          if (localityAttr?.value) {
-            request.attributes.locality = localityAttr.value;
+            const stateAttr = subjectAttributes.find(
+              (attr) => attr.type === CertSubjectAttributeType.STATE
+            );
+            if (stateAttr?.value) {
+              request.attributes.state = stateAttr.value;
+            } else if (defaults?.state) {
+              request.attributes.state = null;
+            }
+
+            const localityAttr = subjectAttributes.find(
+              (attr) => attr.type === CertSubjectAttributeType.LOCALITY
+            );
+            if (localityAttr?.value) {
+              request.attributes.locality = localityAttr.value;
+            } else if (defaults?.locality) {
+              request.attributes.locality = null;
+            }
+          } else if (defaults) {
+            // No subject attributes provided; send null overrides for profile defaults
+            if (defaults.commonName) request.attributes.commonName = null;
+            if (defaults.organization) request.attributes.organization = null;
+            if (defaults.organizationalUnit) request.attributes.organizationUnit = null;
+            if (defaults.country) request.attributes.country = null;
+            if (defaults.state) request.attributes.state = null;
+            if (defaults.locality) request.attributes.locality = null;
           }
         }
 
-        if (constraints.shouldShowSanSection && subjectAltNames && subjectAltNames.length > 0) {
-          const formattedSans = formatSubjectAltNames(subjectAltNames);
-          if (formattedSans && formattedSans.length > 0) {
-            request.attributes.altNames = formattedSans;
+        if (constraints.shouldShowSanSection) {
+          if (subjectAltNames && subjectAltNames.length > 0) {
+            const formattedSans = formatSubjectAltNames(subjectAltNames);
+            if (formattedSans && formattedSans.length > 0) {
+              request.attributes.altNames = formattedSans;
+            }
+          } else {
+            request.attributes.altNames = [];
           }
         }
 
@@ -399,6 +423,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             isCA: true,
             pathLength: basicConstraints?.pathLength ?? undefined
           };
+        } else if (constraints.templateAllowsCA) {
+          request.attributes.basicConstraints = { isCA: false };
         }
 
         const response = await issueCertificate(request);
@@ -419,6 +445,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       constraints.shouldShowSanSection,
       constraints.templateAllowsCA,
       constraints.templateRequiresCA,
+      actualSelectedProfile?.defaults,
       handlePopUpToggle,
       navigate
     ]
@@ -558,7 +585,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                   <Controller
                     control={control}
                     name="csr"
-                    shouldUnregister
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
                         label="Certificate Signing Request (CSR)"
@@ -600,7 +626,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                         (formState.errors as { subjectAttributes?: { message?: string } })
                           .subjectAttributes?.message
                       }
-                      shouldUnregister
                     />
                   )}
 
@@ -612,7 +637,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                       (formState.errors as { subjectAltNames?: { message?: string } })
                         .subjectAltNames?.message
                     }
-                    shouldUnregister
                   />
                 )}
 
@@ -645,7 +669,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                         (formState.errors as { keyAlgorithm?: { message?: string } }).keyAlgorithm
                           ?.message
                       }
-                      shouldUnregister
                     />
 
                     <Accordion type="single" collapsible className="w-full">
@@ -656,7 +679,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                         namePrefix="keyUsages"
                         options={filteredKeyUsages}
                         requiredUsages={constraints.requiredKeyUsages}
-                        shouldUnregister
                       />
                       <KeyUsageSection
                         control={control}
@@ -665,17 +687,15 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                         namePrefix="extendedKeyUsages"
                         options={filteredExtendedKeyUsages}
                         requiredUsages={constraints.requiredExtendedKeyUsages}
-                        shouldUnregister
                       />
                       {constraints.templateAllowsCA && (
                         <AccordionItem value="basic-constraints">
                           <AccordionTrigger>Basic Constraints</AccordionTrigger>
-                          <AccordionContent>
+                          <AccordionContent forceMount className="data-[state=closed]:hidden">
                             <div className="space-y-4 pl-2">
                               <Controller
                                 control={control}
                                 name="basicConstraints.isCA"
-                                shouldUnregister
                                 render={({ field: { value, onChange } }) => (
                                   <div className="flex items-center gap-3">
                                     <Checkbox
@@ -686,7 +706,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                         if (!constraints.templateRequiresCA) {
                                           onChange(checked);
                                           if (!checked) {
-                                            setValue("basicConstraints.pathLength", undefined);
+                                            setValue("basicConstraints.pathLength", null);
                                           }
                                         }
                                       }}
@@ -709,7 +729,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                 <Controller
                                   control={control}
                                   name="basicConstraints.pathLength"
-                                  shouldUnregister
                                   render={({ field, fieldState: { error } }) => {
                                     const isPathLengthRequired =
                                       typeof constraints.maxPathLength === "number" &&
@@ -769,12 +788,10 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                           onChange={(e) => {
                                             const val = e.target.value;
                                             if (val === "") {
-                                              field.onChange(undefined);
+                                              field.onChange(null);
                                             } else {
                                               const numVal = parseInt(val, 10);
-                                              field.onChange(
-                                                Number.isNaN(numVal) ? undefined : numVal
-                                              );
+                                              field.onChange(Number.isNaN(numVal) ? null : numVal);
                                             }
                                           }}
                                         />

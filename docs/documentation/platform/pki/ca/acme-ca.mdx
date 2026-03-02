@@ -17,7 +17,7 @@ their **ACME Directory URL** such as:
 - ZeroSSL: `https://acme.zerossl.com/v2/DV90`.
 - SSL.com: `https://acme.ssl.com/sslcom-dv-rsa`.
 
-When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, DNS Made Easy, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
+When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, Azure DNS, DNS Made Easy, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
 The ACME provider checks for the existence of this TXT record to verify domain control before issuing the certificate back to Infisical.
 
 After validation completes successfully, Infisical automatically removes the TXT record from your DNS provider.
@@ -119,6 +119,13 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                 ```
 
                 For detailed instructions on setting up a Cloudflare connection, see the [Cloudflare Connection](/integrations/app-connections/cloudflare) documentation.
+            </Tab>
+            <Tab title="Azure DNS">
+                1. Navigate to your Certificate Management Project > App Connections and create a new Azure DNS connection.
+
+                2. Ensure your Azure Service Principal has the **DNS Zone Contributor** role assigned on the DNS Zone you want to use for validation.
+
+                For detailed instructions on setting up an Azure DNS connection, see the [Azure DNS Connection](/integrations/app-connections/azure-dns) documentation.
             </Tab>
             <Tab title="DNS Made Easy">
                 Navigate to your Certificate Management Project > App Connections and create a new DNS Made Easy connection.
@@ -256,13 +263,11 @@ This way, Infisical never needs access to your Cloudflare account, it only write
 
 <AccordionGroup>
   <Accordion title="What DNS validation methods are supported?">
-    Currently, Infisical supports DNS-01 validation through AWS Route53 or Cloudflare. The DNS-01 challenge method is preferred for ACME integrations because it:
+    Currently, Infisical supports DNS-01 validation through AWS Route53, Cloudflare, Azure DNS, and DNS Made Easy. The DNS-01 challenge method is preferred for ACME integrations because it:
 
     - Works with wildcard certificates
     - Doesn't require your servers to be publicly accessible
     - Can be fully automated without manual intervention
-
-    Support for additional DNS providers is planned for future releases.
 
   </Accordion>
   <Accordion title="Can I use wildcard certificates with ACME CAs?">

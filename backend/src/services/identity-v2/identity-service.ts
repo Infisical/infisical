@@ -49,9 +49,7 @@ export const identityV2ServiceFactory = ({
 
   const scopeFactory = {
     [AccessScope.Organization]: orgFactory,
-    [AccessScope.Project]: projectFactory,
-    // namespace will get stripped off
-    [AccessScope.Namespace]: orgFactory
+    [AccessScope.Project]: projectFactory
   };
 
   const createIdentity = async (dto: TCreateIdentityV2DTO) => {

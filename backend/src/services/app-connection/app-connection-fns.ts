@@ -61,6 +61,11 @@ import {
   getAzureDevopsConnectionListItem,
   validateAzureDevOpsConnectionCredentials
 } from "./azure-devops/azure-devops-fns";
+import { AzureDnsConnectionMethod } from "./azure-dns/azure-dns-connection-enums";
+import {
+  getAzureDnsConnectionListItem,
+  validateAzureDnsConnectionCredentials
+} from "./azure-dns/azure-dns-connection-fns";
 import { AzureKeyVaultConnectionMethod } from "./azure-key-vault";
 import {
   getAzureKeyVaultConnectionListItem,
@@ -201,7 +206,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.AzureADCS,
   AppConnection.AzureKeyVault,
   AppConnection.Chef,
-  AppConnection.DNSMadeEasy
+  AppConnection.DNSMadeEasy,
+  AppConnection.AzureDNS
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -239,6 +245,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
     getDNSMadeEasyConnectionListItem(),
+    getAzureDnsConnectionListItem(),
     getZabbixConnectionListItem(),
     getRailwayConnectionListItem(),
     getBitbucketConnectionListItem(),
@@ -378,6 +385,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureDNS]: validateAzureDnsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -445,6 +453,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
+    case AzureDnsConnectionMethod.ClientSecret:
+      return "Client Secret";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
@@ -564,6 +574,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
   [AppConnection.DNSMadeEasy]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureDNS]: platformManagedCredentialsNotSupported,
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,
   [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,

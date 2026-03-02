@@ -392,7 +392,6 @@ export enum SortDirection {
 
 export enum AccessScope {
   Organization = "organization",
-  Namespace = "namespace",
   Project = "project"
 }
 
@@ -400,11 +399,6 @@ export type AccessScopeData =
   | {
       scope: AccessScope.Organization;
       orgId: string;
-    }
-  | {
-      scope: AccessScope.Namespace;
-      orgId: string;
-      namespaceId: string;
     }
   | {
       scope: AccessScope.Project;

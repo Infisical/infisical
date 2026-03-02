@@ -1303,6 +1303,7 @@ export const registerRoutes = async (
   const certificateProfileService = certificateProfileServiceFactory({
     certificateProfileDAL,
     certificatePolicyDAL,
+    certificatePolicyService,
     apiEnrollmentConfigDAL,
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
@@ -2361,7 +2362,8 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateSyncDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    certificateAuthorityService
   });
 
   const certificateRequestService = certificateRequestServiceFactory({

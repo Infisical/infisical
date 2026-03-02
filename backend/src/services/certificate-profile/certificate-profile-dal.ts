@@ -14,6 +14,7 @@ import {
   IssuerType,
   TCertificateProfile,
   TCertificateProfileCertificate,
+  TCertificateProfileDefaults,
   TCertificateProfileInsert,
   TCertificateProfileUpdate,
   TCertificateProfileWithConfigs
@@ -28,7 +29,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     try {
       const dataToInsert = {
         ...data,
-        externalConfigs: data.externalConfigs ? JSON.stringify(data.externalConfigs) : null
+        externalConfigs: data.externalConfigs ? JSON.stringify(data.externalConfigs) : null,
+        defaults: data.defaults ? JSON.stringify(data.defaults) : null
       };
 
       const [insertedProfile] = await (tx || db)(TableName.PkiCertificateProfile).insert(dataToInsert).returning("*");
@@ -37,7 +39,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         ...insertedProfile,
         externalConfigs: insertedProfile.externalConfigs
           ? (JSON.parse(insertedProfile.externalConfigs) as Record<string, unknown>)
-          : null
+          : null,
+        defaults: (insertedProfile.defaults as TCertificateProfileDefaults) ?? null
       } as TCertificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create certificate profile" });
@@ -54,6 +57,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         dataToUpdate.externalConfigs = data.externalConfigs ? JSON.stringify(data.externalConfigs) : null;
       }
 
+      if (data.defaults !== undefined) {
+        dataToUpdate.defaults = data.defaults ? JSON.stringify(data.defaults) : null;
+      }
+
       const [updatedProfile] = await (tx || db)(TableName.PkiCertificateProfile)
         .where({ id })
         .update(dataToUpdate)
@@ -63,7 +70,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         ...updatedProfile,
         externalConfigs: updatedProfile.externalConfigs
           ? (JSON.parse(updatedProfile.externalConfigs) as Record<string, unknown>)
-          : null
+          : null,
+        defaults: (updatedProfile.defaults as TCertificateProfileDefaults) ?? null
       } as TCertificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update certificate profile" });
@@ -92,7 +100,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         ...certificateProfile,
         externalConfigs: certificateProfile.externalConfigs
           ? (JSON.parse(certificateProfile.externalConfigs) as Record<string, unknown>)
-          : null
+          : null,
+        defaults: (certificateProfile.defaults as TCertificateProfileDefaults) ?? null
       } as TCertificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate profile by id" });
@@ -257,9 +266,9 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         externalConfigs: result.externalConfigs
           ? (JSON.parse(result.externalConfigs) as Record<string, unknown>)
           : null,
+        defaults: (result.defaults as TCertificateProfileDefaults) ?? null,
         createdAt: result.createdAt,
         updatedAt: result.updatedAt,
-        defaultTtlDays: result.defaultTtlDays,
         estConfig,
         apiConfig,
         acmeConfig,
@@ -448,9 +457,9 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           externalConfigs: result.externalConfigs
             ? (JSON.parse(result.externalConfigs as string) as Record<string, unknown>)
             : null,
+          defaults: (result.defaults as TCertificateProfileDefaults) ?? null,
           createdAt: result.createdAt,
           updatedAt: result.updatedAt,
-          defaultTtlDays: result.defaultTtlDays as number | null,
           estConfig,
           apiConfig,
           acmeConfig,

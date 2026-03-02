@@ -146,7 +146,7 @@ export const PreviewSection = () => {
               </div>
               <div className="flex w-full justify-center">
                 <a
-                  href="https://infisical.com/schedule-demo"
+                  href="https://infisical.com/talk-to-us"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

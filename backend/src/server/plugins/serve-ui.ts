@@ -75,6 +75,53 @@ export const registerServeUI = async (
       }
     }
 
+    // Inject GTM/analytics CSP domains only for Infisical Cloud deployments
+    if (appCfg.isCloud) {
+      const cloudCspExtensions: Record<string, string[]> = {
+        "script-src": [
+          "https://www.googletagmanager.com",
+          "https://www.google-analytics.com",
+          "https://googleads.g.doubleclick.net",
+          "https://www.googleadservices.com",
+          "https://www.google.com",
+          "https://js.hs-scripts.com",
+          "https://js.hsforms.net",
+          "https://js.hs-banner.com",
+          "https://js.hs-analytics.net",
+          "https://js.usemessages.com",
+          "https://js.hscollectedforms.net"
+        ],
+        "frame-src": [
+          "https://www.googletagmanager.com",
+          "https://bid.g.doubleclick.net",
+          "https://td.doubleclick.net"
+        ],
+        "connect-src": [
+          "https://www.googletagmanager.com",
+          "https://www.google-analytics.com",
+          "https://analytics.google.com",
+          "https://stats.g.doubleclick.net",
+          "https://*.hubspot.com",
+          "https://forms.hubspot.com",
+          "https://api.hubapi.com"
+        ],
+        "img-src": [
+          "https://www.googletagmanager.com",
+          "https://www.google-analytics.com",
+          "https://www.google.com",
+          "https://googleads.g.doubleclick.net",
+          "https://www.googleadservices.com",
+          "https://track.hubspot.com",
+          "https://forms.hubspot.com"
+        ]
+      };
+
+      for (const [directive, domains] of Object.entries(cloudCspExtensions)) {
+        const regex = new RE2(`(${directive}\\s+[^;]+)(;)`, "g");
+        indexHtml = indexHtml.replace(regex, `$1 ${domains.join(" ")}$2`);
+      }
+    }
+
     await server.register(staticServe, {
       root: frontendPath,
       wildcard: false,
