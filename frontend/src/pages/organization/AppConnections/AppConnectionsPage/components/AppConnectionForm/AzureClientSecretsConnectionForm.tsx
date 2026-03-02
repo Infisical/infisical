@@ -29,11 +29,11 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { AzureClientSecretsFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
-import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 type CertificateForm = z.infer<typeof certificateSchema>;
