@@ -97,14 +97,14 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
       }
       break;
     case AzureKeyVaultConnectionMethod.ClientSecret:
-      if ("clientSecret" in credentials && "clientId" in credentials) {
+      if ("clientId" in credentials && "tenantId" in credentials) {
         return {
           ...base,
           method: AzureKeyVaultConnectionMethod.ClientSecret,
           credentials: {
-            clientSecret: credentials.clientSecret,
             clientId: credentials.clientId,
-            tenantId: credentials.tenantId
+            tenantId: credentials.tenantId,
+            clientSecret: ""
           }
         };
       }
@@ -231,7 +231,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
         />
 
         <Controller
-          name="tenantId"
+          name="credentials.tenantId"
           control={control}
           render={({ field, fieldState: { error } }) => (
             <FormControl
