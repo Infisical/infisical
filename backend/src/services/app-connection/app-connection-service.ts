@@ -899,6 +899,50 @@ export const appConnectionServiceFactory = ({
     return projectUsage;
   };
 
+  const triggerCredentialRotation = async (
+    { app, connectionId }: { app: AppConnection; connectionId: string },
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+
+    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+
+    if (appConnection.app !== app)
+      throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
+
+    if (appConnection.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId: appConnection.projectId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAppConnectionActions.Edit,
+        subject(ProjectPermissionSub.AppConnections, { connectionId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: actor.id,
+        actor: actor.type,
+        orgId: appConnection.orgId,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        scope: OrganizationActionScope.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionAppConnectionActions.Edit,
+        subject(OrgPermissionSubjects.AppConnections, { connectionId })
+      );
+    }
+
+    return appConnectionCredentialRotationService.triggerRotation({ connectionId });
+  };
+
   return {
     listAppConnectionOptions,
     listAppConnections,
@@ -911,6 +955,7 @@ export const appConnectionServiceFactory = ({
     validateAppConnectionUsageById,
     listAvailableAppConnectionsForUser,
     findAppConnectionUsageById,
+    triggerCredentialRotation,
     github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),

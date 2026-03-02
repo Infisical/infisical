@@ -189,6 +189,12 @@ export type TDeleteAppConnectionDTO = {
   connectionId: string;
 };
 
+export type TRotateAppConnectionCredentialsDTO = {
+  app: AppConnection;
+  connectionId: string;
+  projectId?: string;
+};
+
 // scott: we will need this once we have individual app connection page
 // export type TAppConnectionMap = {
 //   [AppConnection.AWS]: TAwsConnection;

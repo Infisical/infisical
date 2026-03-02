@@ -8,12 +8,13 @@ import {
   faEdit,
   faEllipsisV,
   faInfoCircle,
+  faRotate,
   faTable,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { ClockIcon, ServerIcon } from "lucide-react";
+import { ServerIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -37,11 +38,14 @@ import { getProjectBaseURL } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 
+import { CrededentialRotationStatusBadge } from "./AppConnectionForm/shared/CrededentialRotationBadge";
+
 type Props = {
   appConnection: TAppConnection;
   onDelete: (appConnection: TAppConnection) => void;
   onEditCredentials: (appConnection: TAppConnection) => void;
   onEditDetails: (appConnection: TAppConnection) => void;
+  onRotateCredentials: (appConnection: TAppConnection) => void;
   isProjectView: boolean;
 };
 
@@ -50,6 +54,7 @@ export const AppConnectionRow = ({
   onDelete,
   onEditCredentials,
   onEditDetails,
+  onRotateCredentials,
   isProjectView
 }: Props) => {
   const { currentOrg } = useOrganization();
@@ -176,17 +181,7 @@ export const AppConnectionRow = ({
           )}
 
           {isAutoRotationEnabled && (
-            <Tooltip
-              side="left"
-              content="This connection's credentials are automatically rotated by Infisical."
-            >
-              <div>
-                <Badge variant="org">
-                  <ClockIcon />
-                  Automatic Credential Rotation
-                </Badge>
-              </div>
-            </Tooltip>
+            <CrededentialRotationStatusBadge appConnection={appConnection} />
           )}
 
           <Tooltip className="max-w-sm text-center" content="Options">
@@ -264,6 +259,35 @@ export const AppConnectionRow = ({
                         </DropdownMenuItem>
                       )}
                     </VariablePermissionCan>
+                    {isAutoRotationEnabled && (
+                      <VariablePermissionCan
+                        type={isProjectView ? "project" : "org"}
+                        I={
+                          isProjectView
+                            ? ProjectPermissionAppConnectionActions.Edit
+                            : OrgPermissionAppConnectionActions.Edit
+                        }
+                        a={
+                          isProjectView
+                            ? subject(ProjectPermissionSub.AppConnections, {
+                                connectionId: id
+                              })
+                            : subject(OrgPermissionSubjects.AppConnections, {
+                                connectionId: id
+                              })
+                        }
+                      >
+                        {(isAllowed: boolean) => (
+                          <DropdownMenuItem
+                            isDisabled={!isAllowed}
+                            icon={<FontAwesomeIcon icon={faRotate} />}
+                            onClick={() => onRotateCredentials(appConnection)}
+                          >
+                            Rotate Credentials
+                          </DropdownMenuItem>
+                        )}
+                      </VariablePermissionCan>
+                    )}
                     <VariablePermissionCan
                       type={isProjectView ? "project" : "org"}
                       I={

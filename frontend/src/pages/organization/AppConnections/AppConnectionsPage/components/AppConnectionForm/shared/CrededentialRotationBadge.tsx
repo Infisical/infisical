@@ -1,7 +1,7 @@
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistanceToNow } from "date-fns";
-import { BanIcon, RefreshCwIcon, XIcon } from "lucide-react";
+import { RefreshCwIcon, XIcon } from "lucide-react";
 
 import { Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
@@ -15,17 +15,17 @@ type Props = {
 export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
   const { isAutoRotationEnabled, rotation } = appConnection;
 
-  if (!rotation) {
+  if (!rotation || !isAutoRotationEnabled) {
     return null;
   }
 
   if (rotation.rotationStatus === AppConnectionCredentialRotationStatus.Failed) {
-    let errorMessage = lastRotationMessage;
-    if (lastRotationMessage) {
+    let errorMessage = rotation.lastRotationMessage;
+    if (rotation.lastRotationMessage) {
       try {
-        errorMessage = JSON.stringify(JSON.parse(lastRotationMessage), null, 2);
+        errorMessage = JSON.stringify(JSON.parse(rotation.lastRotationMessage), null, 2);
       } catch {
-        errorMessage = lastRotationMessage;
+        errorMessage = rotation.lastRotationMessage;
       }
     }
 
@@ -44,10 +44,10 @@ export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
                 {errorMessage}
               </div>
             </div>
-            {nextRotationAt && (
+            {rotation.nextRotationAt && (
               <span className="text-xs text-mineshaft-300">
-                Next rotation attempt on {format(nextRotationAt, "MM/dd/yyyy")} at{" "}
-                {format(nextRotationAt, "h:mm aa")}.
+                Next rotation attempt on {format(rotation.nextRotationAt, "MM/dd/yyyy")} at{" "}
+                {format(rotation.nextRotationAt, "h:mm aa")}.
               </span>
             )}
           </div>
@@ -61,17 +61,8 @@ export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
     );
   }
 
-  if (!isAutoRotationEnabled) {
-    return (
-      <Badge variant="neutral">
-        <BanIcon />
-        Auto-Rotation Disabled
-      </Badge>
-    );
-  }
-
   const daysToRotation =
-    (new Date(nextRotationAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
+    (new Date(rotation.nextRotationAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
 
   return (
     <Tooltip
@@ -79,7 +70,8 @@ export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
       content={
         <>
           <span>
-            Rotates on {format(nextRotationAt, "MM/dd/yyyy")} at {format(nextRotationAt, "h:mm aa")}
+            Rotates on {format(rotation.nextRotationAt, "MM/dd/yyyy")} at{" "}
+            {format(rotation.nextRotationAt, "h:mm aa")}
           </span>{" "}
           <span className="text-mineshaft-300">(Local Time)</span>
         </>
@@ -90,7 +82,7 @@ export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
         <RefreshCwIcon />
         {daysToRotation < 0
           ? "Rotating"
-          : `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`}
+          : `Rotates ${formatDistanceToNow(rotation.nextRotationAt, { addSuffix: true })}`}
       </Badge>
     </Tooltip>
   );

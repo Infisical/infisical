@@ -205,6 +205,27 @@ export const encryptRotationMessage = async ({
   return cipherTextBlob;
 };
 
+export const decryptRotationMessage = async ({
+  orgId,
+  encryptedLastRotationMessage,
+  kmsService
+}: {
+  orgId: string;
+  encryptedLastRotationMessage: Buffer;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+}) => {
+  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    type: KmsDataKey.Organization,
+    orgId
+  });
+
+  const decryptedPlainTextBlob = decryptor({
+    cipherTextBlob: encryptedLastRotationMessage
+  });
+
+  return decryptedPlainTextBlob.toString();
+};
+
 export const expandCredentialRotation = async (
   { encryptedLastRotationMessage, ...rotation }: TAppConnectionCredentialRotationRaw,
   orgId: string,

@@ -416,6 +416,52 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     }
   });
 
+  server.route({
+    method: "POST",
+    url: "/:connectionId/rotate-credentials",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: `rotate${appNameForOpId}AppConnectionCredentials`,
+      tags: [ApiDocsTags.AppConnections],
+      description: `Rotate the credentials for the specified ${appName} Connection.`,
+      params: z.object({
+        connectionId: z.string().uuid().describe(AppConnections.ROTATE_CREDENTIALS(app).connectionId)
+      }),
+      response: {
+        200: z.object({ appConnection: sanitizedResponseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      await server.services.appConnection.triggerCredentialRotation({ app, connectionId }, req.permission);
+
+      const appConnection = (await server.services.appConnection.findAppConnectionById(
+        app,
+        connectionId,
+        req.permission
+      )) as T;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: appConnection.projectId ?? undefined,
+        event: {
+          type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS,
+          metadata: {
+            connectionId
+          }
+        }
+      });
+
+      return { appConnection };
+    }
+  });
+
   // scott: we will need this once we have individual app connection page and may want to expose to API
   // server.route({
   //   method: "GET",

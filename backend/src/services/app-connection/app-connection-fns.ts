@@ -84,6 +84,8 @@ import {
   getCloudflareConnectionListItem,
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
+import { AppConnectionCredentialRotationStatus } from "./credential-rotation";
+import { decryptRotationMessage } from "./credential-rotation/app-connection-credential-rotation-fns";
 import { DatabricksConnectionMethod } from "./databricks";
 import {
   getDatabricksConnectionListItem,
@@ -486,7 +488,13 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
 
 export const decryptAppConnection = async (
   appConnection: TAppConnections & {
-    rotation?: { rotationInterval: number; rotateAtUtc: { hours: number; minutes: number } };
+    rotation?: {
+      nextRotationAt?: Date | null;
+      encryptedLastRotationMessage?: Buffer;
+      rotationInterval: number;
+      rotateAtUtc: { hours: number; minutes: number };
+      rotationStatus: AppConnectionCredentialRotationStatus;
+    };
     project?: { name: string; id: string; type: string; slug: string } | null;
   },
   kmsService: TAppConnectionServiceFactoryDep["kmsService"]
@@ -495,8 +503,14 @@ export const decryptAppConnection = async (
     ...appConnection,
     rotation: appConnection.rotation
       ? {
-          rotationInterval: appConnection.rotation.rotationInterval,
-          rotateAtUtc: appConnection.rotation.rotateAtUtc
+          ...appConnection.rotation,
+          lastRotationMessage: appConnection.rotation.encryptedLastRotationMessage
+            ? await decryptRotationMessage({
+                orgId: appConnection.orgId,
+                encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
+                kmsService
+              })
+            : null
         }
       : undefined,
     credentials: await decryptAppConnectionCredentials({

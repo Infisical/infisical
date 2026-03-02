@@ -28,7 +28,12 @@ export const appConnectionDALFactory = (db: TDbClient) => {
       .select(
         db.ref("rotationInterval").withSchema(TableName.AppConnectionCredentialRotation).as("rotationInterval"),
         db.ref("rotateAtUtc").withSchema(TableName.AppConnectionCredentialRotation).as("rotateAtUtc"),
-        db.ref("rotationStatus").withSchema(TableName.AppConnectionCredentialRotation).as("rotationStatus")
+        db.ref("rotationStatus").withSchema(TableName.AppConnectionCredentialRotation).as("rotationStatus"),
+        db
+          .ref("encryptedLastRotationMessage")
+          .withSchema(TableName.AppConnectionCredentialRotation)
+          .as("encryptedLastRotationMessage"),
+        db.ref("nextRotationAt").withSchema(TableName.AppConnectionCredentialRotation).as("nextRotationAt")
       )
       .select(
         // project
@@ -45,7 +50,12 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     const connections = await query;
 
     return connections.map(({ projectName, projectSlug, projectType, projectId, ...connection }) => {
-      let rotation: TAppConnection["rotation"] | undefined;
+      let rotation:
+        | (Omit<NonNullable<TAppConnection["rotation"]>, "lastRotationMessage"> & {
+            encryptedLastRotationMessage?: Buffer | null;
+          })
+        | undefined
+        | null;
 
       if (connection.isAutoRotationEnabled && connection.rotateAtUtc) {
         const parsedRotationAtUtc = AppConnectionCredentialRotationRotateAtUtcSchema.safeParse(connection.rotateAtUtc);
@@ -53,6 +63,8 @@ export const appConnectionDALFactory = (db: TDbClient) => {
         if (parsedRotationAtUtc.success) {
           rotation = {
             rotationInterval: connection.rotationInterval,
+            nextRotationAt: connection.nextRotationAt,
+            encryptedLastRotationMessage: connection.encryptedLastRotationMessage,
             rotationStatus: connection.rotationStatus as AppConnectionCredentialRotationStatus,
             rotateAtUtc: parsedRotationAtUtc.data
           };

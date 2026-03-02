@@ -17,7 +17,9 @@ export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
 }).extend({
   rotation: z
     .object({
+      lastRotationMessage: z.string().optional().nullable(),
       rotationInterval: z.number(),
+      nextRotationAt: z.date().nullable().optional(),
       rotationStatus: z.nativeEnum(AppConnectionCredentialRotationStatus),
       rotateAtUtc: z.object({
         hours: z.number(),

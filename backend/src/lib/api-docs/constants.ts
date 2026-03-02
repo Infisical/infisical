@@ -2483,6 +2483,9 @@ export const AppConnections = {
   DELETE: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to be deleted.`
   }),
+  ROTATE_CREDENTIALS: (app: AppConnection) => ({
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
+  }),
   CREDENTIALS: {
     AUTH0_CONNECTION: {
       domain: "The domain of the Auth0 instance to connect to.",
