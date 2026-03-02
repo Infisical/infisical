@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
 import { ChevronDownIcon, ClockIcon, SaveIcon } from "lucide-react";
@@ -128,11 +128,11 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   const { mutateAsync: createUserProjectAdditionalPrivilege } =
     useCreateProjectUserAdditionalPrivilege();
 
-  const permissions = form.watch("permissions");
+  const permissions = useWatch({ control: form.control, name: "permissions" });
 
   const hasPermissions = useMemo(
     () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
-    [JSON.stringify(permissions)]
+    [permissions]
   );
 
   const onSubmit = async (el: TFormSchema) => {

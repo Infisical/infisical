@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeftIcon, SaveIcon } from "lucide-react";
 import { z } from "zod";
@@ -69,11 +69,11 @@ export const ProjectTemplateEditRoleForm = ({
 
   const updateProjectTemplate = useUpdateProjectTemplate();
 
-  const permissions = formMethods.watch("permissions");
+  const permissions = useWatch({ control, name: "permissions" });
 
   const hasPermissions = useMemo(
     () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
-    [JSON.stringify(permissions)]
+    [permissions]
   );
 
   const onSubmit = async (form: TFormSchema) => {
@@ -171,7 +171,7 @@ export const ProjectTemplateEditRoleForm = ({
         </div>
         <div className="p-4">
           <div className="mb-2 text-lg">Policies</div>
-          {!hasPermissions && <PermissionEmptyState />}
+          <PermissionEmptyState />
           {hasPermissions && (
             <UnstableAccordion
               type="multiple"

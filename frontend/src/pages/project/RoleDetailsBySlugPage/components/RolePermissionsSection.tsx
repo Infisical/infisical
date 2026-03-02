@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SaveIcon } from "lucide-react";
@@ -181,11 +181,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     (role?.slug ?? "") as ProjectMembershipRole
   );
 
-  const permissions = form.watch("permissions");
+  const permissions = useWatch({ control: form.control, name: "permissions" });
 
   const hasPermissions = useMemo(
     () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
-    [JSON.stringify(permissions)]
+    [permissions]
   );
 
   const formattedPermissions = useMemo(
@@ -195,7 +195,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           MongoAbility<ProjectPermissionSet, MongoQuery>
         >[]
       ),
-    [JSON.stringify(permissions)]
+    [permissions]
   );
 
   return (
@@ -239,7 +239,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           </div>
           <div className="flex flex-1 flex-col overflow-hidden px-4">
             <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
-              {!isPending && <PermissionEmptyState />}
+              {!isPending && !hasPermissions && <PermissionEmptyState />}
               {hasPermissions && (
                 <UnstableAccordion
                   type="multiple"
