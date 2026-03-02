@@ -128,7 +128,7 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
                   variant="outline"
                   size="xs"
                   onClick={() => {
-                    reset({ metadata: metadata.length > 0 ? metadata : [{ key: "", value: "" }] });
+                    reset({ metadata: metadata.length > 0 ? metadata : [] });
                     setIsModalOpen(true);
                   }}
                   isDisabled={!isAllowed}
