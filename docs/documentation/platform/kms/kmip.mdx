@@ -137,6 +137,10 @@ Follow these steps in order to set up KMIP integration with Infisical:
     - **hostnames-or-ips**: The IP address or the hostname of the server where you have deployed the KMIP server.
 
     Once started, your KMIP server is now running and ready to accept client connections. It will authenticate to Infisical using the machine identity and proxy all KMIP operations.
+
+    <Info>
+    **Running as a Background Service (Linux):** For production deployments on Linux, you can install the KMIP server as a systemd service using `sudo infisical kmip systemd install`. This ensures the server starts automatically on boot and restarts on failure. See the [KMIP CLI Command Reference](/cli/commands/kmip) for details.
+    </Info>
   </Step>
 
   <Step title="Navigate to Your KMS Project">

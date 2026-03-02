@@ -890,6 +890,7 @@
                   "cli/commands/dynamic-secrets",
                   "cli/commands/ssh",
                   "cli/commands/gateway",
+                  "cli/commands/kmip",
                   "cli/commands/relay",
                   "cli/commands/bootstrap",
                   "cli/commands/export",
