@@ -26,7 +26,7 @@ export const MetadataForm = ({
         {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
           <div key={metadataFieldId} className="flex items-start space-x-2">
             <div className="grow">
-              {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+              {i === 0 && <FormLabel label="Key" className="text-xs text-mineshaft-400" />}
               <Controller
                 control={control}
                 name={`${name}.${i}.key`}

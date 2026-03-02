@@ -820,7 +820,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                   </>
                 )}
 
-                <MetadataForm control={control} />
+                <div className="mt-4">
+                  <MetadataForm control={control} />
+                </div>
               </>
             )}
 
