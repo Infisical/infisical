@@ -1,4 +1,4 @@
-import { cloneElement, Fragment, useMemo } from "react";
+import { cloneElement, Fragment, RefObject, useMemo } from "react";
 import { Control, Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { components, MultiValueProps, MultiValueRemoveProps, OptionProps } from "react-select";
 import { CheckIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
@@ -38,6 +38,7 @@ type Props<T extends ProjectPermissionSub> = {
   isDisabled?: boolean;
   isOpen?: boolean;
   onShowAccessTree?: (subject: ProjectPermissionSub) => void;
+  menuPortalContainerRef?: RefObject<HTMLElement | null>;
 };
 
 type ActionOption = {
@@ -92,6 +93,7 @@ type ActionsMultiSelectProps<T extends ProjectPermissionSub> = {
   actions: TProjectPermissionObject[T]["actions"];
   isDisabled?: boolean;
   control: Control<TFormSchema>;
+  menuPortalContainerRef?: RefObject<HTMLElement | null>;
 };
 
 const ActionsMultiSelect = <T extends ProjectPermissionSub>({
@@ -99,7 +101,8 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
   rootIndex,
   actions,
   isDisabled,
-  control
+  control,
+  menuPortalContainerRef
 }: ActionsMultiSelectProps<T>) => {
   const { setValue } = useFormContext<TFormSchema>();
 
@@ -162,6 +165,9 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
       isClearable={!isDisabled}
       className="w-full"
       menuPosition="fixed"
+      {...(menuPortalContainerRef?.current
+        ? { menuPortalTarget: menuPortalContainerRef.current }
+        : {})}
       components={{
         Option: OptionWithDescription,
         MultiValueRemove,
@@ -179,7 +185,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   description,
   isDisabled,
   isOpen = false,
-  onShowAccessTree
+  onShowAccessTree,
+  menuPortalContainerRef
 }: Props<T>) => {
   const { control, watch } = useFormContext<TFormSchema>();
   const { fields, remove, insert } = useFieldArray({
@@ -197,7 +204,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
 
   return (
     <UnstableAccordionItem value={subject}>
-      <UnstableAccordionTrigger className="min-h-14 px-5 py-4 hover:bg-container-hover">
+      <UnstableAccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
         <div className="flex flex-1 items-center gap-2 text-left">
           <div className="flex grow flex-col">
             <span className="text-base select-none">{title}</span>
@@ -310,6 +317,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                         actions={actions}
                         isDisabled={isDisabled}
                         control={control}
+                        menuPortalContainerRef={menuPortalContainerRef}
                       />
                     </div>
                     {!isDisabled && (

@@ -47,6 +47,7 @@ type Props = {
   projectMembershipId: string;
   onGoBack: () => void;
   isDisabled?: boolean;
+  menuPortalContainerRef?: React.RefObject<HTMLElement | null>;
 };
 
 export const formSchema = z.object({
@@ -73,7 +74,8 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   privilegeId,
   onGoBack,
   projectMembershipId,
-  isDisabled
+  isDisabled,
+  menuPortalContainerRef
 }: Props) => {
   const isCreate = !privilegeId;
   const [openPolicies, setOpenPolicies] = useState<string[]>([]);
@@ -354,6 +356,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                       key={`project-permission-${permissionSubject}`}
                       isDisabled={isDisabled}
                       isOpen={openPolicies.includes(permissionSubject)}
+                      menuPortalContainerRef={menuPortalContainerRef}
                     >
                       {renderConditionalComponents(permissionSubject, isDisabled)}
                     </GeneralPermissionPolicies>
