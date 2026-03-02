@@ -21,7 +21,9 @@ export const OrgWithSubOrgsSchema = OrganizationsSchema.pick({
     id: true,
     name: true,
     slug: true
-  }).array()
+  })
+    .extend({ userJoinedAt: z.date().optional().nullable() })
+    .array()
 });
 
 export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
