@@ -1117,21 +1117,21 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:id/metadata",
+    url: "/:id",
     config: {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "updateCertificateMetadata",
+      operationId: "updateCertificate",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Update certificate metadata",
+      description: "Update certificate",
       params: z.object({
         id: z.string().trim().describe(CERTIFICATES.GET.id)
       }),
       body: z.object({
-        metadata: ResourceMetadataNonEncryptionSchema
+        metadata: ResourceMetadataNonEncryptionSchema.optional()
       }),
       response: {
         200: z.object({
@@ -1140,7 +1140,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const result = await server.services.certificateV3.updateCertificateMetadata({
+      const result = await server.services.certificateV3.updateCertificate({
         certificateId: req.params.id,
         metadata: req.body.metadata,
         actor: req.permission.type,
@@ -1149,18 +1149,20 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: result.projectId,
-        event: {
-          type: EventType.UPDATE_CERTIFICATE_METADATA,
-          metadata: {
-            certificateId: req.params.id,
-            commonName: result.commonName,
-            metadata: req.body.metadata.map(({ key, value }) => ({ key, value }))
+      if (req.body.metadata) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: result.projectId,
+          event: {
+            type: EventType.UPDATE_CERTIFICATE_METADATA,
+            metadata: {
+              certificateId: req.params.id,
+              commonName: result.commonName,
+              metadata: req.body.metadata.map(({ key, value }) => ({ key, value }))
+            }
           }
-        }
-      });
+        });
+      }
 
       return { metadata: result.metadata };
     }

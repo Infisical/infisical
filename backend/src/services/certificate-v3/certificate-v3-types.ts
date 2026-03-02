@@ -139,9 +139,9 @@ export type TDisableRenewalResponse = {
   commonName: string;
 };
 
-export type TUpdateCertificateMetadataDTO = {
+export type TUpdateCertificateDTO = {
   certificateId: string;
-  metadata: Array<{ key: string; value: string }>;
+  metadata?: Array<{ key: string; value: string }>;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TAltNameEntry = {

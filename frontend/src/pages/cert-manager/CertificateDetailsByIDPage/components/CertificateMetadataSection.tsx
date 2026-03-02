@@ -11,6 +11,7 @@ import { Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   UnstableCard,
+  UnstableCardAction,
   UnstableCardContent,
   UnstableCardDescription,
   UnstableCardHeader,
@@ -22,7 +23,7 @@ import {
   ProjectPermissionSub,
   useProject
 } from "@app/context";
-import { useGetCertificateById, useUpdateCertificateMetadata } from "@app/hooks/api";
+import { useGetCertificateById, useUpdateCertificate } from "@app/hooks/api";
 import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 type Props = {
@@ -43,7 +44,7 @@ type MetadataFormData = z.infer<typeof metadataFormSchema>;
 export const CertificateMetadataSection = ({ certificateId }: Props) => {
   const { currentProject } = useProject();
   const { data, isLoading } = useGetCertificateById(certificateId);
-  const { mutateAsync: updateMetadata } = useUpdateCertificateMetadata();
+  const { mutateAsync: updateMetadata } = useUpdateCertificate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const certificate = data?.certificate;
@@ -108,13 +109,11 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
     <>
       <UnstableCard>
         <UnstableCardHeader className="border-b">
-          <div className="flex items-center justify-between">
-            <div>
-              <UnstableCardTitle>Metadata</UnstableCardTitle>
-              <UnstableCardDescription>
-                Custom key-value pairs attached to this certificate
-              </UnstableCardDescription>
-            </div>
+          <UnstableCardTitle>Metadata</UnstableCardTitle>
+          <UnstableCardDescription>
+            Custom key-value pairs attached to this certificate
+          </UnstableCardDescription>
+          <UnstableCardAction>
             <ProjectPermissionCan
               I={ProjectPermissionCertificateActions.Edit}
               a={subject(ProjectPermissionSub.Certificates, {
@@ -126,10 +125,10 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
             >
               {(isAllowed) => (
                 <UnstableIconButton
-                  variant="ghost"
+                  variant="outline"
                   size="xs"
                   onClick={() => {
-                    reset({ metadata: metadata.length > 0 ? metadata : [] });
+                    reset({ metadata: metadata.length > 0 ? metadata : [{ key: "", value: "" }] });
                     setIsModalOpen(true);
                   }}
                   isDisabled={!isAllowed}
@@ -138,15 +137,21 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
                 </UnstableIconButton>
               )}
             </ProjectPermissionCan>
-          </div>
+          </UnstableCardAction>
         </UnstableCardHeader>
         <UnstableCardContent>
           {metadata.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {metadata.map((item) => (
-                <Badge key={`${item.key}=${item.value}`} variant="neutral">
-                  {item.key}
-                  {item.value ? `: ${item.value}` : ""}
+                <Badge
+                  key={`${item.key}=${item.value}`}
+                  variant="neutral"
+                  className="max-w-full min-w-0 shrink"
+                >
+                  <span className="min-w-0 truncate">
+                    {item.key}
+                    {item.value ? `: ${item.value}` : ""}
+                  </span>
                 </Badge>
               ))}
             </div>

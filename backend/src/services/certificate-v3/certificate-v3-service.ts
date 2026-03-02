@@ -110,7 +110,7 @@ import {
   TRenewalConfigResponse,
   TRenewCertificateDTO,
   TSignCertificateFromProfileDTO,
-  TUpdateCertificateMetadataDTO,
+  TUpdateCertificateDTO,
   TUpdateRenewalConfigDTO
 } from "./certificate-v3-types";
 
@@ -2565,14 +2565,14 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const updateCertificateMetadata = async ({
+  const updateCertificate = async ({
     certificateId,
     metadata,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TUpdateCertificateMetadataDTO) => {
+  }: TUpdateCertificateDTO) => {
     const certificate = await certificateDAL.findById(certificateId);
     if (!certificate) {
       throw new NotFoundError({ message: "Certificate not found" });
@@ -2596,16 +2596,20 @@ export const certificateV3ServiceFactory = ({
       })
     );
 
-    const updatedMetadata = await certificateDAL.transaction(async (tx) => {
-      await resourceMetadataDAL.delete({ certificateId }, tx);
-      await insertMetadataForCertificate(resourceMetadataDAL, {
-        metadata,
-        certificateId,
-        orgId: actorOrgId,
-        tx
+    let updatedMetadata: Array<{ key: string; value: string }> = [];
+
+    if (metadata) {
+      await certificateDAL.transaction(async (tx) => {
+        await resourceMetadataDAL.delete({ certificateId }, tx);
+        await insertMetadataForCertificate(resourceMetadataDAL, {
+          metadata,
+          certificateId,
+          orgId: actorOrgId,
+          tx
+        });
       });
-      return metadata;
-    });
+      updatedMetadata = metadata;
+    }
 
     return { metadata: updatedMetadata, projectId: certificate.projectId, commonName: certificate.commonName };
   };
@@ -2617,6 +2621,6 @@ export const certificateV3ServiceFactory = ({
     renewCertificate,
     updateRenewalConfig,
     disableRenewalConfig,
-    updateCertificateMetadata
+    updateCertificate
   };
 };

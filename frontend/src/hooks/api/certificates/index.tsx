@@ -6,7 +6,7 @@ export {
   useImportCertificate,
   useRenewCertificate,
   useRevokeCert,
-  useUpdateCertificateMetadata,
+  useUpdateCertificate,
   useUpdateRenewalConfig
 } from "./mutations";
 export {
@@ -24,5 +24,5 @@ export type {
   TCertificateRequestListItem,
   TListCertificateRequestsParams,
   TListCertificateRequestsResponse,
-  TUpdateCertificateMetadataDTO
+  TUpdateCertificateDTO
 } from "./types";

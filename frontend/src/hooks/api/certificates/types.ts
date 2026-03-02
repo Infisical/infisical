@@ -195,7 +195,7 @@ export type TCertificateRequestDetails = {
   metadata?: Array<{ key: string; value: string }>;
 };
 
-export type TUpdateCertificateMetadataDTO = {
+export type TUpdateCertificateDTO = {
   certificateId: string;
   projectId: string;
   metadata: Array<{ key: string; value: string }>;
