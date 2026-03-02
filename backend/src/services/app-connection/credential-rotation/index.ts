@@ -1,6 +1,9 @@
 export { appConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
 export type { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
-export { AppConnectionCredentialRotationStrategy, AppConnectionCredentialRotationStatus } from "./app-connection-credential-rotation-enums";
+export {
+  AppConnectionCredentialRotationStrategy,
+  AppConnectionCredentialRotationStatus
+} from "./app-connection-credential-rotation-enums";
 export { appConnectionCredentialRotationServiceFactory } from "./app-connection-credential-rotation-service";
 export type {
   TAppConnectionCredentialRotationServiceFactory,

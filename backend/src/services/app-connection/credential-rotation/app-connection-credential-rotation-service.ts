@@ -15,6 +15,7 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnection } from "../app-connection-types";
+import { AzureClientSecretsConnectionMethod } from "../azure-client-secrets";
 import { AzureKeyVaultConnectionMethod } from "../azure-key-vault";
 import { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
 import {
@@ -51,12 +52,18 @@ const STRATEGY_MAP: Record<
   {
     app: TAppConnection["app"]; // azure-key-vault
     method: TAppConnection["method"]; // client-secret
-  }
+  }[]
 > = {
-  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: {
-    app: AppConnection.AzureKeyVault,
-    method: AzureKeyVaultConnectionMethod.ClientSecret
-  }
+  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: [
+    {
+      app: AppConnection.AzureKeyVault,
+      method: AzureKeyVaultConnectionMethod.ClientSecret
+    },
+    {
+      app: AppConnection.AzureClientSecrets,
+      method: AzureClientSecretsConnectionMethod.ClientSecret
+    }
+  ]
 };
 
 const CREDENTIAL_ROTATION_CREDENTIALS_SCHEMA_MAP: Record<
@@ -140,8 +147,8 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const connection = await appConnectionDAL.findById(connectionId, tx);
     if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
 
-    const strategy = Object.values(AppConnectionCredentialRotationStrategy).find(
-      (s) => STRATEGY_MAP[s].app === connection.app && STRATEGY_MAP[s].method === connection.method
+    const strategy = Object.values(AppConnectionCredentialRotationStrategy).find((s) =>
+      STRATEGY_MAP[s].some(({ app, method }) => app === connection.app && method === connection.method)
     );
 
     if (!strategy) {

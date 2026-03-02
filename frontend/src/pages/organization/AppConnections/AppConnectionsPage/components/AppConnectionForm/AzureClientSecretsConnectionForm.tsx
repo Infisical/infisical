@@ -33,6 +33,7 @@ import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 type CertificateForm = z.infer<typeof certificateSchema>;
@@ -60,7 +61,8 @@ const clientSecretSchema = baseSchema.extend({
   credentials: z.object({
     clientSecret: z.string().trim().min(1, "Client Secret is required"),
     clientId: z.string().trim().min(1, "Client ID is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required")
+    tenantId: z.string().trim().min(1, "Tenant ID is required"),
+    clientSecretKeyId: z.string().trim().optional()
   })
 });
 
@@ -82,11 +84,21 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
+const defaultRotation = {
+  rotationInterval: 30,
+  rotateAtUtc: {
+    hours: 0,
+    minutes: 0
+  }
+};
+
 const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partial<FormData> => {
   if (!appConnection) {
     return {
       app: AppConnection.AzureClientSecrets,
-      method: AzureClientSecretsConnectionMethod.OAuth
+      method: AzureClientSecretsConnectionMethod.OAuth,
+      isAutoRotationEnabled: false,
+      rotation: defaultRotation
     };
   }
 
@@ -94,7 +106,9 @@ const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partia
     name: appConnection.name,
     description: appConnection.description,
     app: appConnection.app,
-    method: appConnection.method
+    method: appConnection.method,
+    isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
+    rotation: appConnection.rotation ?? defaultRotation
   };
   const { credentials } = appConnection;
 
@@ -306,6 +320,25 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
                   />
                 </FormControl>
               )}
+            />
+
+            <CredentialRotationForm
+              renderExtraFields={
+                <Controller
+                  name="credentials.clientSecretKeyId"
+                  control={control}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error?.message)}
+                      label="Client Secret Key ID"
+                      errorText={error?.message}
+                      tooltipText="The Key ID of the client secret provided above. Found in Azure Portal under App Registrations > Certificates & Secrets. Required so Infisical can revoke the original secret after rotation."
+                    >
+                      <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
+                    </FormControl>
+                  )}
+                />
+              }
             />
           </>
         )}
