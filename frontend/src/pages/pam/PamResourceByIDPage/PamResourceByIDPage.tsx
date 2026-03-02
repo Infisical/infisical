@@ -32,6 +32,7 @@ import {
   PamResourceAccountsSection,
   PamResourceConnectionSection,
   PamResourceDetailsSection,
+  PamResourceMetadataSection,
   PamResourceRelatedResourcesSection
 } from "./components";
 
@@ -180,6 +181,7 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsEditModalOpen(true)}
           />
+          <PamResourceMetadataSection resource={resource} onEdit={() => setIsEditModalOpen(true)} />
         </div>
 
         {/* Right Column - Tabbed Content */}
