@@ -9,18 +9,19 @@ const orgBasicSchema = OrganizationsSchema.pick({
   slug: true
 });
 
-type TOrgBasic = z.infer<typeof orgBasicSchema>;
-
-/** Root org with accessible sub-orgs (basic info only) */
-export type TOrgWithSubOrgs = TOrgBasic & {
-  createdAt: Date;
-  subOrganizations: TOrgBasic[];
-};
-
 /** Zod schema for API response: org with sub-orgs */
-export const orgWithSubOrgsSchema = orgBasicSchema.extend({
-  createdAt: z.date(),
-  subOrganizations: z.array(orgBasicSchema)
+export const OrgWithSubOrgsSchema = OrganizationsSchema.pick({
+  id: true,
+  name: true,
+  slug: true,
+  createdAt: true
+}).extend({
+  userJoinedAt: z.date().optional().nullable(),
+  subOrganizations: OrganizationsSchema.pick({
+    id: true,
+    name: true,
+    slug: true
+  }).array()
 });
 
 export const sanitizedOrganizationSchema = OrganizationsSchema.pick({

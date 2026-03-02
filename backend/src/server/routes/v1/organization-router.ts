@@ -18,7 +18,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
-import { orgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
 import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
@@ -63,7 +63,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       operationId: "listAccessibleOrganizationsWithSubOrgs",
       response: {
         200: z.object({
-          organizations: orgWithSubOrgsSchema.array()
+          organizations: OrgWithSubOrgsSchema.array()
         })
       }
     },

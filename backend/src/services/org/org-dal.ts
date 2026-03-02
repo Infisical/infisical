@@ -28,7 +28,7 @@ import {
 import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
 
 import { ActorType } from "../auth/auth-type";
-import { TOrgWithSubOrgs } from "./org-schema";
+import { TOrgWithSubOrgs } from "./org-types";
 import { OrgAuthMethod } from "./org-types";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
@@ -240,12 +240,6 @@ export const orgDALFactory = (db: TDbClient) => {
     actorId: string;
     actorType: ActorType;
   }): Promise<TOrgWithSubOrgs[]> => {
-    if (dto.actorType !== ActorType.USER) {
-      throw new BadRequestError({
-        message: "listOrganizationsWithSubOrgs only supports user actors; identity/machine is not supported"
-      });
-    }
-
     try {
       const conn = db.replicaNode();
 
@@ -269,11 +263,18 @@ export const orgDALFactory = (db: TDbClient) => {
 
       const rootOrgs = await conn(TableName.Organization)
         .whereIn(`${TableName.Organization}.id`, rootOrgIdsSubquery)
+        .leftJoin(TableName.Membership, (qb) => {
+          void qb
+            .on(`${TableName.Membership}.scopeOrgId`, "=", db.ref("id").withSchema(TableName.Organization))
+            .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Organization]))
+            .andOn(`${TableName.Membership}.actorUserId`, db.raw("?", [dto.actorId]));
+        })
         .select(
           db.ref("id").withSchema(TableName.Organization),
           db.ref("name").withSchema(TableName.Organization),
           db.ref("slug").withSchema(TableName.Organization),
-          db.ref("createdAt").withSchema(TableName.Organization)
+          db.ref("createdAt").withSchema(TableName.Organization),
+          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt")
         );
 
       const rootOrgIds = rootOrgs.map((o) => o.id);
@@ -313,6 +314,7 @@ export const orgDALFactory = (db: TDbClient) => {
         name: org.name,
         slug: org.slug,
         createdAt: org.createdAt,
+        userJoinedAt: org.userJoinedAt ?? null,
         subOrganizations: (subOrgsByRootId[org.id] ?? []).map((s) => ({
           id: s.id,
           name: s.name,
