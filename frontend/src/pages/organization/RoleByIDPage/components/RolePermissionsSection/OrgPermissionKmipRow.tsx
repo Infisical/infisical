@@ -20,10 +20,7 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [
-  { action: "proxy", label: "Proxy KMIP requests" },
-  { action: "setup", label: "Setup KMIP" }
-] as const;
+const PERMISSION_ACTIONS = [{ action: "proxy", label: "Proxy KMIP requests" }] as const;
 
 export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
@@ -35,7 +32,7 @@ export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) =
   });
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.proxy || rule?.setup) {
+    if (rule?.proxy) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
@@ -63,7 +60,7 @@ export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) =
     setIsCustom.off();
 
     if (val === Permission.NoAccess) {
-      setValue("permissions.kmip", { proxy: false, setup: false }, { shouldDirty: true });
+      setValue("permissions.kmip", { proxy: false }, { shouldDirty: true });
     }
   };
 
