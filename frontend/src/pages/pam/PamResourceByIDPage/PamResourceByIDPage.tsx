@@ -181,7 +181,7 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsEditModalOpen(true)}
           />
-          <PamResourceMetadataSection resource={resource} onEdit={() => setIsEditModalOpen(true)} />
+          <PamResourceMetadataSection resource={resource} />
         </div>
 
         {/* Right Column - Tabbed Content */}

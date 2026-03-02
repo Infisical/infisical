@@ -209,7 +209,7 @@ const PageContent = () => {
         <div className="flex w-80 flex-col gap-4">
           <PamAccountDetailsSection account={account} onEdit={() => setIsEditModalOpen(true)} />
           <PamAccountCredentialsSection account={account} onEdit={() => setIsEditModalOpen(true)} />
-          <PamAccountMetadataSection account={account} onEdit={() => setIsEditModalOpen(true)} />
+          <PamAccountMetadataSection account={account} />
         </div>
 
         {/* Right Column - Tabbed Content */}
