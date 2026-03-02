@@ -35,13 +35,22 @@ export const AzureKeyVaultConnectionClientSecretInputCredentialsSchema = z.objec
     .trim()
     .min(1, "Client Secret required")
     .max(50, "Client Secret must be at most 50 characters long"),
-  tenantId: z.string().uuid().trim().min(1, "Tenant ID required")
+  tenantId: z.string().uuid().trim().min(1, "Tenant ID required"),
+  clientSecretKeyId: z
+    .string()
+    .uuid()
+    .trim()
+    .optional()
+    .describe(
+      "The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked."
+    )
 });
 
 export const AzureKeyVaultConnectionClientSecretOutputCredentialsSchema = z.object({
   clientId: z.string(),
   clientSecret: z.string(),
   tenantId: z.string(),
+  clientSecretKeyId: z.string().optional(),
   accessToken: z.string(),
   expiresAt: z.number()
 });

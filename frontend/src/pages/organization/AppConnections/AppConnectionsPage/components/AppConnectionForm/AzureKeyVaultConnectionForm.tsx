@@ -49,7 +49,8 @@ const clientSecretSchema = baseSchema.extend({
   credentials: z.object({
     clientSecret: z.string().trim().min(1, "Client Secret is required"),
     clientId: z.string().trim().min(1, "Client ID is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required")
+    tenantId: z.string().trim().min(1, "Tenant ID is required"),
+    clientSecretKeyId: z.string().trim().optional()
   })
 });
 
@@ -284,7 +285,24 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
               )}
             />
 
-            <CredentialRotationForm />
+            <CredentialRotationForm
+              renderExtraFields={
+                <Controller
+                  name="credentials.clientSecretKeyId"
+                  control={control}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error?.message)}
+                      label="Client Secret Key ID"
+                      errorText={error?.message}
+                      tooltipText="The Key ID of the client secret provided above. Found in Azure Portal under App Registrations > Certificates & Secrets. Required so Infisical can revoke the original secret after rotation."
+                    >
+                      <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
+                    </FormControl>
+                  )}
+                />
+              }
+            />
           </>
         )}
 

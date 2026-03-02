@@ -354,7 +354,16 @@ export const azureClientSecretRotationProviderFactory: TCredentialRotationProvid
       clientSecret: string;
       tenantId: string;
       applicationObjectId?: string;
+      clientSecretKeyId?: string;
     };
+
+    if (!azureCredentials.clientSecretKeyId) {
+      throw new BadRequestError({
+        message: "Client Secret Key ID is required when enabling credential rotation."
+      });
+    }
+
+    const originalKeyId = azureCredentials.clientSecretKeyId;
 
     const accessToken = await getGraphApiToken(azureCredentials);
 
@@ -366,10 +375,6 @@ export const azureClientSecretRotationProviderFactory: TCredentialRotationProvid
     const strategyConfig: TAzureClientSecretStrategyConfig = { objectId: applicationObjectId };
     await validateAzureClientSecretRotationConfig(strategyConfig, azureCredentials, accessToken);
 
-    // Create one Infisical-managed credential. The second slot starts empty (null) and will
-    // be filled on the first rotation cycle. The original user-provided secret becomes unused
-    // but can't be revoked because Azure doesn't expose which keyId maps to a given secret value.
-    // It will expire naturally based on its configured expiry in Azure AD.
     const newCredential = await createAzureClientSecret({
       accessToken,
       connectionName: connection.name,
@@ -379,12 +384,35 @@ export const azureClientSecretRotationProviderFactory: TCredentialRotationProvid
       attempt: 0
     });
 
+    const updatedCredentials = {
+      ...azureCredentials,
+      clientSecret: newCredential.clientSecret,
+      applicationObjectId
+    };
+
+    // Verify the new credential works by obtaining a fresh Graph API token with it.
+    // getGraphApiToken has built-in retry logic for propagation delays (AADSTS7000215).
+    const freshAccessToken = await getGraphApiToken(updatedCredentials);
+
+    // Revoke the original user-provided secret using its Key ID.
+    try {
+      await revokeAzureClientSecret(originalKeyId, strategyConfig, updatedCredentials, freshAccessToken);
+      logger.info(
+        `credentialRotation: Revoked original client secret keyId=${originalKeyId} [connection=${connection.name}]`
+      );
+    } catch (e) {
+      logger.warn(
+        e,
+        `credentialRotation: Failed to revoke original client secret keyId=${originalKeyId} [connection=${connection.name}] — it will need to be removed manually or will expire naturally`
+      );
+    }
+
     const generatedCredentials: (TAzureClientSecretGeneratedCredential | null)[] = [newCredential, null];
 
     return {
       strategyConfig,
       generatedCredentials,
-      updatedCredentials: { ...azureCredentials, clientSecret: newCredential.clientSecret, applicationObjectId }
+      updatedCredentials
     };
   };
 
