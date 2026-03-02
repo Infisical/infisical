@@ -238,7 +238,6 @@ export const orgDALFactory = (db: TDbClient) => {
    */
   const listOrganizationsWithSubOrgs = async (dto: {
     actorId: string;
-    actorType: ActorType;
   }): Promise<TOrgWithSubOrgs[]> => {
     try {
       const conn = db.replicaNode();
@@ -249,65 +248,64 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
-      // Root org IDs the user can see (membership direct or via group, scope = Organization, org is root)
-      const rootOrgIdsSubquery = conn(TableName.Membership)
-        .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNull(`${TableName.Organization}.rootOrgId`)
-        .andWhere((qb) => {
+      // Single query for both root orgs and sub-orgs: rootOrgId IS NULL → root, else → sub-org.
+      // inner join on access_m filters to orgs the user can access (direct or via group),
+      // left join on direct_m / UserGroupMembership resolves userJoinedAt for both cases.
+      const allOrgs = (await conn(TableName.Organization)
+        .join(`${TableName.Membership} as access_m`, (qb) => {
           void qb
-            .where(`${TableName.Membership}.actorUserId`, dto.actorId)
-            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
+            .on(`access_m.scopeOrgId`, "=", db.ref("id").withSchema(TableName.Organization))
+            .andOn(`access_m.scope`, db.raw("?", [AccessScope.Organization]));
         })
-        .distinct(db.ref("id").withSchema(TableName.Organization).as("rootOrgId"));
-
-      const rootOrgs = await conn(TableName.Organization)
-        .whereIn(`${TableName.Organization}.id`, rootOrgIdsSubquery)
-        .leftJoin(TableName.Membership, (qb) => {
+        .where((qb) => {
           void qb
-            .on(`${TableName.Membership}.scopeOrgId`, "=", db.ref("id").withSchema(TableName.Organization))
-            .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Organization]))
-            .andOn(`${TableName.Membership}.actorUserId`, db.raw("?", [dto.actorId]));
+            .where(`access_m.actorUserId`, dto.actorId)
+            .orWhereIn(`access_m.actorGroupId`, userGroupIdsSubquery);
         })
+        .leftJoin(`${TableName.Membership} as direct_m`, (qb) => {
+          void qb
+            .on(`direct_m.scopeOrgId`, "=", db.ref("id").withSchema(TableName.Organization))
+            .andOn(`direct_m.scope`, db.raw("?", [AccessScope.Organization]))
+            .andOn(`direct_m.actorUserId`, db.raw("?", [dto.actorId]));
+        })
+        .leftJoin(TableName.UserGroupMembership, (qb) => {
+          void qb
+            .on(`${TableName.UserGroupMembership}.groupId`, "=", db.raw(`"access_m"."actorGroupId"`))
+            .andOn(`${TableName.UserGroupMembership}.userId`, db.raw("?", [dto.actorId]));
+        })
+        .groupBy(
+          db.ref("id").withSchema(TableName.Organization),
+          db.ref("name").withSchema(TableName.Organization),
+          db.ref("slug").withSchema(TableName.Organization),
+          db.ref("createdAt").withSchema(TableName.Organization),
+          db.ref("rootOrgId").withSchema(TableName.Organization)
+        )
         .select(
           db.ref("id").withSchema(TableName.Organization),
           db.ref("name").withSchema(TableName.Organization),
           db.ref("slug").withSchema(TableName.Organization),
           db.ref("createdAt").withSchema(TableName.Organization),
-          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt")
-        );
+          db.ref("rootOrgId").withSchema(TableName.Organization),
+          db.raw(
+            `COALESCE(MIN("direct_m"."createdAt"), MIN("${TableName.UserGroupMembership}"."createdAt")) as "userJoinedAt"`
+          )
+        )) as {
+        id: string;
+        name: string;
+        slug: string;
+        createdAt: Date;
+        rootOrgId: string | null;
+        userJoinedAt: Date | null;
+      }[];
 
-      const rootOrgIds = rootOrgs.map((o) => o.id);
-      if (rootOrgIds.length === 0) {
-        return rootOrgs.map((o) => ({ ...o, subOrganizations: [] }));
-      }
+      const rootOrgs = allOrgs.filter((o) => !o.rootOrgId);
+      const rootOrgIdSet = new Set(rootOrgs.map((o) => o.id));
 
-      // Only sub-orgs the user has membership in (direct or via group)
-      const accessibleSubOrgIdsSubquery = conn(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereIn(
-          `${TableName.Membership}.scopeOrgId`,
-          conn(TableName.Organization)
-            .whereIn(`${TableName.Organization}.rootOrgId`, rootOrgIds)
-            .select(db.ref("id").withSchema(TableName.Organization))
-        )
-        .andWhere((qb) => {
-          void qb
-            .where(`${TableName.Membership}.actorUserId`, dto.actorId)
-            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
-        })
-        .select(db.ref("scopeOrgId").withSchema(TableName.Membership));
-
-      const subOrgs = await conn(TableName.Organization)
-        .whereIn(`${TableName.Organization}.rootOrgId`, rootOrgIds)
-        .whereIn(`${TableName.Organization}.id`, accessibleSubOrgIdsSubquery)
-        .select(
-          db.ref("id").withSchema(TableName.Organization),
-          db.ref("name").withSchema(TableName.Organization),
-          db.ref("slug").withSchema(TableName.Organization),
-          db.ref("rootOrgId").withSchema(TableName.Organization)
-        );
-      const subOrgsByRootId = groupBy(subOrgs, (s) => s.rootOrgId as string);
+      // Only include sub-orgs whose root org is itself accessible to this user
+      const subOrgsByRootId = groupBy(
+        allOrgs.filter((o) => o.rootOrgId && rootOrgIdSet.has(o.rootOrgId)),
+        (s) => s.rootOrgId as string
+      );
 
       return rootOrgs.map((org) => ({
         id: org.id,
@@ -318,7 +316,8 @@ export const orgDALFactory = (db: TDbClient) => {
         subOrganizations: (subOrgsByRootId[org.id] ?? []).map((s) => ({
           id: s.id,
           name: s.name,
-          slug: s.slug
+          slug: s.slug,
+          userJoinedAt: s.userJoinedAt ?? null
         }))
       }));
     } catch (error) {
