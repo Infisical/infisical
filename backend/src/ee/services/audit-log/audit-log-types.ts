@@ -4490,7 +4490,7 @@ interface UpdateCertificateMetadataEvent {
   metadata: {
     certificateId: string;
     commonName: string;
-    metadataCount: number;
+    metadata: { key: string; value: string }[];
   };
 }
 

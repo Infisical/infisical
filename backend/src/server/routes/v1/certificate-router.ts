@@ -1157,7 +1157,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             certificateId: req.params.id,
             commonName: result.commonName,
-            metadataCount: req.body.metadata.length
+            metadata: req.body.metadata.map(({ key, value }) => ({ key, value }))
           }
         }
       });
