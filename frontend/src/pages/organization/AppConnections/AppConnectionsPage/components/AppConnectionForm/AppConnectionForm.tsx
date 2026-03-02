@@ -1,4 +1,9 @@
+import { useState } from "react";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { createNotification } from "@app/components/notifications";
+import { Button } from "@app/components/v2";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   TAppConnection,
@@ -60,6 +65,59 @@ import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
 
+type AppConnectionFormData = DiscriminativePick<
+  TAppConnection,
+  | "method"
+  | "name"
+  | "app"
+  | "credentials"
+  | "isPlatformManagedCredentials"
+  | "isAutoRotationEnabled"
+> & {
+  rotation?: {
+    rotationInterval: number;
+    rotateAtUtc: { hours: number; minutes: number };
+  };
+};
+
+const RotationConfirmation = ({
+  onConfirm,
+  onCancel,
+  isSubmitting
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  isSubmitting: boolean;
+}) => (
+  <div>
+    <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
+      <div className="mb-1 flex items-center text-sm">
+        <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+        Automatic Credential Rotation
+      </div>
+      <p className="bor mt-1 text-sm text-bunker-200">
+        Enabling automatic credential rotation will give Infisical full control over the lifecycle
+        of this credential. Infisical will automatically rotate the credential on the schedule you
+        configured and you will no longer be able to manage it manually. The original credential
+        provided will be revoked and replaced.
+      </p>
+    </div>
+    <div className="mt-4 flex gap-4">
+      <Button
+        onClick={onConfirm}
+        colorSchema="secondary"
+        isLoading={isSubmitting}
+        isDisabled={isSubmitting}
+      >
+        I Understand
+      </Button>
+      <Button variant="plain" onClick={onCancel} colorSchema="secondary" isDisabled={isSubmitting}>
+        Cancel
+      </Button>
+    </div>
+  </div>
+);
+
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
 } & ({ appConnection: TAppConnection } | { app: AppConnection });
@@ -73,21 +131,12 @@ type UpdateFormProps = FormProps & {
 };
 
 const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
+  const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
+  const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const createAppConnection = useCreateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[app];
 
-  const onSubmit = async (
-    formData: DiscriminativePick<
-      TAppConnection,
-      | "method"
-      | "name"
-      | "app"
-      | "credentials"
-      | "isPlatformManagedCredentials"
-      | "isAutoRotationEnabled"
-      | "rotation"
-    >
-  ) => {
+  const submitForm = async (formData: AppConnectionFormData) => {
     const connection = await createAppConnection.mutateAsync({
       ...formData,
       projectId
@@ -98,6 +147,33 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
     });
     onComplete(connection);
   };
+
+  const onSubmit = async (formData: AppConnectionFormData) => {
+    if (formData.isAutoRotationEnabled) {
+      setPendingFormData(formData);
+      return;
+    }
+    await submitForm(formData);
+  };
+
+  if (pendingFormData) {
+    return (
+      <RotationConfirmation
+        onConfirm={async () => {
+          setIsConfirmSubmitting(true);
+          try {
+            await submitForm(pendingFormData);
+          } catch {
+            // Error is handled by the mutation's onError handler
+          } finally {
+            setIsConfirmSubmitting(false);
+          }
+        }}
+        onCancel={() => setPendingFormData(null)}
+        isSubmitting={isConfirmSubmitting}
+      />
+    );
+  }
 
   switch (app) {
     case AppConnection.AWS:
@@ -206,15 +282,12 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
 };
 
 const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
+  const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
+  const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const updateAppConnection = useUpdateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
-  const onSubmit = async (
-    formData: DiscriminativePick<
-      TAppConnection,
-      "method" | "name" | "app" | "credentials" | "isPlatformManagedCredentials"
-    >
-  ) => {
+  const submitForm = async (formData: AppConnectionFormData) => {
     const connection = await updateAppConnection.mutateAsync({
       connectionId: appConnection.id,
       ...formData
@@ -225,6 +298,33 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
     });
     onComplete(connection);
   };
+
+  const onSubmit = async (formData: AppConnectionFormData) => {
+    if (formData.isAutoRotationEnabled && !appConnection.isAutoRotationEnabled) {
+      setPendingFormData(formData);
+      return;
+    }
+    await submitForm(formData);
+  };
+
+  if (pendingFormData) {
+    return (
+      <RotationConfirmation
+        onConfirm={async () => {
+          setIsConfirmSubmitting(true);
+          try {
+            await submitForm(pendingFormData);
+          } catch {
+            // Error is handled by the mutation's onError handler
+          } finally {
+            setIsConfirmSubmitting(false);
+          }
+        }}
+        onCancel={() => setPendingFormData(null)}
+        isSubmitting={isConfirmSubmitting}
+      />
+    );
+  }
 
   switch (appConnection.app) {
     case AppConnection.AWS:

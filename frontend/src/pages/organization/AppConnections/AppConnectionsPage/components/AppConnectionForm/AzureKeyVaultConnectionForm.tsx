@@ -59,18 +59,20 @@ const formSchema = z.discriminatedUnion("method", [oauthSchema, clientSecretSche
 type FormData = z.infer<typeof formSchema>;
 
 const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<FormData> => {
+  const defaultRotation = {
+    rotationInterval: 30,
+    rotateAtUtc: {
+      hours: 0,
+      minutes: 0
+    }
+  };
+
   if (!appConnection) {
     return {
       app: AppConnection.AzureKeyVault,
       method: AzureKeyVaultConnectionMethod.OAuth,
       isAutoRotationEnabled: false,
-      rotation: {
-        rotationInterval: 30,
-        rotateAtUtc: {
-          hours: 0,
-          minutes: 0
-        }
-      }
+      rotation: defaultRotation
     };
   }
 
@@ -80,7 +82,7 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
     app: appConnection.app,
     method: appConnection.method,
     isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
-    rotation: appConnection.rotation
+    rotation: appConnection.rotation ?? defaultRotation
   };
   const { credentials } = appConnection;
 

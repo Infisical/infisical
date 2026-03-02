@@ -182,6 +182,11 @@ export type TUpdateAppConnectionDTO = Partial<
 > & {
   connectionId: string;
   app: AppConnection;
+  isAutoRotationEnabled?: boolean;
+  rotation?: {
+    rotationInterval?: number;
+    rotateAtUtc?: { hours: number; minutes: number };
+  };
 };
 
 export type TDeleteAppConnectionDTO = {

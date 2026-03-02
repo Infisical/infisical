@@ -88,7 +88,7 @@ export const UpdateAzureKeyVaultConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureKeyVault).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureKeyVault));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureKeyVault, { supportsCredentialRotation: true }));
 
 const BaseAzureKeyVaultConnectionSchema = BaseAppConnectionSchema.extend({
   app: z.literal(AppConnection.AzureKeyVault)

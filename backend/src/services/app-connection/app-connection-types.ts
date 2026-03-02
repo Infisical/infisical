@@ -428,8 +428,14 @@ export type TCreateAppConnectionDTO = Pick<
   | "isAutoRotationEnabled"
 >;
 
-export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "method" | "app" | "projectId">> & {
+export type TUpdateAppConnectionDTO = Partial<
+  Omit<TCreateAppConnectionDTO, "method" | "app" | "projectId" | "rotation">
+> & {
   connectionId: string;
+  rotation?: {
+    rotationInterval?: number;
+    rotateAtUtc?: { hours: number; minutes: number };
+  };
 };
 
 export type TGetAppConnectionByNameDTO = {

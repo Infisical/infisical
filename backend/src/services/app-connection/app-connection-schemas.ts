@@ -8,7 +8,10 @@ import { TAppConnectionBaseConfig } from "@app/services/app-connection/app-conne
 
 import { AppConnection } from "./app-connection-enums";
 import { AppConnectionCredentialRotationStatus } from "./credential-rotation/app-connection-credential-rotation-enums";
-import { CreateAppConnectionCredentialRotationSchema } from "./credential-rotation/app-connection-credential-rotation-schemas";
+import {
+  CreateAppConnectionCredentialRotationSchema,
+  UpdateAppConnectionCredentialRotationSchema
+} from "./credential-rotation/app-connection-credential-rotation-schemas";
 
 export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
   encryptedCredentials: true,
@@ -100,7 +103,11 @@ export const GenericCreateAppConnectionFieldsSchema = (
 
 export const GenericUpdateAppConnectionFieldsSchema = (
   app: AppConnection,
-  { supportsPlatformManagedCredentials = false, supportsGateways = false }: TAppConnectionBaseConfig = {}
+  {
+    supportsPlatformManagedCredentials = false,
+    supportsGateways = false,
+    supportsCredentialRotation = false
+  }: TAppConnectionBaseConfig = {}
 ) =>
   z.object({
     name: slugSchema({ field: "name" }).describe(AppConnections.UPDATE(app).name).optional(),
@@ -120,6 +127,22 @@ export const GenericUpdateAppConnectionFieldsSchema = (
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
     gatewayId: supportsGateways
       ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+      : z
+          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+
+    isAutoRotationEnabled: supportsCredentialRotation
+      ? z.boolean().optional()
+      : z
+          .literal(false, {
+            errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          })
+          .optional()
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+
+    rotation: supportsCredentialRotation
+      ? UpdateAppConnectionCredentialRotationSchema.omit({ isAutoRotationEnabled: true }).optional()
       : z
           .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
           .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))

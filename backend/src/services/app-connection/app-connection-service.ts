@@ -531,7 +531,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
-    { connectionId, credentials, gatewayId, ...params }: TUpdateAppConnectionDTO,
+    { connectionId, credentials, gatewayId, isAutoRotationEnabled, rotation, ...params }: TUpdateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
@@ -653,6 +653,17 @@ export const appConnectionServiceFactory = ({
 
       let updatedConnection: TAppConnectionRaw;
 
+      // Check if the connection has an existing rotation
+      const existingRotation = await appConnectionCredentialRotationService.getRotationByConnectionId(connectionId);
+
+      if (credentials && existingRotation) {
+        // Credential change with active rotation: tear down old rotation first
+        await appConnectionCredentialRotationService.updateRotation({
+          connectionId,
+          isAutoRotationEnabled: false
+        });
+      }
+
       if (params.isPlatformManagedCredentials) {
         if (!updatedCredentials)
           // prevent enabling platform managed credentials without re-confirming credentials
@@ -672,6 +683,57 @@ export const appConnectionServiceFactory = ({
         );
       } else {
         updatedConnection = await updateConnection(updatedCredentials);
+      }
+
+      // Handle rotation updates
+      if (isAutoRotationEnabled !== undefined || rotation) {
+        if (isAutoRotationEnabled === false) {
+          // Disabling rotation — tear down if it exists and wasn't already torn down above
+          if (!credentials && existingRotation) {
+            await appConnectionCredentialRotationService.updateRotation({
+              connectionId,
+              isAutoRotationEnabled: false
+            });
+          }
+        } else if (credentials && existingRotation) {
+          // Credentials were changed and rotation was torn down above — re-initialize
+          const existingRotateAtUtc = existingRotation.rotateAtUtc as { hours: number; minutes: number };
+          await appConnectionCredentialRotationService.createRotation({
+            connectionId,
+            rotationInterval: rotation?.rotationInterval ?? existingRotation.rotationInterval,
+            rotateAtUtc: rotation?.rotateAtUtc ?? existingRotateAtUtc
+          });
+          // createRotation doesn't set isAutoRotationEnabled — restore it after re-initialization
+          await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true });
+        } else if (!existingRotation && isAutoRotationEnabled && rotation) {
+          // Enabling rotation on a connection that didn't have it
+          if (!rotation.rotationInterval || !rotation.rotateAtUtc) {
+            throw new BadRequestError({
+              message: "Rotation interval and schedule are required when enabling rotation"
+            });
+          }
+          await appConnectionCredentialRotationService.createRotation({
+            connectionId,
+            rotationInterval: rotation.rotationInterval,
+            rotateAtUtc: rotation.rotateAtUtc
+          });
+          await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true });
+        } else if (existingRotation && rotation) {
+          // Updating schedule/interval on existing rotation
+          await appConnectionCredentialRotationService.updateRotation({
+            connectionId,
+            ...rotation
+          });
+        }
+      } else if (credentials && existingRotation) {
+        // Credentials changed but no rotation fields provided — re-initialize with previous config
+        await appConnectionCredentialRotationService.createRotation({
+          connectionId,
+          rotationInterval: existingRotation.rotationInterval,
+          rotateAtUtc: existingRotation.rotateAtUtc as { hours: number; minutes: number }
+        });
+        // createRotation doesn't set isAutoRotationEnabled — restore it after re-initialization
+        await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true });
       }
 
       return await decryptAppConnection(updatedConnection, kmsService);

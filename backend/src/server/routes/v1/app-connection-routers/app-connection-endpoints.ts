@@ -37,6 +37,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
     gatewayId?: string | null;
+    isAutoRotationEnabled?: boolean | null;
+    rotation?: TCreateAppConnectionCredentialRotationSchema | null;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
@@ -344,11 +346,28 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, credentials, description, isPlatformManagedCredentials, gatewayId } = req.body;
+      const {
+        name,
+        credentials,
+        description,
+        isPlatformManagedCredentials,
+        gatewayId,
+        rotation,
+        isAutoRotationEnabled
+      } = req.body;
       const { connectionId } = req.params;
 
       const appConnection = (await server.services.appConnection.updateAppConnection(
-        { name, credentials, connectionId, description, isPlatformManagedCredentials, gatewayId },
+        {
+          name,
+          credentials,
+          connectionId,
+          description,
+          isPlatformManagedCredentials,
+          gatewayId,
+          isAutoRotationEnabled,
+          rotation
+        },
         req.permission
       )) as T;
 

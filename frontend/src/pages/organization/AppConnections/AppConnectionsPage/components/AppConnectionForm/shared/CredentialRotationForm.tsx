@@ -60,9 +60,9 @@ export const CredentialRotationForm = ({ renderExtraFields }: Props) => {
                   <Input
                     value={value}
                     type="number"
-                    onChange={onChange}
+                    onChange={(e) => onChange(parseInt(e.target.value, 10))}
                     min={1}
-                    placeholder="my-secret-rotation"
+                    placeholder="30"
                   />
                 </FormControl>
               )}
