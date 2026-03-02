@@ -73,7 +73,7 @@ export const ProjectTemplateEditRoleForm = ({
 
   const hasPermissions = useMemo(
     () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
-    [permissions]
+    [JSON.stringify(permissions)]
   );
 
   const onSubmit = async (form: TFormSchema) => {
@@ -103,7 +103,7 @@ export const ProjectTemplateEditRoleForm = ({
     >
       <FormProvider {...formMethods}>
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <Button variant="ghost" onClick={onGoBack}>
+          <Button variant="ghost" disabled={isSubmitting} onClick={onGoBack}>
             <ChevronLeftIcon />
             {isDisabled ? "Back" : "Cancel"}
           </Button>
@@ -171,7 +171,7 @@ export const ProjectTemplateEditRoleForm = ({
         </div>
         <div className="p-4">
           <div className="mb-2 text-lg">Policies</div>
-          <PermissionEmptyState />
+          {!hasPermissions && <PermissionEmptyState />}
           {hasPermissions && (
             <UnstableAccordion
               type="multiple"

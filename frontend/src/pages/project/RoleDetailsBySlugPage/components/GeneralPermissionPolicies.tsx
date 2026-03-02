@@ -231,9 +231,14 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   size="xs"
                   onClick={(e) => {
                     e.stopPropagation();
-                    insert(fields.length, [
-                      { read: false, edit: false, create: false, delete: false } as any
-                    ]);
+                    const defaultRule = actions.reduce(
+                      (acc, { value }) => {
+                        if (typeof value === "string") acc[value] = false;
+                        return acc;
+                      },
+                      {} as Record<string, boolean>
+                    );
+                    insert(fields.length, [defaultRule as any]);
                   }}
                   isDisabled={isDisabled}
                 >

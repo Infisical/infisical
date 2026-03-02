@@ -132,7 +132,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
 
   const hasPermissions = useMemo(
     () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
-    [permissions]
+    [JSON.stringify(permissions)]
   );
 
   const onSubmit = async (el: TFormSchema) => {
@@ -326,14 +326,16 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                   Discard
                 </Button>
               )}
-              <AddPoliciesButton
-                isDisabled={isDisabled}
-                projectType={currentProject.type}
-                projectId={projectId}
-              />
+              {currentProject && (
+                <AddPoliciesButton
+                  isDisabled={isDisabled}
+                  projectType={currentProject.type}
+                  projectId={projectId}
+                />
+              )}
             </div>
           </div>
-          {(isCreate || !isPending) && <PermissionEmptyState />}
+          {(isCreate || !isPending) && !hasPermissions && <PermissionEmptyState />}
           {hasPermissions && (
             <div className="scrollbar-thin max-h-[50vh] overflow-y-auto">
               <UnstableAccordion

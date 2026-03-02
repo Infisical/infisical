@@ -224,6 +224,7 @@ export const ConditionsFields = ({
                     aria-label="remove"
                     variant="outline"
                     className="p-2.5"
+                    isDisabled={isDisabled}
                     onClick={() => items.remove(index)}
                   >
                     <TrashIcon className="size-4" />
