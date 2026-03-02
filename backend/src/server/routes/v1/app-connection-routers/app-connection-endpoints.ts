@@ -38,7 +38,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     isPlatformManagedCredentials?: boolean;
     gatewayId?: string | null;
     isAutoRotationEnabled?: boolean | null;
-    rotation?: TCreateAppConnectionCredentialRotationSchema | null;
+    rotation?: Partial<TCreateAppConnectionCredentialRotationSchema> | null;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
@@ -365,8 +365,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           description,
           isPlatformManagedCredentials,
           gatewayId,
-          isAutoRotationEnabled,
-          rotation
+          isAutoRotationEnabled: isAutoRotationEnabled ?? undefined,
+          rotation: rotation ?? undefined
         },
         req.permission
       )) as T;
