@@ -330,7 +330,12 @@ export const SelectOrganizationSection = () => {
       return (
         <div className="space-y-2">
           {/* Root org login row */}
-          <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
+          <button
+            type="button"
+            onClick={() => handleLoginById(selectedRootOrg.id)}
+            aria-label="Login to root organization"
+            className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-left text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
+          >
             <div className="flex flex-col items-start">
               <p className="truncate">{selectedRootOrg.name}</p>
               <p className="text-xs text-mineshaft-400">
@@ -341,15 +346,11 @@ export const SelectOrganizationSection = () => {
                 })()}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => handleLoginById(selectedRootOrg.id)}
-              aria-label="Login to root organization"
-              className="text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500"
-            >
-              <FontAwesomeIcon icon={faArrowRight} />
-            </button>
-          </div>
+            <FontAwesomeIcon
+              icon={faArrowRight}
+              className="text-gray-400 transition-all group-hover:text-primary-400 group-hover:text-primary-500"
+            />
+          </button>
 
           {/* Sub-org section header */}
           <p className="px-1 pt-1 text-xs font-medium tracking-wider text-mineshaft-400 uppercase">
@@ -369,7 +370,14 @@ export const SelectOrganizationSection = () => {
                   onClick={() => handleLoginById(sub.id)}
                   className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
                 >
-                  <p className="truncate">{sub.name}</p>
+                  <div className="flex flex-col items-start">
+                    <p className="truncate">{sub.name}</p>
+                    {sub.userJoinedAt && (
+                      <p className="text-xs text-mineshaft-400">
+                        Member since {format(new Date(sub.userJoinedAt), "MMM d yyyy")}
+                      </p>
+                    )}
+                  </div>
                   <FontAwesomeIcon
                     icon={faArrowRight}
                     className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
@@ -467,7 +475,12 @@ export const SelectOrganizationSection = () => {
                     >
                       <div className="flex flex-col items-start">
                         <p className="truncate">{sub.name}</p>
-                        <p className="text-xs text-mineshaft-500">{org.name}</p>
+                        <p className="text-xs text-mineshaft-500">
+                          {org.name}
+                          {sub.userJoinedAt && (
+                            <> · Member since {format(new Date(sub.userJoinedAt), "MMM d yyyy")}</>
+                          )}
+                        </p>
                       </div>
                       <FontAwesomeIcon
                         icon={faArrowRight}
