@@ -200,7 +200,7 @@ export const SecretMetadataForm = ({
               type="button"
               className={twMerge(
                 index === 0 ? "mt-6.5" : "mt-0.5",
-                "transition-transform hover:text-red"
+                "transition-transform hover:text-danger"
               )}
               onClick={() => remove(index)}
               isDisabled={!canEditSecret}

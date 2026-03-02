@@ -9,6 +9,21 @@ export enum IssuerType {
   SELF_SIGNED = "self-signed"
 }
 
+export type TCertificateProfileDefaults = {
+  ttlDays?: number;
+  commonName?: string;
+  keyAlgorithm?: string;
+  signatureAlgorithm?: string;
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
+  basicConstraints?: { isCA: boolean; pathLength?: number };
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+};
+
 export type TCertificateProfile = {
   id: string;
   projectId: string;
@@ -23,7 +38,7 @@ export type TCertificateProfile = {
   createdAt: string;
   updatedAt: string;
   externalConfigs?: Record<string, unknown> | null;
-  defaultTtlDays?: number | null;
+  defaults?: TCertificateProfileDefaults | null;
   certificateAuthority?: {
     id: string;
     projectId?: string;
@@ -90,7 +105,7 @@ export type TCreateCertificateProfileDTO = {
     skipEabBinding?: boolean;
   };
   externalConfigs?: Record<string, unknown> | null;
-  defaultTtlDays?: number;
+  defaults?: TCertificateProfileDefaults | null;
 };
 
 export type TUpdateCertificateProfileDTO = {
@@ -113,7 +128,7 @@ export type TUpdateCertificateProfileDTO = {
     skipEabBinding?: boolean;
   };
   externalConfigs?: Record<string, unknown> | null;
-  defaultTtlDays?: number | null;
+  defaults?: TCertificateProfileDefaults | null;
 };
 
 export type TDeleteCertificateProfileDTO = {

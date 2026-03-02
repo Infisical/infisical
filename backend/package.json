@@ -124,6 +124,7 @@
     "vitest": "^3.0.6"
   },
   "dependencies": {
+    "@aws-sdk/client-acm-pca": "^3.992.0",
     "@aws-sdk/client-elasticache": "^3.637.0",
     "@aws-sdk/client-iam": "^3.525.0",
     "@aws-sdk/client-kms": "^3.609.0",

@@ -29,6 +29,7 @@ import {
 } from "@app/components/v2";
 import { Badge, OrgIcon, ProjectIcon } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { useDebounce } from "@app/hooks";
 import { useSearchOrgIdentityMemberships } from "@app/hooks/api";
 import {
   TProjectTemplate,
@@ -45,6 +46,7 @@ const formSchema = z.object({
   identities: z
     .object({
       identityId: z.string().uuid(),
+      identityName: z.string(),
       roles: z.array(z.string()).min(1, "At least one role is required")
     })
     .array(),
@@ -101,12 +103,16 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
     AddIdentityType.CreateNew
   );
 
-  const { data: orgIdentitiesResponse, isPending: isMembershipsLoading } =
+  const [identitySearchInput, setIdentitySearchInput] = useState("");
+  const [debouncedIdentitySearch] = useDebounce(identitySearchInput, 300);
+
+  const { data: searchedIdentitiesResponse, isPending: isSearchingIdentities } =
     useSearchOrgIdentityMemberships({
-      search: {}
+      limit: 100,
+      search: debouncedIdentitySearch ? { name: { $contains: debouncedIdentitySearch } } : {}
     });
-  const orgIdentities = orgIdentitiesResponse
-    ? orgIdentitiesResponse.identities.map((v) => v.identity)
+  const searchedIdentities = searchedIdentitiesResponse
+    ? searchedIdentitiesResponse.identities.map((v) => v.identity)
     : [];
 
   const {
@@ -185,18 +191,13 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
   const currentIdentities = watch("identities");
   const availableOrgIdentities = useMemo(() => {
     const addedIdentityIds = new Set(currentIdentities.map((i) => i.identityId));
-    return orgIdentities
+    return searchedIdentities
       .filter((identity) => !addedIdentityIds.has(identity.id))
       .map((identity) => ({
         id: identity.id,
         name: identity.name
       }));
-  }, [orgIdentities, currentIdentities]);
-
-  const getIdentityName = (identityId: string) => {
-    const identity = orgIdentities.find((i) => i.id === identityId);
-    return identity?.name || identityId;
-  };
+  }, [searchedIdentities, currentIdentities]);
 
   // Add org identity modal form
   const {
@@ -218,9 +219,11 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
   const handleAddOrgIdentity = (form: TAddOrgIdentityForm) => {
     appendIdentity({
       identityId: form.selectedIdentity.id,
+      identityName: form.selectedIdentity.name,
       roles: form.roles.map((r) => r.slug)
     });
     resetAddOrgIdentityForm();
+    setIdentitySearchInput("");
     setIsAddIdentityModalOpen(false);
   };
 
@@ -254,6 +257,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
   const handleCloseAddIdentityModal = () => {
     resetAddOrgIdentityForm();
     resetAddProjectIdentityForm();
+    setIdentitySearchInput("");
     setIsAddIdentityModalOpen(false);
   };
 
@@ -264,7 +268,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
       index,
       id: identity.id,
       identityId: identity.identityId,
-      name: getIdentityName(identity.identityId),
+      name: identity.identityName,
       roles: currentIdentities[index]?.roles || []
     }));
 
@@ -277,7 +281,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
     }));
 
     return [...projectManaged, ...orgManaged];
-  }, [identities, projectManagedIdentities, currentIdentities, orgIdentities, watch]);
+  }, [identities, projectManagedIdentities, currentIdentities, watch]);
 
   return (
     <>
@@ -616,12 +620,14 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                     <FilterableSelect
                       value={value}
                       onChange={onChange}
-                      isLoading={isMembershipsLoading}
+                      isLoading={isSearchingIdentities}
                       placeholder="Select machine identity..."
                       autoFocus
                       options={availableOrgIdentities}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => option.name}
+                      onInputChange={(newValue) => setIdentitySearchInput(newValue)}
+                      filterOption={() => true}
                     />
                   </FormControl>
                 )}

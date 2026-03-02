@@ -34,7 +34,11 @@ import {
   useProjectPermission
 } from "@app/context";
 import { CaStatus, CaType, useListExternalCasByProjectId } from "@app/hooks/api";
-import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
+import {
+  caStatusToNameMap,
+  EXTERNAL_CA_TYPE_NAME_MAP,
+  getCaStatusBadgeVariant
+} from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -97,7 +101,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                     }
                   >
                     <Td>{ca.name}</Td>
-                    <Td>{ca.type}</Td>
+                    <Td>{EXTERNAL_CA_TYPE_NAME_MAP[ca.type] || ca.type}</Td>
                     <Td>
                       <Badge variant={getCaStatusBadgeVariant(ca.status)}>
                         {caStatusToNameMap[ca.status]}

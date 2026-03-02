@@ -109,7 +109,7 @@ export const CreateSecretImportForm = ({
     <Modal isOpen={isOpen} onOpenChange={onTogglePopUp}>
       <ModalContent
         bodyClassName="overflow-visible"
-        title="Add Secret Link"
+        title="Add Secret Import"
         subTitle="To inherit secrets from another environment or folder"
       >
         <form onSubmit={handleSubmit(handleFormSubmit)}>

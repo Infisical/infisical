@@ -100,6 +100,7 @@ describe("CertificateProfileService", () => {
     apiConfigId: "api-config-123",
     estConfigId: null,
     externalConfigs: null,
+    defaults: null,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -231,6 +232,10 @@ describe("CertificateProfileService", () => {
     findOne: vi.fn()
   } as unknown as Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
 
+  const mockCertificatePolicyService = {
+    validateRequestAgainstPolicy: vi.fn().mockReturnValue({ isValid: true, errors: [], warnings: [] })
+  };
+
   beforeEach(() => {
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
       throwUnlessCan: vi.fn()
@@ -245,6 +250,7 @@ describe("CertificateProfileService", () => {
     service = certificateProfileServiceFactory({
       certificateProfileDAL: mockCertificateProfileDAL,
       certificatePolicyDAL: mockCertificatePolicyDAL,
+      certificatePolicyService: mockCertificatePolicyService,
       apiEnrollmentConfigDAL: mockApiEnrollmentConfigDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
       acmeEnrollmentConfigDAL: mockAcmeEnrollmentConfigDAL,

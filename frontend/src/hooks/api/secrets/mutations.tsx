@@ -57,6 +57,12 @@ export const useCreateSecretV3 = ({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
+      });
+      queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
@@ -122,6 +128,12 @@ export const useUpdateSecretV3 = ({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
+      });
+      queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
@@ -167,6 +179,12 @@ export const useDeleteSecretV3 = ({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
+      });
+      queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
@@ -207,6 +225,12 @@ export const useCreateSecretBatch = ({
     onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
@@ -251,6 +275,12 @@ export const useUpdateSecretBatch = ({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
+      });
+      queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
@@ -293,6 +323,12 @@ export const useDeleteSecretBatch = ({
     onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
@@ -499,6 +535,12 @@ export const useCreateCommit = () => {
     onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })

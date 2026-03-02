@@ -124,7 +124,12 @@ export type TUnifiedCertificateIssuanceDTO = {
   projectId: string;
   csr?: string;
   attributes?: {
-    commonName?: string;
+    commonName?: string | null;
+    organization?: string | null;
+    organizationUnit?: string | null;
+    country?: string | null;
+    state?: string | null;
+    locality?: string | null;
     keyUsages?: string[];
     extendedKeyUsages?: string[];
     altNames?: Array<{
