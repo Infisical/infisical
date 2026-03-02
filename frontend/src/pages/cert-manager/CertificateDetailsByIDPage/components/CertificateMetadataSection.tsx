@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { subject } from "@casl/ability";
-import { faCheck, faPencil, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PencilIcon } from "lucide-react";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { IconButton } from "@app/components/v2";
+import { Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   UnstableCard,
   UnstableCardContent,
   UnstableCardDescription,
   UnstableCardHeader,
-  UnstableCardTitle
+  UnstableCardTitle,
+  UnstableIconButton
 } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
@@ -27,20 +29,28 @@ type Props = {
   certificateId: string;
 };
 
-type MetadataFormData = {
-  metadata: Array<{ key: string; value: string }>;
-};
+const metadataFormSchema = z.object({
+  metadata: z
+    .object({
+      key: z.string().trim().min(1, "Key is required"),
+      value: z.string().trim().default("")
+    })
+    .array()
+});
+
+type MetadataFormData = z.infer<typeof metadataFormSchema>;
 
 export const CertificateMetadataSection = ({ certificateId }: Props) => {
   const { currentProject } = useProject();
   const { data, isLoading } = useGetCertificateById(certificateId);
   const { mutateAsync: updateMetadata } = useUpdateCertificateMetadata();
-  const [isEditing, setIsEditing] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const certificate = data?.certificate;
   const metadata = certificate?.metadata || [];
 
   const { control, handleSubmit, reset, formState } = useForm<MetadataFormData>({
+    resolver: zodResolver(metadataFormSchema),
     defaultValues: {
       metadata: metadata.length > 0 ? metadata : []
     }
@@ -54,7 +64,7 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
 
   const handleCancel = useCallback(() => {
     reset({ metadata: metadata.length > 0 ? metadata : [] });
-    setIsEditing(false);
+    setIsModalOpen(false);
   }, [metadata, reset]);
 
   const onSubmit = useCallback(
@@ -62,17 +72,16 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
       if (!currentProject?.id) return;
 
       try {
-        const filteredMetadata = (formData.metadata || []).filter((m) => m.key.trim());
         await updateMetadata({
           certificateId,
           projectId: currentProject.id,
-          metadata: filteredMetadata
+          metadata: formData.metadata || []
         });
         createNotification({
           text: "Certificate metadata updated successfully",
           type: "success"
         });
-        setIsEditing(false);
+        setIsModalOpen(false);
       } catch (error) {
         createNotification({
           text: `Failed to update metadata: ${(error as Error)?.message || "Unknown error"}`,
@@ -96,76 +105,77 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
   if (!certificate) return null;
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader className="border-b">
-        <div className="flex items-center justify-between">
-          <div>
-            <UnstableCardTitle>Metadata</UnstableCardTitle>
-            <UnstableCardDescription>
-              Custom key-value pairs attached to this certificate
-            </UnstableCardDescription>
-          </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionCertificateActions.Edit}
-            a={subject(ProjectPermissionSub.Certificates, {
-              commonName: certificate.commonName,
-              altNames: certificate.altNames,
-              serialNumber: certificate.serialNumber,
-              friendlyName: certificate.friendlyName
-            })}
-          >
-            {(isAllowed) =>
-              isAllowed &&
-              (isEditing ? (
-                <div className="flex gap-2">
-                  <IconButton
-                    ariaLabel="Save metadata"
-                    variant="outline_bg"
-                    size="xs"
-                    isDisabled={formState.isSubmitting}
-                    onClick={handleSubmit(onSubmit)}
-                  >
-                    <FontAwesomeIcon icon={faCheck} />
-                  </IconButton>
-                  <IconButton
-                    ariaLabel="Cancel editing"
-                    variant="outline_bg"
-                    size="xs"
-                    onClick={handleCancel}
-                  >
-                    <FontAwesomeIcon icon={faTimes} />
-                  </IconButton>
-                </div>
-              ) : (
-                <IconButton
-                  ariaLabel="Edit metadata"
-                  variant="outline_bg"
+    <>
+      <UnstableCard>
+        <UnstableCardHeader className="border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <UnstableCardTitle>Metadata</UnstableCardTitle>
+              <UnstableCardDescription>
+                Custom key-value pairs attached to this certificate
+              </UnstableCardDescription>
+            </div>
+            <ProjectPermissionCan
+              I={ProjectPermissionCertificateActions.Edit}
+              a={subject(ProjectPermissionSub.Certificates, {
+                commonName: certificate.commonName,
+                altNames: certificate.altNames,
+                serialNumber: certificate.serialNumber,
+                friendlyName: certificate.friendlyName
+              })}
+            >
+              {(isAllowed) => (
+                <UnstableIconButton
+                  variant="ghost"
                   size="xs"
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => {
+                    reset({ metadata: metadata.length > 0 ? metadata : [] });
+                    setIsModalOpen(true);
+                  }}
+                  isDisabled={!isAllowed}
                 >
-                  <FontAwesomeIcon icon={faPencil} />
-                </IconButton>
-              ))
-            }
-          </ProjectPermissionCan>
-        </div>
-      </UnstableCardHeader>
-      <UnstableCardContent>
-        {isEditing && <MetadataForm control={control} title="" />}
-        {!isEditing && metadata.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {metadata.map((item) => (
-              <Badge key={`${item.key}=${item.value}`} variant="neutral">
-                {item.key}
-                {item.value ? `: ${item.value}` : ""}
-              </Badge>
-            ))}
+                  <PencilIcon />
+                </UnstableIconButton>
+              )}
+            </ProjectPermissionCan>
           </div>
-        )}
-        {!isEditing && metadata.length === 0 && (
-          <p className="text-sm text-mineshaft-400">No metadata attached to this certificate.</p>
-        )}
-      </UnstableCardContent>
-    </UnstableCard>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          {metadata.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {metadata.map((item) => (
+                <Badge key={`${item.key}=${item.value}`} variant="neutral">
+                  {item.key}
+                  {item.value ? `: ${item.value}` : ""}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-mineshaft-400">No metadata attached to this certificate.</p>
+          )}
+        </UnstableCardContent>
+      </UnstableCard>
+
+      <Modal isOpen={isModalOpen} onOpenChange={setIsModalOpen}>
+        <ModalContent
+          title="Edit Metadata"
+          subTitle="Update metadata key-value pairs for this certificate."
+        >
+          <MetadataForm control={control} title="" />
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline_bg" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit(onSubmit)}
+              isLoading={formState.isSubmitting}
+              isDisabled={formState.isSubmitting}
+            >
+              Save
+            </Button>
+          </div>
+        </ModalContent>
+      </Modal>
+    </>
   );
 };

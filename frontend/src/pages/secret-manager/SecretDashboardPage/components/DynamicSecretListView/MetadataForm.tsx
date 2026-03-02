@@ -24,7 +24,7 @@ export const MetadataForm = ({
     <FormControl label={title}>
       <div className="flex flex-col space-y-2">
         {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
-          <div key={metadataFieldId} className="flex items-end space-x-2">
+          <div key={metadataFieldId} className="flex items-start space-x-2">
             <div className="grow">
               {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
               <Controller
@@ -65,7 +65,7 @@ export const MetadataForm = ({
             </div>
             <IconButton
               ariaLabel="delete key"
-              className="bottom-0.5 max-h-8"
+              className={`${i === 0 ? "mt-[1.14rem]" : ""} max-h-8`}
               variant="outline_bg"
               onClick={() => metadataFormFields.remove(i)}
             >
