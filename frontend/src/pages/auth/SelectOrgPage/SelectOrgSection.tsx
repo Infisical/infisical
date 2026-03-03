@@ -399,15 +399,14 @@ export const SelectOrganizationSection = () => {
             <div key={org.id}>
               {hasSubOrgs && !isSearching ? (
                 /* Org with sub-orgs: absolute login button + pointer-events-none content layer */
-                <div className="group relative rounded-md border border-mineshaft-600 bg-mineshaft-700 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
+                <div className="relative overflow-clip rounded-md border border-mineshaft-600 text-gray-200 shadow-md">
                   <button
                     type="button"
                     onClick={() => handleLoginById(org.id)}
                     aria-label={`Login to ${org.name}`}
-                    className="absolute inset-0 z-0 rounded-md"
-                  />
-                  <div className="pointer-events-none relative z-10 flex items-center justify-between px-4 py-3">
-                    <div className="flex flex-col gap-1.5">
+                    className="group relative z-10 flex w-full cursor-pointer items-center justify-between bg-mineshaft-700 px-4 py-3 transition-colors hover:bg-mineshaft-600"
+                  >
+                    <div className="flex flex-col items-start gap-1.5">
                       <p className="truncate transition-colors">{org.name}</p>
                       {(() => {
                         const joined =
@@ -419,19 +418,20 @@ export const SelectOrganizationSection = () => {
                           </p>
                         ) : null;
                       })()}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRootOrg(org)}
-                        aria-label={`View sub-organizations of ${org.name}`}
-                        className="pointer-events-auto flex w-fit cursor-pointer items-center gap-1 rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-500 hover:text-gray-200"
-                      >
-                        {org.subOrganizations.length} sub-organization
-                        {org.subOrganizations.length !== 1 ? "s" : ""}
-                        <ChevronRight className="size-3" />
-                      </button>
                     </div>
-                    <LogIn className="size-4 text-gray-400 transition-all group-hover:text-primary-400" />
-                  </div>
+                    <LogIn className="size-4.5 text-gray-400 transition-all group-hover:text-primary-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRootOrg(org)}
+                    aria-label={`View sub-organizations of ${org.name}`}
+                    className="pointer-events-auto flex w-full cursor-pointer items-center gap-1 bg-mineshaft-500 px-2 py-2 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-500 hover:text-gray-200"
+                  >
+                    <ChevronRight className="size-4" />
+                    View {org.subOrganizations.length} sub-organization
+                    {org.subOrganizations.length !== 1 ? "s" : ""}
+                  </button>
                 </div>
               ) : (
                 /* Org without sub-orgs: simple full-row login button */
@@ -439,7 +439,7 @@ export const SelectOrganizationSection = () => {
                   type="button"
                   onClick={() => handleLoginById(org.id)}
                   aria-label={`Login to ${org.name}`}
-                  className="group flex h-14 w-full items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
+                  className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
                 >
                   <div className="flex flex-col items-start">
                     <p className="truncate transition-colors">{org.name}</p>
@@ -454,19 +454,19 @@ export const SelectOrganizationSection = () => {
                       ) : null;
                     })()}
                   </div>
-                  <LogIn className="size-4 text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500" />
+                  <LogIn className="size-4 text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-400 hover:text-primary-500" />
                 </button>
               )}
 
               {/* Auto-expand sub-orgs when searching */}
               {isSearching && hasSubOrgs && (
-                <div className="mx-2 mt-1 space-y-1">
+                <div className="mt-2 ml-1 space-y-1 border-l border-primary pl-2">
                   {org.subOrganizations.map((sub) => (
                     <button
                       key={sub.id}
                       type="button"
                       onClick={() => handleLoginById(sub.id)}
-                      className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-l-[5px] border-mineshaft-600 border-l-primary-800 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
+                      className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
                     >
                       <div className="flex flex-col items-start">
                         <p className="truncate">{sub.name}</p>
@@ -585,7 +585,6 @@ export const SelectOrganizationSection = () => {
           </div>
         </div>
       )}
-      <div className="pb-28" />
     </div>
   );
 };
