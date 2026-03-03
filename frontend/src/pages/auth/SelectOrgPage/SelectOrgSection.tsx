@@ -487,7 +487,7 @@ export const SelectOrganizationSection = () => {
                     >
                       <div className="flex flex-col items-start">
                         <p className="truncate">{sub.name}</p>
-                        <p className="text-xs text-mineshaft-600">
+                        <p className="text-xs text-mineshaft-400">
                           {org.name}
                           {sub.userJoinedAt && (
                             <> · Member since {format(new Date(sub.userJoinedAt), "MMM d yyyy")}</>
