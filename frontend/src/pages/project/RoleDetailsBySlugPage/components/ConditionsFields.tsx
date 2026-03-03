@@ -36,6 +36,7 @@ import {
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
 
 type ActionConditionsMap = Partial<Record<string, string[]>>;
+type ActionLabelsMap = Record<string, string>;
 
 type ConditionsFieldsProps = {
   isDisabled: boolean | undefined;
@@ -44,6 +45,7 @@ type ConditionsFieldsProps = {
   selectOptions: [{ value: string; label: string }, ...{ value: string; label: string }[]];
   selectedActions?: string[];
   actionConditionsMap?: ActionConditionsMap;
+  actionLabelsMap?: ActionLabelsMap;
 };
 
 const computeAllowedConditions = (
@@ -92,7 +94,8 @@ export const ConditionsFields = ({
   position,
   selectOptions,
   selectedActions,
-  actionConditionsMap
+  actionConditionsMap,
+  actionLabelsMap
 }: ConditionsFieldsProps) => {
   const {
     control,
@@ -292,7 +295,9 @@ export const ConditionsFields = ({
                                         </TooltipTrigger>
                                         <TooltipContent side="right" className="max-w-xs">
                                           This condition is not available for the actions:{" "}
-                                          {disallowingActions.join(", ")}
+                                          {disallowingActions
+                                            .map((action) => actionLabelsMap?.[action] || action)
+                                            .join(", ")}
                                         </TooltipContent>
                                       </Tooltip>
                                     );

@@ -9,11 +9,11 @@ import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
 import {
+  ActionAllowedConditions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub,
   ProjectPermissionV2Schema,
-  SecretActionAllowedConditions,
   SecretSubjectFields
 } from "./project-permission";
 
@@ -101,19 +101,20 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
           }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
         });
       }
+    }
 
-      // Validate conditions against allowed conditions per action
-      if (permission.conditions) {
-        const conditionKeys = Object.keys(permission.conditions);
-        for (const action of permission.action) {
-          const allowedConditions = SecretActionAllowedConditions[action as ProjectPermissionSecretActions];
-          if (allowedConditions) {
-            for (const condKey of conditionKeys) {
-              if (!allowedConditions.includes(condKey)) {
-                throw new BadRequestError({
-                  message: `Condition "${condKey}" is not allowed for action "${action}"`
-                });
-              }
+    const subjectConditions = ActionAllowedConditions[permission.subject as ProjectPermissionSub];
+    const permissionConditions = "conditions" in permission ? permission.conditions : undefined;
+    if (permissionConditions && subjectConditions) {
+      const conditionKeys = Object.keys(permissionConditions);
+      for (const action of permission.action) {
+        const allowedConditions = subjectConditions[action];
+        if (allowedConditions) {
+          for (const condKey of conditionKeys) {
+            if (!allowedConditions.includes(condKey)) {
+              throw new BadRequestError({
+                message: `Condition "${condKey}" is not allowed for action "${action}" on subject "${permission.subject}"`
+              });
             }
           }
         }

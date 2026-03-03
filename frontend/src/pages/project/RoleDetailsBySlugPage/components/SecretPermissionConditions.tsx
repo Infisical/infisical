@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import {
   ProjectPermissionSecretActions,
@@ -14,9 +14,23 @@ type Props = {
   isDisabled?: boolean;
 };
 
+const SECRET_ACTION_LABELS: Record<string, string> = {
+  [ProjectPermissionSecretActions.DescribeAndReadValue]: "Read",
+  [ProjectPermissionSecretActions.DescribeSecret]: "Describe Secret",
+  [ProjectPermissionSecretActions.ReadValue]: "Read Value",
+  [ProjectPermissionSecretActions.Create]: "Create",
+  [ProjectPermissionSecretActions.Edit]: "Modify",
+  [ProjectPermissionSecretActions.Delete]: "Remove",
+  [ProjectPermissionSecretActions.ImportSecret]: "Import Secret (Test)",
+  [ProjectPermissionSecretActions.DuplicateSecret]: "Duplicate Secret (Test)"
+};
+
 export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) => {
-  const { watch } = useFormContext<TFormSchema>();
-  const permissionRule = watch(`permissions.${ProjectPermissionSub.Secrets}.${position}`);
+  const { control } = useFormContext<TFormSchema>();
+  const permissionRule = useWatch({
+    control,
+    name: `permissions.${ProjectPermissionSub.Secrets}.${position}` as const
+  });
 
   const selectedActions = useMemo(() => {
     if (!permissionRule) return [];
@@ -45,6 +59,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
       ]}
       selectedActions={selectedActions}
       actionConditionsMap={ACTION_ALLOWED_CONDITIONS[ProjectPermissionSub.Secrets]}
+      actionLabelsMap={SECRET_ACTION_LABELS}
     />
   );
 };

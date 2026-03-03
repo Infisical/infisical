@@ -53,14 +53,6 @@ export enum ProjectPermissionSecretActions {
   DuplicateSecret = "duplicateSecret"
 }
 
-// Mapping of secret actions to their allowed condition keys
-// Actions without restrictions (undefined or not in map) allow all conditions
-export const SecretActionAllowedConditions: Partial<Record<ProjectPermissionSecretActions, string[]>> = {
-  // Test actions with restricted conditions - to be removed after testing
-  [ProjectPermissionSecretActions.ImportSecret]: ["environment"],
-  [ProjectPermissionSecretActions.DuplicateSecret]: ["environment", "secretPath", "secretName"]
-};
-
 export enum ProjectPermissionCmekActions {
   Read = "read",
   Create = "create",
@@ -340,6 +332,18 @@ export enum ProjectPermissionSub {
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs"
 }
+
+// Structure: { [subject]: { [action]: allowedConditionKeys[] } }
+// Actions without restrictions (undefined or not in map) allow all conditions
+export type ActionAllowedConditionsType = Partial<Record<ProjectPermissionSub, Partial<Record<string, string[]>>>>;
+
+export const ActionAllowedConditions: ActionAllowedConditionsType = {
+  [ProjectPermissionSub.Secrets]: {
+    // Test actions with restricted conditions - to be removed after testing
+    [ProjectPermissionSecretActions.ImportSecret]: ["environment"],
+    [ProjectPermissionSecretActions.DuplicateSecret]: ["environment", "secretPath", "secretName"]
+  }
+};
 
 export type SecretSubjectFields = {
   environment: string;
