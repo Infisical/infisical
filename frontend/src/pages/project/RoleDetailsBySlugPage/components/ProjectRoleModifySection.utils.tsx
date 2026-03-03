@@ -938,6 +938,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
           const canCreate = action.includes(ProjectPermissionSecretActions.Create);
           const canSubscribe = action.includes(ProjectPermissionSecretActions.Subscribe);
+          const canImportSecret = action.includes(ProjectPermissionSecretActions.ImportSecret);
+          const canDuplicateSecret = action.includes(
+            ProjectPermissionSecretActions.DuplicateSecret
+          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -948,6 +952,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             edit: canEdit,
             delete: canDelete,
             subscribe: canSubscribe,
+            [ProjectPermissionSecretActions.ImportSecret]: canImportSecret,
+            [ProjectPermissionSecretActions.DuplicateSecret]: canDuplicateSecret,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });

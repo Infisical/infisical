@@ -153,7 +153,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const {
     handleSubmit,
-    formState: { isDirty, isSubmitting },
+    formState: { isDirty, isSubmitting, errors },
     reset
   } = form;
 
@@ -176,6 +176,18 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     });
     createNotification({ type: "success", text: "Successfully updated role" });
   };
+
+  // Expand accordion items that have validation errors
+  const handleFormSubmit = handleSubmit(onSubmit, () => {
+    if (errors.permissions) {
+      const subjectsWithErrors = Object.keys(errors.permissions) as ProjectPermissionSub[];
+      setOpenPolicies((prev) => {
+        const newOpenPolicies = new Set(prev);
+        subjectsWithErrors.forEach((subject) => newOpenPolicies.add(subject));
+        return Array.from(newOpenPolicies);
+      });
+    }
+  });
 
   const isCustomRole = !Object.values(ProjectMembershipRole).includes(
     (role?.slug ?? "") as ProjectMembershipRole
@@ -201,7 +213,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   return (
     <div className="w-full">
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleFormSubmit}
         className="flex h-full w-full flex-1 flex-col rounded-lg border border-border bg-card py-4"
       >
         <FormProvider {...form}>
