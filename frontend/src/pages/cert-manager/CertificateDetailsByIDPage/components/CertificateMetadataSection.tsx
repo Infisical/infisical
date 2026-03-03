@@ -143,19 +143,25 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
         <UnstableCardContent>
           {metadata.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {metadata.map((item) => (
-                <UnstableButtonGroup
-                  className="max-w-full min-w-0"
-                  key={`${item.key}=${item.value}`}
-                >
-                  <Badge isTruncatable className="max-w-[12rem] shrink-0">
+              {metadata.map((item) =>
+                item.value ? (
+                  <UnstableButtonGroup
+                    className="max-w-full min-w-0"
+                    key={`${item.key}=${item.value}`}
+                  >
+                    <Badge isTruncatable className="max-w-[12rem] shrink-0">
+                      <span>{item.key}</span>
+                    </Badge>
+                    <Badge variant="outline" isTruncatable>
+                      <span>{item.value}</span>
+                    </Badge>
+                  </UnstableButtonGroup>
+                ) : (
+                  <Badge key={item.key} isTruncatable>
                     <span>{item.key}</span>
                   </Badge>
-                  <Badge variant="outline" isTruncatable>
-                    <span>{item.value}</span>
-                  </Badge>
-                </UnstableButtonGroup>
-              ))}
+                )
+              )}
             </div>
           ) : (
             <p className="text-sm text-mineshaft-400">No metadata attached to this certificate.</p>
