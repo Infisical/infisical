@@ -1,4 +1,5 @@
 import ldapjs from "ldapjs";
+import RE2 from "re2";
 
 import { TPamDiscoveryScanDeps } from "@app/ee/services/pam-discovery/pam-discovery-factory";
 import { BadRequestError } from "@app/lib/errors";
@@ -73,9 +74,9 @@ const isServiceAccount = (user: TLdapUser): boolean => {
 const toSlugName = (name: string): string =>
   name
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(new RE2(/[^a-z0-9-]/g), "-")
+    .replace(new RE2(/-+/g), "-")
+    .replace(new RE2(/^-|-$/g), "");
 
 const buildDomainDN = (domainFQDN: string): string => {
   return domainFQDN
