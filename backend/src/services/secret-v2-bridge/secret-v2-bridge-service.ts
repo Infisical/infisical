@@ -51,7 +51,12 @@ import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { PersonalOverridesBehavior, TGetASecretByIdDTO, TRedactSecretVersionValueDTO } from "../secret/secret-types";
+import {
+  PersonalOverridesBehavior,
+  SecretImportReferencesBehavior,
+  TGetASecretByIdDTO,
+  TRedactSecretVersionValueDTO
+} from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -1104,6 +1109,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actor,
       actorOrgId,
+      secretImportReferencesBehavior,
       viewSecretValue,
       actorAuthMethod,
       includeImports,
@@ -1439,7 +1445,10 @@ export const secretV2BridgeServiceFactory = ({
       secretDAL,
       folderDAL,
       secretImportDAL,
-      expandSecretReferences: expandImportedSecretReferences,
+      expandSecretReferences:
+        secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
+          ? expandImportedSecretReferences
+          : expandSecretReferences,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
         const canDescribe = hasSecretReadValueOrDescribePermission(
