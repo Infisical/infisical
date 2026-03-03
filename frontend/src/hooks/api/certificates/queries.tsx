@@ -104,26 +104,20 @@ export const useListCertificateRequests = (params: TListCertificateRequestsParam
       const now = Date.now();
       const daysInMs = DATE_RANGE_DAYS * 24 * 60 * 60 * 1000;
 
-      const { data } = await apiRequest.get<TListCertificateRequestsResponse>(
-        "/api/v1/cert-manager/certificates/certificate-requests",
+      const { data } = await apiRequest.post<TListCertificateRequestsResponse>(
+        "/api/v1/cert-manager/certificates/certificate-requests/search",
         {
-          params: {
-            projectSlug: params.projectSlug,
-            offset: params.offset,
-            limit: params.limit,
-            search: params.search,
-            status: params.status,
-            fromDate: (params.fromDate || new Date(now - daysInMs)).toISOString(),
-            toDate: (params.toDate || new Date(now)).toISOString(),
-            profileIds: params.profileIds?.join(","),
-            sortBy: params.sortBy,
-            sortOrder: params.sortOrder,
-            ...(params.metadataFilter?.length && {
-              metadataFilter: params.metadataFilter
-                .map((m) => (m.value ? `key=${m.key},value=${m.value}` : `key=${m.key}`))
-                .join("|")
-            })
-          }
+          projectSlug: params.projectSlug,
+          offset: params.offset,
+          limit: params.limit,
+          search: params.search,
+          status: params.status,
+          fromDate: (params.fromDate || new Date(now - daysInMs)).toISOString(),
+          toDate: (params.toDate || new Date(now)).toISOString(),
+          ...(params.profileIds?.length && { profileIds: params.profileIds }),
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder,
+          ...(params.metadataFilter?.length && { metadata: params.metadataFilter })
         }
       );
       return data;

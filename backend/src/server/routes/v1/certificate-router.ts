@@ -28,7 +28,7 @@ import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certi
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
-import { booleanSchema, metadataFilterSchema } from "../sanitizedSchemas";
+import { booleanSchema } from "../sanitizedSchemas";
 
 type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertificateIssuanceResponse, "privateKey">;
 
@@ -443,7 +443,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      deprecated: true,
+      description: "Deprecated: Use POST /certificate-requests/search instead.",
+      hide: true,
       operationId: "listCertificateRequests",
       tags: [ApiDocsTags.PkiCertificates],
       querystring: z.object({
@@ -461,8 +463,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe("Comma-separated list of profile IDs"),
         sortBy: z.string().trim().optional(),
-        sortOrder: z.enum(["asc", "desc"]).optional(),
-        metadataFilter: metadataFilterSchema
+        sortOrder: z.enum(["asc", "desc"]).optional()
       }),
       response: {
         200: z.object({
@@ -521,8 +522,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         toDate: req.query.toDate,
         profileIds: req.query.profileIds,
         sortBy: req.query.sortBy,
-        sortOrder: req.query.sortOrder,
-        metadataFilter: req.query.metadataFilter
+        sortOrder: req.query.sortOrder
       });
 
       await server.services.auditLog.createAuditLog({
@@ -535,6 +535,135 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             limit: req.query.limit,
             search: req.query.search,
             status: req.query.status,
+            count: certificateRequests.length,
+            certificateRequestIds: certificateRequests.map((certReq) => certReq.id)
+          }
+        }
+      });
+
+      return {
+        certificateRequests: certificateRequests.map((certReq) => ({
+          ...certReq,
+          profileId: certReq.profileId ?? null,
+          caId: certReq.caId ?? null,
+          certificateId: certReq.certificateId ?? null,
+          approvalRequestId: certReq.approvalRequestId ?? null,
+          commonName: certReq.commonName ?? null,
+          altNames:
+            (certReq.altNames as Array<{ type: string; value: string }> | null)?.map((san) => san.value).join(",") ??
+            null,
+          errorMessage: certReq.errorMessage ?? null,
+          profileName: certReq.profileName ?? null
+        })),
+        totalCount
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/certificate-requests/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "searchCertificateRequests",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Search and filter certificate requests.",
+      body: z.object({
+        projectSlug: z.string().min(1).trim(),
+        offset: z.number().min(0).default(0),
+        limit: z.number().min(1).max(100).default(20),
+        search: z.string().trim().optional(),
+        status: z.nativeEnum(CertificateRequestStatus).optional(),
+        fromDate: z.coerce.date().optional(),
+        toDate: z.coerce.date().optional(),
+        profileIds: z.array(z.string().uuid()).optional(),
+        sortBy: z.string().trim().optional(),
+        sortOrder: z.enum(["asc", "desc"]).optional(),
+        metadata: z
+          .array(
+            z.object({
+              key: z.string().trim().min(1).max(255),
+              value: z.string().trim().max(1020).optional()
+            })
+          )
+          .optional()
+      }),
+      response: {
+        200: z.object({
+          certificateRequests: z.array(
+            z.object({
+              id: z.string(),
+              status: z.nativeEnum(CertificateRequestStatus),
+              commonName: z.string().nullable(),
+              altNames: z.string().nullable(),
+              profileId: z.string().nullable(),
+              profileName: z.string().nullable(),
+              caId: z.string().nullable(),
+              certificateId: z.string().nullable(),
+              approvalRequestId: z.string().nullable(),
+              errorMessage: z.string().nullable(),
+              createdAt: z.date(),
+              updatedAt: z.date(),
+              certificate: z
+                .object({
+                  id: z.string(),
+                  serialNumber: z.string(),
+                  status: z.string()
+                })
+                .nullable()
+            })
+          ),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { metadata, ...filters } = req.body;
+
+      const project = await server.services.project.getAProject({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        filter: {
+          type: ProjectFilterType.SLUG,
+          slug: filters.projectSlug,
+          orgId: req.permission.orgId
+        }
+      });
+
+      const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: project.id,
+        offset: filters.offset,
+        limit: filters.limit,
+        search: filters.search,
+        status: filters.status,
+        fromDate: filters.fromDate,
+        toDate: filters.toDate,
+        profileIds: filters.profileIds,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
+        metadataFilter: metadata
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: project.id,
+        event: {
+          type: EventType.LIST_CERTIFICATE_REQUESTS,
+          metadata: {
+            offset: filters.offset,
+            limit: filters.limit,
+            search: filters.search,
+            status: filters.status,
             count: certificateRequests.length,
             certificateRequestIds: certificateRequests.map((certReq) => certReq.id)
           }
