@@ -14,7 +14,7 @@ import {
   TOrganizationsInsert,
   TUserEncryptionKeys
 } from "@app/db/schemas";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { DatabaseError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import {
   buildFindFilter,
@@ -28,8 +28,7 @@ import {
 import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
 
 import { ActorType } from "../auth/auth-type";
-import { TOrgWithSubOrgs } from "./org-types";
-import { OrgAuthMethod } from "./org-types";
+import { OrgAuthMethod, TOrgWithSubOrgs } from "./org-types";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 
@@ -236,9 +235,7 @@ export const orgDALFactory = (db: TDbClient) => {
    * Returns all root orgs the actor can see (has membership, direct or via group),
    * each with its sub-organizations. Basic org fields and suborg id/name/slug only.
    */
-  const listOrganizationsWithSubOrgs = async (dto: {
-    actorId: string;
-  }): Promise<TOrgWithSubOrgs[]> => {
+  const listOrganizationsWithSubOrgs = async (dto: { actorId: string }): Promise<TOrgWithSubOrgs[]> => {
     try {
       const conn = db.replicaNode();
 
@@ -258,9 +255,7 @@ export const orgDALFactory = (db: TDbClient) => {
             .andOn(`access_m.scope`, db.raw("?", [AccessScope.Organization]));
         })
         .where((qb) => {
-          void qb
-            .where(`access_m.actorUserId`, dto.actorId)
-            .orWhereIn(`access_m.actorGroupId`, userGroupIdsSubquery);
+          void qb.where(`access_m.actorUserId`, dto.actorId).orWhereIn(`access_m.actorGroupId`, userGroupIdsSubquery);
         })
         .leftJoin(`${TableName.Membership} as direct_m`, (qb) => {
           void qb

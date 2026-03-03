@@ -60,7 +60,6 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
 import { deleteOrgMembershipsFn } from "./org-fns";
-import { TOrgWithSubOrgs } from "./org-types";
 import {
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
@@ -71,6 +70,7 @@ import {
   TGetOrgMembershipDTO,
   TListProjectMembershipsByOrgMembershipIdDTO,
   TResendOrgMemberInvitationDTO,
+  TOrgWithSubOrgs,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
   TUpgradePrivilegeSystemDTO,

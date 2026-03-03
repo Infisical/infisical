@@ -3,7 +3,6 @@ import { z } from "zod";
 import { TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType, MfaMethod } from "../auth/auth-type";
-
 import { OrgWithSubOrgsSchema } from "./org-schema";
 
 /** Root org with accessible sub-orgs (basic info only) */

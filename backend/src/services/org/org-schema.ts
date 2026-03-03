@@ -2,13 +2,6 @@ import { z } from "zod";
 
 import { OrganizationsSchema } from "@app/db/schemas";
 
-/** Minimal org fields (id, name, slug) – e.g. for sub-org list items or summaries */
-const orgBasicSchema = OrganizationsSchema.pick({
-  id: true,
-  name: true,
-  slug: true
-});
-
 /** Zod schema for API response: org with sub-orgs */
 export const OrgWithSubOrgsSchema = OrganizationsSchema.pick({
   id: true,
