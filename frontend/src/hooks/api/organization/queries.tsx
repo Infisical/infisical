@@ -22,8 +22,18 @@ import {
   UpdateOrgDTO
 } from "./types";
 
+export type TOrgWithSubOrgs = {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  userJoinedAt?: string | null;
+  subOrganizations: { id: string; name: string; slug: string; userJoinedAt?: string | null }[];
+};
+
 export const organizationKeys = {
   getUserOrganizations: ["organization"] as const,
+  getUserOrganizationsWithSubOrgs: ["organization", "with-sub-orgs"] as const,
   getOrgPlanBillingInfo: (orgId: string) => [{ orgId }, "organization-plan-billing"] as const,
   getOrgPlanTable: (orgId: string) => [{ orgId }, "organization-plan-table"] as const,
   getOrgPlansTable: (orgId: string, billingCycle: "monthly" | "yearly") =>
@@ -60,6 +70,20 @@ export const useGetOrganizations = () => {
     queryKey: organizationKeys.getUserOrganizations,
     queryFn: async () => {
       return fetchOrganizations();
+    }
+  });
+};
+
+export const useGetOrganizationsWithSubOrgs = () => {
+  return useQuery({
+    queryKey: organizationKeys.getUserOrganizationsWithSubOrgs,
+    queryFn: async () => {
+      const {
+        data: { organizations }
+      } = await apiRequest.get<{ organizations: TOrgWithSubOrgs[] }>(
+        "/api/v1/organization/accessible-with-sub-orgs"
+      );
+      return organizations;
     }
   });
 };

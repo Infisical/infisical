@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
   StaticTreeDataProvider,
   Tree,
@@ -8,6 +8,7 @@ import {
 } from "react-complex-tree";
 import { faExclamationTriangle, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   Background,
   BackgroundVariant,
@@ -20,6 +21,7 @@ import { AxiosError } from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import { FormControl, FormLabel, SecretInput, Spinner, Tooltip } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { useGetSecretReferences, useGetSecretReferenceTree } from "@app/hooks/api";
 import { ApiErrorTypes, TApiErrors, TSecretReferenceTraceNode } from "@app/hooks/api/types";
@@ -27,6 +29,7 @@ import { ApiErrorTypes, TApiErrors, TSecretReferenceTraceNode } from "@app/hooks
 import { SecretReferenceEdge } from "./edges/SecretReferenceEdge";
 import { SecretNode } from "./nodes/SecretNode";
 import { convertDependencyTreeToFlow } from "./utils/convertToFlowElements";
+import { SecretReferenceCloseContext } from "./SecretReferenceContext";
 
 import "./SecretReferenceTree.css";
 
@@ -46,6 +49,9 @@ type TreeNodeData = {
   rootValue?: string;
   isRoot?: boolean;
   isNested?: boolean;
+  environment?: string;
+  secretPath?: string;
+  secretKey?: string;
 };
 
 const createNodeId = (node: TSecretReferenceTraceNode, parentId?: string): string => {
@@ -88,7 +94,10 @@ const convertToTreeItems = (
     data: {
       title: displayName,
       value: node.value,
-      isRoot: !parentId
+      isRoot: !parentId,
+      environment: node.environment,
+      secretPath: node.secretPath,
+      secretKey: node.key
     }
   };
 
@@ -118,32 +127,45 @@ const hasCircularReferences = (
   return node.children.some((child) => hasCircularReferences(child, newVisitedPath));
 };
 
-const renderItemTitle = ({ item }: { item: TreeItem<TreeNodeData> }) => {
-  const { title, value, isRoot } = item.data;
-
-  return (
-    <span className="flex items-center gap-1">
-      <span className={isRoot ? "font-medium" : ""}>{title}</span>
-      <Tooltip className="max-w-md break-words" content={value || "No value"}>
-        <span className={`px-1 text-xs ${value ? "text-mineshaft-400" : "text-red-400"}`}>
-          <FontAwesomeIcon icon={value ? faEye : faEyeSlash} size="sm" />
-        </span>
-      </Tooltip>
-    </span>
-  );
-};
-
 const SecretTree = ({
   items,
   rootId,
   treeId,
-  defaultExpandedIds = []
+  defaultExpandedIds = [],
+  onSecretClick
 }: {
   items: Record<TreeItemIndex, TreeItem<TreeNodeData>>;
   rootId: string;
   treeId: string;
   defaultExpandedIds?: string[];
+  onSecretClick?: (env: string, path: string, key: string) => void;
 }) => {
+  const renderItemTitle = ({ item }: { item: TreeItem<TreeNodeData> }) => {
+    const { title, value, isRoot, environment, secretPath, secretKey } = item.data;
+    const isClickable = !isRoot && onSecretClick && environment && secretPath && secretKey;
+
+    return (
+      <span className="flex items-center gap-1">
+        {isClickable ? (
+          <button
+            type="button"
+            className={`${isRoot ? "font-medium" : ""} cursor-pointer hover:underline`}
+            onClick={() => onSecretClick(environment, secretPath, secretKey)}
+          >
+            {title}
+          </button>
+        ) : (
+          <span className={isRoot ? "font-medium" : ""}>{title}</span>
+        )}
+        <Tooltip className="max-w-md break-words" content={value || "No value"}>
+          <span className={`px-1 text-xs ${value ? "text-mineshaft-400" : "text-red-400"}`}>
+            <FontAwesomeIcon icon={value ? faEye : faEyeSlash} size="sm" />
+          </span>
+        </Tooltip>
+      </span>
+    );
+  };
+
   const dataProvider = useMemo(
     () =>
       new StaticTreeDataProvider(items, (item, newName) => ({
@@ -270,9 +292,35 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
   );
 };
 
-export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Props) => {
+export const SecretReferenceTree = ({
+  secretPath,
+  environment,
+  secretKey,
+  onClose
+}: Props & { onClose?: () => void }) => {
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
+  const navigate = useNavigate();
+  const routeParams = useParams({ strict: false });
+
+  const handleSecretClick = useCallback(
+    (env: string, path: string, key: string) => {
+      onClose?.();
+      navigate({
+        to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
+        params: {
+          orgId: routeParams.orgId as string,
+          projectId: currentProject?.id || "",
+          envSlug: env
+        },
+        search: {
+          secretPath: path || "/",
+          search: key || ""
+        }
+      });
+    },
+    [navigate, routeParams.orgId, currentProject, onClose]
+  );
 
   const { data, isPending, isError, error } = useGetSecretReferenceTree({
     secretPath,
@@ -324,64 +372,67 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
   const hasReferences = tree && tree.children?.length > 0;
 
   return (
-    <div>
-      <FormControl
-        label="Expanded value"
-        tooltipText={
-          hasCirculars
-            ? "This secret contains circular references. Value shown is resolved once, with circular paths truncated in the reference tree below."
-            : undefined
-        }
-        tooltipClassName="max-w-md break-words"
-      >
-        <SecretInput
-          key="value-overriden"
-          isReadOnly
-          value={secretValue}
-          containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
-        />
-      </FormControl>
-
-      <FormLabel
-        tooltipText="Overview of all secrets across your project that this secret references. Note that you are only able to view the references that you have access to."
-        className="mb-2"
-        label="Reference Tree"
-      />
-      <div className="secret-tree-container relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-bunker-700 p-3 text-sm text-mineshaft-200">
-        {isError && (
-          <div className="flex items-center justify-center py-4">
-            <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-red-500" />
-            <p className="text-red-500">Error fetching secret reference tree</p>
-          </div>
-        )}
-        {!isError && hasReferences && treeItems.rootId && (
-          <SecretTree
-            items={treeItems.items}
-            rootId={treeItems.rootId}
-            treeId="reference-tree"
-            defaultExpandedIds={[treeItems.expandId]}
+    <SecretReferenceCloseContext.Provider value={onClose}>
+      <div>
+        <FormControl
+          label="Expanded value"
+          tooltipText={
+            hasCirculars
+              ? "This secret contains circular references. Value shown is resolved once, with circular paths truncated in the reference tree below."
+              : undefined
+          }
+          tooltipClassName="max-w-md break-words"
+        >
+          <SecretInput
+            key="value-overriden"
+            isReadOnly
+            value={secretValue}
+            containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
           />
-        )}
-        {!isError && !hasReferences && (
-          <div className="flex items-center justify-center py-4">
-            <span className="text-mineshaft-400">This secret does not contain references</span>
-          </div>
-        )}
-      </div>
-      <div className="mt-2 text-xs text-mineshaft-400">
-        Click a secret key to view its sub-references.
-      </div>
+        </FormControl>
 
-      <FormLabel
-        tooltipText="Overview of all secrets across your project that this secret is referenced by. Note that you are only able to view the references that you have access to."
-        className="mt-6 mb-2"
-        label="Dependency Tree"
-      />
-      <SecretDependencyTree
-        secretPath={secretPath}
-        environment={environment}
-        secretKey={secretKey}
-      />
-    </div>
+        <FormLabel
+          tooltipText="Overview of all secrets across your project that this secret references. Note that you are only able to view the references that you have access to."
+          className="mb-2"
+          label="Reference Tree"
+        />
+        <div className="secret-tree-container relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-bunker-700 p-3 text-sm text-mineshaft-200">
+          {isError && (
+            <div className="flex items-center justify-center py-4">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-red-500" />
+              <p className="text-red-500">Error fetching secret reference tree</p>
+            </div>
+          )}
+          {!isError && hasReferences && treeItems.rootId && (
+            <SecretTree
+              items={treeItems.items}
+              rootId={treeItems.rootId}
+              treeId="reference-tree"
+              defaultExpandedIds={[treeItems.expandId]}
+              onSecretClick={handleSecretClick}
+            />
+          )}
+          {!isError && !hasReferences && (
+            <div className="flex items-center justify-center py-4">
+              <span className="text-mineshaft-400">This secret does not contain references</span>
+            </div>
+          )}
+        </div>
+        <div className="mt-2 text-xs text-mineshaft-400">
+          Click a secret key to navigate to it (expand/collapse with the arrow).
+        </div>
+
+        <FormLabel
+          tooltipText="Overview of all secrets across your project that this secret is referenced by. Note that you are only able to view the references that you have access to."
+          className="mt-6 mb-2"
+          label="Dependency Tree"
+        />
+        <SecretDependencyTree
+          secretPath={secretPath}
+          environment={environment}
+          secretKey={secretKey}
+        />
+      </div>
+    </SecretReferenceCloseContext.Provider>
   );
 };

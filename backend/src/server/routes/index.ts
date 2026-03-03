@@ -2355,14 +2355,16 @@ export const registerRoutes = async (
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    certificateAuthorityService
+    certificateAuthorityService,
+    resourceMetadataDAL
   });
 
   const certificateRequestService = certificateRequestServiceFactory({
     certificateRequestDAL,
     certificateDAL,
     certificateService,
-    permissionService
+    permissionService,
+    resourceMetadataDAL
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
@@ -2380,7 +2382,8 @@ export const registerRoutes = async (
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL,
-    certificateRequestService
+    certificateRequestService,
+    resourceMetadataDAL
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -2396,7 +2399,8 @@ export const registerRoutes = async (
     kmsService,
     projectDAL,
     certificatePolicyService,
-    certificateIssuanceQueue
+    certificateIssuanceQueue,
+    resourceMetadataDAL
   });
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
@@ -2441,7 +2445,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     userDAL,
     identityDAL,
-    approvalPolicyService
+    approvalPolicyService,
+    resourceMetadataDAL
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

@@ -394,6 +394,7 @@ export enum EventType {
   RENEW_CERTIFICATE = "renew-certificate",
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
+  UPDATE_CERTIFICATE_METADATA = "update-certificate-metadata",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
   CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
   GET_CERTIFICATE_REQUEST = "get-certificate-request",
@@ -4581,6 +4582,15 @@ interface UpdateCertificateRenewalConfigEvent {
   };
 }
 
+interface UpdateCertificateMetadataEvent {
+  type: EventType.UPDATE_CERTIFICATE_METADATA;
+  metadata: {
+    certificateId: string;
+    commonName: string;
+    metadata: { key: string; value: string }[];
+  };
+}
+
 interface DisableCertificateRenewalConfigEvent {
   type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -5570,6 +5580,7 @@ export type Event =
   | PamDiscoverySourceResourceListEvent
   | PamDiscoverySourceAccountListEvent
   | UpdateCertificateRenewalConfigEvent
+  | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent
   | CreateCertificateRequestEvent
   | GetCertificateRequestEvent
