@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, LogIn, Search } from "lucide-react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
 import { addSeconds, format, formatISO } from "date-fns";
 import { jwtDecode } from "jwt-decode";
+import { ChevronRight, LogIn, Search } from "lucide-react";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
