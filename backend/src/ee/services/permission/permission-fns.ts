@@ -84,22 +84,21 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
         const hasReadValue = permission.action.includes(ProjectPermissionSecretActions.ReadValue);
         const hasDescribeSecret = permission.action.includes(ProjectPermissionSecretActions.DescribeSecret);
 
-        // eslint-disable-next-line no-continue
-        if (!hasReadValue && !hasDescribeSecret) continue;
+        if (hasReadValue || hasDescribeSecret) {
+          const hasBothDescribeAndReadValue = hasReadValue && hasDescribeSecret;
 
-        const hasBothDescribeAndReadValue = hasReadValue && hasDescribeSecret;
-
-        throw new BadRequestError({
-          message: `You have selected Read, and ${
-            hasBothDescribeAndReadValue
-              ? "both Read Value and Describe Secret"
-              : hasReadValue
-                ? "Read Value"
-                : hasDescribeSecret
-                  ? "Describe Secret"
-                  : ""
-          }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
-        });
+          throw new BadRequestError({
+            message: `You have selected Read, and ${
+              hasBothDescribeAndReadValue
+                ? "both Read Value and Describe Secret"
+                : hasReadValue
+                  ? "Read Value"
+                  : hasDescribeSecret
+                    ? "Describe Secret"
+                    : ""
+            }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
+          });
+        }
       }
     }
 
