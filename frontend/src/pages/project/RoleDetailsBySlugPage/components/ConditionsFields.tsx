@@ -112,12 +112,10 @@ export const ConditionsFields = ({
     [selectedActions, actionConditionsMap, allConditionValues]
   );
 
-  const usedConditionTypes = useMemo(() => {
-    return items.fields.map((_, i) => {
-      const lhs = watch(`permissions.${subject}.${position}.conditions.${i}.lhs` as const);
-      return lhs;
-    });
-  }, [items.fields, watch, subject, position]);
+  const conditions = watch(`permissions.${subject}.${position}.conditions` as const) as
+    | { lhs?: string }[]
+    | undefined;
+  const usedConditionTypes = (conditions || []).map((c) => c?.lhs);
 
   const availableConditionsToAdd = useMemo(() => {
     return selectOptions.filter(
