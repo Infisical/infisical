@@ -324,50 +324,56 @@ const ConditionSchema = z
   .array()
   .optional()
   .default([])
-  .refine(
-    (el) => {
-      const lhsOperatorSet = new Set<string>();
-      for (let i = 0; i < el.length; i += 1) {
-        const { lhs, operator } = el[i];
-        if (lhsOperatorSet.has(`${lhs}-${operator}`)) {
-          return false;
-        }
-        lhsOperatorSet.add(`${lhs}-${operator}`);
+  .superRefine((conditions, ctx) => {
+    const lhsOperatorSet = new Set<string>();
+
+    conditions.forEach((el, index) => {
+      const { lhs, operator, rhs } = el;
+
+      const key = `${lhs}-${operator}`;
+      if (lhsOperatorSet.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Duplicate operator found for this condition",
+          path: [index, "lhs"]
+        });
       }
-      return true;
-    },
-    { message: "Duplicate operator found for a condition" }
-  )
-  .refine(
-    (val) =>
-      val
-        .filter(
-          (el) => el.lhs === "secretPath" && el.operator !== PermissionConditionOperators.$GLOB
-        )
-        .every((el) =>
-          el.operator === PermissionConditionOperators.$IN
-            ? el.rhs.split(",").every((i) => i.trim().startsWith("/"))
-            : el.rhs.trim().startsWith("/")
-        ),
-    { message: "Invalid Secret Path. Must start with '/'" }
-  )
-  .refine(
-    (val) =>
-      val
-        .filter((el) => el.operator === PermissionConditionOperators.$EQ)
-        .every((el) => !el.rhs.includes(",")),
-    { message: '"Equal" checks cannot contain comma separated values. Use "IN" operator instead.' }
-  )
-  .refine(
-    (val) =>
-      val
-        .filter((el) => el.operator === PermissionConditionOperators.$NEQ)
-        .every((el) => !el.rhs.includes(",")),
-    {
-      message:
-        '"Not Equal" checks cannot contain comma separated values. Use "IN" operator with "Forbid" instead.'
-    }
-  );
+      lhsOperatorSet.add(key);
+
+      if (lhs === "secretPath" && operator !== PermissionConditionOperators.$GLOB) {
+        const isValid =
+          operator === PermissionConditionOperators.$IN
+            ? rhs.split(",").every((i) => i.trim().startsWith("/"))
+            : rhs.trim().startsWith("/");
+
+        if (!isValid) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid Secret Path. Must start with '/'",
+            path: [index, "rhs"]
+          });
+        }
+      }
+
+      if (operator === PermissionConditionOperators.$EQ && rhs.includes(",")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            '"Equal" checks cannot contain comma separated values. Use "IN" operator instead.',
+          path: [index, "rhs"]
+        });
+      }
+
+      if (operator === PermissionConditionOperators.$NEQ && rhs.includes(",")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            '"Not Equal" checks cannot contain comma separated values. Use "IN" operator with "Forbid" instead.',
+          path: [index, "rhs"]
+        });
+      }
+    });
+  });
 
 // Unified mapping of permission subjects to their actions and allowed condition keys
 // Actions without restrictions (undefined or not in map) allow all conditions
