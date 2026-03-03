@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
+import picomatch from "picomatch";
 import RE2 from "re2";
 
 import {
@@ -501,7 +502,7 @@ export const identityKubernetesAuthServiceFactory = ({
         const isNamespaceAllowed = identityKubernetesAuth.allowedNamespaces
           .split(",")
           .map((namespace) => namespace.trim())
-          .some((namespace) => namespace === targetNamespace);
+          .some((namespace) => namespace === targetNamespace || picomatch.isMatch(targetNamespace, namespace));
 
         if (!isNamespaceAllowed)
           throw new UnauthorizedError({
@@ -515,7 +516,7 @@ export const identityKubernetesAuthServiceFactory = ({
         const isNameAllowed = identityKubernetesAuth.allowedNames
           .split(",")
           .map((name) => name.trim())
-          .some((name) => name === targetName);
+          .some((name) => name === targetName || picomatch.isMatch(targetName, name));
 
         if (!isNameAllowed)
           throw new UnauthorizedError({

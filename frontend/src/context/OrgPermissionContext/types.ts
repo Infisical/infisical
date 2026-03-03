@@ -87,8 +87,7 @@ export enum OrgPermissionAuditLogsActions {
 }
 
 export enum OrgPermissionKmipActions {
-  Proxy = "proxy",
-  Setup = "setup"
+  Proxy = "proxy"
 }
 
 export enum OrgPermissionIdentityActions {
