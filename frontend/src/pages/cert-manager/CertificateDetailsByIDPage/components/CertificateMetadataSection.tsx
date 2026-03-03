@@ -148,7 +148,7 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
                   className="max-w-full min-w-0"
                   key={`${item.key}=${item.value}`}
                 >
-                  <Badge isTruncatable className="max-w-[50%] shrink-0">
+                  <Badge isTruncatable className="max-w-[12rem] shrink-0">
                     <span>{item.key}</span>
                   </Badge>
                   <Badge variant="outline" isTruncatable>
