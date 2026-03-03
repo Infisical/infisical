@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { AlertTriangleIcon, InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -15,6 +15,10 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableAccordion,
+  UnstableAccordionContent,
+  UnstableAccordionItem,
+  UnstableAccordionTrigger,
   UnstableEmpty,
   UnstableEmptyDescription,
   UnstableEmptyHeader,
@@ -168,6 +172,45 @@ export const ConditionsFields = ({
     return availableToAdd.length > 0;
   }, [selectOptions, allowedConditions, usedConditionTypes]);
 
+  const incompatibleConditions = useMemo(() => {
+    const conditions = watchedConditions as Array<{ lhs: string }> | undefined;
+    if (!conditions || conditions.length === 0) return [];
+    if (!actionConditionsMap || !actionLabelsMap) return [];
+
+    const incompatible: Array<{
+      conditionLabel: string;
+      conditionValue: string;
+      disallowingActionLabels: string;
+    }> = [];
+
+    conditions.forEach((condition: { lhs: string }) => {
+      const conditionKey = condition?.lhs;
+      if (!conditionKey) return;
+
+      const disallowingActions = getDisallowingActions(
+        conditionKey,
+        selectedActions,
+        actionConditionsMap
+      );
+
+      if (disallowingActions.length > 0) {
+        const conditionOption = selectOptions.find((opt) => opt.value === conditionKey);
+        const conditionLabel = conditionOption?.label || conditionKey;
+        const actionNames = disallowingActions
+          .map((action) => actionLabelsMap[action] || action)
+          .join(", ");
+
+        incompatible.push({
+          conditionLabel,
+          conditionValue: conditionKey,
+          disallowingActionLabels: actionNames
+        });
+      }
+    });
+
+    return incompatible;
+  }, [watchedConditions, selectedActions, actionConditionsMap, actionLabelsMap, selectOptions]);
+
   const getDefaultOperator = (conditionType: string): PermissionConditionOperators => {
     switch (conditionType) {
       case "secretTags":
@@ -240,6 +283,31 @@ export const ConditionsFields = ({
           )}
         </Tooltip>
       </div>
+      {incompatibleConditions.length > 0 && (
+        <UnstableAccordion type="single" collapsible className="mt-3 border-danger/20 bg-danger/5">
+          <UnstableAccordionItem value="errors" className="border-none">
+            <UnstableAccordionTrigger className="min-h-10 bg-danger/10 px-3 py-2 text-danger hover:bg-danger/15 data-[state=open]:bg-danger/15 [&>svg]:text-danger">
+              <div className="flex items-center gap-2">
+                <AlertTriangleIcon className="size-4" />
+                <span>
+                  {incompatibleConditions.length} condition
+                  {incompatibleConditions.length > 1 ? "s" : ""} incompatible with selected actions
+                </span>
+              </div>
+            </UnstableAccordionTrigger>
+            <UnstableAccordionContent className="space-y-1 px-3 py-2">
+              {incompatibleConditions.map((item) => (
+                <div key={item.conditionValue} className="text-sm text-danger">
+                  <span className="font-medium">{item.conditionLabel}:</span>{" "}
+                  <span className="text-danger/80">
+                    Not available for the actions: {item.disallowingActionLabels}
+                  </span>
+                </div>
+              ))}
+            </UnstableAccordionContent>
+          </UnstableAccordionItem>
+        </UnstableAccordion>
+      )}
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.length === 0 ? (
           <UnstableEmpty className="mt-2 border !p-8">
@@ -397,14 +465,12 @@ export const ConditionsFields = ({
                             <TrashIcon className="size-4" />
                           </UnstableIconButton>
                         </div>
-                        {(lhsError?.message || rhsError?.message) && (
+                        {rhsError?.message && (
                           <div className="flex items-start gap-2 pb-1">
-                            <div className="w-1/4">
-                              {lhsError?.message && <FieldError>{lhsError.message}</FieldError>}
-                            </div>
+                            <div className="w-1/4" />
                             <div className="w-44" />
                             <div className="grow">
-                              {rhsError?.message && <FieldError>{rhsError.message}</FieldError>}
+                              <FieldError>{rhsError.message}</FieldError>
                             </div>
                             <div className="w-10" />
                           </div>
