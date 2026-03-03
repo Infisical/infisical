@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("discoveryType").notNullable();
 
       t.uuid("gatewayId").notNullable();
-      t.foreign("gatewayId").references("id").inTable(TableName.GatewayV2).onDelete("SET NULL");
+      t.foreign("gatewayId").references("id").inTable(TableName.GatewayV2).onDelete("RESTRICT");
       t.index("gatewayId");
 
       t.binary("encryptedDiscoveryCredentials").notNullable();
