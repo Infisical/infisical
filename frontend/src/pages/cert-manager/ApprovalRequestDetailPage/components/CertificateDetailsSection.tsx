@@ -1,10 +1,10 @@
-import { faGlobe, faKey, faLock, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { faGlobe, faKey, faLock, faShieldHalved, faTags } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { Skeleton } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, UnstableButtonGroup } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
@@ -88,6 +88,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
   const state = certRequestDetails?.state || certRequest?.state;
   const locality = certRequestDetails?.locality || certRequest?.locality;
   const basicConstraints = certRequestDetails?.basicConstraints || certRequest?.basicConstraints;
+  const metadata = certRequestDetails?.metadata || [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -306,6 +307,36 @@ export const CertificateDetailsSection = ({ request }: Props) => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {metadata.length > 0 && (
+        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
+            <FontAwesomeIcon icon={faTags} className="text-sm text-mineshaft-400" />
+            Metadata
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {metadata.map((item: { key: string; value?: string }) =>
+              item.value ? (
+                <UnstableButtonGroup
+                  className="max-w-full min-w-0"
+                  key={`${item.key}=${item.value}`}
+                >
+                  <Badge isTruncatable className="max-w-[12rem] shrink-0">
+                    <span>{item.key}</span>
+                  </Badge>
+                  <Badge variant="outline" isTruncatable>
+                    <span>{item.value}</span>
+                  </Badge>
+                </UnstableButtonGroup>
+              ) : (
+                <Badge key={item.key} isTruncatable>
+                  <span>{item.key}</span>
+                </Badge>
+              )
+            )}
+          </div>
         </div>
       )}
     </div>
