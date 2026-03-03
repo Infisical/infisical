@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import {
-  faChevronRight,
-  faMagnifyingGlass,
-  faRightToBracket
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ChevronRight, LogIn, Search } from "lucide-react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
 import { addSeconds, format, formatISO } from "date-fns";
@@ -354,10 +349,7 @@ export const SelectOrganizationSection = () => {
                 })()}
               </p>
             </div>
-            <FontAwesomeIcon
-              icon={faRightToBracket}
-              className="text-gray-400 transition-all group-hover:text-primary-400 group-hover:text-primary-500"
-            />
+            <LogIn className="size-4 text-gray-400 transition-all group-hover:text-primary-400 group-hover:text-primary-500" />
           </button>
 
           {/* Sub-org section header */}
@@ -386,10 +378,7 @@ export const SelectOrganizationSection = () => {
                     </p>
                   )}
                 </div>
-                <FontAwesomeIcon
-                  icon={faRightToBracket}
-                  className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
-                />
+                <LogIn className="size-4 text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500" />
               </button>
             ))
           )}
@@ -438,13 +427,10 @@ export const SelectOrganizationSection = () => {
                       >
                         {org.subOrganizations.length} sub-organization
                         {org.subOrganizations.length !== 1 ? "s" : ""}
-                        <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
+                        <ChevronRight className="size-3" />
                       </button>
                     </div>
-                    <FontAwesomeIcon
-                      icon={faRightToBracket}
-                      className="text-gray-400 transition-all group-hover:text-primary-400"
-                    />
+                    <LogIn className="size-4 text-gray-400 transition-all group-hover:text-primary-400" />
                   </div>
                 </div>
               ) : (
@@ -468,36 +454,30 @@ export const SelectOrganizationSection = () => {
                       ) : null;
                     })()}
                   </div>
-                  <FontAwesomeIcon
-                    icon={faRightToBracket}
-                    className="text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500"
-                  />
+                  <LogIn className="size-4 text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500" />
                 </button>
               )}
 
               {/* Auto-expand sub-orgs when searching */}
               {isSearching && hasSubOrgs && (
-                <div className="mt-1 space-y-1">
+                <div className="mx-2 mt-1 space-y-1">
                   {org.subOrganizations.map((sub) => (
                     <button
                       key={sub.id}
                       type="button"
                       onClick={() => handleLoginById(sub.id)}
-                      className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-l-[3px] border-mineshaft-600 border-l-primary-800 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
+                      className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-l-[5px] border-mineshaft-600 border-l-primary-800 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
                     >
                       <div className="flex flex-col items-start">
                         <p className="truncate">{sub.name}</p>
                         <p className="text-xs text-mineshaft-400">
-                          {org.name}
+                          Sub-organization
                           {sub.userJoinedAt && (
                             <> · Member since {format(new Date(sub.userJoinedAt), "MMM d yyyy")}</>
                           )}
                         </p>
                       </div>
-                      <FontAwesomeIcon
-                        icon={faRightToBracket}
-                        className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
-                      />
+                      <LogIn className="size-4 text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500" />
                     </button>
                   ))}
                 </div>
@@ -575,7 +555,7 @@ export const SelectOrganizationSection = () => {
                   placeholder={
                     selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
                   }
-                  leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                  leftIcon={<Search className="size-4" />}
                   className="h-10"
                 />
               </div>
