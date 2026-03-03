@@ -477,17 +477,17 @@ export const SelectOrganizationSection = () => {
 
               {/* Auto-expand sub-orgs when searching */}
               {isSearching && hasSubOrgs && (
-                <div className="mx-2 mt-1 space-y-1">
+                <div className="mt-1 space-y-1">
                   {org.subOrganizations.map((sub) => (
                     <button
                       key={sub.id}
                       type="button"
                       onClick={() => handleLoginById(sub.id)}
-                      className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-l-2 border-mineshaft-600 border-l-primary-800 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
+                      className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-l-[3px] border-mineshaft-600 border-l-primary-800 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
                     >
                       <div className="flex flex-col items-start">
                         <p className="truncate">{sub.name}</p>
-                        <p className="text-xs text-mineshaft-500">
+                        <p className="text-xs text-mineshaft-600">
                           {org.name}
                           {sub.userJoinedAt && (
                             <> · Member since {format(new Date(sub.userJoinedAt), "MMM d yyyy")}</>
