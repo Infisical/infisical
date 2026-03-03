@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PamAccountsSchema, PamResourcesSchema } from "@app/db/schemas";
+import { PamAccountsSchema, PamResourcesSchema, ResourceMetadataSchema } from "@app/db/schemas";
 import { slugSchema } from "@app/server/lib/schemas";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
@@ -22,7 +22,7 @@ export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedRotationAccountCredentials: true,
   resourceType: true
 }).extend({
-  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array().optional()
+  metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional()
 });
 
 const CoreCreatePamResourceSchema = z.object({
@@ -52,7 +52,7 @@ export const BaseUpdatePamResourceSchema = CoreUpdatePamResourceSchema;
 export const BasePamAccountSchema = PamAccountsSchema.omit({
   encryptedCredentials: true
 }).extend({
-  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array().optional()
+  metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional()
 });
 
 export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({

@@ -7,6 +7,7 @@ import { SanitizedWindowsResourceSchema } from "@app/ee/services/pam-resource/wi
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 export const registerPamResourceEndpoints = <T extends TPamResource>({
   server,
@@ -23,14 +24,14 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
     gatewayId?: T["gatewayId"];
     name: T["name"];
     rotationAccountCredentials?: T["rotationAccountCredentials"];
-    metadata?: Array<{ key: string; value?: string }>;
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   updateResourceSchema: z.ZodType<{
     connectionDetails?: T["connectionDetails"];
     gatewayId?: T["gatewayId"];
     name?: T["name"];
     rotationAccountCredentials?: T["rotationAccountCredentials"];
-    metadata?: Array<{ key: string; value?: string }>;
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   resourceResponseSchema: z.ZodTypeAny;
 }) => {
