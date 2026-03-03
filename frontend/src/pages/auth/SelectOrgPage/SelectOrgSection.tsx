@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faArrowRight, faChevronRight, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronRight,
+  faMagnifyingGlass,
+  faRightToBracket
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
@@ -351,7 +355,7 @@ export const SelectOrganizationSection = () => {
               </p>
             </div>
             <FontAwesomeIcon
-              icon={faArrowRight}
+              icon={faRightToBracket}
               className="text-gray-400 transition-all group-hover:text-primary-400 group-hover:text-primary-500"
             />
           </button>
@@ -383,7 +387,7 @@ export const SelectOrganizationSection = () => {
                   )}
                 </div>
                 <FontAwesomeIcon
-                  icon={faArrowRight}
+                  icon={faRightToBracket}
                   className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
                 />
               </button>
@@ -438,7 +442,7 @@ export const SelectOrganizationSection = () => {
                       </button>
                     </div>
                     <FontAwesomeIcon
-                      icon={faArrowRight}
+                      icon={faRightToBracket}
                       className="text-gray-400 transition-all group-hover:text-primary-400"
                     />
                   </div>
@@ -465,7 +469,7 @@ export const SelectOrganizationSection = () => {
                     })()}
                   </div>
                   <FontAwesomeIcon
-                    icon={faArrowRight}
+                    icon={faRightToBracket}
                     className="text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500"
                   />
                 </button>
@@ -491,7 +495,7 @@ export const SelectOrganizationSection = () => {
                         </p>
                       </div>
                       <FontAwesomeIcon
-                        icon={faArrowRight}
+                        icon={faRightToBracket}
                         className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
                       />
                     </button>
