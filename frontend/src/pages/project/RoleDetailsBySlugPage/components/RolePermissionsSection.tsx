@@ -153,7 +153,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const {
     handleSubmit,
-    formState: { isDirty, isSubmitting, errors },
+    formState: { isDirty, isSubmitting },
     reset
   } = form;
 
@@ -178,9 +178,9 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   };
 
   // Expand accordion items that have validation errors
-  const handleFormSubmit = handleSubmit(onSubmit, () => {
-    if (errors.permissions) {
-      const subjectsWithErrors = Object.keys(errors.permissions) as ProjectPermissionSub[];
+  const handleFormSubmit = handleSubmit(onSubmit, (formErrors) => {
+    if (formErrors.permissions) {
+      const subjectsWithErrors = Object.keys(formErrors.permissions) as ProjectPermissionSub[];
       setOpenPolicies((prev) => {
         const newOpenPolicies = new Set(prev);
         subjectsWithErrors.forEach((subject) => newOpenPolicies.add(subject));

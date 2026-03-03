@@ -161,6 +161,18 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     onGoBack();
   };
 
+  // Expand accordion items that have validation errors
+  const handleFormSubmit = handleSubmit(onSubmit, (formErrors) => {
+    if (formErrors.permissions) {
+      const subjectsWithErrors = Object.keys(formErrors.permissions) as ProjectPermissionSub[];
+      setOpenPolicies((prev) => {
+        const newOpenPolicies = new Set(prev);
+        subjectsWithErrors.forEach((permissionSubject) => newOpenPolicies.add(permissionSubject));
+        return Array.from(newOpenPolicies);
+      });
+    }
+  });
+
   const privilegeTemporaryAccess = form.watch("temporaryAccess");
   const isTemporary = privilegeTemporaryAccess?.isTemporary;
   const isExpired =
@@ -186,7 +198,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   }
 
   return (
-    <form className="flex flex-col gap-y-4" onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-y-4" onSubmit={handleFormSubmit}>
       <FormProvider {...form}>
         <div>
           <div className="flex items-end space-x-6">

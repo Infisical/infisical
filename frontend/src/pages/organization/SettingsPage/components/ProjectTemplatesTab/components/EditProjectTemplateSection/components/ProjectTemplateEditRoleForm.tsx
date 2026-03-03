@@ -96,9 +96,21 @@ export const ProjectTemplateEditRoleForm = ({
     });
   };
 
+  // Expand accordion items that have validation errors
+  const handleFormSubmit = handleSubmit(onSubmit, (formErrors) => {
+    if (formErrors.permissions) {
+      const subjectsWithErrors = Object.keys(formErrors.permissions) as ProjectPermissionSub[];
+      setOpenPolicies((prev) => {
+        const newOpenPolicies = new Set(prev);
+        subjectsWithErrors.forEach((permissionSubject) => newOpenPolicies.add(permissionSubject));
+        return Array.from(newOpenPolicies);
+      });
+    }
+  });
+
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleFormSubmit}
       className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
       <FormProvider {...formMethods}>
