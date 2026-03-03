@@ -6,6 +6,7 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { AcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import { AwsPcaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-schemas";
 import { AzureAdCsCertificateAuthoritySchema } from "@app/services/certificate-authority/azure-ad-cs/azure-ad-cs-certificate-authority-schemas";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { InternalCertificateAuthoritySchema } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
@@ -13,7 +14,8 @@ import { InternalCertificateAuthoritySchema } from "@app/services/certificate-au
 const CertificateAuthoritySchema = z.discriminatedUnion("type", [
   InternalCertificateAuthoritySchema,
   AcmeCertificateAuthoritySchema,
-  AzureAdCsCertificateAuthoritySchema
+  AzureAdCsCertificateAuthoritySchema,
+  AwsPcaCertificateAuthoritySchema
 ]);
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
@@ -63,6 +65,14 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
+      const awsPcaCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId: req.query.projectId,
+          type: CaType.AWS_PCA
+        },
+        req.permission
+      );
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.query.projectId,
@@ -72,14 +82,20 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
             caIds: [
               ...(internalCas ?? []).map((ca) => ca.id),
               ...(acmeCas ?? []).map((ca) => ca.id),
-              ...(azureAdCsCas ?? []).map((ca) => ca.id)
+              ...(azureAdCsCas ?? []).map((ca) => ca.id),
+              ...(awsPcaCas ?? []).map((ca) => ca.id)
             ]
           }
         }
       });
 
       return {
-        certificateAuthorities: [...(internalCas ?? []), ...(acmeCas ?? []), ...(azureAdCsCas ?? [])]
+        certificateAuthorities: [
+          ...(internalCas ?? []),
+          ...(acmeCas ?? []),
+          ...(azureAdCsCas ?? []),
+          ...(awsPcaCas ?? [])
+        ]
       };
     }
   });

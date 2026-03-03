@@ -45,7 +45,7 @@ export const CloudflareCustomCertificatePkiSyncSchema = PkiSyncSchema.extend({
 });
 
 export const CreateCloudflareCustomCertificatePkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64),
+  name: z.string().trim().min(1).max(256),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: CloudflareCustomCertificatePkiSyncConfigSchema,
@@ -57,7 +57,7 @@ export const CreateCloudflareCustomCertificatePkiSyncSchema = z.object({
 });
 
 export const UpdateCloudflareCustomCertificatePkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64).optional(),
+  name: z.string().trim().min(1).max(256).optional(),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: CloudflareCustomCertificatePkiSyncConfigSchema.optional(),

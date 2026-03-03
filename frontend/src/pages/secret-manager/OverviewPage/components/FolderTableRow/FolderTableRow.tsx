@@ -113,7 +113,7 @@ export const FolderTableRow = ({
               <UnstableIconButton
                 variant="ghost"
                 size="xs"
-                className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
                 onClick={(e) => {
                   onToggleFolderDelete(folderName);
                   e.stopPropagation();

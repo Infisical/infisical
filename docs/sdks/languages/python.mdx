@@ -109,6 +109,27 @@ response = client.auth.oidc_auth.login(
 
 This authentication method is useful when integrating with OIDC-compliant identity providers like Okta, Auth0, or any service that issues OIDC tokens.
 
+#### LDAP Auth
+
+```python
+response = client.auth.ldap_auth.login(
+    identity_id="<machine-identity-id>",
+    username="<ldap-username>",
+    password="<ldap-password>"
+)
+```
+
+**Parameters:**
+- `identity_id` (str): The ID of the LDAP identity configuration in Infisical.
+- `username` (str): Your LDAP username.
+- `password` (str): Your LDAP password.
+
+<Info>
+  Please note that this authentication method requires LDAP credentials. Please
+  [read more](/documentation/platform/identities/ldap-auth/general) about this
+  authentication method.
+</Info>
+
 #### Token Auth
 
 ```python

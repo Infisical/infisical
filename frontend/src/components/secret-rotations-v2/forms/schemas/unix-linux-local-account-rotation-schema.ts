@@ -11,7 +11,8 @@ export const UnixLinuxLocalAccountRotationSchema = z
     parameters: z.object({
       username: z.string().trim().min(1, "Username required"),
       passwordRequirements: PasswordRequirementsSchema.optional(),
-      rotationMethod: z.nativeEnum(UnixLinuxLocalAccountRotationMethod).optional()
+      rotationMethod: z.nativeEnum(UnixLinuxLocalAccountRotationMethod).optional(),
+      useSudo: z.boolean().default(false).optional()
     }),
     secretsMapping: z.object({
       username: z.string().trim().min(1, "Username required"),

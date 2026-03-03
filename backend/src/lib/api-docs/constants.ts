@@ -2428,6 +2428,11 @@ export const CertificateAuthorities = {
       eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`
     },
+    AWS_PCA: {
+      appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Private Certificate Authority (PCA). This connection must have permissions to issue, get, and revoke certificates from the specified PCA.`,
+      certificateAuthorityArn: `The ARN of the AWS Private Certificate Authority to use for issuing certificates.`,
+      region: `The AWS region where the Private Certificate Authority is located.`
+    },
     INTERNAL: {
       type: "The type of CA to create.",
       friendlyName: "A friendly name for the CA.",
@@ -3002,7 +3007,8 @@ export const SecretRotations = {
       rotationMethod:
         'Whether the rotation should be performed using "login-as-target" (the target user\'s own credentials) or "login-as-root" (the SSH connection\'s admin credentials). Defaults to "login-as-target".',
       password:
-        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
+        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".',
+      useSudo: "If true, uses sudo when executing the password rotation command. Defaults to false."
     },
     WINDOWS_LOCAL_ACCOUNT: {
       username: "The username of the Windows user account to rotate the password for.",

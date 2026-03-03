@@ -13,7 +13,6 @@ import { TExternalGroupOrgRoleMappingDALFactory } from "../external-group-org-ro
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TUserDALFactory } from "../user/user-dal";
-import { newNamespaceRoleFactory } from "./namespace/namespace-role-factory";
 import { newOrgRoleFactory } from "./org/org-role-factory";
 import { newProjectRoleFactory } from "./project/project-role-factory";
 import { TRoleDALFactory } from "./role-dal";
@@ -56,13 +55,9 @@ export const roleServiceFactory = ({
     permissionService,
     projectDAL
   });
-  const namespaceRoleFactory = newNamespaceRoleFactory({
-    permissionService
-  });
   const scopeFactory = {
     [AccessScope.Organization]: orgRoleFactory,
-    [AccessScope.Project]: projectRoleFactory,
-    [AccessScope.Namespace]: namespaceRoleFactory
+    [AccessScope.Project]: projectRoleFactory
   };
 
   const createRole = async (dto: TCreateRoleDTO) => {

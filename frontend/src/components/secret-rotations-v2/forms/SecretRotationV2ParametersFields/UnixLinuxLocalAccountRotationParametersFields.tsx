@@ -2,7 +2,7 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-v2/forms/schemas/shared";
-import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { Checkbox, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 
@@ -81,6 +81,29 @@ export const UnixLinuxLocalAccountRotationParametersFields = () => {
           </FormControl>
         )}
       />
+      {rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsRoot && (
+        <Controller
+          name="parameters.useSudo"
+          control={control}
+          defaultValue={false}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              isError={Boolean(error)}
+              errorText={error?.message}
+              tooltipText="When enabled, uses 'sudo chpasswd' to change the password. When disabled, uses 'chpasswd' directly. Enable this if the SSH connection user requires sudo privileges to change passwords."
+              tooltipClassName="max-w-sm"
+            >
+              <Checkbox
+                id="useSudo"
+                isChecked={value}
+                onCheckedChange={(checked) => onChange(checked)}
+              >
+                Use sudo to change password
+              </Checkbox>
+            </FormControl>
+          )}
+        />
+      )}
       <div className="flex gap-3">
         <Controller
           name="parameters.username"

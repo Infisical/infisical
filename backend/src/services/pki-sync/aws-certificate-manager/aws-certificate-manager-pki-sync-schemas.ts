@@ -60,7 +60,7 @@ export const AwsCertificateManagerPkiSyncSchema = PkiSyncSchema.extend({
 });
 
 export const CreateAwsCertificateManagerPkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64),
+  name: z.string().trim().min(1).max(256),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsCertificateManagerPkiSyncConfigSchema,
@@ -72,7 +72,7 @@ export const CreateAwsCertificateManagerPkiSyncSchema = z.object({
 });
 
 export const UpdateAwsCertificateManagerPkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64).optional(),
+  name: z.string().trim().min(1).max(256).optional(),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AwsCertificateManagerPkiSyncConfigSchema.optional(),

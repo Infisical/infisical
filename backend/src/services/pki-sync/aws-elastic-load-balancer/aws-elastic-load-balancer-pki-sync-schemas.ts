@@ -34,7 +34,7 @@ export const AwsElasticLoadBalancerPkiSyncSchema = PkiSyncSchema.extend({
 });
 
 export const CreateAwsElasticLoadBalancerPkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64),
+  name: z.string().trim().min(1).max(256),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsElasticLoadBalancerPkiSyncConfigSchema,
@@ -46,7 +46,7 @@ export const CreateAwsElasticLoadBalancerPkiSyncSchema = z.object({
 });
 
 export const UpdateAwsElasticLoadBalancerPkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64).optional(),
+  name: z.string().trim().min(1).max(256).optional(),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AwsElasticLoadBalancerPkiSyncConfigSchema.optional(),

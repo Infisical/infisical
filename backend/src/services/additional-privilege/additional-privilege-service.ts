@@ -21,7 +21,6 @@ import {
   TListAdditionalPrivilegesDTO,
   TUpdateAdditionalPrivilegesDTO
 } from "./additional-privilege-types";
-import { newNamespaceAdditionalPrivilegesFactory } from "./namespace/namespace-additional-privilege-factory";
 import { newOrgAdditionalPrivilegesFactory } from "./org/org-additional-privilege-factory";
 import { newProjectAdditionalPrivilegesFactory } from "./project/project-additional-privilege-factory";
 import { ActorType } from "../auth/auth-type";
@@ -47,8 +46,7 @@ export const additionalPrivilegeServiceFactory = ({
       membershipDAL,
       orgDAL,
       permissionService
-    }),
-    [AccessScope.Namespace]: newNamespaceAdditionalPrivilegesFactory({})
+    })
   };
 
   const createAdditionalPrivilege = async (dto: TCreateAdditionalPrivilegesDTO) => {

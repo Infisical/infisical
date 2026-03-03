@@ -1,10 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
+import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TRoles } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole, TGroups, TRoles } from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -59,8 +61,13 @@ type TGroupServiceFactoryDep = {
     | "findById"
     | "transaction"
     | "findAllGroupProjects"
+    | "listAvailableGroups"
+    | "getGroupsReferencingGroup"
   >;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById">;
+  membershipGroupDAL: Pick<
+    TMembershipGroupDALFactory,
+    "find" | "findOne" | "create" | "getGroupById" | "deleteById" | "delete" | "findEffectiveInOrg"
+  >;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById">;
@@ -211,14 +218,25 @@ export const groupServiceFactory = ({
         message: "Failed to update group due to plan restriction Upgrade plan to update group."
       });
 
-    const group = await groupDAL.findOne({ orgId: actorOrgId, id });
-    if (!group) {
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
+    });
+    if (!groupMembership?.group) {
       throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
+
+    const isLinkedGroup = group.orgId !== actorOrgId;
+    if (isLinkedGroup && (name || slug)) {
+      throw new BadRequestError({
+        message: "Cannot update name or slug of a linked group. Only the role in this sub-organization can be updated."
+      });
     }
 
     let customRole: TRoles | undefined;
     if (role) {
-      const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], group.orgId);
+      const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
 
       const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
       const isCustomRole = Boolean(rolePermissionDetails?.role);
@@ -243,41 +261,33 @@ export const groupServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    const updatedGroup = await groupDAL.transaction(async (tx) => {
-      if (name) {
-        const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
-
-        if (existingGroup && existingGroup.id !== id) {
-          throw new BadRequestError({
-            message: `Failed to update group with name '${name}'. Group with the same name already exists`
-          });
-        }
+    if (!isLinkedGroup && name) {
+      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
+      if (existingGroup && existingGroup.id !== id) {
+        throw new BadRequestError({
+          message: `Failed to update group with name '${name}'. Group with the same name already exists`
+        });
       }
+    }
 
-      let updated = group;
-
-      if (name || slug) {
-        [updated] = await groupDAL.update(
-          {
-            id: group.id
-          },
-          {
-            name,
-            slug: slug ? slugify(slug) : undefined
-          },
-          tx
-        );
-      }
+    const updatedGroup = await groupDAL.transaction(async (tx): Promise<TGroups> => {
+      const [nameSlugRow] =
+        !isLinkedGroup && (name || slug)
+          ? await groupDAL.update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
+          : [];
 
       if (role) {
         const membership = await membershipGroupDAL.findOne(
           {
             scope: AccessScope.Organization,
-            actorGroupId: updated.id,
-            scopeOrgId: updated.orgId
+            actorGroupId: group.id,
+            scopeOrgId: actorOrgId
           },
           tx
         );
+        if (!membership) {
+          throw new NotFoundError({ message: "Group membership not found" });
+        }
         await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
         await membershipRoleDAL.create(
           {
@@ -289,10 +299,252 @@ export const groupServiceFactory = ({
         );
       }
 
-      return updated;
+      return nameSlugRow ?? group;
     });
 
     return updatedGroup;
+  };
+
+  /**
+   * Batch-delete membership roles and memberships for a list of membership IDs.
+   */
+  const deleteMembershipsInBatch = async (membershipIds: string[], tx: Knex) => {
+    if (membershipIds.length === 0) return;
+    await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
+    await membershipGroupDAL.delete({ $in: { id: membershipIds } }, tx);
+  };
+
+  /**
+   * After removing users/identities from a group, clean up their direct project memberships
+   * in any sub-orgs where the group is linked and the actor no longer has effective access.
+   */
+  const cleanUpSubOrgProjectMemberships = async ({
+    groupId,
+    userIds,
+    identityIds
+  }: {
+    groupId: string;
+    userIds: string[];
+    identityIds: string[];
+  }) => {
+    if (userIds.length === 0 && identityIds.length === 0) return;
+
+    const referencingSubOrgs = await groupDAL.getGroupsReferencingGroup(groupId);
+    if (referencingSubOrgs.length === 0) return;
+
+    await groupDAL.transaction(async (tx) => {
+      const collectIdsForSubOrg = async (subOrgId: string): Promise<string[]> => {
+        // Find remaining linked groups in this sub-org (excluding the one the user was removed from)
+        const remainingOrgGroupMemberships = await membershipGroupDAL.find(
+          { scopeOrgId: subOrgId, scope: AccessScope.Organization },
+          { tx }
+        );
+        const remainingGroupIds = remainingOrgGroupMemberships
+          .filter((m) => m.actorGroupId && m.actorGroupId !== groupId)
+          .map((m) => m.actorGroupId!);
+
+        // Check effective org-level memberships (direct + group-based) for these actors
+        const effectiveRows = await membershipGroupDAL.findEffectiveInOrg({
+          scopeOrgId: subOrgId,
+          excludeMembershipIds: [],
+          userIds,
+          identityIds,
+          groupIds: remainingGroupIds,
+          tx
+        });
+
+        const userIdsWithAccess = new Set<string>();
+        const identityIdsWithAccess = new Set<string>();
+
+        for (const row of effectiveRows) {
+          if (row.actorUserId) userIdsWithAccess.add(row.actorUserId);
+          if (row.actorIdentityId) identityIdsWithAccess.add(row.actorIdentityId);
+        }
+
+        // Resolve group-based access: find which users/identities are in remaining linked groups
+        const groupIdsInEffective = new Set(effectiveRows.map((r) => r.actorGroupId).filter(Boolean) as string[]);
+
+        if (groupIdsInEffective.size > 0) {
+          const [remainingUserMembers, remainingIdentityMembers] = await Promise.all([
+            userIds.length > 0
+              ? userGroupMembershipDAL.find({ $in: { groupId: Array.from(groupIdsInEffective) } }, { tx })
+              : [],
+            identityIds.length > 0
+              ? identityGroupMembershipDAL.find({ $in: { groupId: Array.from(groupIdsInEffective) } }, { tx })
+              : []
+          ]);
+
+          for (const um of remainingUserMembers) userIdsWithAccess.add(um.userId);
+          for (const im of remainingIdentityMembers) identityIdsWithAccess.add(im.identityId);
+        }
+
+        const usersToCleanUp = userIds.filter((uid) => !userIdsWithAccess.has(uid));
+        const identitiesToCleanUp = identityIds.filter((iid) => !identityIdsWithAccess.has(iid));
+
+        const [userProjectMemberships, identityProjectMemberships] = await Promise.all([
+          usersToCleanUp.length > 0
+            ? membershipGroupDAL.find(
+                { scopeOrgId: subOrgId, scope: AccessScope.Project, $in: { actorUserId: usersToCleanUp } },
+                { tx }
+              )
+            : [],
+          identitiesToCleanUp.length > 0
+            ? membershipGroupDAL.find(
+                { scopeOrgId: subOrgId, scope: AccessScope.Project, $in: { actorIdentityId: identitiesToCleanUp } },
+                { tx }
+              )
+            : []
+        ]);
+
+        return [...userProjectMemberships.map((pm) => pm.id), ...identityProjectMemberships.map((pm) => pm.id)];
+      };
+
+      const idsPerSubOrg = await Promise.all(referencingSubOrgs.map((subOrg) => collectIdsForSubOrg(subOrg.orgId)));
+      await deleteMembershipsInBatch(idsPerSubOrg.flat(), tx);
+    });
+  };
+
+  /**
+   * Unlink a group from a sub-organization.
+   * This removes the group's org and project memberships in the sub-org,
+   * and cleans up direct project memberships for users/identities
+   * who no longer have access through any other linked group.
+   */
+  const unlinkGroupFromSubOrg = async ({
+    groupId,
+    groupMembershipId,
+    actorOrgId
+  }: {
+    groupId: string;
+    groupMembershipId: string;
+    actorOrgId: string;
+  }) => {
+    const group = await groupDAL.findById(groupId);
+
+    await groupDAL.transaction(async (tx) => {
+      // Fetch all group members (users and identities) in parallel
+      const [groupUsers, groupIdentities] = await Promise.all([
+        userGroupMembershipDAL.find({ groupId }, { tx }),
+        identityGroupMembershipDAL.find({ groupId }, { tx })
+      ]);
+
+      // Collect all membership IDs to delete (group's project-level + org link)
+      const groupProjectMemberships = await membershipGroupDAL.find(
+        { actorGroupId: groupId, scopeOrgId: actorOrgId, scope: AccessScope.Project },
+        { tx }
+      );
+      const membershipIdsToDelete = [...groupProjectMemberships.map((pm) => pm.id), groupMembershipId];
+
+      // Remaining linked groups in this sub-org (excluding the one we're unlinking)
+      const remainingOrgGroupMemberships = await membershipGroupDAL.find(
+        { scopeOrgId: actorOrgId, scope: AccessScope.Organization },
+        { tx }
+      );
+      const remainingGroupIds = new Set(
+        remainingOrgGroupMemberships
+          .filter((m) => m.actorGroupId && m.id !== groupMembershipId)
+          .map((m) => m.actorGroupId!)
+      );
+
+      const groupUserIds = groupUsers.map((u) => u.userId);
+      const groupIdentityIds = groupIdentities.map((i) => i.identityId);
+
+      // Effective memberships: any membership in this org for these actors (direct or via remaining groups), excluding the ones we're deleting
+      const effectiveRows = await membershipGroupDAL.findEffectiveInOrg({
+        scopeOrgId: actorOrgId,
+        excludeMembershipIds: membershipIdsToDelete,
+        userIds: groupUserIds,
+        identityIds: groupIdentityIds,
+        groupIds: Array.from(remainingGroupIds),
+        tx
+      });
+
+      const userIdsWithOtherMemberships = new Set<string>();
+      const identityIdsWithOtherMemberships = new Set<string>();
+      for (const row of effectiveRows) {
+        if (row.actorUserId) userIdsWithOtherMemberships.add(row.actorUserId);
+        if (row.actorIdentityId) identityIdsWithOtherMemberships.add(row.actorIdentityId);
+      }
+
+      // For group-based effective rows, add all users/identities in those groups
+      if (remainingGroupIds.size > 0) {
+        const [remainingUserMembers, remainingIdentityMembers] = await Promise.all([
+          userGroupMembershipDAL.find({ $in: { groupId: Array.from(remainingGroupIds) } }, { tx }),
+          identityGroupMembershipDAL.find({ $in: { groupId: Array.from(remainingGroupIds) } }, { tx })
+        ]);
+        const groupIdsInEffective = new Set(effectiveRows.map((r) => r.actorGroupId).filter(Boolean) as string[]);
+        for (const g of groupIdsInEffective) {
+          for (const um of remainingUserMembers.filter((mem) => mem.groupId === g)) {
+            userIdsWithOtherMemberships.add(um.userId);
+          }
+          for (const im of remainingIdentityMembers.filter((mem) => mem.groupId === g)) {
+            identityIdsWithOtherMemberships.add(im.identityId);
+          }
+        }
+      }
+
+      // Remove direct project memberships only for users/identities who have no other effective membership in this org
+      const usersToCleanUp = groupUserIds.filter((id) => !userIdsWithOtherMemberships.has(id));
+      const identitiesToCleanUp = groupIdentityIds.filter((id) => !identityIdsWithOtherMemberships.has(id));
+
+      const [userProjectIdsToDelete, identityProjectIdsToDelete] = await Promise.all([
+        usersToCleanUp.length > 0
+          ? membershipGroupDAL
+              .find(
+                {
+                  ...(usersToCleanUp.length === 1
+                    ? { actorUserId: usersToCleanUp[0] }
+                    : { $in: { actorUserId: usersToCleanUp } }),
+                  scopeOrgId: actorOrgId,
+                  scope: AccessScope.Project
+                },
+                { tx }
+              )
+              .then((rows) => rows.map((r) => r.id))
+          : [],
+        identitiesToCleanUp.length > 0
+          ? membershipGroupDAL
+              .find(
+                {
+                  ...(identitiesToCleanUp.length === 1
+                    ? { actorIdentityId: identitiesToCleanUp[0] }
+                    : { $in: { actorIdentityId: identitiesToCleanUp } }),
+                  scopeOrgId: actorOrgId,
+                  scope: AccessScope.Project
+                },
+                { tx }
+              )
+              .then((rows) => rows.map((r) => r.id))
+          : []
+      ]);
+
+      membershipIdsToDelete.push(...userProjectIdsToDelete, ...identityProjectIdsToDelete);
+
+      await deleteMembershipsInBatch(membershipIdsToDelete, tx);
+    });
+
+    return group;
+  };
+
+  /**
+   * Delete a group owned by the current organization.
+   * Ensures the group is not linked by any sub-organizations before deleting.
+   */
+  const deleteOwnedGroup = async ({ groupId, actorOrgId }: { groupId: string; actorOrgId: string }) => {
+    const referencingSubOrgs = await groupDAL.getGroupsReferencingGroup(groupId);
+    if (referencingSubOrgs.length > 0) {
+      const orgList = referencingSubOrgs.map((o) => `"${o.orgName}"`).join(", ");
+      throw new BadRequestError({
+        message: `Cannot delete this group because it is linked by sub-organizations. Unlink it from these sub-organizations first: ${orgList}.`
+      });
+    }
+
+    const [deletedGroup] = await groupDAL.delete({
+      id: groupId,
+      orgId: actorOrgId
+    });
+
+    return deletedGroup;
   };
 
   const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
@@ -315,12 +567,22 @@ export const groupServiceFactory = ({
         message: "Failed to delete group due to plan restriction. Upgrade plan to delete group."
       });
 
-    const [group] = await groupDAL.delete({
-      id,
-      orgId: actorOrgId
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Cannot find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
-    return group;
+    const isLinkedGroup = group.orgId !== actorOrgId;
+
+    if (isLinkedGroup) {
+      return unlinkGroupFromSubOrg({ groupId: id, groupMembershipId: groupMembership.id, actorOrgId });
+    }
+
+    return deleteOwnedGroup({ groupId: id, actorOrgId });
   };
 
   const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {
@@ -336,14 +598,40 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findById(id);
-    if (!group || group.orgId !== actorOrgId) {
-      throw new NotFoundError({
-        message: `Cannot find group with ID ${id}`
-      });
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
+    });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Cannot find group with ID ${id}` });
     }
+    const { group } = groupMembership as { group: TGroups };
 
-    return group;
+    const firstRole = groupMembership.roles?.[0];
+    const role = firstRole?.role ?? "";
+    const roleId = firstRole?.id ?? null;
+    const customRoleSlug = firstRole?.customRoleSlug ?? null;
+    const customRole = firstRole?.customRoleSlug
+      ? {
+          id: firstRole.id,
+          name: firstRole.customRoleName ?? "",
+          slug: firstRole.customRoleSlug,
+          permissions: null,
+          description: null
+        }
+      : undefined;
+    return {
+      id: group.id,
+      orgId: group.orgId,
+      name: group.name,
+      slug: group.slug,
+      createdAt: group.createdAt,
+      updatedAt: group.updatedAt,
+      role,
+      roleId,
+      customRoleSlug,
+      customRole
+    };
   };
 
   const listGroupUsers = async ({
@@ -370,15 +658,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
-
-    if (!group)
-      throw new NotFoundError({
-        message: `Failed to find group with ID ${id}`
-      });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
     const { members, totalCount } = await groupDAL.findAllGroupPossibleUsers({
       orgId: group.orgId,
@@ -416,15 +703,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
-
-    if (!group)
-      throw new NotFoundError({
-        message: `Failed to find group with ID ${id}`
-      });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
     const { machineIdentities, totalCount } = await groupDAL.findAllGroupPossibleMachineIdentities({
       orgId: group.orgId,
@@ -463,15 +749,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
-
-    if (!group)
-      throw new NotFoundError({
-        message: `Failed to find group with ID ${id}`
-      });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
     const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
       orgId: group.orgId,
@@ -512,18 +797,17 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
-
-    if (!group)
-      throw new NotFoundError({
-        message: `Failed to find group with ID ${id}`
-      });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
     const { projects, totalCount } = await groupDAL.findAllGroupProjects({
-      orgId: group.orgId,
+      orgId: actorOrgId,
       groupId: group.id,
       offset,
       limit,
@@ -534,6 +818,28 @@ export const groupServiceFactory = ({
     });
 
     return { projects, totalCount };
+  };
+
+  const listAvailableGroups = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    rootOrgId
+  }: TGenericPermission & { rootOrgId: string }) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    return groupDAL.listAvailableGroups(actorOrgId, rootOrgId);
   };
 
   const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
@@ -783,6 +1089,12 @@ export const groupServiceFactory = ({
       projectKeyDAL
     });
 
+    await cleanUpSubOrgProjectMemberships({
+      groupId: id,
+      userIds: [user.id],
+      identityIds: []
+    });
+
     return users[0];
   };
 
@@ -860,6 +1172,12 @@ export const groupServiceFactory = ({
       identityGroupMembershipDAL
     });
 
+    await cleanUpSubOrgProjectMemberships({
+      groupId: id,
+      userIds: [],
+      identityIds: [identityId]
+    });
+
     return identities[0];
   };
 
@@ -867,14 +1185,15 @@ export const groupServiceFactory = ({
     createGroup,
     updateGroup,
     deleteGroup,
+    getGroupById,
     listGroupUsers,
     listGroupMachineIdentities,
     listGroupMembers,
     listGroupProjects,
+    listAvailableGroups,
     addUserToGroup,
     addMachineIdentityToGroup,
     removeUserFromGroup,
-    removeMachineIdentityFromGroup,
-    getGroupById
+    removeMachineIdentityFromGroup
   };
 };

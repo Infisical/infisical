@@ -1035,6 +1035,7 @@ export const SecretEditTableRow = ({
               </UnstableDropdownMenu>
               <Modal isOpen={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
                 <ModalContent
+                  className="max-w-3xl"
                   title="Secret Reference Details"
                   subTitle="Visual breakdown of secrets referenced by this secret."
                   onOpenAutoFocus={(e) => e.preventDefault()}

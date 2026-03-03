@@ -45,6 +45,7 @@ description: "Learn how to automatically rotate Unix/Linux local account passwor
             - **Login as Target** - Infisical will use the provided SSH username and password to log in and rotate its own password.
             - **Login as Root** - Infisical will use the SSH Connection's credentials to log in and rotate the provided user's password.
         - **Username** - The target SSH username whose password will be rotated.
+        - **Use Sudo** - If true, uses sudo when executing the password rotation command. Defaults to false.
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
         - **Password Requirements** - The constraints to apply when generating new passwords.
 

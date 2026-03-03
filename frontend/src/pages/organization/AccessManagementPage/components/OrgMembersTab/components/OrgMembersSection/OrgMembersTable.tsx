@@ -1,55 +1,57 @@
 import { Dispatch, SetStateAction, useCallback, useMemo, useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faCheckCircle,
-  faChevronRight,
-  faEdit,
-  faEllipsisV,
-  faFilter,
-  faInfoCircle,
-  faMagnifyingGlass,
-  faSearch,
-  faUsers,
-  faUserSlash,
-  faUserXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { UserCogIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  FilterIcon,
+  InfoIcon,
+  MailIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  SearchIcon,
+  UserCogIcon,
+  UserMinusIcon,
+  UserXIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { LastLoginSection } from "@app/components/organization/LastLoginSection";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
   Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  DropdownSubMenu,
-  DropdownSubMenuContent,
-  DropdownSubMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Select,
+  SelectContent,
   SelectItem,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuCheckboxItem,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuLabel,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -310,430 +312,433 @@ export const OrgMembersTable = ({
 
   return (
     <div>
-      <div className="flex gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Filter Users"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
-              )}
+      <div className="mb-4 flex gap-2">
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization users...`}
+          />
+        </InputGroup>
+        <UnstableDropdownMenu>
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton
+              variant={
+                // eslint-disable-next-line no-nested-ternary
+                isTableFiltered ? (isSubOrganization ? "sub-org" : "org") : "outline"
+              }
             >
-              <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-0">
-            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
-            <DropdownSubMenu>
-              <DropdownSubMenuTrigger
-                iconPos="right"
-                icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
+              <FilterIcon />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end">
+            <UnstableDropdownMenuLabel>
+              Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
+            </UnstableDropdownMenuLabel>
+            {roles?.map(({ id, slug, name }) => (
+              <UnstableDropdownMenuCheckboxItem
+                key={id}
+                checked={filter.roles.includes(slug)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleRoleToggle(slug);
+                  setPage(1);
+                }}
               >
-                Roles
-              </DropdownSubMenuTrigger>
-              <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Filter {isSubOrganization ? "Sub-" : ""}Organization Users by Role
-                </DropdownMenuLabel>
-                {roles?.map(({ id, slug, name }) => (
-                  <DropdownMenuItem
-                    onClick={(evt) => {
-                      evt.preventDefault();
-                      handleRoleToggle(slug);
-                    }}
-                    key={id}
-                    icon={filter.roles.includes(slug) && <FontAwesomeIcon icon={faCheckCircle} />}
-                    iconPos="right"
-                  >
-                    <div className="flex items-center">
-                      <div
-                        className="mr-2 h-2 w-2 rounded-full"
-                        style={{ background: "#bec2c8" }}
-                      />
-                      {name}
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownSubMenuContent>
-            </DropdownSubMenu>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization users...`}
-        />
+                {name}
+              </UnstableDropdownMenuCheckboxItem>
+            ))}
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-5">
-                <Checkbox
-                  id="member-page-select"
-                  isChecked={isPageSelected || isPageIndeterminate}
-                  isIndeterminate={isPageIndeterminate}
-                  onCheckedChange={() => {
-                    if (isPageSelected) {
-                      setSelectedMemberIds((prev) =>
-                        prev.filter(
-                          (memberId) => !filteredMembersPage.find((m) => m.id === memberId)
-                        )
-                      );
-                    } else {
-                      setSelectedMemberIds((prev) => [
-                        ...new Set([...prev, ...filteredMembersPage.map((member) => member.id)])
-                      ]);
-                    }
-                  }}
-                />
-              </Th>
-              <Th className="min-w-40 lg:w-1/3 lg:min-w-0">
-                <div className="flex items-center">
+      {!isLoading && !filteredMembers?.length ? (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {members.length
+                ? `No ${isSubOrganization ? "sub-" : ""}organization users match search`
+                : `No ${isSubOrganization ? "sub-" : ""}organization users found`}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {members.length
+                ? "Adjust your search or filter criteria."
+                : "Invite users to get started."}
+            </UnstableEmptyDescription>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      ) : (
+        <>
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead className="w-5">
+                  <Checkbox
+                    id="member-page-select"
+                    isChecked={isPageSelected || isPageIndeterminate}
+                    isIndeterminate={isPageIndeterminate}
+                    variant={isSubOrganization ? "sub-org" : "org"}
+                    onCheckedChange={() => {
+                      if (isPageSelected) {
+                        setSelectedMemberIds((prev) =>
+                          prev.filter(
+                            (memberId) => !filteredMembersPage.find((m) => m.id === memberId)
+                          )
+                        );
+                      } else {
+                        setSelectedMemberIds((prev) => [
+                          ...new Set([...prev, ...filteredMembersPage.map((member) => member.id)])
+                        ]);
+                      }
+                    }}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead
+                  onClick={() => handleSort(OrgMembersOrderBy.Name)}
+                  className="min-w-40 lg:w-1/3 lg:min-w-0"
+                >
                   Name
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === OrgMembersOrderBy.Name ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(OrgMembersOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC &&
-                        orderBy === OrgMembersOrderBy.Name
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/3">
-                <div className="flex items-center">
+                  <ChevronDownIcon
+                    className={twMerge(
+                      orderDirection === OrderByDirection.DESC &&
+                        orderBy === OrgMembersOrderBy.Name &&
+                        "rotate-180",
+                      orderBy !== OrgMembersOrderBy.Name && "opacity-30",
+                      "transition-transform"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead
+                  onClick={() => handleSort(OrgMembersOrderBy.Email)}
+                  className="w-1/3"
+                >
                   Username
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === OrgMembersOrderBy.Email ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(OrgMembersOrderBy.Email)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC &&
-                        orderBy === OrgMembersOrderBy.Email
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/3">
-                <div className="flex items-center">
+                  <ChevronDownIcon
+                    className={twMerge(
+                      orderDirection === OrderByDirection.DESC &&
+                        orderBy === OrgMembersOrderBy.Email &&
+                        "rotate-180",
+                      orderBy !== OrgMembersOrderBy.Email && "opacity-30",
+                      "transition-transform"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead onClick={() => handleSort(OrgMembersOrderBy.Role)}>
                   {isSubOrganization ? "Sub-" : ""}Organization Role
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === OrgMembersOrderBy.Role ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(OrgMembersOrderBy.Role)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC &&
-                        orderBy === OrgMembersOrderBy.Role
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
-            {!isLoading &&
-              filteredMembersPage.map(
-                ({
-                  user: u,
-                  inviteEmail,
-                  role,
-                  roleId,
-                  id: orgMembershipId,
-                  status,
-                  isActive,
-                  lastLoginAuthMethod,
-                  lastLoginTime
-                }) => {
-                  const name =
-                    u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : null;
-                  const email = u?.email || inviteEmail;
-                  const username = u?.username ?? inviteEmail ?? "-";
-                  const isSelected = selectedMemberIds.includes(orgMembershipId);
-                  return (
-                    <Tr
-                      key={`org-membership-${orgMembershipId}`}
-                      className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/members/$membershipId" as const,
-                          params: {
-                            membershipId: orgMembershipId,
-                            orgId
-                          }
-                        })
-                      }
-                    >
-                      <Td>
-                        <Checkbox
-                          id={`select-member-${orgMembershipId}`}
-                          isChecked={isSelected}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedMemberIds((prev) =>
-                              isSelected
-                                ? prev.filter((id) => id !== orgMembershipId)
-                                : [...prev, orgMembershipId]
-                            );
-                          }}
-                        />
-                      </Td>
-                      <Td
-                        className={twMerge("group max-w-0", isActive ? "" : "text-mineshaft-400")}
+                  <ChevronDownIcon
+                    className={twMerge(
+                      orderDirection === OrderByDirection.DESC &&
+                        orderBy === OrgMembersOrderBy.Role &&
+                        "rotate-180",
+                      orderBy !== OrgMembersOrderBy.Role && "opacity-30",
+                      "transition-transform"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead className="w-5" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {isLoading &&
+                Array.from({ length: perPage }).map((_, i) => (
+                  <UnstableTableRow key={`skeleton-${i + 1}`}>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                ))}
+              {!isLoading &&
+                filteredMembersPage.map(
+                  ({
+                    user: u,
+                    inviteEmail,
+                    role,
+                    roleId,
+                    id: orgMembershipId,
+                    status,
+                    isActive,
+                    lastLoginAuthMethod,
+                    lastLoginTime
+                  }) => {
+                    const name =
+                      u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : null;
+                    const email = u?.email || inviteEmail;
+                    const username = u?.username ?? inviteEmail ?? "-";
+                    const isSelected = selectedMemberIds.includes(orgMembershipId);
+                    return (
+                      <UnstableTableRow
+                        key={`org-membership-${orgMembershipId}`}
+                        className="group cursor-pointer"
+                        onClick={() =>
+                          navigate({
+                            to: "/organizations/$orgId/members/$membershipId" as const,
+                            params: {
+                              membershipId: orgMembershipId,
+                              orgId
+                            }
+                          })
+                        }
                       >
-                        <div className="flex w-full items-center gap-x-2">
-                          <p className="truncate">
-                            {name ?? <span className="text-mineshaft-400">Not Set</span>}
-                          </p>
-                          {u.superAdmin && (
-                            <Tooltip content="Server Admin">
-                              <Badge variant="info">
-                                <UserCogIcon />
-                                <span className="hidden 2xl:inline">Server Admin</span>
-                              </Badge>
-                            </Tooltip>
-                          )}
-                          {lastLoginAuthMethod && lastLoginTime && (
-                            <Tooltip
-                              className="max-w-96 min-w-52 px-3"
-                              content={
-                                <LastLoginSection
-                                  lastLoginAuthMethod={lastLoginAuthMethod}
-                                  lastLoginTime={lastLoginTime}
-                                />
-                              }
-                            >
-                              <FontAwesomeIcon
-                                icon={faInfoCircle}
-                                className="ml-2 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100"
-                              />
-                            </Tooltip>
-                          )}
-                        </div>
-                      </Td>
-                      <Td className={twMerge("max-w-0", isActive ? "" : "text-mineshaft-400")}>
-                        <p className="truncate">{username}</p>
-                      </Td>
-                      <Td>
-                        <OrgPermissionCan
-                          I={OrgPermissionActions.Edit}
-                          a={OrgPermissionSubjects.Member}
+                        <UnstableTableCell>
+                          <Checkbox
+                            id={`select-member-${orgMembershipId}`}
+                            isChecked={isSelected}
+                            variant={isSubOrganization ? "sub-org" : "org"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMemberIds((prev) =>
+                                isSelected
+                                  ? prev.filter((id) => id !== orgMembershipId)
+                                  : [...prev, orgMembershipId]
+                              );
+                            }}
+                          />
+                        </UnstableTableCell>
+                        <UnstableTableCell
+                          isTruncatable
+                          className={twMerge(!isActive && "text-muted")}
                         >
-                          {(isAllowed) => (
-                            <Select
-                              value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
-                              isDisabled={userId === u?.id || !isAllowed}
-                              className="h-8 w-48 bg-mineshaft-700"
-                              position="popper"
-                              dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
-                              onValueChange={(selectedRole) =>
-                                onRoleChange(orgMembershipId, selectedRole)
-                              }
-                            >
-                              {(roles || [])
-                                .filter(({ slug }) =>
-                                  slug === "owner" ? isIamOwner || role === "owner" : true
-                                )
-                                .map(({ slug, name: roleName }) => (
-                                  <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                    {roleName}
-                                  </SelectItem>
-                                ))}
-                            </Select>
-                          )}
-                        </OrgPermissionCan>
-                      </Td>
-                      <Td>
-                        <div className="flex items-center justify-end gap-6">
-                          {isActive &&
-                            (status === "invited" || status === "verified") &&
-                            email &&
-                            !isSubOrganization &&
-                            serverDetails?.emailConfigured && (
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Edit}
-                                a={OrgPermissionSubjects.Member}
-                              >
-                                {(isAllowed) => (
-                                  <Button
-                                    isDisabled={!isAllowed || isResendInvitePending}
-                                    className="h-8 border-mineshaft-600 bg-mineshaft-700 font-normal"
-                                    colorSchema="primary"
-                                    variant="outline_bg"
-                                    isLoading={
-                                      isResendInvitePending && resendInviteId === orgMembershipId
-                                    }
-                                    onClick={(e) => {
-                                      onResendInvite(orgMembershipId);
-                                      e.stopPropagation();
-                                    }}
-                                  >
-                                    Resend Invite
-                                  </Button>
-                                )}
-                              </OrgPermissionCan>
+                          <div className="flex w-full items-center gap-x-1.5">
+                            <p className="truncate">
+                              {name ?? <span className="text-muted">—</span>}
+                            </p>
+                            {u.superAdmin && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="info">
+                                    <UserCogIcon />
+                                    <span className="hidden 2xl:inline">Server Admin</span>
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>Server Admin</TooltipContent>
+                              </Tooltip>
                             )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger disabled={userId === u?.id} asChild>
-                              <IconButton
-                                ariaLabel="Options"
-                                colorSchema="secondary"
-                                className={twMerge("w-6", userId === u?.id && "opacity-50")}
-                                variant="plain"
-                                isDisabled={userId === u?.id}
+                            {lastLoginAuthMethod && lastLoginTime && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <InfoIcon className="size-3.5 text-muted opacity-0 transition-all group-hover:opacity-100" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-96 min-w-52 px-3">
+                                  <LastLoginSection
+                                    lastLoginAuthMethod={lastLoginAuthMethod}
+                                    lastLoginTime={lastLoginTime}
+                                  />
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </UnstableTableCell>
+                        <UnstableTableCell
+                          isTruncatable
+                          className={twMerge(!isActive && "text-muted")}
+                        >
+                          <p className="truncate">{username}</p>
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.Member}
+                          >
+                            {(isAllowed) => (
+                              <Select
+                                value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
+                                onValueChange={(selectedRole) =>
+                                  onRoleChange(orgMembershipId, selectedRole)
+                                }
+                                disabled={userId === u?.id || !isAllowed}
                               >
-                                <FontAwesomeIcon icon={faEllipsisV} />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Edit}
-                                a={OrgPermissionSubjects.Member}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate({
-                                        to: "/organizations/$orgId/members/$membershipId" as const,
-                                        params: {
-                                          membershipId: orgMembershipId,
-                                          orgId
+                                <SelectTrigger
+                                  size="sm"
+                                  className="w-full max-w-32 lg:max-w-64"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="max-w-32 lg:max-w-60">
+                                  {(roles || [])
+                                    .filter(({ slug }) =>
+                                      slug === "owner" ? isIamOwner || role === "owner" : true
+                                    )
+                                    .map(({ slug, name: roleName }) => (
+                                      <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                        {roleName}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </OrgPermissionCan>
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <div className="flex items-center justify-end gap-6">
+                            {isActive &&
+                              (status === "invited" || status === "verified") &&
+                              email &&
+                              !isSubOrganization &&
+                              serverDetails?.emailConfigured && (
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  a={OrgPermissionSubjects.Member}
+                                >
+                                  {(isAllowed) => (
+                                    <Button
+                                      isDisabled={!isAllowed || isResendInvitePending}
+                                      variant={isSubOrganization ? "sub-org" : "org"}
+                                      size="xs"
+                                      isPending={
+                                        isResendInvitePending && resendInviteId === orgMembershipId
+                                      }
+                                      onClick={(e) => {
+                                        onResendInvite(orgMembershipId);
+                                        e.stopPropagation();
+                                      }}
+                                    >
+                                      <MailIcon />
+                                      Resend Invite
+                                    </Button>
+                                  )}
+                                </OrgPermissionCan>
+                              )}
+                            <UnstableDropdownMenu>
+                              <UnstableDropdownMenuTrigger asChild>
+                                <UnstableIconButton
+                                  variant="ghost"
+                                  size="xs"
+                                  isDisabled={userId === u?.id}
+                                >
+                                  <MoreHorizontalIcon />
+                                </UnstableIconButton>
+                              </UnstableDropdownMenuTrigger>
+                              <UnstableDropdownMenuContent sideOffset={2} align="end">
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  a={OrgPermissionSubjects.Member}
+                                >
+                                  {(isAllowed) => (
+                                    <UnstableDropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate({
+                                          to: "/organizations/$orgId/members/$membershipId" as const,
+                                          params: {
+                                            membershipId: orgMembershipId,
+                                            orgId
+                                          }
+                                        });
+                                      }}
+                                      isDisabled={!isAllowed}
+                                    >
+                                      <PencilIcon />
+                                      Edit User
+                                    </UnstableDropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Delete}
+                                  a={OrgPermissionSubjects.Member}
+                                >
+                                  {(isAllowed) => (
+                                    <UnstableDropdownMenuItem
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+
+                                        if (currentOrg?.scimEnabled) {
+                                          createNotification({
+                                            text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                                            type: "error"
+                                          });
+                                          return;
                                         }
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
-                                    icon={<FontAwesomeIcon icon={faEdit} />}
-                                  >
-                                    Edit User
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Delete}
-                                a={OrgPermissionSubjects.Member}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    icon={<FontAwesomeIcon icon={faUserSlash} />}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
 
-                                      if (currentOrg?.scimEnabled) {
-                                        createNotification({
-                                          text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
-                                          type: "error"
+                                        if (!isActive) {
+                                          // activate user
+                                          await updateOrgMembership({
+                                            organizationId: orgId,
+                                            membershipId: orgMembershipId,
+                                            isActive: true
+                                          });
+
+                                          return;
+                                        }
+
+                                        // deactivate user
+                                        handlePopUpOpen("deactivateMember", {
+                                          orgMembershipId,
+                                          username
                                         });
-                                        return;
-                                      }
+                                      }}
+                                      isDisabled={!isAllowed}
+                                    >
+                                      <UserMinusIcon />
+                                      {`${isActive ? "Deactivate" : "Activate"} User`}
+                                    </UnstableDropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Delete}
+                                  a={OrgPermissionSubjects.Member}
+                                >
+                                  {(isAllowed) => (
+                                    <UnstableDropdownMenuItem
+                                      variant="danger"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
 
-                                      if (!isActive) {
-                                        // activate user
-                                        await updateOrgMembership({
-                                          organizationId: orgId,
-                                          membershipId: orgMembershipId,
-                                          isActive: true
+                                        if (currentOrg?.scimEnabled && isActive) {
+                                          createNotification({
+                                            text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                                            type: "error"
+                                          });
+                                          return;
+                                        }
+
+                                        handlePopUpOpen("removeMember", {
+                                          orgMembershipId,
+                                          username
                                         });
-
-                                        return;
-                                      }
-
-                                      // deactivate user
-                                      handlePopUpOpen("deactivateMember", {
-                                        orgMembershipId,
-                                        username
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    {`${isActive ? "Deactivate" : "Activate"} User`}
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Delete}
-                                a={OrgPermissionSubjects.Member}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-
-                                      if (currentOrg?.scimEnabled && isActive) {
-                                        createNotification({
-                                          text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
-                                          type: "error"
-                                        });
-                                        return;
-                                      }
-
-                                      handlePopUpOpen("removeMember", {
-                                        orgMembershipId,
-                                        username
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
-                                    icon={<FontAwesomeIcon icon={faUserXmark} />}
-                                  >
-                                    Remove User
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </Td>
-                    </Tr>
-                  );
-                }
-              )}
-          </TBody>
-        </Table>
-        {Boolean(filteredMembers.length) && (
-          <Pagination
-            count={filteredMembers.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isMembersLoading && !filteredMembers?.length && (
-          <EmptyState
-            title={
-              members.length
-                ? `No ${isSubOrganization ? "sub-" : ""}organization users match search...`
-                : `No ${isSubOrganization ? "sub-" : ""}organization users found`
-            }
-            icon={members.length ? faSearch : faUsers}
-          />
-        )}
-      </TableContainer>
+                                      }}
+                                      isDisabled={!isAllowed}
+                                    >
+                                      <UserXIcon />
+                                      Remove User
+                                    </UnstableDropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                              </UnstableDropdownMenuContent>
+                            </UnstableDropdownMenu>
+                          </div>
+                        </UnstableTableCell>
+                      </UnstableTableRow>
+                    );
+                  }
+                )}
+            </UnstableTableBody>
+          </UnstableTable>
+          {Boolean(filteredMembers.length) && (
+            <UnstablePagination
+              count={filteredMembers.length}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };

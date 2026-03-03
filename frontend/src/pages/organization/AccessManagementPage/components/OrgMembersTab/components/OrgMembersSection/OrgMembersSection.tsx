@@ -1,22 +1,29 @@
 import { useEffect, useState } from "react";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { BanIcon, UserPlusIcon } from "lucide-react";
+import { BanIcon, TrashIcon, UserPlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   DeleteActionModal,
   EmailServiceSetupModal,
   Modal,
   ModalContent,
   Tooltip
 } from "@app/components/v2";
-import { Badge, DocumentationLinkBadge } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  DocumentationLinkBadge,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -155,15 +162,15 @@ export const OrgMembersSection = () => {
     <>
       <div
         className={twMerge(
-          "h-0 shrink-0 overflow-hidden transition-all",
+          "mb-2 h-0 shrink-0 overflow-hidden transition-all",
           selectedMemberIds.length > 0 && "h-16"
         )}
       >
-        <div className="flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
+        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
           <div className="mr-2 text-sm">{selectedMemberIds.length} Selected</div>
           <button
             type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
             onClick={() => setSelectedMemberIds([])}
           >
             Unselect All
@@ -180,9 +187,7 @@ export const OrgMembersSection = () => {
           >
             {(isAllowed) => (
               <Button
-                variant="outline_bg"
-                colorSchema="danger"
-                leftIcon={<FontAwesomeIcon icon={faTrash} />}
+                variant="danger"
                 className="ml-2"
                 onClick={() => {
                   const selectedOrgMemberships = members.filter((member) =>
@@ -196,140 +201,148 @@ export const OrgMembersSection = () => {
                 isDisabled={!isAllowed || currentOrg?.scimEnabled}
                 size="xs"
               >
+                <TrashIcon />
                 Delete
               </Button>
             )}
           </OrgPermissionCan>
         </div>
       </div>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">
-              {isSubOrganization ? "Sub-" : ""}Organization Users
-            </p>
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>
+            {isSubOrganization ? "Sub-" : ""}Organization Users
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
-            {(isAllowed) => (
-              <Button
-                variant="outline_bg"
-                type="submit"
-                leftIcon={<UserPlusIcon size={16} />}
-                onClick={() =>
-                  isSubOrganization ? handlePopUpOpen("addMemberToSubOrg") : handleAddMemberModal()
-                }
-                isDisabled={!isAllowed}
-              >
-                {isSubOrganization
-                  ? "Add Users to Sub-Organization"
-                  : "Invite Users to Organization"}
-              </Button>
-            )}
-          </OrgPermissionCan>
+          </UnstableCardTitle>
+          <UnstableCardDescription>
+            Invite and manage {isSubOrganization ? "sub-" : ""}organization users
+          </UnstableCardDescription>
+          <UnstableCardAction>
+            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+              {(isAllowed) => (
+                <Button
+                  variant={isSubOrganization ? "sub-org" : "org"}
+                  type="submit"
+                  onClick={() =>
+                    isSubOrganization
+                      ? handlePopUpOpen("addMemberToSubOrg")
+                      : handleAddMemberModal()
+                  }
+                  isDisabled={!isAllowed}
+                >
+                  <UserPlusIcon />
+                  {isSubOrganization
+                    ? "Add Users to Sub-Organization"
+                    : "Invite Users to Organization"}
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </UnstableCardAction>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <OrgMembersTable
+            handlePopUpOpen={handlePopUpOpen}
+            setCompleteInviteLinks={setCompleteInviteLinks}
+            selectedMemberIds={selectedMemberIds}
+            setSelectedMemberIds={setSelectedMemberIds}
+          />
+        </UnstableCardContent>
+      </UnstableCard>
+      <AddOrgMemberModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        completeInviteLinks={completeInviteLinks}
+        setCompleteInviteLinks={setCompleteInviteLinks}
+      />
+      <Modal
+        isOpen={popUp.addMemberToSubOrg.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addMemberToSubOrg", isOpen)}
+      >
+        <ModalContent title="Add member from your organization" bodyClassName="overflow-visible">
+          <AddSubOrgMemberModal onClose={() => handlePopUpClose("addMemberToSubOrg")} />
+        </ModalContent>
+      </Modal>
+      <DeleteActionModal
+        isOpen={popUp.removeMember.isOpen}
+        title={`Are you sure you want to remove member with username ${
+          (popUp?.removeMember?.data as { username: string })?.username || ""
+        }?`}
+        onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={() =>
+          onRemoveMemberSubmit(
+            (popUp?.removeMember?.data as { orgMembershipId: string })?.orgMembershipId
+          )
+        }
+      />
+      <DeleteActionModal
+        isOpen={popUp.deactivateMember.isOpen}
+        title={`Are you sure you want to deactivate member with username ${
+          (popUp?.deactivateMember?.data as { username: string })?.username || ""
+        }?`}
+        onChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={() =>
+          onDeactivateMemberSubmit(
+            (popUp?.deactivateMember?.data as { orgMembershipId: string })?.orgMembershipId
+          )
+        }
+        buttonText="Deactivate"
+      />
+      <DeleteActionModal
+        isOpen={popUp.removeMembers.isOpen}
+        title="Are you sure you want to remove the following members?"
+        onChange={(isOpen) => handlePopUpToggle("removeMembers", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={() =>
+          handleRemoveMembers(popUp.removeMembers.data.selectedOrgMemberships as OrgUser[])
+        }
+        buttonText="Remove"
+      >
+        <div className="mt-4 text-sm text-mineshaft-400">
+          The following members will be removed:
         </div>
-        <OrgMembersTable
-          handlePopUpOpen={handlePopUpOpen}
-          setCompleteInviteLinks={setCompleteInviteLinks}
-          selectedMemberIds={selectedMemberIds}
-          setSelectedMemberIds={setSelectedMemberIds}
-        />
-        <AddOrgMemberModal
-          popUp={popUp}
-          handlePopUpToggle={handlePopUpToggle}
-          completeInviteLinks={completeInviteLinks}
-          setCompleteInviteLinks={setCompleteInviteLinks}
-        />
-        <Modal
-          isOpen={popUp.addMemberToSubOrg.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("addMemberToSubOrg", isOpen)}
-        >
-          <ModalContent title="Add member from your organization" bodyClassName="overflow-visible">
-            <AddSubOrgMemberModal onClose={() => handlePopUpClose("addMemberToSubOrg")} />
-          </ModalContent>
-        </Modal>
-        <DeleteActionModal
-          isOpen={popUp.removeMember.isOpen}
-          title={`Are you sure you want to remove member with username ${
-            (popUp?.removeMember?.data as { username: string })?.username || ""
-          }?`}
-          onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
-            onRemoveMemberSubmit(
-              (popUp?.removeMember?.data as { orgMembershipId: string })?.orgMembershipId
-            )
-          }
-        />
-        <DeleteActionModal
-          isOpen={popUp.deactivateMember.isOpen}
-          title={`Are you sure you want to deactivate member with username ${
-            (popUp?.deactivateMember?.data as { username: string })?.username || ""
-          }?`}
-          onChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
-            onDeactivateMemberSubmit(
-              (popUp?.deactivateMember?.data as { orgMembershipId: string })?.orgMembershipId
-            )
-          }
-          buttonText="Deactivate"
-        />
-        <DeleteActionModal
-          isOpen={popUp.removeMembers.isOpen}
-          title="Are you sure you want to remove the following members?"
-          onChange={(isOpen) => handlePopUpToggle("removeMembers", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
-            handleRemoveMembers(popUp.removeMembers.data.selectedOrgMemberships as OrgUser[])
-          }
-          buttonText="Remove"
-        >
-          <div className="mt-4 text-sm text-mineshaft-400">
-            The following members will be removed:
-          </div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
-            <ul className="list-disc">
-              {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
-                const email = member.user.email ?? member.user.username ?? member.inviteEmail;
-                return (
-                  <li key={member.id}>
-                    <div className="flex items-center">
-                      <p className={userId === member.user.id ? "line-through" : ""}>
-                        {member.user.firstName || member.user.lastName ? (
-                          <>
-                            {`${`${member.user.firstName} ${member.user.lastName}`.trim()} `}(
-                            <span className="break-all">{email}</span>)
-                          </>
-                        ) : (
-                          <span className="break-all">{email}</span>
-                        )}{" "}
-                      </p>
-                      {userId === member.user.id && (
-                        <Tooltip content="You cannot remove yourself from this organization">
-                          <Badge variant="danger" className="ml-2">
-                            <BanIcon />
-                            Ignored
-                          </Badge>
-                        </Tooltip>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </DeleteActionModal>
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={popUp.upgradePlan?.data?.text}
-        />
-        <EmailServiceSetupModal
-          isOpen={popUp.setUpEmail?.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
-        />
-      </div>
+        <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <ul className="list-disc">
+            {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
+              const email = member.user.email ?? member.user.username ?? member.inviteEmail;
+              return (
+                <li key={member.id}>
+                  <div className="flex items-center">
+                    <p className={userId === member.user.id ? "line-through" : ""}>
+                      {member.user.firstName || member.user.lastName ? (
+                        <>
+                          {`${`${member.user.firstName} ${member.user.lastName}`.trim()} `}(
+                          <span className="break-all">{email}</span>)
+                        </>
+                      ) : (
+                        <span className="break-all">{email}</span>
+                      )}{" "}
+                    </p>
+                    {userId === member.user.id && (
+                      <Tooltip content="You cannot remove yourself from this organization">
+                        <Badge variant="danger" className="ml-2">
+                          <BanIcon />
+                          Ignored
+                        </Badge>
+                      </Tooltip>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </DeleteActionModal>
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={popUp.upgradePlan?.data?.text}
+      />
+      <EmailServiceSetupModal
+        isOpen={popUp.setUpEmail?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
+      />
     </>
   );
 };
