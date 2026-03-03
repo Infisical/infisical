@@ -1,14 +1,10 @@
 import { Control, Controller, useFieldArray } from "react-hook-form";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { TagIcon } from "lucide-react";
-
 import { Button, FormControl, FormLabel, IconButton, Input } from "@app/components/v2";
 import {
-  EmptyMedia,
   UnstableEmpty,
   UnstableEmptyContent,
-  UnstableEmptyDescription,
   UnstableEmptyHeader,
   UnstableEmptyTitle
 } from "@app/components/v3";
@@ -33,15 +29,9 @@ export const MetadataForm = ({
     <FormControl label={title}>
       <div className="flex flex-col space-y-2">
         {metadataFormFields.fields.length === 0 ? (
-          <UnstableEmpty>
+          <UnstableEmpty className="gap-2 p-3 md:p-3">
             <UnstableEmptyHeader>
-              <EmptyMedia variant="icon">
-                <TagIcon />
-              </EmptyMedia>
               <UnstableEmptyTitle>No metadata entries</UnstableEmptyTitle>
-              <UnstableEmptyDescription>
-                Add key-value pairs to attach metadata to this resource.
-              </UnstableEmptyDescription>
             </UnstableEmptyHeader>
             <UnstableEmptyContent>
               <Button
