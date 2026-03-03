@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from "react";
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { InfoIcon, PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -31,7 +31,6 @@ import {
 
 import {
   getConditionOperatorHelperInfo,
-  getDefaultOperatorForCondition,
   renderOperatorSelectItems
 } from "./PermissionConditionHelpers";
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
@@ -56,6 +55,7 @@ const computeAllowedConditions = (
     return allConditions;
   }
 
+  // Find actions that have restricted conditions
   const actionsWithRestrictions = selectedActions.filter(
     (action) => actionConditionsMap[action] !== undefined
   );
@@ -96,7 +96,6 @@ export const ConditionsFields = ({
 }: ConditionsFieldsProps) => {
   const {
     control,
-    watch,
     setValue,
     formState: { errors }
   } = useFormContext<TFormSchema>();
@@ -112,25 +111,44 @@ export const ConditionsFields = ({
     [selectedActions, actionConditionsMap, allConditionValues]
   );
 
-  const conditions = watch(`permissions.${subject}.${position}.conditions` as const) as
-    | { lhs?: string }[]
-    | undefined;
-  const usedConditionTypes = (conditions || []).map((c) => c?.lhs);
+  const watchedConditions = useWatch({
+    control,
+    name: `permissions.${subject}.${position}.conditions` as const
+  });
 
-  const availableConditionsToAdd = useMemo(() => {
-    return selectOptions.filter(
+  // Get all currently used condition types
+  const usedConditionTypes = useMemo((): string[] => {
+    const conditions = watchedConditions as Array<{ lhs: string }> | undefined;
+    if (!conditions) return [];
+    return conditions.map((c) => c.lhs).filter(Boolean);
+  }, [watchedConditions]);
+
+  // Compute if we can add more conditions
+  const canAddCondition = useMemo(() => {
+    const availableToAdd = selectOptions.filter(
       ({ value }) => allowedConditions.includes(value) && !usedConditionTypes.includes(value)
     );
+    return availableToAdd.length > 0;
   }, [selectOptions, allowedConditions, usedConditionTypes]);
 
-  const canAddCondition = availableConditionsToAdd.length > 0;
+  const getDefaultOperator = (conditionType: string): PermissionConditionOperators => {
+    switch (conditionType) {
+      case "secretTags":
+        return PermissionConditionOperators.$IN;
+      default:
+        return PermissionConditionOperators.$EQ;
+    }
+  };
 
-  const getNewConditionDefaults = () => {
-    const conditionType = availableConditionsToAdd[0]?.value || selectOptions[0].value;
+  // Get the first available condition for new additions
+  const getFirstAvailableCondition = () => {
+    const available = selectOptions.find(
+      ({ value }) => allowedConditions.includes(value) && !usedConditionTypes.includes(value)
+    );
+    const conditionType = available?.value || selectOptions[0].value;
     return {
       lhs: conditionType,
-      operator: getDefaultOperatorForCondition(conditionType),
-      rhs: ""
+      operator: getDefaultOperator(conditionType)
     };
   };
 
@@ -171,7 +189,14 @@ export const ConditionsFields = ({
                 size="xs"
                 className="mt-2"
                 isDisabled={isDisabled || !canAddCondition}
-                onClick={() => items.append(getNewConditionDefaults())}
+                onClick={() => {
+                  const { lhs, operator } = getFirstAvailableCondition();
+                  items.append({
+                    lhs,
+                    operator,
+                    rhs: ""
+                  });
+                }}
               >
                 <PlusIcon className="size-4" />
                 Add Condition
@@ -195,13 +220,12 @@ export const ConditionsFields = ({
           </UnstableEmpty>
         ) : (
           items.fields.map((el, index) => {
-            const condition =
-              (watch(`permissions.${subject}.${position}.conditions.${index}` as const) as {
-                lhs: string;
-                rhs: string;
-                operator: string;
-              }) || {};
+            const conditions = watchedConditions as
+              | Array<{ lhs: string; rhs: string; operator: string }>
+              | undefined;
+            const condition = conditions?.[index] || { lhs: "", rhs: "", operator: "" };
 
+            // Filter out already used conditions (except current row's condition)
             const availableOptionsForRow = selectOptions.filter(
               ({ value }) => !usedConditionTypes.includes(value) || value === condition.lhs
             );
@@ -232,12 +256,12 @@ export const ConditionsFields = ({
                           <FieldContent>
                             <Select
                               value={field.value}
-                              onValueChange={(e) => {
+                              onValueChange={(newConditionType) => {
                                 setValue(
                                   `permissions.${subject}.${position}.conditions.${index}.operator` as const,
-                                  PermissionConditionOperators.$IN as never
+                                  getDefaultOperator(newConditionType) as never
                                 );
-                                field.onChange(e);
+                                field.onChange(newConditionType);
                               }}
                             >
                               <SelectTrigger className="w-full">
@@ -297,7 +321,11 @@ export const ConditionsFields = ({
                       render={({ field, fieldState: { error } }) => (
                         <Field data-invalid={Boolean(error?.message)} className="mb-0 grow">
                           <FieldContent>
-                            <Select value={field.value} onValueChange={(e) => field.onChange(e)}>
+                            <Select
+                              key={`${condition.lhs}-operator`}
+                              value={field.value}
+                              onValueChange={(e) => field.onChange(e)}
+                            >
                               <SelectTrigger className="w-full">
                                 <SelectValue />
                               </SelectTrigger>

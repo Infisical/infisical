@@ -369,47 +369,65 @@ const ConditionSchema = z
     }
   );
 
-// Mapping of secret actions to their allowed condition keys
-// undefined means all conditions are allowed (backwards compatible)
-export const SECRET_ACTION_ALLOWED_CONDITIONS: Partial<
-  Record<ProjectPermissionSecretActions, string[]>
-> = {
-  // Test actions with restricted conditions - to be removed after testing
-  [ProjectPermissionSecretActions.ImportSecret]: ["environment"],
-  [ProjectPermissionSecretActions.DuplicateSecret]: ["environment", "secretPath", "secretName"]
+// Unified mapping of permission subjects to their actions and allowed condition keys
+// Actions without restrictions (undefined or not in map) allow all conditions
+export type ActionAllowedConditionsType = Partial<
+  Record<ProjectPermissionSub, Partial<Record<string, string[]>>>
+>;
+
+export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
+  [ProjectPermissionSub.Secrets]: {
+    // Test actions with restricted conditions - to be removed after testing
+    [ProjectPermissionSecretActions.ImportSecret]: ["environment"],
+    [ProjectPermissionSecretActions.DuplicateSecret]: ["environment", "secretPath", "secretName"]
+  }
 };
 
-const SecretPolicyActionWithConditionsSchema = SecretPolicyActionSchema.extend({
-  inverted: z.boolean().optional(),
-  conditions: ConditionSchema
-}).refine(
-  (data) => {
-    if (!data.conditions || data.conditions.length === 0) return true;
+// Factory function to create policy schemas with condition validation for any subject
+function createPolicySchemaWithConditions<TSchema extends z.AnyZodObject>(
+  baseSchema: TSchema,
+  subject: ProjectPermissionSub,
+  actionsEnum: Record<string, string>
+) {
+  const subjectConditions = ACTION_ALLOWED_CONDITIONS[subject];
 
-    const selectedActions = Object.entries(data)
-      .filter(
-        ([key, value]) =>
-          value === true &&
-          Object.values(ProjectPermissionSecretActions).includes(
-            key as ProjectPermissionSecretActions
-          )
-      )
-      .map(([key]) => key as ProjectPermissionSecretActions);
+  return baseSchema
+    .extend({
+      inverted: z.boolean().optional(),
+      conditions: ConditionSchema
+    })
+    .refine(
+      (data) => {
+        if (!subjectConditions) return true;
+        const conditions = data.conditions as Array<{ lhs: string }> | undefined;
+        if (!conditions || conditions.length === 0) return true;
 
-    if (selectedActions.length === 0) return true;
+        const selectedActions = Object.entries(data)
+          .filter(([key, value]) => value === true && Object.values(actionsEnum).includes(key))
+          .map(([key]) => key);
 
-    const conditionKeys = data.conditions.map((c) => c.lhs);
+        if (selectedActions.length === 0) return true;
 
-    return selectedActions.every((action) => {
-      const allowedConditions = SECRET_ACTION_ALLOWED_CONDITIONS[action];
-      if (!allowedConditions) return true;
-      return conditionKeys.every((condKey) => allowedConditions.includes(condKey));
-    });
-  },
-  {
-    message: "Some conditions are not available for the selected actions",
-    path: ["conditions"]
-  }
+        const conditionKeys = conditions.map((c) => c.lhs);
+
+        return selectedActions.every((action) => {
+          const allowedConditions = subjectConditions[action];
+          if (!allowedConditions) return true;
+          return conditionKeys.every((condKey) => allowedConditions.includes(condKey));
+        });
+      },
+      {
+        message: "Some conditions are not available for the selected actions",
+        path: ["conditions"]
+      }
+    );
+}
+
+// Create schema with condition validation for Secrets
+const SecretPolicyActionWithConditionsSchema = createPolicySchemaWithConditions(
+  SecretPolicyActionSchema,
+  ProjectPermissionSub.Secrets,
+  ProjectPermissionSecretActions
 );
 
 export const projectRoleFormSchema = z.object({
@@ -1632,7 +1650,9 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
 
       const caslConditions =
         "conditions" in actions
-          ? convertFormOperatorToCaslCondition(actions.conditions)
+          ? convertFormOperatorToCaslCondition(
+              actions.conditions as { lhs: string; rhs: string; operator: string }[]
+            )
           : undefined;
 
       permissions.push({

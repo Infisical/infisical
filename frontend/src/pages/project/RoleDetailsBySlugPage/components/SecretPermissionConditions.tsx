@@ -7,7 +7,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 
 import { ConditionsFields } from "./ConditionsFields";
-import { SECRET_ACTION_ALLOWED_CONDITIONS, TFormSchema } from "./ProjectRoleModifySection.utils";
+import { ACTION_ALLOWED_CONDITIONS, TFormSchema } from "./ProjectRoleModifySection.utils";
 
 type Props = {
   position?: number;
@@ -44,7 +44,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
         { value: "secretTags", label: "Secret Tags" }
       ]}
       selectedActions={selectedActions}
-      actionConditionsMap={SECRET_ACTION_ALLOWED_CONDITIONS}
+      actionConditionsMap={ACTION_ALLOWED_CONDITIONS[ProjectPermissionSub.Secrets]}
     />
   );
 };
