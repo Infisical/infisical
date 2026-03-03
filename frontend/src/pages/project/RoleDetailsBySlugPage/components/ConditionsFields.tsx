@@ -229,40 +229,41 @@ export const ConditionsFields = ({
                 control={control}
                 name={`permissions.${subject}.${position}.conditions.${index}.rhs` as const}
                 render={({ field: rhsField, fieldState: { error: rhsError } }) => (
-                  <div className="bg-card first:rounded-t-md last:rounded-b-md">
-                    <div className="flex items-center gap-2">
-                      <div className="flex w-1/4 items-center gap-2">
-                        {index > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="shrink-0">
-                                <Badge variant="neutral" className="text-xs">
-                                  and
-                                </Badge>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs text-wrap">
-                              All conditions must be true for this policy to apply
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        <Controller
-                          control={control}
-                          name={
-                            `permissions.${subject}.${position}.conditions.${index}.lhs` as const
-                          }
-                          render={({ field }) => (
+                  <Controller
+                    control={control}
+                    name={`permissions.${subject}.${position}.conditions.${index}.lhs` as const}
+                    render={({ field: lhsField, fieldState: { error: lhsError } }) => (
+                      <div className="bg-card first:rounded-t-md last:rounded-b-md">
+                        <div className="flex items-center gap-2">
+                          <div className="flex w-1/4 items-center gap-2">
+                            {index > 0 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="shrink-0">
+                                    <Badge variant="neutral" className="text-xs">
+                                      and
+                                    </Badge>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs text-wrap">
+                                  All conditions must be true for this policy to apply
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                             <Select
-                              value={field.value}
+                              value={lhsField.value}
                               onValueChange={(newConditionType) => {
                                 setValue(
                                   `permissions.${subject}.${position}.conditions.${index}.operator` as const,
                                   getDefaultOperator(newConditionType) as never
                                 );
-                                field.onChange(newConditionType);
+                                lhsField.onChange(newConditionType);
                               }}
                             >
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger
+                                className="w-full"
+                                data-invalid={Boolean(lhsError?.message)}
+                              >
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent position="popper">
@@ -306,67 +307,72 @@ export const ConditionsFields = ({
                                 })}
                               </SelectContent>
                             </Select>
-                          )}
-                        />
-                      </div>
-                      <div className="flex w-44 items-center space-x-2">
-                        <Controller
-                          control={control}
-                          name={
-                            `permissions.${subject}.${position}.conditions.${index}.operator` as const
-                          }
-                          render={({ field }) => (
-                            <Select
-                              key={`${condition.lhs}-operator`}
-                              value={field.value}
-                              onValueChange={(e) => field.onChange(e)}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent position="popper">
-                                {renderOperatorSelectItems(condition.lhs)}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                        <div>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <InfoIcon className="size-4 text-muted" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs text-wrap">
-                              {getConditionOperatorHelperInfo(
-                                condition?.operator as PermissionConditionOperators
+                          </div>
+                          <div className="flex w-44 items-center space-x-2">
+                            <Controller
+                              control={control}
+                              name={
+                                `permissions.${subject}.${position}.conditions.${index}.operator` as const
+                              }
+                              render={({ field }) => (
+                                <Select
+                                  key={`${condition.lhs}-operator`}
+                                  value={field.value}
+                                  onValueChange={(e) => field.onChange(e)}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent position="popper">
+                                    {renderOperatorSelectItems(condition.lhs)}
+                                  </SelectContent>
+                                </Select>
                               )}
-                            </TooltipContent>
-                          </Tooltip>
+                            />
+                            <div>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <InfoIcon className="size-4 text-muted" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-wrap">
+                                  {getConditionOperatorHelperInfo(
+                                    condition?.operator as PermissionConditionOperators
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </div>
+                          <div className="grow">
+                            <UnstableInput
+                              {...rhsField}
+                              data-invalid={Boolean(rhsError?.message)}
+                            />
+                          </div>
+                          <UnstableIconButton
+                            aria-label="remove"
+                            variant="outline"
+                            className="p-2.5"
+                            isDisabled={isDisabled}
+                            onClick={() => items.remove(index)}
+                          >
+                            <TrashIcon className="size-4" />
+                          </UnstableIconButton>
                         </div>
-                      </div>
-                      <div className="grow">
-                        <UnstableInput {...rhsField} data-invalid={Boolean(rhsError?.message)} />
-                      </div>
-                      <UnstableIconButton
-                        aria-label="remove"
-                        variant="outline"
-                        className="p-2.5"
-                        isDisabled={isDisabled}
-                        onClick={() => items.remove(index)}
-                      >
-                        <TrashIcon className="size-4" />
-                      </UnstableIconButton>
-                    </div>
-                    {rhsError?.message && (
-                      <div className="flex items-center gap-2 pb-1">
-                        <div className="w-1/4" />
-                        <div className="w-44" />
-                        <div className="grow">
-                          <FieldError>{rhsError.message}</FieldError>
-                        </div>
-                        <div className="w-10" />
+                        {(lhsError?.message || rhsError?.message) && (
+                          <div className="flex items-start gap-2 pb-1">
+                            <div className="w-1/4">
+                              {lhsError?.message && <FieldError>{lhsError.message}</FieldError>}
+                            </div>
+                            <div className="w-44" />
+                            <div className="grow">
+                              {rhsError?.message && <FieldError>{rhsError.message}</FieldError>}
+                            </div>
+                            <div className="w-10" />
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                  />
                 )}
               />
             );

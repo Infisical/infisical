@@ -7,22 +7,15 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 
 import { ConditionsFields } from "./ConditionsFields";
-import { ACTION_ALLOWED_CONDITIONS, TFormSchema } from "./ProjectRoleModifySection.utils";
+import {
+  ACTION_ALLOWED_CONDITIONS,
+  getActionLabelsForSubject,
+  TFormSchema
+} from "./ProjectRoleModifySection.utils";
 
 type Props = {
   position?: number;
   isDisabled?: boolean;
-};
-
-const SECRET_ACTION_LABELS: Record<string, string> = {
-  [ProjectPermissionSecretActions.DescribeAndReadValue]: "Read",
-  [ProjectPermissionSecretActions.DescribeSecret]: "Describe Secret",
-  [ProjectPermissionSecretActions.ReadValue]: "Read Value",
-  [ProjectPermissionSecretActions.Create]: "Create",
-  [ProjectPermissionSecretActions.Edit]: "Modify",
-  [ProjectPermissionSecretActions.Delete]: "Remove",
-  [ProjectPermissionSecretActions.ImportSecret]: "Import Secret (Test)",
-  [ProjectPermissionSecretActions.DuplicateSecret]: "Duplicate Secret (Test)"
 };
 
 export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) => {
@@ -46,6 +39,11 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
       .map(([key]) => key);
   }, [permissionRule]);
 
+  const actionLabelsMap = useMemo(
+    () => getActionLabelsForSubject(ProjectPermissionSub.Secrets),
+    []
+  );
+
   return (
     <ConditionsFields
       isDisabled={isDisabled}
@@ -59,7 +57,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
       ]}
       selectedActions={selectedActions}
       actionConditionsMap={ACTION_ALLOWED_CONDITIONS[ProjectPermissionSub.Secrets]}
-      actionLabelsMap={SECRET_ACTION_LABELS}
+      actionLabelsMap={actionLabelsMap}
     />
   );
 };

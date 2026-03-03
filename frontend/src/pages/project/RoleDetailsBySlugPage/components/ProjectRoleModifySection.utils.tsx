@@ -389,6 +389,26 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
   }
 };
 
+// Utility function to get action labels from PROJECT_PERMISSION_OBJECT
+// This is called lazily at validation time, not at module load time
+export const getActionLabelsForSubject = (
+  subject: ProjectPermissionSub
+): Record<string, string> => {
+  /* eslint-disable @typescript-eslint/no-use-before-define */
+  const subjectConfig =
+    PROJECT_PERMISSION_OBJECT[subject as keyof typeof PROJECT_PERMISSION_OBJECT];
+  /* eslint-enable @typescript-eslint/no-use-before-define */
+  if (!subjectConfig?.actions) return {};
+
+  return subjectConfig.actions.reduce(
+    (acc, action) => {
+      acc[action.value as string] = action.label;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
+};
+
 // Factory function to create policy schemas with condition validation for any subject
 function createPolicySchemaWithConditions<TSchema extends z.AnyZodObject>(
   baseSchema: TSchema,
@@ -402,31 +422,40 @@ function createPolicySchemaWithConditions<TSchema extends z.AnyZodObject>(
       inverted: z.boolean().optional(),
       conditions: ConditionSchema
     })
-    .refine(
-      (data) => {
-        if (!subjectConditions) return true;
-        const conditions = data.conditions as Array<{ lhs: string }> | undefined;
-        if (!conditions || conditions.length === 0) return true;
+    .superRefine((data, ctx) => {
+      if (!subjectConditions) return;
+      const conditions = data.conditions as Array<{ lhs: string }> | undefined;
+      if (!conditions || conditions.length === 0) return;
 
-        const selectedActions = Object.entries(data)
-          .filter(([key, value]) => value === true && Object.values(actionsEnum).includes(key))
-          .map(([key]) => key);
+      const selectedActions = Object.entries(data)
+        .filter(([key, value]) => value === true && Object.values(actionsEnum).includes(key))
+        .map(([key]) => key);
 
-        if (selectedActions.length === 0) return true;
+      if (selectedActions.length === 0) return;
 
-        const conditionKeys = conditions.map((c) => c.lhs);
+      const actionLabels = getActionLabelsForSubject(subject);
 
-        return selectedActions.every((action) => {
+      conditions.forEach((condition, index) => {
+        const conditionKey = condition.lhs;
+
+        const disallowingActions = selectedActions.filter((action) => {
           const allowedConditions = subjectConditions[action];
-          if (!allowedConditions) return true;
-          return conditionKeys.every((condKey) => allowedConditions.includes(condKey));
+          if (!allowedConditions) return false;
+          return !allowedConditions.includes(conditionKey);
         });
-      },
-      {
-        message: "Some conditions are not available for the selected actions",
-        path: ["conditions"]
-      }
-    );
+
+        if (disallowingActions.length > 0) {
+          const actionNames = disallowingActions
+            .map((action) => actionLabels[action] || action)
+            .join(", ");
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `This condition is not available for the actions: ${actionNames}.`,
+            path: ["conditions", index, "lhs"]
+          });
+        }
+      });
+    });
 }
 
 // Create schema with condition validation for Secrets
