@@ -10,6 +10,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
+  UnstableButtonGroup,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -143,16 +144,17 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
           {metadata.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {metadata.map((item) => (
-                <Badge
+                <UnstableButtonGroup
+                  className="max-w-full min-w-0"
                   key={`${item.key}=${item.value}`}
-                  variant="neutral"
-                  className="max-w-full min-w-0 shrink"
                 >
-                  <span className="min-w-0 truncate">
-                    {item.key}
-                    {item.value ? `: ${item.value}` : ""}
-                  </span>
-                </Badge>
+                  <Badge isTruncatable className="max-w-[50%] shrink-0">
+                    <span>{item.key}</span>
+                  </Badge>
+                  <Badge variant="outline" isTruncatable>
+                    <span>{item.value}</span>
+                  </Badge>
+                </UnstableButtonGroup>
               ))}
             </div>
           ) : (
