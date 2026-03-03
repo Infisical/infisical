@@ -434,7 +434,7 @@ export const SelectOrganizationSection = () => {
                         type="button"
                         onClick={() => setSelectedRootOrg(org)}
                         aria-label={`View sub-organizations of ${org.name}`}
-                        className="pointer-events-auto flex w-fit items-center gap-1 rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-500 hover:text-gray-200"
+                        className="pointer-events-auto flex w-fit cursor-pointer items-center gap-1 rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-500 hover:text-gray-200"
                       >
                         {org.subOrganizations.length} sub-organization
                         {org.subOrganizations.length !== 1 ? "s" : ""}
