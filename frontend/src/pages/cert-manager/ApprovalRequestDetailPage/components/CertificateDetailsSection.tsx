@@ -310,12 +310,12 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         </div>
       )}
 
-      {metadata.length > 0 && (
-        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
-            <FontAwesomeIcon icon={faTags} className="text-sm text-mineshaft-400" />
-            Metadata
-          </h3>
+      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
+          <FontAwesomeIcon icon={faTags} className="text-sm text-mineshaft-400" />
+          Metadata
+        </h3>
+        {metadata.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {metadata.map((item: { key: string; value?: string }) =>
               item.value ? (
@@ -337,8 +337,10 @@ export const CertificateDetailsSection = ({ request }: Props) => {
               )
             )}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-mineshaft-400">No metadata attached to this request.</p>
+        )}
+      </div>
     </div>
   );
 };
