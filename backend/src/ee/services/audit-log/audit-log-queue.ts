@@ -72,14 +72,14 @@ export const auditLogQueueServiceFactory = async ({
 
       // Validate plan-level retention: must be a finite number and not zero (zero disables audit logs)
       const planRetention = Number(plan.auditLogsRetentionDays);
-      if (!Number.isFinite(planRetention) || planRetention === 0) {
-        logger.warn(
+      if (!Number.isFinite(planRetention) || planRetention <= 0) {
+        logger.error(
           `Invalid or disabled audit logs retention for orgId=${orgId}, skipping insert. plan=${String(plan.auditLogsRetentionDays)}`
         );
         return; // skip invalid TTL
       }
 
-      // Validate plan-level retention: must be a finite number and not zero (zero disables audit logs)
+      // Prefer project-level retention if valid and more restrictive than plan retention
       const projectRetention = project?.auditLogsRetentionDays;
       const ttlInDays =
         typeof projectRetention === "number" &&
