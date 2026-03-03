@@ -12,7 +12,7 @@ Each permission consists of:
 - **Subject**: The resource the permission applies to (e.g., secrets, members, settings)
 - **Action**: The operation that can be performed (e.g., read, create, edit, delete)
 
-Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, and `secret-rotation`, support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, or app connection ID) that must be met for the permission to apply.
+Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `identity`, `app-connections`, `mcp-endpoints`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
 
 ## Available Project Permissions
 
@@ -51,13 +51,15 @@ Below is a comprehensive list of all available project-level subjects and their 
 
 #### Subject: `identity`
 
-| Action             | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| `read`             | View project identities                        |
-| `create`           | Add new identities to project                  |
-| `edit`             | Modify project identities                      |
-| `delete`           | Remove identities from project                 |
-| `grant-privileges` | Change permission levels of project identities |
+Supports conditions and permission inversion.
+
+| Action             | Description                                    | Condition keys |
+| ------------------ | ---------------------------------------------- | ----- |
+| `read`             | View project identities                        | `identityId` |
+| `create`           | Add new identities to project                  | `identityId` |
+| `edit`             | Modify project identities                      | `identityId` |
+| `delete`           | Remove identities from project                 | `identityId` |
+| `grant-privileges` | Change permission levels of project identities | `identityId` |
 
 #### Subject: `settings`
 
