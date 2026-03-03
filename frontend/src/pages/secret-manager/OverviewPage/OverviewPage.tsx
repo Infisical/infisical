@@ -12,6 +12,8 @@ import {
   CopyIcon,
   DownloadIcon,
   GitCommitIcon,
+  InfoIcon,
+  LockIcon,
   LogInIcon,
   SettingsIcon,
   TrashIcon
@@ -44,6 +46,8 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableAlert,
+  UnstableAlertTitle,
   UnstableCard,
   UnstableCardContent,
   UnstableCardHeader,
@@ -96,6 +100,7 @@ import {
   useDeleteSecretV3,
   useGetImportedSecretsAllEnvs,
   useGetOrCreateFolder,
+  useGetSecretApprovalPolicyOfABoard,
   useGetWsTags,
   useUpdateSecretImport,
   useUpdateSecretV3
@@ -122,6 +127,7 @@ import {
   TApiErrors,
   TSecretFolder
 } from "@app/hooks/api/types";
+import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
@@ -129,6 +135,7 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
+import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
@@ -368,6 +375,44 @@ export const OverviewPage = () => {
     isPaused: !singleVisibleEnv || !canReadCommits
   });
 
+  const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
+    projectId,
+    environment: singleVisibleEnv?.slug ?? "",
+    secretPath,
+    options: { enabled: Boolean(singleVisibleEnv) }
+  });
+  const isProtectedBranch = Boolean(boardPolicy);
+
+  const isSingleEnvView = visibleEnvs.length === 1;
+  const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
+  const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
+    secretPath,
+    environment: singleEnvSlug
+  });
+
+  const secretSubject = subject(ProjectPermissionSub.Secrets, {
+    environment: singleEnvSlug,
+    secretPath,
+    secretName: "*",
+    secretTags: ["*"]
+  });
+
+  const canReadSecrets = singleVisibleEnv
+    ? permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject)
+    : true;
+
+  const canEditSecrets = singleVisibleEnv
+    ? permission.can(ProjectPermissionSecretActions.Edit, secretSubject)
+    : true;
+
+  const canDeleteSecrets = singleVisibleEnv
+    ? permission.can(ProjectPermissionSecretActions.Delete, secretSubject)
+    : true;
+
+  const canCreateSecrets = singleVisibleEnv
+    ? permission.can(ProjectPermissionSecretActions.Create, secretSubject)
+    : true;
+
   const singleEnvChangesCount = subscription.pitRecovery ? singleEnvCommitCount : 0;
   const isSingleEnvChangesCountLoading = subscription.pitRecovery
     ? isSingleEnvCommitCountPending && isSingleEnvCommitCountFetching
@@ -505,8 +550,6 @@ export const OverviewPage = () => {
   const { mutateAsync: deleteSecretImport } = useDeleteSecretImport();
   const { mutate: updateSecretImport } = useUpdateSecretImport();
 
-  const isSingleEnvView = visibleEnvs.length === 1;
-  const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
   const singleEnvImports = useMemo(
     () => (isSingleEnvView ? getSecretImportsForEnv(singleEnvSlug) : []),
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
@@ -544,7 +587,8 @@ export const OverviewPage = () => {
     "deleteDynamicSecret",
     "snapshots",
     "deleteSecretImport",
-    "addSecretImport"
+    "addSecretImport",
+    "requestAccess"
   ] as const);
 
   const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
@@ -1368,6 +1412,60 @@ export const OverviewPage = () => {
             </div>
           </UnstableCardHeader>
           <UnstableCardContent>
+            {isSingleEnvView &&
+              hasPathPolicies &&
+              // eslint-disable-next-line no-nested-ternary
+              (!canReadSecrets ? (
+                <UnstableAlert variant="info" className="mb-6 py-1.5">
+                  <InfoIcon className="mt-1" />
+                  <UnstableAlertTitle className="flex items-center">
+                    <span>You do not have permission to read secrets in this folder</span>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="ml-auto"
+                      onClick={() =>
+                        handlePopUpOpen("requestAccess", [ProjectPermissionActions.Read])
+                      }
+                    >
+                      Request Access
+                    </Button>
+                  </UnstableAlertTitle>
+                </UnstableAlert>
+              ) : !canCreateSecrets || !canEditSecrets || !canDeleteSecrets ? (
+                <UnstableAlert variant="info" className="mb-6 py-1.5">
+                  <InfoIcon className="mt-1" />
+                  <UnstableAlertTitle className="flex items-center">
+                    <span>
+                      You do not have permission to{" "}
+                      {(() => {
+                        const missing = [
+                          ...(!canCreateSecrets ? ["create"] : []),
+                          ...(!canEditSecrets ? ["edit"] : []),
+                          ...(!canDeleteSecrets ? ["delete"] : [])
+                        ];
+                        if (missing.length <= 2) return missing.join(" or ");
+                        return `${missing.slice(0, -1).join(", ")}, or ${missing[missing.length - 1]}`;
+                      })()}{" "}
+                      secrets in this folder
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="ml-auto"
+                      onClick={() =>
+                        handlePopUpOpen("requestAccess", [
+                          ...(!canCreateSecrets ? [ProjectPermissionActions.Create] : []),
+                          ...(!canEditSecrets ? [ProjectPermissionActions.Edit] : []),
+                          ...(!canDeleteSecrets ? [ProjectPermissionActions.Delete] : [])
+                        ])
+                      }
+                    >
+                      Request Access
+                    </Button>
+                  </UnstableAlertTitle>
+                </UnstableAlert>
+              ) : null)}
             {
               // eslint-disable-next-line no-nested-ternary
               isTableEmpty ? (
@@ -1522,31 +1620,47 @@ export const OverviewPage = () => {
                             <UnstableTableHead className="w-full">
                               <div className="flex w-full items-center justify-between">
                                 Value
-                                <Badge
-                                  asChild
-                                  className="float-right cursor-pointer"
-                                  variant="neutral"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (singleVisibleEnv) {
-                                        handleViewCommitHistory(
-                                          singleVisibleEnv.slug,
-                                          singleEnvFolderId
-                                        );
-                                      }
-                                    }}
+                                <div className="flex items-center gap-2">
+                                  {isProtectedBranch && (
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <Badge variant="info">
+                                          <LockIcon />
+                                          Protected
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        Protected
+                                        {boardPolicy?.name ? ` by policy ${boardPolicy.name}` : ""}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  <Badge
+                                    asChild
+                                    className="float-right cursor-pointer"
+                                    variant="neutral"
                                   >
-                                    <GitCommitIcon />
-                                    {/* eslint-disable-next-line no-nested-ternary */}
-                                    {subscription.pitRecovery
-                                      ? isSingleEnvChangesCountLoading
-                                        ? "Loading..."
-                                        : `${singleEnvChangesCount} Commit${singleEnvChangesCount === 1 ? "" : "s"}`
-                                      : "Commit History"}
-                                  </button>
-                                </Badge>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (singleVisibleEnv) {
+                                          handleViewCommitHistory(
+                                            singleVisibleEnv.slug,
+                                            singleEnvFolderId
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <GitCommitIcon />
+                                      {/* eslint-disable-next-line no-nested-ternary */}
+                                      {subscription.pitRecovery
+                                        ? isSingleEnvChangesCountLoading
+                                          ? "Loading..."
+                                          : `${singleEnvChangesCount} Commit${singleEnvChangesCount === 1 ? "" : "s"}`
+                                        : "Commit History"}
+                                    </button>
+                                  </Badge>
+                                </div>
                               </div>
                             </UnstableTableHead>
                           )}
@@ -2017,6 +2131,17 @@ export const OverviewPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {!!pathPolicies && pathPolicies.length > 0 && (
+        <RequestAccessModal
+          policies={pathPolicies}
+          isOpen={popUp.requestAccess.isOpen}
+          onOpenChange={() => {
+            handlePopUpClose("requestAccess");
+          }}
+          selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
+          secretPath={pathPolicies[0].secretPath}
+        />
+      )}
     </div>
   );
 };
