@@ -44,6 +44,7 @@ export const InitialStep = ({
   const [loginError, setLoginError] = useState(false);
   const { config } = useServerConfig();
   const queryParams = new URLSearchParams(window.location.search);
+  const queryOrgSlug = queryParams.get("organization_slug");
   const [captchaToken, setCaptchaToken] = useState("");
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -77,16 +78,18 @@ export const InitialStep = ({
   }, [serverDetails?.samlDefaultOrgSlug]);
 
   const handleSaml = () => {
-    if (config.defaultAuthOrgSlug) {
-      redirectToSaml(config.defaultAuthOrgSlug);
+    const effectiveOrgSlug = queryOrgSlug || config.defaultAuthOrgSlug;
+    if (effectiveOrgSlug) {
+      redirectToSaml(effectiveOrgSlug);
     } else {
       setStep(2);
     }
   };
 
   const handleOidc = () => {
-    if (config.defaultAuthOrgSlug) {
-      redirectToOidc(config.defaultAuthOrgSlug);
+    const effectiveOrgSlug = queryOrgSlug || config.defaultAuthOrgSlug;
+    if (effectiveOrgSlug) {
+      redirectToOidc(effectiveOrgSlug);
     } else {
       setStep(3);
     }
@@ -94,6 +97,18 @@ export const InitialStep = ({
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
+
+  useEffect(() => {
+    const method = queryParams.get("method") ?? "";
+
+    if (method === "saml" && shouldDisplayLoginMethod(LoginMethod.SAML)) {
+      handleSaml();
+      return;
+    }
+    if (method === "oidc" && shouldDisplayLoginMethod(LoginMethod.OIDC)) {
+      handleOidc();
+    }
+  }, []);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
