@@ -1,6 +1,7 @@
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { InfoIcon, PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
   Badge,
@@ -30,21 +31,69 @@ import {
 
 import {
   getConditionOperatorHelperInfo,
+  getDefaultOperatorForCondition,
   renderOperatorSelectItems
 } from "./PermissionConditionHelpers";
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
+
+type ActionConditionsMap = Partial<Record<string, string[]>>;
+
+type ConditionsFieldsProps = {
+  isDisabled: boolean | undefined;
+  subject: ConditionalProjectPermissionSubject;
+  position: number;
+  selectOptions: [{ value: string; label: string }, ...{ value: string; label: string }[]];
+  selectedActions?: string[];
+  actionConditionsMap?: ActionConditionsMap;
+};
+
+const computeAllowedConditions = (
+  selectedActions: string[] | undefined,
+  actionConditionsMap: ActionConditionsMap | undefined,
+  allConditions: string[]
+): string[] => {
+  if (!selectedActions || selectedActions.length === 0 || !actionConditionsMap) {
+    return allConditions;
+  }
+
+  const actionsWithRestrictions = selectedActions.filter(
+    (action) => actionConditionsMap[action] !== undefined
+  );
+
+  if (actionsWithRestrictions.length === 0) {
+    return allConditions;
+  }
+
+  // Return intersection of all allowed conditions for actions with restrictions
+  return actionsWithRestrictions.reduce<string[]>((acc, action) => {
+    const allowed = actionConditionsMap[action];
+    if (!allowed) return acc;
+    if (acc.length === 0) return allowed;
+    return acc.filter((cond) => allowed.includes(cond));
+  }, []);
+};
+
+const getDisallowingActions = (
+  conditionValue: string,
+  selectedActions: string[] | undefined,
+  actionConditionsMap: ActionConditionsMap | undefined
+): string[] => {
+  if (!selectedActions || !actionConditionsMap) return [];
+
+  return selectedActions.filter((action) => {
+    const allowed = actionConditionsMap[action];
+    return allowed !== undefined && !allowed.includes(conditionValue);
+  });
+};
 
 export const ConditionsFields = ({
   isDisabled,
   subject,
   position,
-  selectOptions
-}: {
-  isDisabled: boolean | undefined;
-  subject: ConditionalProjectPermissionSubject;
-  position: number;
-  selectOptions: [{ value: string; label: string }, ...{ value: string; label: string }[]];
-}) => {
+  selectOptions,
+  selectedActions,
+  actionConditionsMap
+}: ConditionsFieldsProps) => {
   const {
     control,
     watch,
@@ -55,6 +104,37 @@ export const ConditionsFields = ({
     control,
     name: `permissions.${subject}.${position}.conditions` as const
   });
+
+  const allConditionValues = useMemo(() => selectOptions.map((opt) => opt.value), [selectOptions]);
+
+  const allowedConditions = useMemo(
+    () => computeAllowedConditions(selectedActions, actionConditionsMap, allConditionValues),
+    [selectedActions, actionConditionsMap, allConditionValues]
+  );
+
+  const usedConditionTypes = useMemo(() => {
+    return items.fields.map((_, i) => {
+      const lhs = watch(`permissions.${subject}.${position}.conditions.${i}.lhs` as const);
+      return lhs;
+    });
+  }, [items.fields, watch, subject, position]);
+
+  const availableConditionsToAdd = useMemo(() => {
+    return selectOptions.filter(
+      ({ value }) => allowedConditions.includes(value) && !usedConditionTypes.includes(value)
+    );
+  }, [selectOptions, allowedConditions, usedConditionTypes]);
+
+  const canAddCondition = availableConditionsToAdd.length > 0;
+
+  const getNewConditionDefaults = () => {
+    const conditionType = availableConditionsToAdd[0]?.value || selectOptions[0].value;
+    return {
+      lhs: conditionType,
+      operator: getDefaultOperatorForCondition(conditionType),
+      rhs: ""
+    };
+  };
 
   if (isDisabled && items.fields.length === 0) {
     return null;
@@ -84,23 +164,26 @@ export const ConditionsFields = ({
             </TooltipContent>
           </Tooltip>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          className="mt-2"
-          isDisabled={isDisabled}
-          onClick={() =>
-            items.append({
-              lhs: selectOptions[0].value,
-              operator: PermissionConditionOperators.$EQ,
-              rhs: ""
-            })
-          }
-        >
-          <PlusIcon className="size-4" />
-          Add Condition
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="mt-2"
+                isDisabled={isDisabled || !canAddCondition}
+                onClick={() => items.append(getNewConditionDefaults())}
+              >
+                <PlusIcon className="size-4" />
+                Add Condition
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!canAddCondition && !isDisabled && (
+            <TooltipContent side="top">All available conditions have been added</TooltipContent>
+          )}
+        </Tooltip>
       </div>
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.length === 0 ? (
@@ -120,6 +203,11 @@ export const ConditionsFields = ({
                 rhs: string;
                 operator: string;
               }) || {};
+
+            const availableOptionsForRow = selectOptions.filter(
+              ({ value }) => !usedConditionTypes.includes(value) || value === condition.lhs
+            );
+
             return (
               <Fragment key={el.id}>
                 <div className="flex items-center gap-2 bg-card first:rounded-t-md last:rounded-b-md">
@@ -158,11 +246,42 @@ export const ConditionsFields = ({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent position="popper">
-                                {selectOptions.map(({ value, label }) => (
-                                  <SelectItem key={value} value={value}>
-                                    {label}
-                                  </SelectItem>
-                                ))}
+                                {availableOptionsForRow.map(({ value, label }) => {
+                                  const isAllowed = allowedConditions.includes(value);
+                                  const disallowingActions = getDisallowingActions(
+                                    value,
+                                    selectedActions,
+                                    actionConditionsMap
+                                  );
+
+                                  if (!isAllowed) {
+                                    return (
+                                      <Tooltip key={value}>
+                                        <TooltipTrigger asChild>
+                                          <div>
+                                            <SelectItem
+                                              value={value}
+                                              disabled
+                                              className={twMerge("cursor-not-allowed opacity-50")}
+                                            >
+                                              {label}
+                                            </SelectItem>
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" className="max-w-xs">
+                                          This condition is not available for the actions:{" "}
+                                          {disallowingActions.join(", ")}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  }
+
+                                  return (
+                                    <SelectItem key={value} value={value}>
+                                      {label}
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectContent>
                             </Select>
                           </FieldContent>

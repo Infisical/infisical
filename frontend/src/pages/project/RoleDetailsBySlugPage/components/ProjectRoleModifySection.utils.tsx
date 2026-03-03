@@ -80,7 +80,10 @@ const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Create]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional()
+  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional(),
+  // Test actions for dynamic conditions feature - to be removed after testing
+  [ProjectPermissionSecretActions.ImportSecret]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.DuplicateSecret]: z.boolean().optional()
 });
 
 const ApprovalPolicyActionSchema = z.object({
@@ -366,6 +369,49 @@ const ConditionSchema = z
     }
   );
 
+// Mapping of secret actions to their allowed condition keys
+// undefined means all conditions are allowed (backwards compatible)
+export const SECRET_ACTION_ALLOWED_CONDITIONS: Partial<
+  Record<ProjectPermissionSecretActions, string[]>
+> = {
+  // Test actions with restricted conditions - to be removed after testing
+  [ProjectPermissionSecretActions.ImportSecret]: ["environment"],
+  [ProjectPermissionSecretActions.DuplicateSecret]: ["environment", "secretPath", "secretName"]
+};
+
+const SecretPolicyActionWithConditionsSchema = SecretPolicyActionSchema.extend({
+  inverted: z.boolean().optional(),
+  conditions: ConditionSchema
+}).refine(
+  (data) => {
+    if (!data.conditions || data.conditions.length === 0) return true;
+
+    const selectedActions = Object.entries(data)
+      .filter(
+        ([key, value]) =>
+          value === true &&
+          Object.values(ProjectPermissionSecretActions).includes(
+            key as ProjectPermissionSecretActions
+          )
+      )
+      .map(([key]) => key as ProjectPermissionSecretActions);
+
+    if (selectedActions.length === 0) return true;
+
+    const conditionKeys = data.conditions.map((c) => c.lhs);
+
+    return selectedActions.every((action) => {
+      const allowedConditions = SECRET_ACTION_ALLOWED_CONDITIONS[action];
+      if (!allowedConditions) return true;
+      return conditionKeys.every((condKey) => allowedConditions.includes(condKey));
+    });
+  },
+  {
+    message: "Some conditions are not available for the selected actions",
+    path: ["conditions"]
+  }
+);
+
 export const projectRoleFormSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().nullish(),
@@ -376,12 +422,7 @@ export const projectRoleFormSchema = z.object({
     .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
-      [ProjectPermissionSub.Secrets]: SecretPolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
+      [ProjectPermissionSub.Secrets]: SecretPolicyActionWithConditionsSchema.array().default([]),
       [ProjectPermissionSub.SecretFolders]: GeneralPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -1618,6 +1659,7 @@ export type TProjectPermissionObject = {
         NonNullable<NonNullable<TFormSchema["permissions"]>[K]>[number],
         "conditions" | "inverted"
       >;
+      allowedConditions?: string[];
     }[];
   };
 };
@@ -1658,6 +1700,19 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create",
         description: "Create new secrets in the project",
         value: ProjectPermissionSecretActions.Create
+      },
+      // Test actions for dynamic conditions feature - to be removed after testing
+      {
+        label: "Import Secret (Test)",
+        description: "Test action that only allows environment condition",
+        value: ProjectPermissionSecretActions.ImportSecret,
+        allowedConditions: ["environment"]
+      },
+      {
+        label: "Duplicate Secret (Test)",
+        description: "Test action that allows environment, secretPath, and secretName conditions",
+        value: ProjectPermissionSecretActions.DuplicateSecret,
+        allowedConditions: ["environment", "secretPath", "secretName"]
       }
     ]
   },

@@ -24,7 +24,10 @@ export enum ProjectPermissionSecretActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Subscribe = "subscribe"
+  Subscribe = "subscribe",
+  // Test actions for dynamic conditions feature - to be removed after testing
+  ImportSecret = "importSecret",
+  DuplicateSecret = "duplicateSecret"
 }
 
 export enum ProjectPermissionDynamicSecretActions {

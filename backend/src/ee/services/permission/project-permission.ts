@@ -47,8 +47,19 @@ export enum ProjectPermissionSecretActions {
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
-  Delete = "delete"
+  Delete = "delete",
+  // Test actions for dynamic conditions feature - to be removed after testing
+  ImportSecret = "importSecret",
+  DuplicateSecret = "duplicateSecret"
 }
+
+// Mapping of secret actions to their allowed condition keys
+// Actions without restrictions (undefined or not in map) allow all conditions
+export const SecretActionAllowedConditions: Partial<Record<ProjectPermissionSecretActions, string[]>> = {
+  // Test actions with restricted conditions - to be removed after testing
+  [ProjectPermissionSecretActions.ImportSecret]: ["environment"],
+  [ProjectPermissionSecretActions.DuplicateSecret]: ["environment", "secretPath", "secretName"]
+};
 
 export enum ProjectPermissionCmekActions {
   Read = "read",

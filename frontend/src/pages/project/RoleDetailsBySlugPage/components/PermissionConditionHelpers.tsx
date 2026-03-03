@@ -17,6 +17,15 @@ export const getConditionOperatorHelperInfo = (type: PermissionConditionOperator
   }
 };
 
+export const getDefaultOperatorForCondition = (type: string): PermissionConditionOperators => {
+  switch (type) {
+    case "secretTags":
+      return PermissionConditionOperators.$IN;
+    default:
+      return PermissionConditionOperators.$EQ;
+  }
+};
+
 // scott: we may need to pass the subject in the future to further refine returned items
 export const renderOperatorSelectItems = (type: string) => {
   switch (type) {
