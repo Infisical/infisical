@@ -228,6 +228,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                     <FormLabel label="Duration" />
                     <Tooltip content={toolTipText}>
                       <Button
+                        type="button"
                         variant="outline"
                         disabled={isMemberEditDisabled}
                         className={twMerge(
@@ -335,7 +336,22 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                   className="mr-4 text-muted"
                   variant="ghost"
                   disabled={isSubmitting}
-                  onClick={() => reset()}
+                  onClick={() => {
+                    if (!privilegeDetails) return;
+                    reset({
+                      ...privilegeDetails,
+                      permissions: rolePermission2Form(privilegeDetails.permissions),
+                      temporaryAccess: privilegeDetails.isTemporary
+                        ? {
+                            isTemporary: true,
+                            temporaryRange: privilegeDetails.temporaryRange || "",
+                            temporaryAccessEndTime: privilegeDetails.temporaryAccessEndTime || "",
+                            temporaryAccessStartTime:
+                              privilegeDetails.temporaryAccessStartTime || ""
+                          }
+                        : { isTemporary: false }
+                    });
+                  }}
                 >
                   Discard
                 </Button>

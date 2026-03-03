@@ -127,7 +127,13 @@ export const ProjectTemplateEditRoleForm = ({
                   className="mr-4 text-muted"
                   variant="ghost"
                   disabled={isSubmitting}
-                  onClick={() => reset()}
+                  onClick={() => {
+                    if (role) {
+                      reset({ ...role, permissions: rolePermission2Form(role.permissions) });
+                    } else {
+                      onGoBack();
+                    }
+                  }}
                 >
                   Discard
                 </Button>

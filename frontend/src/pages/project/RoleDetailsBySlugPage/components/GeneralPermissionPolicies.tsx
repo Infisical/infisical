@@ -75,6 +75,10 @@ const MultiValueRemove = ({ selectProps, ...props }: MultiValueRemoveProps) => {
 const MultiValueWithTooltip = <T extends ActionOption>(props: MultiValueProps<T>) => {
   const { data } = props;
 
+  if (!data.description) {
+    return <components.MultiValue {...props} />;
+  }
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -82,7 +86,7 @@ const MultiValueWithTooltip = <T extends ActionOption>(props: MultiValueProps<T>
           <components.MultiValue {...props} />
         </div>
       </TooltipTrigger>
-      {data.description && <TooltipContent>{data.description}</TooltipContent>}
+      <TooltipContent>{data.description}</TooltipContent>
     </Tooltip>
   );
 };

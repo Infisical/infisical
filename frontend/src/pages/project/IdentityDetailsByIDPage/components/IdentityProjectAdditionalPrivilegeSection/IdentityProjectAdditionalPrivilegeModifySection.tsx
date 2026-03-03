@@ -220,6 +220,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                     <FormLabel label="Duration" />
                     <Tooltip content={toolTipText}>
                       <Button
+                        type="button"
                         variant="outline_bg"
                         leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
@@ -327,7 +328,22 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                   variant="link"
                   isDisabled={isSubmitting}
                   isLoading={isSubmitting}
-                  onClick={() => reset()}
+                  onClick={() => {
+                    if (!privilegeDetails) return;
+                    reset({
+                      ...privilegeDetails,
+                      permissions: rolePermission2Form(privilegeDetails.permissions),
+                      temporaryAccess: privilegeDetails.isTemporary
+                        ? {
+                            isTemporary: true,
+                            temporaryRange: privilegeDetails.temporaryRange || "",
+                            temporaryAccessEndTime: privilegeDetails.temporaryAccessEndTime || "",
+                            temporaryAccessStartTime:
+                              privilegeDetails.temporaryAccessStartTime || ""
+                          }
+                        : { isTemporary: false }
+                    });
+                  }}
                 >
                   Discard Changes
                 </Button>

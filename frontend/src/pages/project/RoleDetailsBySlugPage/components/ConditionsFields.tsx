@@ -65,12 +65,15 @@ const computeAllowedConditions = (
   }
 
   // Return intersection of all allowed conditions for actions with restrictions
-  return actionsWithRestrictions.reduce<string[]>((acc, action) => {
+  // Using null as sentinel to distinguish "not yet initialized" from "empty intersection"
+  const result = actionsWithRestrictions.reduce<string[] | null>((acc, action) => {
     const allowed = actionConditionsMap[action];
     if (!allowed) return acc;
-    if (acc.length === 0) return allowed;
+    if (acc === null) return allowed;
     return acc.filter((cond) => allowed.includes(cond));
-  }, []);
+  }, null);
+
+  return result ?? allConditions;
 };
 
 const getDisallowingActions = (
