@@ -33,6 +33,26 @@ The details page displays:
 - **Extensions**: Basic constraints (CA flag and path length), Key Usage flags, and Extended Key Usage purposes.
 - **Cryptographic Info**: Key algorithm, signature algorithm, and certificate fingerprints (SHA-256 and SHA-1).
 
+### Certificate Metadata
+
+Certificates and certificate requests support custom key-value metadata that can be used to organize and track additional information.
+
+- **At issuance**: You can attach metadata key-value pairs when issuing a certificate or creating a certificate request through the issuance modal.
+
+  ![pki certificate issue metadata](/images/platform/pki/certificate/cert-issue-metadata.png)
+
+- **On the details page**: After issuance, certificate metadata can be viewed and edited from the certificate details page. Certificate request metadata is read-only after creation.
+
+  ![pki certificate metadata section](/images/platform/pki/certificate/cert-metadata-section.png)
+
+- **Filtering**: You can filter the certificates and certificate requests list views by metadata key-value pairs.
+
+  ![pki certificate metadata filter](/images/platform/pki/certificate/cert-metadata-filter.png)
+
+<Note>
+  When a certificate is renewed, its metadata is automatically carried over to the renewed certificate.
+</Note>
+
 ### Managing Certificates
 
 From the certificate details page, you can perform various actions using the **Options** dropdown menu:

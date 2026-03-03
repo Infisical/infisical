@@ -2779,9 +2779,10 @@
               {
                 "group": "Certificates",
                 "pages": [
-                  "api-reference/endpoints/certificates/list",
+                  "api-reference/endpoints/certificates/search",
                   "api-reference/endpoints/certificates/read",
                   "api-reference/endpoints/certificates/certificate-request",
+                  "api-reference/endpoints/certificates/search-certificate-requests",
                   "api-reference/endpoints/certificates/create-certificate",
                   "api-reference/endpoints/certificates/renew",
                   "api-reference/endpoints/certificates/update-config",
