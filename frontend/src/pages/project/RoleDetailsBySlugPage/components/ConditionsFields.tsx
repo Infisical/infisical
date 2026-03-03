@@ -284,28 +284,28 @@ export const ConditionsFields = ({
         </Tooltip>
       </div>
       {incompatibleConditions.length > 0 && (
-        <UnstableAccordion type="single" collapsible className="mt-3 border-danger/50 bg-danger/5">
+        <UnstableAccordion type="single" collapsible className="mt-3 border-danger/35">
           <UnstableAccordionItem value="errors" className="border-none">
-            <UnstableAccordionTrigger className="min-h-10 flex-row-reverse justify-between bg-danger/10 px-3 py-2 text-danger hover:bg-danger/15 data-[state=open]:bg-danger/15 [&>svg]:shrink-0 [&>svg]:text-danger">
+            <UnstableAccordionTrigger className="min-h-10 flex-row-reverse justify-between bg-danger/[0.075] px-3 py-2 text-foreground hover:bg-danger/10 data-[state=open]:bg-danger/10 [&>svg]:shrink-0">
               <div className="flex items-center gap-2">
-                <AlertTriangleIcon className="size-4" />
+                <AlertTriangleIcon className="size-4 text-danger" />
                 <span>
                   {incompatibleConditions.length} condition
                   {incompatibleConditions.length > 1 ? "s" : ""} incompatible with selected actions
                 </span>
               </div>
             </UnstableAccordionTrigger>
-            <UnstableAccordionContent className="space-y-1 px-3 py-2">
+            <UnstableAccordionContent className="space-y-1 bg-danger/[0.025] px-3 py-2">
               {incompatibleConditions.map((item) => (
-                <div key={item.conditionValue} className="text-sm text-danger">
-                  <span className="font-medium">{item.conditionLabel}:</span>{" "}
-                  <span className="text-danger/80">
-                    Not available for the actions: {item.disallowingActionLabels}
-                  </span>
+                <div key={item.conditionValue} className="text-sm">
+                  <span className="font-medium text-danger">
+                    {item.conditionLabel} not available for the actions:
+                  </span>{" "}
+                  <span className="">{item.disallowingActionLabels}</span>
                 </div>
               ))}
-              <br />
-              <span className="text-danger/80">
+
+              <span className="text-sm text-accent">
                 Remove the incompatible conditions or update the selected actions to make them
                 compatible.
               </span>
@@ -375,7 +375,7 @@ export const ConditionsFields = ({
                               <SelectTrigger
                                 className={twMerge(
                                   "w-full",
-                                  lhsError?.message && "border-danger/50"
+                                  lhsError?.message && "border-danger/25"
                                 )}
                               >
                                 <SelectValue />
@@ -459,13 +459,13 @@ export const ConditionsFields = ({
                           <div className="grow">
                             <UnstableInput
                               {...rhsField}
-                              className={twMerge(rhsError?.message && "border-danger/50")}
+                              className={twMerge(rhsError?.message && "border-danger/25")}
                             />
                           </div>
                           <UnstableIconButton
                             aria-label="remove"
                             variant="outline"
-                            className="p-2.5 hover:text-danger"
+                            className="hover:border-danger/30 hover:bg-danger/15"
                             isDisabled={isDisabled}
                             onClick={() => items.remove(index)}
                           >

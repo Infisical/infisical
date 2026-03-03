@@ -329,8 +329,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                         <TooltipTrigger asChild>
                           <UnstableIconButton
                             aria-label="Remove rule"
-                            variant="outline"
-                            className="p-2.5 hover:text-danger"
+                            variant="danger"
                             onClick={() => remove(rootIndex)}
                             isDisabled={isDisabled}
                           >
