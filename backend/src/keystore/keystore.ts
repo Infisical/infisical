@@ -39,14 +39,6 @@ export const PgSqlLock = {
 // all the key prefixes used must be set here to avoid conflict
 export const KeyStorePrefixes = {
   SecretReplication: "secret-replication-import-lock",
-  KmsProjectDataKeyCreation: "kms-project-data-key-creation-lock",
-  KmsProjectKeyCreation: "kms-project-key-creation-lock",
-  WaitUntilReadyKmsProjectDataKeyCreation: "wait-until-ready-kms-project-data-key-creation-",
-  WaitUntilReadyKmsProjectKeyCreation: "wait-until-ready-kms-project-key-creation-",
-  KmsOrgKeyCreation: "kms-org-key-creation-lock",
-  KmsOrgDataKeyCreation: "kms-org-data-key-creation-lock",
-  WaitUntilReadyKmsOrgKeyCreation: "wait-until-ready-kms-org-key-creation-",
-  WaitUntilReadyKmsOrgDataKeyCreation: "wait-until-ready-kms-org-data-key-creation-",
   FolderTreeCheckpoint: (envId: string) => `folder-tree-checkpoint-${envId}`,
 
   WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>
@@ -165,7 +157,6 @@ export type TKeyStoreFactory = {
     settings?: Partial<Settings>
   ): Promise<{ release: () => Promise<ExecutionResult> }>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
-  isRedisClusterMode: () => boolean;
 };
 
 const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {
@@ -183,8 +174,6 @@ export const keyStoreFactory = (
   keyValueStoreDAL: TKeyValueStoreDALFactory
 ): TKeyStoreFactory => {
   const primaryRedis = buildRedisFromConfig(redisConfigKeys);
-  // Detect if Redis is running in cluster mode - affects distributed locking behavior
-  const isClusterMode = Boolean(redisConfigKeys.REDIS_CLUSTER_HOSTS && redisConfigKeys.REDIS_CLUSTER_HOSTS.length > 0);
 
   const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
     if (redisConfigKeys.REDIS_URL) {
@@ -344,7 +333,6 @@ export const keyStoreFactory = (
     listPush,
     listRange,
     listRemove,
-    listLength,
-    isRedisClusterMode: () => isClusterMode
+    listLength
   };
 };
