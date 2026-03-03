@@ -5,7 +5,6 @@ import { z } from "zod";
 import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { slugSchema } from "@app/lib/schemas";
-import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 export const genericResourceFieldsSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
@@ -25,7 +24,6 @@ export const GenericResourceFields = () => {
   const { control } = useFormContext<{
     name: string;
     gatewayId: string;
-    metadata?: { key: string; value: string }[];
   }>();
 
   return (
@@ -67,7 +65,6 @@ export const GenericResourceFields = () => {
           </FormControl>
         )}
       />
-      <MetadataForm control={control} />
     </>
   );
 };

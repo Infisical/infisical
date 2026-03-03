@@ -12,6 +12,7 @@ import { BaseSqlResourceSchema } from "./shared/sql-resource-schemas";
 import { SqlResourceFields } from "./shared/SqlResourceFields";
 import { SqlRotateAccountFields } from "./shared/SqlRotateAccountFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   resource?: TPostgresResource;
@@ -74,6 +75,7 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
           setSelectedTabIndex={setSelectedTabIndex}
         />
         <SqlRotateAccountFields isUpdate={isUpdate} />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

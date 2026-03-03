@@ -9,6 +9,7 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { WindowsAccountType } from "@app/hooks/api/pam/types/windows-server-resource";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
 type Props = {
@@ -141,6 +142,7 @@ export const WindowsAccountForm = ({ account, onSubmit }: Props) => {
           />
         </div>
         <RequireMfaField />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

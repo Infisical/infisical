@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, Modal, ModalContent } from "@app/components/v2";
-import { Badge, UnstableIconButton } from "@app/components/v3";
+import { Badge, UnstableButtonGroup, UnstableIconButton } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { TPamResource, useUpdatePamResource } from "@app/hooks/api/pam";
 import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
@@ -99,18 +99,25 @@ export const PamResourceMetadataSection = ({ resource }: Props) => {
         </div>
         {metadata.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {metadata.map((item) => (
-              <Badge
-                key={`${item.key}=${item.value}`}
-                variant="neutral"
-                className="max-w-full min-w-0 shrink"
-              >
-                <span className="min-w-0 truncate">
-                  {item.key}
-                  {item.value ? `: ${item.value}` : ""}
-                </span>
-              </Badge>
-            ))}
+            {metadata.map((item) =>
+              item.value ? (
+                <UnstableButtonGroup
+                  className="max-w-full min-w-0"
+                  key={`${item.key}=${item.value}`}
+                >
+                  <Badge isTruncatable className="max-w-[12rem] shrink-0">
+                    <span>{item.key}</span>
+                  </Badge>
+                  <Badge variant="outline" isTruncatable>
+                    <span>{item.value}</span>
+                  </Badge>
+                </UnstableButtonGroup>
+              ) : (
+                <Badge key={item.key} isTruncatable>
+                  <span>{item.key}</span>
+                </Badge>
+              )
+            )}
           </div>
         ) : (
           <p className="text-sm text-mineshaft-400">No metadata attached to this resource.</p>

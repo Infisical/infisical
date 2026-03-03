@@ -19,7 +19,6 @@ import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { metadataFilterSchema } from "@app/server/routes/sanitizedSchemas";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 
@@ -108,8 +107,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
               .map((s) => s.trim())
               .filter(Boolean)
           )
-          .optional(),
-        metadataFilter: metadataFilterSchema
+          .optional()
       }),
       response: {
         200: ListPamAccountsResponseSchema
@@ -117,7 +115,13 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const {
+      const { projectId, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } = req.query;
+
+      const { accounts, totalCount } = await server.services.pamAccount.list({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         projectId,
         accountView,
         limit,
@@ -125,9 +129,59 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         search,
         orderBy,
         orderDirection,
-        filterResourceIds,
-        metadataFilter
-      } = req.query;
+        filterResourceIds
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_LIST,
+          metadata: {
+            accountCount: accounts.length
+          }
+        }
+      });
+
+      return { accounts, totalCount } as z.infer<typeof ListPamAccountsResponseSchema>;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Search PAM accounts",
+      body: z.object({
+        projectId: z.string().uuid(),
+        accountView: z.nativeEnum(PamAccountView).default(PamAccountView.Flat),
+        offset: z.number().min(0).default(0),
+        limit: z.number().min(1).max(100).default(100),
+        orderBy: z.nativeEnum(PamAccountOrderBy).default(PamAccountOrderBy.Name),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC),
+        search: z.string().trim().optional(),
+        filterResourceIds: z.array(z.string().uuid()).optional(),
+        metadata: z
+          .array(
+            z.object({
+              key: z.string().trim().min(1).max(255),
+              value: z.string().trim().max(1020).optional()
+            })
+          )
+          .optional()
+      }),
+      response: {
+        200: ListPamAccountsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds, metadata } =
+        req.body;
 
       const { accounts, totalCount } = await server.services.pamAccount.list({
         actorId: req.permission.id,
@@ -142,7 +196,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         orderBy,
         orderDirection,
         filterResourceIds,
-        metadataFilter
+        metadataFilter: metadata
       });
 
       await server.services.auditLog.createAuditLog({

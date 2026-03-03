@@ -67,19 +67,6 @@ export const useListPamResourceOptions = (
   });
 };
 
-const serializeMetadataFilter = (
-  filter?: Array<{ key: string; value: string }>
-): string | undefined => {
-  if (!filter || filter.length === 0) return undefined;
-  return filter
-    .map((entry) => {
-      const parts = [`key=${entry.key}`];
-      if (entry.value) parts.push(`value=${entry.value}`);
-      return parts.join(",");
-    })
-    .join("|");
-};
-
 type TListPamResourcesResponse = {
   resources: TPamResource[];
   totalCount: number;
@@ -100,13 +87,18 @@ export const useListPamResources = (
   return useQuery({
     queryKey: pamKeys.listResources(params),
     queryFn: async () => {
-      const { metadataFilter, ...rest } = params;
-      const { data } = await apiRequest.get<TListPamResourcesResponse>("/api/v1/pam/resources", {
-        params: {
+      const { metadataFilter, filterResourceTypes, ...rest } = params;
+      const { data } = await apiRequest.post<TListPamResourcesResponse>(
+        "/api/v1/pam/resources/search",
+        {
           ...rest,
-          metadataFilter: serializeMetadataFilter(metadataFilter)
+          metadata: metadataFilter,
+          filterResourceTypes: filterResourceTypes
+            ?.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
         }
-      });
+      );
 
       return data;
     },
@@ -184,13 +176,18 @@ export const useListPamAccounts = (
   return useQuery({
     queryKey: pamKeys.listAccounts(params),
     queryFn: async () => {
-      const { metadataFilter, ...rest } = params;
-      const { data } = await apiRequest.get<TListPamAccountsResponse>("/api/v1/pam/accounts", {
-        params: {
+      const { metadataFilter, filterResourceIds, ...rest } = params;
+      const { data } = await apiRequest.post<TListPamAccountsResponse>(
+        "/api/v1/pam/accounts/search",
+        {
           ...rest,
-          metadataFilter: serializeMetadataFilter(metadataFilter)
+          metadata: metadataFilter,
+          filterResourceIds: filterResourceIds
+            ?.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
         }
-      });
+      );
 
       return data;
     },

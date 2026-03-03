@@ -18,7 +18,8 @@ import { CopyButton } from "@app/components/v2/CopyButton";
 import { useProject } from "@app/context";
 import { PamResourceType, TAwsIamResource } from "@app/hooks/api/pam";
 import { slugSchema } from "@app/lib/schemas";
-import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
+
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   resource?: TAwsIamResource;
@@ -209,7 +210,7 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
           </AccordionItem>
         </Accordion>
 
-        <MetadataForm control={control} />
+        <MetadataFields />
 
         <div className="mt-6 flex items-center">
           <Button

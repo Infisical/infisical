@@ -9,6 +9,7 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { ActiveDirectoryAccountType } from "@app/hooks/api/pam/types/active-directory-resource";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
 type Props = {
@@ -143,6 +144,7 @@ export const ActiveDirectoryAccountForm = ({ account, onSubmit }: Props) => {
           />
         </div>
         <RequireMfaField />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"
