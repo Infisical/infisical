@@ -395,7 +395,7 @@ export const SecretEditRow = ({
                 className="max-w-3xl"
                 title="Secret Reference Details"
                 subTitle="Visual breakdown of secrets referenced by this secret."
-                onOpenAutoFocus={(e) => e.preventDefault()}
+                onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
               >
                 <SecretReferenceTree
                   secretPath={secretPath}
