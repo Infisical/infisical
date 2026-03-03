@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -55,7 +55,6 @@ const computeAllowedConditions = (
     return allConditions;
   }
 
-  // Find actions that have restricted conditions
   const actionsWithRestrictions = selectedActions.filter(
     (action) => actionConditionsMap[action] !== undefined
   );
@@ -98,7 +97,7 @@ export const ConditionsFields = ({
   actionConditionsMap,
   actionLabelsMap
 }: ConditionsFieldsProps) => {
-  const { control, setValue } = useFormContext<TFormSchema>();
+  const { control, setValue, clearErrors, setError } = useFormContext<TFormSchema>();
   const items = useFieldArray({
     control,
     name: `permissions.${subject}.${position}.conditions` as const
@@ -116,14 +115,52 @@ export const ConditionsFields = ({
     name: `permissions.${subject}.${position}.conditions` as const
   });
 
-  // Get all currently used condition types
+  useEffect(() => {
+    const conditions = watchedConditions as Array<{ lhs: string }> | undefined;
+    if (!conditions || conditions.length === 0) return;
+    if (!actionConditionsMap || !actionLabelsMap) return;
+
+    conditions.forEach((condition: { lhs: string }, index: number) => {
+      const conditionKey = condition?.lhs;
+      if (!conditionKey) return;
+
+      const disallowingActions = getDisallowingActions(
+        conditionKey,
+        selectedActions,
+        actionConditionsMap
+      );
+
+      const fieldPath = `permissions.${subject}.${position}.conditions.${index}.lhs` as const;
+
+      if (disallowingActions.length === 0) {
+        clearErrors(fieldPath);
+      } else {
+        const actionNames = disallowingActions
+          .map((action) => actionLabelsMap[action] || action)
+          .join(", ");
+        setError(fieldPath, {
+          type: "custom",
+          message: `This condition is not available for the actions: ${actionNames}.`
+        });
+      }
+    });
+  }, [
+    selectedActions,
+    watchedConditions,
+    actionConditionsMap,
+    actionLabelsMap,
+    subject,
+    position,
+    clearErrors,
+    setError
+  ]);
+
   const usedConditionTypes = useMemo((): string[] => {
     const conditions = watchedConditions as Array<{ lhs: string }> | undefined;
     if (!conditions) return [];
     return conditions.map((c) => c.lhs).filter(Boolean);
   }, [watchedConditions]);
 
-  // Compute if we can add more conditions
   const canAddCondition = useMemo(() => {
     const availableToAdd = selectOptions.filter(
       ({ value }) => allowedConditions.includes(value) && !usedConditionTypes.includes(value)
@@ -140,7 +177,6 @@ export const ConditionsFields = ({
     }
   };
 
-  // Get the first available condition for new additions
   const getFirstAvailableCondition = () => {
     const available = selectOptions.find(
       ({ value }) => allowedConditions.includes(value) && !usedConditionTypes.includes(value)
