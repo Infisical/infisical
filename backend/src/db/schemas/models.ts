@@ -224,7 +224,7 @@ export enum TableName {
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
   PamDiscoverySource = "pam_discovery_sources",
-  PamDiscoveryRun = "pam_discovery_runs",
+  PamDiscoverySourceRun = "pam_discovery_source_runs",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",

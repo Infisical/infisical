@@ -7,9 +7,9 @@ import {
   TDiscoveredAccount,
   TDiscoveredResource,
   TListPamDiscoverySourcesDTO,
-  TPamDiscoveryRun,
   TPamDiscoverySource,
-  TPamDiscoverySourceOption
+  TPamDiscoverySourceOption,
+  TPamDiscoverySourceRun
 } from "./types";
 
 export const pamDiscoveryKeys = {
@@ -108,9 +108,9 @@ export const useGetPamDiscoverySource = (
   });
 };
 
-type TListRunsResponse = { runs: TPamDiscoveryRun[]; totalCount: number };
+type TListRunsResponse = { runs: TPamDiscoverySourceRun[]; totalCount: number };
 
-export const useListPamDiscoveryRuns = (
+export const useListPamDiscoverySourceRuns = (
   discoverySourceId: string,
   discoveryType: PamDiscoveryType,
   params: { offset?: number; limit?: number },

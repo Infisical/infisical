@@ -7,19 +7,19 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { TPamAccountDependenciesDALFactory } from "./pam-account-dependencies-dal";
-import { PamDiscoveryRunTrigger, PamDiscoveryType } from "./pam-discovery-enums";
+import { PamDiscoverySourceRunTrigger, PamDiscoveryType } from "./pam-discovery-enums";
 import { PAM_DISCOVERY_FACTORY_MAP } from "./pam-discovery-factory";
 import { decryptDiscoveryCredentials } from "./pam-discovery-fns";
-import { TPamDiscoveryRunDALFactory } from "./pam-discovery-run-dal";
 import { TPamDiscoverySourceAccountsDALFactory } from "./pam-discovery-source-accounts-dal";
 import { TPamDiscoverySourceDALFactory } from "./pam-discovery-source-dal";
 import { TPamDiscoverySourceDependenciesDALFactory } from "./pam-discovery-source-dependencies-dal";
 import { TPamDiscoverySourceResourcesDALFactory } from "./pam-discovery-source-resources-dal";
+import { TPamDiscoverySourceRunDALFactory } from "./pam-discovery-source-run-dal";
 import { TPamDiscoveryConfiguration } from "./pam-discovery-types";
 
 type TPamDiscoveryQueueFactoryDep = {
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "findById" | "updateById" | "findDueForScan">;
-  pamDiscoveryRunDAL: Pick<TPamDiscoveryRunDALFactory, "create" | "updateById">;
+  pamDiscoveryRunDAL: Pick<TPamDiscoverySourceRunDALFactory, "create" | "updateById">;
   pamDiscoverySourceResourcesDAL: Pick<TPamDiscoverySourceResourcesDALFactory, "upsertJunction" | "markStaleForRun">;
   pamDiscoverySourceAccountsDAL: Pick<TPamDiscoverySourceAccountsDALFactory, "upsertJunction" | "markStaleForRun">;
   pamDiscoverySourceDependenciesDAL: Pick<
@@ -54,10 +54,10 @@ export const pamDiscoveryQueueFactory = ({
   const startPamDiscoveryQueue = () => {
     queueService.start(QueueName.PamDiscoveryScan, async (job) => {
       try {
-        if (job.name === QueueJobs.PamDiscoveryRunScan) {
+        if (job.name === QueueJobs.PamDiscoverySourceRunScan) {
           const { discoverySourceId, triggeredBy } = job.data as {
             discoverySourceId: string;
-            triggeredBy: PamDiscoveryRunTrigger;
+            triggeredBy: PamDiscoverySourceRunTrigger;
           };
 
           const discoverySource = await pamDiscoverySourceDAL.findById(discoverySourceId);
@@ -114,8 +114,8 @@ export const pamDiscoveryQueueFactory = ({
           for await (const src of dueSources) {
             await queueService.queue(
               QueueName.PamDiscoveryScan,
-              QueueJobs.PamDiscoveryRunScan,
-              { discoverySourceId: src.id, triggeredBy: PamDiscoveryRunTrigger.Schedule },
+              QueueJobs.PamDiscoverySourceRunScan,
+              { discoverySourceId: src.id, triggeredBy: PamDiscoverySourceRunTrigger.Schedule },
               { jobId: `pam-discovery-scan-${src.id}` }
             );
           }
@@ -143,8 +143,8 @@ export const pamDiscoveryQueueFactory = ({
     const jobId = `pam-discovery-scan-${discoverySourceId}-${Date.now()}`;
     await queueService.queue(
       QueueName.PamDiscoveryScan,
-      QueueJobs.PamDiscoveryRunScan,
-      { discoverySourceId, triggeredBy: PamDiscoveryRunTrigger.Manual },
+      QueueJobs.PamDiscoverySourceRunScan,
+      { discoverySourceId, triggeredBy: PamDiscoverySourceRunTrigger.Manual },
       {
         jobId,
         attempts: 1,

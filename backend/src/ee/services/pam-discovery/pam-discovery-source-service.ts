@@ -14,7 +14,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { decryptResourceMetadata } from "../pam-resource/pam-resource-fns";
-import { PamDiscoveryRunStatus, PamDiscoverySourceStatus, PamDiscoveryType } from "./pam-discovery-enums";
+import { PamDiscoverySourceRunStatus, PamDiscoverySourceStatus, PamDiscoveryType } from "./pam-discovery-enums";
 import { PAM_DISCOVERY_FACTORY_MAP } from "./pam-discovery-factory";
 import {
   decryptDiscoveryCredentials,
@@ -23,16 +23,16 @@ import {
   listDiscoverySourceOptions
 } from "./pam-discovery-fns";
 import { TPamDiscoveryQueueFactory } from "./pam-discovery-queue";
-import { TPamDiscoveryRunDALFactory } from "./pam-discovery-run-dal";
 import { TPamDiscoverySourceAccountsDALFactory } from "./pam-discovery-source-accounts-dal";
 import { TPamDiscoverySourceDALFactory } from "./pam-discovery-source-dal";
 import { TPamDiscoverySourceResourcesDALFactory } from "./pam-discovery-source-resources-dal";
+import { TPamDiscoverySourceRunDALFactory } from "./pam-discovery-source-run-dal";
 import {
   TCreatePamDiscoverySourceDTO,
   TGetDiscoveredAccountsDTO,
   TGetDiscoveredResourcesDTO,
-  TGetPamDiscoveryRunDTO,
-  TGetPamDiscoveryRunsDTO,
+  TGetPamDiscoverySourceRunDTO,
+  TGetPamDiscoverySourceRunsDTO,
   TListPamDiscoverySourcesDTO,
   TPamDiscoveryConfiguration,
   TPamDiscoveryCredentials,
@@ -45,7 +45,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
     "create" | "findById" | "updateById" | "deleteById" | "findByProjectId"
   >;
   pamDiscoveryRunDAL: Pick<
-    TPamDiscoveryRunDALFactory,
+    TPamDiscoverySourceRunDALFactory,
     "findByDiscoverySourceId" | "findLatestBySourceId" | "findById" | "find"
   >;
   pamDiscoverySourceResourcesDAL: Pick<
@@ -401,7 +401,7 @@ export const pamDiscoverySourceServiceFactory = ({
 
     // Check if a scan is already running
     const latestRun = await pamDiscoveryRunDAL.findLatestBySourceId(id);
-    if (latestRun && latestRun.status === PamDiscoveryRunStatus.Running) {
+    if (latestRun && latestRun.status === PamDiscoverySourceRunStatus.Running) {
       throw new BadRequestError({ message: "A scan is already in progress for this Discovery Source" });
     }
 
@@ -411,7 +411,7 @@ export const pamDiscoverySourceServiceFactory = ({
   };
 
   const getDiscoveryRuns = async (
-    { discoverySourceId, offset, limit }: TGetPamDiscoveryRunsDTO,
+    { discoverySourceId, offset, limit }: TGetPamDiscoverySourceRunsDTO,
     actor: OrgServiceActor
   ) => {
     const discoverySource = await pamDiscoverySourceDAL.findById(discoverySourceId);
@@ -437,7 +437,10 @@ export const pamDiscoverySourceServiceFactory = ({
     return { ...result, discoverySource };
   };
 
-  const getDiscoveryRunById = async ({ discoverySourceId, runId }: TGetPamDiscoveryRunDTO, actor: OrgServiceActor) => {
+  const getDiscoveryRunById = async (
+    { discoverySourceId, runId }: TGetPamDiscoverySourceRunDTO,
+    actor: OrgServiceActor
+  ) => {
     const discoverySource = await pamDiscoverySourceDAL.findById(discoverySourceId);
     if (!discoverySource) {
       throw new NotFoundError({ message: `Discovery Source with ID '${discoverySourceId}' not found` });

@@ -4505,7 +4505,7 @@ interface PamDiscoverySourceCreateEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
   metadata: {
     discoveryType: string;
-    gatewayId: string;
+    gatewayId?: string | null;
     name: string;
   };
 }
@@ -4515,7 +4515,7 @@ interface PamDiscoverySourceUpdateEvent {
   metadata: {
     sourceId: string;
     discoveryType: string;
-    gatewayId?: string;
+    gatewayId?: string | null;
     name?: string;
   };
 }

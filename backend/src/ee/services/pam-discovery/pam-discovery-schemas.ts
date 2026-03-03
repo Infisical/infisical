@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import {
-  PamDiscoveryRunsSchema,
   PamDiscoverySourceAccountsSchema,
   PamDiscoverySourceResourcesSchema,
+  PamDiscoverySourceRunsSchema,
   PamDiscoverySourcesSchema
 } from "@app/db/schemas";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -16,9 +16,9 @@ import {
   WindowsResourceMetadataSchema
 } from "../pam-resource/windows-server/windows-server-resource-schemas";
 import {
-  PamDiscoveryRunStatus,
-  PamDiscoveryRunTrigger,
   PamDiscoverySchedule,
+  PamDiscoverySourceRunStatus,
+  PamDiscoverySourceRunTrigger,
   PamDiscoverySourceStatus
 } from "./pam-discovery-enums";
 
@@ -46,11 +46,11 @@ export const BaseUpdatePamDiscoverySourceSchema = z.object({
 });
 
 // Discovery Runs
-export const BasePamDiscoverySourceRunSchema = PamDiscoveryRunsSchema.omit({
+export const BasePamDiscoverySourceRunSchema = PamDiscoverySourceRunsSchema.omit({
   progress: true
 }).extend({
-  status: z.nativeEnum(PamDiscoveryRunStatus),
-  triggeredBy: z.nativeEnum(PamDiscoveryRunTrigger)
+  status: z.nativeEnum(PamDiscoverySourceRunStatus),
+  triggeredBy: z.nativeEnum(PamDiscoverySourceRunTrigger)
 });
 
 export const DiscoveredResourceSchema = PamDiscoverySourceResourcesSchema.extend({

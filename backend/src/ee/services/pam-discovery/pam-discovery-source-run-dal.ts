@@ -1,14 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPamDiscoveryRuns } from "@app/db/schemas";
+import { TableName, TPamDiscoverySourceRuns } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TPamDiscoveryRunDALFactory = ReturnType<typeof pamDiscoveryRunDALFactory>;
+export type TPamDiscoverySourceRunDALFactory = ReturnType<typeof pamDiscoveryRunDALFactory>;
 
 export const pamDiscoveryRunDALFactory = (db: TDbClient) => {
-  const orm = ormify(db, TableName.PamDiscoveryRun);
+  const orm = ormify(db, TableName.PamDiscoverySourceRun);
 
   const findByDiscoverySourceId = async (
     discoverySourceId: string,
@@ -16,11 +16,11 @@ export const pamDiscoveryRunDALFactory = (db: TDbClient) => {
   ) => {
     try {
       const dbInstance = tx || db.replicaNode();
-      const query = dbInstance(TableName.PamDiscoveryRun).where({ discoverySourceId });
+      const query = dbInstance(TableName.PamDiscoverySourceRun).where({ discoverySourceId });
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
 
-      void query.select(selectAllTableCols(TableName.PamDiscoveryRun));
+      void query.select(selectAllTableCols(TableName.PamDiscoverySourceRun));
 
       void query.orderBy("createdAt", "desc");
 
@@ -39,12 +39,12 @@ export const pamDiscoveryRunDALFactory = (db: TDbClient) => {
 
   const findLatestBySourceId = async (discoverySourceId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.PamDiscoveryRun)
+      const doc = await (tx || db.replicaNode())(TableName.PamDiscoverySourceRun)
         .where({ discoverySourceId })
         .orderBy("createdAt", "desc")
         .first();
 
-      return (doc as TPamDiscoveryRuns) || null;
+      return (doc as TPamDiscoverySourceRuns) || null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find latest PAM discovery run by source ID" });
     }

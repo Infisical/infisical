@@ -25,7 +25,7 @@ import {
   TWindowsResourceConnectionDetails,
   TWindowsResourceMetadata
 } from "../../pam-resource/windows-server/windows-server-resource-types";
-import { PamDiscoveryRunStatus, PamDiscoveryRunTrigger } from "../pam-discovery-enums";
+import { PamDiscoverySourceRunStatus, PamDiscoverySourceRunTrigger } from "../pam-discovery-enums";
 import { TPamDiscoveryFactory } from "../pam-discovery-types";
 import {
   TActiveDirectoryDiscoveryConfiguration as TAdDiscoveryConfiguration,
@@ -473,7 +473,11 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
     }
   };
 
-  const scan = async (discoverySourceId: string, triggeredBy: PamDiscoveryRunTrigger, deps: TPamDiscoveryScanDeps) => {
+  const scan = async (
+    discoverySourceId: string,
+    triggeredBy: PamDiscoverySourceRunTrigger,
+    deps: TPamDiscoveryScanDeps
+  ) => {
     const {
       pamDiscoverySourceDAL,
       pamDiscoveryRunDAL,
@@ -487,7 +491,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
     // Create discovery run
     const run = await pamDiscoveryRunDAL.create({
       discoverySourceId,
-      status: PamDiscoveryRunStatus.Running,
+      status: PamDiscoverySourceRunStatus.Running,
       triggeredBy,
       startedAt: new Date(),
       progress: {
@@ -589,7 +593,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         const staleSinceLastRun = (staleResources || 0) + (staleAccounts || 0);
 
         await pamDiscoveryRunDAL.updateById(run.id, {
-          status: PamDiscoveryRunStatus.Completed,
+          status: PamDiscoverySourceRunStatus.Completed,
           resourcesDiscovered,
           accountsDiscovered,
           dependenciesDiscovered: 0,
@@ -615,7 +619,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           };
 
       await pamDiscoveryRunDAL.updateById(run.id, {
-        status: PamDiscoveryRunStatus.Failed,
+        status: PamDiscoverySourceRunStatus.Failed,
         progress,
         errorMessage: (error as Error).message,
         completedAt: new Date()

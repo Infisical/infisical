@@ -34,8 +34,8 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // PAM Discovery Runs
-  if (!(await knex.schema.hasTable(TableName.PamDiscoveryRun))) {
-    await knex.schema.createTable(TableName.PamDiscoveryRun, (t) => {
+  if (!(await knex.schema.hasTable(TableName.PamDiscoverySourceRun))) {
+    await knex.schema.createTable(TableName.PamDiscoverySourceRun, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.uuid("discoverySourceId").notNullable();
@@ -108,7 +108,7 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("lastDiscoveredAt").notNullable();
 
       t.uuid("lastDiscoveredRunId").nullable();
-      t.foreign("lastDiscoveredRunId").references("id").inTable(TableName.PamDiscoveryRun).onDelete("SET NULL");
+      t.foreign("lastDiscoveredRunId").references("id").inTable(TableName.PamDiscoverySourceRun).onDelete("SET NULL");
 
       t.boolean("isStale").defaultTo(false);
 
@@ -136,7 +136,7 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("lastDiscoveredAt").notNullable();
 
       t.uuid("lastDiscoveredRunId").nullable();
-      t.foreign("lastDiscoveredRunId").references("id").inTable(TableName.PamDiscoveryRun).onDelete("SET NULL");
+      t.foreign("lastDiscoveredRunId").references("id").inTable(TableName.PamDiscoverySourceRun).onDelete("SET NULL");
 
       t.boolean("isStale").defaultTo(false);
 
@@ -164,7 +164,7 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("lastSeenAt").notNullable();
 
       t.uuid("lastSeenRunId").nullable();
-      t.foreign("lastSeenRunId").references("id").inTable(TableName.PamDiscoveryRun).onDelete("SET NULL");
+      t.foreign("lastSeenRunId").references("id").inTable(TableName.PamDiscoverySourceRun).onDelete("SET NULL");
 
       t.boolean("isStale").defaultTo(false);
 
@@ -177,7 +177,7 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   await createOnUpdateTrigger(knex, TableName.PamDiscoverySource);
-  await createOnUpdateTrigger(knex, TableName.PamDiscoveryRun);
+  await createOnUpdateTrigger(knex, TableName.PamDiscoverySourceRun);
   await createOnUpdateTrigger(knex, TableName.PamAccountDependency);
 }
 
@@ -186,10 +186,10 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.PamDiscoverySourceAccount);
   await knex.schema.dropTableIfExists(TableName.PamDiscoverySourceResource);
   await knex.schema.dropTableIfExists(TableName.PamAccountDependency);
-  await knex.schema.dropTableIfExists(TableName.PamDiscoveryRun);
+  await knex.schema.dropTableIfExists(TableName.PamDiscoverySourceRun);
   await knex.schema.dropTableIfExists(TableName.PamDiscoverySource);
 
   await dropOnUpdateTrigger(knex, TableName.PamAccountDependency);
-  await dropOnUpdateTrigger(knex, TableName.PamDiscoveryRun);
+  await dropOnUpdateTrigger(knex, TableName.PamDiscoverySourceRun);
   await dropOnUpdateTrigger(knex, TableName.PamDiscoverySource);
 }

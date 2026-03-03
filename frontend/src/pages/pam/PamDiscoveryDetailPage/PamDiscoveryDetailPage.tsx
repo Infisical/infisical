@@ -55,8 +55,8 @@ import { usePagination } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import type {
   PamDiscoveryType,
-  TPamDiscoveryRunProgress,
-  TPamDiscoverySource
+  TPamDiscoverySource,
+  TPamDiscoverySourceRunProgress
 } from "@app/hooks/api/pamDiscovery";
 import {
   PAM_DISCOVERY_TYPE_MAP,
@@ -64,7 +64,7 @@ import {
   useGetDiscoveredAccounts,
   useGetDiscoveredResources,
   useGetPamDiscoverySource,
-  useListPamDiscoveryRuns,
+  useListPamDiscoverySourceRuns,
   useTriggerPamDiscoveryScan
 } from "@app/hooks/api/pamDiscovery";
 
@@ -249,7 +249,7 @@ const RunExpandedContent = ({
   progress,
   errorMessage
 }: {
-  progress?: TPamDiscoveryRunProgress;
+  progress?: TPamDiscoverySourceRunProgress;
   errorMessage?: string | null;
 }) => {
   const adEnum = progress?.adEnumeration;
@@ -333,7 +333,7 @@ const RunsTab = ({
     initPerPage: 20
   });
 
-  const { data, isPending } = useListPamDiscoveryRuns(discoverySourceId, discoveryType, {
+  const { data, isPending } = useListPamDiscoverySourceRuns(discoverySourceId, discoveryType, {
     offset,
     limit: perPage
   });

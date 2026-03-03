@@ -6,7 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 
-import { PamDiscoveryOrderBy, PamDiscoveryRunStatus } from "./pam-discovery-enums";
+import { PamDiscoveryOrderBy, PamDiscoverySourceRunStatus } from "./pam-discovery-enums";
 
 export type TPamDiscoverySourceDALFactory = ReturnType<typeof pamDiscoverySourceDALFactory>;
 
@@ -99,10 +99,10 @@ export const pamDiscoverySourceDALFactory = (db: TDbClient) => {
         })
         // Exclude sources that have a running scan
         .whereNotExists(
-          (tx || db.replicaNode())(TableName.PamDiscoveryRun)
+          (tx || db.replicaNode())(TableName.PamDiscoverySourceRun)
             .select(db.raw("1"))
             .whereRaw(`"discoverySourceId" = ${TableName.PamDiscoverySource}."id"`)
-            .where("status", PamDiscoveryRunStatus.Running)
+            .where("status", PamDiscoverySourceRunStatus.Running)
         );
 
       return docs as TPamDiscoverySources[];

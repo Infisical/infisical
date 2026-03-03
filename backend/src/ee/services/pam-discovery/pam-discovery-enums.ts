@@ -20,13 +20,13 @@ export enum PamDiscoveryOrderBy {
 }
 
 // Discovery Runs
-export enum PamDiscoveryRunStatus {
+export enum PamDiscoverySourceRunStatus {
   Running = "running",
   Completed = "completed",
   Failed = "failed"
 }
 
-export enum PamDiscoveryRunTrigger {
+export enum PamDiscoverySourceRunTrigger {
   Manual = "manual",
   Schedule = "schedule"
 }

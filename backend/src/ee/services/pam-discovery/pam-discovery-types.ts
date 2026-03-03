@@ -6,7 +6,7 @@ import {
   TActiveDirectoryDiscoveryCredentials,
   TActiveDirectoryDiscoverySource
 } from "./active-directory/active-directory-discovery-types";
-import { PamDiscoveryOrderBy, PamDiscoveryRunTrigger, PamDiscoveryType } from "./pam-discovery-enums";
+import { PamDiscoveryOrderBy, PamDiscoverySourceRunTrigger, PamDiscoveryType } from "./pam-discovery-enums";
 import { TPamDiscoveryScanDeps } from "./pam-discovery-factory";
 
 export type TPamDiscoverySource = TActiveDirectoryDiscoverySource;
@@ -38,13 +38,13 @@ export type TListPamDiscoverySourcesDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 // Discovery Run DTOs
-export type TGetPamDiscoveryRunsDTO = {
+export type TGetPamDiscoverySourceRunsDTO = {
   discoverySourceId: string;
   offset?: number;
   limit?: number;
 };
 
-export type TGetPamDiscoveryRunDTO = {
+export type TGetPamDiscoverySourceRunDTO = {
   discoverySourceId: string;
   runId: string;
 };
@@ -72,5 +72,9 @@ export type TPamDiscoveryFactory<T extends TPamDiscoveryConfiguration, C extends
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   validateConnection: () => Promise<void>;
-  scan: (discoverySourceId: string, triggeredBy: PamDiscoveryRunTrigger, deps: TPamDiscoveryScanDeps) => Promise<void>;
+  scan: (
+    discoverySourceId: string,
+    triggeredBy: PamDiscoverySourceRunTrigger,
+    deps: TPamDiscoveryScanDeps
+  ) => Promise<void>;
 };

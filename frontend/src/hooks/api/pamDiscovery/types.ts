@@ -28,7 +28,7 @@ export type TPamDiscoverySource = {
   updatedAt: string;
 };
 
-export type TPamDiscoveryRunProgress = {
+export type TPamDiscoverySourceRunProgress = {
   adEnumeration?: {
     status: "running" | "completed" | "failed";
     completedAt?: string;
@@ -44,7 +44,7 @@ export type TPamDiscoveryRunProgress = {
   machineErrors?: Record<string, string>;
 };
 
-export type TPamDiscoveryRun = {
+export type TPamDiscoverySourceRun = {
   id: string;
   discoverySourceId: string;
   status: string;
@@ -54,7 +54,7 @@ export type TPamDiscoveryRun = {
   dependenciesDiscovered: number;
   newSinceLastRun: number;
   staleSinceLastRun: number;
-  progress?: TPamDiscoveryRunProgress;
+  progress?: TPamDiscoverySourceRunProgress;
   errorMessage?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;

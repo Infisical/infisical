@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const PamDiscoveryRunsSchema = z.object({
+export const PamDiscoverySourceRunsSchema = z.object({
   id: z.string().uuid(),
   discoverySourceId: z.string().uuid(),
   status: z.string(),
@@ -25,6 +25,8 @@ export const PamDiscoveryRunsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TPamDiscoveryRuns = z.infer<typeof PamDiscoveryRunsSchema>;
-export type TPamDiscoveryRunsInsert = Omit<z.input<typeof PamDiscoveryRunsSchema>, TImmutableDBKeys>;
-export type TPamDiscoveryRunsUpdate = Partial<Omit<z.input<typeof PamDiscoveryRunsSchema>, TImmutableDBKeys>>;
+export type TPamDiscoverySourceRuns = z.infer<typeof PamDiscoverySourceRunsSchema>;
+export type TPamDiscoverySourceRunsInsert = Omit<z.input<typeof PamDiscoverySourceRunsSchema>, TImmutableDBKeys>;
+export type TPamDiscoverySourceRunsUpdate = Partial<
+  Omit<z.input<typeof PamDiscoverySourceRunsSchema>, TImmutableDBKeys>
+>;

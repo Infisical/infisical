@@ -4,11 +4,11 @@ import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-
 import { activeDirectoryDiscoveryFactory } from "@app/ee/services/pam-discovery/active-directory/active-directory-discovery-factory";
 import { TPamAccountDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependencies-dal";
 import { PamDiscoveryType } from "@app/ee/services/pam-discovery/pam-discovery-enums";
-import { TPamDiscoveryRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-run-dal";
 import { TPamDiscoverySourceAccountsDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-accounts-dal";
 import { TPamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
 import { TPamDiscoverySourceDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dependencies-dal";
 import { TPamDiscoverySourceResourcesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-resources-dal";
+import { TPamDiscoverySourceRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-run-dal";
 import {
   TPamDiscoveryConfiguration,
   TPamDiscoveryCredentials,
@@ -19,7 +19,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 export type TPamDiscoveryScanDeps = {
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "findById" | "updateById">;
-  pamDiscoveryRunDAL: Pick<TPamDiscoveryRunDALFactory, "create" | "updateById">;
+  pamDiscoveryRunDAL: Pick<TPamDiscoverySourceRunDALFactory, "create" | "updateById">;
   pamDiscoverySourceResourcesDAL: Pick<TPamDiscoverySourceResourcesDALFactory, "upsertJunction" | "markStaleForRun">;
   pamDiscoverySourceAccountsDAL: Pick<TPamDiscoverySourceAccountsDALFactory, "upsertJunction" | "markStaleForRun">;
   pamDiscoverySourceDependenciesDAL: Pick<

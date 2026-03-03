@@ -2,7 +2,7 @@ import { Job, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from 
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TQueueJobs } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
-import { PamDiscoveryRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
+import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -161,7 +161,7 @@ export enum QueueJobs {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
-  PamDiscoveryRunScan = "pam-discovery-run-scan",
+  PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan"
 }
 
@@ -495,8 +495,8 @@ export type TQueueJobTypes = {
       };
   [QueueName.PamDiscoveryScan]:
     | {
-        name: QueueJobs.PamDiscoveryRunScan;
-        payload: { discoverySourceId: string; triggeredBy: PamDiscoveryRunTrigger };
+        name: QueueJobs.PamDiscoverySourceRunScan;
+        payload: { discoverySourceId: string; triggeredBy: PamDiscoverySourceRunTrigger };
       }
     | {
         name: QueueJobs.PamDiscoveryScheduledScan;
