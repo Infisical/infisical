@@ -137,49 +137,54 @@ Below is a comprehensive list of all available project-level subjects and their 
 
 #### Subject: `app-connections`
 
-Supports conditions and permission inversion
+Supports conditions and permission inversion.
 
-| Action                    | Description                        |
-| ------------------------- | ---------------------------------- |
-| `read-app-connections`    | View app connection configurations |
-| `create-app-connections`  | Create new app connections         |
-| `edit-app-connections`    | Modify existing app connections    |
-| `delete-app-connections`  | Remove app connections             |
-| `connect-app-connections` | Use app connections                |
+| Action                    | Description                        | Condition keys |
+| ------------------------- | ---------------------------------- | ----- |
+| `read-app-connections`    | View app connection configurations | `connectionId` |
+| `create-app-connections`  | Create new app connections         | `connectionId` |
+| `edit-app-connections`    | Modify existing app connections    | `connectionId` |
+| `delete-app-connections`  | Remove app connections             | `connectionId` |
+| `connect-app-connections` | Use app connections                | `connectionId` |
 
 ### Secrets Management
 
 #### Subject: `secrets`
 
-Supports conditions and permission inversion
-| Action | Description | Notes |
+Supports conditions and permission inversion.
+
+| Action | Description | Condition keys |
 | -------- | ------------------------------- | ----- |
-| `read` | View secrets and their values | This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead. |
-| `describeSecret` | View secret details such as key, path, metadata, tags, and more | If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. |
-| `readValue` | View the value of a secret.| In order to read secret values, the `describeSecret` action must also be granted. |
-| `create` | Add new secrets to the project | |
-| `edit` | Modify existing secret values | |
-| `delete` | Remove secrets from the project | |
+| `read` | View secrets and their values. This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead. | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `describeSecret` | View secret details such as key, path, metadata, tags, and more. If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `readValue` | View the value of a secret. In order to read secret values, the `describeSecret` action must also be granted. | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `create` | Add new secrets to the project | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `edit` | Modify existing secret values | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `delete` | Remove secrets from the project | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `importSecret` | Import secrets | `environment` |
+| `duplicateSecret` | Duplicate secrets | `environment`, `secretPath`, `secretName` |
 
 #### Subject: `secret-folders`
 
-Supports conditions and permission inversion
-| Action | Description |
-| -------- | ------------------------ |
-| `read` | View secret folders |
-| `create` | Create new folders |
-| `edit` | Modify folder properties |
-| `delete` | Remove secret folders |
+Supports conditions and permission inversion.
+
+| Action | Description | Condition keys |
+| -------- | ------------------------ | ----- |
+| `read` | View secret folders | `environment`, `secretPath` |
+| `create` | Create new folders | `environment`, `secretPath` |
+| `edit` | Modify folder properties | `environment`, `secretPath` |
+| `delete` | Remove secret folders | `environment`, `secretPath` |
 
 #### Subject: `secret-imports`
 
-Supports conditions and permission inversion
-| Action | Description |
-| -------- | --------------------- |
-| `read` | View secret imports |
-| `create` | Create secret imports |
-| `edit` | Modify secret imports |
-| `delete` | Remove secret imports |
+Supports conditions and permission inversion.
+
+| Action | Description | Condition keys |
+| -------- | --------------------- | ----- |
+| `read` | View secret imports | `environment`, `secretPath` |
+| `create` | Create secret imports | `environment`, `secretPath` |
+| `edit` | Modify secret imports | `environment`, `secretPath` |
+| `delete` | Remove secret imports | `environment`, `secretPath` |
 
 #### Subject: `secret-event-subscriptions`
 
@@ -227,51 +232,42 @@ Supports conditions and permission inversion
 
 #### Subject: `secret-rotation`
 
-Supports conditions and permission inversion
+Supports conditions and permission inversion.
 
-| Action | Description |
-| ------------------------------ | ---------------------------------------------- |
-| `read` | View secret rotation configurations |
-| `read-generated-credentials` | View the generated credentials of a rotation |
-| `create` | Set up secret rotation configurations |
-| `edit` | Modify secret rotation configurations |
-| `rotate-secrets` | Rotate the generated credentials of a rotation |
-| `delete` | Remove secret rotation configurations |
-
-**Condition Properties:**
-- `environment` – Restrict by environment slug
-- `secretPath` – Restrict by secret path
-- `connectionId` – Restrict by app connection ID (e.g. to allow or deny access to rotations tied to a specific org-level app connection)
+| Action | Description | Condition keys |
+| ------------------------------ | ---------------------------------------------- | ----- |
+| `read` | View secret rotation configurations | `environment`, `secretPath`, `connectionId` |
+| `read-generated-credentials` | View the generated credentials of a rotation | `environment`, `secretPath`, `connectionId` |
+| `create` | Set up secret rotation configurations | `environment`, `secretPath`, `connectionId` |
+| `edit` | Modify secret rotation configurations | `environment`, `secretPath`, `connectionId` |
+| `rotate-secrets` | Rotate the generated credentials of a rotation | `environment`, `secretPath`, `connectionId` |
+| `delete` | Remove secret rotation configurations | `environment`, `secretPath`, `connectionId` |
 
 #### Subject: `secret-syncs`
 
 Supports conditions and permission inversion.
 
-| Action           | Description                                        |
-| ---------------- | -------------------------------------------------- |
-| `read`           | View secret synchronization configurations         |
-| `create`         | Create new sync configurations                     |
-| `edit`           | Modify existing sync settings                      |
-| `delete`         | Remove sync configurations                         |
-| `sync-secrets`   | Execute synchronization of secrets between systems |
-| `import-secrets` | Import secrets from sync sources                   |
-| `remove-secrets` | Remove secrets from sync destinations              |
-
-**Condition Properties:**
-- `environment` – Restrict by environment slug
-- `secretPath` – Restrict by secret path
-- `connectionId` – Restrict by app connection ID (e.g. to allow or deny access to syncs tied to a specific org-level app connection)
+| Action           | Description                                        | Condition keys |
+| ---------------- | -------------------------------------------------- | ----- |
+| `read`           | View secret synchronization configurations         | `environment`, `secretPath`, `connectionId` |
+| `create`         | Create new sync configurations                     | `environment`, `secretPath`, `connectionId` |
+| `edit`           | Modify existing sync settings                      | `environment`, `secretPath`, `connectionId` |
+| `delete`         | Remove sync configurations                         | `environment`, `secretPath`, `connectionId` |
+| `sync-secrets`   | Execute synchronization of secrets between systems | `environment`, `secretPath`, `connectionId` |
+| `import-secrets` | Import secrets from sync sources                   | `environment`, `secretPath`, `connectionId` |
+| `remove-secrets` | Remove secrets from sync destinations              | `environment`, `secretPath`, `connectionId` |
 
 #### Subject: `dynamic-secrets`
 
-Supports conditions and permission inversion
-| Action | Description |
-| ------------------------ | ---------------------------------- |
-| `read-root-credential` | View dynamic secret configurations |
-| `create-root-credential` | Create dynamic secrets |
-| `edit-root-credential` | Edit dynamic secrets |
-| `delete-root-credential` | Remove dynamic secrets |
-| `lease` | Create dynamic secret leases |
+Supports conditions and permission inversion.
+
+| Action | Description | Condition keys |
+| ------------------------ | ---------------------------------- | ----- |
+| `read-root-credential` | View dynamic secret configurations | `environment`, `secretPath`, `metadata` |
+| `create-root-credential` | Create dynamic secrets | `environment`, `secretPath`, `metadata` |
+| `edit-root-credential` | Edit dynamic secrets | `environment`, `secretPath`, `metadata` |
+| `delete-root-credential` | Remove dynamic secrets | `environment`, `secretPath`, `metadata` |
+| `lease` | Create dynamic secret leases | `environment`, `secretPath`, `metadata` |
 
 ### Key Management Service (KMS)
 
@@ -404,16 +400,13 @@ Supports conditions and permission inversion
 
 Supports conditions and permission inversion.
 
-| Action    | Description                         |
-| --------- | ----------------------------------- |
-| `read`    | View MCP endpoints                  |
-| `create`  | Create new MCP endpoints            |
-| `edit`    | Modify MCP endpoint configurations  |
-| `delete`  | Remove MCP endpoints                |
-| `connect` | Connect AI clients to MCP endpoints |
-
-**Condition Properties:**
-- `name`: Control access based on endpoint name
+| Action    | Description                         | Condition keys |
+| --------- | ----------------------------------- | ----- |
+| `read`    | View MCP endpoints                  | `name` |
+| `create`  | Create new MCP endpoints            | `name` |
+| `edit`    | Modify MCP endpoint configurations  | `name` |
+| `delete`  | Remove MCP endpoints                | `name` |
+| `connect` | Connect AI clients to MCP endpoints | `name` |
 
 ### Privileged Access Management (PAM)
 
@@ -421,11 +414,113 @@ Supports conditions and permission inversion.
 
 Supports conditions and permission inversion.
 
-| Action   | Description                                      |
-| -------- | ------------------------------------------------ |
-| `read`   | View PAM accounts the identity is allowed to use |
-| `access` | Request or use access to PAM accounts            |
+| Action   | Description                                      | Condition keys |
+| -------- | ------------------------------------------------ | ----- |
+| `read`   | View PAM accounts the identity is allowed to use | `resourceName`, `accountName` |
+| `access` | Request or use access to PAM accounts            | `resourceName`, `accountName` |
 
-**Condition Properties (PAM accounts only support these two):**
-- `resourceName` – Restrict by resource name (glob patterns supported where applicable).
-- `accountName` – Restrict by account name (glob patterns supported where applicable).
+## Condition Operators
+
+When defining conditions for permissions, you can use the following operators to match values:
+
+| Operator | Description | Type |
+|----------|-------------|------|
+| `$eq` | Equals (exact string match) | `string` |
+| `$ne` | Not equals | `string` |
+| `$in` | In array (matches any value in list) | `string[]` |
+| `$glob` | Glob pattern matching (supports `*` and `?` wildcards) | `string` |
+| `$elemMatch` | Element match for nested objects/arrays | `object` |
+
+## Condition Keys Reference
+
+The following condition keys can be used to restrict permissions. Each key is available only for specific subjects as indicated in the tables above.
+
+| Condition key | Description | Type |
+|---------------|-------------|------|
+| `environment` | The environment slug (e.g., dev, staging, prod) | `string` |
+| `secretPath` | The path within an environment (e.g., /app/config) | `string` |
+| `secretName` | The name of a specific secret | `string` |
+| `secretTags` | Tags associated with secrets | `string[]` |
+| `metadata` | Key-value metadata pairs (use with `$elemMatch`) | `object` |
+| `connectionId` | Connection identifier for rotations/syncs | `string` |
+| `identityId` | Machine identity identifier | `string` |
+| `name` | Resource name | `string` |
+| `resourceName` | PAM resource name | `string` |
+| `accountName` | PAM account name | `string` |
+
+## Usage Examples
+
+These permission objects are used when creating or updating [custom project roles](/api-reference/endpoints/project-roles/create) via the API. Each permission in the `permissions` array defines what actions a role can perform on which resources.
+
+### Creating a role with production-only secret access
+
+Create a custom role that can only read secrets in the production environment:
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/projects/{projectId}/roles \
+  --header 'Authorization: Bearer <token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "slug": "production-reader",
+    "name": "Production Reader",
+    "permissions": [
+      {
+        "subject": "secrets",
+        "action": ["describeSecret", "readValue"],
+        "conditions": {
+          "environment": { "$eq": "production" }
+        }
+      }
+    ]
+  }'
+```
+
+### Creating a role with path-scoped access
+
+Create a role that can only manage secrets under `/app/config/`:
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/projects/{projectId}/roles \
+  --header 'Authorization: Bearer <token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "slug": "config-manager",
+    "name": "Config Manager",
+    "permissions": [
+      {
+        "subject": "secrets",
+        "action": ["describeSecret", "readValue", "edit"],
+        "conditions": {
+          "secretPath": { "$glob": "/app/config/**" }
+        }
+      }
+    ]
+  }'
+```
+
+### Creating a role for PAM access to specific resources
+
+Create a role that grants PAM access only to specific database resources:
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/projects/{projectId}/roles \
+  --header 'Authorization: Bearer <token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "slug": "db-readonly-access",
+    "name": "Database Read-Only Access",
+    "permissions": [
+      {
+        "subject": "pam-accounts",
+        "action": ["read", "access"],
+        "conditions": {
+          "resourceName": { "$in": ["prod-db-1", "prod-db-2"] },
+          "accountName": { "$glob": "readonly-*" }
+        }
+      }
+    ]
+  }'
+```
