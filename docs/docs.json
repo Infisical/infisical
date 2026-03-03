@@ -2779,7 +2779,6 @@
               {
                 "group": "Certificates",
                 "pages": [
-                  "api-reference/endpoints/certificates/list",
                   "api-reference/endpoints/certificates/search",
                   "api-reference/endpoints/certificates/read",
                   "api-reference/endpoints/certificates/certificate-request",
