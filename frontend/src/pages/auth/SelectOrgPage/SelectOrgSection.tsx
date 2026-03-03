@@ -341,8 +341,12 @@ export const SelectOrganizationSection = () => {
               <p className="text-xs text-mineshaft-400">
                 Root organization
                 {(() => {
-                  const joined = selectedRootOrg.userJoinedAt ?? organizations.data?.find((o) => o.id === selectedRootOrg.id)?.userJoinedAt;
-                  return joined ? <> · Member since {format(new Date(joined), "MMM d yyyy")}</> : null;
+                  const joined =
+                    selectedRootOrg.userJoinedAt ??
+                    organizations.data?.find((o) => o.id === selectedRootOrg.id)?.userJoinedAt;
+                  return joined ? (
+                    <> · Member since {format(new Date(joined), "MMM d yyyy")}</>
+                  ) : null;
                 })()}
               </p>
             </div>
@@ -364,25 +368,25 @@ export const SelectOrganizationSection = () => {
             </p>
           ) : (
             filteredSubOrgs.map((sub) => (
-                <button
-                  key={sub.id}
-                  type="button"
-                  onClick={() => handleLoginById(sub.id)}
-                  className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
-                >
-                  <div className="flex flex-col items-start">
-                    <p className="truncate">{sub.name}</p>
-                    {sub.userJoinedAt && (
-                      <p className="text-xs text-mineshaft-400">
-                        Member since {format(new Date(sub.userJoinedAt), "MMM d yyyy")}
-                      </p>
-                    )}
-                  </div>
-                  <FontAwesomeIcon
-                    icon={faArrowRight}
-                    className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
-                  />
-                </button>
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => handleLoginById(sub.id)}
+                className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
+              >
+                <div className="flex flex-col items-start">
+                  <p className="truncate">{sub.name}</p>
+                  {sub.userJoinedAt && (
+                    <p className="text-xs text-mineshaft-400">
+                      Member since {format(new Date(sub.userJoinedAt), "MMM d yyyy")}
+                    </p>
+                  )}
+                </div>
+                <FontAwesomeIcon
+                  icon={faArrowRight}
+                  className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
+                />
+              </button>
             ))
           )}
         </div>
@@ -413,7 +417,9 @@ export const SelectOrganizationSection = () => {
                     <div className="flex flex-col gap-1.5">
                       <p className="truncate transition-colors">{org.name}</p>
                       {(() => {
-                        const joined = org.userJoinedAt ?? organizations.data?.find((o) => o.id === org.id)?.userJoinedAt;
+                        const joined =
+                          org.userJoinedAt ??
+                          organizations.data?.find((o) => o.id === org.id)?.userJoinedAt;
                         return joined ? (
                           <p className="text-xs text-mineshaft-400">
                             Member since {format(new Date(joined), "MMM d yyyy")}
@@ -448,7 +454,9 @@ export const SelectOrganizationSection = () => {
                   <div className="flex flex-col items-start">
                     <p className="truncate transition-colors">{org.name}</p>
                     {(() => {
-                      const joined = org.userJoinedAt ?? organizations.data?.find((o) => o.id === org.id)?.userJoinedAt;
+                      const joined =
+                        org.userJoinedAt ??
+                        organizations.data?.find((o) => o.id === org.id)?.userJoinedAt;
                       return joined ? (
                         <p className="text-xs text-mineshaft-400">
                           Member since {format(new Date(joined), "MMM d yyyy")}
