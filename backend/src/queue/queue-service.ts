@@ -818,15 +818,19 @@ export const queueServiceFactory = (
   const initialize = async () => {
     const appCfg = getConfig();
 
+    const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
+
     // Initialize internal recovery queue (BullMQ for distributed coordination)
     queueContainer[QueueName.QueueInternalRecovery] = new Queue(QueueName.QueueInternalRecovery, {
       prefix: isClusterMode ? `{${QueueName.QueueInternalRecovery}}` : undefined,
+      ...fipsSettings,
       connection
     });
 
     // Initialize internal reconciliation queue
     queueContainer[QueueName.QueueInternalReconciliation] = new Queue(QueueName.QueueInternalReconciliation, {
       prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
+      ...fipsSettings,
       connection
     });
 
