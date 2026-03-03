@@ -284,9 +284,9 @@ export const ConditionsFields = ({
         </Tooltip>
       </div>
       {incompatibleConditions.length > 0 && (
-        <UnstableAccordion type="single" collapsible className="mt-3 border-danger/20 bg-danger/5">
+        <UnstableAccordion type="single" collapsible className="mt-3 border-danger/50 bg-danger/5">
           <UnstableAccordionItem value="errors" className="border-none">
-            <UnstableAccordionTrigger className="min-h-10 bg-danger/10 px-3 py-2 text-danger hover:bg-danger/15 data-[state=open]:bg-danger/15 [&>svg]:text-danger">
+            <UnstableAccordionTrigger className="min-h-10 flex-row-reverse justify-between bg-danger/10 px-3 py-2 text-danger hover:bg-danger/15 data-[state=open]:bg-danger/15 [&>svg]:shrink-0 [&>svg]:text-danger">
               <div className="flex items-center gap-2">
                 <AlertTriangleIcon className="size-4" />
                 <span>
@@ -304,6 +304,11 @@ export const ConditionsFields = ({
                   </span>
                 </div>
               ))}
+              <br />
+              <span className="text-danger/80">
+                Remove the incompatible conditions or update the selected actions to make them
+                compatible.
+              </span>
             </UnstableAccordionContent>
           </UnstableAccordionItem>
         </UnstableAccordion>
@@ -368,8 +373,10 @@ export const ConditionsFields = ({
                               }}
                             >
                               <SelectTrigger
-                                className="w-full"
-                                data-invalid={Boolean(lhsError?.message)}
+                                className={twMerge(
+                                  "w-full",
+                                  lhsError?.message && "border-danger/50"
+                                )}
                               >
                                 <SelectValue />
                               </SelectTrigger>
@@ -452,13 +459,13 @@ export const ConditionsFields = ({
                           <div className="grow">
                             <UnstableInput
                               {...rhsField}
-                              data-invalid={Boolean(rhsError?.message)}
+                              className={twMerge(rhsError?.message && "border-danger/50")}
                             />
                           </div>
                           <UnstableIconButton
                             aria-label="remove"
                             variant="outline"
-                            className="p-2.5"
+                            className="p-2.5 hover:text-danger"
                             isDisabled={isDisabled}
                             onClick={() => items.remove(index)}
                           >

@@ -292,7 +292,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                     isInverted ? "border-l-red-600/50" : "border-l-green-600/50"
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {isConditionalSubjects(subject) && (
                       <Controller
                         defaultValue={false as any}
@@ -329,8 +329,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                         <TooltipTrigger asChild>
                           <UnstableIconButton
                             aria-label="Remove rule"
-                            variant="danger"
-                            size="xs"
+                            variant="outline"
+                            className="p-2.5 hover:text-danger"
                             onClick={() => remove(rootIndex)}
                             isDisabled={isDisabled}
                           >
