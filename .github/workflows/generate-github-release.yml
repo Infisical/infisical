@@ -5,6 +5,11 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.158.7). Required for manual triggers."
+        required: true
+        type: string
   push:
     tags:
       - "v*.*.*"
@@ -13,6 +18,8 @@ on:
 jobs:
   generate-release:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,12 +45,13 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TAG_PREFIX: "v"
           OUTPUT_FORMAT: "github"
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
           body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
