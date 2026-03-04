@@ -11,6 +11,15 @@ The Infisical ClickHouse dynamic secret allows you to generate ClickHouse databa
 
 Create a user with the required permissions in your ClickHouse instance. This user will be used to create new accounts on-demand.
 
+```sql
+CREATE USER 'infisical' IDENTIFIED WITH sha256_password BY '<strong-password>';
+GRANT CREATE USER, DROP USER, GRANT OPTION ON *.* TO 'infisical';
+```
+
+<Note>
+  The `GRANT OPTION` privilege is required so that the service user can grant permissions to the dynamically created users.
+</Note>
+
 ## Set up Dynamic Secrets with ClickHouse
 
 <Steps>
