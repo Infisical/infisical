@@ -15,7 +15,7 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
-import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
+import { useDeleteFolderBatch, useDeleteSecretBatch } from "@app/hooks/api";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import {
   SecretType,
@@ -69,7 +69,7 @@ export const SelectionPanel = ({
   const { currentProject, projectId } = useProject();
   const userAvailableEnvs = currentProject?.environments || [];
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
-  const { mutateAsync: deleteFolder } = useDeleteFolder();
+  const { mutateAsync: deleteFolderBatch } = useDeleteFolderBatch();
 
   const isMultiSelectActive = selectedCount > 0;
 
@@ -115,31 +115,29 @@ export const SelectionPanel = ({
   const handleBulkDelete = async () => {
     let processedEntries = 0;
 
-    const promises = userAvailableEnvs.map(async (env) => {
-      // additional check: ensure that bulk delete is only executed on envs that user has access to
-
+    // Collect all folder deletes into a single batch request
+    const foldersToDelete: { idOrName: string; environment: string; path: string }[] = [];
+    userAvailableEnvs.forEach((env) => {
       if (
         permission.can(
           ProjectPermissionActions.Delete,
           subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
         )
       ) {
-        await Promise.all(
-          Object.values(selectedEntries.folder).map(async (folderRecord) => {
-            const folder = folderRecord[env.slug];
-            if (folder) {
-              processedEntries += 1;
-              await deleteFolder({
-                folderId: folder?.id,
-                path: secretPath,
-                environment: env.slug,
-                projectId
-              });
-            }
-          })
-        );
+        Object.values(selectedEntries.folder).forEach((folderRecord) => {
+          const folder = folderRecord[env.slug];
+          if (folder) {
+            foldersToDelete.push({
+              idOrName: folder.id,
+              environment: env.slug,
+              path: secretPath
+            });
+          }
+        });
       }
+    });
 
+    const promises = userAvailableEnvs.map(async (env) => {
       const secretsToDelete = Object.values(selectedEntries.secret).reduce(
         (accum: TDeleteSecretBatchDTO["secrets"], secretRecord) => {
           const entry = secretRecord[env.slug];
@@ -182,6 +180,17 @@ export const SelectionPanel = ({
         environment: env.slug
       };
     });
+
+    // Execute folder batch delete as a single request
+    if (foldersToDelete.length > 0) {
+      processedEntries += foldersToDelete.length;
+      promises.push(
+        deleteFolderBatch({
+          projectId,
+          folders: foldersToDelete
+        }).then(() => ({ environment: "__batch_folders__" }))
+      );
+    }
 
     const results = await Promise.allSettled(promises);
     const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");

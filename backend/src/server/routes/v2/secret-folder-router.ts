@@ -238,6 +238,81 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     }
   });
 
+  server.route({
+    method: "DELETE",
+    url: "/batch",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "deleteSecretFoldersBatch",
+      tags: [ApiDocsTags.Folders],
+      description: "Delete folders by batch",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectId: z.string().trim().describe(FOLDERS.DELETE.projectId),
+        folders: z
+          .object({
+            idOrName: z.string().describe(FOLDERS.DELETE.folderIdOrName),
+            environment: z.string().trim().describe(FOLDERS.DELETE.environment),
+            path: z
+              .string()
+              .trim()
+              .default("/")
+              .transform(prefixWithSlash)
+              .transform(removeTrailingSlash)
+              .describe(FOLDERS.DELETE.path)
+          })
+          .array()
+          .min(1)
+      }),
+      response: {
+        200: z.object({
+          folders: SecretFoldersSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { folders, count } = await server.services.folder.deleteManyFolders({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.body.projectId,
+        folders: req.body.folders
+      });
+
+      await Promise.all(
+        folders.map(async (folder) => {
+          const matchingInput = req.body.folders.find(
+            (f) => f.idOrName === folder.id || f.idOrName === folder.name
+          );
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            projectId: req.body.projectId,
+            event: {
+              type: EventType.DELETE_FOLDER,
+              metadata: {
+                environment: matchingInput?.environment ?? "",
+                folderId: folder.id,
+                folderPath: matchingInput?.path ?? "/",
+                folderName: folder.name
+              }
+            }
+          });
+        })
+      );
+
+      return { folders, count };
+    }
+  });
+
   // TODO(daniel): Expose this route in api reference and write docs for it.
   server.route({
     method: "DELETE",

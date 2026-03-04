@@ -91,7 +91,7 @@ import {
   useCreateFolder,
   useCreateSecretV3,
   useDeleteDynamicSecret,
-  useDeleteFolder,
+  useDeleteFolderBatch,
   useDeleteSecretImport,
   useDeleteSecretV3,
   useGetImportedSecretsAllEnvs,
@@ -498,7 +498,7 @@ export const OverviewPage = () => {
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
-  const { mutateAsync: deleteFolder } = useDeleteFolder();
+  const { mutateAsync: deleteFolderBatch } = useDeleteFolderBatch();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { mutateAsync: updateFolderBatch } = useUpdateFolderBatch();
   const deleteDynamicSecret = useDeleteDynamicSecret();
@@ -684,7 +684,7 @@ export const OverviewPage = () => {
     const folderName = (popUp.deleteFolder?.data as { name: string })?.name;
     if (!folderName) return;
 
-    const promises = userAvailableEnvs
+    const foldersToDelete = userAvailableEnvs
       .filter((env) =>
         permission.can(
           ProjectPermissionActions.Delete,
@@ -698,16 +698,15 @@ export const OverviewPage = () => {
         const folder = getFolderByNameAndEnv(folderName, env.slug);
         if (!folder) return undefined;
 
-        return deleteFolder({
-          folderId: folder.id,
-          path: secretPath,
+        return {
+          idOrName: folder.id,
           environment: env.slug,
-          projectId
-        });
+          path: secretPath
+        };
       })
-      .filter(Boolean);
+      .filter(Boolean) as { idOrName: string; environment: string; path: string }[];
 
-    if (promises.length === 0) {
+    if (foldersToDelete.length === 0) {
       createNotification({
         type: "info",
         text: "You don't have access to delete this folder in any environment"
@@ -717,7 +716,10 @@ export const OverviewPage = () => {
     }
 
     try {
-      await Promise.all(promises);
+      await deleteFolderBatch({
+        projectId,
+        folders: foldersToDelete
+      });
       createNotification({
         type: "success",
         text: "Successfully deleted folder"
