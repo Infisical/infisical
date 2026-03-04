@@ -2396,18 +2396,18 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     ]
   },
   [ProjectPermissionSub.SecretApproval]: {
-    title: "Secret Approval Policies",
-    description: "Define approval workflows for secret changes",
+    title: "Approval Policies",
+    description: "Define approval workflows for secret changes and access requests",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionActions.Read,
-        description: "View secret approval policies"
+        description: "View approval policies"
       },
       {
         label: "Create",
         value: ProjectPermissionActions.Create,
-        description: "Create new approval policies for secret changes"
+        description: "Create new approval policies"
       },
       {
         label: "Modify",
@@ -2819,34 +2819,34 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     ]
   },
   [ProjectPermissionSub.ApprovalRequests]: {
-    title: "Approval Requests",
-    description: "Manage and respond to access approval requests",
+    title: "Access Requests",
+    description: "View and submit access requests",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionApprovalRequestActions.Read,
-        description: "View pending approval requests"
+        description: "View all pending access requests"
       },
       {
         label: "Create",
         value: ProjectPermissionApprovalRequestActions.Create,
-        description: "Submit new approval requests"
+        description: "Submit new access requests"
       }
     ]
   },
   [ProjectPermissionSub.ApprovalRequestGrants]: {
-    title: "Approval Request Grants",
-    description: "Grant or deny approval requests for access",
+    title: "Access Grants",
+    description: "Manage granted access from approved requests",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionApprovalRequestGrantActions.Read,
-        description: "View granted approval requests"
+        description: "View active and past access grants"
       },
       {
         label: "Revoke",
         value: ProjectPermissionApprovalRequestGrantActions.Revoke,
-        description: "Revoke previously granted approvals"
+        description: "Revoke active access grants"
       }
     ]
   },
@@ -2912,7 +2912,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretApprovalRequest]: {
     title: "Secret Approval Requests",
-    description: "Approve or deny secret change requests",
+    description: "View secret change requests pending approval",
     actions: [
       {
         label: "Read",
