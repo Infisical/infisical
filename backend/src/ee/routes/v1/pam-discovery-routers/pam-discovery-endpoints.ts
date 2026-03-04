@@ -80,6 +80,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SOURCE_GET,
           metadata: {
             sourceId: source.id,
+            sourceName: source.name,
             discoveryType: source.discoveryType,
             name: source.name
           }
@@ -124,6 +125,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SOURCE_CREATE,
           metadata: {
             discoveryType,
+            sourceName: req.body.name,
             gatewayId: req.body.gatewayId,
             name: req.body.name
           }
@@ -171,9 +173,10 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SOURCE_UPDATE,
           metadata: {
             sourceId: req.params.discoverySourceId,
+            sourceName: source.name,
             discoveryType,
             ...(req.body.gatewayId && { gatewayId: req.body.gatewayId }),
-            ...(req.body.name && { name: req.body.name })
+            ...(req.body.name && { newSourceName: req.body.name })
           }
         }
       });
@@ -212,6 +215,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SOURCE_DELETE,
           metadata: {
             sourceId: req.params.discoverySourceId,
+            sourceName: source.name,
             discoveryType
           }
         }
@@ -254,6 +258,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SCAN,
           metadata: {
             sourceId: req.params.discoverySourceId,
+            sourceName: discoverySource.name,
             discoveryType
           }
         }
@@ -304,6 +309,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SOURCE_RUN_LIST,
           metadata: {
             sourceId: req.params.discoverySourceId,
+            sourceName: discoverySource.name,
             discoveryType,
             count: totalCount
           }
@@ -348,6 +354,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SOURCE_RUN_GET,
           metadata: {
             sourceId: discoverySource.id,
+            sourceName: discoverySource.name,
             discoveryType,
             runId: run.id
           }
@@ -400,6 +407,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST,
           metadata: {
             sourceId: req.params.discoverySourceId,
+            sourceName: discoverySource.name,
             discoveryType,
             count: totalCount
           }
@@ -451,6 +459,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           type: EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST,
           metadata: {
             sourceId: req.params.discoverySourceId,
+            sourceName: discoverySource.name,
             discoveryType,
             count: totalCount
           }

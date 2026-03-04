@@ -4497,6 +4497,7 @@ interface PamDiscoverySourceGetEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_GET;
   metadata: {
     sourceId: string;
+    sourceName: string;
     discoveryType: string;
     name: string;
   };
@@ -4505,6 +4506,7 @@ interface PamDiscoverySourceGetEvent {
 interface PamDiscoverySourceCreateEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
   metadata: {
+    sourceName: string;
     discoveryType: string;
     gatewayId?: string | null;
     name: string;
@@ -4515,9 +4517,10 @@ interface PamDiscoverySourceUpdateEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_UPDATE;
   metadata: {
     sourceId: string;
+    sourceName: string;
     discoveryType: string;
     gatewayId?: string | null;
-    name?: string;
+    newSourceName?: string;
   };
 }
 
@@ -4525,6 +4528,7 @@ interface PamDiscoverySourceDeleteEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_DELETE;
   metadata: {
     sourceId: string;
+    sourceName: string;
     discoveryType: string;
   };
 }
@@ -4533,6 +4537,7 @@ interface PamDiscoveryScanEvent {
   type: EventType.PAM_DISCOVERY_SCAN;
   metadata: {
     sourceId: string;
+    sourceName: string;
     discoveryType: string;
   };
 }
@@ -4541,6 +4546,7 @@ interface PamDiscoverySourceRunListEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_RUN_LIST;
   metadata: {
     sourceId: string;
+    sourceName: string;
     discoveryType: string;
     count: number;
   };
@@ -4550,6 +4556,7 @@ interface PamDiscoverySourceRunGetEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_RUN_GET;
   metadata: {
     sourceId: string;
+    sourceName: string;
     discoveryType: string;
     runId: string;
   };
@@ -4559,6 +4566,7 @@ interface PamDiscoverySourceResourceListEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST;
   metadata: {
     sourceId: string;
+    sourceName: string;
     discoveryType: string;
     count: number;
   };
@@ -4568,6 +4576,7 @@ interface PamDiscoverySourceAccountListEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST;
   metadata: {
     sourceId: string;
+    sourceName: string;
     discoveryType: string;
     count: number;
   };
