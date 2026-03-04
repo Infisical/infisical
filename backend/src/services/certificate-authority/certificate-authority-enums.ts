@@ -19,6 +19,12 @@ export enum CaRenewalType {
   EXISTING = "existing"
 }
 
+export enum CaRenewalStatus {
+  PENDING = "pending",
+  SUCCESS = "success",
+  FAILED = "failed"
+}
+
 export enum CaCapability {
   ISSUE_CERTIFICATES = "issue-certificates",
   REVOKE_CERTIFICATES = "revoke-certificates",

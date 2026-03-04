@@ -168,6 +168,7 @@ import {
   TerraformCloudConnectionMethod,
   validateTerraformCloudConnectionCredentials
 } from "./terraform-cloud";
+import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 import {
@@ -196,7 +197,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.AzureADCS,
   AppConnection.AzureKeyVault,
   AppConnection.Chef,
-  AppConnection.DNSMadeEasy
+  AppConnection.DNSMadeEasy,
+  AppConnection.Venafi
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -250,7 +252,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDbtConnectionListItem(),
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
-    getCircleCIConnectionListItem()
+    getCircleCIConnectionListItem(),
+    getVenafiConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -390,7 +393,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Dbt]: validateDbtConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -466,6 +470,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "SSH Key";
     case SmbConnectionMethod.Credentials:
       return "Credentials";
+    case VenafiConnectionMethod.ApiKey:
+      return "API Key";
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
@@ -556,7 +562,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Dbt]: platformManagedCredentialsNotSupported,
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
-  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported
+  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Venafi]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

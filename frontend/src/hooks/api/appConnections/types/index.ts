@@ -47,6 +47,7 @@ import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
+import { TVenafiConnection } from "./venafi-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
 import { TZabbixConnection } from "./zabbix-connection";
@@ -97,6 +98,7 @@ export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
+export * from "./venafi-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
 export * from "./zabbix-connection";
@@ -151,7 +153,8 @@ export type TAppConnection =
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
-  | TCircleCIConnection;
+  | TCircleCIConnection
+  | TVenafiConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

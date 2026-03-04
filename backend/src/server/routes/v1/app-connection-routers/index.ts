@@ -47,6 +47,7 @@ import { registerSshConnectionRouter } from "./ssh-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
+import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
@@ -104,5 +105,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Dbt]: registerDbtConnectionRouter,
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
-    [AppConnection.CircleCI]: registerCircleCIConnectionRouter
+    [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
+    [AppConnection.Venafi]: registerVenafiConnectionRouter
   };

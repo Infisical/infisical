@@ -26,6 +26,7 @@ export * from "./audit-logs";
 export * from "./auth-token-sessions";
 export * from "./auth-tokens";
 export * from "./backup-private-key";
+export * from "./ca-signing-configs";
 export * from "./certificate-authorities";
 export * from "./certificate-authority-certs";
 export * from "./certificate-authority-crl";

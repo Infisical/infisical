@@ -95,7 +95,8 @@ export enum QueueName {
   PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
-  PkiDiscoveryScan = "pki-discovery-scan"
+  PkiDiscoveryScan = "pki-discovery-scan",
+  CaAutoRenewal = "ca-auto-renewal"
 }
 
 export enum QueueJobs {
@@ -158,7 +159,9 @@ export enum QueueJobs {
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
-  PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan"
+  PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  CaDailyAutoRenewal = "ca-daily-auto-renewal",
+  CaVenafiInstall = "ca-venafi-install-job"
 }
 
 export type TQueueOptions = {
@@ -479,6 +482,15 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
+      };
+  [QueueName.CaAutoRenewal]:
+    | {
+        name: QueueJobs.CaDailyAutoRenewal;
+        payload: undefined;
+      }
+    | {
+        name: QueueJobs.CaVenafiInstall;
+        payload: { caId: string; maxPathLength?: number };
       };
 };
 

@@ -86,6 +86,9 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TCaSigningConfigs,
+  TCaSigningConfigsInsert,
+  TCaSigningConfigsUpdate,
   TCertificateAuthorities,
   TCertificateAuthoritiesInsert,
   TCertificateAuthoritiesUpdate,
@@ -1608,5 +1611,10 @@ declare module "knex/types/tables" {
     >;
 
     [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
+    [TableName.CaSigningConfig]: KnexOriginal.CompositeTableType<
+      TCaSigningConfigs,
+      TCaSigningConfigsInsert,
+      TCaSigningConfigsUpdate
+    >;
   }
 }

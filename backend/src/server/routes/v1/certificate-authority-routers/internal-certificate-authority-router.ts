@@ -1,10 +1,12 @@
 import { z } from "zod";
 
+import { CaSigningConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CaSigningConfigType } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-enums";
 import { CaRenewalType, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
@@ -14,6 +16,14 @@ import {
 } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
 
 import { registerCertificateAuthorityEndpoints } from "./certificate-authority-endpoints";
+
+const CaAutoRenewalResponseSchema = z.object({
+  autoRenewalEnabled: z.boolean(),
+  autoRenewalDaysBeforeExpiry: z.number().nullable(),
+  lastRenewalStatus: z.string().nullable(),
+  lastRenewalMessage: z.string().nullable(),
+  lastRenewalAt: z.date().nullable()
+});
 
 export const registerInternalCertificateAuthorityRouter = async (server: FastifyZodProvider) => {
   registerCertificateAuthorityEndpoints({
@@ -604,6 +614,312 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       void res.header("Content-Type", "application/pkix-cert");
 
       return Buffer.from(caCert.rawData);
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:caId/install-certificate-venafi",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "installCaCertificateVenafi",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Install a CA certificate via Venafi TLS Protect Cloud",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_VENAFI.caId)
+      }),
+      body: z.object({
+        maxPathLength: z.number().min(-1).default(-1)
+      }),
+      response: {
+        202: z.object({
+          message: z.string(),
+          caId: z.string()
+        })
+      }
+    },
+    handler: async (req, reply) => {
+      const { ca } = await server.services.caSigningConfig.installCertificateVenafi({
+        caId: req.params.caId,
+        maxPathLength: req.body.maxPathLength,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.INSTALL_CA_CERT_VENAFI,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return reply.status(202).send({
+        message: "Certificate installation queued",
+        caId: req.params.caId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:caId/signing-config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "createCaSigningConfig",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Create a signing configuration for a CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE_SIGNING_CONFIG.caId)
+      }),
+      body: z.object({
+        type: z.nativeEnum(CaSigningConfigType),
+        parentCaId: z.string().uuid().optional(),
+        appConnectionId: z.string().uuid().optional(),
+        destinationConfig: z
+          .object({
+            applicationId: z.string().min(1),
+            issuingTemplateId: z.string().min(1),
+            validityPeriod: z.number().int().min(1).optional()
+          })
+          .optional()
+      }),
+      response: {
+        200: CaSigningConfigsSchema
+      }
+    },
+    handler: async (req) => {
+      const { config, ca } = await server.services.caSigningConfig.createSigningConfig({
+        caId: req.params.caId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.CREATE_CA_SIGNING_CONFIG,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn,
+            signingConfigType: req.body.type
+          }
+        }
+      });
+
+      return config;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/signing-config",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "getCaSigningConfig",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Get the signing configuration for a CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_SIGNING_CONFIG.caId)
+      }),
+      response: {
+        200: CaSigningConfigsSchema
+      }
+    },
+    handler: async (req) => {
+      const { config, ca } = await server.services.caSigningConfig.getSigningConfig({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_SIGNING_CONFIG,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return config;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:caId/signing-config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "updateCaSigningConfig",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Update the signing configuration for a CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE_SIGNING_CONFIG.caId)
+      }),
+      body: z.object({
+        parentCaId: z.string().uuid().optional(),
+        appConnectionId: z.string().uuid().optional(),
+        destinationConfig: z
+          .object({
+            applicationId: z.string().min(1),
+            issuingTemplateId: z.string().min(1),
+            validityPeriod: z.number().int().min(1).optional()
+          })
+          .optional()
+      }),
+      response: {
+        200: CaSigningConfigsSchema
+      }
+    },
+    handler: async (req) => {
+      const { config, ca } = await server.services.caSigningConfig.updateSigningConfig({
+        caId: req.params.caId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.UPDATE_CA_SIGNING_CONFIG,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return config;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/auto-renewal",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "getCaAutoRenewalConfig",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Get auto-renewal configuration for a CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_AUTO_RENEWAL.caId)
+      }),
+      response: {
+        200: CaAutoRenewalResponseSchema
+      }
+    },
+    handler: async (req) => {
+      const { ca, ...autoRenewalConfig } = await server.services.caSigningConfig.getAutoRenewalConfig({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_AUTO_RENEWAL_CONFIG,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return autoRenewalConfig;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:caId/auto-renewal",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "updateCaAutoRenewalConfig",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Update auto-renewal configuration for a CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE_AUTO_RENEWAL.caId)
+      }),
+      body: z.object({
+        autoRenewalEnabled: z.boolean().optional(),
+        autoRenewalDaysBeforeExpiry: z.number().min(1).max(365).optional()
+      }),
+      response: {
+        200: CaAutoRenewalResponseSchema
+      }
+    },
+    handler: async (req) => {
+      const { ca, ...autoRenewalConfig } = await server.services.caSigningConfig.updateAutoRenewalConfig({
+        caId: req.params.caId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.UPDATE_CA_AUTO_RENEWAL_CONFIG,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn,
+            autoRenewalEnabled: req.body.autoRenewalEnabled
+          }
+        }
+      });
+
+      return autoRenewalConfig;
     }
   });
 };
