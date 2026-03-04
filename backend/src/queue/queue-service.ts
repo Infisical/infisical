@@ -829,8 +829,8 @@ export const queueServiceFactory = (
 
     // Initialize internal reconciliation queue
     queueContainer[QueueName.QueueInternalReconciliation] = new Queue(QueueName.QueueInternalReconciliation, {
-      prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
       ...fipsSettings,
+      prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
       connection
     });
 
@@ -842,6 +842,7 @@ export const queueServiceFactory = (
           await startupRecovery();
         },
         {
+          ...fipsSettings,
           prefix: isClusterMode ? `{${QueueName.QueueInternalRecovery}}` : undefined,
           connection
         }
@@ -854,6 +855,7 @@ export const queueServiceFactory = (
           await runReconciliation();
         },
         {
+          ...fipsSettings,
           prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
           connection
         }
@@ -927,17 +929,12 @@ export const queueServiceFactory = (
 
     const wrappedJobFn = isPersistenceEnabled ? wrapJobWithHeartbeat(name, jobFn) : jobFn;
 
+    const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
+
     workerContainer[name] = new Worker(name, wrappedJobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
+      ...fipsSettings,
       ...restQueueSettings,
-      ...(crypto.isFipsModeEnabled()
-        ? {
-            settings: {
-              ...restQueueSettings?.settings,
-              repeatKeyHashAlgorithm: "sha256"
-            }
-          }
-        : {}),
       connection
     });
 
