@@ -8,8 +8,8 @@ import {
 } from "./active-directory-discovery-schemas";
 
 export type TActiveDirectoryDiscoverySource = z.infer<typeof ActiveDirectoryDiscoverySourceSchema>;
-export type TActiveDirectoryDiscoveryCredentials = z.infer<typeof ActiveDirectoryDiscoveryCredentialsSchema>;
-export type TActiveDirectoryDiscoveryConfiguration = z.infer<typeof ActiveDirectoryDiscoveryConfigurationSchema>;
+export type TActiveDirectoryDiscoverySourceCredentials = z.infer<typeof ActiveDirectoryDiscoveryCredentialsSchema>;
+export type TActiveDirectoryDiscoverySourceConfiguration = z.infer<typeof ActiveDirectoryDiscoveryConfigurationSchema>;
 export type TActiveDirectoryDiscoverySourceRunProgress = z.infer<
   typeof ActiveDirectoryDiscoverySourceRunProgressSchema
 >;

@@ -2,16 +2,16 @@ import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
-  TActiveDirectoryDiscoveryConfiguration,
-  TActiveDirectoryDiscoveryCredentials,
-  TActiveDirectoryDiscoverySource
+  TActiveDirectoryDiscoverySource,
+  TActiveDirectoryDiscoverySourceConfiguration,
+  TActiveDirectoryDiscoverySourceCredentials
 } from "./active-directory/active-directory-discovery-types";
 import { PamDiscoveryOrderBy, PamDiscoverySourceRunTrigger, PamDiscoveryType } from "./pam-discovery-enums";
 import { TPamDiscoveryScanDeps } from "./pam-discovery-factory";
 
 export type TPamDiscoverySource = TActiveDirectoryDiscoverySource;
-export type TPamDiscoveryCredentials = TActiveDirectoryDiscoveryCredentials;
-export type TPamDiscoveryConfiguration = TActiveDirectoryDiscoveryConfiguration;
+export type TPamDiscoveryCredentials = TActiveDirectoryDiscoverySourceCredentials;
+export type TPamDiscoveryConfiguration = TActiveDirectoryDiscoverySourceConfiguration;
 
 // Discovery Source DTOs
 export type TCreatePamDiscoverySourceDTO = Pick<

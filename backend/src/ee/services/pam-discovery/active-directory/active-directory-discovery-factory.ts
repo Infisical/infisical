@@ -33,8 +33,8 @@ import {
 } from "../pam-discovery-enums";
 import { TPamDiscoveryFactory } from "../pam-discovery-types";
 import {
-  TActiveDirectoryDiscoveryConfiguration as TAdDiscoveryConfiguration,
-  TActiveDirectoryDiscoveryCredentials as TAdDiscoveryCredentials,
+  TActiveDirectoryDiscoverySourceConfiguration as TAdDiscoveryConfiguration,
+  TActiveDirectoryDiscoverySourceCredentials as TAdDiscoveryCredentials,
   TActiveDirectoryDiscoverySourceRunProgress
 } from "./active-directory-discovery-types";
 
@@ -610,6 +610,11 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         }
       }
 
+      // Persist resource counts before processing accounts
+      await pamDiscoveryRunDAL.updateById(run.id, {
+        resourcesDiscoveredCount
+      });
+
       // Auto-import domain accounts
       for await (const user of users) {
         try {
@@ -657,10 +662,6 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           completedAt: new Date()
         });
       }
-
-      await pamDiscoverySourceDAL.updateById(discoverySourceId, {
-        lastRunAt: new Date()
-      });
     } catch (error) {
       logger.error({ error, discoverySourceId, runId: run.id }, "PAM AD discovery scan failed");
 
@@ -679,7 +680,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         errorMessage: (error as Error).message,
         completedAt: new Date()
       });
-
+    } finally {
       await pamDiscoverySourceDAL.updateById(discoverySourceId, {
         lastRunAt: new Date()
       });

@@ -20,9 +20,7 @@ export const pamDiscoveryRunDALFactory = (db: TDbClient) => {
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
 
-      void query.select(selectAllTableCols(TableName.PamDiscoverySourceRun));
-
-      void query.orderBy("createdAt", "desc");
+      void query.select(selectAllTableCols(TableName.PamDiscoverySourceRun)).orderBy("createdAt", "desc");
 
       if (typeof limit === "number") {
         void query.limit(limit).offset(offset);
