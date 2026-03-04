@@ -92,11 +92,12 @@ jobs:
 
       - name: Generate categorized changelog
         id: changelog
-        run: python .github/resources/release-changelog-generator.py
+        run: python .github/resources/changelog-generator.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RELEASE_TAG: ${{ env.NIGHTLY_TAG }}
+          TAG_PREFIX: "v"
+          OUTPUT_FORMAT: "github"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
