@@ -630,6 +630,10 @@ const SecretConditionV1Schema = z
   })
   .partial();
 
+// NOTE: The frontend operator dropdown defaults to showing $EQ, $NEQ, $GLOB, $IN.
+// If a condition schema below defines a different set of operators for a field,
+// add an explicit case in renderOperatorSelectItems() in the frontend to show only the correct ones:
+// frontend/src/pages/project/RoleDetailsBySlugPage/components/PermissionConditionHelpers.tsx
 const SecretRotationConditionSchema = z
   .object({
     environment: z.union([
