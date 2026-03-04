@@ -5,6 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
 
@@ -23,7 +24,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       offset = 0,
       orderBy = PamAccountOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
-      filterResourceIds
+      filterResourceIds,
+      metadataFilter
     }: {
       projectId: string;
       folderId?: string | null;
@@ -34,6 +36,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       orderBy?: PamAccountOrderBy;
       orderDirection?: OrderByDirection;
       filterResourceIds?: string[];
+      metadataFilter?: Array<{ key: string; value?: string }>;
     },
     tx?: Knex
   ) => {
@@ -65,6 +68,10 @@ export const pamAccountDALFactory = (db: TDbClient) => {
 
       if (filterResourceIds && filterResourceIds.length) {
         void query.whereIn(`${TableName.PamAccount}.resourceId`, filterResourceIds);
+      }
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        void applyMetadataFilter(query, metadataFilter, "pamAccountId", TableName.PamAccount);
       }
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
@@ -160,10 +167,26 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return accounts;
   };
 
+  const findMetadataByAccountIds = async (accountIds: string[], tx?: Knex) => {
+    if (!accountIds.length) return {};
+    const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
+      .select("id", "key", "value", "pamAccountId")
+      .whereIn("pamAccountId", accountIds);
+    const byAccountId: Record<string, Array<{ id: string; key: string; value: string }>> = {};
+    for (const row of rows) {
+      if (row.pamAccountId) {
+        if (!byAccountId[row.pamAccountId]) byAccountId[row.pamAccountId] = [];
+        byAccountId[row.pamAccountId].push({ id: row.id, key: row.key, value: row.value || "" });
+      }
+    }
+    return byAccountId;
+  };
+
   return {
     ...orm,
     findByProjectIdWithResourceDetails,
     findByIdWithResourceDetails,
-    findAccountsDueForRotation
+    findAccountsDueForRotation,
+    findMetadataByAccountIds
   };
 };

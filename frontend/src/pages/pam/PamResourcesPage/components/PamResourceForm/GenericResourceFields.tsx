@@ -8,13 +8,23 @@ import { slugSchema } from "@app/lib/schemas";
 
 export const genericResourceFieldsSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
-  gatewayId: z.string().min(1)
+  gatewayId: z.string().min(1),
+  metadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().default("")
+    })
+    .array()
+    .optional()
 });
 
 export const GenericResourceFields = () => {
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
-  const { control } = useFormContext<{ name: string; gatewayId: string }>();
+  const { control } = useFormContext<{
+    name: string;
+    gatewayId: string;
+  }>();
 
   return (
     <>

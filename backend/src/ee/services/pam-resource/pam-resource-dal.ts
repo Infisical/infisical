@@ -5,6 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { PamResourceOrderBy } from "./pam-resource-enums";
 
@@ -32,7 +33,8 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       offset = 0,
       orderBy = PamResourceOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
-      filterResourceTypes
+      filterResourceTypes,
+      metadataFilter
     }: {
       projectId: string;
       search?: string;
@@ -41,6 +43,7 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       orderBy?: PamResourceOrderBy;
       orderDirection?: OrderByDirection;
       filterResourceTypes?: string[];
+      metadataFilter?: Array<{ key: string; value?: string }>;
     },
     tx?: Knex
   ) => {
@@ -61,6 +64,10 @@ export const pamResourceDALFactory = (db: TDbClient) => {
 
       if (filterResourceTypes && filterResourceTypes.length) {
         void query.whereIn(`${TableName.PamResource}.resourceType`, filterResourceTypes);
+      }
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        void applyMetadataFilter(query, metadataFilter, "pamResourceId", TableName.PamResource);
       }
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
@@ -84,6 +91,21 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findMetadataByResourceIds = async (resourceIds: string[], tx?: Knex) => {
+    if (!resourceIds.length) return {};
+    const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
+      .select("id", "key", "value", "pamResourceId")
+      .whereIn("pamResourceId", resourceIds);
+    const byResourceId: Record<string, Array<{ id: string; key: string; value: string }>> = {};
+    for (const row of rows) {
+      if (row.pamResourceId) {
+        if (!byResourceId[row.pamResourceId]) byResourceId[row.pamResourceId] = [];
+        byResourceId[row.pamResourceId].push({ id: row.id, key: row.key, value: row.value || "" });
+      }
+    }
+    return byResourceId;
+  };
+
   const findByAdServerResourceId = async (adServerResourceId: string, tx?: Knex) => {
     try {
       const resources = await (tx || db.replicaNode())(TableName.PamResource)
@@ -97,5 +119,5 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, findByProjectId, findByAdServerResourceId };
+  return { ...orm, findById, findByProjectId, findMetadataByResourceIds, findByAdServerResourceId };
 };

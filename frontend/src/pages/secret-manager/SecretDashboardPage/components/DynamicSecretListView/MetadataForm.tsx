@@ -27,10 +27,10 @@ export const MetadataForm = ({
   });
 
   return (
-    <FormControl label={title}>
-      <div className="flex flex-col space-y-2">
+    <FormControl label={title} className="mt-4">
+      <div className="flex flex-col space-y-2 pt-1">
         {metadataFormFields.fields.length === 0 ? (
-          <UnstableEmpty className="gap-2 p-3 md:p-3">
+          <UnstableEmpty className="gap-2 p-6 md:p-6">
             <UnstableEmptyHeader>
               <UnstableEmptyTitle>No metadata entries</UnstableEmptyTitle>
             </UnstableEmptyHeader>

@@ -2623,7 +2623,8 @@ export const registerRoutes = async (
     pamAccountDAL,
     permissionService,
     kmsService,
-    gatewayV2Service
+    gatewayV2Service,
+    resourceMetadataDAL
   });
 
   const mfaSessionService = mfaSessionServiceFactory({
@@ -2654,7 +2655,8 @@ export const registerRoutes = async (
     smtpService,
     approvalRequestGrantsDAL,
     approvalPolicyDAL,
-    pamSessionExpirationService
+    pamSessionExpirationService,
+    resourceMetadataDAL
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({

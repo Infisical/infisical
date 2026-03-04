@@ -7,15 +7,14 @@ type Props = {
   isDisabled?: boolean;
 };
 
-export const PamAccountPermissionConditions = ({ position = 0, isDisabled }: Props) => {
+export const PamResourcePermissionConditions = ({ position = 0, isDisabled }: Props) => {
   return (
     <ConditionsFields
       isDisabled={isDisabled}
-      subject={ProjectPermissionSub.PamAccounts}
+      subject={ProjectPermissionSub.PamResources}
       position={position}
       selectOptions={[
-        { value: "resourceName", label: "Resource Name" },
-        { value: "accountName", label: "Account Name" },
+        { value: "name", label: "Resource Name" },
         { value: "metadataKey", label: "Metadata Key" },
         { value: "metadataValue", label: "Metadata Value" }
       ]}

@@ -26,6 +26,7 @@ import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
 import { PamAccountPermissionConditions } from "./PamAccountPermissionConditions";
+import { PamResourcePermissionConditions } from "./PamResourcePermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
 import { PkiSyncPermissionConditions } from "./PkiSyncPermissionConditions";
@@ -96,6 +97,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.PamAccounts) {
       return <PamAccountPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.PamResources) {
+      return <PamResourcePermissionConditions isDisabled={isDisabled} />;
     }
 
     if (subject === ProjectPermissionSub.CertificateAuthorities) {
