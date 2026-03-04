@@ -11,12 +11,12 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { TCreateSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
+import { TCreateSubOrgDTO, TDeleteSubOrgDTO, TJoinSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
 
 type TSubOrgServiceFactoryDep = {
   orgDAL: Pick<
     TOrgDALFactory,
-    "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById"
+    "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -189,9 +189,82 @@ export const subOrgServiceFactory = ({
     };
   };
 
+  const joinSubOrg = async ({ subOrgId, permissionActor }: TJoinSubOrgDTO) => {
+    const subOrg = await orgDAL.findOne({
+      rootOrgId: permissionActor.rootOrgId,
+      id: subOrgId
+    });
+    if (!subOrg) {
+      throw new BadRequestError({ message: "Sub-organization not found" });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actorId: permissionActor.id,
+      actor: permissionActor.type,
+      orgId: permissionActor.rootOrgId,
+      actorOrgId: permissionActor.rootOrgId,
+      actorAuthMethod: permissionActor.authMethod,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSubOrgActions.DirectAccess,
+      OrgPermissionSubjects.SubOrganization
+    );
+
+    await orgDAL.transaction(async (tx) => {
+      const membership = await membershipDAL.create(
+        {
+          scope: AccessScope.Organization,
+          [permissionActor.type === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"]: permissionActor.id,
+          scopeOrgId: subOrgId,
+          status: OrgMembershipStatus.Accepted,
+          isActive: true
+        },
+        tx
+      );
+      await membershipRoleDAL.create(
+        {
+          membershipId: membership.id,
+          role: OrgMembershipRole.Admin
+        },
+        tx
+      );
+    });
+
+    return { organization: subOrg };
+  };
+
+  const deleteSubOrg = async ({ subOrgId, permissionActor }: TDeleteSubOrgDTO) => {
+    const subOrg = await orgDAL.findOne({
+      rootOrgId: permissionActor.rootOrgId,
+      id: subOrgId
+    });
+    if (!subOrg) {
+      throw new BadRequestError({ message: "Sub-organization not found" });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actorId: permissionActor.id,
+      actor: permissionActor.type,
+      orgId: subOrgId,
+      actorOrgId: subOrgId,
+      actorAuthMethod: permissionActor.authMethod,
+      scope: OrganizationActionScope.ChildOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+
+    await orgDAL.deleteById(subOrgId);
+
+    return { organization: subOrg };
+  };
+
   return {
     createSubOrg,
     listSubOrgs,
-    updateSubOrg
+    updateSubOrg,
+    deleteSubOrg,
+    joinSubOrg
   };
 };

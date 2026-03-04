@@ -169,4 +169,98 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       return { organization };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/:subOrgId/memberships",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SubOrganizations],
+      description: "Join a sub organization",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        subOrgId: z.string().trim().describe(SUB_ORGANIZATIONS.JOIN.subOrgId)
+      }),
+      response: {
+        200: z.object({
+          organization: sanitizedSubOrganizationSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { organization } = await server.services.subOrganization.joinSubOrg({
+        subOrgId: req.params.subOrgId,
+        permissionActor: req.permission
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.JOIN_SUB_ORGANIZATION,
+          metadata: {
+            ...pick(organization, ["name", "slug"]),
+            organizationId: organization.id
+          }
+        }
+      });
+
+      return { organization };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:subOrgId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SubOrganizations],
+      description: "Delete a sub organization",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        subOrgId: z.string().trim().describe(SUB_ORGANIZATIONS.DELETE.subOrgId)
+      }),
+      response: {
+        200: z.object({
+          organization: sanitizedSubOrganizationSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { organization } = await server.services.subOrganization.deleteSubOrg({
+        subOrgId: req.params.subOrgId,
+        permissionActor: req.permission
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_SUB_ORGANIZATION,
+          metadata: {
+            ...pick(organization, ["name", "slug"]),
+            organizationId: organization.id
+          }
+        }
+      });
+
+      return { organization };
+    }
+  });
 };

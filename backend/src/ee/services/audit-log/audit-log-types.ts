@@ -167,6 +167,8 @@ export enum EventType {
 
   CREATE_SUB_ORGANIZATION = "create-sub-organization",
   UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+  DELETE_SUB_ORGANIZATION = "delete-sub-organization",
+  JOIN_SUB_ORGANIZATION = "join-sub-organization",
 
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
@@ -788,6 +790,24 @@ interface CreateSubOrganizationEvent {
 
 interface UpdateSubOrganizationEvent {
   type: EventType.UPDATE_SUB_ORGANIZATION;
+  metadata: {
+    name: string;
+    slug: string;
+    organizationId: string;
+  };
+}
+
+interface DeleteSubOrganizationEvent {
+  type: EventType.DELETE_SUB_ORGANIZATION;
+  metadata: {
+    name: string;
+    slug: string;
+    organizationId: string;
+  };
+}
+
+interface JoinSubOrganizationEvent {
+  type: EventType.JOIN_SUB_ORGANIZATION;
   metadata: {
     name: string;
     slug: string;
@@ -5080,6 +5100,8 @@ interface ListDynamicSecretLeasesEvent {
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
+  | DeleteSubOrganizationEvent
+  | JoinSubOrganizationEvent
   | GetSecretsEvent
   | GetSecretEvent
   | CreateSecretEvent

@@ -22,3 +22,13 @@ export type TUpdateSubOrgDTO = {
   slug?: string;
   permissionActor: OrgServiceActor;
 };
+
+export type TDeleteSubOrgDTO = {
+  subOrgId: string;
+  permissionActor: OrgServiceActor;
+};
+
+export type TJoinSubOrgDTO = {
+  subOrgId: string;
+  permissionActor: OrgServiceActor;
+};
