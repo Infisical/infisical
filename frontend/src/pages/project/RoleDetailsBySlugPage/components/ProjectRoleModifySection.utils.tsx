@@ -80,10 +80,7 @@ const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Create]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional(),
-  // Test actions for dynamic conditions feature - to be removed after testing
-  [ProjectPermissionSecretActions.ImportSecret]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.DuplicateSecret]: z.boolean().optional()
+  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional()
 });
 
 const ApprovalPolicyActionSchema = z.object({
@@ -381,13 +378,7 @@ export type ActionAllowedConditionsType = Partial<
   Record<ProjectPermissionSub, Partial<Record<string, string[]>>>
 >;
 
-export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
-  [ProjectPermissionSub.Secrets]: {
-    // Test actions with restricted conditions - to be removed after testing
-    [ProjectPermissionSecretActions.ImportSecret]: ["environment"],
-    [ProjectPermissionSecretActions.DuplicateSecret]: ["environment", "secretPath", "secretName"]
-  }
-};
+export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {};
 
 // Utility function to get action labels from PROJECT_PERMISSION_OBJECT
 // This is called lazily at validation time, not at module load time
@@ -938,10 +929,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
           const canCreate = action.includes(ProjectPermissionSecretActions.Create);
           const canSubscribe = action.includes(ProjectPermissionSecretActions.Subscribe);
-          const canImportSecret = action.includes(ProjectPermissionSecretActions.ImportSecret);
-          const canDuplicateSecret = action.includes(
-            ProjectPermissionSecretActions.DuplicateSecret
-          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -952,8 +939,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             edit: canEdit,
             delete: canDelete,
             subscribe: canSubscribe,
-            [ProjectPermissionSecretActions.ImportSecret]: canImportSecret,
-            [ProjectPermissionSecretActions.DuplicateSecret]: canDuplicateSecret,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1761,19 +1746,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create",
         description: "Create new secrets in the project",
         value: ProjectPermissionSecretActions.Create
-      },
-      // Test actions for dynamic conditions feature - to be removed after testing
-      {
-        label: "Import Secret (Test)",
-        description: "Test action that only allows environment condition",
-        value: ProjectPermissionSecretActions.ImportSecret,
-        allowedConditions: ["environment"]
-      },
-      {
-        label: "Duplicate Secret (Test)",
-        description: "Test action that allows environment, secretPath, and secretName conditions",
-        value: ProjectPermissionSecretActions.DuplicateSecret,
-        allowedConditions: ["environment", "secretPath", "secretName"]
       }
     ]
   },
@@ -2425,7 +2397,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretApproval]: {
     title: "Secret Approval Policies",
-    description: "Define approval workflows for secret access",
+    description: "Define approval workflows for secret changes",
     actions: [
       {
         label: "Read",
@@ -2940,7 +2912,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretApprovalRequest]: {
     title: "Secret Approval Requests",
-    description: "Approve or deny requests to access secrets",
+    description: "Approve or deny secret change requests",
     actions: [
       {
         label: "Read",

@@ -130,7 +130,7 @@ export function formatValidationErrorPath(
   const subjectValue = permissions?.[permissionIndex]?.subject;
 
   if (typeof subjectValue === "string") {
-    return PERMISSION_DISPLAY_NAMES[subjectValue] ?? subjectValue;
+    return `${PERMISSION_DISPLAY_NAMES[subjectValue] ?? subjectValue} - Actions`;
   }
 
   return `Permission rule #${permissionIndex + 1}`;
