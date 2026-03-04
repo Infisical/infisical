@@ -16,7 +16,7 @@ export const useCreatePamDiscoverySource = () => {
   return useMutation({
     mutationFn: async ({ discoveryType, ...dto }: TCreatePamDiscoverySourceDTO) => {
       const { data } = await apiRequest.post<{ source: TPamDiscoverySource }>(
-        `/api/v1/pam/discovery/${discoveryType}`,
+        `/api/v1/pam/discovery-sources/${discoveryType}`,
         dto
       );
       return data.source;
@@ -36,7 +36,7 @@ export const useUpdatePamDiscoverySource = () => {
       ...dto
     }: TUpdatePamDiscoverySourceDTO) => {
       const { data } = await apiRequest.patch<{ source: TPamDiscoverySource }>(
-        `/api/v1/pam/discovery/${discoveryType}/${discoverySourceId}`,
+        `/api/v1/pam/discovery-sources/${discoveryType}/${discoverySourceId}`,
         dto
       );
       return data.source;
@@ -52,7 +52,7 @@ export const useDeletePamDiscoverySource = () => {
   return useMutation({
     mutationFn: async ({ discoverySourceId, discoveryType }: TDeletePamDiscoverySourceDTO) => {
       const { data } = await apiRequest.delete(
-        `/api/v1/pam/discovery/${discoveryType}/${discoverySourceId}`
+        `/api/v1/pam/discovery-sources/${discoveryType}/${discoverySourceId}`
       );
       return data;
     },
@@ -67,7 +67,7 @@ export const useTriggerPamDiscoveryScan = () => {
   return useMutation({
     mutationFn: async ({ discoverySourceId, discoveryType }: TTriggerPamDiscoveryScanDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/pam/discovery/${discoveryType}/${discoverySourceId}/scan`
+        `/api/v1/pam/discovery-sources/${discoveryType}/${discoverySourceId}/scan`
       );
       return data;
     },

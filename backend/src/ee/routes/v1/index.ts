@@ -212,7 +212,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
             )
           );
         },
-        { prefix: "/discovery" }
+        { prefix: "/discovery-sources" }
       );
 
       await pamRouter.register(

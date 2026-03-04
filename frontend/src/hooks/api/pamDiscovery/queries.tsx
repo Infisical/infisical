@@ -47,7 +47,7 @@ export const useListPamDiscoverySourceOptions = (
     queryKey: pamDiscoveryKeys.options(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ discoveryOptions: TPamDiscoverySourceOption[] }>(
-        "/api/v1/pam/discovery/options"
+        "/api/v1/pam/discovery-sources/options"
       );
       return data.discoveryOptions;
     },
@@ -72,7 +72,7 @@ export const useListPamDiscoverySources = (
   return useQuery({
     queryKey: pamDiscoveryKeys.listSources(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TListSourcesResponse>("/api/v1/pam/discovery", {
+      const { data } = await apiRequest.get<TListSourcesResponse>("/api/v1/pam/discovery-sources", {
         params
       });
       return data;
@@ -99,7 +99,7 @@ export const useGetPamDiscoverySource = (
     queryKey: pamDiscoveryKeys.getSource(discoverySourceId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ source: TPamDiscoverySource }>(
-        `/api/v1/pam/discovery/${discoveryType}/${discoverySourceId}`
+        `/api/v1/pam/discovery-sources/${discoveryType}/${discoverySourceId}`
       );
       return data.source;
     },
@@ -128,7 +128,7 @@ export const useListPamDiscoverySourceRuns = (
     queryKey: pamDiscoveryKeys.listRuns(discoverySourceId, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListRunsResponse>(
-        `/api/v1/pam/discovery/${discoveryType}/${discoverySourceId}/runs`,
+        `/api/v1/pam/discovery-sources/${discoveryType}/${discoverySourceId}/runs`,
         { params }
       );
       return data;
@@ -159,7 +159,7 @@ export const useGetDiscoveredResources = (
     queryKey: pamDiscoveryKeys.discoveredResources(discoverySourceId, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListDiscoveredResourcesResponse>(
-        `/api/v1/pam/discovery/${discoveryType}/${discoverySourceId}/resources`,
+        `/api/v1/pam/discovery-sources/${discoveryType}/${discoverySourceId}/resources`,
         { params }
       );
       return data;
@@ -190,7 +190,7 @@ export const useGetDiscoveredAccounts = (
     queryKey: pamDiscoveryKeys.discoveredAccounts(discoverySourceId, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListDiscoveredAccountsResponse>(
-        `/api/v1/pam/discovery/${discoveryType}/${discoverySourceId}/accounts`,
+        `/api/v1/pam/discovery-sources/${discoveryType}/${discoverySourceId}/accounts`,
         { params }
       );
       return data;
