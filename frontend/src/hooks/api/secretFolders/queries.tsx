@@ -317,12 +317,15 @@ export const useDeleteFolderBatch = () => {
 
   return useMutation<{ folders: TSecretFolder[] }, object, TDeleteFolderBatchDTO>({
     mutationFn: async ({ projectId, folders }) => {
-      const { data } = await apiRequest.delete<{ folders: TSecretFolder[] }>("/api/v2/folders/batch", {
-        data: {
-          projectId,
-          folders
+      const { data } = await apiRequest.delete<{ folders: TSecretFolder[] }>(
+        "/api/v2/folders/batch",
+        {
+          data: {
+            projectId,
+            folders
+          }
         }
-      });
+      );
 
       return data;
     },
