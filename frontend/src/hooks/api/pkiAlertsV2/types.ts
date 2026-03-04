@@ -95,6 +95,7 @@ export interface TPkiAlertV2 {
   alertBefore?: string;
   filters: TPkiFilterRuleV2[];
   enabled: boolean;
+  notificationConfig: { enableDailyNotification: boolean } | null;
   channels: TPkiAlertChannelV2[];
   lastRun: TLastRun | null;
   createdAt: string;
@@ -139,6 +140,7 @@ export interface TCreatePkiAlertV2 {
   alertBefore?: string;
   filters: TPkiFilterRuleV2[];
   enabled?: boolean;
+  notificationConfig?: { enableDailyNotification: boolean } | null;
   channels: TPkiAlertChannelInput[];
 }
 
@@ -150,6 +152,7 @@ export interface TUpdatePkiAlertV2 {
   alertBefore?: string;
   filters?: TPkiFilterRuleV2[];
   enabled?: boolean;
+  notificationConfig?: { enableDailyNotification: boolean } | null;
   channels?: TPkiAlertChannelInput[];
 }
 
@@ -290,6 +293,7 @@ export const createPkiAlertV2Schema = z.object({
     .optional(),
   filters: z.array(pkiFilterRuleV2Schema),
   enabled: z.boolean().default(true),
+  notificationConfig: z.object({ enableDailyNotification: z.boolean() }).nullable().optional(),
   channels: z
     .array(pkiAlertChannelV2Schema)
     .min(1, "At least one notification channel is required")

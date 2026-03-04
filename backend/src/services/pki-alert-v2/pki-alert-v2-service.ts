@@ -145,6 +145,7 @@ export const pkiAlertV2ServiceFactory = ({
           updatedAt: channel.updatedAt
         };
       }),
+      notificationConfig: (alert.notificationConfig as { enableDailyNotification: boolean }) ?? null,
       lastRun: alert.lastRunData
         ? {
             timestamp: alert.lastRunData.triggeredAt,
@@ -168,6 +169,7 @@ export const pkiAlertV2ServiceFactory = ({
     alertBefore,
     filters,
     enabled = true,
+    notificationConfig,
     channels,
     actorId,
     actorAuthMethod,
@@ -219,7 +221,8 @@ export const pkiAlertV2ServiceFactory = ({
           eventType,
           alertBefore,
           filters,
-          enabled
+          enabled,
+          notificationConfig
         },
         tx
       );
@@ -318,6 +321,7 @@ export const pkiAlertV2ServiceFactory = ({
     alertBefore,
     filters,
     enabled,
+    notificationConfig,
     channels,
     actorId,
     actorAuthMethod,
@@ -353,6 +357,7 @@ export const pkiAlertV2ServiceFactory = ({
       alertBefore?: string;
       filters?: TPkiFilterRule[];
       enabled?: boolean;
+      notificationConfig?: { enableDailyNotification: boolean } | null;
     } = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -360,6 +365,7 @@ export const pkiAlertV2ServiceFactory = ({
     if (alertBefore !== undefined) updateData.alertBefore = alertBefore;
     if (filters !== undefined) updateData.filters = filters;
     if (enabled !== undefined) updateData.enabled = enabled;
+    if (notificationConfig !== undefined) updateData.notificationConfig = notificationConfig;
 
     // Validate webhook and Slack URLs early to provide immediate SSRF feedback
     if (channels) {

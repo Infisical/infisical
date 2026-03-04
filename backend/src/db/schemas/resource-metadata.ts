@@ -21,6 +21,9 @@ export const ResourceMetadataSchema = z.object({
   updatedAt: z.date(),
   dynamicSecretId: z.string().uuid().nullable().optional(),
   encryptedValue: zodBuffer.nullable().optional(),
+  certificateId: z.string().uuid().nullable().optional(),
+  certificateRequestId: z.string().uuid().nullable().optional(),
+  certificateRequestCreatedAt: z.date().nullable().optional(),
   pamResourceId: z.string().uuid().nullable().optional(),
   pamAccountId: z.string().uuid().nullable().optional()
 });

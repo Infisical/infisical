@@ -37,6 +37,10 @@ import {
 } from "@app/hooks/api/certificates";
 
 import { CertificateIssuanceModal } from "../../CertificatesPage/components/CertificateIssuanceModal";
+import {
+  type MetadataFilterEntry,
+  MetadataFilterSection
+} from "../../components/MetadataFilterSection";
 import { CertificateRequestRow } from "./CertificateRequestRow";
 
 const PAGE_SIZE = 20;
@@ -58,9 +62,11 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingProfileIds, setPendingProfileIds] = useState<string[]>([]);
   const [pendingFilters, setPendingFilters] = useState<CertificateRequestFilters>({});
+  const [pendingMetadataFilters, setPendingMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   const [appliedProfileIds, setAppliedProfileIds] = useState<string[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<CertificateRequestFilters>({});
+  const [appliedMetadataFilters, setAppliedMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(PAGE_SIZE);
@@ -82,6 +88,13 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
     return appliedProfileIds.length > 0 ? appliedProfileIds : undefined;
   }, [appliedProfileIds]);
 
+  const activeMetadataFilters = useMemo(() => {
+    const filtered = appliedMetadataFilters
+      .filter((m) => m.key.trim())
+      .map(({ key, value }) => ({ key, value }));
+    return filtered.length > 0 ? filtered : undefined;
+  }, [appliedMetadataFilters]);
+
   const queryParams: TListCertificateRequestsParams = useMemo(
     () => ({
       projectSlug: currentProject?.slug || "",
@@ -91,9 +104,18 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
       sortOrder: "desc",
       ...(debouncedSearch && { search: debouncedSearch }),
       ...(appliedFilters.status && { status: appliedFilters.status }),
-      ...(profileIds && { profileIds })
+      ...(profileIds && { profileIds }),
+      ...(activeMetadataFilters && { metadataFilter: activeMetadataFilters })
     }),
-    [currentProject?.slug, currentPage, perPage, debouncedSearch, appliedFilters.status, profileIds]
+    [
+      currentProject?.slug,
+      currentPage,
+      perPage,
+      debouncedSearch,
+      appliedFilters.status,
+      profileIds,
+      activeMetadataFilters
+    ]
   );
 
   const {
@@ -105,6 +127,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   const handleApplyFilters = () => {
     setAppliedFilters(pendingFilters);
     setAppliedProfileIds(pendingProfileIds);
+    setAppliedMetadataFilters(pendingMetadataFilters);
     setCurrentPage(1);
   };
 
@@ -112,8 +135,10 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
     setPendingSearch("");
     setPendingFilters({});
     setPendingProfileIds([]);
+    setPendingMetadataFilters([]);
     setAppliedFilters({});
     setAppliedProfileIds([]);
+    setAppliedMetadataFilters([]);
     setDebouncedSearch("");
     setCurrentPage(1);
   };
@@ -131,8 +156,13 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   };
 
   const isTableFiltered = useMemo(
-    () => Boolean(appliedFilters.status || appliedProfileIds.length),
-    [appliedFilters.status, appliedProfileIds.length]
+    () =>
+      Boolean(
+        appliedFilters.status ||
+          appliedProfileIds.length ||
+          appliedMetadataFilters.some((m) => m.key.trim())
+      ),
+    [appliedFilters.status, appliedProfileIds.length, appliedMetadataFilters]
   );
 
   const hasPendingChanges = useMemo(() => {
@@ -142,8 +172,17 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
     const profileIdsChanged =
       JSON.stringify([...pendingProfileIds].sort()) !==
       JSON.stringify([...appliedProfileIds].sort());
-    return statusChanged || profileIdsChanged;
-  }, [pendingFilters.status, appliedFilters.status, pendingProfileIds, appliedProfileIds]);
+    const metadataChanged =
+      JSON.stringify(pendingMetadataFilters) !== JSON.stringify(appliedMetadataFilters);
+    return statusChanged || profileIdsChanged || metadataChanged;
+  }, [
+    pendingFilters.status,
+    appliedFilters.status,
+    pendingProfileIds,
+    appliedProfileIds,
+    pendingMetadataFilters,
+    appliedMetadataFilters
+  ]);
 
   return (
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -288,6 +327,11 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                   <SelectItem value="failed">Failed</SelectItem>
                 </Select>
               </div>
+
+              <MetadataFilterSection
+                entries={pendingMetadataFilters}
+                onChange={setPendingMetadataFilters}
+              />
 
               <div className="pt-2">
                 <Button

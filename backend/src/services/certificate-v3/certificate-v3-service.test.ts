@@ -255,6 +255,11 @@ describe("CertificateV3Service", () => {
             steps: [{ id: "step-1", stepNumber: 1, approvers: [] }]
           }
         })
+      },
+      resourceMetadataDAL: {
+        insertMany: vi.fn().mockResolvedValue([]),
+        delete: vi.fn().mockResolvedValue([]),
+        find: vi.fn().mockResolvedValue([])
       }
     });
   });
