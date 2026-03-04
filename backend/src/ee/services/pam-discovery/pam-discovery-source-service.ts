@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, TPamDiscoverySources } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TPamDiscoverySources } from "@app/db/schemas";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPamDiscoveryActions,
@@ -56,7 +57,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
     TPamDiscoverySourceAccountsDALFactory,
     "findByDiscoverySourceIdWithAccounts" | "countByDiscoverySourceIds"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -102,7 +103,20 @@ export const pamDiscoverySourceServiceFactory = ({
       ProjectPermissionSub.PamDiscovery
     );
 
-    // Validate gateway exists
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    ForbiddenError.from(orgPermission).throwUnlessCan(
+      OrgPermissionGatewayActions.AttachGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
     const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
     if (!gateway) {
       throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
@@ -179,7 +193,21 @@ export const pamDiscoverySourceServiceFactory = ({
 
     const updateDoc: Partial<TPamDiscoverySources> = {};
 
-    if (gatewayId) {
+    if (gatewayId && gatewayId !== discoverySource.gatewayId) {
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
       const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
       if (!gateway) {
         throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
