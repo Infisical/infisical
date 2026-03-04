@@ -25,7 +25,11 @@ import {
   TWindowsResourceConnectionDetails,
   TWindowsResourceMetadata
 } from "../../pam-resource/windows-server/windows-server-resource-types";
-import { PamDiscoverySourceRunStatus, PamDiscoverySourceRunTrigger } from "../pam-discovery-enums";
+import {
+  PamDiscoverySourceRunStatus,
+  PamDiscoverySourceRunTrigger,
+  PamDiscoveryStepStatus
+} from "../pam-discovery-enums";
 import { TPamDiscoveryFactory } from "../pam-discovery-types";
 import {
   TActiveDirectoryDiscoveryConfiguration as TAdDiscoveryConfiguration,
@@ -520,7 +524,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       triggeredBy,
       startedAt: new Date(),
       progress: {
-        adEnumeration: { status: "running" }
+        adEnumeration: { status: PamDiscoveryStepStatus.Running }
       } as TActiveDirectoryDiscoverySourceRunProgress
     });
 
@@ -541,8 +545,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
 
       await pamDiscoveryRunDAL.updateById(run.id, {
         progress: {
-          adEnumeration: { status: "completed", completedAt: new Date().toISOString() },
-          dependencyScan: { status: "skipped", reason: "WinRM scanning not yet implemented" }
+          adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
+          dependencyScan: { status: PamDiscoveryStepStatus.Skipped, reason: "WinRM scanning not yet implemented" }
         } as TActiveDirectoryDiscoverySourceRunProgress
       });
 
@@ -636,11 +640,11 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
 
       const progress: TActiveDirectoryDiscoverySourceRunProgress = adEnumerationSucceeded
         ? {
-            adEnumeration: { status: "completed" },
-            dependencyScan: { status: "failed", reason: (error as Error).message }
+            adEnumeration: { status: PamDiscoveryStepStatus.Completed },
+            dependencyScan: { status: PamDiscoveryStepStatus.Failed, reason: (error as Error).message }
           }
         : {
-            adEnumeration: { status: "failed", error: (error as Error).message }
+            adEnumeration: { status: PamDiscoveryStepStatus.Failed, error: (error as Error).message }
           };
 
       await pamDiscoveryRunDAL.updateById(run.id, {

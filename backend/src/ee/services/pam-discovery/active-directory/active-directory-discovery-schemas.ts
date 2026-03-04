@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PamDiscoveryType } from "../pam-discovery-enums";
+import { PamDiscoveryStepStatus, PamDiscoveryType } from "../pam-discovery-enums";
 import {
   BaseCreatePamDiscoverySourceSchema,
   BasePamDiscoverySourceRunSchema,
@@ -55,14 +55,14 @@ export const UpdateActiveDirectoryDiscoverySourceSchema = BaseUpdatePamDiscovery
 export const ActiveDirectoryDiscoverySourceRunProgressSchema = z.object({
   adEnumeration: z
     .object({
-      status: z.enum(["running", "completed", "failed"]),
+      status: z.nativeEnum(PamDiscoveryStepStatus),
       completedAt: z.string().optional(),
       error: z.string().optional()
     })
     .optional(),
   dependencyScan: z
     .object({
-      status: z.enum(["running", "completed", "failed", "skipped"]),
+      status: z.nativeEnum(PamDiscoveryStepStatus),
       totalMachines: z.number().optional(),
       scannedMachines: z.number().optional(),
       failedMachines: z.number().optional(),

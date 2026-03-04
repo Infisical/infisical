@@ -19,6 +19,14 @@ export enum PamDiscoveryOrderBy {
   Name = "name"
 }
 
+// Discovery Run Step Status (sub-step progress within a run)
+export enum PamDiscoveryStepStatus {
+  Running = "running",
+  Completed = "completed",
+  Failed = "failed",
+  Skipped = "skipped"
+}
+
 // Discovery Runs
 export enum PamDiscoverySourceRunStatus {
   Running = "running",
