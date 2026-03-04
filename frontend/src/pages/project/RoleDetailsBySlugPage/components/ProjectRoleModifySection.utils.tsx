@@ -180,15 +180,6 @@ const KmipPolicyActionSchema = z.object({
   [ProjectPermissionKmipActions.GenerateClientCertificates]: z.boolean().optional()
 });
 
-const MemberPolicyActionSchema = z.object({
-  [ProjectPermissionMemberActions.Read]: z.boolean().optional(),
-  [ProjectPermissionMemberActions.Create]: z.boolean().optional(),
-  [ProjectPermissionMemberActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionMemberActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionMemberActions.GrantPrivileges]: z.boolean().optional(),
-  [ProjectPermissionMemberActions.AssumePrivileges]: z.boolean().optional()
-});
-
 const IdentityPolicyActionSchema = z.object({
   [ProjectPermissionIdentityActions.Read]: z.boolean().optional(),
   [ProjectPermissionIdentityActions.Create]: z.boolean().optional(),
@@ -378,7 +369,16 @@ export type ActionAllowedConditionsType = Partial<
   Record<ProjectPermissionSub, Partial<Record<string, string[]>>>
 >;
 
-export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {};
+export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
+  [ProjectPermissionSub.Member]: {
+    [ProjectPermissionMemberActions.Read]: [],
+    [ProjectPermissionMemberActions.Create]: [],
+    [ProjectPermissionMemberActions.Edit]: [],
+    [ProjectPermissionMemberActions.Delete]: [],
+    [ProjectPermissionMemberActions.AssumePrivileges]: [],
+    [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"]
+  }
+};
 
 // Utility function to get action labels from PROJECT_PERMISSION_OBJECT
 // This is called lazily at validation time, not at module load time
@@ -454,6 +454,20 @@ const SecretPolicyActionWithConditionsSchema = createPolicySchemaWithConditions(
   SecretPolicyActionSchema,
   ProjectPermissionSub.Secrets,
   ProjectPermissionSecretActions
+);
+
+// Create schema with condition validation for Member
+const MemberPolicyActionSchema = createPolicySchemaWithConditions(
+  z.object({
+    [ProjectPermissionMemberActions.Read]: z.boolean().optional(),
+    [ProjectPermissionMemberActions.Create]: z.boolean().optional(),
+    [ProjectPermissionMemberActions.Edit]: z.boolean().optional(),
+    [ProjectPermissionMemberActions.Delete]: z.boolean().optional(),
+    [ProjectPermissionMemberActions.GrantPrivileges]: z.boolean().optional(),
+    [ProjectPermissionMemberActions.AssumePrivileges]: z.boolean().optional()
+  }),
+  ProjectPermissionSub.Member,
+  ProjectPermissionMemberActions
 );
 
 export const projectRoleFormSchema = z.object({
@@ -669,7 +683,8 @@ type TConditionalFields =
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.PamResources
-  | ProjectPermissionSub.McpEndpoints;
+  | ProjectPermissionSub.McpEndpoints
+  | ProjectPermissionSub.Member;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -693,7 +708,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.AppConnections ||
   subject === ProjectPermissionSub.PamAccounts ||
   subject === ProjectPermissionSub.PamResources ||
-  subject === ProjectPermissionSub.McpEndpoints;
+  subject === ProjectPermissionSub.McpEndpoints ||
+  subject === ProjectPermissionSub.Member;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -1062,6 +1078,32 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.Member) {
+          const canRead = action.includes(ProjectPermissionMemberActions.Read);
+          const canCreate = action.includes(ProjectPermissionMemberActions.Create);
+          const canEdit = action.includes(ProjectPermissionMemberActions.Edit);
+          const canDelete = action.includes(ProjectPermissionMemberActions.Delete);
+          const canGrantPrivileges = action.includes(
+            ProjectPermissionMemberActions.GrantPrivileges
+          );
+          const canAssumePrivileges = action.includes(
+            ProjectPermissionMemberActions.AssumePrivileges
+          );
+
+          formVal[subject]!.push({
+            [ProjectPermissionMemberActions.Read]: canRead,
+            [ProjectPermissionMemberActions.Create]: canCreate,
+            [ProjectPermissionMemberActions.Edit]: canEdit,
+            [ProjectPermissionMemberActions.Delete]: canDelete,
+            [ProjectPermissionMemberActions.GrantPrivileges]: canGrantPrivileges,
+            [ProjectPermissionMemberActions.AssumePrivileges]: canAssumePrivileges,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
@@ -1091,8 +1133,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         return;
       }
 
-      // deduplicate multiple rules for other policies
-      // because they don't have condition it doesn't make sense for multiple rules
       const canRead = action.includes(ProjectPermissionActions.Read);
       const canEdit = action.includes(ProjectPermissionActions.Edit);
       const canDelete = action.includes(ProjectPermissionActions.Delete);
@@ -1101,10 +1141,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (!formVal[subject]) {
         formVal[subject] = [{ conditions: [] }];
       }
-      if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
-      if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
-      if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
-      if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
+      if (canRead) formVal[subject as ProjectPermissionSub.Role]![0].read = true;
+      if (canEdit) formVal[subject as ProjectPermissionSub.Role]![0].edit = true;
+      if (canCreate) formVal[subject as ProjectPermissionSub.Role]![0].create = true;
+      if (canDelete) formVal[subject as ProjectPermissionSub.Role]![0].delete = true;
       return;
     }
 
@@ -1249,28 +1289,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canGenerateClientCerts)
         formVal[subject]![0][ProjectPermissionKmipActions.GenerateClientCertificates] = true;
 
-      return;
-    }
-
-    if (subject === ProjectPermissionSub.Member) {
-      const canRead = action.includes(ProjectPermissionMemberActions.Read);
-      const canCreate = action.includes(ProjectPermissionMemberActions.Create);
-      const canEdit = action.includes(ProjectPermissionMemberActions.Edit);
-      const canDelete = action.includes(ProjectPermissionMemberActions.Delete);
-      const canGrantPrivileges = action.includes(ProjectPermissionMemberActions.GrantPrivileges);
-      const canAssumePrivileges = action.includes(ProjectPermissionMemberActions.AssumePrivileges);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      // from above statement we are sure it won't be undefined
-      if (canRead) formVal[subject]![0][ProjectPermissionMemberActions.Read] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionMemberActions.Create] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionMemberActions.Edit] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionMemberActions.Delete] = true;
-      if (canGrantPrivileges)
-        formVal[subject]![0][ProjectPermissionMemberActions.GrantPrivileges] = true;
-      if (canAssumePrivileges)
-        formVal[subject]![0][ProjectPermissionMemberActions.AssumePrivileges] = true;
       return;
     }
 

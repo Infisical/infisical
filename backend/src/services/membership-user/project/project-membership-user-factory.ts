@@ -16,6 +16,7 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TMembershipUserDALFactory } from "../membership-user-dal";
 import { TMembershipUserScopeFactory } from "../membership-user-types";
@@ -26,6 +27,7 @@ type TProjectMembershipUserScopeFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export const newProjectMembershipUserFactory = ({
@@ -33,7 +35,8 @@ export const newProjectMembershipUserFactory = ({
   orgDAL,
   projectDAL,
   membershipUserDAL,
-  smtpService
+  smtpService,
+  userDAL
 }: TProjectMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -88,23 +91,29 @@ export const newProjectMembershipUserFactory = ({
     );
 
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        ProjectPermissionMemberActions.GrantPrivileges,
-        ProjectPermissionSub.Member,
-        permission,
-        permissionRole.permission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create user project membership",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.GrantPrivileges,
-            ProjectPermissionSub.Member
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      for (const newUser of newUsers) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          ProjectPermissionMemberActions.GrantPrivileges,
+          ProjectPermissionSub.Member,
+          permission,
+          permissionRole.permission,
+          {
+            email: newUser.email ?? undefined,
+            role: permissionRole.role?.slug
+          }
+        );
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to create user project membership",
+              shouldUseNewPrivilegeSystem,
+              ProjectPermissionMemberActions.GrantPrivileges,
+              ProjectPermissionSub.Member
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+      }
     }
   };
 
@@ -157,6 +166,8 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
+    const targetUser = await userDAL.findById(dto.selector.userId);
+
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
@@ -169,7 +180,11 @@ export const newProjectMembershipUserFactory = ({
         ProjectPermissionMemberActions.GrantPrivileges,
         ProjectPermissionSub.Member,
         permission,
-        permissionRole.permission
+        permissionRole.permission,
+        {
+          email: targetUser.email || undefined,
+          role: permissionRole.role?.slug
+        }
       );
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({

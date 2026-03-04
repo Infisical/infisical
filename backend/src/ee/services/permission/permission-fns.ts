@@ -190,10 +190,13 @@ const validatePrivilegeChangeOperation = (
   opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
   opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1],
   actorPermission: MongoAbility,
-  managedPermission: MongoAbility
+  managedPermission: MongoAbility,
+  subjectFields?: Record<string, string | undefined>
 ) => {
   if (shouldUseNewPrivilegeSystem) {
-    if (actorPermission.can(opAction, opSubject)) {
+    const subjectToCheck = subjectFields ? subject(opSubject as string, subjectFields) : opSubject;
+
+    if (actorPermission.can(opAction, subjectToCheck)) {
       return {
         isValid: true,
         missingPermissions: []

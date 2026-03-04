@@ -1,10 +1,12 @@
 /* eslint-disable no-nested-ternary */
+import { useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faCaretDown, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
 import ms from "ms";
+import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -37,6 +39,7 @@ import { useGetProjectRoles, useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
+import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 const roleFormSchema = z.object({
   roles: z
@@ -72,6 +75,47 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
     ProjectPermissionMemberActions.Edit,
     ProjectPermissionSub.Member
   );
+
+  const grantPrivilegeConditions = useMemo(
+    () => getGrantPrivilegeConditions(permission),
+    [permission]
+  );
+
+  const canModifyMemberRoles = useMemo(() => {
+    const memberEmail = projectMember?.user?.email;
+    if (!memberEmail) return false;
+
+    if (
+      grantPrivilegeConditions?.forbiddenEmails?.length &&
+      grantPrivilegeConditions.forbiddenEmails.some((pattern) =>
+        picomatch.isMatch(memberEmail, pattern)
+      )
+    ) {
+      return false;
+    }
+
+    if (!grantPrivilegeConditions?.emails || grantPrivilegeConditions.emails.length === 0) {
+      return true;
+    }
+    return grantPrivilegeConditions.emails.some((pattern) =>
+      picomatch.isMatch(memberEmail, pattern)
+    );
+  }, [grantPrivilegeConditions, projectMember?.user?.email]);
+
+  const filteredRoles = useMemo(() => {
+    if (!projectRoles) return [];
+    let roles = projectRoles;
+    if (grantPrivilegeConditions?.roles && grantPrivilegeConditions.roles.length > 0) {
+      roles = roles.filter((role) => grantPrivilegeConditions.roles?.includes(role.slug));
+    }
+    if (
+      grantPrivilegeConditions?.forbiddenRoles &&
+      grantPrivilegeConditions.forbiddenRoles.length > 0
+    ) {
+      roles = roles.filter((role) => !grantPrivilegeConditions.forbiddenRoles?.includes(role.slug));
+    }
+    return roles;
+  }, [projectRoles, grantPrivilegeConditions]);
 
   const roleForm = useForm<TRoleForm>({
     resolver: zodResolver(roleFormSchema),
@@ -160,12 +204,12 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
                   <Select
                     defaultValue={field.value}
                     {...field}
-                    isDisabled={isMemberEditDisabled}
+                    isDisabled={isMemberEditDisabled || !canModifyMemberRoles}
                     onValueChange={(e) => onChange(e)}
                     className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
                     containerClassName="w-1/2"
                   >
-                    {projectRoles?.map(({ name, slug, id: projectRoleId }) => (
+                    {filteredRoles?.map(({ name, slug, id: projectRoleId }) => (
                       <SelectItem value={slug} key={projectRoleId}>
                         {name}
                       </SelectItem>

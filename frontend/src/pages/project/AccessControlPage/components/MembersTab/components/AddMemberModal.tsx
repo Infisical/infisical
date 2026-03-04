@@ -22,7 +22,8 @@ import {
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import {
   useAddUserToWsNonE2EE,
@@ -32,6 +33,7 @@ import {
 } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -58,7 +60,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate({ from: "" });
-  const { permission } = useOrgPermission();
+  const { permission: orgPermission } = useOrgPermission();
+  const { permission: projectPermission } = useProjectPermission();
   const requesterEmail = useSearch({
     strict: false,
     select: (el) => el?.requesterEmail
@@ -71,6 +74,28 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: orgUsers } = useGetOrgUsers(orgId);
 
   const { data: roles } = useGetProjectRoles(currentProject?.id || "");
+
+  const grantPrivilegeConditions = useMemo(
+    () => getGrantPrivilegeConditions(projectPermission),
+    [projectPermission]
+  );
+
+  const filteredRoles = useMemo(() => {
+    if (!roles) return [];
+    let result = roles;
+    if (grantPrivilegeConditions?.roles && grantPrivilegeConditions.roles.length > 0) {
+      result = result.filter((role) => grantPrivilegeConditions.roles?.includes(role.slug));
+    }
+    if (
+      grantPrivilegeConditions?.forbiddenRoles &&
+      grantPrivilegeConditions.forbiddenRoles.length > 0
+    ) {
+      result = result.filter(
+        (role) => !grantPrivilegeConditions.forbiddenRoles?.includes(role.slug)
+      );
+    }
+    return result;
+  }, [roles, grantPrivilegeConditions]);
 
   const {
     control,
@@ -199,7 +224,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const selectedOrgMemberships = watch("orgMemberships");
   const selectedRoleSlugs = watch("projectRoleSlugs");
 
-  const canInviteNewMembers = permission.can(
+  const canInviteNewMembers = orgPermission.can(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.Member
   );
@@ -309,7 +334,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isError={Boolean(error)}
                 >
                   <FilterableSelect
-                    options={roles}
+                    options={filteredRoles}
                     components={{ Option: RoleOption }}
                     placeholder="Select roles..."
                     value={value}

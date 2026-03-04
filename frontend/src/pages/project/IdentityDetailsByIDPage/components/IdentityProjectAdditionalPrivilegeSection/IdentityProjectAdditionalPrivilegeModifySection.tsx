@@ -32,6 +32,7 @@ import {
   useUpdateIdentityProjectAdditionalPrivilege
 } from "@app/hooks/api";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
+import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -92,6 +93,55 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     ProjectPermissionIdentityActions.Edit,
     subject(ProjectPermissionSub.Identity, { identityId })
   );
+
+  const grantPrivilegeConditions = useMemo(
+    () => getGrantPrivilegeConditions(permission),
+    [permission]
+  );
+
+  const filteredPermissionSubjects = useMemo(() => {
+    const allSubjects = Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[];
+    let result = allSubjects;
+    if (grantPrivilegeConditions?.subjects && grantPrivilegeConditions.subjects.length > 0) {
+      result = result.filter((permissionSubject) =>
+        grantPrivilegeConditions.subjects?.includes(permissionSubject)
+      );
+    }
+    if (
+      grantPrivilegeConditions?.forbiddenSubjects &&
+      grantPrivilegeConditions.forbiddenSubjects.length > 0
+    ) {
+      result = result.filter(
+        (permissionSubject) =>
+          !grantPrivilegeConditions.forbiddenSubjects?.includes(permissionSubject)
+      );
+    }
+    return result;
+  }, [grantPrivilegeConditions]);
+
+  const getFilteredActionsForSubject = useMemo(() => {
+    return (permissionSubject: ProjectPermissionSub) => {
+      const allActions = PROJECT_PERMISSION_OBJECT[permissionSubject].actions;
+      let result = allActions;
+      if (grantPrivilegeConditions?.actions && grantPrivilegeConditions.actions.length > 0) {
+        result = result.filter((action) =>
+          grantPrivilegeConditions.actions?.includes(`${permissionSubject}:${action.value}`)
+        );
+      }
+      if (
+        grantPrivilegeConditions?.forbiddenActions &&
+        grantPrivilegeConditions.forbiddenActions.length > 0
+      ) {
+        result = result.filter(
+          (action) =>
+            !grantPrivilegeConditions.forbiddenActions?.includes(
+              `${permissionSubject}:${action.value}`
+            )
+        );
+      }
+      return result;
+    };
+  }, [grantPrivilegeConditions]);
 
   const form = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
@@ -385,11 +435,14 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                 onValueChange={setOpenPolicies}
                 className="overflow-clip rounded-md border border-border bg-container"
               >
-                {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
-                  (permissionSubject) => (
+                {filteredPermissionSubjects.map((permissionSubject) => {
+                  const filteredActions = getFilteredActionsForSubject(permissionSubject);
+                  if (filteredActions.length === 0) return null;
+
+                  return (
                     <GeneralPermissionPolicies
                       subject={permissionSubject}
-                      actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                      actions={filteredActions}
                       title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
                       description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
                       key={`project-permission-${permissionSubject}`}
@@ -399,8 +452,8 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                     >
                       {renderConditionalComponents(permissionSubject, isDisabled)}
                     </GeneralPermissionPolicies>
-                  )
-                )}
+                  );
+                })}
               </UnstableAccordion>
             </div>
           )}

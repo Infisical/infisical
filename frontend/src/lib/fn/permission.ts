@@ -1,7 +1,9 @@
-import { MongoAbility, subject } from "@casl/ability";
+import { MongoAbility, RawRuleOf, subject } from "@casl/ability";
 
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import {
+  PermissionConditionOperators,
+  ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub,
   SecretSubjectFields
@@ -54,6 +56,123 @@ export function hasSecretReadValueOrDescribePermission(
   }
 
   return canNewPermission || canOldPermission;
+}
+
+export type GrantPrivilegeConditions = {
+  emails?: string[];
+  roles?: string[];
+  subjects?: string[];
+  actions?: string[];
+  forbiddenEmails?: string[];
+  forbiddenRoles?: string[];
+  forbiddenSubjects?: string[];
+  forbiddenActions?: string[];
+};
+
+type ConditionValue =
+  | string
+  | {
+      [PermissionConditionOperators.$EQ]?: string;
+      [PermissionConditionOperators.$NEQ]?: string;
+      [PermissionConditionOperators.$IN]?: string[];
+      [PermissionConditionOperators.$GLOB]?: string;
+    };
+
+type MemberConditions = {
+  email?: ConditionValue;
+  role?: ConditionValue;
+  subject?: ConditionValue;
+  action?: ConditionValue;
+};
+
+const extractConditionValues = (condition: ConditionValue | undefined): string[] => {
+  if (!condition) return [];
+
+  if (typeof condition === "string") {
+    return [condition];
+  }
+
+  const value =
+    condition[PermissionConditionOperators.$EQ] ??
+    condition[PermissionConditionOperators.$IN] ??
+    condition[PermissionConditionOperators.$GLOB];
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+};
+
+const isGrantPrivilegesMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
+  rule.subject === ProjectPermissionSub.Member &&
+  (rule.action === ProjectPermissionMemberActions.GrantPrivileges ||
+    (Array.isArray(rule.action) &&
+      (rule.action as string[]).includes(ProjectPermissionMemberActions.GrantPrivileges)));
+
+export function getGrantPrivilegeConditions(
+  permission: MongoAbility<ProjectPermissionSet>
+): GrantPrivilegeConditions | null {
+  const allowedRules = permission.rules.filter(
+    (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
+      !rule.inverted && isGrantPrivilegesMemberRule(rule)
+  );
+  const invertedRules = permission.rules.filter(
+    (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
+      rule.inverted && isGrantPrivilegesMemberRule(rule)
+  );
+
+  if (allowedRules.length === 0 && invertedRules.length === 0) return null;
+
+  if (allowedRules.some((rule) => !rule.conditions || Object.keys(rule.conditions).length === 0)) {
+    return null;
+  }
+
+  const result: GrantPrivilegeConditions = {};
+
+  allowedRules.forEach((rule) => {
+    const conditions = rule.conditions as MemberConditions;
+
+    const emailValues = extractConditionValues(conditions.email);
+    const roleValues = extractConditionValues(conditions.role);
+    const subjectValues = extractConditionValues(conditions.subject);
+    const actionValues = extractConditionValues(conditions.action);
+
+    if (emailValues.length > 0) result.emails = [...(result.emails || []), ...emailValues];
+    if (roleValues.length > 0) result.roles = [...(result.roles || []), ...roleValues];
+    if (subjectValues.length > 0) result.subjects = [...(result.subjects || []), ...subjectValues];
+    if (actionValues.length > 0) result.actions = [...(result.actions || []), ...actionValues];
+  });
+
+  invertedRules
+    .filter((rule) => {
+      const conditions = rule.conditions as MemberConditions | undefined;
+      return conditions && Object.keys(conditions).length > 0;
+    })
+    .forEach((rule) => {
+      const conditions = rule.conditions as MemberConditions;
+      const emailValues = extractConditionValues(conditions.email);
+      const roleValues = extractConditionValues(conditions.role);
+      const subjectValues = extractConditionValues(conditions.subject);
+      const actionValues = extractConditionValues(conditions.action);
+
+      if (emailValues.length > 0)
+        result.forbiddenEmails = [...(result.forbiddenEmails || []), ...emailValues];
+      if (roleValues.length > 0)
+        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...roleValues];
+      if (subjectValues.length > 0)
+        result.forbiddenSubjects = [...(result.forbiddenSubjects || []), ...subjectValues];
+      if (actionValues.length > 0)
+        result.forbiddenActions = [...(result.forbiddenActions || []), ...actionValues];
+    });
+
+  const dedupe = (arr: string[]) => [...new Set(arr)];
+  if (result.emails) result.emails = dedupe(result.emails);
+  if (result.roles) result.roles = dedupe(result.roles);
+  if (result.subjects) result.subjects = dedupe(result.subjects);
+  if (result.actions) result.actions = dedupe(result.actions);
+  if (result.forbiddenEmails) result.forbiddenEmails = dedupe(result.forbiddenEmails);
+  if (result.forbiddenRoles) result.forbiddenRoles = dedupe(result.forbiddenRoles);
+  if (result.forbiddenSubjects) result.forbiddenSubjects = dedupe(result.forbiddenSubjects);
+  if (result.forbiddenActions) result.forbiddenActions = dedupe(result.forbiddenActions);
+
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 const PERMISSION_DISPLAY_NAMES: Record<string, string> = {

@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRule } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import {
@@ -16,19 +16,27 @@ import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAdditionalPrivilegesScopeFactory } from "../additional-privilege-types";
+
+type TPermissionRule = RawRule & {
+  subject?: string | string[];
+  action?: string | string[];
+};
 
 type TProjectAdditionalPrivilegesScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export const newProjectAdditionalPrivilegesFactory = ({
   permissionService,
   orgDAL,
-  membershipDAL
+  membershipDAL,
+  userDAL
 }: TProjectAdditionalPrivilegesScopeFactoryDep): TAdditionalPrivilegesScopeFactory => {
   const $getPermission = (permission: OrgServiceActor, projectId: string) => {
     return permissionService.getProjectPermission({
@@ -46,6 +54,92 @@ export const newProjectAdditionalPrivilegesFactory = ({
       return { key: "projectId" as const, value: dto.projectId };
     }
     throw new BadRequestError({ message: "Invalid scope provided for the factory" });
+  };
+
+  const hasUnrestrictedGrantPrivileges = (
+    actorPermission: MongoAbility,
+    permissionAction: string,
+    permissionSubject: string
+  ): boolean => {
+    return actorPermission.rules.some(
+      (rule) =>
+        !rule.inverted &&
+        (rule.action === permissionAction || rule.action === "manage") &&
+        (rule.subject === permissionSubject || rule.subject === "all") &&
+        (!rule.conditions || Object.keys(rule.conditions).length === 0)
+    );
+  };
+
+  const validateGrantPrivilegeSubjectActionConditions = (
+    shouldUseNewPrivilegeSystem: boolean,
+    permissionAction:
+      | typeof ProjectPermissionMemberActions.GrantPrivileges
+      | typeof ProjectPermissionIdentityActions.GrantPrivileges,
+    permissionSubject: ProjectPermissionSub.Member | ProjectPermissionSub.Identity,
+    actorPermission: MongoAbility,
+    targetUserPermission: MongoAbility,
+    targetUserEmail: string | undefined,
+    permissions: unknown
+  ) => {
+    if (hasUnrestrictedGrantPrivileges(actorPermission, permissionAction, permissionSubject)) {
+      return;
+    }
+
+    const permissionRules = permissions as TPermissionRule[];
+    const validatedSubjects = new Set<string>();
+    const validatedSubjectActions = new Set<string>();
+
+    for (const rule of permissionRules) {
+      const ruleSubject = rule.subject as string | undefined;
+      const actions = Array.isArray(rule.action) ? rule.action : [rule.action].filter(Boolean);
+
+      if (ruleSubject) {
+        if (!validatedSubjects.has(ruleSubject)) {
+          const subjectBoundary = validatePrivilegeChangeOperation(
+            shouldUseNewPrivilegeSystem,
+            permissionAction,
+            permissionSubject,
+            actorPermission,
+            targetUserPermission,
+            {
+              email: targetUserEmail,
+              subject: ruleSubject
+            }
+          );
+          if (!subjectBoundary.isValid)
+            throw new PermissionBoundaryError({
+              message: `You do not have permission to grant privileges on "${ruleSubject}" subject`,
+              details: { missingPermissions: subjectBoundary.missingPermissions }
+            });
+          validatedSubjects.add(ruleSubject);
+        }
+
+        for (const actionItem of actions) {
+          const subjectActionKey = `${ruleSubject}:${actionItem}`;
+
+          if (!validatedSubjectActions.has(subjectActionKey)) {
+            const subjectActionBoundary = validatePrivilegeChangeOperation(
+              shouldUseNewPrivilegeSystem,
+              permissionAction,
+              permissionSubject,
+              actorPermission,
+              targetUserPermission,
+              {
+                email: targetUserEmail,
+                subject: ruleSubject,
+                action: subjectActionKey
+              }
+            );
+            if (!subjectActionBoundary.isValid)
+              throw new PermissionBoundaryError({
+                message: `You do not have permission to grant "${actionItem}" action on "${ruleSubject}" subject`,
+                details: { missingPermissions: subjectActionBoundary.missingPermissions }
+              });
+            validatedSubjectActions.add(subjectActionKey);
+          }
+        }
+      }
+    }
   };
 
   const onCreateAdditionalPrivilegesGuard: TAdditionalPrivilegesScopeFactory["onCreateAdditionalPrivilegesGuard"] =
@@ -72,12 +166,20 @@ export const newProjectAdditionalPrivilegesFactory = ({
           : ProjectPermissionIdentityActions.GrantPrivileges;
       const permissionSubject =
         actorType === ActorType.USER ? ProjectPermissionSub.Member : ProjectPermissionSub.Identity;
+
+      let targetUserEmail: string | undefined;
+      if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem) {
+        const targetUser = await userDAL.findById(dto.data.actorId);
+        targetUserEmail = targetUser?.email ?? undefined;
+      }
+
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         permissionAction,
         permissionSubject,
         permission,
-        targetUserPermission
+        targetUserPermission,
+        actorType === ActorType.USER ? { email: targetUserEmail } : undefined
       );
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
@@ -89,6 +191,18 @@ export const newProjectAdditionalPrivilegesFactory = ({
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
+
+      if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem && dto.data.permissions) {
+        validateGrantPrivilegeSubjectActionConditions(
+          shouldUseNewPrivilegeSystem,
+          permissionAction,
+          permissionSubject,
+          permission,
+          targetUserPermission,
+          targetUserEmail,
+          dto.data.permissions
+        );
+      }
 
       const membership = memberships.find(
         (el) => el[actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"] === dto.data.actorId
@@ -120,12 +234,20 @@ export const newProjectAdditionalPrivilegesFactory = ({
           : ProjectPermissionIdentityActions.GrantPrivileges;
       const permissionSubject =
         actorType === ActorType.USER ? ProjectPermissionSub.Member : ProjectPermissionSub.Identity;
+
+      let targetUserEmail: string | undefined;
+      if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem) {
+        const targetUser = await userDAL.findById(dto.selector.actorId);
+        targetUserEmail = targetUser?.email ?? undefined;
+      }
+
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         permissionAction,
         permissionSubject,
         permission,
-        targetUserPermission
+        targetUserPermission,
+        actorType === ActorType.USER ? { email: targetUserEmail } : undefined
       );
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
@@ -137,6 +259,18 @@ export const newProjectAdditionalPrivilegesFactory = ({
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
+
+      if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem && dto.data.permissions) {
+        validateGrantPrivilegeSubjectActionConditions(
+          shouldUseNewPrivilegeSystem,
+          permissionAction,
+          permissionSubject,
+          permission,
+          targetUserPermission,
+          targetUserEmail,
+          dto.data.permissions
+        );
+      }
 
       const membership = memberships.find(
         (el) => el[actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"] === dto.selector.actorId

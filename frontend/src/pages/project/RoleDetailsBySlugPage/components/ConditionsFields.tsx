@@ -40,11 +40,17 @@ import { TFormSchema } from "./ProjectRoleModifySection.utils";
 type ActionConditionsMap = Partial<Record<string, string[]>>;
 type ActionLabelsMap = Record<string, string>;
 
+type ConditionSelectOption = {
+  value: string;
+  label: string;
+  description?: string;
+};
+
 type ConditionsFieldsProps = {
   isDisabled: boolean | undefined;
   subject: ConditionalProjectPermissionSubject;
   position: number;
-  selectOptions: [{ value: string; label: string }, ...{ value: string; label: string }[]];
+  selectOptions: [ConditionSelectOption, ...ConditionSelectOption[]];
   selectedActions?: string[];
   actionConditionsMap?: ActionConditionsMap;
   actionLabelsMap?: ActionLabelsMap;
@@ -421,6 +427,20 @@ export const ConditionsFields = ({
                                 })}
                               </SelectContent>
                             </Select>
+                            {selectOptions.find((opt) => opt.value === condition.lhs)
+                              ?.description && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <InfoIcon className="size-4 shrink-0 text-muted" />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs text-wrap">
+                                  {
+                                    selectOptions.find((opt) => opt.value === condition.lhs)
+                                      ?.description
+                                  }
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
                           <div className="flex w-44 items-center space-x-2">
                             <Controller

@@ -13,7 +13,13 @@ export const IdentityManagementPermissionConditions = ({ position = 0, isDisable
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.Identity}
       position={position}
-      selectOptions={[{ value: "identityId", label: "Identity ID" }]}
+      selectOptions={[
+        {
+          value: "identityId",
+          label: "Identity ID",
+          description: "Machine identity identifier"
+        }
+      ]}
     />
   );
 };
