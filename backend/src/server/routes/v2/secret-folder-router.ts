@@ -270,6 +270,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           })
           .array()
           .min(1)
+          .max(100)
       }),
       response: {
         200: z.object({
@@ -288,11 +289,16 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         folders: req.body.folders
       });
 
+      const unmatchedInputs = [...req.body.folders];
       await Promise.all(
         folders.map(async (folder) => {
-          const matchingInput = req.body.folders.find(
-            (f) => f.idOrName === folder.id || f.idOrName === folder.name
-          );
+          // Match by ID first, then by name. Remove matched entry to prevent duplicate matches
+          // when the same folder name exists across multiple environments.
+          let matchIdx = unmatchedInputs.findIndex((f) => f.idOrName === folder.id);
+          if (matchIdx === -1) {
+            matchIdx = unmatchedInputs.findIndex((f) => f.idOrName === folder.name);
+          }
+          const matchingInput = matchIdx !== -1 ? unmatchedInputs.splice(matchIdx, 1)[0] : undefined;
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             projectId: req.body.projectId,

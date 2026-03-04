@@ -196,6 +196,13 @@ export const SelectionPanel = ({
     const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");
     const areSomeEntriesDeleted = results.some((result) => result.status === "fulfilled");
 
+    const folderBatchFailed =
+      foldersToDelete.length > 0 &&
+      !results.some(
+        (result) =>
+          result.status === "fulfilled" && result.value.environment === "__batch_folders__"
+      );
+
     const failedEnvs = userAvailableEnvs
       .filter(
         (env) =>
@@ -204,6 +211,11 @@ export const SelectionPanel = ({
           )
       )
       .map((env) => env.name);
+
+    if (folderBatchFailed) {
+      failedEnvs.push("folder batch");
+    }
+
     if (processedEntries === 0) {
       handlePopUpClose("bulkDeleteEntries");
       createNotification({
@@ -220,7 +232,7 @@ export const SelectionPanel = ({
     } else if (areSomeEntriesDeleted) {
       createNotification({
         type: "warning",
-        text: `Deletion partially completed. The following environments could not be processed due to conflicts: ${failedEnvs.join(", ")}.`
+        text: `Deletion partially completed. The following could not be processed due to conflicts: ${failedEnvs.join(", ")}.`
       });
     } else {
       createNotification({
