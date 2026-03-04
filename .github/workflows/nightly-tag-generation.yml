@@ -80,12 +80,30 @@ jobs:
           git push origin "$NIGHTLY_TAG"
           echo "✅ Created and pushed nightly tag: $NIGHTLY_TAG"
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests openai
+
+      - name: Generate categorized changelog
+        id: changelog
+        run: python .github/resources/release-changelog-generator.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RELEASE_TAG: ${{ env.NIGHTLY_TAG }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.NIGHTLY_TAG }}
           name: ${{ env.NIGHTLY_TAG }}
+          body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: true
-          generate_release_notes: true
           make_latest: false
