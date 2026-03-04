@@ -280,6 +280,17 @@ export enum EventType {
   PAM_RESOURCE_UPDATE = "pam-resource-update",
   PAM_RESOURCE_DELETE = "pam-resource-delete",
 
+  PAM_DISCOVERY_SOURCE_LIST = "pam-discovery-source-list",
+  PAM_DISCOVERY_SOURCE_GET = "pam-discovery-source-get",
+  PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
+  PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
+  PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
+  PAM_DISCOVERY_SCAN = "pam-discovery-scan",
+  PAM_DISCOVERY_SOURCE_RUN_LIST = "pam-discovery-source-run-list",
+  PAM_DISCOVERY_SOURCE_RUN_GET = "pam-discovery-source-run-get",
+  PAM_DISCOVERY_SOURCE_RESOURCE_LIST = "pam-discovery-source-resource-list",
+  PAM_DISCOVERY_SOURCE_ACCOUNT_LIST = "pam-discovery-source-account-list",
+
   CREATE_CERTIFICATE_PROFILE = "create-certificate-profile",
   UPDATE_CERTIFICATE_PROFILE = "update-certificate-profile",
   DELETE_CERTIFICATE_PROFILE = "delete-certificate-profile",
