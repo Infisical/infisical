@@ -7,6 +7,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
@@ -31,6 +32,7 @@ type TCaSigningConfigServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   caAutoRenewalQueue: Pick<TCaAutoRenewalQueueFactory, "queueVenafiInstall">;
 };
 
@@ -41,8 +43,16 @@ export const caSigningConfigServiceFactory = ({
   certificateAuthorityDAL,
   internalCertificateAuthorityDAL,
   permissionService,
+  appConnectionDAL,
   caAutoRenewalQueue
 }: TCaSigningConfigServiceFactoryDep) => {
+  const validateAppConnectionOrg = async (connectionId: string, actorOrgId: string) => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+    if (!appConnection || appConnection.orgId !== actorOrgId) {
+      throw new BadRequestError({ message: "App connection not found or does not belong to your organization" });
+    }
+  };
+
   const getOrCreateLegacySigningConfig = async (internalCaId: string, caType: string, parentCaId?: string | null) => {
     const existing = await caSigningConfigDAL.findByCaId(internalCaId);
     if (existing) return existing;
@@ -119,6 +129,7 @@ export const caSigningConfigServiceFactory = ({
       if (!destinationConfig) {
         throw new BadRequestError({ message: "Destination config is required for Venafi signing" });
       }
+      await validateAppConnectionOrg(appConnectionId, actorOrgId);
     }
 
     const config = await caSigningConfigDAL.transaction(async (tx) => {
@@ -230,7 +241,10 @@ export const caSigningConfigServiceFactory = ({
     }
 
     if (existing.type === CaSigningConfigType.Venafi) {
-      if (appConnectionId !== undefined) updateData.appConnectionId = appConnectionId;
+      if (appConnectionId !== undefined) {
+        await validateAppConnectionOrg(appConnectionId, actorOrgId);
+        updateData.appConnectionId = appConnectionId;
+      }
       if (destinationConfig !== undefined) updateData.destinationConfig = destinationConfig;
       if (lastExternalCertificateId !== undefined) updateData.lastExternalCertificateId = lastExternalCertificateId;
     }

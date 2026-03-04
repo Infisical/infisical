@@ -130,7 +130,7 @@ export const caAutoRenewalQueueFactory = ({
       certificateId
     });
 
-    const pemCerts = pemBundle.match(PEM_CERT_REGEX);
+    const pemCerts = PEM_CERT_REGEX.match(pemBundle);
     if (!pemCerts || pemCerts.length === 0) {
       throw new Error("Failed to parse certificate from Venafi response");
     }

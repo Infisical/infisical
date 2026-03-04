@@ -1,12 +1,12 @@
-import { subject } from "@casl/ability";
 import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PencilIcon } from "lucide-react";
 import { z } from "zod";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button as ButtonV2,
   FilterableSelect,
