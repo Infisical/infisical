@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
 import { TableName, TPamDiscoverySources } from "@app/db/schemas";
@@ -42,7 +43,10 @@ export const pamDiscoverySourceDALFactory = (db: TDbClient) => {
 
       if (search) {
         // escape special characters (`%`, `_`) and the escape character itself (`\`)
-        const escapedSearch = search.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+        const escapedSearch = search
+          .replace(new RE2(/\\/g), "\\\\")
+          .replace(new RE2(/%/g), "\\%")
+          .replace(new RE2(/_/g), "\\_");
         const pattern = `%${escapedSearch}%`;
         void query.where((q) => {
           void q
