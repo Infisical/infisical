@@ -23,3 +23,11 @@ export type TUpdateSubOrganizationDTO = {
   name?: string;
   slug?: string;
 };
+
+export type TDeleteSubOrganizationDTO = {
+  subOrgId: string;
+};
+
+export type TJoinSubOrganizationDTO = {
+  subOrgId: string;
+};
