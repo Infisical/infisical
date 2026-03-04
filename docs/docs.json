@@ -521,12 +521,12 @@
                                         "integrations/platforms/kubernetes/overview",
                                         "integrations/platforms/kubernetes/infisical-secret-crd",
                                         "integrations/platforms/kubernetes/infisical-push-secret-crd",
-                                        "integrations/platforms/kubernetes/infisical-dynamic-secret-crd",
-                                        "integrations/platforms/kubernetes/external-secrets-operator"
+                                        "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
                                       ]
                                     },
                   "integrations/platforms/kubernetes-injector",
                   "integrations/platforms/kubernetes-csi",
+                  "integrations/platforms/external-secrets-operator",
                   "integrations/platforms/infisical-proxy",
                   {
                     "group": "Agent",
