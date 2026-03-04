@@ -66,14 +66,6 @@ export const pamDiscoveryQueueFactory = ({
             return;
           }
 
-          if (!discoverySource.gatewayId) {
-            logger.error(
-              { discoverySourceId, triggeredBy },
-              "PAM Discovery Source has no gateway configured, skipping scan"
-            );
-            return;
-          }
-
           const discoveryType = discoverySource.discoveryType as PamDiscoveryType;
 
           const credentials = await decryptDiscoveryCredentials({
