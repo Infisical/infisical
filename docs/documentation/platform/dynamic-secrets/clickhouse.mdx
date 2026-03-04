@@ -11,15 +11,6 @@ The Infisical ClickHouse dynamic secret allows you to generate ClickHouse databa
 
 Create a user with the required permissions in your ClickHouse instance. This user will be used to create new accounts on-demand.
 
-```sql
-CREATE USER 'infisical' IDENTIFIED WITH sha256_password BY '<strong-password>';
-GRANT CREATE USER, DROP USER, GRANT OPTION ON *.* TO 'infisical';
-```
-
-<Note>
-  The `GRANT OPTION` privilege is required so that the service user can grant permissions to the dynamically created users.
-</Note>
-
 ## Set up Dynamic Secrets with ClickHouse
 
 <Steps>
@@ -50,11 +41,11 @@ GRANT CREATE USER, DROP USER, GRANT OPTION ON *.* TO 'infisical';
     </ParamField>
 
     <ParamField path="Host" type="string" required>
-      ClickHouse server hostname or IP address
+      ClickHouse server hostname or IP address (e.g., `https://your-host.clickhouse.cloud`)
     </ParamField>
 
     <ParamField path="Port" type="number" required>
-      ClickHouse HTTP interface port. Defaults to `8123` (HTTP) or `8443` (HTTPS).
+      ClickHouse HTTP interface port. Use `8123` for HTTP or `8443` for HTTPS / ClickHouse Cloud.
     </ParamField>
 
     <ParamField path="User" type="string" required>
@@ -74,7 +65,7 @@ GRANT CREATE USER, DROP USER, GRANT OPTION ON *.* TO 'infisical';
     </ParamField>
 
     <ParamField path="CA (SSL)" type="string">
-      A CA certificate may be required if your ClickHouse instance uses TLS with a self-signed or private certificate. Providing a CA also enables HTTPS automatically.
+      Only needed if your ClickHouse instance uses a self-signed or private CA certificate. ClickHouse Cloud uses publicly trusted certificates, so no CA is required — just include `https://` in the host. Providing a CA also enables HTTPS automatically.
     </ParamField>
 
     ![ClickHouse Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-clickhouse-form.png)

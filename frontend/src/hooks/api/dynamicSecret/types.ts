@@ -437,7 +437,6 @@ export type TDynamicSecretProvider =
         revocationStatement: string;
         renewStatement?: string;
         ca?: string;
-        sslEnabled?: boolean;
         gatewayId?: string;
         passwordRequirements?: {
           length: number;

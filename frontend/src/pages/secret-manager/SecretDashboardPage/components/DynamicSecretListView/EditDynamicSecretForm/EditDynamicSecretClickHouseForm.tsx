@@ -53,7 +53,7 @@ const passwordRequirementsSchema = z
 const formSchema = z.object({
   inputs: z
     .object({
-      host: z.string().toLowerCase().min(1),
+      host: z.string().min(1),
       port: z.number(),
       database: z.string().min(1),
       username: z.string().min(1),
@@ -112,7 +112,7 @@ const DEFAULT_PASSWORD_REQUIREMENTS = {
     lowercase: 1,
     uppercase: 1,
     digits: 1,
-    symbols: 0
+    symbols: 1
   },
   allowedSymbols: "-_.~!*"
 };
@@ -307,7 +307,7 @@ export const EditDynamicSecretClickHouseForm = ({
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
-                    <Input {...field} />
+                    <Input {...field} placeholder="https://your-host.clickhouse.cloud" />
                   </FormControl>
                 )}
               />
@@ -380,7 +380,7 @@ export const EditDynamicSecretClickHouseForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     isOptional
-                    label="CA (SSL)"
+                    label="CA (SSL) - optionally needed for self-signed certificates"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >

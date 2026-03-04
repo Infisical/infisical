@@ -25,7 +25,7 @@ const DEFAULT_PASSWORD_REQUIREMENTS: PasswordRequirements = {
     lowercase: 1,
     uppercase: 1,
     digits: 1,
-    symbols: 0
+    symbols: 1
   },
   allowedSymbols: "-_.~!*"
 };
@@ -109,8 +109,18 @@ export const ClickhouseProvider = ({
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretClickhouseSchema.parseAsync(inputs);
 
+    let { host } = providerInputs;
+    let hostProtocol: string | undefined;
+    if (host.startsWith("https://")) {
+      host = host.slice("https://".length);
+      hostProtocol = "https";
+    } else if (host.startsWith("http://")) {
+      host = host.slice("http://".length);
+      hostProtocol = "http";
+    }
+
     const [hostIp] = await verifyHostInputValidity({
-      host: providerInputs.host,
+      host,
       isGateway: Boolean(providerInputs.gatewayId),
       isDynamicSecret: true
     });
@@ -129,11 +139,13 @@ export const ClickhouseProvider = ({
       allowedExpressions: (val) => ["username", "database"].includes(val)
     });
 
-    return { ...providerInputs, hostIp };
+    return { ...providerInputs, host, hostIp, hostProtocol };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretClickhouseSchema> & { hostIp: string }) => {
-    const protocol = (providerInputs.sslEnabled ?? Boolean(providerInputs.ca)) ? "https" : "http";
+  const $getClient = async (
+    providerInputs: z.infer<typeof DynamicSecretClickhouseSchema> & { hostIp: string; hostProtocol?: string }
+  ) => {
+    const protocol = providerInputs.hostProtocol ?? (providerInputs.ca ? "https" : "http");
     const url = `${protocol}://${providerInputs.host}:${providerInputs.port}`;
 
     const client = createClient({

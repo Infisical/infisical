@@ -179,7 +179,7 @@ export const DynamicSecretSqlDBSchema = z.object({
 });
 
 export const DynamicSecretClickhouseSchema = z.object({
-  host: z.string().trim().toLowerCase(),
+  host: z.string().trim(),
   port: z.number(),
   database: z.string().trim(),
   username: z.string().trim(),
@@ -210,7 +210,6 @@ export const DynamicSecretClickhouseSchema = z.object({
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
-  sslEnabled: z.boolean().optional(),
   gatewayId: z.string().nullable().optional()
 });
 

@@ -55,7 +55,7 @@ const passwordRequirementsSchema = z
 
 const formSchema = z.object({
   provider: z.object({
-    host: z.string().toLowerCase().min(1),
+    host: z.string().min(1),
     port: z.coerce.number(),
     database: z.string().min(1),
     username: z.string().min(1),
@@ -64,7 +64,6 @@ const formSchema = z.object({
     creationStatement: z.string().min(1),
     revocationStatement: z.string().min(1),
     renewStatement: z.string().optional(),
-    sslEnabled: z.boolean().optional(),
     ca: z.string().optional(),
     gatewayId: z.string().optional()
   }),
@@ -99,6 +98,17 @@ const formSchema = z.object({
 });
 
 type TForm = z.infer<typeof formSchema>;
+
+const DEFAULT_PASSWORD_REQUIREMENTS = {
+  length: 48,
+  required: {
+    lowercase: 1,
+    uppercase: 1,
+    digits: 1,
+    symbols: 1
+  },
+  allowedSymbols: "-_.~!*"
+};
 
 type Props = {
   onCompleted: () => void;
@@ -135,16 +145,7 @@ export const ClickHouseInputForm = ({
           "CREATE USER '{{username}}' IDENTIFIED WITH sha256_password BY '{{password}}';\nGRANT SELECT ON {{database}}.* TO '{{username}}';",
         revocationStatement: "DROP USER IF EXISTS '{{username}}';",
         renewStatement: "",
-        passwordRequirements: {
-          length: 48,
-          required: {
-            lowercase: 1,
-            uppercase: 1,
-            digits: 1,
-            symbols: 0
-          },
-          allowedSymbols: "-_.~!*"
-        }
+        passwordRequirements: DEFAULT_PASSWORD_REQUIREMENTS
       },
       environment: isSingleEnvironmentMode ? environments[0] : undefined,
       usernameTemplate: "{{randomUsername}}"
@@ -305,7 +306,7 @@ export const ClickHouseInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input {...field} />
+                      <Input {...field} placeholder="https://your-host.clickhouse.cloud" />
                     </FormControl>
                   )}
                 />
@@ -374,7 +375,7 @@ export const ClickHouseInputForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       isOptional
-                      label="CA (SSL)"
+                      label="CA (SSL) - optionally needed for self-signed certificates"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
