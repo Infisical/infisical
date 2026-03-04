@@ -22,7 +22,7 @@ export const PamDiscoveryPage = () => {
             <PageHeader
               scope={ProjectType.PAM}
               title="Discovery"
-              description="Discover Active Directory resources, accounts, and dependencies automatically."
+              description="Discover resources, accounts, and dependencies automatically."
             />
             <PamDiscoverySourcesTable projectId={currentProject.id} />
           </div>
