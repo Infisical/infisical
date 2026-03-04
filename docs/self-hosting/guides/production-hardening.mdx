@@ -654,6 +654,7 @@ ProtectSystem=strict
 ReadWritePaths=/opt/infisical-core
 ReadWritePaths=/var/opt/infisical-core
 ReadWritePaths=/var/log/infisical-core
+ReadWritePaths=/run/infisical-core
 
 # Prevent loading of kernel modules
 ProtectKernelModules=true
@@ -667,7 +668,7 @@ RestrictSUIDSGID=true
 # Disable core dumps to prevent sensitive data exposure
 LimitCORE=0
 
-# Disable memory swap to prevent secrets from being written to disk
+# Limit swap usage to 0 for this service's cgroup (also disable system-wide swap in the System Security section below)
 MemorySwapMax=0
 ```
 
