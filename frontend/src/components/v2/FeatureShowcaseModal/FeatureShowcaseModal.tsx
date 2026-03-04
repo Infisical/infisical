@@ -44,7 +44,7 @@ export const FeatureShowcaseModal = ({
       <DialogPrimitive.Overlay
         className={twMerge(
           "animate-fade-in fixed inset-0 z-[9999] h-full w-full",
-          "bg-black/80 backdrop-blur-sm"
+          "bg-black/20 backdrop-blur-sm"
         )}
       />
       <DialogPrimitive.Content
@@ -54,7 +54,7 @@ export const FeatureShowcaseModal = ({
       >
         <div
           className={twMerge(
-            "animate-pop-in mx-auto overflow-hidden rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-2xl",
+            "animate-pop-in mx-auto overflow-hidden rounded-lg border border-mineshaft-500/60 bg-mineshaft-700/75 shadow-2xl backdrop-blur-md",
             MAX_WIDTH_CLASS[maxWidth]
           )}
         >
@@ -91,7 +91,7 @@ export const FeatureShowcaseModal = ({
                 <p className="text-sm text-bunker-300">{description}</p>
               )}
               {footerContent && (
-                <div className="flex justify-center pt-2">{footerContent}</div>
+                <div className="flex justify-start pt-2">{footerContent}</div>
               )}
             </div>
           )}

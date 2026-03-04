@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "@tanstack/react-router";
 
 import { Button } from "../Button";
 import {
@@ -14,10 +13,9 @@ import { FeatureShowcaseModal } from "./FeatureShowcaseModal";
 const SHOW_FEATURE_PARAM = "show_feature";
 const FORCE_PARAM = "force";
 
-const getShowFeatureFromSearch = (
-  search: string
-): { modalId: FeatureModalId; force: boolean } | null => {
-  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+const getShowFeatureFromUrl = (): { modalId: FeatureModalId; force: boolean } | null => {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
   const modalId = params.get(SHOW_FEATURE_PARAM) as FeatureModalId | null;
   const force = params.get(FORCE_PARAM) === "1" || params.get(FORCE_PARAM) === "true";
   return modalId && modalId in FEATURE_MODALS
@@ -35,21 +33,13 @@ const clearShowFeatureFromUrl = (): void => {
 };
 
 export const FeatureShowcaseModalTrigger = (): JSX.Element | null => {
-  const location = useLocation();
   const [activeModal, setActiveModal] = useState<{
     modalId: FeatureModalId;
     force: boolean;
   } | null>(null);
 
-  const searchStr =
-    typeof location.search === "string"
-      ? location.search
-      : typeof location.search === "object" && location.search !== null
-        ? new URLSearchParams(location.search as Record<string, string>).toString()
-        : window.location.search;
-
   useEffect(() => {
-    const result = getShowFeatureFromSearch(searchStr || window.location.search);
+    const result = getShowFeatureFromUrl();
     if (!result) {
       setActiveModal(null);
       return;
@@ -58,7 +48,22 @@ export const FeatureShowcaseModalTrigger = (): JSX.Element | null => {
     if (!result.force && hasSeenFeatureModal(FEATURE_MODALS[result.modalId].id)) return;
 
     setActiveModal(result);
-  }, [searchStr]);
+  }, []);
+
+  // Re-check when URL changes (e.g. browser back/forward or client nav with search)
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const result = getShowFeatureFromUrl();
+      if (result && (result.force || !hasSeenFeatureModal(FEATURE_MODALS[result.modalId].id))) {
+        setActiveModal(result);
+      } else if (!result) {
+        setActiveModal(null);
+      }
+    };
+
+    window.addEventListener("popstate", handleUrlChange);
+    return () => window.removeEventListener("popstate", handleUrlChange);
+  }, []);
 
   const handleClose = () => {
     if (!activeModal) return;
@@ -90,7 +95,11 @@ export const FeatureShowcaseModalTrigger = (): JSX.Element | null => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Button colorSchema="primary" variant="solid">
+            <Button
+              colorSchema="primary"
+              variant="outline"
+              className="border-primary/60 bg-primary/10 text-white hover:bg-primary/20 hover:text-white"
+            >
               Read more
             </Button>
           </a>
