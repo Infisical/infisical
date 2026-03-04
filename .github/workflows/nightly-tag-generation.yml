@@ -15,6 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for tags
+          fetch-tags: true
           token: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
       
       - name: Configure Git
@@ -92,6 +93,7 @@ jobs:
 
       - name: Generate categorized changelog
         id: changelog
+        continue-on-error: true
         run: python .github/resources/changelog-generator.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -99,7 +101,8 @@ jobs:
           TAG_PREFIX: "v"
           OUTPUT_FORMAT: "github"
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (categorized)
+        if: steps.changelog.outcome == 'success' && steps.changelog.outputs.changelog
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.NIGHTLY_TAG }}
@@ -107,4 +110,15 @@ jobs:
           body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: true
+          make_latest: false
+
+      - name: Create GitHub Release (fallback)
+        if: steps.changelog.outcome != 'success' || !steps.changelog.outputs.changelog
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NIGHTLY_TAG }}
+          name: ${{ env.NIGHTLY_TAG }}
+          draft: false
+          prerelease: true
+          generate_release_notes: true
           make_latest: false

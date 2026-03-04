@@ -58,9 +58,18 @@ def get_tag_creation_date(tag_name):
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/git/refs/tags/{tag_name}"
     response = requests.get(url, headers=headers)
     response.raise_for_status()
-    commit_sha = response.json()['object']['sha']
-    
-    commit_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/commits/{commit_sha}"
+    tag_ref = response.json()
+    obj_sha = tag_ref['object']['sha']
+    obj_type = tag_ref['object']['type']
+
+    # For annotated tags, dereference the tag object to get the commit SHA
+    if obj_type == 'tag':
+        tag_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/git/tags/{obj_sha}"
+        tag_response = requests.get(tag_url, headers=headers)
+        tag_response.raise_for_status()
+        obj_sha = tag_response.json()['object']['sha']
+
+    commit_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/commits/{obj_sha}"
     commit_response = requests.get(commit_url, headers=headers)
     commit_response.raise_for_status()
     creation_date = commit_response.json()['commit']['author']['date']
@@ -69,18 +78,40 @@ def get_tag_creation_date(tag_name):
 
 
 def fetch_prs_between_tags(previous_tag_date:datetime, release_tag_date:datetime):
-    # Use GitHub API to fetch PRs merged between the commits
-    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/pulls?state=closed&merged=true"
-    response = requests.get(url, headers=headers)
-
-    if response.status_code != 200:
-        raise Exception("Error fetching PRs from GitHub API!")
-
+    # Use GitHub Search API to fetch PRs merged in the date range.
+    # This avoids pagination issues with the pulls endpoint where sorting
+    # by 'updated' could cause early termination and miss PRs.
     prs = []
-    for pr in response.json():
-        # the idea is as tags happen recently we get last 100 closed PRs and then filter by tag creation date
-        if pr["merged_at"] and datetime.strptime(pr["merged_at"],'%Y-%m-%dT%H:%M:%SZ') < release_tag_date and  datetime.strptime(pr["merged_at"],'%Y-%m-%dT%H:%M:%SZ') > previous_tag_date:
-            prs.append(pr)
+    page = 1
+
+    while True:
+        search_url = (
+            f"https://api.github.com/search/issues"
+            f"?q=repo:{REPO_OWNER}/{REPO_NAME}+is:pr+is:merged"
+            f"+merged:{previous_tag_date.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+            f"..{release_tag_date.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+            f"&per_page=100&page={page}"
+        )
+        response = requests.get(search_url, headers=headers)
+
+        if response.status_code != 200:
+            raise Exception(f"Error fetching PRs from GitHub API: {response.status_code}")
+
+        data = response.json()
+        items = data.get('items', [])
+        if not items:
+            break
+
+        for item in items:
+            # Fetch full PR data for each result to get merged_at, head.ref, etc.
+            pr_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/pulls/{item['number']}"
+            pr_response = requests.get(pr_url, headers=headers)
+            if pr_response.status_code == 200:
+                prs.append(pr_response.json())
+
+        if len(items) < 100:
+            break
+        page += 1
 
     return prs
 
@@ -211,7 +242,8 @@ Here are the merged PRs:
 if __name__ == "__main__":
     try:
         # Get the latest and previous release tags
-        latest_tag = subprocess.check_output(["git", "describe", "--tags", "--abbrev=0"]).decode("utf-8").strip()
+        # RELEASE_TAG env var is used when triggered via workflow_dispatch
+        latest_tag = os.environ.get("RELEASE_TAG") or subprocess.check_output(["git", "describe", "--tags", "--abbrev=0"]).decode("utf-8").strip()
         previous_tag = find_previous_release_tag(latest_tag)
 
         latest_tag_date = get_tag_creation_date(latest_tag)
