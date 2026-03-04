@@ -88,6 +88,8 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
 interface BitbucketRepositoriesResponse {
   values: TBitbucketRepo[];
   next?: string;
+  page?: number;
+  size?: number;
 }
 
 export const listBitbucketRepositories = async (appConnection: TBitbucketConnection, workspaceSlug: string) => {
@@ -98,13 +100,13 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
     Accept: "application/json"
   };
 
+  const pagelen = 100;
   let allRepos: TBitbucketRepo[] = [];
   let nextUrl: string | undefined =
-    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}?pagelen=100`;
+    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}?pagelen=${pagelen}`;
   let iterationCount = 0;
 
-  // Limit to 10 iterations, fetching at most 10 * 100 = 1000 repositories
-  while (nextUrl && iterationCount < 10) {
+  while (nextUrl && iterationCount < 100) {
     // eslint-disable-next-line no-await-in-loop
     const { data }: { data: BitbucketRepositoriesResponse } = await request.get<BitbucketRepositoriesResponse>(
       nextUrl,
@@ -113,8 +115,20 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
       }
     );
 
-    allRepos = allRepos.concat(data.values);
-    nextUrl = data.next;
+    if (data?.values?.length > 0) {
+      allRepos = allRepos.concat(data.values);
+    }
+
+    if (data.next) {
+      nextUrl = data.next;
+    } else if (data.size && allRepos.length < data.size) {
+      // Fallback: manually construct next page URL if 'next' is missing but more results exist
+      const currentPage = data.page ?? iterationCount + 1;
+      nextUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}?pagelen=${pagelen}&page=${currentPage + 1}`;
+    } else {
+      nextUrl = undefined;
+    }
+
     iterationCount += 1;
   }
 
