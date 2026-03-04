@@ -63,9 +63,7 @@ export const pamDiscoverySourceDALFactory = (db: TDbClient) => {
 
       void query.select(selectAllTableCols(TableName.PamDiscoverySource));
 
-      const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
-
-      void query.orderByRaw(`${TableName.PamDiscoverySource}.?? COLLATE "en-x-icu" ${direction}`, [orderBy]);
+      void query.orderBy(`${TableName.PamDiscoverySource}.${orderBy}`, orderDirection);
 
       if (typeof limit === "number") {
         void query.limit(limit).offset(offset);
