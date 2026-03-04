@@ -692,8 +692,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         appConnectionId: z.string().uuid().optional(),
         destinationConfig: z
           .object({
-            applicationId: z.string().min(1),
-            issuingTemplateId: z.string().min(1),
+            applicationId: z.string().uuid(),
+            issuingTemplateId: z.string().uuid(),
             validityPeriod: z.number().int().min(1).optional()
           })
           .optional()
@@ -793,8 +793,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         appConnectionId: z.string().uuid().optional(),
         destinationConfig: z
           .object({
-            applicationId: z.string().min(1),
-            issuingTemplateId: z.string().min(1),
+            applicationId: z.string().uuid(),
+            issuingTemplateId: z.string().uuid(),
             validityPeriod: z.number().int().min(1).optional()
           })
           .optional()
@@ -820,7 +820,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           type: EventType.UPDATE_CA_SIGNING_CONFIG,
           metadata: {
             caId: ca.id,
-            dn: ca.dn
+            dn: ca.dn,
+            signingConfigType: config.type
           }
         }
       });

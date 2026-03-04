@@ -62,7 +62,7 @@ export const registerVenafiConnectionRouter = async (server: FastifyZodProvider)
         connectionId: z.string().uuid()
       }),
       querystring: z.object({
-        applicationId: z.string().min(1, "Application ID is required")
+        applicationId: z.string().uuid("Application ID must be a valid UUID")
       }),
       response: {
         200: z
