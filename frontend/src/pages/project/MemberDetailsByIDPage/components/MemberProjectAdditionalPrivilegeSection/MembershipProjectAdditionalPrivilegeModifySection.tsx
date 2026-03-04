@@ -337,20 +337,27 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                   variant="ghost"
                   disabled={isSubmitting}
                   onClick={() => {
-                    if (!privilegeDetails) return;
-                    reset({
-                      ...privilegeDetails,
-                      permissions: rolePermission2Form(privilegeDetails.permissions),
-                      temporaryAccess: privilegeDetails.isTemporary
-                        ? {
-                            isTemporary: true,
-                            temporaryRange: privilegeDetails.temporaryRange || "",
-                            temporaryAccessEndTime: privilegeDetails.temporaryAccessEndTime || "",
-                            temporaryAccessStartTime:
-                              privilegeDetails.temporaryAccessStartTime || ""
-                          }
-                        : { isTemporary: false }
-                    });
+                    if (privilegeDetails) {
+                      reset({
+                        ...privilegeDetails,
+                        permissions: rolePermission2Form(privilegeDetails.permissions),
+                        temporaryAccess: privilegeDetails.isTemporary
+                          ? {
+                              isTemporary: true,
+                              temporaryRange: privilegeDetails.temporaryRange || "",
+                              temporaryAccessEndTime: privilegeDetails.temporaryAccessEndTime || "",
+                              temporaryAccessStartTime:
+                                privilegeDetails.temporaryAccessStartTime || ""
+                            }
+                          : { isTemporary: false }
+                      });
+                    } else {
+                      reset({
+                        slug: "",
+                        temporaryAccess: { isTemporary: false },
+                        permissions: {}
+                      });
+                    }
                   }}
                 >
                   Discard

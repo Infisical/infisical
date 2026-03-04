@@ -462,15 +462,20 @@ export const ConditionsFields = ({
                               className={twMerge(rhsError?.message && "border-danger/25")}
                             />
                           </div>
-                          <UnstableIconButton
-                            aria-label="remove"
-                            variant="outline"
-                            className="hover:border-danger/30 hover:bg-danger/15"
-                            isDisabled={isDisabled}
-                            onClick={() => items.remove(index)}
-                          >
-                            <TrashIcon className="size-4" />
-                          </UnstableIconButton>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <UnstableIconButton
+                                aria-label="remove"
+                                variant="outline"
+                                className="hover:border-danger/30 hover:bg-danger/15"
+                                isDisabled={isDisabled}
+                                onClick={() => items.remove(index)}
+                              >
+                                <TrashIcon className="size-4" />
+                              </UnstableIconButton>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">Remove Condition</TooltipContent>
+                          </Tooltip>
                         </div>
                         {rhsError?.message && (
                           <div className="flex items-start gap-2 pb-1">

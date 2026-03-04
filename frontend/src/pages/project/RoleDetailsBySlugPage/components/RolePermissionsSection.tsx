@@ -10,11 +10,7 @@ import { Button, UnstableAccordion } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
-import {
-  useGetProjectRoleBySlug,
-  useGetWorkspaceIntegrations,
-  useUpdateProjectRole
-} from "@app/hooks/api";
+import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -138,11 +134,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
   const { data: role, isPending } = useGetProjectRoleBySlug(projectId, roleSlug as string);
-  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId, {
-    enabled: isSecretManagerProject,
-    refetchInterval: false
-  });
-  const hasNativeIntegrations = integrations.length > 0;
 
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
   const [openPolicies, setOpenPolicies] = useState<string[]>([]);
@@ -267,11 +258,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
                     .filter(
                       (subject) => ProjectTypePermissionSubjects[currentProject.type][subject]
-                    )
-                    .filter(
-                      (subject) =>
-                        // Hide Native Integrations policy if project has no integrations
-                        subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
                     )
                     .map((subject) => (
                       <GeneralPermissionPolicies

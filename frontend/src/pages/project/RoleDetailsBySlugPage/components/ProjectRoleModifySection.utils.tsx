@@ -1956,7 +1956,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Grant Privileges",
         value: ProjectPermissionMemberActions.GrantPrivileges,
-        description: "Grant temporary elevated privileges to users"
+        description: "Grant temporary elevated privileges and update role assignments to users"
       },
       {
         label: "Assume Privileges",
@@ -1992,7 +1992,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Grant Privileges",
         value: ProjectPermissionIdentityActions.GrantPrivileges,
-        description: "Grant temporary elevated privileges to machine identities"
+        description:
+          "Grant temporary elevated privileges and update role assignments to machine identities"
       },
       {
         label: "Assume Privileges",
@@ -2048,7 +2049,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Grant Privileges",
         value: ProjectPermissionGroupActions.GrantPrivileges,
-        description: "Grant temporary elevated privileges to groups"
+        description: "Grant temporary elevated privileges and update role assignments to groups"
       }
     ]
   },
@@ -2465,7 +2466,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Create Config",
         value: ProjectPermissionSecretRotationActions.Create,
-        description: "Set up new secret rotation schedules"
+        description: "Create new secret rotation configuration"
       },
       {
         label: "Modify Config",
@@ -2645,7 +2646,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Create Data Sources",
         value: ProjectPermissionSecretScanningDataSourceActions.Create,
-        description: "Add new repositories or sources to scan"
+        description: "Add new data sources"
       },
       {
         label: "Modify Data Sources",
@@ -2655,7 +2656,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Delete Data Sources",
         value: ProjectPermissionSecretScanningDataSourceActions.Delete,
-        description: "Remove data sources from scanning"
+        description: "Remove data sources"
       },
       {
         label: "Read Resources",
@@ -2734,7 +2735,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AppConnections]: {
     title: "App Connections",
-    description: "Connect applications to access secrets",
+    description: "Manage connections to external platforms and services",
     actions: [
       {
         label: "Read",
@@ -2744,7 +2745,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Create",
         value: ProjectPermissionAppConnectionActions.Create,
-        description: "Set up new connections to external applications"
+        description: "Create new connections to external platforms and services"
       },
       {
         label: "Update",
@@ -2759,7 +2760,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Connect",
         value: ProjectPermissionAppConnectionActions.Connect,
-        description: "Establish connections to external applications"
+        description: "Establish connections to external platforms and services"
       }
     ]
   },

@@ -1,4 +1,4 @@
-import { ChevronDownIcon, LayersIcon, PlusIcon, UploadIcon } from "lucide-react";
+import { ChevronDownIcon, DownloadIcon, LayersIcon, PlusIcon } from "lucide-react";
 
 import {
   Button,
@@ -84,7 +84,7 @@ export const AddPoliciesButton = ({ isDisabled, projectType, projectId }: Props)
                     }}
                     isDisabled={isVaultImportDisabled}
                   >
-                    <UploadIcon />
+                    <DownloadIcon />
                     Add from HashiCorp Vault
                   </UnstableDropdownMenuItem>
                 </TooltipTrigger>
