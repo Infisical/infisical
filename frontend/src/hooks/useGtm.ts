@@ -16,13 +16,6 @@ export const useGtm = () => {
   useEffect(() => {
     if (!isCloudHostname()) return undefined;
 
-    // Inject GTM script
-    const script = document.createElement("script");
-    script.id = GTM_SCRIPT_ID;
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`;
-    document.head.appendChild(script);
-
     // Inject noscript iframe
     const noscript = document.createElement("noscript");
     noscript.id = GTM_NOSCRIPT_ID;
@@ -33,7 +26,14 @@ export const useGtm = () => {
     iframe.style.display = "none";
     iframe.style.visibility = "hidden";
     noscript.appendChild(iframe);
-    document.body.insertBefore(noscript, document.body.firstChild);
+    document.head.insertBefore(noscript, document.head.firstChild);
+
+    // Inject GTM script
+    const script = document.createElement("script");
+    script.id = GTM_SCRIPT_ID;
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`;
+    document.head.insertBefore(script, document.head.firstChild);
 
     return () => {
       document.getElementById(GTM_SCRIPT_ID)?.remove();
