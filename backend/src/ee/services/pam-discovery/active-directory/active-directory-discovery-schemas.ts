@@ -66,7 +66,7 @@ export const ActiveDirectoryDiscoverySourceRunProgressSchema = z.object({
       totalMachines: z.number().optional(),
       scannedMachines: z.number().optional(),
       failedMachines: z.number().optional(),
-      reason: z.string().optional()
+      statusMessage: z.string().optional()
     })
     .optional(),
   machineErrors: z.record(z.string(), z.string()).optional()

@@ -285,8 +285,8 @@ const RunExpandedContent = ({
                 )}
               </span>
             )}
-            {depScan.reason && depScan.reason !== errorMessage && (
-              <span className="text-xs text-muted">{depScan.reason}</span>
+            {depScan.statusMessage && depScan.statusMessage !== errorMessage && (
+              <span className="text-xs text-muted">{depScan.statusMessage}</span>
             )}
           </div>
         )}

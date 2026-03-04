@@ -39,7 +39,7 @@ export type TPamDiscoverySourceRunProgress = {
     totalMachines?: number;
     scannedMachines?: number;
     failedMachines?: number;
-    reason?: string;
+    statusMessage?: string;
   };
   machineErrors?: Record<string, string>;
 };
