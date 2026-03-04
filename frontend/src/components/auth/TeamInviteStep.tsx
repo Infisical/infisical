@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
+import { motion } from "framer-motion";
 
 import { useAddUsersToOrg } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -31,41 +32,46 @@ export default function TeamInviteStep(): JSX.Element {
   };
 
   const inviteUsers = async ({ emails: inviteEmails }: { emails: string }) => {
-    inviteEmails
-      .split(",")
+    const emailList = inviteEmails
+      .split(/[,\n\r]+/)
       .map((email) => email.trim())
-      .map(async (email) => {
+      .filter((email) => email.length > 0);
+
+    await Promise.all(
+      emailList.map((email) =>
         mutateAsync({
           inviteeEmails: [email],
           organizationId: orgId,
           organizationRoleSlug: "member"
-        });
-      });
+        })
+      )
+    );
 
     await redirectToHome();
   };
 
   return (
-    <div className="mx-auto mb-64 h-full w-max min-w-lg px-8 pb-4 md:mb-32">
-      <p className="flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-2xl font-medium text-transparent">
-        {t("signup.step5-invite-team")}
-      </p>
-      <p className="mt-4 mb-6 flex justify-center text-center text-bunker-400 md:mx-8">
-        {t("signup.step5-subtitle")}
-      </p>
-      <div className="mx-auto mb-6 w-max rounded-xl border border-mineshaft-500 bg-mineshaft-800 px-8 pt-6 pb-4 drop-shadow-xl">
-        <div>
-          <div className="pb-1 pl-1 text-sm font-medium text-bunker-300">
-            <span>Emails</span>
-          </div>
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <motion.div
+        layoutId="signup-card"
+        className="mx-auto flex w-full max-w-md flex-col items-stretch rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6"
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      >
+        <p className="flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent">
+          {t("signup.step5-invite-team")}
+        </p>
+        <p className="mt-2 mb-4 flex justify-center text-center text-sm text-bunker-400">
+          Enter up to 50 email addresses, separated by commas or new lines
+        </p>
+        <div className="w-full">
           <textarea
-            className="ring-opacity-70 h-20 w-full min-w-120 rounded-md border border-mineshaft-500 bg-mineshaft-900/70 px-2 py-1 text-sm text-bunker-300 ring-primary-800 outline-hidden placeholder:text-bunker-400 focus:ring-2"
+            className="ring-opacity-70 h-20 w-full rounded-md border border-mineshaft-500 bg-mineshaft-900/70 px-2 py-1 text-sm text-bunker-300 ring-primary-800 outline-hidden placeholder:text-bunker-400 focus:ring-2"
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
-            placeholder="email@example.com, email2@example.com..."
+            placeholder="email1@example.com, email2@example.com"
           />
         </div>
-        <div className="mx-auto mt-2 flex w-full flex-row items-end justify-end text-sm md:mt-4 md:mb-2 md:max-w-md md:min-w-120">
+        <div className="mt-4 w-full">
           <Button
             onClick={() => {
               if (serverDetails?.emailConfigured) {
@@ -75,7 +81,7 @@ export default function TeamInviteStep(): JSX.Element {
               }
             }}
             size="sm"
-            // isFullWidth
+            isFullWidth
             className="h-10"
             colorSchema="primary"
             variant="solid"
@@ -88,20 +94,19 @@ export default function TeamInviteStep(): JSX.Element {
           isOpen={popUp.setUpEmail?.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
         />
-      </div>
-      <div className="mx-auto mt-4 mb-2 flex max-h-24 max-w-max min-w-[20rem] flex-row items-center justify-center px-4 text-lg md:p-2">
-        <Button
-          onClick={redirectToHome}
-          size="sm"
-          isFullWidth
-          className="h-12"
-          colorSchema="secondary"
-          variant="outline"
-        >
-          {" "}
-          {t("signup.step5-skip") ?? "Skip"}{" "}
-        </Button>
-      </div>
+        <div className="mt-6 w-full">
+          <Button
+            onClick={redirectToHome}
+            size="sm"
+            isFullWidth
+            className="h-12"
+            colorSchema="secondary"
+            variant="outline"
+          >
+            {t("signup.step5-skip") ?? "Skip"}
+          </Button>
+        </div>
+      </motion.div>
     </div>
   );
 }

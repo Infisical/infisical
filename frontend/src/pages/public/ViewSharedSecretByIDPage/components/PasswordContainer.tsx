@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { Button, FormControl, IconButton, Input } from "@app/components/v2";
+import { FormControl, Input } from "@app/components/v2";
 
 import { BrandingTheme } from "../ViewSharedSecretByIDPage";
 
@@ -54,7 +54,7 @@ export const PasswordContainer = ({
 
   return (
     <div
-      className={`rounded-lg border p-4 ${brandingTheme ? "" : "border-mineshaft-600 bg-mineshaft-800"}`}
+      className={`rounded-lg border px-4 pt-5 pb-1 ${brandingTheme ? "" : "border-mineshaft-500 bg-mineshaft-800"}`}
       style={panelStyle}
     >
       <form onSubmit={handleSubmit(onFormSubmit)}>
@@ -69,53 +69,42 @@ export const PasswordContainer = ({
                 errorText={isInvalidCredential ? "Invalid credential" : error?.message}
                 isRequired
                 label="Password"
-                labelClassName="text-[var(--muted-color)]"
+                labelClassName="mb-2 text-[var(--muted-color)]"
               >
                 <div className="flex items-center justify-between gap-2 rounded-md">
                   <Input
                     {...field}
                     placeholder="Enter password to view secret"
-                    type="password"
-                    style={inputStyle}
+                    type="text"
+                    style={{
+                      ...inputStyle,
+                      WebkitTextSecurity: "disc"
+                    } as React.CSSProperties}
                     className={twMerge(
-                      "h-9",
+                      "h-9 border border-mineshaft-500 rounded-md",
                       brandingTheme &&
                         "border placeholder-[var(--muted-color)]/70 focus:ring-[var(--muted-color)]/50"
                     )}
-                    containerClassName="bg-transparent border-transparent h-9"
+                    autoComplete="off"
+                    containerClassName="bg-transparent border-mineshaft-500 h-9 rounded-md"
                   />
-                  <div className="flex">
-                    <IconButton
-                      ariaLabel="submit password"
-                      colorSchema="secondary"
-                      className="group relative size-9 hover:opacity-70"
-                      onClick={handleSubmit(onFormSubmit)}
-                      style={inputStyle}
-                    >
-                      <FontAwesomeIcon
-                        className={isSubmitting ? "fa-spin" : ""}
-                        icon={isSubmitting ? faSpinner : faArrowRight}
-                      />
-                    </IconButton>
-                  </div>
+                  <button
+                    type="button"
+                    className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-mineshaft-500 bg-mineshaft-700/50 text-sm text-mineshaft-300 transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-white"
+                    onClick={handleSubmit(onFormSubmit)}
+                    style={brandingTheme ? inputStyle : undefined}
+                  >
+                    <FontAwesomeIcon
+                      className={isSubmitting ? "fa-spin" : ""}
+                      icon={isSubmitting ? faSpinner : faArrowRight}
+                    />
+                  </button>
                 </div>
               </FormControl>
             </div>
           )}
         />
       </form>
-      {!brandingTheme && (
-        <Button
-          className="w-full bg-mineshaft-700 py-3 text-bunker-200"
-          colorSchema="primary"
-          variant="outline_bg"
-          size="sm"
-          onClick={() => window.open("/share-secret", "_blank", "noopener")}
-          rightIcon={<FontAwesomeIcon icon={faArrowRight} className="pl-2" />}
-        >
-          Share Your Own Secret
-        </Button>
-      )}
     </div>
   );
 };

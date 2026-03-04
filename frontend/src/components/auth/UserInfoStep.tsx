@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { motion } from "framer-motion";
 
 import { initProjectHelper } from "@app/helpers/project";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
@@ -138,12 +139,16 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
-      <p className="text-medium mx-8 mb-6 flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
-        {t("signup.step3-message")}
-      </p>
-      <div className="mx-auto mb-36 h-full w-max rounded-xl py-6 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800 md:px-8">
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <motion.div
+        layoutId="signup-card"
+        className="mx-auto flex w-full max-w-sm flex-col items-stretch rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6"
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      >
+        <p className="mb-6 flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-2xl font-bold text-transparent">
+          {t("signup.step3-message")}
+        </p>
+        <div className="relative z-0 flex w-full flex-col items-stretch rounded-lg py-2">
           <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
             Your Name
           </p>
@@ -161,7 +166,7 @@ export default function UserInfoStep({
             </p>
           )}
         </div>
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+        <div className="relative z-0 flex w-full flex-col items-stretch rounded-lg py-2">
           <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
             Organization Name
           </p>
@@ -179,7 +184,7 @@ export default function UserInfoStep({
             </p>
           )}
         </div>
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+        <div className="relative z-0 flex w-full flex-col items-stretch rounded-lg py-2">
           <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
             Where did you hear about us? <span className="font-light">(optional)</span>
           </p>
@@ -190,7 +195,7 @@ export default function UserInfoStep({
             className="h-12"
           />
         </div>
-        <div className="mt-2 flex max-h-60 w-full min-w-[20rem] flex-col items-center justify-center rounded-lg py-2 lg:w-1/6">
+        <div className="mt-2 flex max-h-60 w-full flex-col items-stretch rounded-lg py-2">
           <InputField
             label={t("section.password.password")}
             onChangeHandler={async (pass: string) => {
@@ -232,24 +237,21 @@ export default function UserInfoStep({
             </div>
           )}
         </div>
-        <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
-          <div className="text-l w-full py-1 text-lg">
-            <Button
+        <div className="mt-4 w-full">
+          <Button
               type="submit"
               onClick={signupErrorCheck}
               size="sm"
               isFullWidth
-              className="h-14"
+              className="h-12"
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
             >
-              {" "}
-              {String(t("signup.signup"))}{" "}
+              {String(t("signup.signup"))}
             </Button>
-          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

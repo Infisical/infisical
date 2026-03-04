@@ -47,6 +47,7 @@ export const InitialStep = ({
   const [captchaToken, setCaptchaToken] = useState("");
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showOtherOptions, setShowOtherOptions] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -177,12 +178,17 @@ export const InitialStep = ({
         onSubmit={handleLogin}
         className="mx-auto flex w-full flex-col items-center justify-center"
       >
-        <h1 className="mb-8 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-          Login to Infisical
-        </h1>
-        <RegionSelect />
-        {config.defaultAuthOrgAuthMethod === AuthMethod.SAML && (
-          <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+        <div className="mx-auto flex w-full max-w-sm flex-col items-stretch rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6">
+        <div className="mb-8 flex w-full items-center gap-2">
+          <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.7rem] font-medium text-transparent">
+            Log in to Infisical
+          </h1>
+          <div className="-mr-2 ml-auto">
+            <RegionSelect compact />
+          </div>
+        </div>
+          {config.defaultAuthOrgAuthMethod === AuthMethod.SAML && (
+          <div className="w-full">
             <Button
               colorSchema="primary"
               variant="outline_bg"
@@ -195,7 +201,7 @@ export const InitialStep = ({
           </div>
         )}
         {config.defaultAuthOrgAuthMethod === AuthMethod.OIDC && (
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <div className="mt-2 w-full">
             <Button
               colorSchema="primary"
               variant="outline_bg"
@@ -207,6 +213,7 @@ export const InitialStep = ({
             </Button>
           </div>
         )}
+        </div>
       </form>
     );
   }
@@ -216,52 +223,80 @@ export const InitialStep = ({
       onSubmit={handleLogin}
       className="mx-auto flex w-full flex-col items-center justify-center"
     >
-      <h1 className="mb-8 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-        Login to Infisical
-      </h1>
-      <RegionSelect />
-      {shouldDisplayLoginMethod(LoginMethod.SAML) && (
-        <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={handleSaml}
-            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            Continue with SAML
-          </Button>
+      <div className="mx-auto flex w-full max-w-sm flex-col items-stretch rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6">
+        <div className="mb-4 flex w-full items-center gap-4">
+          <h1 className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+            Log in to Infisical
+          </h1>
+          <div className="-mr-2 ml-auto">
+            <RegionSelect compact />
+          </div>
+        </div>
+      {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
+        <>
+          <div className="w-full">
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              placeholder="Enter your email..."
+              isRequired
+              autoComplete="username"
+              className="h-10 placeholder:text-mineshaft-400"
+            />
+          </div>
+          <div className="mt-2 w-full">
+            <Input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter your password..."
+              isRequired
+              autoComplete="current-password"
+              id="current-password"
+              className="select:-webkit-autofill:focus h-10 placeholder:text-mineshaft-400"
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="cursor-pointer text-gray-400"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <FontAwesomeIcon size="sm" icon={showPassword ? faEyeSlash : faEye} />
+                </button>
+              }
+            />
+          </div>
+          {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
+            <div className="mt-4">
+              <HCaptcha
+                theme="dark"
+                sitekey={envConfig.CAPTCHA_SITE_KEY}
+                onVerify={(token) => setCaptchaToken(token)}
+                ref={captchaRef}
+              />
+            </div>
+          )}
+          <div className="mt-4 w-full">
+            <button
+              disabled={(shouldShowCaptcha && captchaToken === "") || isLoading}
+              type="submit"
+              className="h-10 w-full cursor-pointer rounded-md border border-primary/60 bg-[#3d4035] px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:border-primary hover:bg-[#484b3f] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLoading ? "Logging in..." : "Continue with Email"}
+            </button>
+          </div>
+        </>
+      )}
+      {(!config.enabledLoginMethods ||
+        (shouldDisplayLoginMethod(LoginMethod.EMAIL) && config.enabledLoginMethods.length > 1)) && (
+        <div className="my-4 flex w-full flex-row items-center py-2">
+          <div className="w-full border-t border-mineshaft-400/60" />
+          <span className="mx-2 text-xs text-mineshaft-400">or</span>
+          <div className="w-full border-t border-mineshaft-400/60" />
         </div>
       )}
-      {shouldDisplayLoginMethod(LoginMethod.OIDC) && (
-        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={handleOidc}
-            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            Continue with OIDC
-          </Button>
-        </div>
-      )}
-      {shouldDisplayLoginMethod(LoginMethod.LDAP) && (
-        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={() => {
-              navigate({ to: "/login/ldap" });
-            }}
-            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            Continue with LDAP
-          </Button>
-        </div>
-      )}
-      <div className="mt-2 flex w-1/4 min-w-[21.2rem] gap-2 md:min-w-[20.1rem] lg:w-1/6">
+      <div className="flex w-full gap-2">
         {shouldDisplayLoginMethod(LoginMethod.GOOGLE) && (
           <Tooltip position="bottom" content={t("login.continue-with-google")}>
             <IconButton
@@ -350,75 +385,58 @@ export const InitialStep = ({
           </Tooltip>
         )}
       </div>
-      {(!config.enabledLoginMethods ||
-        (shouldDisplayLoginMethod(LoginMethod.EMAIL) && config.enabledLoginMethods.length > 1)) && (
-        <div className="my-4 flex w-1/4 min-w-[20rem] flex-row items-center py-2 lg:w-1/6">
-          <div className="w-full border-t border-mineshaft-400/60" />
-          <span className="mx-2 text-xs text-mineshaft-200">or</span>
-          <div className="w-full border-t border-mineshaft-400/60" />
+      {shouldDisplayLoginMethod(LoginMethod.SAML) && (
+        <div className="mt-2 w-full">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={handleSaml}
+            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            Continue with SAML
+          </Button>
         </div>
       )}
-      {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
-        <>
-          <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="Enter your email..."
-              isRequired
-              autoComplete="username"
-              className="h-10"
-            />
-          </div>
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password..."
-              isRequired
-              autoComplete="current-password"
-              id="current-password"
-              className="select:-webkit-autofill:focus h-10"
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="cursor-pointer text-gray-400"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  <FontAwesomeIcon size="sm" icon={showPassword ? faEyeSlash : faEye} />
-                </button>
-              }
-            />
-          </div>
-          {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
-            <div className="mt-4">
-              <HCaptcha
-                theme="dark"
-                sitekey={envConfig.CAPTCHA_SITE_KEY}
-                onVerify={(token) => setCaptchaToken(token)}
-                ref={captchaRef}
-              />
-            </div>
-          )}
-          <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              disabled={shouldShowCaptcha && captchaToken === ""}
-              type="submit"
-              size="sm"
-              isFullWidth
-              className="h-10"
-              colorSchema="primary"
-              variant="solid"
-              isLoading={isLoading}
-            >
-              {" "}
-              Continue with Email{" "}
-            </Button>
-          </div>
-        </>
+      {showOtherOptions && shouldDisplayLoginMethod(LoginMethod.OIDC) && (
+        <div className="mt-2 w-full">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={handleOidc}
+            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            Continue with OIDC
+          </Button>
+        </div>
+      )}
+      {showOtherOptions && shouldDisplayLoginMethod(LoginMethod.LDAP) && (
+        <div className="mt-2 w-full">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={() => {
+              navigate({ to: "/login/ldap" });
+            }}
+            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            Continue with LDAP
+          </Button>
+        </div>
+      )}
+      {(shouldDisplayLoginMethod(LoginMethod.OIDC) || shouldDisplayLoginMethod(LoginMethod.LDAP)) && !showOtherOptions && (
+        <div className="mt-2 w-full">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={() => setShowOtherOptions(true)}
+            className="mx-0 h-10 w-full"
+          >
+            Show other options
+          </Button>
+        </div>
       )}
       {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
       {config.allowSignUp &&
@@ -426,7 +444,7 @@ export const InitialStep = ({
         shouldDisplayLoginMethod(LoginMethod.GOOGLE) ||
         shouldDisplayLoginMethod(LoginMethod.GITHUB) ||
         shouldDisplayLoginMethod(LoginMethod.GITLAB)) ? (
-        <div className="mt-6 flex flex-row text-sm text-bunker-400">
+        <div className="mt-6 flex flex-row justify-center text-xs text-bunker-400">
           <Link to="/signup">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
               Don&apos;t have an account yet? {t("login.create-account")}
@@ -437,7 +455,7 @@ export const InitialStep = ({
         <div className="mt-4" />
       )}
       {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
-        <div className="mt-2 flex flex-row text-sm text-bunker-400">
+        <div className="mt-2 flex flex-row justify-center text-xs text-bunker-400">
           <Link to="/account-recovery">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
               Recover your account
@@ -445,6 +463,7 @@ export const InitialStep = ({
           </Link>
         </div>
       )}
+      </div>
     </form>
   );
 };

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy, faRedo } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
@@ -12,9 +12,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  Button,
   FormControl,
-  IconButton,
   Input,
   Select,
   SelectItem,
@@ -71,11 +69,12 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
+  isPublic: boolean;
   value?: string;
   allowSecretSharingOutsideOrganization?: boolean;
   maxSharedSecretLifetime?: number;
   maxSharedSecretViewLimit?: number | null;
+  onStateChange?: (state: "form" | "link" | "emailed") => void;
 };
 
 export const ShareSecretForm = ({
@@ -83,7 +82,8 @@ export const ShareSecretForm = ({
   value,
   allowSecretSharingOutsideOrganization = true,
   maxSharedSecretLifetime,
-  maxSharedSecretViewLimit
+  maxSharedSecretViewLimit,
+  onStateChange
 }: Props) => {
   const [secretLink, setSecretLink] = useState<string | null>(null);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
@@ -146,6 +146,7 @@ export const ShareSecretForm = ({
 
     if (processedEmails && processedEmails.length > 0) {
       setSecretLink("");
+      onStateChange?.("emailed");
       createNotification({
         text: `Shared secret link emailed to ${processedEmails.length} user(s).`,
         type: "success"
@@ -157,6 +158,7 @@ export const ShareSecretForm = ({
       }
 
       setSecretLink(link.toString());
+      onStateChange?.("link");
 
       navigator.clipboard.writeText(link.toString());
       setCopyTextSecret("secret");
@@ -424,66 +426,65 @@ export const ShareSecretForm = ({
           </AccordionItem>
         </Accordion>
 
-        <div className="flex w-full justify-end">
-          <Button
-            className="mt-4"
-            size="sm"
-            type="submit"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
+        <div className="mt-4 flex w-full items-center justify-between">
+          <a
+            href="https://infisical.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-full border border-mineshaft-500 bg-mineshaft-700 px-2.5 py-1 text-[11px] text-mineshaft-300 transition-colors hover:border-mineshaft-400 hover:text-white"
           >
-            Create Secret Link
-          </Button>
+            <img src="/images/gradientLogo.svg" alt="" className="size-4" />
+            Powered by Infisical
+          </a>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="cursor-pointer rounded-md border border-primary/60 bg-primary/10 px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:border-primary hover:bg-primary/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSubmitting ? "Creating..." : "Create Secret Link"}
+          </button>
         </div>
       </form>
     );
 
   if (secretLink === "")
     return (
-      <>
-        <div className="mt-1 flex w-full items-center justify-center gap-2">
-          <FontAwesomeIcon icon={faCheck} className="text-green-500" />
-          <span>Shared secret link has been emailed to select users.</span>
-        </div>
-        <Button
-          className="mt-6 w-full bg-mineshaft-700 py-3 text-bunker-200"
-          colorSchema="primary"
-          variant="outline_bg"
-          size="sm"
-          onClick={() => setSecretLink(null)}
-          rightIcon={<FontAwesomeIcon icon={faRedo} className="pl-2" />}
+      <div className="flex flex-col items-center py-2">
+        <FontAwesomeIcon icon={faCheck} className="text-lg text-green-400" />
+        <p className="mt-3 text-sm text-white">Shared secret link has been emailed.</p>
+        <button
+          type="button"
+          className="mt-4 cursor-pointer text-xs text-mineshaft-400 transition-colors hover:text-mineshaft-300 hover:underline"
+          onClick={() => { setSecretLink(null); onStateChange?.("form"); }}
         >
-          Share Another Secret
-        </Button>
-      </>
+          Share another secret
+        </button>
+      </div>
     );
 
   return (
-    <>
-      <div className="mr-2 flex items-center justify-end rounded-md bg-white/5 p-2 text-base text-gray-400">
-        <p className="mr-4 break-all">{secretLink}</p>
-        <IconButton
-          ariaLabel="copy icon"
-          colorSchema="secondary"
-          className="group relative ml-2"
-          onClick={() => {
-            navigator.clipboard.writeText(secretLink || "");
-            setCopyTextSecret("Copied");
-          }}
-        >
-          <FontAwesomeIcon icon={isCopyingSecret ? faCheck : faCopy} />
-        </IconButton>
+    <div className="flex flex-col items-center py-2">
+      <div className="mb-4 w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2.5">
+        <p className="break-all font-mono text-xs text-mineshaft-200">{secretLink}</p>
       </div>
-      <Button
-        className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
-        colorSchema="primary"
-        variant="outline_bg"
-        size="sm"
-        onClick={() => setSecretLink(null)}
-        rightIcon={<FontAwesomeIcon icon={faRedo} className="pl-2" />}
+      <button
+        type="button"
+        className="w-full cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-700/50 px-4 py-2 text-sm font-medium text-mineshaft-200 transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-white"
+        onClick={() => {
+          navigator.clipboard.writeText(secretLink || "");
+          setCopyTextSecret("Copied");
+        }}
       >
-        Share Another Secret
-      </Button>
-    </>
+        <FontAwesomeIcon icon={isCopyingSecret ? faCheck : faCopy} className="mr-2" />
+        {isCopyingSecret ? "Copied" : "Copy secret link"}
+      </button>
+      <button
+        type="button"
+        className="mt-4 cursor-pointer text-xs text-mineshaft-400 transition-colors hover:text-mineshaft-300 hover:underline"
+        onClick={() => { setSecretLink(null); onStateChange?.("form"); }}
+      >
+        Share another secret
+      </button>
+    </div>
   );
 };

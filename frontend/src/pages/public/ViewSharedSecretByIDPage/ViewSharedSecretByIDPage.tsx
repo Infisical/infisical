@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Helmet } from "react-helmet";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
@@ -216,13 +214,95 @@ export const ViewSharedSecretByIDPage = () => {
       </Helmet>
       <div
         className={twMerge(
-          "flex h-screen flex-col justify-between overflow-auto text-gray-200 dark:scheme-dark",
+          "relative flex h-screen flex-col justify-between overflow-auto text-gray-200 dark:scheme-dark",
           !backgroundStyle && "bg-linear-to-tr from-mineshaft-700 to-bunker-800"
         )}
         style={backgroundStyle}
       >
+        {!brandingTheme && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+            <svg
+              viewBox="0 0 800 800"
+              className="h-[900px] w-[900px] opacity-[0.04]"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="400" cy="400" r="380" stroke="white" strokeWidth="2" />
+              <circle cx="400" cy="400" r="370" stroke="white" strokeWidth="0.5" />
+
+              {Array.from({ length: 24 }).map((_, i) => {
+                const angle = (i * 15 * Math.PI) / 180;
+                const x = 400 + 375 * Math.cos(angle);
+                const y = 400 + 375 * Math.sin(angle);
+                return <circle key={`bolt-${i}`} cx={x} cy={y} r="4" fill="white" />;
+              })}
+
+              <circle cx="400" cy="400" r="300" stroke="white" strokeWidth="1.5" />
+              <circle cx="400" cy="400" r="290" stroke="white" strokeWidth="0.5" />
+              {Array.from({ length: 60 }).map((_, i) => {
+                const angle = (i * 6 * Math.PI) / 180;
+                const innerR = i % 5 === 0 ? 280 : 285;
+                const x1 = 400 + innerR * Math.cos(angle);
+                const y1 = 400 + innerR * Math.sin(angle);
+                const x2 = 400 + 290 * Math.cos(angle);
+                const y2 = 400 + 290 * Math.sin(angle);
+                return (
+                  <line
+                    key={`tick-${i}`}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke="white"
+                    strokeWidth={i % 5 === 0 ? "1.5" : "0.5"}
+                  />
+                );
+              })}
+
+              <circle cx="400" cy="400" r="200" stroke="white" strokeWidth="1" />
+              <circle cx="400" cy="400" r="195" stroke="white" strokeWidth="0.3" />
+
+              {Array.from({ length: 8 }).map((_, i) => {
+                const angle = (i * 45 * Math.PI) / 180;
+                const x1 = 400 + 200 * Math.cos(angle);
+                const y1 = 400 + 200 * Math.sin(angle);
+                const x2 = 400 + 300 * Math.cos(angle);
+                const y2 = 400 + 300 * Math.sin(angle);
+                return (
+                  <line
+                    key={`spoke-${i}`}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke="white"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                );
+              })}
+
+              <circle cx="400" cy="400" r="100" stroke="white" strokeWidth="2" />
+              <circle cx="400" cy="400" r="80" stroke="white" strokeWidth="0.5" />
+              <circle cx="400" cy="400" r="15" fill="white" />
+
+              <line x1="320" y1="400" x2="480" y2="400" stroke="white" strokeWidth="4" strokeLinecap="round" />
+              <line x1="400" y1="320" x2="400" y2="480" stroke="white" strokeWidth="4" strokeLinecap="round" />
+
+              <line x1="50" y1="50" x2="150" y2="50" stroke="white" strokeWidth="1" />
+              <line x1="50" y1="50" x2="50" y2="150" stroke="white" strokeWidth="1" />
+              <line x1="750" y1="50" x2="650" y2="50" stroke="white" strokeWidth="1" />
+              <line x1="750" y1="50" x2="750" y2="150" stroke="white" strokeWidth="1" />
+              <line x1="50" y1="750" x2="150" y2="750" stroke="white" strokeWidth="1" />
+              <line x1="50" y1="750" x2="50" y2="650" stroke="white" strokeWidth="1" />
+              <line x1="750" y1="750" x2="650" y2="750" stroke="white" strokeWidth="1" />
+              <line x1="750" y1="750" x2="750" y2="650" stroke="white" strokeWidth="1" />
+            </svg>
+          </div>
+        )}
+
         <div />
-        <div className="mx-auto w-full max-w-xl px-4 py-4 md:px-0">
+        <div className="relative z-10 mx-auto w-full max-w-xl px-4 py-4 md:px-0">
           <div className="mb-8 text-center">
             <div className="mb-4 flex justify-center pt-8">
               {hasCustomBranding ? (
@@ -247,27 +327,14 @@ export const ViewSharedSecretByIDPage = () => {
             </div>
             <h1
               className={twMerge(
-                "bg-linear-to-b bg-clip-text text-center text-4xl font-medium text-transparent",
+                "mt-8 bg-linear-to-b bg-clip-text text-center text-3xl font-medium text-transparent",
                 brandingTheme && isLightColor(brandingTheme.primaryColor)
                   ? "from-black to-bunker-500"
                   : "from-white to-bunker-200"
               )}
             >
-              View shared secret
+              Someone shared a secret with you
             </h1>
-            {!hasCustomBranding && (
-              <p className="text-md">
-                Powered by{" "}
-                <a
-                  href="https://github.com/infisical/infisical"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-bold bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
-                >
-                  Infisical &rarr;
-                </a>
-              </p>
-            )}
           </div>
           {(showPasswordPrompt || isInvalidCredential) && (
             <PasswordContainer
@@ -283,59 +350,43 @@ export const ViewSharedSecretByIDPage = () => {
           {!showPasswordPrompt && !isInvalidCredential && activeError && !isUnauthorized && (
             <SecretErrorContainer brandingTheme={brandingTheme} error={errorMessage} />
           )}
-          {!hasCustomBranding && (
-            <>
-              <div className="m-auto my-8 flex w-full">
-                <div className="w-full border-t border-mineshaft-600" />
-              </div>
-              <div className="m-auto flex w-full flex-col rounded-md border border-primary-500/30 bg-primary/5 p-6 pt-5">
-                <p className="w-full pb-2 text-lg font-medium text-mineshaft-100 md:pb-3 md:text-xl">
-                  Open source{" "}
-                  <span className="bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent">
-                    secret management
-                  </span>{" "}
-                  for developers
-                </p>
-                <div className="flex flex-col items-start sm:flex-row sm:items-center">
-                  <p className="md:text-md text-md mr-4">
-                    <a
-                      href="https://github.com/infisical/infisical"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-bold bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
-                    >
-                      Infisical
-                    </a>{" "}
-                    is the all-in-one secret management platform to securely manage secrets,
-                    configs, and certificates across your team and infrastructure.
+          {!brandingTheme && (
+            <a
+              href="https://infisical.com?utm_source=shared-secret&utm_medium=referral"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group mt-6 block cursor-pointer rounded-lg border border-primary/40 bg-primary/5 p-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-mineshaft-100 transition-colors group-hover:text-white">
+                    Protect your secrets with Infisical
                   </p>
-                  <div className="mt-4 cursor-pointer sm:mt-0">
-                    <a target="_blank" rel="noopener noreferrer" href="https://infisical.com">
-                      <div className="flex items-center justify-between rounded-md border border-mineshaft-400/40 bg-mineshaft-600 px-3 py-2 duration-200 hover:border-primary/60 hover:bg-primary/20 hover:text-white">
-                        <p className="mr-4 whitespace-nowrap">Try Infisical</p>
-                        <FontAwesomeIcon icon={faArrowRight} />
-                      </div>
-                    </a>
-                  </div>
+                  <p className="mt-0.5 text-xs text-mineshaft-300">
+                    Centralize secrets, manage access, and automate rotation — all in one platform.
+                  </p>
                 </div>
+                <span className="rounded-md border border-primary/60 bg-primary/10 px-3 py-1 text-xs font-medium text-white/90 transition-colors group-hover:border-primary group-hover:bg-primary/20">
+                  Try free
+                </span>
               </div>
-            </>
+            </a>
           )}
         </div>
-        {hasCustomBranding ? (
-          <div />
-        ) : (
-          <div className="w-full bg-mineshaft-600 p-2">
-            <p className="text-center text-sm text-mineshaft-300">
-              Made with ❤️ by{" "}
-              <a className="text-primary" href="https://infisical.com">
-                Infisical
-              </a>
-              <br />
-              235 2nd st, San Francisco, California, 94105, United States. 🇺🇸
-            </p>
+        <footer className="relative z-10 py-6 text-center">
+          <div className="mb-3 flex items-center justify-center gap-4">
+            <a href="https://x.com/infisical" target="_blank" rel="noopener noreferrer" className="text-mineshaft-400 transition-colors hover:text-white">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+            </a>
+            <a href="https://www.linkedin.com/company/infisical/" target="_blank" rel="noopener noreferrer" className="text-mineshaft-400 transition-colors hover:text-white">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+            </a>
+            <a href="https://www.youtube.com/@infisical_os" target="_blank" rel="noopener noreferrer" className="text-mineshaft-400 transition-colors hover:text-white">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
+            </a>
           </div>
-        )}
+          <p className="text-xs text-mineshaft-400">&copy; 2026 Infisical Inc. All rights reserved.</p>
+        </footer>
       </div>
     </>
   );

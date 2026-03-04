@@ -3,6 +3,7 @@ import { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { motion } from "framer-motion";
 
 import { useSendVerificationEmail } from "@app/hooks/api";
 
@@ -90,53 +91,54 @@ export default function CodeInputStep({
   };
 
   return (
-    <div className="mx-auto h-full w-full pb-4 md:px-8">
-      <p className="text-md flex justify-center text-bunker-200">{t("signup.step2-message")}</p>
-      <p className="text-md my-1 flex justify-center font-medium text-bunker-200">{email} </p>
-      <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-        <ReactCodeInput
-          name=""
-          inputMode="tel"
-          type="text"
-          fields={6}
-          onChange={setCode}
-          {...props}
-          className="mt-6 mb-2"
-        />
-      </div>
-      <div className="mx-auto mt-4 block w-max md:hidden">
-        <ReactCodeInput
-          name=""
-          inputMode="tel"
-          type="text"
-          fields={6}
-          onChange={setCode}
-          {...propsPhone}
-          className="mt-2 mb-2"
-        />
-      </div>
-      {codeError && <Error text={t("signup.step2-code-error")} />}
-      <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
-        <div className="text-l w-full py-1 text-lg">
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <motion.div
+        layoutId="signup-card"
+        className="mx-auto flex w-full max-w-md flex-col items-stretch rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6"
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      >
+        <p className="text-md flex justify-center text-bunker-200">{t("signup.step2-message")}</p>
+        <p className="text-md my-1 flex justify-center font-medium text-bunker-200">{email}</p>
+        <div className="mx-auto hidden w-max min-w-[20rem] md:block">
+          <ReactCodeInput
+            name=""
+            inputMode="tel"
+            type="text"
+            fields={6}
+            onChange={setCode}
+            {...props}
+            className="mt-6 mb-2"
+          />
+        </div>
+        <div className="mx-auto mt-4 block w-max md:hidden">
+          <ReactCodeInput
+            name=""
+            inputMode="tel"
+            type="text"
+            fields={6}
+            onChange={setCode}
+            {...propsPhone}
+            className="mt-2 mb-2"
+          />
+        </div>
+        {codeError && <Error text={t("signup.step2-code-error")} />}
+        <div className="mt-4 w-full">
           <Button
             type="submit"
             onClick={incrementStep}
             size="sm"
             isFullWidth
-            className="h-14"
+            className="h-12"
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isCodeInputCheckLoading}
           >
-            {" "}
-            {String(t("signup.verify"))}{" "}
+            {String(t("signup.verify"))}
           </Button>
         </div>
-      </div>
-      <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
-        <div className="flex flex-row items-baseline gap-1 text-sm">
-          <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-          <div className="text-md mt-2 flex flex-row text-bunker-400">
+        <div className="mt-6 flex flex-col items-center gap-1 text-sm text-bunker-400">
+          <div className="flex flex-row items-baseline gap-1">
+            <span>{t("signup.step2-resend-alert")}</span>
             <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
               <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
                 {isResendingVerificationEmail
@@ -145,17 +147,14 @@ export default function CodeInputStep({
               </span>
             </button>
           </div>
-        </div>
-        <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
-        <p className="text-sm text-bunker-400">
           <Link
             to="/login"
             className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
           >
             Have an account? Log in
           </Link>
-        </p>
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

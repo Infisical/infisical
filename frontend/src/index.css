@@ -399,6 +399,37 @@
     }
   }
 
+  /* Accordion slide animations using Radix's content-height CSS var */
+  @keyframes accordion-down {
+    from {
+      height: 0;
+      opacity: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+    to {
+      height: 0;
+      opacity: 0;
+    }
+  }
+
+  .animate-accordion-down {
+    animation: accordion-down 250ms cubic-bezier(0.33, 1, 0.68, 1);
+  }
+
+  .animate-accordion-up {
+    animation: accordion-up 200ms cubic-bezier(0.33, 1, 0.68, 1);
+  }
+
   /* Animation classes */
   .fadeIn {
     animation: fadeIn 100ms cubic-bezier(0.16, 1, 0.3, 1);

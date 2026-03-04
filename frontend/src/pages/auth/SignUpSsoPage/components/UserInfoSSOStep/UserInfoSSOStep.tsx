@@ -168,10 +168,10 @@ export const UserInfoSSOStep = ({
 
   return (
     <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
-      <p className="text-medium mx-8 mb-6 flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
-        {t("signup.step3-message")}
-      </p>
       <div className="mx-auto mb-36 h-full w-max rounded-xl py-6 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800 md:px-8">
+        <p className="mb-6 flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-2xl font-bold text-transparent">
+          {t("signup.step3-message")}
+        </p>
         <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
           <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
             Your Name

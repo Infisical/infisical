@@ -23,6 +23,8 @@ type Props = {
   LucideIcon?: LucideIcon;
   dropdownContainerStyle?: React.CSSProperties;
   side?: SelectPrimitive.SelectContentProps["side"];
+  /** When provided, renders this instead of the selected item's content in the trigger. Receives the selected value. */
+  renderValue?: (value: string) => ReactNode;
 };
 
 export type SelectProps = Omit<SelectPrimitive.SelectProps, "disabled"> & Props;
@@ -42,6 +44,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       dropdownContainerStyle,
       side,
       LucideIcon: Lucide,
+      renderValue,
       ...props
     },
     ref
@@ -69,8 +72,19 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             <div className="flex items-center space-x-2 overflow-hidden text-ellipsis whitespace-nowrap">
               {props.icon && <FontAwesomeIcon icon={props.icon} className={iconClassName} />}
               {Lucide && <Lucide className={twMerge("size-3.5", iconClassName)} />}
-              <div className="flex-1 truncate">
-                <SelectPrimitive.Value placeholder={placeholder} />
+              <div className="relative flex-1 truncate">
+                {renderValue && props.value != null ? (
+                  <>
+                    <span className="sr-only">
+                      <SelectPrimitive.Value placeholder={placeholder} />
+                    </span>
+                    <span className="pointer-events-none flex items-center">
+                      {renderValue(props.value)}
+                    </span>
+                  </>
+                ) : (
+                  <SelectPrimitive.Value placeholder={placeholder} />
+                )}
               </div>
             </div>
 

@@ -1,5 +1,4 @@
 import {
-  faArrowRight,
   faCheck,
   faCopy,
   faEye,
@@ -7,7 +6,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Button, IconButton } from "@app/components/v2";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
@@ -25,7 +23,7 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
     initialState: "Copy to clipboard"
   });
 
-  const hiddenSecret = "*".repeat(secret.secretValue.length);
+  const hiddenSecret = "\u2022".repeat(secret.secretValue.length);
 
   const panelStyle = brandingTheme
     ? {
@@ -42,9 +40,10 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
       }
     : undefined;
 
-  const iconButtonStyle = brandingTheme
+  const buttonStyle = brandingTheme
     ? {
         backgroundColor: brandingTheme.buttonBg,
+        borderColor: brandingTheme.panelBorder,
         color: brandingTheme.textColor
       }
     : undefined;
@@ -60,46 +59,32 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
         }`}
         style={secretDisplayStyle}
       >
-        <p className="break-all whitespace-pre-wrap">
+        <p className="cursor-default break-all whitespace-pre-wrap">
           {isVisible ? secret.secretValue : hiddenSecret}
         </p>
-        <div className="flex">
-          <IconButton
-            ariaLabel="copy icon"
-            colorSchema="secondary"
-            className="group relative size-9 hover:opacity-70"
+        <div className="flex gap-1">
+          <button
+            type="button"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-mineshaft-500 bg-mineshaft-700/50 text-sm text-mineshaft-300 transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-white"
             onClick={() => {
               navigator.clipboard.writeText(secret.secretValue);
               setCopyTextSecret("Copied");
             }}
-            style={iconButtonStyle}
+            style={buttonStyle}
           >
             <FontAwesomeIcon icon={isCopyingSecret ? faCheck : faCopy} />
-          </IconButton>
-          <IconButton
-            ariaLabel="toggle visibility"
-            colorSchema="secondary"
-            className="group relative ml-2 size-9 hover:opacity-70"
+          </button>
+          <button
+            type="button"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-mineshaft-500 bg-mineshaft-700/50 text-sm text-mineshaft-300 transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-white"
             onClick={() => setIsVisible.toggle()}
-            style={iconButtonStyle}
+            style={buttonStyle}
           >
             <FontAwesomeIcon icon={isVisible ? faEyeSlash : faEye} />
-          </IconButton>
+          </button>
         </div>
       </div>
       <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
-      {!brandingTheme && (
-        <Button
-          className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
-          colorSchema="primary"
-          variant="outline_bg"
-          size="sm"
-          onClick={() => window.open("/share-secret", "_blank", "noopener")}
-          rightIcon={<FontAwesomeIcon icon={faArrowRight} className="pl-2" />}
-        >
-          Share Your Own Secret
-        </Button>
-      )}
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
+import { motion } from "framer-motion";
 
 import { useSendVerificationEmail } from "@app/hooks/api";
 
@@ -53,54 +54,53 @@ export default function EnterEmailStep({
   };
 
   return (
-    <div>
-      <div className="mx-auto w-full md:px-6">
-        <p className="flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-xl font-medium text-transparent">
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <motion.div
+        layoutId="signup-card"
+        className="mx-auto flex w-full max-w-sm flex-col items-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6"
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      >
+        <h1 className="mb-4 w-full text-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
           {t("signup.step1-start")}
-        </p>
-        <div className="m-auto mt-8 flex w-1/4 min-w-[20rem] flex-col items-center justify-center rounded-lg lg:w-1/6">
+        </h1>
+        <div className="w-full">
           <Input
             placeholder="Enter your email address..."
             onChange={(e) => setEmail(e.target.value)}
             value={email}
             isRequired
             autoComplete="username"
-            className="h-12"
+            className="h-10 placeholder:text-mineshaft-400"
           />
           {emailError && (
-            <p className="mt-1.5 ml-1.5 w-full text-left text-xs text-red-600">
+            <p className="mt-1.5 w-full text-center text-xs text-red-600">
               Please enter a valid email.
             </p>
           )}
         </div>
-        <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-1/6">
-          <div className="text-l w-full py-1 text-lg">
-            <Button
-              type="submit"
-              onClick={emailCheck}
-              size="sm"
-              isFullWidth
-              className="h-14"
-              colorSchema="primary"
-              variant="outline_bg"
-              isLoading={isPending}
-              isDisabled={isPending}
-            >
-              {" "}
-              {String(t("signup.step1-submit"))}{" "}
-            </Button>
-          </div>
+        <div className="mt-4 w-full">
+          <Button
+            type="submit"
+            onClick={emailCheck}
+            size="sm"
+            isFullWidth
+            className="h-11"
+            colorSchema="primary"
+            variant="outline_bg"
+            isLoading={isPending}
+            isDisabled={isPending}
+          >
+            {String(t("signup.step1-submit"))}
+          </Button>
         </div>
-      </div>
-      <div className="mx-auto mt-2 mb-48 flex w-full max-w-md flex-col items-center justify-center pt-2 md:mb-16 md:pb-2">
-        <Link to="/login">
-          <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
-            <span className="cursor-pointer text-sm text-mineshaft-400 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+        <div className="mt-6 flex w-full justify-center text-sm text-bunker-400">
+          <Link to="/login">
+            <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
               {t("signup.already-have-account")}
             </span>
-          </button>
-        </Link>
-      </div>
+          </Link>
+        </div>
+      </motion.div>
     </div>
   );
 }

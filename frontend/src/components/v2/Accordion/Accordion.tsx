@@ -53,7 +53,7 @@ export const AccordionContent = forwardRef<
 >(({ children, className, childrenClassName, ...props }, forwardedRef) => (
   <AccordionPrimitive.Content
     className={twMerge(
-      "data-[state=closed]:animate-slide-up data-[state=open]:animate-slide-down overflow-hidden",
+      "overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
       className
     )}
     {...props}
