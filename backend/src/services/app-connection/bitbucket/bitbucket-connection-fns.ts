@@ -121,9 +121,9 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
 
     if (data.next) {
       nextUrl = data.next;
-    } else if (data.size && allRepos.length < data.size) {
+    } else if (data.size && allRepos.length < data.size && data?.values?.length > 0) {
       // Fallback: manually construct next page URL if 'next' is missing but more results exist
-      const currentPage = data.page ?? iterationCount + 1;
+      const currentPage = Number(data.page ?? iterationCount + 1);
       nextUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}?pagelen=${pagelen}&page=${currentPage + 1}`;
     } else {
       nextUrl = undefined;
