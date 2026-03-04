@@ -55,7 +55,8 @@ import {
   getCaCredentials,
   keyAlgorithmToAlgCfg,
   parseDistinguishedName,
-  signatureAlgorithmToAlgCfg
+  signatureAlgorithmToAlgCfg,
+  validateImportedCertificate
 } from "../certificate-authority-fns";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority-queue";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
@@ -513,23 +514,28 @@ export const internalCertificateAuthorityServiceFactory = ({
   /**
    * Return certificate signing request (CSR) made with CA with id [caId]
    */
-  const getCaCsr = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCsrDTO) => {
+  const getCaCsr = async (params: TGetCaCsrDTO) => {
+    const { caId, maxPathLength } = params;
+    const isInternal = "isInternal" in params && params.isInternal === true;
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    if (!isInternal) {
+      const { actor, actorId, actorAuthMethod, actorOrgId } = params;
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: ca.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Create,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateAuthorityActions.Create,
+        subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
+      );
+    }
 
     if (ca.internalCa.type === InternalCaType.ROOT)
       throw new BadRequestError({ message: "Root CA cannot generate CSR" });
@@ -544,6 +550,11 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
+    const effectivePathLength =
+      maxPathLength !== undefined && maxPathLength >= 0 ? maxPathLength : (ca.internalCa.maxPathLength ?? -1);
+    const resolvedPathLength =
+      effectivePathLength === -1 || effectivePathLength === null ? undefined : effectivePathLength;
+
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: ca.internalCa.dn,
       keys: {
@@ -552,13 +563,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       },
       signingAlgorithm: alg,
       extensions: [
+        new x509.BasicConstraintsExtension(true, resolvedPathLength, true),
         // eslint-disable-next-line no-bitwise
         new x509.KeyUsagesExtension(
           x509.KeyUsageFlags.keyCertSign |
             x509.KeyUsageFlags.cRLSign |
             x509.KeyUsageFlags.digitalSignature |
-            x509.KeyUsageFlags.keyEncipherment
-        )
+            x509.KeyUsageFlags.keyEncipherment,
+          true
+        ),
+        await x509.SubjectKeyIdentifierExtension.create(caPublicKey)
       ],
       attributes: [new x509.ChallengePasswordAttribute("password")]
     });
@@ -574,26 +588,38 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Note 1: This CA renewal method is only applicable to CAs with internal parent CAs
    * Note 2: Currently implements CA renewal with same key-pair only
    */
-  const renewCaCert = async ({ caId, notAfter, actorId, actorAuthMethod, actor, actorOrgId }: TRenewCaCertDTO) => {
+  const renewCaCert = async ({
+    caId,
+    notAfter,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId,
+    ...rest
+  }: TRenewCaCertDTO) => {
+    const isInternal = "isInternal" in rest && rest.isInternal === true;
+
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    if (!isInternal) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor!,
+        actorId: actorId!,
+        projectId: ca.projectId,
+        actorAuthMethod: actorAuthMethod!,
+        actorOrgId: actorOrgId!,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+        subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
+      );
+    }
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
 
@@ -1220,6 +1246,16 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const certObj = new x509.X509Certificate(certificate);
     const maxPathLength = certObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
+
+    validateImportedCertificate(certObj, {
+      commonName: ca.internalCa.commonName,
+      organization: ca.internalCa.organization,
+      ou: ca.internalCa.ou,
+      country: ca.internalCa.country,
+      province: ca.internalCa.province,
+      locality: ca.internalCa.locality,
+      maxPathLength: ca.internalCa.maxPathLength ?? null
+    });
 
     // validate imported certificate and certificate chain
     const certificates = extractX509CertFromChain(certificateChain)?.map((cert) => new x509.X509Certificate(cert));

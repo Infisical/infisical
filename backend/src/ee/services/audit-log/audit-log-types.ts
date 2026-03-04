@@ -339,6 +339,12 @@ export enum EventType {
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
+  INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
+  CREATE_CA_SIGNING_CONFIG = "create-ca-signing-config",
+  GET_CA_SIGNING_CONFIG = "get-ca-signing-config",
+  UPDATE_CA_SIGNING_CONFIG = "update-ca-signing-config",
+  GET_CA_AUTO_RENEWAL_CONFIG = "get-ca-auto-renewal-config",
+  UPDATE_CA_AUTO_RENEWAL_CONFIG = "update-ca-auto-renewal-config",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   SIGN_CERT = "sign-cert",
@@ -2553,6 +2559,56 @@ interface GenerateCaCertificate {
     dn: string;
     serialNumber: string;
     parentCaId?: string;
+  };
+}
+
+interface InstallCaCertVenafi {
+  type: EventType.INSTALL_CA_CERT_VENAFI;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface CreateCaSigningConfig {
+  type: EventType.CREATE_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+    signingConfigType: string;
+  };
+}
+
+interface GetCaSigningConfig {
+  type: EventType.GET_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCaSigningConfig {
+  type: EventType.UPDATE_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaAutoRenewalConfig {
+  type: EventType.GET_CA_AUTO_RENEWAL_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCaAutoRenewalConfig {
+  type: EventType.UPDATE_CA_AUTO_RENEWAL_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+    autoRenewalEnabled?: boolean;
   };
 }
 
@@ -5449,6 +5505,12 @@ export type Event =
   | ImportCaCert
   | GetCaCrls
   | GenerateCaCertificate
+  | InstallCaCertVenafi
+  | CreateCaSigningConfig
+  | GetCaSigningConfig
+  | UpdateCaSigningConfig
+  | GetCaAutoRenewalConfig
+  | UpdateCaAutoRenewalConfig
   | IssueCert
   | ImportCert
   | SignCert
