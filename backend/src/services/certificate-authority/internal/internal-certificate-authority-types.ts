@@ -259,6 +259,7 @@ export type TSignCertFromCaDTO =
       profileId?: string;
       basicConstraints?: TBasicConstraints;
       pathLength?: number | null;
+      subjectOverride?: string;
       tx?: Knex;
     }
   | ({
@@ -281,6 +282,7 @@ export type TSignCertFromCaDTO =
       profileId?: string;
       basicConstraints?: TBasicConstraints;
       pathLength?: number | null;
+      subjectOverride?: string;
       tx?: Knex;
     } & Omit<TProjectPermission, "projectId">);
 

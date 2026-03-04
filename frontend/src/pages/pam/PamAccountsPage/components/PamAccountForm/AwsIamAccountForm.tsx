@@ -26,6 +26,7 @@ import {
 } from "@app/hooks/api/pam";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 
 const AWS_STS_MIN_SESSION_DURATION = 900; // 15 minutes
 const AWS_STS_MAX_SESSION_DURATION_ROLE_CHAINING = 3600; // 1 hour
@@ -256,6 +257,7 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
           </AccordionItem>
         </Accordion>
 
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

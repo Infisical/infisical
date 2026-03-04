@@ -945,6 +945,20 @@ export const PROJECTS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
     limit: "The number of certificates to return."
   },
+  SEARCH_CERTIFICATES: {
+    friendlyName: "The friendly name of the certificate to filter by.",
+    commonName: "The common name of the certificate to filter by.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
+    limit: "The number of certificates to return.",
+    forPkiSync: "Retrieve only certificates available for PKI sync.",
+    search: "Search by SAN, CN, certificate ID, or serial number.",
+    status: "Filter by certificate status.",
+    profileIds: "Filter by certificate profile IDs.",
+    fromDate: "Filter certificates created from this date.",
+    toDate: "Filter certificates created until this date.",
+    metadata:
+      "Filter by metadata key-value pairs. Each entry should have a key (required) and optionally a value to match against."
+  },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
   }
@@ -2445,6 +2459,11 @@ export const CertificateAuthorities = {
       hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`,
       eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`
+    },
+    AWS_PCA: {
+      appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Private Certificate Authority (PCA). This connection must have permissions to issue, get, and revoke certificates from the specified PCA.`,
+      certificateAuthorityArn: `The ARN of the AWS Private Certificate Authority to use for issuing certificates.`,
+      region: `The AWS region where the Private Certificate Authority is located.`
     },
     INTERNAL: {
       type: "The type of CA to create.",

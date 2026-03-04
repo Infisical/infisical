@@ -1222,7 +1222,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      deprecated: true,
+      description: "Deprecated: Use POST /:projectId/certificates/search instead.",
+      hide: true,
       operationId: "listProjectCertificates",
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
@@ -1267,6 +1269,67 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         ...req.query
+      });
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:projectId/certificates/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "searchProjectCertificates",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Search and filter certificates within a project.",
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      body: z.object({
+        friendlyName: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.commonName),
+        offset: z.number().min(0).default(0).describe(PROJECTS.SEARCH_CERTIFICATES.offset),
+        limit: z.number().min(1).max(100).default(25).describe(PROJECTS.SEARCH_CERTIFICATES.limit),
+        forPkiSync: z.boolean().default(false).optional().describe(PROJECTS.SEARCH_CERTIFICATES.forPkiSync),
+        search: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.search),
+        status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
+        profileIds: z.array(z.string().uuid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
+        fromDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.fromDate),
+        toDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.toDate),
+        metadata: z
+          .array(
+            z.object({
+              key: z.string().trim().min(1).max(255),
+              value: z.string().trim().max(1020).optional()
+            })
+          )
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.metadata)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(CertificatesSchema.extend({ hasPrivateKey: z.boolean() })),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { metadata, ...filters } = req.body;
+      const { certificates, totalCount } = await server.services.project.listProjectCertificates({
+        filter: {
+          projectId: req.params.projectId,
+          type: ProjectFilterType.ID
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...filters,
+        metadataFilter: metadata
       });
       return { certificates, totalCount };
     }

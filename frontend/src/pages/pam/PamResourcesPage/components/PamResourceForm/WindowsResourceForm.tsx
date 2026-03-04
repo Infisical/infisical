@@ -8,6 +8,7 @@ import { PamResourceType, TWindowsResource, useListPamResources } from "@app/hoo
 import { WindowsProtocol } from "@app/hooks/api/pam/types/windows-server-resource";
 
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   resource?: TWindowsResource;
@@ -126,6 +127,7 @@ export const WindowsResourceForm = ({ resource, onSubmit }: Props) => {
             />
           </div>
         </div>
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

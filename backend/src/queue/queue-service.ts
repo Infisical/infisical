@@ -422,12 +422,21 @@ export type TQueueJobTypes = {
       profileId: string;
       caId: string;
       commonName?: string;
-      altNames?: string[];
+      altNames?: Array<{ type: string; value: string }>;
       ttl: string;
       signatureAlgorithm: string;
       keyAlgorithm: string;
       keyUsages?: string[];
       extendedKeyUsages?: string[];
+      isRenewal?: boolean;
+      originalCertificateId?: string;
+      certificateRequestId?: string;
+      csr?: string;
+      organization?: string;
+      organizationalUnit?: string;
+      country?: string;
+      state?: string;
+      locality?: string;
     };
   };
   [QueueName.DailyReminders]: {
@@ -821,14 +830,18 @@ export const queueServiceFactory = (
   const initialize = async () => {
     const appCfg = getConfig();
 
+    const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
+
     // Initialize internal recovery queue (BullMQ for distributed coordination)
     queueContainer[QueueName.QueueInternalRecovery] = new Queue(QueueName.QueueInternalRecovery, {
       prefix: isClusterMode ? `{${QueueName.QueueInternalRecovery}}` : undefined,
+      ...fipsSettings,
       connection
     });
 
     // Initialize internal reconciliation queue
     queueContainer[QueueName.QueueInternalReconciliation] = new Queue(QueueName.QueueInternalReconciliation, {
+      ...fipsSettings,
       prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
       connection
     });
@@ -841,6 +854,7 @@ export const queueServiceFactory = (
           await startupRecovery();
         },
         {
+          ...fipsSettings,
           prefix: isClusterMode ? `{${QueueName.QueueInternalRecovery}}` : undefined,
           connection
         }
@@ -853,6 +867,7 @@ export const queueServiceFactory = (
           await runReconciliation();
         },
         {
+          ...fipsSettings,
           prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
           connection
         }
@@ -902,18 +917,13 @@ export const queueServiceFactory = (
 
     const { persistence, ...restQueueSettings } = queueSettings || {};
 
+    const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
+
     queueContainer[name] = new Queue(name as string, {
       // ref: docs.bullmq.io/bull/patterns/redis-cluster
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...restQueueSettings,
-      ...(crypto.isFipsModeEnabled()
-        ? {
-            settings: {
-              ...restQueueSettings?.settings,
-              repeatKeyHashAlgorithm: "sha256"
-            }
-          }
-        : {}),
+      ...fipsSettings,
       connection
     });
 
@@ -928,15 +938,8 @@ export const queueServiceFactory = (
 
     workerContainer[name] = new Worker(name, wrappedJobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
+      ...fipsSettings,
       ...restQueueSettings,
-      ...(crypto.isFipsModeEnabled()
-        ? {
-            settings: {
-              ...restQueueSettings?.settings,
-              repeatKeyHashAlgorithm: "sha256"
-            }
-          }
-        : {}),
       connection
     });
 

@@ -43,13 +43,7 @@
           {
             "group": "Platform Reference",
             "pages": [
-              {
-                "group": "Organization",
-                "pages": [
-                  "documentation/platform/organization",
-                  "documentation/platform/sub-organizations"
-                ]
-              },
+              "documentation/platform/organization",
               {
                 "group": "Projects",
                 "pages": [
@@ -119,6 +113,7 @@
                       "integrations/app-connections/azure-adcs",
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
+                      "integrations/app-connections/azure-dns",
                       "integrations/app-connections/azure-key-vault",
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
@@ -341,6 +336,7 @@
               "self-hosting/guides/replication",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
+              "self-hosting/guides/releases",
               "self-hosting/configuration/requirements",
               {
                 "group": "Guides",
@@ -783,7 +779,9 @@
                   "documentation/platform/pki/ca/acme-ca",
                   "documentation/platform/pki/ca/lets-encrypt",
                   "documentation/platform/pki/ca/digicert",
+                  "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
+                  "documentation/platform/pki/ca/aws-pca",
                   "documentation/platform/pki/ca/venafi"
                 ]
               }
@@ -2765,6 +2763,16 @@
                     ]
                   },
                   {
+                    "group": "AWS PCA",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/aws-pca/list",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/create",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/read",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/update",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/delete"
+                    ]
+                  },
+                  {
                     "group": "Internal",
                     "pages": [
                       "api-reference/endpoints/certificate-authorities/internal/list",
@@ -2807,9 +2815,10 @@
               {
                 "group": "Certificates",
                 "pages": [
-                  "api-reference/endpoints/certificates/list",
+                  "api-reference/endpoints/certificates/search",
                   "api-reference/endpoints/certificates/read",
                   "api-reference/endpoints/certificates/certificate-request",
+                  "api-reference/endpoints/certificates/search-certificate-requests",
                   "api-reference/endpoints/certificates/create-certificate",
                   "api-reference/endpoints/certificates/renew",
                   "api-reference/endpoints/certificates/update-config",

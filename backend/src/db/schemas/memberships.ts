@@ -15,7 +15,6 @@ export const MembershipsSchema = z.object({
   actorGroupId: z.string().uuid().nullable().optional(),
   scopeOrgId: z.string().uuid(),
   scopeProjectId: z.string().nullable().optional(),
-  scopeNamespaceId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().default(true),
   status: z.string().nullable().optional(),
   inviteEmail: z.string().nullable().optional(),

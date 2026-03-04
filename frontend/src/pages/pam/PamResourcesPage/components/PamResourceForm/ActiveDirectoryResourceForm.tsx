@@ -6,6 +6,7 @@ import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
 import { PamResourceType, TActiveDirectoryResource } from "@app/hooks/api/pam";
 
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   resource?: TActiveDirectoryResource;
@@ -94,6 +95,7 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit }: Props) => {
             />
           </div>
         </div>
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

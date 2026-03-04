@@ -69,17 +69,17 @@ export const UpdateWindowsResourceSchema = BaseUpdateGatewayPamResourceSchema.ex
 // Accounts
 export const WindowsAccountSchema = BasePamAccountSchema.extend({
   credentials: WindowsAccountCredentialsSchema,
-  metadata: WindowsAccountMetadataSchema
+  internalMetadata: WindowsAccountMetadataSchema
 });
 
 export const CreateWindowsAccountSchema = BaseCreatePamAccountSchema.extend({
   credentials: WindowsAccountCredentialsSchema,
-  metadata: WindowsAccountMetadataSchema
+  internalMetadata: WindowsAccountMetadataSchema
 });
 
 export const UpdateWindowsAccountSchema = BaseUpdatePamAccountSchema.extend({
   credentials: WindowsAccountCredentialsSchema.optional(),
-  metadata: WindowsAccountMetadataSchema.optional()
+  internalMetadata: WindowsAccountMetadataSchema.optional()
 });
 
 export const SanitizedWindowsAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
@@ -87,7 +87,7 @@ export const SanitizedWindowsAccountWithResourceSchema = BasePamAccountSchemaWit
   credentials: z.object({
     username: z.string()
   }),
-  metadata: WindowsAccountMetadataSchema
+  internalMetadata: WindowsAccountMetadataSchema
 });
 
 // Sessions

@@ -7,6 +7,7 @@ import { KubernetesAuthMethod, PamResourceType, TKubernetesResource } from "@app
 
 import { KubernetesResourceFields } from "./shared/KubernetesResourceFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   resource?: TKubernetesResource;
@@ -57,6 +58,7 @@ export const KubernetesResourceForm = ({ resource, onSubmit }: Props) => {
       <form onSubmit={handleSubmit(onSubmit)}>
         <GenericResourceFields />
         <KubernetesResourceFields />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

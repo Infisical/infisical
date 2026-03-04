@@ -51,8 +51,7 @@ const appConnectionsPermissionSchema = z
 
 const kmipPermissionSchema = z
   .object({
-    [OrgPermissionKmipActions.Proxy]: z.boolean().optional(),
-    [OrgPermissionKmipActions.Setup]: z.boolean().optional()
+    [OrgPermissionKmipActions.Proxy]: z.boolean().optional()
   })
   .optional();
 
@@ -127,7 +126,8 @@ const secretSharingPermissionSchema = z
 const subOrganizationPermissionSchema = z
   .object({
     [OrgPermissionSubOrgActions.Create]: z.boolean().optional(),
-    [OrgPermissionSubOrgActions.DirectAccess]: z.boolean().optional()
+    [OrgPermissionSubOrgActions.DirectAccess]: z.boolean().optional(),
+    [OrgPermissionSubOrgActions.LinkGroup]: z.boolean().optional()
   })
   .optional();
 

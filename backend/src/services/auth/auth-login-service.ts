@@ -1,13 +1,6 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TableName,
-  TUsers,
-  UserDeviceSchema
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -539,11 +532,11 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
     if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
-    // Check user membership in the sub-organization
-    const orgMembership = await membershipUserDAL.findOne({
-      actorUserId: user.id,
-      scopeOrgId: organizationId,
-      scope: AccessScope.Organization,
+    // Check user membership in the sub-organization (direct or via group)
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.USER,
+      actorId: user.id,
+      orgId: organizationId,
       status: OrgMembershipStatus.Accepted
     });
 
@@ -1062,10 +1055,11 @@ export const authLoginServiceFactory = ({
           });
         }
         orgId = defaultOrg.id;
-        const [orgMembership] = await orgDAL.findMembership({
-          [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
-          [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+        const orgMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.USER,
+          actorId: user.id,
+          orgId,
+          acceptAnyStatus: true
         });
 
         if (!orgMembership) {
@@ -1111,16 +1105,15 @@ export const authLoginServiceFactory = ({
       const org = await orgDAL.findOrgBySlug(orgSlug);
 
       if (org) {
-        // checks for the membership and only sets the orgId / orgName if the user is a member of the specified org
-        const orgMembership = await orgDAL.findMembership({
-          [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
-          [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: org.id,
-          [`${TableName.Membership}.isActive` as "isActive"]: true,
-          [`${TableName.Membership}.status` as "status"]: OrgMembershipStatus.Accepted,
-          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+        // checks for the membership and only sets the orgId / orgName if the user is a member of the specified org (direct or via group)
+        const orgMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.USER,
+          actorId: user.id,
+          orgId: org.id,
+          status: OrgMembershipStatus.Accepted
         });
 
-        if (orgMembership) {
+        if (orgMembership?.isActive) {
           orgId = org.id;
           orgName = org.name;
         }

@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
+import picomatch from "picomatch";
 import RE2 from "re2";
 
 import {
@@ -85,7 +86,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -501,7 +502,7 @@ export const identityKubernetesAuthServiceFactory = ({
         const isNamespaceAllowed = identityKubernetesAuth.allowedNamespaces
           .split(",")
           .map((namespace) => namespace.trim())
-          .some((namespace) => namespace === targetNamespace);
+          .some((namespace) => namespace === targetNamespace || picomatch.isMatch(targetNamespace, namespace));
 
         if (!isNamespaceAllowed)
           throw new UnauthorizedError({
@@ -515,7 +516,7 @@ export const identityKubernetesAuthServiceFactory = ({
         const isNameAllowed = identityKubernetesAuth.allowedNames
           .split(",")
           .map((name) => name.trim())
-          .some((name) => name === targetName);
+          .some((name) => name === targetName || picomatch.isMatch(targetName, name));
 
         if (!isNameAllowed)
           throw new UnauthorizedError({
@@ -543,10 +544,10 @@ export const identityKubernetesAuthServiceFactory = ({
             throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
           }
 
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
+          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+            actorType: ActorType.IDENTITY,
+            actorId: identity.id,
+            orgId: subOrg.id
           });
 
           if (!subOrgMembership) {

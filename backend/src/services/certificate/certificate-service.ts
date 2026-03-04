@@ -18,6 +18,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
@@ -27,6 +28,7 @@ import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForCertificate } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import {
@@ -75,6 +77,8 @@ type TCertificateServiceFactoryDep = {
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -94,7 +98,9 @@ export const certificateServiceFactory = ({
   permissionService,
   certificateSyncDAL,
   pkiSyncDAL,
-  pkiSyncQueue
+  pkiSyncQueue,
+  certificateAuthorityService,
+  resourceMetadataDAL
 }: TCertificateServiceFactoryDep) => {
   /**
    * Return details for certificate with serial number [serialNumber]
@@ -195,6 +201,9 @@ export const certificateServiceFactory = ({
       }
     }
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     return {
       cert: {
         ...cert,
@@ -202,7 +211,8 @@ export const certificateServiceFactory = ({
         fingerprints,
         basicConstraints,
         caName,
-        profileName
+        profileName,
+        metadata: certMetadata
       }
     };
   };
@@ -364,7 +374,15 @@ export const certificateServiceFactory = ({
     });
 
     // Note: External CA revocation handling would go here for supported CA types
-    // Currently, only internal CAs and ACME CAs support revocation
+    // Currently, only internal CAs, ACME CAs and AWS PCA (external CA) support revocation
+
+    if (ca.externalCa?.type === CaType.AWS_PCA) {
+      await certificateAuthorityService.revokeCertificate({
+        caId: ca.id,
+        serialNumber: cert.serialNumber,
+        reason: revocationReason
+      });
+    }
 
     // rebuild CRL (TODO: move to interval-based cron job)
     // Only rebuild CRL for internal CAs - external CAs manage their own CRLs

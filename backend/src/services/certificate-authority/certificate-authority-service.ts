@@ -15,6 +15,7 @@ import { TAppConnectionServiceFactory } from "../app-connection/app-connection-s
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CrlReason } from "../certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
@@ -29,6 +30,14 @@ import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme/acme-certificate-authority-types";
+import {
+  AwsPcaCertificateAuthorityFns,
+  castDbEntryToAwsPcaCertificateAuthority
+} from "./aws-pca/aws-pca-certificate-authority-fns";
+import {
+  TCreateAwsPcaCertificateAuthorityDTO,
+  TUpdateAwsPcaCertificateAuthorityDTO
+} from "./aws-pca/aws-pca-certificate-authority-types";
 import {
   AzureAdCsCertificateAuthorityFns,
   castDbEntryToAzureAdCsCertificateAuthority
@@ -132,6 +141,19 @@ export const certificateAuthorityServiceFactory = ({
     certificateProfileDAL
   });
 
+  const awsPcaFns = AwsPcaCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL
+  });
+
   const createCertificateAuthority = async (
     { type, projectId, name, configuration, status }: TCreateCertificateAuthorityDTO,
     actor: OrgServiceActor
@@ -195,6 +217,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.AWS_PCA) {
+      return awsPcaFns.createCertificateAuthority({
+        name,
+        projectId,
+        configuration: configuration as TCreateAwsPcaCertificateAuthorityDTO["configuration"],
+        status,
+        actor
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -251,6 +283,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AZURE_AD_CS) {
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.AWS_PCA) {
+      return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -316,6 +352,10 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.AWS_PCA) {
+      return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -372,6 +412,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AZURE_AD_CS) {
       return azureAdCsFns.listCertificateAuthorities({ projectId, permissionFilters });
+    }
+
+    if (type === CaType.AWS_PCA) {
+      return awsPcaFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -453,6 +497,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.AWS_PCA) {
+      return awsPcaFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateAwsPcaCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -510,6 +564,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AZURE_AD_CS) {
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.AWS_PCA) {
+      return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -594,6 +652,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.AWS_PCA) {
+      return awsPcaFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateAwsPcaCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -657,6 +725,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AZURE_AD_CS) {
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.AWS_PCA) {
+      return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -747,6 +819,32 @@ export const certificateAuthorityServiceFactory = ({
     return ca;
   };
 
+  const revokeCertificate = async ({
+    caId,
+    serialNumber,
+    reason
+  }: {
+    caId: string;
+    serialNumber: string;
+    reason: CrlReason;
+  }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca) {
+      throw new NotFoundError({ message: `Could not find certificate authority with id "${caId}"` });
+    }
+
+    const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+
+    if (caType === CaType.AWS_PCA) {
+      await awsPcaFns.revokeCertificate({ caId, serialNumber, reason });
+      return;
+    }
+
+    throw new BadRequestError({
+      message: `Certificate revocation via CA service is not supported for CA type "${caType}"`
+    });
+  };
+
   return {
     createCertificateAuthority,
     findCertificateAuthorityById,
@@ -757,6 +855,7 @@ export const certificateAuthorityServiceFactory = ({
     getAzureAdcsTemplates,
     getCaById,
     deprecatedUpdateCertificateAuthority,
-    deprecatedDeleteCertificateAuthority
+    deprecatedDeleteCertificateAuthority,
+    revokeCertificate
   };
 };

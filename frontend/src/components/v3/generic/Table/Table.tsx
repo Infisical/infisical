@@ -42,7 +42,7 @@ function UnstableTableBody({ className, ...props }: React.ComponentProps<"tbody"
   return (
     <tbody
       data-slot="table-body"
-      className={cn("[&>tr:last-child]:border-b-0 [&>tr:last-child>td]:border-b-0", className)}
+      className={cn("[&>tr:last-of-type]:border-b-0 [&>tr:last-of-type>td]:border-b-0", className)}
       {...props}
     />
   );
@@ -58,19 +58,24 @@ function UnstableTableFooter({ className, ...props }: React.ComponentProps<"tfoo
   );
 }
 
-function UnstableTableRow({ className, ...props }: React.ComponentProps<"tr">) {
-  return (
-    <tr
-      data-slot="table-row"
-      className={cn(
-        "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
-        props.onClick && "cursor-pointer",
-        className
-      )}
-      {...props}
-    />
-  );
-}
+const UnstableTableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr">>(
+  ({ className, ...props }, ref) => {
+    return (
+      <tr
+        ref={ref}
+        data-slot="table-row"
+        className={cn(
+          "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
+          props.onClick && "cursor-pointer",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+
+UnstableTableRow.displayName = "UnstableTableRow";
 
 function UnstableTableHead({
   className,
@@ -81,7 +86,7 @@ function UnstableTableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent [&:has([role=checkbox])]:pr-0",
+        "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
         "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg]:size-4",
         isTruncatable && "truncate",
         className

@@ -7,6 +7,7 @@ import { TAzureADCSConnection } from "./azure-adcs-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
+import { TAzureDNSConnection } from "./azure-dns-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
@@ -59,6 +60,7 @@ export * from "./azure-adcs-connection";
 export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
+export * from "./azure-dns-connection";
 export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
@@ -149,6 +151,7 @@ export type TAppConnection =
   | TMongoDBConnection
   | TChefConnection
   | TDNSMadeEasyConnection
+  | TAzureDNSConnection
   | TSshConnection
   | TDbtConnection
   | TSmbConnection

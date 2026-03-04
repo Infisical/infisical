@@ -37,5 +37,5 @@ export type TWindowsResource = TBasePamResource & {
 // Accounts
 export type TWindowsAccount = TBasePamAccount & {
   credentials: TWindowsCredentials;
-  metadata: TWindowsAccountMetadata;
+  internalMetadata: TWindowsAccountMetadata;
 };

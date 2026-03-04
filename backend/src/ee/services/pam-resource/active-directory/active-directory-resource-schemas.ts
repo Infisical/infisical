@@ -67,17 +67,17 @@ export const UpdateActiveDirectoryResourceSchema = BaseUpdateGatewayPamResourceS
 // Accounts
 export const ActiveDirectoryAccountSchema = BasePamAccountSchema.extend({
   credentials: ActiveDirectoryAccountCredentialsSchema,
-  metadata: ActiveDirectoryAccountMetadataSchema
+  internalMetadata: ActiveDirectoryAccountMetadataSchema
 });
 
 export const CreateActiveDirectoryAccountSchema = BaseCreatePamAccountSchema.extend({
   credentials: ActiveDirectoryAccountCredentialsSchema,
-  metadata: ActiveDirectoryAccountMetadataSchema
+  internalMetadata: ActiveDirectoryAccountMetadataSchema
 });
 
 export const UpdateActiveDirectoryAccountSchema = BaseUpdatePamAccountSchema.extend({
   credentials: ActiveDirectoryAccountCredentialsSchema.optional(),
-  metadata: ActiveDirectoryAccountMetadataSchema.optional()
+  internalMetadata: ActiveDirectoryAccountMetadataSchema.optional()
 });
 
 export const SanitizedActiveDirectoryAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
@@ -85,7 +85,7 @@ export const SanitizedActiveDirectoryAccountWithResourceSchema = BasePamAccountS
   credentials: z.object({
     username: z.string()
   }),
-  metadata: ActiveDirectoryAccountMetadataSchema
+  internalMetadata: ActiveDirectoryAccountMetadataSchema
 });
 
 // Sessions

@@ -9,6 +9,7 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { WindowsAccountType } from "@app/hooks/api/pam/types/windows-server-resource";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
 type Props = {
@@ -23,7 +24,7 @@ const formSchema = genericAccountFieldsSchema.extend({
     username: z.string().trim().min(1, "Username is required"),
     password: z.string().trim().min(1, "Password is required")
   }),
-  metadata: z.object({
+  internalMetadata: z.object({
     accountType: z.nativeEnum(WindowsAccountType)
   }),
   rotationEnabled: z.boolean().default(false),
@@ -55,7 +56,7 @@ export const WindowsAccountForm = ({ account, onSubmit }: Props) => {
             username: "",
             password: ""
           },
-          metadata: {
+          internalMetadata: {
             accountType: WindowsAccountType.User
           }
         }
@@ -73,7 +74,7 @@ export const WindowsAccountForm = ({ account, onSubmit }: Props) => {
         <GenericAccountFields />
         <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3">
           <Controller
-            name="metadata.accountType"
+            name="internalMetadata.accountType"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
@@ -141,6 +142,7 @@ export const WindowsAccountForm = ({ account, onSubmit }: Props) => {
           />
         </div>
         <RequireMfaField />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

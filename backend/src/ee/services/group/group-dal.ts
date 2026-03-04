@@ -42,8 +42,8 @@ export const groupDALFactory = (db: TDbClient) => {
 
   const findByOrgId = async (orgId: string, tx?: Knex) => {
     try {
+      // Return groups that have a membership in this org (native groups: group.orgId = orgId, or inherited: linked from root)
       const docs = await (tx || db.replicaNode())(TableName.Groups)
-        .where(`${TableName.Groups}.orgId`, orgId)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
@@ -73,6 +73,34 @@ export const groupDALFactory = (db: TDbClient) => {
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByOrgId" });
+    }
+  };
+
+  const listAvailableGroups = async (orgId: string, rootOrgId: string) => {
+    try {
+      if (orgId === rootOrgId) {
+        return [];
+      }
+      const groupsLinkedToOrg = db
+        .replicaNode()(TableName.Membership)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .select("actorGroupId");
+
+      const docs = await db
+        .replicaNode()(TableName.Groups)
+        .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, rootOrgId)
+        .whereNotIn(`${TableName.Groups}.id`, groupsLinkedToOrg)
+        .select(db.ref("id").withSchema(TableName.Groups))
+        .select(db.ref("name").withSchema(TableName.Groups))
+        .select(db.ref("slug").withSchema(TableName.Groups));
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ListAvailableGroups" });
     }
   };
 
@@ -566,16 +594,37 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Check if a group is linked by any sub-orgs (used to prevent deletion of groups still in use)
+  const getGroupsReferencingGroup = async (groupId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.actorGroupId`, groupId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .join(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .whereNot(`${TableName.Membership}.scopeOrgId`, db.ref("orgId").withSchema(TableName.Groups))
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
+        .select(
+          db.ref("id").withSchema(TableName.Organization).as("orgId"),
+          db.ref("name").withSchema(TableName.Organization).as("orgName")
+        );
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetGroupsReferencingGroup" });
+    }
+  };
+
   return {
     ...groupOrm,
     findGroups,
     findByOrgId,
+    listAvailableGroups,
     findAllGroupPossibleUsers,
     findAllGroupPossibleMachineIdentities,
     findAllGroupPossibleMembers,
     findAllGroupProjects,
     findGroupsByProjectId,
     findById,
-    findOne
+    findOne,
+    getGroupsReferencingGroup
   };
 };

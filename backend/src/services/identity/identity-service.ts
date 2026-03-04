@@ -15,6 +15,7 @@ import { TIdentityProjectDALFactory } from "@app/services/identity-project/ident
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { ActorType } from "../auth/auth-type";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -43,7 +44,7 @@ type TIdentityServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
 };
 
@@ -186,10 +187,10 @@ export const identityServiceFactory = ({
   }: TUpdateIdentityDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
-    const identityOrgMembership = await membershipIdentityDAL.findOne({
-      actorIdentityId: id,
-      scope: AccessScope.Organization,
-      scopeOrgId: actorOrgId
+    const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: id,
+      orgId: actorOrgId
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
@@ -466,10 +467,10 @@ export const identityServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TListProjectIdentitiesByIdentityIdDTO) => {
-    const identityOrgMembership = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityId,
-      scope: AccessScope.Organization,
-      scopeOrgId: actorOrgId
+    const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: identityId,
+      orgId: actorOrgId
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 

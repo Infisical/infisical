@@ -27,9 +27,11 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "addGroupToProject",
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Add group to project",
+      description:
+        "Deprecated: Use POST /api/v1/projects/:projectId/memberships/groups/:groupId instead. Add group to project.",
       security: [
         {
           bearerAuth: []
@@ -39,36 +41,31 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         projectId: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.projectId),
         groupIdOrName: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.groupIdOrName)
       }),
-      body: z
-        .object({
-          role: z
-            .string()
-            .trim()
-            .min(1)
-            .default(ProjectMembershipRole.NoAccess)
-            .describe(PROJECTS.ADD_GROUP_TO_PROJECT.role),
-          roles: z
-            .array(
-              z.union([
-                z.object({
-                  role: z.string(),
-                  isTemporary: z.literal(false).default(false)
-                }),
-                z.object({
-                  role: z.string(),
-                  isTemporary: z.literal(true),
-                  temporaryMode: z.nativeEnum(TemporaryPermissionMode),
-                  temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
-                  temporaryAccessStartTime: z.string().datetime()
-                })
-              ])
-            )
-            .optional()
-        })
-        .refine((data) => data.role || data.roles, {
-          message: "Either role or roles must be present",
-          path: ["role", "roles"]
-        }),
+      body: z.object({
+        role: z
+          .string()
+          .trim()
+          .min(1)
+          .default(ProjectMembershipRole.NoAccess)
+          .describe(PROJECTS.ADD_GROUP_TO_PROJECT.role),
+        roles: z
+          .array(
+            z.union([
+              z.object({
+                role: z.string(),
+                isTemporary: z.literal(false).default(false)
+              }),
+              z.object({
+                role: z.string(),
+                isTemporary: z.literal(true),
+                temporaryMode: z.nativeEnum(TemporaryPermissionMode),
+                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
+                temporaryAccessStartTime: z.string().datetime()
+              })
+            ])
+          )
+          .optional()
+      }),
       response: {
         200: z.object({
           groupMembership: GroupProjectMembershipsSchema
@@ -82,11 +79,16 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         groupId = groupDetails.groupId;
       }
 
+      const roles =
+        req.body.roles ??
+        (req.body.role
+          ? [{ role: req.body.role, isTemporary: false }]
+          : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
       const { membership: groupMembership } = await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: {
           groupId,
-          roles: req.body.roles || [{ role: req.body.role, isTemporary: false }]
+          roles
         },
         scopeData: {
           scope: AccessScope.Project,
@@ -111,9 +113,11 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "updateProjectGroup",
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Update group in project",
+      description:
+        "Deprecated: Use PATCH /api/v1/projects/:projectId/memberships/groups/:groupId instead. Update group in project.",
       security: [
         {
           bearerAuth: []
@@ -178,9 +182,11 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "removeGroupFromProject",
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Remove group from project",
+      description:
+        "Deprecated: Use DELETE /api/v1/projects/:projectId/memberships/groups/:groupId instead. Remove group from project.",
       security: [
         {
           bearerAuth: []
@@ -228,9 +234,11 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "listProjectGroups",
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Return list of groups in project",
+      description:
+        "Deprecated: Use GET /api/v1/projects/:projectId/memberships/groups instead. Return list of groups in project.",
       security: [
         {
           bearerAuth: []
@@ -241,8 +249,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }),
       response: {
         200: z.object({
-          groupMemberships: z
-            .object({
+          groupMemberships: z.array(
+            z.object({
               id: z.string(),
               groupId: z.string(),
               createdAt: z.date(),
@@ -261,9 +269,14 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              group: GroupsSchema.pick({ name: true, id: true, slug: true })
+              group: z.object({
+                id: z.string().uuid(),
+                name: z.string(),
+                slug: z.string(),
+                orgId: z.string().uuid().optional()
+              })
             })
-            .array()
+          )
         })
       }
     },
@@ -291,9 +304,11 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "getProjectGroup",
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Return project group",
+      description:
+        "Deprecated: Use GET /api/v1/projects/:projectId/memberships/groups/:groupId instead. Return project group.",
       security: [
         {
           bearerAuth: []

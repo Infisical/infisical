@@ -34,6 +34,10 @@ import {
   SanitizedAzureDevOpsConnectionSchema
 } from "@app/services/app-connection/azure-devops/azure-devops-schemas";
 import {
+  AzureDnsConnectionListItemSchema,
+  SanitizedAzureDnsConnectionSchema
+} from "@app/services/app-connection/azure-dns/azure-dns-connection-schema";
+import {
   AzureKeyVaultConnectionListItemSchema,
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
@@ -198,6 +202,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLaravelForgeConnectionSchema.options,
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
+  ...SanitizedAzureDnsConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
   ...SanitizedSmbConnectionSchema.options,
   ...SanitizedSshConnectionSchema.options,
@@ -252,6 +257,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LaravelForgeConnectionListItemSchema,
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
+  AzureDnsConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
   SmbConnectionListItemSchema,
   SshConnectionListItemSchema,

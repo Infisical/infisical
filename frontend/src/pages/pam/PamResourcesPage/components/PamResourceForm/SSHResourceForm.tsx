@@ -7,6 +7,7 @@ import { PamResourceType, TSSHResource } from "@app/hooks/api/pam";
 
 import { SshCaSetupSection } from "../../../components/SshCaSetupSection";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   resource?: TSSHResource;
@@ -82,6 +83,7 @@ export const SSHResourceForm = ({ resource, onSubmit }: Props) => {
           </div>
         </div>
         {isUpdate && <SshCaSetupSection resourceId={resource!.id} isOptional className="mb-4" />}
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

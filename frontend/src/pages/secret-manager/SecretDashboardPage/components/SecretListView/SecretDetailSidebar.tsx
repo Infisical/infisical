@@ -90,6 +90,7 @@ type Props = {
 export const SecretDetailSidebar = ({
   isOpen,
   onToggle,
+  onClose,
   secret: originalSecret,
   onDeleteSecret,
   onSaveSecret,
@@ -370,6 +371,10 @@ export const SecretDetailSidebar = ({
             secretPath={secretPath}
             environment={environment}
             secretKey={popUp.secretReferenceTree.data}
+            onClose={() => {
+              handlePopUpToggle("secretReferenceTree", false);
+              onClose();
+            }}
           />
         </ModalContent>
       </Modal>

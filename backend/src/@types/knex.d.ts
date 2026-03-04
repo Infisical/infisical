@@ -272,9 +272,6 @@ import {
   TMemberships,
   TMembershipsInsert,
   TMembershipsUpdate,
-  TNamespaces,
-  TNamespacesInsert,
-  TNamespacesUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
@@ -1505,7 +1502,6 @@ declare module "knex/types/tables" {
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
 
-    [TableName.Namespace]: KnexOriginal.CompositeTableType<TNamespaces, TNamespacesInsert, TNamespacesUpdate>;
     [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
     [TableName.MembershipRole]: KnexOriginal.CompositeTableType<
       TMembershipRoles,

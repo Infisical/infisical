@@ -18,7 +18,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
-import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
 import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
@@ -46,6 +46,30 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
+      return { organizations };
+    }
+  });
+
+  /**
+   * List all organizations the user can access (root orgs) with their accessible sub-orgs (id, name, slug only).
+   */
+  server.route({
+    method: "GET",
+    url: "/accessible-with-sub-orgs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listAccessibleOrganizationsWithSubOrgs",
+      response: {
+        200: z.object({
+          organizations: OrgWithSubOrgsSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      const organizations = await server.services.org.findAllAccessibleOrganizationsWithSubOrgs(req.permission.id);
       return { organizations };
     }
   });
@@ -474,7 +498,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/groups",
     schema: {
+      deprecated: true,
       operationId: "listOrganizationGroups",
+      description: "Deprecated: Use GET /api/v1/organizations/memberships/groups instead.",
       params: z.object({
         organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_GROUPS.organizationId)
       }),

@@ -1,7 +1,8 @@
 export enum CaType {
   INTERNAL = "internal",
   ACME = "acme",
-  AZURE_AD_CS = "azure-ad-cs"
+  AZURE_AD_CS = "azure-ad-cs",
+  AWS_PCA = "aws-pca"
 }
 
 export enum InternalCaType {

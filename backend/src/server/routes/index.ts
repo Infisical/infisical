@@ -716,7 +716,8 @@ export const registerRoutes = async (
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     roleDAL,
     permissionService,
-    orgDAL
+    orgDAL,
+    groupDAL
   });
 
   const roleService = roleServiceFactory({
@@ -1299,6 +1300,7 @@ export const registerRoutes = async (
   const certificateProfileService = certificateProfileServiceFactory({
     certificateProfileDAL,
     certificatePolicyDAL,
+    certificatePolicyService,
     apiEnrollmentConfigDAL,
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
@@ -1816,7 +1818,6 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     accessTokenQueue,
     identityDAL,
-    membershipIdentityDAL,
     orgDAL
   });
 
@@ -2366,14 +2367,17 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateSyncDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    certificateAuthorityService,
+    resourceMetadataDAL
   });
 
   const certificateRequestService = certificateRequestServiceFactory({
     certificateRequestDAL,
     certificateDAL,
     certificateService,
-    permissionService
+    permissionService,
+    resourceMetadataDAL
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
@@ -2391,7 +2395,8 @@ export const registerRoutes = async (
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL,
-    certificateRequestService
+    certificateRequestService,
+    resourceMetadataDAL
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -2407,7 +2412,8 @@ export const registerRoutes = async (
     kmsService,
     projectDAL,
     certificatePolicyService,
-    certificateIssuanceQueue
+    certificateIssuanceQueue,
+    resourceMetadataDAL
   });
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
@@ -2452,7 +2458,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     userDAL,
     identityDAL,
-    approvalPolicyService
+    approvalPolicyService,
+    resourceMetadataDAL
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -2637,7 +2644,8 @@ export const registerRoutes = async (
     pamAccountDAL,
     permissionService,
     kmsService,
-    gatewayV2Service
+    gatewayV2Service,
+    resourceMetadataDAL
   });
 
   const mfaSessionService = mfaSessionServiceFactory({
@@ -2668,7 +2676,8 @@ export const registerRoutes = async (
     smtpService,
     approvalRequestGrantsDAL,
     approvalPolicyDAL,
-    pamSessionExpirationService
+    pamSessionExpirationService,
+    resourceMetadataDAL
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({

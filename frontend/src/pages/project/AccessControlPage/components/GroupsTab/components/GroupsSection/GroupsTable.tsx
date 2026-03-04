@@ -155,7 +155,9 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
               filteredGroupMemberships.length > 0 &&
               filteredGroupMemberships
                 .slice(offset, perPage * page)
-                .map(({ group: { id, name }, roles, createdAt }) => {
+                .map(({ group: { id, name, orgId: groupOrgId }, roles, createdAt }) => {
+                  const isLinkedGroup =
+                    groupOrgId != null && currentOrg != null && groupOrgId !== currentOrg.id;
                   return (
                     <Tr
                       className="group h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
@@ -192,7 +194,11 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                           a={ProjectPermissionSub.Groups}
                         >
                           {(isAllowed) => (
-                            <GroupRoles roles={roles} disableEdit={!isAllowed} groupId={id} />
+                            <GroupRoles
+                              roles={roles}
+                              disableEdit={!isAllowed || isLinkedGroup}
+                              groupId={id}
+                            />
                           )}
                         </ProjectPermissionCan>
                       </Td>
@@ -211,26 +217,28 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
-                              <ProjectPermissionCan
-                                I={ProjectPermissionActions.Delete}
-                                a={ProjectPermissionSub.Groups}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    icon={<FontAwesomeIcon icon={faUsersSlash} />}
-                                    isDisabled={!isAllowed}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("deleteGroup", {
-                                        id,
-                                        name
-                                      });
-                                    }}
-                                  >
-                                    Remove Group From Project
-                                  </DropdownMenuItem>
-                                )}
-                              </ProjectPermissionCan>
+                              {!isLinkedGroup && (
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Delete}
+                                  a={ProjectPermissionSub.Groups}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      icon={<FontAwesomeIcon icon={faUsersSlash} />}
+                                      isDisabled={!isAllowed}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("deleteGroup", {
+                                          id,
+                                          name
+                                        });
+                                      }}
+                                    >
+                                      Remove Group From Project
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </Tooltip>

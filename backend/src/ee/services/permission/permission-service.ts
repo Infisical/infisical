@@ -61,7 +61,8 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
           throw new NotFoundError({ name: "OrgRoleInvalid", message: `Organization role '${role}' not found` });
       }
     })
-    .reduce((prev, curr) => prev.concat(curr), []);
+    .reduce((prev, curr) => prev.concat(curr), [])
+    .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
   return rules;
 };
@@ -94,7 +95,8 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
           });
       }
     })
-    .reduce((prev, curr) => prev.concat(curr), []);
+    .reduce((prev, curr) => prev.concat(curr), [])
+    .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
   return rules;
 };
