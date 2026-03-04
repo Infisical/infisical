@@ -54,7 +54,7 @@ export const secretRotationV2QueueServiceFactory = async ({
       await rotateSecretsFns({
         job: {
           id: job.id || job.data?.rotationId,
-          retryCount: job.attemptsMade,
+          retryCount: job.attemptsMade + 1,
           retryLimit: job.opts.attempts || 1,
           data: job.data
         },

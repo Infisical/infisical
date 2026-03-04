@@ -153,7 +153,7 @@ export const secretScanningV2QueueServiceFactory = ({
     opts: { attempts?: number };
   }) => {
     const { scanId, resourceId, dataSourceId } = job.data;
-    const retryCount = job.attemptsMade;
+    const retryCount = job.attemptsMade + 1;
     const retryLimit = job.opts.attempts || 1;
 
     const logDetails = `[scanId=${scanId}] [resourceId=${resourceId}] [dataSourceId=${dataSourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
