@@ -45,11 +45,11 @@ export async function up(knex: Knex): Promise<void> {
       t.string("status").notNullable();
       t.string("triggeredBy").notNullable();
 
-      t.integer("resourcesDiscovered").defaultTo(0);
-      t.integer("accountsDiscovered").defaultTo(0);
-      t.integer("dependenciesDiscovered").defaultTo(0);
-      t.integer("newSinceLastRun").defaultTo(0);
-      t.integer("staleSinceLastRun").defaultTo(0);
+      t.integer("resourcesDiscoveredCount").defaultTo(0);
+      t.integer("accountsDiscoveredCount").defaultTo(0);
+      t.integer("dependenciesDiscoveredCount").defaultTo(0);
+      t.integer("newSinceLastRunCount").defaultTo(0);
+      t.integer("staleSinceLastRunCount").defaultTo(0);
 
       t.jsonb("progress").notNullable();
       t.text("errorMessage").nullable();
@@ -81,7 +81,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("state").nullable();
       t.jsonb("data").notNullable();
 
-      t.string("source").notNullable();
+      t.string("source").notNullable(); // "discovery" or "manual"
       t.boolean("isEnabled").defaultTo(false);
 
       t.unique(["accountId", "resourceId", "dependencyType", "name"], {

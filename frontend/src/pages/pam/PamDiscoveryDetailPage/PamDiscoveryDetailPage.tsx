@@ -415,14 +415,16 @@ const RunsTab = ({
                     <UnstableTableCell>
                       <Badge variant={STATUS_BADGE_MAP[run.status] || "info"}>{run.status}</Badge>
                     </UnstableTableCell>
-                    <UnstableTableCell>{run.resourcesDiscovered}</UnstableTableCell>
-                    <UnstableTableCell>{run.accountsDiscovered}</UnstableTableCell>
+                    <UnstableTableCell>{run.resourcesDiscoveredCount}</UnstableTableCell>
+                    <UnstableTableCell>{run.accountsDiscoveredCount}</UnstableTableCell>
                     <UnstableTableCell
-                      className={twMerge(run.newSinceLastRun > 0 && "text-green-400")}
+                      className={twMerge(run.newSinceLastRunCount > 0 && "text-green-400")}
                     >
-                      {run.newSinceLastRun > 0 ? `+${run.newSinceLastRun}` : run.newSinceLastRun}
+                      {run.newSinceLastRunCount > 0
+                        ? `+${run.newSinceLastRunCount}`
+                        : run.newSinceLastRunCount}
                     </UnstableTableCell>
-                    <UnstableTableCell>{run.staleSinceLastRun}</UnstableTableCell>
+                    <UnstableTableCell>{run.staleSinceLastRunCount}</UnstableTableCell>
                   </UnstableTableRow>
                   {isExpanded && (
                     <UnstableTableRow key={`${run.id}-expanded`}>

@@ -49,11 +49,11 @@ export type TPamDiscoverySourceRun = {
   discoverySourceId: string;
   status: string;
   triggeredBy: string;
-  resourcesDiscovered: number;
-  accountsDiscovered: number;
-  dependenciesDiscovered: number;
-  newSinceLastRun: number;
-  staleSinceLastRun: number;
+  resourcesDiscoveredCount: number;
+  accountsDiscoveredCount: number;
+  dependenciesDiscoveredCount: number;
+  newSinceLastRunCount: number;
+  staleSinceLastRunCount: number;
   progress?: TPamDiscoverySourceRunProgress;
   errorMessage?: string | null;
   startedAt?: string | null;

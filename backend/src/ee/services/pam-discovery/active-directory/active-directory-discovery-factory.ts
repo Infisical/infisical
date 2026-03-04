@@ -500,8 +500,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
     });
 
     let adEnumerationSucceeded = false;
-    let resourcesDiscovered = 0;
-    let accountsDiscovered = 0;
+    let resourcesDiscoveredCount = 0;
+    let accountsDiscoveredCount = 0;
     let newItems = 0;
 
     try {
@@ -535,7 +535,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         resourceId: adServerResource.id,
         lastDiscoveredRunId: run.id
       });
-      resourcesDiscovered += 1;
+      resourcesDiscoveredCount += 1;
       if (isAdServerNew) newItems += 1;
 
       // Auto-import Windows Server resources
@@ -556,7 +556,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             lastDiscoveredRunId: run.id
           });
 
-          resourcesDiscovered += 1;
+          resourcesDiscoveredCount += 1;
           if (isNew) newItems += 1;
         } catch (err) {
           logger.warn({ err, computer: computer.dNSHostName }, "Failed to import Windows Server resource");
@@ -580,7 +580,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             lastDiscoveredRunId: run.id
           });
 
-          accountsDiscovered += 1;
+          accountsDiscoveredCount += 1;
           if (isNew) newItems += 1;
         } catch (err) {
           logger.warn({ err, user: user.sAMAccountName }, "Failed to import domain account");
@@ -590,15 +590,15 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       if (adEnumerationSucceeded) {
         const staleResources = await pamDiscoverySourceResourcesDAL.markStaleForRun(discoverySourceId, run.id);
         const staleAccounts = await pamDiscoverySourceAccountsDAL.markStaleForRun(discoverySourceId, run.id);
-        const staleSinceLastRun = (staleResources || 0) + (staleAccounts || 0);
+        const staleSinceLastRunCount = (staleResources || 0) + (staleAccounts || 0);
 
         await pamDiscoveryRunDAL.updateById(run.id, {
           status: PamDiscoverySourceRunStatus.Completed,
-          resourcesDiscovered,
-          accountsDiscovered,
-          dependenciesDiscovered: 0,
-          newSinceLastRun: newItems,
-          staleSinceLastRun,
+          resourcesDiscoveredCount,
+          accountsDiscoveredCount,
+          dependenciesDiscoveredCount: 0,
+          newSinceLastRunCount: newItems,
+          staleSinceLastRunCount,
           completedAt: new Date()
         });
       }
