@@ -2592,6 +2592,7 @@ interface UpdateCaSigningConfig {
   metadata: {
     caId: string;
     dn: string;
+    signingConfigType: string;
   };
 }
 

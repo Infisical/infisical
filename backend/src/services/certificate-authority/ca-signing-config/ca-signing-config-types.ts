@@ -3,8 +3,8 @@ import { z } from "zod";
 import { CaSigningConfigType } from "./ca-signing-config-enums";
 
 export const VenafiDestinationConfigSchema = z.object({
-  applicationId: z.string().min(1),
-  issuingTemplateId: z.string().min(1),
+  applicationId: z.string().uuid(),
+  issuingTemplateId: z.string().uuid(),
   validityPeriod: z.number().int().positive().optional()
 });
 
