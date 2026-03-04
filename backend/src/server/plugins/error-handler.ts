@@ -268,6 +268,19 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: error.message,
         details: error.details
       });
+    } else if (
+      error instanceof SyntaxError &&
+      req.method === "POST" &&
+      (req.url === "/api/v1/cert-manager/certificates" || req.url === "/api/v1/cert-manager/certificates/")
+    ) {
+      // JSON parsing error on certificate endpoint - likely malformed CSR with literal newlines
+      void res.status(HttpStatusCodes.BadRequest).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.BadRequest,
+        message:
+          "Invalid JSON in request body. If you are sending a Certificate Signing Request (CSR), ensure newlines are escaped as \\n characters, not literal line breaks.",
+        error: "BadRequestError"
+      });
     } else {
       void res.status(HttpStatusCodes.InternalServerError).send({
         reqId: req.id,

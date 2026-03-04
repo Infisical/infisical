@@ -119,9 +119,11 @@ export const RequestGrantTab = () => {
     if (search) {
       filtered = filtered.filter((grant) => {
         if (grant.type !== ApprovalPolicyType.PamAccess) return false;
+        const searchLower = search.toLowerCase();
         return (
-          grant.attributes.accountPath.toLowerCase().includes(search.toLowerCase()) ||
-          grant.id.toLowerCase().includes(search.toLowerCase())
+          grant.attributes.resourceName?.toLowerCase().includes(searchLower) ||
+          grant.attributes.accountName?.toLowerCase().includes(searchLower) ||
+          grant.id.toLowerCase().includes(searchLower)
         );
       });
     }
@@ -273,7 +275,8 @@ export const RequestGrantTab = () => {
             <THead>
               <Tr>
                 <Th>User</Th>
-                <Th>Account Path</Th>
+                <Th>Resource</Th>
+                <Th>Account</Th>
                 <Th>Access Duration</Th>
                 <Th>Status</Th>
                 <Th>Granted</Th>
@@ -282,7 +285,7 @@ export const RequestGrantTab = () => {
               </Tr>
             </THead>
             <TBody>
-              {isGrantsLoading && <TableSkeleton columns={7} innerKey="access-grants" />}
+              {isGrantsLoading && <TableSkeleton columns={8} innerKey="access-grants" />}
               {!isGrantsLoading &&
                 paginatedGrants.map((grant) => {
                   if (grant.type !== ApprovalPolicyType.PamAccess) return null;
@@ -294,7 +297,14 @@ export const RequestGrantTab = () => {
                         {grant.granteeUserId ? getGrantedUser(grant.granteeUserId) : "Unknown"}
                       </Td>
                       <Td>
-                        <div>{grant.attributes.accountPath}</div>
+                        <span className="text-sm text-mineshaft-200">
+                          {grant.attributes.resourceName || "-"}
+                        </span>
+                      </Td>
+                      <Td>
+                        <span className="text-sm text-mineshaft-200">
+                          {grant.attributes.accountName || "-"}
+                        </span>
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-200">

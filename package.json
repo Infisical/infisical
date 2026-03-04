@@ -13,11 +13,6 @@
   "scripts": {
     "prepare": "husky install"
   },
-  "lint-staged": {
-    "./{frontend/backend}/**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
-    ]
-  },
   "devDependencies": {
     "@types/uuid": "^9.0.7",
     "eslint": "^8.57.1",

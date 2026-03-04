@@ -10,6 +10,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AzureClientSecrets]: "Azure Client Secrets",
   [AppConnection.AzureDevOps]: "Azure DevOps",
   [AppConnection.AzureADCS]: "Azure ADCS",
+  [AppConnection.AzureDNS]: "Azure DNS",
   [AppConnection.Databricks]: "Databricks",
   [AppConnection.Humanitec]: "Humanitec",
   [AppConnection.TerraformCloud]: "Terraform Cloud",
@@ -46,7 +47,11 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Chef]: "Chef",
   [AppConnection.Northflank]: "Northflank",
   [AppConnection.OctopusDeploy]: "Octopus Deploy",
-  [AppConnection.SSH]: "SSH"
+  [AppConnection.SSH]: "SSH",
+  [AppConnection.Dbt]: "DBT",
+  [AppConnection.SMB]: "SMB",
+  [AppConnection.OpenRouter]: "OpenRouter",
+  [AppConnection.CircleCI]: "CircleCI"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -59,6 +64,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.AzureClientSecrets]: AppConnectionPlanType.Regular,
   [AppConnection.AzureDevOps]: AppConnectionPlanType.Regular,
   [AppConnection.AzureADCS]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureDNS]: AppConnectionPlanType.Regular,
   [AppConnection.Databricks]: AppConnectionPlanType.Regular,
   [AppConnection.Humanitec]: AppConnectionPlanType.Regular,
   [AppConnection.TerraformCloud]: AppConnectionPlanType.Regular,
@@ -95,5 +101,9 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Chef]: AppConnectionPlanType.Enterprise,
   [AppConnection.Northflank]: AppConnectionPlanType.Regular,
   [AppConnection.OctopusDeploy]: AppConnectionPlanType.Regular,
-  [AppConnection.SSH]: AppConnectionPlanType.Regular
+  [AppConnection.SSH]: AppConnectionPlanType.Regular,
+  [AppConnection.Dbt]: AppConnectionPlanType.Regular,
+  [AppConnection.SMB]: AppConnectionPlanType.Regular,
+  [AppConnection.OpenRouter]: AppConnectionPlanType.Regular,
+  [AppConnection.CircleCI]: AppConnectionPlanType.Regular
 };

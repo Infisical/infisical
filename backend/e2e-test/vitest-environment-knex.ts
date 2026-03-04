@@ -11,6 +11,7 @@ import { initLogger } from "@app/lib/logger";
 import { main } from "@app/server/app";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
+import { buildClickHouseFromConfig } from "@app/lib/config/clickhouse";
 import { mockSmtpServer } from "./mocks/smtp";
 import { initDbConnection } from "@app/db";
 import { queueServiceFactory } from "@app/queue";
@@ -22,6 +23,7 @@ import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal"
 import { bootstrapCheck } from "@app/server/boot-strap-check";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { queueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -55,6 +57,8 @@ export default {
     const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");
 
+    const clickhouseClient = buildClickHouseFromConfig(envCfg);
+
     try {
       // called after all tests with this env have been run
       await db.raw("DROP SCHEMA IF EXISTS public CASCADE");
@@ -72,7 +76,8 @@ export default {
       });
 
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(envCfg, { dbConnectionUrl: envCfg.DB_CONNECTION_URI });
+      const queueJobsDAL = queueJobsDALFactory(db);
+      const queue = queueServiceFactory(envCfg, queueJobsDAL);
       const keyValueStoreDAL = keyValueStoreDALFactory(db);
       const keyStore = keyStoreFactory(envCfg, keyValueStoreDAL);
 
@@ -88,6 +93,7 @@ export default {
         kmsRootConfigDAL,
         superAdminDAL,
         redis,
+        clickhouse: clickhouseClient,
         envConfig: envCfg
       });
 

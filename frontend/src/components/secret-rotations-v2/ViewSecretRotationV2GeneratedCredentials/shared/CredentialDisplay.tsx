@@ -21,32 +21,38 @@ export const CredentialDisplay = ({ children, label, isSensitive }: Props) => {
   return (
     <GenericFieldLabel label={label}>
       {children ? (
-        <div className="flex w-full items-center gap-1 text-mineshaft-100">
-          {showCredential ? children : "****************************"}
-          <Tooltip content={`Copy ${label}`}>
-            <IconButton
-              onClick={() => {
-                setCopyCredential(children);
-                navigator.clipboard.writeText(children);
-              }}
-              ariaLabel="Copy credential"
-              variant="plain"
-              size="xs"
-            >
-              <FontAwesomeIcon icon={isCopyingCredential ? faCheck : faCopy} />
-            </IconButton>
-          </Tooltip>
-          {isSensitive && (
-            <Tooltip content={`Show ${label}`}>
+        <div className="flex w-full min-w-0 items-center gap-1 text-mineshaft-100">
+          <span className="min-w-0 flex-1 truncate" title={showCredential ? children : undefined}>
+            {showCredential ? children : "****************************"}
+          </span>
+          <span className="flex-shrink-0">
+            <Tooltip content={`Copy ${label}`}>
               <IconButton
+                onClick={() => {
+                  setCopyCredential(children);
+                  navigator.clipboard.writeText(children);
+                }}
+                ariaLabel="Copy credential"
                 variant="plain"
                 size="xs"
-                onClick={toggleShowCredential}
-                ariaLabel={`${showCredential ? "Hide" : "Show"} credential`}
               >
-                <FontAwesomeIcon icon={faEyeSlash} />
+                <FontAwesomeIcon icon={isCopyingCredential ? faCheck : faCopy} />
               </IconButton>
             </Tooltip>
+          </span>
+          {isSensitive && (
+            <span className="flex-shrink-0">
+              <Tooltip content={`Show ${label}`}>
+                <IconButton
+                  variant="plain"
+                  size="xs"
+                  onClick={toggleShowCredential}
+                  ariaLabel={`${showCredential ? "Hide" : "Show"} credential`}
+                >
+                  <FontAwesomeIcon icon={faEyeSlash} />
+                </IconButton>
+              </Tooltip>
+            </span>
           )}
         </div>
       ) : null}

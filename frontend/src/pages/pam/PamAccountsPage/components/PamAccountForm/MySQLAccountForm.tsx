@@ -9,6 +9,7 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
 type Props = {
@@ -55,6 +56,7 @@ export const MySQLAccountForm = ({ account, onSubmit }: Props) => {
         <GenericAccountFields />
         <SqlAccountFields isUpdate={isUpdate} />
         <RequireMfaField />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

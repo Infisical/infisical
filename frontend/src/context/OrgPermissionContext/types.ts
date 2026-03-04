@@ -87,8 +87,7 @@ export enum OrgPermissionAuditLogsActions {
 }
 
 export enum OrgPermissionKmipActions {
-  Proxy = "proxy",
-  Setup = "setup"
+  Proxy = "proxy"
 }
 
 export enum OrgPermissionIdentityActions {
@@ -115,7 +114,8 @@ export enum OrgPermissionGroupActions {
 
 export enum OrgPermissionSubOrgActions {
   Create = "create",
-  DirectAccess = "direct-access"
+  DirectAccess = "direct-access",
+  LinkGroup = "link-group"
 }
 
 export type AppConnectionSubjectFields = {

@@ -5,16 +5,19 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAlertChannelsSchema = z.object({
   id: z.string().uuid(),
   alertId: z.string().uuid(),
   channelType: z.string(),
-  config: z.unknown(),
+  config: z.unknown().nullable().optional(),
   enabled: z.boolean().default(true).nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  encryptedConfig: zodBuffer.nullable().optional()
 });
 
 export type TPkiAlertChannels = z.infer<typeof PkiAlertChannelsSchema>;

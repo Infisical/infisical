@@ -38,7 +38,7 @@ Prerequisites:
                 name: Build application with secrets from Infisical
                 script:
                   - apt update && apt install -y curl
-                  - curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash
+                  - curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
                   - apt-get update && apt-get install -y infisical
                   - export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$INFISICAL_CLIENT_ID --client-secret=$INFISICAL_CLIENT_SECRET --silent --plain)
                   - infisical run --projectId=1d0443c1-cd43-4b3a-91a3-9d5f81254a89 --env=dev -- npm run build

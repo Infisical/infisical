@@ -22,7 +22,7 @@ import {
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
+import { PersonalOverridesBehavior, SecretsOrderBy } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
@@ -111,6 +111,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .intersection(
               SecretRotationV2Schema,
               z.object({
+                // TODO (scott): think we can actually get rid of this and not query relations as we don't display secrets with rotations anymore
                 secrets: secretRawSchema
                   .omit({ secretValue: true })
                   .extend({
@@ -132,7 +133,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-              tags: SanitizedTagSchema.array().optional()
+              tags: SanitizedTagSchema.array().optional(),
+              reminder: RemindersSchema.extend({
+                recipients: z.string().array().optional()
+              }).nullish()
             })
             .array()
             .optional(),
@@ -224,7 +228,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let imports: Awaited<ReturnType<typeof server.services.secretImport.getImportsMultiEnv>> | undefined;
       let folders: Awaited<ReturnType<typeof server.services.folder.getFoldersMultiEnv>> | undefined;
       let secrets:
-        | (Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>>[number] & { isEmpty: boolean })[]
+        | (Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>>[number] & {
+            isEmpty: boolean;
+            reminder: Awaited<ReturnType<typeof server.services.reminder.getRemindersForDashboard>>[string] | null;
+          })[]
         | undefined;
       let dynamicSecrets:
         | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnvs>>
@@ -247,8 +254,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           projectId,
           environments,
-          path: secretPath,
-          search
+          path: secretPath
+          // search: removing because this prevents searching imported secrets which are fetched separately client side
         });
 
         if (remainingLimit > 0 && totalImportCount > adjustedOffset) {
@@ -260,7 +267,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             projectId,
             environments,
             path: secretPath,
-            search,
+            // search: removing because this prevents searching imported secrets which are fetched separately client side
             limit: remainingLimit,
             offset: adjustedOffset
           });
@@ -277,6 +284,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               }
             }
           });
+
+          // get the count of unique folder names to properly adjust remaining limit
+          const uniqueImportCount = new Set(
+            imports.filter((imp) => !imp.isReserved).map((imp) => `${imp.importEnv.slug}:${imp.importPath}`)
+          ).size;
+
+          remainingLimit -= uniqueImportCount;
+          adjustedOffset = 0;
+        } else {
+          adjustedOffset = Math.max(0, adjustedOffset - totalImportCount);
         }
       }
 
@@ -321,9 +338,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       if (!includeDynamicSecrets && !includeSecrets && !includeSecretRotations)
         return {
+          imports,
           folders,
+          totalImportCount,
           totalFolderCount,
-          totalCount: totalFolderCount ?? 0
+          totalCount: (totalImportCount ?? 0) + (totalFolderCount ?? 0)
         };
 
       if (includeDynamicSecrets) {
@@ -447,24 +466,34 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
 
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-          secrets = (
-            await server.services.secret.getSecretsRawMultiEnv({
-              viewSecretValue: true,
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              actorOrgId: req.permission.orgId,
-              environments,
-              actorAuthMethod: req.permission.authMethod,
-              projectId,
-              path: secretPath,
-              orderBy,
-              orderDirection,
-              search,
-              limit: remainingLimit,
-              offset: adjustedOffset,
-              isInternal: true
-            })
-          ).map((secret) => ({ ...secret, isEmpty: !secret.secretValue }));
+          const rawSecrets = await server.services.secret.getSecretsRawMultiEnv({
+            personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
+            viewSecretValue: true,
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorOrgId: req.permission.orgId,
+            environments,
+            actorAuthMethod: req.permission.authMethod,
+            projectId,
+            path: secretPath,
+            orderBy,
+            orderDirection,
+            search,
+            limit: remainingLimit,
+            offset: adjustedOffset,
+            isInternal: true
+          });
+
+          const reminders =
+            rawSecrets.length > 0
+              ? await server.services.reminder.getRemindersForDashboard(rawSecrets.map((s) => s.id))
+              : {};
+
+          secrets = rawSecrets.map((secret) => ({
+            ...secret,
+            isEmpty: !secret.secretValue,
+            reminder: reminders[secret.id] ?? null
+          }));
         }
       }
 
@@ -569,6 +598,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         importedByEnvs,
         usedBySecretSyncs,
         totalCount:
+          (totalImportCount ?? 0) +
           (totalFolderCount ?? 0) +
           (totalDynamicSecretCount ?? 0) +
           (totalSecretCount ?? 0) +
@@ -1006,6 +1036,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
             const rawSecrets = (
               await server.services.secret.getSecretsRaw({
+                personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
                 actorId: req.permission.id,
                 actor: req.permission.type,
                 viewSecretValue: true,
@@ -1456,6 +1487,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       if (!keys.length) throw new BadRequestError({ message: "One or more keys required" });
 
       const { secrets } = await server.services.secret.getSecretsRaw({
+        personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -1535,48 +1567,24 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
 
-      // TODO (scott): just get the secret instead of searching for it in list
-      const { secrets } = await server.services.secret.getSecretsRaw({
+      const secret = await server.services.secret.getSecretByNameRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
-        viewSecretValue: true,
-        throwOnMissingReadValuePermission: false,
-        actorOrgId: req.permission.orgId,
-        environment,
         actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        viewSecretValue: true,
+        environment,
         projectId,
         path: secretPath,
-        search: secretKey,
-        includeTagsInSearch: true,
-        includeMetadataInSearch: true
+        secretName: secretKey,
+        includeImports: true,
+        type: isOverride ? SecretType.Personal : SecretType.Shared
       });
 
       if (isOverride) {
-        const personalSecret = secrets.find(
-          (secret) => secret.type === SecretType.Personal && secret.secretKey === secretKey
-        );
-
-        if (!personalSecret)
-          throw new BadRequestError({
-            message: `Could not find personal secret with key "${secretKey}" at secret path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
-          });
-
-        if (personalSecret)
-          return {
-            valueOverride: personalSecret.secretValue
-          };
+        return { valueOverride: secret.secretValue };
       }
 
-      const sharedSecret = secrets.find(
-        (secret) => secret.type === SecretType.Shared && secret.secretKey === secretKey
-      );
-
-      if (!sharedSecret)
-        throw new BadRequestError({
-          message: `Could not find secret with key "${secretKey}" at secret path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
-        });
-
-      // only audit if not personal
       await server.services.auditLog.createAuditLog({
         projectId,
         ...req.auditLogInfo,
@@ -1586,12 +1594,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environment: req.query.environment,
             secretPath: req.query.secretPath,
             secretKey,
-            secretId: sharedSecret.id
+            secretId: secret.id
           }
         }
       });
 
-      return { value: sharedSecret.secretValue };
+      return { value: secret.secretValue };
     }
   });
 
@@ -1682,6 +1690,17 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secretVersions: secretRawSchema
             .omit({ secretValue: true })
             .extend({
+              isRedacted: z.boolean(),
+              redactedByActor: z
+                .object({
+                  username: z.string().nullable(),
+                  email: z.string().nullable().optional(),
+                  projectMembershipId: z.string().uuid().nullable().optional()
+                })
+                .nullable()
+                .optional(),
+              redactedAt: z.date().nullable(),
+              redactedByUserId: z.string().uuid().nullable(),
               secretValueHidden: z.boolean()
             })
             .array()

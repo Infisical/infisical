@@ -139,7 +139,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.Flyio:
       primaryText = destinationConfig.appId;
-      secondaryText = "App ID";
+      secondaryText = "App";
       break;
     case SecretSync.GitLab:
       if (destinationConfig.scope === GitLabSyncScope.Project) {
@@ -213,6 +213,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         primaryText = destinationConfig.projectName || destinationConfig.projectId;
       }
       secondaryText = destinationConfig.spaceName || destinationConfig.spaceId;
+      break;
+    case SecretSync.CircleCI:
+      primaryText = destinationConfig.projectName;
+      secondaryText = "Project";
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

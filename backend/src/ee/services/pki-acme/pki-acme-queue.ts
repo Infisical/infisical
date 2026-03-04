@@ -1,4 +1,5 @@
 import { getConfig } from "@app/lib/config/env";
+import { secondsToMillis } from "@app/lib/dates";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
@@ -17,32 +18,23 @@ export const pkiAcmeQueueServiceFactory = async ({
 }: TPkiAcmeQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  // Initialize the worker to process challenge validation jobs
-  await queueService.startPg<QueueName.PkiAcmeChallengeValidation>(
-    QueueJobs.PkiAcmeChallengeValidation,
-    async ([job]) => {
-      const { challengeId } = job.data;
-      const retryCount = job.retryCount || 0;
-      try {
-        logger.info({ challengeId, retryCount }, "Processing ACME challenge validation job");
-        await acmeChallengeService.validateChallengeResponse(challengeId, retryCount);
-        logger.info({ challengeId, retryCount }, "ACME challenge validation completed successfully");
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error(
-          error,
-          `Failed to validate ACME challenge ${challengeId} (retryCount ${retryCount}): ${errorMessage}`
-        );
-        // Re-throw to let pg-boss handle retries with exponential backoff
-        throw error;
-      }
-    },
-    {
-      batchSize: 1,
-      workerCount: 2,
-      pollingIntervalSeconds: 1
+  queueService.start(QueueName.PkiAcmeChallengeValidation, async (job) => {
+    const { challengeId } = job.data;
+    const retryCount = job.attemptsMade || 0;
+    try {
+      logger.info({ challengeId, retryCount }, "Processing ACME challenge validation job");
+      await acmeChallengeService.validateChallengeResponse(challengeId, retryCount);
+      logger.info({ challengeId, retryCount }, "ACME challenge validation completed successfully");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(
+        error,
+        `Failed to validate ACME challenge ${challengeId} (retryCount ${retryCount}): ${errorMessage}`
+      );
+      // Re-throw to let pg-boss handle retries with exponential backoff
+      throw error;
     }
-  );
+  });
 
   const queueChallengeValidation = async (challengeId: string): Promise<void> => {
     if (appCfg.isSecondaryInstance) {
@@ -50,13 +42,18 @@ export const pkiAcmeQueueServiceFactory = async ({
     }
 
     logger.info({ challengeId }, "Queueing ACME challenge validation");
-    await queueService.queuePg(
+    await queueService.queue(
+      QueueName.PkiAcmeChallengeValidation,
       QueueJobs.PkiAcmeChallengeValidation,
       { challengeId },
       {
-        retryLimit: 3,
-        retryDelay: 30, // Base delay of 30 seconds
-        retryBackoff: true // Exponential backoff: 30s, 60s, 120s
+        jobId: `pki-acme-challenege-${challengeId}`,
+        removeOnFail: true,
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: secondsToMillis(30)
+        }
       }
     );
   };

@@ -24,6 +24,18 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return session;
   };
 
+  const countActiveWebSessions = async (userId: string, projectId: string, tx?: Knex): Promise<number> => {
+    const result = await (tx || db.replicaNode())(TableName.PamSession)
+      .where("userId", userId)
+      .where("projectId", projectId)
+      .where("accessMethod", "web")
+      .whereIn("status", [PamSessionStatus.Starting, PamSessionStatus.Active])
+      .count("id as count")
+      .first();
+
+    return Number((result as { count?: string | number })?.count ?? 0);
+  };
+
   const expireSessionById = async (sessionId: string, tx?: Knex) => {
     const now = new Date();
 
@@ -38,5 +50,5 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updatedCount;
   };
 
-  return { ...orm, findById, expireSessionById };
+  return { ...orm, findById, expireSessionById, countActiveWebSessions };
 };

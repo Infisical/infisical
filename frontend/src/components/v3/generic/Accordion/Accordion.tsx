@@ -6,11 +6,17 @@ import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 
-function UnstableAccordion({ ...props }: React.ComponentProps<typeof AccordionPrimitive.Root>) {
+function UnstableAccordion({
+  className,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Root>) {
   return (
     <AccordionPrimitive.Root
       data-slot="accordion"
-      className="overflow-clip rounded-md border border-border bg-container text-foreground"
+      className={cn(
+        "overflow-clip rounded-md border border-border bg-container text-foreground",
+        className
+      )}
       {...props}
     />
   );
@@ -42,8 +48,8 @@ function UnstableAccordionTrigger({
           "flex min-h-12 flex-1 items-center gap-4 border-border bg-container px-4 text-left text-sm font-medium",
           "transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
           "disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180",
-          "cursor-pointer hover:bg-foreground/5",
-          "data-[state=open]:bg-foreground/5",
+          "cursor-pointer hover:bg-container-hover",
+          "data-[state=open]:bg-container-hover",
           className
         )}
         {...props}

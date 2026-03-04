@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
@@ -10,6 +11,7 @@ import {
   faFilter,
   faLink,
   faMagnifyingGlass,
+  faQuestionCircle,
   faRedo,
   faSearch,
   faTrash
@@ -63,11 +65,19 @@ import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { CertStatus } from "@app/hooks/api/certificates/enums";
+import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { getCertValidUntilBadgeDetails, isExpiringWithinOneDay } from "./CertificatesTable.utils";
+import {
+  type MetadataFilterEntry,
+  MetadataFilterSection
+} from "../../components/MetadataFilterSection";
+import {
+  getCertSourceLabel,
+  getCertValidUntilBadgeDetails,
+  isExpiringWithinOneDay
+} from "./CertificatesTable.utils";
 
 enum CertificateStatus {
   Active = "active",
@@ -120,10 +130,12 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
   const [pendingSearch, setPendingSearch] = useState(externalFilter?.search || "");
   const [pendingProfileIds, setPendingProfileIds] = useState<string[]>([]);
   const [pendingFilters, setPendingFilters] = useState<CertificateFilters>({});
+  const [pendingMetadataFilters, setPendingMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
   const [appliedProfileIds, setAppliedProfileIds] = useState<string[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<CertificateFilters>({});
+  const [appliedMetadataFilters, setAppliedMetadataFilters] = useState<MetadataFilterEntry[]>([]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -151,13 +163,21 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     return appliedProfileIds;
   }, [appliedProfileIds]);
 
+  const activeMetadataFilters = useMemo(() => {
+    const filtered = appliedMetadataFilters
+      .filter((m) => m.key.trim())
+      .map(({ key, value }) => ({ key, ...(value?.trim() ? { value } : {}) }));
+    return filtered.length > 0 ? filtered : undefined;
+  }, [appliedMetadataFilters]);
+
   const { data, isPending } = useListWorkspaceCertificates({
     projectId: currentProject?.id ?? "",
     offset: (page - 1) * perPage,
     limit: perPage,
     search: appliedSearch.trim() || undefined,
     status: backendStatus,
-    ...(profileIds && { profileIds })
+    ...(profileIds && { profileIds }),
+    ...(activeMetadataFilters && { metadataFilter: activeMetadataFilters })
   });
 
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
@@ -203,9 +223,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     setPendingSearch("");
     setPendingFilters({});
     setPendingProfileIds([]);
+    setPendingMetadataFilters([]);
     setAppliedSearch("");
     setAppliedFilters({});
     setAppliedProfileIds([]);
+    setAppliedMetadataFilters([]);
     setPage(1);
   };
 
@@ -217,7 +239,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     setPendingProfileIds([]);
   };
 
-  const isTableFiltered = Boolean(appliedFilters.status || appliedProfileIds.length);
+  const isTableFiltered = Boolean(
+    appliedFilters.status ||
+      appliedProfileIds.length ||
+      appliedMetadataFilters.some((m) => m.key.trim())
+  );
 
   const hasFilterChanges = useMemo(() => {
     const pendingStatus = pendingFilters.status ?? undefined;
@@ -226,8 +252,17 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     const profileIdsChanged =
       JSON.stringify([...pendingProfileIds].sort()) !==
       JSON.stringify([...appliedProfileIds].sort());
-    return statusChanged || profileIdsChanged;
-  }, [pendingFilters.status, appliedFilters.status, pendingProfileIds, appliedProfileIds]);
+    const metadataChanged =
+      JSON.stringify(pendingMetadataFilters) !== JSON.stringify(appliedMetadataFilters);
+    return statusChanged || profileIdsChanged || metadataChanged;
+  }, [
+    pendingFilters.status,
+    appliedFilters.status,
+    pendingProfileIds,
+    appliedProfileIds,
+    pendingMetadataFilters,
+    appliedMetadataFilters
+  ]);
 
   return (
     <div>
@@ -347,11 +382,17 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                 </Select>
               </div>
 
+              <MetadataFilterSection
+                entries={pendingMetadataFilters}
+                onChange={setPendingMetadataFilters}
+              />
+
               <div className="pt-2">
                 <Button
                   onClick={() => {
                     setAppliedFilters(pendingFilters);
                     setAppliedProfileIds(pendingProfileIds);
+                    setAppliedMetadataFilters(pendingMetadataFilters);
                     setPage(1);
                   }}
                   className="w-full bg-primary font-medium text-black hover:bg-primary-600"
@@ -369,16 +410,22 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
         <Table>
           <THead>
             <Tr>
-              <Th className="w-1/3">SAN / CN</Th>
-              <Th className="w-1/6">Serial Number</Th>
-              <Th className="w-1/6">Status</Th>
-              <Th className="w-1/6">Issued At</Th>
-              <Th className="w-1/4">Expiring At</Th>
+              <Th className="w-1/4">SAN / CN</Th>
+              <Th>Serial Number</Th>
+              <Th className="w-24">
+                Source
+                <Tooltip content="How this certificate was added. Managed: issued and lifecycle-managed by Infisical. Discovered: found via network scan (discovery jobs). Imported: manually uploaded by a user.">
+                  <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                </Tooltip>
+              </Th>
+              <Th className="w-24">Status</Th>
+              <Th>Issued At</Th>
+              <Th>Expiring At</Th>
               <Th className="w-12" />
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={5} innerKey="project-cas" />}
+            {isPending && <TableSkeleton columns={6} innerKey="project-cas" />}
             {!isPending &&
               certificates.map((certificate) => {
                 const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
@@ -424,6 +471,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                       <div className="max-w-xs truncate" title={certificate.serialNumber || "N/A"}>
                         {truncateSerialNumber(certificate.serialNumber)}
                       </div>
+                    </Td>
+                    <Td>
+                      <Badge variant="ghost">
+                        {getCertSourceLabel(certificate.source ?? null)}
+                      </Badge>
                     </Td>
                     <Td>
                       {certificate.status === CertStatus.REVOKED ? (
@@ -743,7 +795,8 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                             );
                           })()}
                           {certificate.status === CertStatus.ACTIVE &&
-                            !certificate.renewedByCertificateId && (
+                            !certificate.renewedByCertificateId &&
+                            certificate.source !== CertSource.Discovered && (
                               <ProjectPermissionCan
                                 I={ProjectPermissionPkiSyncActions.Edit}
                                 a={ProjectPermissionSub.PkiSyncs}
@@ -775,7 +828,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                               !caType ||
                               caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
 
-                            if (!supportsRevocation || isRevoked) {
+                            if (
+                              !supportsRevocation ||
+                              isRevoked ||
+                              certificate.source === CertSource.Discovered
+                            ) {
                               return null;
                             }
 

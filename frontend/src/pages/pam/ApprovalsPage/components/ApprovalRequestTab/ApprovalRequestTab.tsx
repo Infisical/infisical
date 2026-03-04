@@ -117,15 +117,17 @@ export const ApprovalRequestTab = () => {
 
     // Apply search filter
     if (search) {
-      filtered = filtered.filter(
-        (request) =>
-          request.requesterName?.toLowerCase().includes(search.toLowerCase()) ||
-          request.requesterEmail?.toLowerCase().includes(search.toLowerCase()) ||
-          request.justification?.toLowerCase().includes(search.toLowerCase()) ||
-          (request.requestData.requestData as PamAccessRequestData).accountPath
-            .toLowerCase()
-            .includes(search.toLowerCase())
-      );
+      filtered = filtered.filter((request) => {
+        const data = request.requestData.requestData as PamAccessRequestData;
+        const searchLower = search.toLowerCase();
+        return (
+          request.requesterName?.toLowerCase().includes(searchLower) ||
+          request.requesterEmail?.toLowerCase().includes(searchLower) ||
+          request.justification?.toLowerCase().includes(searchLower) ||
+          data.resourceName?.toLowerCase().includes(searchLower) ||
+          data.accountName?.toLowerCase().includes(searchLower)
+        );
+      });
     }
 
     return filtered
@@ -276,18 +278,19 @@ export const ApprovalRequestTab = () => {
             <THead>
               <Tr>
                 <Th>Requester</Th>
-                <Th>Account Path</Th>
+                <Th>Resource</Th>
+                <Th>Account</Th>
                 <Th>Access Duration</Th>
                 <Th>Status</Th>
                 <Th>Requested</Th>
               </Tr>
             </THead>
             <TBody>
-              {isRequestsLoading && <TableSkeleton columns={5} innerKey="approval-requests" />}
+              {isRequestsLoading && <TableSkeleton columns={6} innerKey="approval-requests" />}
               {!isRequestsLoading &&
                 paginatedRequests.map((request) => {
                   const needsApproval = checkIfUserNeedsToApprove(request, userId, userGroups);
-                  const { accountPath, accessDuration } = request.requestData
+                  const { accessDuration, resourceName, accountName } = request.requestData
                     .requestData as PamAccessRequestData;
 
                   return (
@@ -305,9 +308,10 @@ export const ApprovalRequestTab = () => {
                         </div>
                       </Td>
                       <Td>
-                        <div>
-                          <div className="text-sm text-mineshaft-200">{accountPath}</div>
-                        </div>
+                        <span className="text-sm text-mineshaft-200">{resourceName || "-"}</span>
+                      </Td>
+                      <Td>
+                        <span className="text-sm text-mineshaft-200">{accountName || "-"}</span>
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-200">{accessDuration}</span>

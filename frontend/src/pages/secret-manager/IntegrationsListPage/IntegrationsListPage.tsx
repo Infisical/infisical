@@ -16,6 +16,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import {
+  AppConnectionsTab,
   FrameworkIntegrationTab,
   InfrastructureIntegrationTab,
   NativeIntegrationsTab,
@@ -62,8 +63,8 @@ export const IntegrationsListPage = () => {
           />
           <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
             <TabList>
-              <Tab variant="project" value={IntegrationsListPageTabs.SecretSyncs}>
-                Secret Syncs
+              <Tab variant="project" value={IntegrationsListPageTabs.AppConnections}>
+                App Connections
               </Tab>
               <Tab variant="project" value={IntegrationsListPageTabs.FrameworkIntegrations}>
                 Framework Integrations
@@ -74,15 +75,12 @@ export const IntegrationsListPage = () => {
               <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
                 Native Integrations
               </Tab>
+              <Tab variant="project" value={IntegrationsListPageTabs.SecretSyncs}>
+                Secret Syncs
+              </Tab>
             </TabList>
-            <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
-              <ProjectPermissionCan
-                renderGuardBanner
-                I={ProjectPermissionSecretSyncActions.Read}
-                a={ProjectPermissionSub.SecretSyncs}
-              >
-                <SecretSyncsTab />
-              </ProjectPermissionCan>
+            <TabPanel value={IntegrationsListPageTabs.AppConnections}>
+              <AppConnectionsTab />
             </TabPanel>
             <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
               <FrameworkIntegrationTab />
@@ -97,6 +95,15 @@ export const IntegrationsListPage = () => {
                 a={ProjectPermissionSub.Integrations}
               >
                 <NativeIntegrationsTab />
+              </ProjectPermissionCan>
+            </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
+              <ProjectPermissionCan
+                renderGuardBanner
+                I={ProjectPermissionSecretSyncActions.Read}
+                a={ProjectPermissionSub.SecretSyncs}
+              >
+                <SecretSyncsTab />
               </ProjectPermissionCan>
             </TabPanel>
           </Tabs>

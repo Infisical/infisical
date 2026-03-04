@@ -20,13 +20,54 @@ export type TSecretApprovalRequestDALFactory = ReturnType<typeof secretApprovalR
 
 type TFindQueryFilter = {
   projectId: string;
-  userId: string;
+  userId?: string;
   status?: RequestState;
   environment?: string;
   committer?: string;
   limit?: number;
   offset?: number;
   search?: string;
+};
+
+// Type for the query result documents in findByProjectId and findByProjectIdBridgeSecretV2
+type TSecretApprovalRequestDoc = TSecretApprovalRequests & {
+  environment: string;
+  projectId: string;
+  policyId: string;
+  policyName: string;
+  policyApprovals: number;
+  policySecretPath: string | null;
+  policyEnforcementLevel: string;
+  policyAllowedSelfApprovals: boolean;
+  committerUserId: string | null;
+  committerUserEmail: string | null;
+  committerUserFirstName: string | null;
+  committerUserLastName: string | null;
+  committerUserUsername: string | null;
+  reviewerId: string | null;
+  reviewerUserId: string | null;
+  reviewerStatus: string | null;
+  approverUserId: string | null;
+  approverGroupUserId: string | null;
+  bypasserUserId: string | null;
+  bypasserGroupUserId: string | null;
+  commitId: string | null;
+  commitOp: string | null;
+  commitSecretId: string | null;
+};
+
+// Helper to filter approval requests by user access (committer, approver, or group member)
+// Only applies filtering when userId is provided (users without SecretApprovalRequest.Read permission)
+const buildUserAccessFilter = (qb: Knex.QueryBuilder, userId?: string) => {
+  if (userId) {
+    void qb.andWhere(
+      (bd) =>
+        void bd
+          .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
+          .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
+          .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
+    );
+  }
 };
 
 export const secretApprovalRequestDALFactory = (db: TDbClient) => {
@@ -341,7 +382,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectRequestCount = async (projectId: string, userId: string, policyId?: string, tx?: Knex) => {
+  const findProjectRequestCount = async (projectId: string, userId?: string, policyId?: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())
         .with(
@@ -368,13 +409,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .where((qb) => {
               if (policyId) void qb.where(`${TableName.SecretApprovalPolicy}.id`, policyId);
             })
-            .andWhere(
-              (bd) =>
-                void bd
-                  .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
-                  .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
-                  .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
-            )
+            .modify((qb) => buildUserAccessFilter(qb, userId))
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
         )
@@ -456,13 +491,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             committerUserId: committer
           })
         )
-        .andWhere(
-          (bd) =>
-            void bd
-              .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
-              .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
-              .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
-        )
+        .modify((qb) => buildUserAccessFilter(qb, userId))
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
@@ -534,7 +563,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .andWhere("w.rank", "<", offset + limit);
 
       const formattedDoc = sqlNestRelationships({
-        data: docs,
+        data: docs as TSecretApprovalRequestDoc[],
         key: "id",
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
@@ -554,7 +583,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 email: el.committerUserEmail,
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
-                username: el.committerUserUsername
+                username: el.committerUserUsername!
               }
             : null
         }),
@@ -563,7 +592,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             key: "reviewerId",
             label: "reviewers" as const,
             mapper: ({ reviewerUserId, reviewerStatus: s }) =>
-              reviewerUserId ? { userId: reviewerUserId, status: s } : undefined
+              reviewerUserId ? { userId: reviewerUserId, status: s! } : undefined
           },
           {
             key: "approverUserId",
@@ -573,9 +602,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "commitId",
             label: "commits" as const,
-            mapper: ({ commitSecretId: secretId, commitId: id, commitOp: op }) => ({
-              op,
-              id,
+            mapper: ({ commitSecretId: secretId, commitOp: op }) => ({
+              op: op!,
               secretId
             })
           },
@@ -666,18 +694,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             committerUserId: committer
           })
         )
-        .andWhere(
-          (bd) =>
-            void bd
-              .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
-              .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
-              .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
-        )
+        .modify((qb) => buildUserAccessFilter(qb, userId))
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
           db.ref("name").withSchema(TableName.Environment).as("environmentName"),
+          db.ref("name").withSchema(TableName.SecretFolder).as("requestFolderPath"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerId"),
           db.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
           db.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
@@ -686,6 +709,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("op").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitOp"),
           db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitSecretId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitId"),
+          db.ref("key").withSchema(TableName.SecretApprovalRequestSecretV2).as("secretKey"),
           db.raw(
             `DENSE_RANK() OVER (PARTITION BY ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."createdAt" DESC) as rank`
           ),
@@ -721,28 +745,58 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), `%${search}%`])
             .orWhereILike(`environmentName`, `%${search}%`)
             .orWhereILike(`environment`, `%${search}%`)
-            .orWhereILike(`policySecretPath`, `%${search}%`);
+            .orWhereILike(`policySecretPath`, `%${search}%`)
+            .orWhereILike(`requestFolderPath`, `%${search}%`)
+            .orWhereILike(`secretKey`, `%${search}%`);
         });
       }
 
-      const countQuery = (await (tx || db)
-        .select(db.raw("count(*) OVER() as total_count"))
-        .from(query.clone().as("outer"))) as Array<{
-        total_count: number;
-      }>;
-
+      // Phase 1: Get page of change request ids (one row per request) + total count
+      // Use createdAt DESC, id so DENSE_RANK is deterministic (no ties => exactly `limit` rows per page)
       const rankOffset = offset + 1;
-      const docs = await (tx || db)
-        .with("w", query)
-        .select("*")
-        .from<Awaited<typeof query>[number]>("w")
-        .where("w.rank", ">=", rankOffset)
-        .andWhere("w.rank", "<", rankOffset + limit);
+      const distinctRequestsSub = query
+        .clone()
+        .clearSelect()
+        .clearOrder()
+        .select(db.raw('DISTINCT ON (id) id, "createdAt"'))
+        .orderBy("id")
+        .orderBy("createdAt", "desc");
+      const rankedSub = (tx || db)
+        .select(
+          db.raw('id, "createdAt", DENSE_RANK() OVER (ORDER BY "createdAt" DESC, id) as r, COUNT(*) OVER () as total')
+        )
+        .from(distinctRequestsSub.as("dr"));
+      const pageIdsResult = (await (tx || db)
+        .select("id", "r", "total")
+        .from(rankedSub.as("ranked"))
+        .where("r", ">=", rankOffset)
+        .where("r", "<", rankOffset + limit)
+        .orderBy("r", "asc")
+        .limit(limit)) as Array<{ id: string; r: number; total: string }>;
 
-      const totalCount = Number(countQuery[0]?.total_count || 0);
+      const pageIds = pageIdsResult.map((row) => row.id).slice(0, limit);
+      let totalCount = pageIdsResult.length > 0 ? Number(pageIdsResult[0]?.total ?? 0) : 0;
+
+      if (pageIdsResult.length === 0) {
+        const countResult = (await (tx || db)
+          .select(db.raw("COUNT(DISTINCT id) as total_count"))
+          .from(query.clone().as("count_query"))
+          .first()) as { total_count: string } | undefined;
+        totalCount = Number(countResult?.total_count ?? 0);
+      }
+
+      // Phase 2: Full data for this page's request ids (all commit rows for display)
+      const docs =
+        pageIds.length === 0
+          ? []
+          : ((await (tx || db)
+              .select("*")
+              .from(innerQuery)
+              .whereIn(`id`, pageIds)
+              .orderBy("createdAt", "desc")) as Awaited<typeof query>[number][]);
 
       const formattedDoc = sqlNestRelationships({
-        data: docs,
+        data: docs as TSecretApprovalRequestDoc[],
         key: "id",
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
@@ -762,7 +816,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 email: el.committerUserEmail,
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
-                username: el.committerUserUsername
+                username: el.committerUserUsername!
               }
             : null
         }),
@@ -771,7 +825,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             key: "reviewerId",
             label: "reviewers" as const,
             mapper: ({ reviewerUserId, reviewerStatus: s }) =>
-              reviewerUserId ? { userId: reviewerUserId, status: s } : undefined
+              reviewerUserId ? { userId: reviewerUserId, status: s! } : undefined
           },
           {
             key: "approverUserId",
@@ -781,9 +835,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "commitId",
             label: "commits" as const,
-            mapper: ({ commitSecretId: secretId, commitId: id, commitOp: op }) => ({
-              op,
-              id,
+            mapper: ({ commitSecretId: secretId, commitOp: op }) => ({
+              op: op!,
               secretId
             })
           },
@@ -808,13 +861,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return {
-        approvals: formattedDoc.map((el) => ({
-          ...el,
-          policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
-        })),
-        totalCount
-      };
+      const capped = formattedDoc.slice(0, limit);
+      const approvals = capped.map((el) => ({
+        ...el,
+        policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
+      }));
+      return { approvals, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSAR" });
     }

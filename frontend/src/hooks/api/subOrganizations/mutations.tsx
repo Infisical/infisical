@@ -24,10 +24,10 @@ export const useCreateSubOrganization = () => {
 export const useUpdateSubOrganization = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ subOrgId, name }: TUpdateSubOrganizationDTO) => {
+    mutationFn: async ({ subOrgId, name, slug }: TUpdateSubOrganizationDTO) => {
       const { data } = await apiRequest.patch<{ organization: TSubOrganization }>(
         `/api/v1/sub-organizations/${subOrgId}`,
-        { name }
+        { name, slug }
       );
       return data;
     },

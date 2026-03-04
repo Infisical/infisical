@@ -29,16 +29,16 @@ export type TCreateSharedSecretRequest = {
   name?: string;
   password?: string;
   secretValue: string;
-  expiresAt: Date;
-  expiresAfterViews?: number;
+  expiresIn: string;
+  maxViews?: number;
   accessType?: SecretSharingAccessType;
-  emails?: string[];
+  authorizedEmails?: string[];
 };
 
 export type TCreateSecretRequestRequestDTO = {
   name?: string;
   accessType?: SecretSharingAccessType;
-  expiresAt: Date;
+  expiresIn: string;
 };
 
 export type TSetSecretRequestValueRequest = {
@@ -50,17 +50,6 @@ export type TRevealSecretRequestValueRequest = {
   id: string;
 };
 
-export type TSharedSecretResponse = {
-  secretValue?: string;
-  encryptedValue: string;
-  iv: string;
-  tag: string;
-  accessType: SecretSharingAccessType;
-  orgName?: string;
-  expiresAt?: Date | string;
-  expiresAfterViews?: number | null;
-};
-
 export type TBrandingConfig = {
   hasLogo: boolean;
   hasFavicon: boolean;
@@ -68,11 +57,35 @@ export type TBrandingConfig = {
   secondaryColor?: string;
 };
 
-export type TViewSharedSecretResponse = {
+// Sanitized shared secret - omits sensitive fields like password, encryptedSecret, etc.
+export type TSanitizedSharedSecret = {
+  id: string;
+  userId: string | null;
+  orgId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  name: string | null;
+  lastViewedAt: string | null;
+  accessType: SecretSharingAccessType;
+  expiresAt: string;
+  expiresAfterViews: number | null;
+};
+
+export type TSharedSecretPublicDetails = TSanitizedSharedSecret & {
   isPasswordProtected: boolean;
-  brandingConfig?: TBrandingConfig;
-  secret?: TSharedSecretResponse;
-  error?: string;
+};
+
+export type TAccessSharedSecretResponse = {
+  secretValue: string;
+  accessType: SecretSharingAccessType;
+  orgName?: string;
+  expiresAt?: Date | string;
+  expiresAfterViews?: number | null;
+};
+
+export type TAccessSharedSecretRequest = {
+  sharedSecretId: string;
+  password?: string;
 };
 
 export type TGetSecretRequestByIdResponse = {

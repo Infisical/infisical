@@ -23,7 +23,7 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { ActorType, AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -62,6 +62,7 @@ type TScimServiceFactoryDep = {
     | "findById"
     | "find"
     | "findMembership"
+    | "findEffectiveOrgMembership"
     | "findMembershipWithScimFilter"
     | "deleteMembershipById"
     | "transaction"
@@ -408,16 +409,15 @@ export const scimServiceFactory = ({
       let orgMembership: TMemberships;
       if (userAlias) {
         user = await userDAL.findById(userAlias.userId, tx);
-        orgMembership = await membershipUserDAL.findOne(
-          {
-            actorUserId: user.id,
-            scope: AccessScope.Organization,
-            scopeOrgId: orgId
-          },
+        const effectiveMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.USER,
+          actorId: user.id,
+          orgId,
+          acceptAnyStatus: true,
           tx
-        );
+        });
 
-        if (!orgMembership) {
+        if (!effectiveMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
 
           orgMembership = await membershipUserDAL.create(
@@ -439,11 +439,37 @@ export const scimServiceFactory = ({
             },
             tx
           );
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
-          orgMembership = await membershipUserDAL.updateById(
-            orgMembership.id,
+        } else if (effectiveMembership.actorUserId === user.id) {
+          orgMembership = effectiveMembership;
+          if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
+            orgMembership = await membershipUserDAL.updateById(
+              orgMembership.id,
+              {
+                status: OrgMembershipStatus.Accepted
+              },
+              tx
+            );
+          }
+        } else {
+          // Effective access via group only; create direct membership so SCIM list/get work
+          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
+
+          orgMembership = await membershipUserDAL.create(
             {
-              status: OrgMembershipStatus.Accepted
+              actorUserId: userAlias.userId,
+              inviteEmail: email.toLowerCase(),
+              scopeOrgId: orgId,
+              scope: AccessScope.Organization,
+              status: OrgMembershipStatus.Accepted,
+              isActive: true
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: orgMembership.id,
+              role,
+              customRoleId: roleId
             },
             tx
           );
@@ -487,6 +513,14 @@ export const scimServiceFactory = ({
             },
             tx
           );
+        } else if (!user.isEmailVerified && trustScimEmails) {
+          await userDAL.updateById(
+            user.id,
+            {
+              isEmailVerified: trustScimEmails
+            },
+            tx
+          );
         }
 
         await userAliasDAL.create(
@@ -501,18 +535,15 @@ export const scimServiceFactory = ({
           tx
         );
 
-        const [foundOrgMembership] = await orgDAL.findMembership(
-          {
-            [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
-            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-          },
-          { tx }
-        );
+        const effectiveMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.USER,
+          actorId: user.id,
+          orgId,
+          acceptAnyStatus: true,
+          tx
+        });
 
-        orgMembership = foundOrgMembership;
-
-        if (!orgMembership) {
+        if (!effectiveMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
 
           orgMembership = await membershipUserDAL.create(
@@ -534,12 +565,37 @@ export const scimServiceFactory = ({
             },
             tx
           );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
-          orgMembership = await orgDAL.updateMembershipById(
-            orgMembership.id,
+        } else if (effectiveMembership.actorUserId === user.id) {
+          orgMembership = effectiveMembership;
+          if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
+            orgMembership = await orgDAL.updateMembershipById(
+              orgMembership.id,
+              {
+                status: OrgMembershipStatus.Accepted
+              },
+              tx
+            );
+          }
+        } else {
+          // Effective access via group only; create direct membership so SCIM list/get work
+          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
+
+          orgMembership = await membershipUserDAL.create(
             {
-              status: OrgMembershipStatus.Accepted
+              actorUserId: user.id,
+              inviteEmail: email.toLowerCase(),
+              scopeOrgId: orgId,
+              scope: AccessScope.Organization,
+              status: OrgMembershipStatus.Accepted,
+              isActive: true
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: orgMembership.id,
+              role,
+              customRoleId: roleId
             },
             tx
           );

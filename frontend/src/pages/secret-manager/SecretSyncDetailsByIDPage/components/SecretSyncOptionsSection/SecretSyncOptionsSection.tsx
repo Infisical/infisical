@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -7,13 +6,14 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
+import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
 
 type Props = {
@@ -24,9 +24,7 @@ type Props = {
 export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) => {
   const {
     destination,
-    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema },
-    environment,
-    folder
+    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema }
   } = secretSync;
 
   let AdditionalSyncOptionsComponent: ReactNode;
@@ -45,6 +43,9 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Render:
       AdditionalSyncOptionsComponent = <RenderSyncOptionsSection secretSync={secretSync} />;
       break;
+    case SecretSync.Flyio:
+      AdditionalSyncOptionsComponent = <FlyioSyncOptionsSection secretSync={secretSync} />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:
@@ -61,7 +62,6 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.OCIVault:
     case SecretSync.OnePass:
     case SecretSync.Heroku:
-    case SecretSync.Flyio:
     case SecretSync.GitLab:
     case SecretSync.CloudflarePages:
     case SecretSync.CloudflareWorkers:
@@ -76,19 +76,14 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.LaravelForge:
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
+    case SecretSync.CircleCI:
       AdditionalSyncOptionsComponent = null;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
   }
 
-  const permissionSubject =
-    environment && folder
-      ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path
-        })
-      : ProjectPermissionSub.SecretSyncs;
+  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
   return (
     <div>

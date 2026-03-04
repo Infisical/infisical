@@ -14,7 +14,8 @@ export const PkiAcmeEnrollmentConfigsSchema = z.object({
   encryptedEabSecret: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date(),
-  skipDnsOwnershipVerification: z.boolean().default(false)
+  skipDnsOwnershipVerification: z.boolean().default(false),
+  skipEabBinding: z.boolean().default(false)
 });
 
 export type TPkiAcmeEnrollmentConfigs = z.infer<typeof PkiAcmeEnrollmentConfigsSchema>;

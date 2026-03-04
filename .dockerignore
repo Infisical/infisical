@@ -8,3 +8,9 @@ backend/frontend-build
 README.md
 .dockerignore
 **/Dockerfile
+
+# Exclude test directories and test private keys from production images
+backend/bdd
+backend/e2e-test
+**/*.test.ts
+**/*.spec.ts

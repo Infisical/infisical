@@ -8,7 +8,6 @@ import {
   TListPamAccountsDTO,
   TListPamResourcesDTO,
   TPamAccount,
-  TPamFolder,
   TPamResource,
   TPamSession
 } from "./types";
@@ -31,12 +30,14 @@ export const pamKeys = {
     resourceType,
     resourceId
   ],
+  listRelatedResources: (resourceId: string) => [...pamKeys.resource(), "related", resourceId],
   listAccounts: ({ projectId, ...params }: TListPamAccountsDTO) => [
     ...pamKeys.account(),
     "list",
     projectId,
     params
   ],
+  getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
@@ -86,9 +87,18 @@ export const useListPamResources = (
   return useQuery({
     queryKey: pamKeys.listResources(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TListPamResourcesResponse>("/api/v1/pam/resources", {
-        params
-      });
+      const { metadataFilter, filterResourceTypes, ...rest } = params;
+      const { data } = await apiRequest.post<TListPamResourcesResponse>(
+        "/api/v1/pam/resources/search",
+        {
+          ...rest,
+          metadata: metadataFilter,
+          filterResourceTypes: filterResourceTypes
+            ?.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        }
+      );
 
       return data;
     },
@@ -119,13 +129,36 @@ export const useGetPamResourceById = (
   });
 };
 
+export const useListRelatedResources = (
+  resourceId?: string,
+  options?: Omit<
+    UseQueryOptions<
+      TPamResource[],
+      unknown,
+      TPamResource[],
+      ReturnType<typeof pamKeys.listRelatedResources>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.listRelatedResources(resourceId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ resources: TPamResource[] }>(
+        `/api/v1/pam/resources/active-directory/${resourceId}/related-resources`
+      );
+
+      return data.resources;
+    },
+    enabled: !!resourceId && (options?.enabled ?? true),
+    ...options
+  });
+};
+
 // Accounts
 type TListPamAccountsResponse = {
   accounts: TPamAccount[];
-  folders: TPamFolder[];
   totalCount: number;
-  folderId?: string;
-  folderPaths: Record<string, string>;
 };
 
 export const useListPamAccounts = (
@@ -143,13 +176,41 @@ export const useListPamAccounts = (
   return useQuery({
     queryKey: pamKeys.listAccounts(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TListPamAccountsResponse>("/api/v1/pam/accounts", {
-        params
-      });
+      const { metadataFilter, filterResourceIds, ...rest } = params;
+      const { data } = await apiRequest.post<TListPamAccountsResponse>(
+        "/api/v1/pam/accounts/search",
+        {
+          ...rest,
+          metadata: metadataFilter,
+          filterResourceIds: filterResourceIds
+            ?.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        }
+      );
 
       return data;
     },
     placeholderData: (prev) => prev,
+    ...options
+  });
+};
+
+export const useGetPamAccountById = (
+  accountId?: string,
+  options?: Omit<
+    UseQueryOptions<TPamAccount, unknown, TPamAccount, ReturnType<typeof pamKeys.getAccount>>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.getAccount(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TPamAccount>(`/api/v1/pam/accounts/${accountId}`);
+
+      return data;
+    },
+    enabled: !!accountId && (options?.enabled ?? true),
     ...options
   });
 };

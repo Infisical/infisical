@@ -2,12 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
-import { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import {
   TCreateSecretRotationV2DTO,
   TDeleteSecretRotationV2DTO,
-  TReconcileUnixLinuxLocalAccountRotationDTO,
-  TReconcileUnixLinuxLocalAccountRotationResponse,
+  TReconcileLocalAccountRotationDTO,
+  TReconcileLocalAccountRotationResponse,
   TRotateSecretRotationV2DTO,
   TSecretRotationV2Response,
   TUpdateSecretRotationV2DTO
@@ -93,12 +92,12 @@ export const useDeleteSecretRotationV2 = () => {
   });
 };
 
-export const useReconcileUnixLinuxLocalAccountRotation = () => {
+export const useReconcileLocalAccountRotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ rotationId }: TReconcileUnixLinuxLocalAccountRotationDTO) => {
-      const { data } = await apiRequest.post<TReconcileUnixLinuxLocalAccountRotationResponse>(
-        `/api/v2/secret-rotations/${SecretRotation.UnixLinuxLocalAccount}/${rotationId}/reconcile`
+    mutationFn: async ({ rotationId, type }: TReconcileLocalAccountRotationDTO) => {
+      const { data } = await apiRequest.post<TReconcileLocalAccountRotationResponse>(
+        `/api/v2/secret-rotations/${type}/${rotationId}/reconcile`
       );
 
       return data;

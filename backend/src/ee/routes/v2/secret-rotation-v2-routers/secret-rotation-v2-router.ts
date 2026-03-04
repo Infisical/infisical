@@ -5,16 +5,19 @@ import { Auth0ClientSecretRotationListItemSchema } from "@app/ee/services/secret
 import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { DatabricksServicePrincipalSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
+import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MongoDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
+import { OpenRouterApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
 import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
 import { UnixLinuxLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
+import { WindowsLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -33,7 +36,10 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   RedisCredentialsRotationListItemSchema,
   MongoDBCredentialsRotationListItemSchema,
   DatabricksServicePrincipalSecretRotationListItemSchema,
-  UnixLinuxLocalAccountRotationListItemSchema
+  UnixLinuxLocalAccountRotationListItemSchema,
+  DbtServiceTokenRotationListItemSchema,
+  WindowsLocalAccountRotationListItemSchema,
+  OpenRouterApiKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

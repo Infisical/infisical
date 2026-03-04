@@ -23,16 +23,17 @@ import {
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing";
+import { ms } from "@app/lib/fn/time";
 
 // values in ms
 const expiresInOptions = [
-  { label: "5 min", value: 5 * 60 * 1000 },
-  { label: "30 min", value: 30 * 60 * 1000 },
-  { label: "1 hour", value: 60 * 60 * 1000 },
-  { label: "1 day", value: 24 * 60 * 60 * 1000 },
-  { label: "7 days", value: 7 * 24 * 60 * 60 * 1000 },
-  { label: "14 days", value: 14 * 24 * 60 * 60 * 1000 },
-  { label: "30 days", value: 30 * 24 * 60 * 60 * 1000 }
+  { label: "5 min", value: "5m" },
+  { label: "30 min", value: "30m" },
+  { label: "1 hour", value: "1h" },
+  { label: "1 day", value: "1d" },
+  { label: "7 days", value: "7d" },
+  { label: "14 days", value: "14d" },
+  { label: "30 days", value: "30d" }
 ];
 
 const viewLimitOptions = [
@@ -99,7 +100,7 @@ export const ShareSecretForm = ({
 
   // Note: maxSharedSecretLifetime is in seconds
   const filteredExpiresInOptions = maxSharedSecretLifetime
-    ? expiresInOptions.filter((v) => v.value / 1000 <= maxSharedSecretLifetime)
+    ? expiresInOptions.filter((v) => ms(v.value) / 1000 <= maxSharedSecretLifetime)
     : expiresInOptions;
 
   const {
@@ -131,18 +132,16 @@ export const ShareSecretForm = ({
     emails,
     shouldLimitView
   }: FormData) => {
-    const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
-
     const processedEmails = emails ? emails.split(",").map((e) => e.trim()) : undefined;
 
     const { id } = await createSharedSecret.mutateAsync({
       name,
       password,
       secretValue: secret,
-      expiresAt,
-      expiresAfterViews: shouldLimitView ? Number(viewLimit) : undefined,
+      expiresIn,
+      maxViews: shouldLimitView ? Number(viewLimit) : undefined,
       accessType,
-      emails: processedEmails
+      authorizedEmails: processedEmails
     });
 
     if (processedEmails && processedEmails.length > 0) {
@@ -396,7 +395,18 @@ export const ShareSecretForm = ({
                     <FormControl
                       label="Authorized Emails"
                       isOptional
-                      tooltipText="Unique secret links will be emailed to each individual. The secret will only be accessible to those links."
+                      helperText="Recipients must have an Infisical account to verify identity"
+                      tooltipText={
+                        <>
+                          <p>
+                            Unique secret links will be emailed to each individual. The secret will
+                            only be accessible to those links.
+                          </p>
+                          <p className="mt-2">
+                            Recipients must have an Infisical account to verify their identity.
+                          </p>
+                        </>
+                      }
                       tooltipClassName="max-w-sm"
                       isError={Boolean(error)}
                       errorText={error?.message}

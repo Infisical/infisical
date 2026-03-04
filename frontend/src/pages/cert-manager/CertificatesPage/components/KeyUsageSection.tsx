@@ -17,9 +17,10 @@ type KeyUsageSectionProps = {
   control: Control<any>;
   title: string;
   accordionValue: string;
-  namePrefix: "keyUsages" | "extendedKeyUsages";
+  namePrefix: string;
   options: KeyUsageOption[];
   requiredUsages: string[];
+  shouldUnregister?: boolean;
 };
 
 export const KeyUsageSection = ({
@@ -28,14 +29,15 @@ export const KeyUsageSection = ({
   accordionValue,
   namePrefix,
   options,
-  requiredUsages
+  requiredUsages,
+  shouldUnregister
 }: KeyUsageSectionProps) => {
   if (options.length === 0) return null;
 
   return (
     <AccordionItem value={accordionValue}>
       <AccordionTrigger>{title}</AccordionTrigger>
-      <AccordionContent>
+      <AccordionContent forceMount className="data-[state=closed]:hidden">
         <div className="grid grid-cols-2 gap-2 pl-2">
           {options.map(({ label, value }) => {
             const isRequired = requiredUsages.includes(value);
@@ -44,6 +46,7 @@ export const KeyUsageSection = ({
                 key={label}
                 control={control}
                 name={`${namePrefix}.${value}` as any}
+                shouldUnregister={shouldUnregister}
                 render={({ field }) => (
                   <div className="flex items-center space-x-3">
                     <Checkbox

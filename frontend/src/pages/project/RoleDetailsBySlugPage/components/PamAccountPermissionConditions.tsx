@@ -16,7 +16,8 @@ export const PamAccountPermissionConditions = ({ position = 0, isDisabled }: Pro
       selectOptions={[
         { value: "resourceName", label: "Resource Name" },
         { value: "accountName", label: "Account Name" },
-        { value: "accountPath", label: "Account Path" }
+        { value: "metadataKey", label: "Metadata Key" },
+        { value: "metadataValue", label: "Metadata Value" }
       ]}
     />
   );

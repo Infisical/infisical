@@ -19,13 +19,13 @@ export const Mappings = {
   BusEventToAction(input: BusEventName) {
     switch (input) {
       case BusEventName.CreateSecret:
-        return ProjectPermissionSecretEventActions.SubscribeCreated;
+        return ProjectPermissionSecretEventActions.SubscribeToCreationEvents;
       case BusEventName.DeleteSecret:
-        return ProjectPermissionSecretEventActions.SubscribeDeleted;
+        return ProjectPermissionSecretEventActions.SubscribeToDeleteEvents;
       case BusEventName.ImportMutation:
-        return ProjectPermissionSecretEventActions.SubscribeImportMutations;
+        return ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents;
       case BusEventName.UpdateSecret:
-        return ProjectPermissionSecretEventActions.SubscribeUpdated;
+        return ProjectPermissionSecretEventActions.SubscribeToUpdateEvents;
       default:
         throw new Error("Unknown bus event name");
     }

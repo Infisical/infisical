@@ -43,7 +43,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
             }
           })
           .describe(OCI_AUTH.LOGIN.headers),
-        subOrganizationName: slugSchema().optional().describe(OCI_AUTH.LOGIN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(OCI_AUTH.LOGIN.organizationSlug)
       }),
       response: {
         200: z.object({

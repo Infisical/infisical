@@ -29,7 +29,15 @@ export const caKeys = {
   ]
 };
 
-export const useGetCa = ({ caId, type }: { caId: string; type: CaType }) => {
+export const useGetCa = ({
+  caId,
+  type,
+  options
+}: {
+  caId: string;
+  type: CaType;
+  options?: { enabled?: boolean };
+}) => {
   return useQuery({
     queryKey: caKeys.getCaById(caId),
     queryFn: async () => {
@@ -38,7 +46,7 @@ export const useGetCa = ({ caId, type }: { caId: string; type: CaType }) => {
       );
       return data;
     },
-    enabled: Boolean(caId && type)
+    enabled: options?.enabled !== undefined ? options.enabled : Boolean(caId && type)
   });
 };
 
@@ -72,12 +80,15 @@ export const useListExternalCasByProjectId = (projectId: string) => {
   return useQuery({
     queryKey: caKeys.listExternalCasByProjectId(projectId),
     queryFn: async () => {
-      const [acmeResponse, azureAdCsResponse] = await Promise.allSettled([
+      const [acmeResponse, azureAdCsResponse, awsPcaResponse] = await Promise.allSettled([
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.ACME}?projectId=${projectId}`
         ),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.AZURE_AD_CS}?projectId=${projectId}`
+        ),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(
+          `/api/v1/cert-manager/ca/${CaType.AWS_PCA}?projectId=${projectId}`
         )
       ]);
 
@@ -89,6 +100,10 @@ export const useListExternalCasByProjectId = (projectId: string) => {
 
       if (azureAdCsResponse.status === "fulfilled") {
         allCas.push(...azureAdCsResponse.value.data);
+      }
+
+      if (awsPcaResponse.status === "fulfilled") {
+        allCas.push(...awsPcaResponse.value.data);
       }
 
       return allCas;

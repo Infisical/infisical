@@ -1,0 +1,55 @@
+---
+title: "Slack Alerts"
+sidebarTitle: "Slack Alerts"
+description: "Learn how to set up Slack notifications for PKI certificate alerts"
+---
+
+Infisical can send PKI certificate alert notifications to a Slack channel using [Incoming Webhooks](https://api.slack.com/messaging/webhooks). This guide walks through creating a Slack app and configuring a Slack alert.
+
+## Guide to Creating a Slack Alert
+
+<Steps>
+  <Step title="Create a Slack App">
+    1. Go to the [Slack API Apps page](https://api.slack.com/apps) and click **Create New App**
+    2. Select **From scratch**
+    3. Give your app a name (e.g., "Infisical PKI Alerts") and select the Slack workspace where you want to receive notifications
+    4. Click **Create App**
+
+    ![slack create app](/images/platform/pki/alerting/slack-create-app.png)
+  </Step>
+  <Step title="Enable Incoming Webhooks">
+    1. In your app settings, navigate to **Incoming Webhooks** in the left sidebar under "Features"
+    2. Toggle **Activate Incoming Webhooks** to **On**
+    3. Click **Add New Webhook** at the bottom of the page
+    4. Select the channel where you want to receive alerts and click **Allow**
+    5. Copy the generated **Webhook URL** (it will look like `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX`)
+
+    ![slack enable webhooks](/images/platform/pki/alerting/slack-enable-webhooks.png)
+  </Step>
+  <Step title="Create the Alert in Infisical">
+    Head to your Certificate Management Project > Alerting and press **Create Certificate Alert**.
+
+    ![pki alerting](/images/platform/pki/alerting/alert-create.png)
+
+    ![pki alerting modal](/images/platform/pki/alerting/alert-create-modal.png)
+
+    Here's some guidance for each field in the alert configuration sequence:
+
+    - **Alert Type**: The type of alert to create such as **Certificate Expiration**.
+    - **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+    - **Description**: An optional description for the alert.
+    - **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+    - **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
+  </Step>
+  <Step title="Add a Slack Notification Channel">
+    Add a **Slack** notification channel and paste the webhook URL you copied from Slack.
+
+    ![slack configure alert](/images/platform/pki/alerting/slack-configure-alert.png)
+  </Step>
+</Steps>
+
+<Note>
+Keep your webhook URL secure. Anyone with access to it can post messages to your Slack channel.
+</Note>
+
+Slack messages include alert details and the two most urgent expiring certificates, with a link to view all certificates in Infisical.

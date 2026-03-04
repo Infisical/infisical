@@ -115,11 +115,6 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
           secretPath,
           secretKey: secret.key,
           type: SecretType.Shared,
-          tagIds: secret.tags?.map((tag) => tag.id),
-          secretComment: secret.comment,
-          secretReminderRepeatDays: secret.reminderRepeatDays,
-          secretReminderNote: secret.reminderNote,
-          skipMultilineEncoding: secret.skipMultilineEncoding,
           newSecretName: data.key
         });
       });

@@ -17,14 +17,20 @@ const ReviewField = ({ label, value }: { label: string; value: string | number }
 );
 
 export const PolicyReviewStep = () => {
-  const { watch } = useFormContext<TPolicyForm>();
+  const { getValues } = useFormContext<TPolicyForm>();
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
-  const { name, conditions, constraints, steps } = watch();
+  const name = getValues("name");
+  const conditions = getValues("conditions") as {
+    resourceNames?: string[];
+    accountNames?: string[];
+  }[];
+  const constraints = getValues("constraints");
+  const steps = getValues("steps");
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
     if (approverType === ApproverType.User) {
@@ -41,6 +47,9 @@ export const PolicyReviewStep = () => {
     return approverId;
   };
 
+  const resourceNames = conditions[0]?.resourceNames || [];
+  const accountNames = conditions[0]?.accountNames || [];
+
   return (
     <div className="space-y-6">
       <div>
@@ -50,12 +59,15 @@ export const PolicyReviewStep = () => {
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
           <ReviewField label="Max. Access Duration" value={constraints.accessDuration.max} />
-          <ReviewField
-            label="Account Paths"
-            value={
-              conditions[0].accountPaths.length ? conditions[0].accountPaths.join(",") : "Not set"
-            }
-          />
+          {resourceNames.length > 0 && (
+            <ReviewField label="Resource Names" value={resourceNames.join(", ")} />
+          )}
+          {accountNames.length > 0 && (
+            <ReviewField label="Account Names" value={accountNames.join(", ")} />
+          )}
+          {resourceNames.length === 0 && accountNames.length === 0 && (
+            <ReviewField label="Conditions" value="Not set" />
+          )}
         </div>
       </div>
 

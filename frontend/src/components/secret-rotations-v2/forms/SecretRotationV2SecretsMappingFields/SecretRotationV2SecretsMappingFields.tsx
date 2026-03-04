@@ -7,11 +7,14 @@ import { Auth0ClientSecretRotationSecretsMappingFields } from "./Auth0ClientSecr
 import { AwsIamUserSecretRotationSecretsMappingFields } from "./AwsIamUserSecretRotationSecretsMappingFields";
 import { AzureClientSecretRotationSecretsMappingFields } from "./AzureClientSecretRotationSecretsMappingFields";
 import { DatabricksServicePrincipalSecretRotationSecretsMappingFields } from "./DatabricksServicePrincipalSecretRotationSecretsMappingFields";
+import { DbtServiceTokenRotationSecretsMappingFields } from "./DbtServiceTokenRotationSecretsMappingFields";
 import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotationSecretsMappingFields";
 import { OktaClientSecretRotationSecretsMappingFields } from "./OktaClientSecretRotationSecretsMappingFields";
+import { OpenRouterApiKeyRotationSecretsMappingFields } from "./OpenRouterApiKeyRotationSecretsMappingFields";
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
 import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
 import { UnixLinuxLocalAccountRotationSecretsMappingFields } from "./UnixLinuxLocalAccountRotationSecretsMappingFields";
+import { WindowsLocalAccountRotationSecretsMappingFields } from "./WindowsLocalAccountRotationSecretsMappingFields";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationSecretsMappingFields,
@@ -27,7 +30,10 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.MongoDBCredentials]: SqlCredentialsRotationSecretsMappingFields,
   [SecretRotation.DatabricksServicePrincipalSecret]:
     DatabricksServicePrincipalSecretRotationSecretsMappingFields,
-  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationSecretsMappingFields
+  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationSecretsMappingFields,
+  [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationSecretsMappingFields,
+  [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationSecretsMappingFields,
+  [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

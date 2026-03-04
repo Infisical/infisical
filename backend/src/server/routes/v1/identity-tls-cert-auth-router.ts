@@ -49,7 +49,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       description: "Login with TLS Certificate Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(TLS_CERT_AUTH.LOGIN.identityId),
-        subOrganizationName: slugSchema().optional().describe(TLS_CERT_AUTH.LOGIN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(TLS_CERT_AUTH.LOGIN.organizationSlug)
       }),
       response: {
         200: z.object({

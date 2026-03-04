@@ -36,7 +36,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Bitbucket]: "Bitbucket",
   [SecretSync.LaravelForge]: "Laravel Forge",
   [SecretSync.Chef]: "Chef",
-  [SecretSync.OctopusDeploy]: "Octopus Deploy"
+  [SecretSync.OctopusDeploy]: "Octopus Deploy",
+  [SecretSync.CircleCI]: "CircleCI"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -73,7 +74,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Bitbucket]: AppConnection.Bitbucket,
   [SecretSync.LaravelForge]: AppConnection.LaravelForge,
   [SecretSync.Chef]: AppConnection.Chef,
-  [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy
+  [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
+  [SecretSync.CircleCI]: AppConnection.CircleCI
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -110,7 +112,8 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Bitbucket]: SecretSyncPlanType.Regular,
   [SecretSync.LaravelForge]: SecretSyncPlanType.Regular,
   [SecretSync.Chef]: SecretSyncPlanType.Enterprise,
-  [SecretSync.OctopusDeploy]: SecretSyncPlanType.Regular
+  [SecretSync.OctopusDeploy]: SecretSyncPlanType.Regular,
+  [SecretSync.CircleCI]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -156,7 +159,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Bitbucket]: [],
   [SecretSync.LaravelForge]: [],
   [SecretSync.Chef]: [],
-  [SecretSync.OctopusDeploy]: []
+  [SecretSync.OctopusDeploy]: [],
+  [SecretSync.CircleCI]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
@@ -219,5 +223,6 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Bitbucket]: defaultDuplicateCheck,
   [SecretSync.LaravelForge]: defaultDuplicateCheck,
   [SecretSync.Chef]: defaultDuplicateCheck,
-  [SecretSync.OctopusDeploy]: defaultDuplicateCheck
+  [SecretSync.OctopusDeploy]: defaultDuplicateCheck,
+  [SecretSync.CircleCI]: defaultDuplicateCheck
 };

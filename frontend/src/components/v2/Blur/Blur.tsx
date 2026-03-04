@@ -15,7 +15,7 @@ export const Blur = ({ className, tooltipText }: IProps) => {
         tabIndex={0}
         role="button"
       >
-        <span className="blur-sm">********</span>
+        <span className="blur-sm">xxxxxxxxxxxx</span>
       </div>
     </Tooltip>
   );

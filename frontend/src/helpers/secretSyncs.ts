@@ -129,6 +129,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.OctopusDeploy]: {
     name: "Octopus Deploy",
     image: "Octopus Deploy.png"
+  },
+  [SecretSync.CircleCI]: {
+    name: "CircleCI",
+    image: "CircleCI.png"
   }
 };
 
@@ -166,7 +170,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Bitbucket]: AppConnection.Bitbucket,
   [SecretSync.LaravelForge]: AppConnection.LaravelForge,
   [SecretSync.Chef]: AppConnection.Chef,
-  [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy
+  [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
+  [SecretSync.CircleCI]: AppConnection.CircleCI
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

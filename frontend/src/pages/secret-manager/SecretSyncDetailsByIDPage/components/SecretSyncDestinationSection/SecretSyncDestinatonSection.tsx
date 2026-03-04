@@ -1,15 +1,14 @@
 import { ReactNode } from "react";
-import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
-import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { OnePassSyncDestinationSection } from "./1PasswordSyncDestinationSection";
 import { AwsParameterStoreSyncDestinationSection } from "./AwsParameterStoreSyncDestinationSection";
@@ -21,6 +20,7 @@ import { BitbucketSyncDestinationSection } from "./BitbucketSyncDestinationSecti
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
 import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
+import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
@@ -52,7 +52,7 @@ type Props = {
 };
 
 export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: Props) => {
-  const { destination, connection, folder, environment } = secretSync;
+  const { destination, connection } = secretSync;
 
   const app = APP_CONNECTION_MAP[connection.app].name;
 
@@ -164,17 +164,14 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.OctopusDeploy:
       DestinationComponents = <OctopusDeploySyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.CircleCI:
+      DestinationComponents = <CircleCISyncDestinationSection secretSync={secretSync} />;
+      break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);
   }
 
-  const permissionSubject =
-    environment && folder
-      ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path
-        })
-      : ProjectPermissionSub.SecretSyncs;
+  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">

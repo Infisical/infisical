@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { subject } from "@casl/ability";
 import {
   faCheck,
   faCopy,
@@ -36,7 +35,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useOrganization } from "@app/context";
+import { useOrganization } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -46,6 +45,7 @@ import {
   useTriggerSecretSyncSyncSecrets,
   useUpdateSecretSync
 } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {
@@ -64,7 +64,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
   const triggerSyncSecrets = useTriggerSecretSyncSyncSecrets();
   const updateSync = useUpdateSecretSync();
 
-  const { destination, environment, folder } = secretSync;
+  const { destination } = secretSync;
   const { currentOrg } = useOrganization();
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
@@ -116,13 +116,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
     });
   };
 
-  const permissionSubject =
-    environment && folder
-      ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path
-        })
-      : ProjectPermissionSub.SecretSyncs;
+  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
   return (
     <>

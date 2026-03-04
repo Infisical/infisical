@@ -90,6 +90,7 @@ import {
   TChecklySyncListItem,
   TChecklySyncWithCredentials
 } from "./checkly/checkly-sync-types";
+import { TCircleCISync, TCircleCISyncInput, TCircleCISyncListItem, TCircleCISyncWithCredentials } from "./circleci";
 import {
   TCloudflarePagesSync,
   TCloudflarePagesSyncInput,
@@ -208,7 +209,8 @@ export type TSecretSync =
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
-  | TOctopusDeploySync;
+  | TOctopusDeploySync
+  | TCircleCISync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -244,7 +246,8 @@ export type TSecretSyncWithCredentials =
   | TNorthflankSyncWithCredentials
   | TBitbucketSyncWithCredentials
   | TLaravelForgeSyncWithCredentials
-  | TOctopusDeploySyncWithCredentials;
+  | TOctopusDeploySyncWithCredentials
+  | TCircleCISyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -280,7 +283,8 @@ export type TSecretSyncInput =
   | TNorthflankSyncInput
   | TBitbucketSyncInput
   | TLaravelForgeSyncInput
-  | TOctopusDeploySyncInput;
+  | TOctopusDeploySyncInput
+  | TCircleCISyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -316,7 +320,8 @@ export type TSecretSyncListItem =
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
   | TBitbucketSyncListItem
-  | TOctopusDeploySyncListItem;
+  | TOctopusDeploySyncListItem
+  | TCircleCISyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

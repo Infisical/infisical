@@ -3,9 +3,11 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPamResource } from "@app/ee/services/pam-resource/pam-resource-types";
+import { SanitizedWindowsResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 export const registerPamResourceEndpoints = <T extends TPamResource>({
   server,
@@ -22,12 +24,14 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
     gatewayId?: T["gatewayId"];
     name: T["name"];
     rotationAccountCredentials?: T["rotationAccountCredentials"];
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   updateResourceSchema: z.ZodType<{
     connectionDetails?: T["connectionDetails"];
     gatewayId?: T["gatewayId"];
     name?: T["name"];
     rotationAccountCredentials?: T["rotationAccountCredentials"];
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   resourceResponseSchema: z.ZodTypeAny;
 }) => {
@@ -327,6 +331,34 @@ echo ""
 
       void reply.header("Content-Type", "text/plain; charset=utf-8");
       return setupScript;
+    }
+  });
+};
+
+export const registerActiveDirectoryRelatedResourcesEndpoint = (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/:resourceId/related-resources",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getActiveDirectoryRelatedResources",
+      description: "List resources that belong to this Active Directory domain",
+      params: z.object({
+        resourceId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          resources: SanitizedWindowsResourceSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const resources = await server.services.pamResource.listRelatedResources(req.params.resourceId, req.permission);
+
+      return { resources };
     }
   });
 };

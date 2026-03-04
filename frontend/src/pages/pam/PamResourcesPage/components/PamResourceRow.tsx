@@ -1,6 +1,6 @@
 import { faCheck, faCopy, faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -16,7 +16,7 @@ import {
 } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { PAM_RESOURCE_TYPE_MAP, TPamResource } from "@app/hooks/api/pam";
 
@@ -28,7 +28,10 @@ type Props = {
 };
 
 export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) => {
-  const { id, name, resourceType } = resource;
+  const navigate = useNavigate();
+
+  const { id, name, resourceType, projectId } = resource;
+  const { currentOrg } = useOrganization();
 
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
 
@@ -47,7 +50,20 @@ export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) 
   };
 
   return (
-    <Tr className={twMerge("group h-10")}>
+    <Tr
+      className="group h-10 cursor-pointer hover:bg-mineshaft-700"
+      onClick={() =>
+        navigate({
+          to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+          params: {
+            orgId: currentOrg.id,
+            projectId,
+            resourceType,
+            resourceId: id
+          }
+        })
+      }
+    >
       <Td>
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -72,6 +88,7 @@ export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) 
                 colorSchema="secondary"
                 className="w-6"
                 variant="plain"
+                onClick={(e) => e.stopPropagation()}
               >
                 <FontAwesomeIcon icon={faEllipsisV} />
               </IconButton>
@@ -94,7 +111,10 @@ export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) 
                   <DropdownMenuItem
                     isDisabled={!isAllowed}
                     icon={<FontAwesomeIcon icon={faEdit} />}
-                    onClick={() => onUpdate(resource)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdate(resource);
+                    }}
                   >
                     Edit Resource
                   </DropdownMenuItem>
@@ -108,7 +128,10 @@ export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) 
                   <DropdownMenuItem
                     isDisabled={!isAllowed}
                     icon={<FontAwesomeIcon icon={faTrash} />}
-                    onClick={() => onDelete(resource)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(resource);
+                    }}
                   >
                     Delete Resource
                   </DropdownMenuItem>

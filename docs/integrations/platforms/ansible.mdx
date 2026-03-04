@@ -34,7 +34,7 @@ You can either call modules by their Fully Qualified Collection Name (FQCN), suc
 
 ## Authentication
 
-The Infisical Ansible Collection supports [Universal Auth](/documentation/platform/identities/universal-auth), [OIDC Auth](/documentation/platform/identities/oidc-auth/general), and [Token Auth](/documentation/platform/identities/token-auth) for authenticating against Infisical.
+The Infisical Ansible Collection supports [Universal Auth](/documentation/platform/identities/universal-auth), [OIDC Auth](/documentation/platform/identities/oidc-auth/general), [LDAP Auth](/documentation/platform/identities/ldap-auth/general), and [Token Auth](/documentation/platform/identities/token-auth) for authenticating against Infisical.
 
 ### Login Module (Recommended)
 
@@ -112,6 +112,35 @@ The recommended approach is to use the `login` module to authenticate once and r
     | auth_method     | `INFISICAL_AUTH_METHOD`   |
     | identity_id     | `INFISICAL_IDENTITY_ID`   |
     | jwt             | `INFISICAL_JWT`           |
+
+  </Accordion>
+
+  <Accordion title="LDAP Auth">
+    LDAP Auth allows you to authenticate with Infisical using a machine identity configured with an LDAP directory. You need to provide the identity ID and your LDAP username and password.
+
+    <Note>
+      Please note that in order to use LDAP Auth, you must have `1.0.16` or newer of the `infisicalsdk` package installed.
+    </Note>
+
+    ```yaml
+    - name: Login with LDAP Auth
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: ldap_auth
+        identity_id: "<identity-id>"
+        username: "<ldap-username>"
+        password: "<ldap-password>"
+      register: infisical_login
+    ```
+
+    You can also provide the `auth_method`, `identity_id`, `username`, and `password` parameters through environment variables:
+
+    | Parameter Name | Environment Variable Name           |
+    | -------------- | ----------------------------------- |
+    | auth_method    | `INFISICAL_AUTH_METHOD`             |
+    | identity_id    | `INFISICAL_IDENTITY_ID`             |
+    | username       | `INFISICAL_LDAP_USERNAME`           |
+    | password       | `INFISICAL_LDAP_PASSWORD`           |
 
   </Accordion>
 

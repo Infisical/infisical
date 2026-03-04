@@ -53,14 +53,18 @@ const validateGeneratedSQL = (sql: string): void => {
 };
 
 export const createSanitizedSchema = async ({ db, logger }: TArgs): Promise<void> => {
-  // eslint-disable-next-line import/no-extraneous-dependencies
+  // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment
   const { loadConfig, generateSQL } = await import("@infisical/pg-view-generator");
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
   const config = await loadConfig(path.join(__dirname, "sanitized-schema.yaml"));
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
   const sql = generateSQL(config, { targetSchema: SANITIZED_SCHEMA });
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   validateGeneratedSQL(sql);
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   await db.raw(sql);
   logger.info("Created sanitized schema and views");
 };
@@ -78,10 +82,12 @@ export const grantSanitizedSchemaAccess = async ({ db, logger, role }: TGrantArg
     );
   }
 
-  // eslint-disable-next-line import/no-extraneous-dependencies
+  // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment
   const { generateGrantReadAccessSQL } = await import("@infisical/pg-view-generator");
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
   const sql = generateGrantReadAccessSQL(SANITIZED_SCHEMA, role);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   await db.raw(sql);
   logger.info(`Granted read access on sanitized schema to role: ${role}`);
 };

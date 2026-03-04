@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
@@ -32,7 +33,7 @@ export const subOrgServiceFactory = ({
   membershipDAL,
   membershipRoleDAL
 }: TSubOrgServiceFactoryDep) => {
-  const createSubOrg = async ({ name, permissionActor }: TCreateSubOrgDTO) => {
+  const createSubOrg = async ({ name, slug, permissionActor }: TCreateSubOrgDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       actorId: permissionActor.id,
       actor: permissionActor.type,
@@ -54,17 +55,20 @@ export const subOrgServiceFactory = ({
       });
     }
 
+    // Generate slug from name if not provided
+    const generatedSlug = slug ?? slugify(name, { lowercase: true });
+
     const existingSubOrg = await orgDAL.findOne({
       parentOrgId: permissionActor.orgId,
-      name
+      slug: generatedSlug
     });
     if (existingSubOrg) {
-      throw new BadRequestError({ message: `Sub-organization with name ${name} already exists` });
+      throw new BadRequestError({ message: `Sub-organization with slug "${generatedSlug}" already exists` });
     }
 
     const organization = await orgDAL.transaction(async (tx) => {
       const org = await orgDAL.create(
-        { name, slug: name, rootOrgId: permissionActor.rootOrgId, parentOrgId: permissionActor.orgId },
+        { name, slug: generatedSlug, rootOrgId: permissionActor.rootOrgId, parentOrgId: permissionActor.orgId },
         tx
       );
       const membership = await membershipDAL.create(
@@ -116,7 +120,7 @@ export const subOrgServiceFactory = ({
     };
   };
 
-  const updateSubOrg = async ({ subOrgId, name, permissionActor }: TUpdateSubOrgDTO) => {
+  const updateSubOrg = async ({ subOrgId, name, slug, permissionActor }: TUpdateSubOrgDTO) => {
     const subOrg = await orgDAL.findOne({
       rootOrgId: permissionActor.rootOrgId,
       id: subOrgId
@@ -136,16 +140,49 @@ export const subOrgServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
-    const existingSubOrg = await orgDAL.findOne({
-      parentOrgId: subOrg.parentOrgId,
-      slug: name
-    });
+    const updateData: { name?: string; slug?: string } = {};
 
-    if (existingSubOrg && existingSubOrg.id !== subOrgId) {
-      throw new BadRequestError({ message: `Sub-organization with name ${name} already exists` });
+    // Backward compatibility: if only name is provided (no slug), update both name and slug
+    // This maintains the legacy behavior where name was used as both display name and slug
+    if (name !== undefined && slug === undefined) {
+      const generatedSlug = slugify(name, { lowercase: true });
+
+      // Check for slug uniqueness
+      const existingSubOrg = await orgDAL.findOne({
+        parentOrgId: subOrg.parentOrgId,
+        slug: generatedSlug
+      });
+
+      if (existingSubOrg && existingSubOrg.id !== subOrgId) {
+        throw new BadRequestError({ message: `Sub-organization with slug "${generatedSlug}" already exists` });
+      }
+
+      updateData.name = name;
+      updateData.slug = generatedSlug;
+    } else {
+      // update fields independently
+      if (name !== undefined) updateData.name = name;
+
+      if (slug !== undefined) {
+        // Check for slug uniqueness
+        const existingSubOrg = await orgDAL.findOne({
+          parentOrgId: subOrg.parentOrgId,
+          slug
+        });
+
+        if (existingSubOrg && existingSubOrg.id !== subOrgId) {
+          throw new BadRequestError({ message: `Sub-organization with slug "${slug}" already exists` });
+        }
+
+        updateData.slug = slug;
+      }
     }
 
-    const organization = await orgDAL.updateById(subOrgId, { name, slug: name });
+    if (Object.keys(updateData).length === 0) {
+      return { organization: subOrg };
+    }
+
+    const organization = await orgDAL.updateById(subOrgId, updateData);
 
     return {
       organization

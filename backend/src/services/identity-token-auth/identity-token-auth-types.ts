@@ -30,7 +30,7 @@ export type TRevokeTokenAuthDTO = {
 export type TCreateTokenAuthTokenDTO = {
   identityId: string;
   name?: string;
-  subOrganizationName?: string;
+  organizationSlug?: string;
   isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 

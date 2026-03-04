@@ -38,6 +38,7 @@ export * from "./orgIdentity";
 export * from "./orgIdentityMembership";
 export * from "./pkiAlerts";
 export * from "./pkiCollections";
+export * from "./pkiDiscovery";
 export * from "./pkiSubscriber";
 export * from "./pkiSyncs";
 export * from "./projectIdentity";

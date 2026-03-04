@@ -21,7 +21,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-        .join<TMemberships>(db(TableName.Membership).as("orgMembership"), (qb) => {
+        .leftJoin<TMemberships>(db(TableName.Membership).as("orgMembership"), (qb) => {
           qb.on(`${TableName.Users}.id`, "=", `orgMembership.actorUserId`)
             .andOn(`orgMembership.scopeOrgId`, "=", `${TableName.Project}.orgId`)
             .andOn("orgMembership.scope", db.raw("?", [AccessScope.Organization]));
@@ -105,7 +105,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
             // public key is not used anymore as well
             publicKey: "",
             isGhost,
-            isOrgMembershipActive: isActive
+            isOrgMembershipActive: isActive ?? true
           },
           project: {
             id: projectId,

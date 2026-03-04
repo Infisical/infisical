@@ -1,12 +1,17 @@
+import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { subject } from "@casl/ability";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { AppConnectionOption } from "@app/components/app-connections";
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
-import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSecretSyncActions
+} from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp } from "@app/hooks";
@@ -26,6 +31,8 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const destination = watch("destination");
+  const environment = watch("environment");
+  const secretPath = watch("secretPath");
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
 
   const { currentProject } = useProject();
@@ -34,6 +41,22 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
     app,
     currentProject.id
   );
+
+  const allowedConnections = useMemo(() => {
+    if (!availableConnections) return [];
+    const envSlug = environment?.slug;
+    if (!envSlug || !secretPath) return availableConnections;
+    return availableConnections.filter((conn) =>
+      permission.can(
+        ProjectPermissionSecretSyncActions.Create,
+        subject(ProjectPermissionSub.SecretSyncs, {
+          connectionId: conn.id,
+          environment: envSlug,
+          secretPath
+        })
+      )
+    );
+  }, [availableConnections, permission, environment?.slug, secretPath]);
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
@@ -76,7 +99,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
               isLoading={isPending}
               options={[
                 ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
-                ...(availableConnections ?? [])
+                ...allowedConnections
               ]}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
@@ -88,7 +111,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
         control={control}
         name="connection"
       />
-      {!isPending && !availableConnections?.length && !canCreateConnection && (
+      {!isPending && !allowedConnections.length && !canCreateConnection && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           You do not have access to any {appName} Connections. Contact an admin to create one.

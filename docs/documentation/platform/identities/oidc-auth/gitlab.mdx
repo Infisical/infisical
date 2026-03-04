@@ -127,7 +127,7 @@ In the following steps, we explore how to create and use identities to access th
                 aud: infisical-aud-test
         script:
             - apt update && apt install -y curl
-            - curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash
+            - curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
             - apt-get update && apt-get install -y infisical
             - export INFISICAL_TOKEN=$(infisical login --method=oidc-auth --machine-identity-id=4e807a78-1b1c-4bd6-9609-ef2b0cf4fd54 --oidc-jwt=$INFISICAL_ID_TOKEN --silent --plain)
             - infisical run --projectId=1d0443c1-cd43-4b3a-91a3-9d5f81254a89 --env=dev -- npm run build

@@ -21,22 +21,14 @@ import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
 
 type Props = {
-  accountPath?: string;
+  resourceName?: string;
+  accountName?: string;
   accountAccessed?: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
 
 const formSchema = z.object({
-  accountPath: z
-    .string()
-    .min(1, "Account path is required")
-    .refine((el) => el.startsWith("/"), {
-      message: "Path must start with /"
-    })
-    .refine((el) => !el.endsWith("/"), {
-      message: "Path cannot end with /"
-    }),
   accessDuration: z
     .string()
     .min(1, "Access duration is required")
@@ -56,7 +48,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
+const Content = ({ onOpenChange, resourceName, accountName, accountAccessed }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: createApprovalRequest, isPending: isSubmitting } =
     useCreateApprovalRequest();
@@ -65,7 +57,6 @@ const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
     resolver: zodResolver(formSchema),
     mode: "onChange",
     defaultValues: {
-      accountPath,
       accessDuration: "4h",
       justification: ""
     }
@@ -84,8 +75,9 @@ const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
         projectId,
         justification: formData.justification || null,
         requestData: {
-          accountPath: formData.accountPath,
-          accessDuration: formData.accessDuration
+          accessDuration: formData.accessDuration,
+          ...(resourceName && { resourceName }),
+          ...(accountName && { accountName })
         }
       });
 
@@ -115,21 +107,20 @@ const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
           </UnstableAlertDescription>
         </UnstableAlert>
       )}
-      <Controller
-        name="accountPath"
-        control={control}
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isRequired
-            helperText="Account path including the account name. Supports glob patterns (e.g., /folder/**, /*/account-name)"
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Account Path"
-          >
-            <Input autoFocus placeholder="/folder/account-name" {...field} />
-          </FormControl>
-        )}
-      />
+      {resourceName && accountName && (
+        <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-700/50 p-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-xs text-mineshaft-400">Resource</span>
+              <p className="text-sm text-mineshaft-100">{resourceName}</p>
+            </div>
+            <div>
+              <span className="text-xs text-mineshaft-400">Account</span>
+              <p className="text-sm text-mineshaft-100">{accountName}</p>
+            </div>
+          </div>
+        </div>
+      )}
       <Controller
         name="accessDuration"
         control={control}
@@ -186,7 +177,7 @@ export const PamRequestAccountAccessModal = (props: Props) => {
       <ModalContent
         className="max-w-2xl pb-2"
         title="Request Account Access"
-        subTitle="Request access to an account path"
+        subTitle="Request access to a protected account"
       >
         <Content {...props} />
       </ModalContent>

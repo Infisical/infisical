@@ -68,7 +68,7 @@ export type TCreateSecretDTO = {
   secretCommentCiphertext?: string;
   secretCommentIV?: string;
   secretCommentTag?: string;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   tags?: string[];
@@ -93,7 +93,7 @@ export type TUpdateSecretDTO = {
   secretCommentCiphertext?: string;
   secretCommentIV?: string;
   secretCommentTag?: string;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   metadata?: {
@@ -146,7 +146,7 @@ export type TCreateBulkSecretDTO = {
     secretCommentCiphertext?: string;
     secretCommentIV?: string;
     secretCommentTag?: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     metadata?: {
       source?: string;
     };
@@ -167,7 +167,7 @@ export type TUpdateBulkSecretDTO = {
     secretCommentCiphertext?: string;
     secretCommentIV?: string;
     secretCommentTag?: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
   }>;
@@ -186,6 +186,12 @@ export enum SecretsOrderBy {
   Name = "name" // "key" for secrets but using name for use across resources
 }
 
+export enum PersonalOverridesBehavior {
+  Priority = "priority", // used in v4 router when includePersonalOverrides is true
+  IncludeAll = "include-all", // used in deprecated v3 secret router to keep existing behavior
+  NeverInclude = "never-include" // used in v4 router when includePersonalOverrides is false
+}
+
 export type TGetAccessibleSecretsDTO = {
   secretPath: string;
   environment: string;
@@ -195,6 +201,8 @@ export type TGetAccessibleSecretsDTO = {
 
 export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
+  personalOverridesBehavior: PersonalOverridesBehavior;
+  expandPersonalOverrides?: boolean;
   path: string;
   environment: string;
   viewSecretValue: boolean;
@@ -229,6 +237,7 @@ export type TGetASecretRawDTO = {
   environment: string;
   viewSecretValue: boolean;
   expandSecretReferences?: boolean;
+  expandPersonalOverrides?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
@@ -247,7 +256,7 @@ export type TCreateSecretRawDTO = TProjectPermission & {
   type: SecretType;
   tagIds?: string[];
   secretComment?: string;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   secretMetadata?: ResourceMetadataWithEncryptionDTO;
@@ -262,7 +271,7 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   secretComment?: string;
   type: SecretType;
   tagIds?: string[];
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   secretReminderRecipients?: string[] | null;
@@ -288,7 +297,7 @@ export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
     secretKey: string;
     secretValue: string;
     secretComment?: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     tagIds?: string[];
     secretMetadata?: ResourceMetadataWithEncryptionDTO;
     metadata?: {
@@ -308,7 +317,7 @@ export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
     newSecretName?: string;
     secretValue?: string;
     secretComment?: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     tagIds?: string[];
     secretMetadata?: ResourceMetadataWithEncryptionDTO;
     secretReminderRepeatDays?: number | null;
@@ -460,7 +469,7 @@ export type TCreateManySecretsRawFn = {
     secretValue: string;
     type: SecretType;
     secretComment?: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     tags?: string[];
     metadata?: {
       source?: string;
@@ -499,7 +508,7 @@ export type TUpdateManySecretsRawFn = {
     secretValue: string;
     type: SecretType;
     secretComment?: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
     tags?: string[];
@@ -559,7 +568,7 @@ export type TProcessNewCommitRawDTO = {
       secretKey: string;
       secretValue: string;
       secretComment?: string;
-      skipMultilineEncoding?: boolean;
+      skipMultilineEncoding?: boolean | null;
       tagIds?: string[];
       secretMetadata?: ResourceMetadataWithEncryptionDTO;
       metadata?: { source?: string };
@@ -569,7 +578,7 @@ export type TProcessNewCommitRawDTO = {
       newSecretName?: string;
       secretValue?: string;
       secretComment?: string;
-      skipMultilineEncoding?: boolean;
+      skipMultilineEncoding?: boolean | null;
       tagIds?: string[];
       secretMetadata?: ResourceMetadataWithEncryptionDTO;
       metadata?: { source?: string };
@@ -582,3 +591,7 @@ export type TProcessNewCommitRawDTO = {
     delete?: { folderName: string; id: string }[];
   };
 };
+
+export type TRedactSecretVersionValueDTO = {
+  versionId: string;
+} & Omit<TProjectPermission, "projectId">;

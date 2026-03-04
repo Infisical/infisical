@@ -60,7 +60,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityJwtAuthServiceFactory = ReturnType<typeof identityJwtAuthServiceFactory>;
@@ -75,7 +75,7 @@ export const identityJwtAuthServiceFactory = ({
   kmsService,
   orgDAL
 }: TIdentityJwtAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: jwtValue, subOrganizationName }: TLoginJwtAuthDTO) => {
+  const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginJwtAuthDTO) => {
     const appCfg = getConfig();
     const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
     if (!identityJwtAuth) {
@@ -88,7 +88,7 @@ export const identityJwtAuthServiceFactory = ({
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
@@ -223,23 +223,23 @@ export const identityJwtAuthServiceFactory = ({
         });
       }
 
-      if (subOrganizationName) {
+      if (organizationSlug) {
         if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
           if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
           }
 
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
+          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+            actorType: ActorType.IDENTITY,
+            actorId: identity.id,
+            orgId: subOrg.id
           });
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`
             });
           }
 

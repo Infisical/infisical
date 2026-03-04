@@ -1,0 +1,51 @@
+---
+title: "Web Access"
+sidebarTitle: "Overview"
+description: "Access PAM-managed resources directly from your browser with an interactive terminal."
+---
+
+Infisical PAM Web Access provides a browser-based portal for interacting with your infrastructure directly from your browser via the Infisical dashboard — no client tools or CLI required.
+
+<Info>
+  Web Access currently supports **PostgreSQL** databases.
+</Info>
+
+## How It Works
+
+When you open a web access session, Infisical establishes a secure WebSocket connection that tunnels through an Infisical Gateway to your target resource. All commands are executed server-side and streamed back to your browser in real time.
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Infisical
+    participant Gateway as Infisical Gateway
+    participant Resource as Target Resource
+
+    Browser->>Infisical: Request session ticket
+    Infisical-->>Browser: One-time ticket
+    Browser->>Infisical: Open WebSocket with ticket
+    Infisical->>Gateway: Establish secure tunnel
+    Gateway->>Resource: Connect with account credentials
+    Browser->>Infisical: User input
+    Infisical->>Gateway: Forward input
+    Gateway->>Resource: Execute
+    Resource-->>Browser: Streamed output
+```
+
+## Session Limits
+
+| Setting | Value |
+|---------|-------|
+| **Max session duration** | 1 hour |
+| **Idle timeout** | 5 minutes (resets on any input) |
+| **Concurrent sessions** | 5 per user per project |
+
+Sessions that exceed the idle timeout or max duration are automatically terminated.
+
+## Supported Resources
+
+<CardGroup cols={2}>
+  <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/product-reference/web-access/postgresql">
+    Interactive SQL terminal with psql-style output formatting.
+  </Card>
+</CardGroup>

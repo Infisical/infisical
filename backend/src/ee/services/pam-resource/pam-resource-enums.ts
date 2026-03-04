@@ -4,7 +4,9 @@ export enum PamResource {
   SSH = "ssh",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
-  Redis = "redis"
+  Redis = "redis",
+  Windows = "windows",
+  ActiveDirectory = "active-directory"
 }
 
 export enum PamResourceOrderBy {

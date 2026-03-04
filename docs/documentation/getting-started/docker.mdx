@@ -20,8 +20,8 @@ Prerequisites:
     <Tabs>
         <Tab title="Alpine">
                 ```dockerfile
-                RUN apk add --no-cache bash curl && curl -1sLf \
-            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+                RUN apk add --no-cache bash sudo wget && wget -qO- \
+            'https://artifacts-cli.infisical.com/setup.apk.sh' | sh \
             && apk add infisical
                 ```
 
@@ -29,14 +29,14 @@ Prerequisites:
         <Tab title="RedHat/CentOs/Amazon-linux">
                 ```dockerfile
             RUN curl -1sLf \
-            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sh \ 
+            'https://artifacts-cli.infisical.com/setup.rpm.sh' | sh \
             && yum install -y infisical
                 ```
         </Tab>
         <Tab title="Debian/Ubuntu">
             ```dockerfile
             RUN apt-get update && apt-get install -y bash curl && curl -1sLf \
-            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+            'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
             && apt-get update && apt-get install -y infisical
                 ```
         </Tab>
@@ -65,8 +65,8 @@ Prerequisites:
     FROM alpine
 
     # Add the Infisical CLI to your Dockerfile (choose the appropriate block based on your base image)
-    RUN apk add --no-cache bash curl && curl -1sLf \
-        'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+    RUN apk add --no-cache bash sudo wget && wget -qO- \
+        'https://artifacts-cli.infisical.com/setup.apk.sh' | sh \
         && apk add infisical
 
     # Install any additional dependencies or packages your service requires
@@ -92,8 +92,8 @@ Prerequisites:
     <Tabs>
         <Tab title="Alpine">
                 ```dockerfile
-                RUN apk add --no-cache bash curl && curl -1sLf \
-            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+                RUN apk add --no-cache bash sudo wget && wget -qO- \
+            'https://artifacts-cli.infisical.com/setup.apk.sh' | sh \
             && apk add infisical
                 ```
 
@@ -101,14 +101,14 @@ Prerequisites:
         <Tab title="RedHat/CentOs/Amazon-linux">
                 ```dockerfile
             RUN curl -1sLf \
-            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sh \ 
+            'https://artifacts-cli.infisical.com/setup.rpm.sh' | sh \ 
             && yum install -y infisical
                 ```
         </Tab>
         <Tab title="Debian/Ubuntu">
             ```dockerfile
             RUN apt-get update && apt-get install -y bash curl && curl -1sLf \
-            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+            'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
             && apt-get update && apt-get install -y infisical
                 ```
         </Tab>
@@ -127,8 +127,8 @@ Prerequisites:
     FROM alpine
 
     # Add the Infisical CLI to your Dockerfile (choose the appropriate block based on your base image)
-    RUN apk add --no-cache bash curl && curl -1sLf \
-        'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+    RUN apk add --no-cache bash sudo wget && wget -qO- \
+        'https://artifacts-cli.infisical.com/setup.apk.sh' | sh \
         && apk add infisical
 
     # Install any additional dependencies or packages your service requires

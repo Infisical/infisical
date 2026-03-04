@@ -196,8 +196,28 @@ export type TDNSMadeEasyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DNSMadeEasy;
 };
 
+export type TAzureDNSConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureDNS;
+};
+
 export type TSshConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SSH;
+};
+
+export type TDbtConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Dbt;
+};
+
+export type TSmbConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.SMB;
+};
+
+export type TOpenRouterConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OpenRouter;
+};
+
+export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.CircleCI;
 };
 
 export type TAppConnectionOption =
@@ -239,14 +259,19 @@ export type TAppConnectionOption =
   | TNetlifyConnectionOption
   | TNorthflankConnectionOption
   | TOktaConnectionOption
+  | TOpenRouterConnectionOption
+  | TCircleCISyncConnectionOption
   | TAzureAdCsConnectionOption
   | TLaravelForgeConnectionOption
   | TRedisConnectionOption
   | TMongoDBConnectionOption
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
+  | TAzureDNSConnectionOption
   | TOctopusDeployConnectionOption
-  | TSshConnectionOption;
+  | TSshConnectionOption
+  | TDbtConnectionOption
+  | TSmbConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -288,11 +313,16 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Northflank]: TNorthflankConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
+  [AppConnection.OpenRouter]: TOpenRouterConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
   [AppConnection.MongoDB]: TMongoDBConnectionOption;
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
+  [AppConnection.AzureDNS]: TAzureDNSConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
+  [AppConnection.Dbt]: TDbtConnectionOption;
+  [AppConnection.SMB]: TSmbConnectionOption;
+  [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
 };

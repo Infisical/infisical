@@ -18,7 +18,8 @@ export enum NotificationType {
   SECRET_SYNC_FAILED = "secret-sync-failed",
   GATEWAY_HEALTH_ALERT = "gateway-health-alert",
   RELAY_HEALTH_ALERT = "relay-health-alert",
-  APPROVAL_REQUIRED = "approval-required"
+  APPROVAL_REQUIRED = "approval-required",
+  PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed"
 }
 
 export interface TCreateUserNotificationDTO {

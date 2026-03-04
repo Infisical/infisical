@@ -3,6 +3,7 @@ import opentelemetry from "@opentelemetry/api";
 import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
+import { randomUUID } from "crypto";
 import handlebars from "handlebars";
 
 import { TCertificates } from "@app/db/schemas";
@@ -357,6 +358,7 @@ export const pkiSyncQueueFactory = ({
         type: "exponential",
         delay: 3000
       },
+      jobId: randomUUID(),
       removeOnComplete: true,
       removeOnFail: true
     });
@@ -368,6 +370,7 @@ export const pkiSyncQueueFactory = ({
         type: "exponential",
         delay: 3000
       },
+      jobId: randomUUID(),
       removeOnComplete: true,
       removeOnFail: true
     });
@@ -379,6 +382,7 @@ export const pkiSyncQueueFactory = ({
         type: "exponential",
         delay: 3000
       },
+      jobId: randomUUID(),
       removeOnComplete: true,
       removeOnFail: true
     });

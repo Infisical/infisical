@@ -34,6 +34,7 @@ import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID, PAM_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
+import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
 type TGatewayV2ServiceFactoryDep = {
@@ -276,7 +277,7 @@ export const gatewayV2ServiceFactory = ({
     gatewayId: string;
     targetHost: string;
     targetPort: number;
-  }) => {
+  }): Promise<TGatewayV2ConnectionDetails | undefined> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
       return;

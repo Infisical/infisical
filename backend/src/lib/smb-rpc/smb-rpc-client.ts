@@ -1,0 +1,322 @@
+import { spawn } from "child_process";
+import RE2 from "re2";
+
+import {
+  SMB_VALIDATION_LIMITS,
+  validateDomain,
+  validateHostname,
+  validateSmbPassword,
+  validateWindowsUsername
+} from "@app/lib/validator/validate-smb";
+
+export interface SmbRpcConfig {
+  host: string;
+  port: number;
+  adminUser: string;
+  adminPassword: string;
+  domain?: string;
+}
+
+const SMB3_SECURITY_OPTIONS = ["--option=client min protocol=SMB3", "--option=client smb encrypt=required"];
+
+/**
+ * Validate host to prevent command injection
+ */
+const validateHost = (host: string): void => {
+  if (!host || host.length === 0) {
+    throw new Error("Host is required");
+  }
+  if (host.length > SMB_VALIDATION_LIMITS.MAX_HOST_LENGTH) {
+    throw new Error("Host too long");
+  }
+  if (!validateHostname(host)) {
+    throw new Error("Host can only contain alphanumeric characters, dots, and hyphens");
+  }
+  if (host.startsWith("-") || host.startsWith(".")) {
+    throw new Error("Host cannot start with a hyphen or period");
+  }
+};
+
+/**
+ * Validate domain to prevent command injection
+ */
+const validateDomainInput = (domain: string | undefined): void => {
+  if (!domain) return;
+
+  if (domain.length > SMB_VALIDATION_LIMITS.MAX_DOMAIN_LENGTH) {
+    throw new Error("Domain too long");
+  }
+  if (!validateDomain(domain)) {
+    throw new Error("Domain can only contain alphanumeric characters, dots, hyphens, and underscores");
+  }
+  if (domain.startsWith("-") || domain.startsWith(".")) {
+    throw new Error("Domain cannot start with a hyphen or period");
+  }
+};
+
+/**
+ * Validate port is a safe integer
+ */
+const validatePort = (port: number): void => {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("Port must be a valid integer between 1 and 65535");
+  }
+};
+
+/**
+ * Validate admin username to prevent command injection
+ */
+const validateAdminUsername = (username: string): void => {
+  if (!username || username.length === 0) {
+    throw new Error("Admin username is required");
+  }
+  if (username.length > SMB_VALIDATION_LIMITS.MAX_ADMIN_USERNAME_LENGTH) {
+    throw new Error("Admin username too long");
+  }
+  if (!validateWindowsUsername(username)) {
+    throw new Error("Admin username can only contain alphanumeric characters, underscores, hyphens, and periods");
+  }
+  if (username.startsWith("-") || username.startsWith(".") || username.endsWith(".")) {
+    throw new Error("Admin username cannot start with a hyphen or period, and cannot end with a period");
+  }
+};
+
+/**
+ * Validate password doesn't contain characters that could enable command/RPC injection
+ */
+const validatePassword = (password: string): void => {
+  if (!password || password.length === 0) {
+    throw new Error("Password is required");
+  }
+  if (!validateSmbPassword(password)) {
+    throw new Error("Password cannot contain: semicolons, spaces, quotes, or pipes");
+  }
+};
+
+/**
+ * Validate all config inputs before use
+ */
+const validateConfig = (config: SmbRpcConfig): void => {
+  validateHost(config.host);
+  validatePort(config.port);
+  validateAdminUsername(config.adminUser);
+  validatePassword(config.adminPassword);
+  validateDomainInput(config.domain);
+};
+
+/**
+ * Build the target string (//host)
+ */
+const buildTarget = (config: SmbRpcConfig): string => {
+  return `//${config.host}`;
+};
+
+/**
+ * Build port args for SMB commands
+ */
+const buildPortArgs = (config: SmbRpcConfig): string[] => {
+  return ["-p", String(config.port)];
+};
+
+/**
+ * Build authentication args for SMB commands using --user and --workgroup flags
+ * Password is passed via PASSWD environment variable
+ */
+const buildAuthArgs = (config: SmbRpcConfig): string[] => {
+  const args = [`--user=${config.adminUser}`, ...SMB3_SECURITY_OPTIONS];
+
+  if (config.domain) {
+    args.push(`--workgroup=${config.domain}`);
+  }
+
+  return args;
+};
+
+/**
+ * Build environment variables for SMB commands
+ * Password is passed via PASSWD environment variable to avoid command-line exposure
+ */
+const buildAuthEnv = (config: SmbRpcConfig): NodeJS.ProcessEnv => {
+  return {
+    ...process.env,
+    PASSWD: config.adminPassword
+  };
+};
+
+/**
+ * Execute a command and return stdout/stderr
+ */
+const executeCommand = (
+  command: string,
+  args: string[],
+  env?: NodeJS.ProcessEnv
+): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      stdio: ["pipe", "pipe", "pipe"],
+      env
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      resolve({ stdout, stderr, exitCode: code ?? 1 });
+    });
+
+    proc.on("error", (err) => {
+      stderr += err.message;
+      resolve({ stdout, stderr, exitCode: 1 });
+    });
+  });
+};
+
+/**
+ * Parse NT_STATUS errors from command output
+ */
+const parseNtStatusError = (output: string): string | null => {
+  const match = new RE2(/NT_STATUS_[A-Z_]+/).exec(output);
+  return match ? match[0] : null;
+};
+
+/**
+ * Get human-readable error message for NT_STATUS codes
+ */
+const getNtStatusMessage = (ntStatus: string): string => {
+  const messages: Record<string, string> = {
+    NT_STATUS_LOGON_FAILURE: "Authentication failed - check username and password",
+    NT_STATUS_ACCESS_DENIED: "Access denied - user lacks required permissions",
+    NT_STATUS_ACCOUNT_LOCKED_OUT: "Account is locked out",
+    NT_STATUS_ACCOUNT_DISABLED: "Account is disabled",
+    NT_STATUS_PASSWORD_EXPIRED: "Password has expired",
+    NT_STATUS_PASSWORD_MUST_CHANGE: "Password must be changed before login",
+    NT_STATUS_NO_SUCH_USER: "User does not exist",
+    NT_STATUS_INVALID_PARAMETER: "Invalid parameter provided",
+    NT_STATUS_CONNECTION_REFUSED: "Connection refused - check if SMB is enabled on target",
+    NT_STATUS_HOST_UNREACHABLE: "Host unreachable",
+    NT_STATUS_IO_TIMEOUT: "Connection timed out",
+    NT_STATUS_UNSUCCESSFUL: `Connection failed - verify SMB is enabled on target, firewall allows the port provided in the connection configuration, and SMB3 protocol is supported`,
+    NT_STATUS_PASSWORD_RESTRICTION:
+      "Password rejected by Windows policy - ensure Infisical password requirements meet or exceed Windows password policy",
+    NT_STATUS_WRONG_PASSWORD: "Incorrect password"
+  };
+
+  return messages[ntStatus] || `SMB error: ${ntStatus}`;
+};
+
+/**
+ * Test SMB connection to a Windows host
+ * Uses smbclient to list shares and verify connectivity
+ */
+const testSmbConnection = async (config: SmbRpcConfig): Promise<void> => {
+  // Validate all inputs before use to prevent command injection
+  validateConfig(config);
+
+  const args = ["-L", buildTarget(config), ...buildPortArgs(config), ...buildAuthArgs(config)];
+  const env = buildAuthEnv(config);
+
+  const { stdout, stderr, exitCode } = await executeCommand("smbclient", args, env);
+  const combinedOutput = stdout + stderr;
+
+  const ntStatus = parseNtStatusError(combinedOutput);
+  if (ntStatus) {
+    throw new Error(getNtStatusMessage(ntStatus));
+  }
+
+  if (exitCode !== 0) {
+    throw new Error(`SMB connection failed: ${combinedOutput || "Unknown error"}`);
+  }
+};
+
+/**
+ * Escape password for rpcclient's internal command parser
+ * The password is wrapped in single quotes, with internal single quotes escaped
+ */
+const escapePasswordForRpc = (password: string): string => {
+  return new RE2(/'/g).replace(password, "'\\''");
+};
+
+/**
+ * Validate that a target username contains only safe characters to prevent command injection
+ * Windows local account username validation:
+ * - Cannot start with a period or hyphen (prevents flag injection and Windows rules)
+ * - Cannot end with a period (Windows rule)
+ * - Can contain alphanumeric, underscore, hyphen, and period
+ * - Max 20 characters for local accounts
+ */
+export const isValidWindowsUsername = (username: string): boolean => {
+  if (!username || username.length === 0 || username.length > SMB_VALIDATION_LIMITS.MAX_WINDOWS_USERNAME_LENGTH) {
+    return false;
+  }
+  // Cannot start with period or hyphen, cannot end with period
+  if (username.startsWith(".") || username.startsWith("-") || username.endsWith(".")) {
+    return false;
+  }
+  return validateWindowsUsername(username);
+};
+
+/**
+ * Change a Windows local account password using rpcclient
+ * Uses setuserinfo2 command with level 23 (password reset)
+ */
+export const changeWindowsPassword = async (
+  config: SmbRpcConfig,
+  targetUser: string,
+  newPassword: string
+): Promise<void> => {
+  validateConfig(config);
+
+  if (!isValidWindowsUsername(targetUser)) {
+    throw new Error(
+      "Invalid username format - must be 1-20 characters, only alphanumeric characters, underscores, hyphens, and periods allowed, and cannot start or end with a period or start with a hyphen"
+    );
+  }
+
+  const escapedPassword = escapePasswordForRpc(newPassword);
+  const rpcCommand = `setuserinfo2 ${targetUser} 23 '${escapedPassword}'`;
+
+  const args = [buildTarget(config), ...buildPortArgs(config), ...buildAuthArgs(config), "-c", rpcCommand];
+  const env = buildAuthEnv(config);
+
+  const { stdout, stderr, exitCode } = await executeCommand("rpcclient", args, env);
+  const combinedOutput = stdout + stderr;
+
+  const ntStatus = parseNtStatusError(combinedOutput);
+  if (ntStatus) {
+    throw new Error(getNtStatusMessage(ntStatus));
+  }
+
+  if (exitCode !== 0) {
+    throw new Error(`Password change failed: ${combinedOutput || "Unknown error"}`);
+  }
+};
+
+/**
+ * Verify Windows credentials by attempting to list shares
+ * This is used to verify that a password change was successful
+ */
+export const verifyWindowsCredentials = async (
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+  domain?: string
+): Promise<void> => {
+  const config: SmbRpcConfig = {
+    host,
+    port,
+    adminUser: username,
+    adminPassword: password,
+    domain
+  };
+
+  await testSmbConnection(config);
+};

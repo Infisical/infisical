@@ -16,6 +16,28 @@ import { CertificateOrigin, TCertificatePreview, TPkiFilterRule } from "./pki-al
 
 export type TPkiAlertV2DALFactory = ReturnType<typeof pkiAlertV2DALFactory>;
 
+export type TChannelResult = {
+  id: string;
+  alertId: string;
+  channelType: string;
+  config: unknown;
+  encryptedConfig?: Buffer | null;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type TLastRunData = {
+  triggeredAt: Date;
+  hasNotificationSent: boolean;
+  notificationError: string | null;
+};
+
+export type TAlertWithChannels = TPkiAlertsV2 & {
+  channels: TChannelResult[];
+  lastRunData: TLastRunData | null;
+};
+
 export const pkiAlertV2DALFactory = (db: TDbClient) => {
   const pkiAlertV2Orm = ormify(db, TableName.PkiAlertsV2);
 
@@ -23,7 +45,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     try {
       const serializedData = {
         ...data,
-        filters: data.filters ? JSON.stringify(data.filters) : null
+        filters: data.filters ? JSON.stringify(data.filters) : null,
+        notificationConfig: data.notificationConfig ? JSON.stringify(data.notificationConfig) : data.notificationConfig
       };
       const [res] = await (tx || db)(TableName.PkiAlertsV2).insert(serializedData).returning("*");
 
@@ -35,9 +58,17 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
   const updateById = async (id: string, data: TPkiAlertsV2Update, tx?: Knex): Promise<TPkiAlertsV2> => {
     try {
+      let serializedNotificationConfig: unknown;
+      if (data.notificationConfig !== undefined) {
+        serializedNotificationConfig = data.notificationConfig
+          ? JSON.stringify(data.notificationConfig)
+          : data.notificationConfig;
+      }
+
       const serializedData: Record<string, unknown> = {
         ...data,
-        filters: data.filters !== undefined ? JSON.stringify(data.filters) : undefined
+        filters: data.filters !== undefined ? JSON.stringify(data.filters) : undefined,
+        notificationConfig: serializedNotificationConfig
       };
       Object.keys(serializedData).forEach((key) => {
         if (serializedData[key] === undefined) {
@@ -65,20 +96,6 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  type TChannelResult = {
-    id: string;
-    alertId: string;
-    channelType: string;
-    config: unknown;
-    enabled: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  };
-
-  type TAlertWithChannels = TPkiAlertsV2 & {
-    channels: TChannelResult[];
-  };
-
   const findByIdWithChannels = async (alertId: string, tx?: Knex): Promise<TAlertWithChannels | null> => {
     try {
       const [alert] = (await (tx || db.replicaNode())
@@ -93,9 +110,36 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         .from(TableName.PkiAlertChannels)
         .where(`${TableName.PkiAlertChannels}.alertId`, alertId)) as TChannelResult[];
 
+      // Fetch last run status
+      type THistoryRecord = {
+        triggeredAt: Date;
+        hasNotificationSent: boolean | null;
+        notificationError: string | null;
+      };
+      const lastHistoryRecords = (await (tx || db.replicaNode())
+        .select(
+          `${TableName.PkiAlertHistory}.triggeredAt`,
+          `${TableName.PkiAlertHistory}.hasNotificationSent`,
+          `${TableName.PkiAlertHistory}.notificationError`
+        )
+        .from(TableName.PkiAlertHistory)
+        .where(`${TableName.PkiAlertHistory}.alertId`, alertId)
+        .orderBy(`${TableName.PkiAlertHistory}.triggeredAt`, "desc")
+        .limit(1)) as THistoryRecord[];
+
+      const lastHistory = lastHistoryRecords[0];
+      const lastRunData: TLastRunData | null = lastHistory
+        ? {
+            triggeredAt: lastHistory.triggeredAt,
+            hasNotificationSent: lastHistory.hasNotificationSent ?? false,
+            notificationError: lastHistory.notificationError ?? null
+          }
+        : null;
+
       return {
         ...alert,
-        channels: channels || []
+        channels: channels || [],
+        lastRunData
       } as TAlertWithChannels;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByIdWithChannels" });
@@ -179,9 +223,48 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         {} as Record<string, TChannelResult[]>
       );
 
+      // Fetch last run status for all alerts in a single query
+      type THistoryWithAlertId = {
+        alertId: string;
+        triggeredAt: Date;
+        hasNotificationSent: boolean | null;
+        notificationError: string | null;
+      };
+
+      const lastHistoryRecords =
+        alertIds.length > 0
+          ? ((await (tx || db.replicaNode())
+              .select(
+                `${TableName.PkiAlertHistory}.alertId`,
+                `${TableName.PkiAlertHistory}.triggeredAt`,
+                `${TableName.PkiAlertHistory}.hasNotificationSent`,
+                `${TableName.PkiAlertHistory}.notificationError`
+              )
+              .from(TableName.PkiAlertHistory)
+              .whereIn(`${TableName.PkiAlertHistory}.alertId`, alertIds)
+              .distinctOn(`${TableName.PkiAlertHistory}.alertId`)
+              .orderBy([
+                { column: `${TableName.PkiAlertHistory}.alertId` },
+                { column: `${TableName.PkiAlertHistory}.triggeredAt`, order: "desc" }
+              ])) as THistoryWithAlertId[])
+          : [];
+
+      const lastHistoryByAlertId = lastHistoryRecords.reduce(
+        (acc, record) => {
+          acc[record.alertId] = {
+            triggeredAt: record.triggeredAt,
+            hasNotificationSent: record.hasNotificationSent ?? false,
+            notificationError: record.notificationError ?? null
+          };
+          return acc;
+        },
+        {} as Record<string, TLastRunData>
+      );
+
       const alertsWithChannels: TAlertWithChannels[] = (alerts as TPkiAlertsV2[]).map((alert) => ({
         ...alert,
-        channels: channelsByAlertId[alert.id] || []
+        channels: channelsByAlertId[alert.id] || [],
+        lastRunData: lastHistoryByAlertId[alert.id] || null
       }));
 
       return { alerts: alertsWithChannels, total };
@@ -341,6 +424,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         }
       }
 
+      certCountQuery = certCountQuery.whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+
       if (options?.excludeAlerted && options?.alertId) {
         certCountQuery = certCountQuery.whereNotExists(
           (tx || db.replicaNode())
@@ -405,6 +490,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
               .whereNot(`${TableName.Certificate}.status`, "revoked");
           }
         }
+
+        certificateQuery = certificateQuery.whereNull(`${TableName.Certificate}.renewedByCertificateId`);
 
         if (options?.excludeAlerted && options?.alertId) {
           certificateQuery = certificateQuery.whereNotExists(

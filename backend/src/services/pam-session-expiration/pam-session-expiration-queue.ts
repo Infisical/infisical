@@ -16,39 +16,33 @@ export const pamSessionExpirationServiceFactory = ({
 }: TPamSessionExpirationServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  const init = async () => {
+  const init = () => {
     if (appCfg.isSecondaryInstance) {
       return;
     }
 
-    await queueService.startPg<QueueName.PamSessionExpiration>(
-      QueueJobs.PamSessionExpiration,
-      async (jobs) => {
-        await Promise.all(
-          jobs.map(async (job) => {
-            const { sessionId } = job.data;
-            try {
-              logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: expiring session`);
-              const updated = await pamSessionDAL.expireSessionById(sessionId);
-              if (updated > 0) {
-                logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired successfully`);
-              } else {
-                logger.info(
-                  { sessionId },
-                  `${QueueName.PamSessionExpiration}: session not expired (already ended or not found)`
-                );
-              }
-            } catch (error) {
-              logger.error(error, `${QueueName.PamSessionExpiration}: failed to expire session ${sessionId}`);
-              throw error;
-            }
-          })
-        );
+    queueService.start(
+      QueueName.PamSessionExpiration,
+      async (job) => {
+        const { sessionId } = job.data;
+        try {
+          logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: expiring session`);
+          const updated = await pamSessionDAL.expireSessionById(sessionId);
+          if (updated > 0) {
+            logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired successfully`);
+          } else {
+            logger.info(
+              { sessionId },
+              `${QueueName.PamSessionExpiration}: session not expired (already ended or not found)`
+            );
+          }
+        } catch (error) {
+          logger.error(error, `${QueueName.PamSessionExpiration}: failed to expire session ${sessionId}`);
+          throw error;
+        }
       },
       {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 30
+        persistence: true
       }
     );
   };
@@ -59,12 +53,13 @@ export const pamSessionExpirationServiceFactory = ({
     const delayMs = Math.max(0, expiresAt.getTime() - now.getTime());
     const startAfter = new Date(now.getTime() + delayMs);
 
-    await queueService.queuePg<QueueName.PamSessionExpiration>(
+    await queueService.queue(
+      QueueName.PamSessionExpiration,
       QueueJobs.PamSessionExpiration,
       { sessionId },
       {
-        startAfter,
-        singletonKey: `pam-session-expiration-${sessionId}`
+        jobId: `pam-session-expiration-${sessionId}`,
+        delay: delayMs
       }
     );
 

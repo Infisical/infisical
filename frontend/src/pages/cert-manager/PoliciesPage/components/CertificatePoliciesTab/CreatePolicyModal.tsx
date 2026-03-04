@@ -64,6 +64,7 @@ interface Props {
   onClose: () => void;
   policy?: TCertificatePolicy;
   mode?: "create" | "edit";
+  onComplete?: (policy: TCertificatePolicy) => void;
 }
 
 const ATTRIBUTE_TYPE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number], string> = {
@@ -112,7 +113,13 @@ const KEY_ALGORITHMS = [
   "ECDSA-P521"
 ] as const;
 
-export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: Props) => {
+export const CreatePolicyModal = ({
+  isOpen,
+  onClose,
+  policy,
+  mode = "create",
+  onComplete
+}: Props) => {
   const { currentProject } = useProject();
   const createPolicy = useCreateCertificatePolicy();
   const updatePolicy = useUpdateCertificatePolicy();
@@ -528,7 +535,10 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
         projectId: currentProject.id,
         ...transformedData
       };
-      await createPolicy.mutateAsync(createData);
+      const createdPolicy = await createPolicy.mutateAsync(createData);
+      if (onComplete) {
+        onComplete(createdPolicy);
+      }
     }
 
     createNotification({

@@ -68,16 +68,19 @@ export type TPermissionServiceFactory = {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
+      membershipId: string;
     }[];
     identityPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
+      membershipId: string;
     }[];
     groupPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
+      membershipId: string;
     }[];
   }>;
   getOrgPermissionByRoles: (

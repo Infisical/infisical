@@ -1,6 +1,15 @@
+import { z } from "zod";
+
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import {
+  TActiveDirectoryAccount,
+  TActiveDirectoryAccountCredentials,
+  TActiveDirectoryResource,
+  TActiveDirectoryResourceConnectionDetails
+} from "./active-directory/active-directory-resource-types";
 import {
   TAwsIamAccount,
   TAwsIamAccountCredentials,
@@ -39,6 +48,12 @@ import {
   TSSHResourceConnectionDetails,
   TSSHResourceMetadata
 } from "./ssh/ssh-resource-types";
+import {
+  TWindowsAccount,
+  TWindowsAccountCredentials,
+  TWindowsResource,
+  TWindowsResourceConnectionDetails
+} from "./windows-server/windows-server-resource-types";
 
 // Resource types
 export type TPamResource =
@@ -47,14 +62,18 @@ export type TPamResource =
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
-  | TRedisResource;
+  | TRedisResource
+  | TWindowsResource
+  | TActiveDirectoryResource;
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
-  | TRedisResourceConnectionDetails;
+  | TRedisResourceConnectionDetails
+  | TWindowsResourceConnectionDetails
+  | TActiveDirectoryResourceConnectionDetails;
 export type TPamResourceMetadata = TSSHResourceMetadata;
 
 // Account types
@@ -64,7 +83,9 @@ export type TPamAccount =
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
-  | TRedisAccount;
+  | TRedisAccount
+  | TWindowsAccount
+  | TActiveDirectoryAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
@@ -73,12 +94,16 @@ export type TPamAccountCredentials =
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials
-  | TRedisAccountCredentials;
+  | TRedisAccountCredentials
+  | TWindowsAccountCredentials
+  | TActiveDirectoryAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {
   gatewayId?: string | null;
   rotationAccountCredentials?: TPamAccountCredentials | null;
+  adServerResourceId?: string | null;
+  metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
 
 export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType" | "projectId">> & {
@@ -92,6 +117,7 @@ export type TListResourcesDTO = {
   limit?: number;
   offset?: number;
   filterResourceTypes?: string[];
+  metadataFilter?: Array<{ key: string; value?: string }>;
 } & TProjectPermission;
 
 // Resource factory

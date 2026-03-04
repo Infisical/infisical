@@ -150,9 +150,9 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
   } = useForm<TReviewFormSchema>({
     resolver: zodResolver(reviewFormSchema)
   });
+  const isCommitter = secretApprovalRequestDetails?.committerUserId === userSession.id;
   const shouldBlockSelfReview =
-    secretApprovalRequestDetails?.policy?.allowedSelfApprovals === false &&
-    secretApprovalRequestDetails?.committerUserId === userSession.id;
+    secretApprovalRequestDetails?.policy?.allowedSelfApprovals === false && isCommitter;
   const isApproving = variables?.status === ApprovalStatus.APPROVED && isUpdatingRequestStatus;
   const isRejecting = variables?.status === ApprovalStatus.REJECTED && isUpdatingRequestStatus;
 
@@ -277,7 +277,8 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
           </div>
           {!hasMerged &&
             secretApprovalRequestDetails.status === "open" &&
-            !shouldBlockSelfReview && (
+            !shouldBlockSelfReview &&
+            canApprove && (
               <DropdownMenu
                 open={popUp.reviewChanges.isOpen}
                 onOpenChange={(isOpen) => handlePopUpToggle("reviewChanges", isOpen)}
@@ -551,6 +552,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
         <div className="mt-2 flex items-center space-x-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800">
           <SecretApprovalRequestAction
             canApprove={canApprove}
+            isCommitter={isCommitter}
             isBypasser={isBypasser === undefined ? true : isBypasser}
             approvalRequestId={secretApprovalRequestDetails.id}
             hasMerged={hasMerged}

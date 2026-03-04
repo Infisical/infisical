@@ -3,12 +3,14 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
+import { getActiveDirectoryResourceListItem } from "./active-directory/active-directory-resource-fns";
 import { getAwsIamResourceListItem } from "./aws-iam/aws-iam-resource-fns";
 import { getKubernetesResourceListItem } from "./kubernetes/kubernetes-resource-fns";
 import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
 import { TPamResource, TPamResourceConnectionDetails, TPamResourceMetadata } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 import { getRedisResourceListItem } from "./redis/redis-resource-fns";
+import { getWindowsResourceListItem } from "./windows-server/windows-server-resource-fns";
 
 export const listResourceOptions = () => {
   return [
@@ -16,7 +18,9 @@ export const listResourceOptions = () => {
     getMySQLResourceListItem(),
     getAwsIamResourceListItem(),
     getKubernetesResourceListItem(),
-    getRedisResourceListItem()
+    getRedisResourceListItem(),
+    getWindowsResourceListItem(),
+    getActiveDirectoryResourceListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 

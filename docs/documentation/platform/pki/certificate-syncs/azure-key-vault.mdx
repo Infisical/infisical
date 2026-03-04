@@ -135,12 +135,12 @@ Any role with these permissions would work such as the **Key Vault Certificates 
 
 ## Certificate Management
 
-Your Azure Key Vault Certificate Sync will:
+The Azure Key Vault Certificate Sync provides:
 
 - **Automatic Deployment**: Deploy certificates in Infisical to Azure Key Vault.
-- **Certificate Updates**: Update certificates in Azure Key Vault when renewals occur
-- **Expiration Handling**: Optionally remove expired certificates from Azure Key Vault (if enabled)
-- **Format Preservation**: Maintain certificate format and metadata during sync operations
+- **Certificate Updates**: Update certificates in Azure Key Vault when renewals occur.
+- **Expiration Handling**: Optionally remove expired certificates from Azure Key Vault (if enabled).
+- **Format Preservation**: Maintain certificate format and metadata during sync operations.
 
 <Note>
   Azure Key Vault Certificate Syncs support both automatic and manual
@@ -159,8 +159,10 @@ You can manually trigger certificate synchronization to Azure Key Vault using th
 
 To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
 
-<Note>
+## FAQ
+
+<Accordion title="Can I import certificates from Azure Key Vault back into Infisical?">
   Azure Key Vault does not support importing certificates back into Infisical
   due to security limitations where private keys cannot be extracted from Azure
   Key Vault.
-</Note>
+</Accordion>

@@ -55,7 +55,7 @@ type TIdentityUaServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   keyStore: Pick<
     TKeyStoreFactory,
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
@@ -80,7 +80,7 @@ export const identityUaServiceFactory = ({
   keyStore,
   identityDAL
 }: TIdentityUaServiceFactoryDep) => {
-  const login = async ({ clientId, clientSecret, ip, subOrganizationName }: TLoginUaDTO) => {
+  const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
     const appCfg = getConfig();
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
@@ -234,23 +234,24 @@ export const identityUaServiceFactory = ({
               accessTokenMaxTTL: 1000000000
             };
 
-      if (subOrganizationName) {
+      if (organizationSlug) {
         if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
           if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+            throw new NotFoundError({ message: `Sub organization with name ${organizationSlug} not found` });
           }
 
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
+          // Allow access if identity has direct org membership or access via a group (e.g. root-org group linked to sub-org)
+          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+            actorType: ActorType.IDENTITY,
+            actorId: identity.id,
+            orgId: subOrg.id
           });
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`
             });
           }
 

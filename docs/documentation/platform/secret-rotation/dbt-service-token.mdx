@@ -1,0 +1,165 @@
+---
+title: "DBT Service Token"
+description: "Learn how to automatically rotate DBT Service Tokens."
+---
+
+<Note>
+  **Rotation Type: Dual-Phase**
+
+  This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+</Note>
+
+## Prerequisites
+
+- Create a [DBT Connection](/integrations/app-connections/dbt).
+
+## Create a DBT Service Token Rotation in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+
+        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+
+        2. Select the **DBT Service Token** option.
+
+        ![Select DBT Service Token](/images/secret-rotations-v2/dbt-service-token/select-dbt-service-token.png)
+
+        3. Configure the rotation behavior, then click **Next**.
+
+        ![Rotation Configuration](/images/secret-rotations-v2/dbt-service-token/configuration.png)
+
+        - **DBT Connection** - the connection that will perform the rotation of the specified service token.
+        - **Rotation Interval** - the interval, in days, that once elapsed will trigger a rotation.
+        - **Rotate At** - the local time of day when rotation should occur once the interval has elapsed.
+        - **Auto-Rotation Enabled** - whether secrets should automatically be rotated once the rotation interval has elapsed. Disable this option to manually rotate secrets or pause secret rotation.
+
+        <Note>
+            Note that it's important that the DBT connection being used has permissions to create service tokens. Groups such as `Owner` or `Security Admin` are sufficient.
+        </Note>
+
+        4. Select the parameters for the DBT service token rotation. Then click **Next**.
+        - **Service Token Name**: The name of the service token to be created.
+        - **Permission Grants**: The permission grants to apply to the service token.
+            - **Permission Set**: The permission set to apply to the service token.
+            - **Projects**: The projects to apply the permission set to. Select "All Projects" for the permission set to be applied to all projects.
+
+
+        ![Rotation Parameters](/images/secret-rotations-v2/dbt-service-token/parameters.png)
+
+        5. Specify the secret names that the service token should be mapped to. Then click **Next**.
+
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/dbt-service-token/mappings.png)
+
+        - **Service Token** - the name of the secret that the service token will be mapped to.
+
+        6. Give your rotation a name and description (optional). Then click **Next**.
+
+        ![Rotation Details](/images/secret-rotations-v2/dbt-service-token/details.png)
+
+        - **Name** - the name of the secret rotation configuration. Must be slug-friendly.
+        - **Description** (optional) - a description of this rotation configuration.
+
+        7. Review your configuration, then click **Create Secret Rotation**.
+
+        ![Rotation Review](/images/secret-rotations-v2/dbt-service-token/review.png)
+
+        8. Your **DBT Service Token** credentials are now available for use via the mapped secrets.
+
+        ![Rotation Created](/images/secret-rotations-v2/dbt-service-token/created.png)
+    </Tab>
+    <Tab title="API">
+        To create a DBT Service Token Rotation, make an API request to the [Create DBT Service Token Rotation](/api-reference/endpoints/secret-rotations/dbt-service-token/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://us.infisical.com/api/v2/secret-rotations/dbt-service-token \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-dbt-service-token-rotation",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "my dbt service token rotation",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "dev",
+            "secretPath": "/",
+            "isAutoRotationEnabled": true,
+            "rotationInterval": 30,
+            "rotateAtUtc": {
+                "hours": 0,
+                "minutes": 0
+            },
+            "parameters": {
+                "tokenName": "my-service-token",
+                "permissionGrants": [
+                    {
+                        "permissionSet": "account_admin",
+                        "projectId": "<project-id>" // leave empty for all projects
+                    }
+                ]
+            },
+            "secretsMapping": {
+                "serviceToken": "DBT_SERVICE_TOKEN"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretRotation": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-dbt-service-token-rotation",
+                "description": "my dbt service token rotation",
+                "secretsMapping": {
+                    "serviceToken": "DBT_SERVICE_TOKEN"
+                },
+                "isAutoRotationEnabled": true,
+                "activeIndex": 0,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "rotationInterval": 30,
+                "rotationStatus": "success",
+                "lastRotationAttemptedAt": "2023-11-07T05:31:56Z",
+                "lastRotatedAt": "2023-11-07T05:31:56Z",
+                "lastRotationJobId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "nextRotationAt": "2023-11-07T05:31:56Z",
+                "connection": {
+                    "app": "dbt",
+                    "name": "my-dbt-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/"
+                },
+                "rotateAtUtc": {
+                    "hours": 0,
+                    "minutes": 0
+                },
+                "lastRotationMessage": null,
+                "type": "dbt-service-token",
+                "parameters": {
+                    "tokenName": "my-service-token",
+                    "permissionGrants": [
+                        {
+                            "permissionSet": "account_admin",
+                            "projectId": "<project-id>" // leave empty for all projects
+                        }
+                    ]
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

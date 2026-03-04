@@ -50,12 +50,13 @@ export const secretSharingDALFactory = (db: TDbClient) => {
 
   const countAllUserOrgSharedSecrets = async ({
     orgId,
-    userId,
-    type
+    type,
+    ...actorFilters
   }: {
     orgId: string;
-    userId: string;
     type: SecretSharingType;
+    userId?: string;
+    identityId?: string;
   }) => {
     try {
       interface CountResult {
@@ -65,7 +66,17 @@ export const secretSharingDALFactory = (db: TDbClient) => {
       const count = await db
         .replicaNode()(TableName.SecretSharing)
         .where(`${TableName.SecretSharing}.orgId`, orgId)
-        .where(`${TableName.SecretSharing}.userId`, userId)
+        .where((qb) => {
+          if ("userId" in actorFilters && "identityId" in actorFilters) {
+            void qb
+              .where(`${TableName.SecretSharing}.userId`, actorFilters.userId)
+              .orWhere(`${TableName.SecretSharing}.identityId`, actorFilters.identityId);
+          } else if ("userId" in actorFilters) {
+            void qb.where(`${TableName.SecretSharing}.userId`, actorFilters.userId);
+          } else if ("identityId" in actorFilters) {
+            void qb.where(`${TableName.SecretSharing}.identityId`, actorFilters.identityId);
+          }
+        })
         .where(`${TableName.SecretSharing}.type`, type)
         .count("*")
         .first();

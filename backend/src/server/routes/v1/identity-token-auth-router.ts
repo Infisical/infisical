@@ -314,7 +314,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       }),
       body: z.object({
         name: z.string().optional().describe(TOKEN_AUTH.CREATE_TOKEN.name),
-        subOrganizationName: slugSchema().optional().describe(TOKEN_AUTH.CREATE_TOKEN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(TOKEN_AUTH.CREATE_TOKEN.organizationSlug)
       }),
       response: {
         200: z.object({

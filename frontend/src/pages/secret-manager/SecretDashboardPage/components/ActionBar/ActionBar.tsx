@@ -1257,6 +1257,10 @@ export const ActionBar = ({
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
         onMoveApproved={handleSecretsMove}
+        secretsToMove={Object.values(selectedSecrets).map((s) => ({ id: s.id, key: s.key }))}
+        environment={environment}
+        secretPath={secretPath}
+        projectId={projectId}
       />
       <ReplicateFolderFromBoard
         isOpen={popUp.replicateFolder.isOpen}

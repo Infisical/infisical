@@ -269,9 +269,6 @@ import {
   TMemberships,
   TMembershipsInsert,
   TMembershipsUpdate,
-  TNamespaces,
-  TNamespacesInsert,
-  TNamespacesUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
@@ -329,6 +326,12 @@ import {
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate,
+  TPkiCertificateInstallationCerts,
+  TPkiCertificateInstallationCertsInsert,
+  TPkiCertificateInstallationCertsUpdate,
+  TPkiCertificateInstallations,
+  TPkiCertificateInstallationsInsert,
+  TPkiCertificateInstallationsUpdate,
   TPkiCertificatePolicies,
   TPkiCertificatePoliciesInsert,
   TPkiCertificatePoliciesUpdate,
@@ -344,6 +347,15 @@ import {
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiDiscoveryConfigs,
+  TPkiDiscoveryConfigsInsert,
+  TPkiDiscoveryConfigsUpdate,
+  TPkiDiscoveryInstallations,
+  TPkiDiscoveryInstallationsInsert,
+  TPkiDiscoveryInstallationsUpdate,
+  TPkiDiscoveryScanHistory,
+  TPkiDiscoveryScanHistoryInsert,
+  TPkiDiscoveryScanHistoryUpdate,
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
@@ -389,6 +401,9 @@ import {
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
+  TQueueJobs,
+  TQueueJobsInsert,
+  TQueueJobsUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -856,6 +871,31 @@ declare module "knex/types/tables" {
       TPkiSubscribersUpdate
     >;
     [TableName.PkiSync]: KnexOriginal.CompositeTableType<TPkiSyncs, TPkiSyncsInsert, TPkiSyncsUpdate>;
+    [TableName.PkiDiscoveryConfig]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryConfigs,
+      TPkiDiscoveryConfigsInsert,
+      TPkiDiscoveryConfigsUpdate
+    >;
+    [TableName.PkiCertificateInstallation]: KnexOriginal.CompositeTableType<
+      TPkiCertificateInstallations,
+      TPkiCertificateInstallationsInsert,
+      TPkiCertificateInstallationsUpdate
+    >;
+    [TableName.PkiDiscoveryInstallation]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryInstallations,
+      TPkiDiscoveryInstallationsInsert,
+      TPkiDiscoveryInstallationsUpdate
+    >;
+    [TableName.PkiCertificateInstallationCert]: KnexOriginal.CompositeTableType<
+      TPkiCertificateInstallationCerts,
+      TPkiCertificateInstallationCertsInsert,
+      TPkiCertificateInstallationCertsUpdate
+    >;
+    [TableName.PkiDiscoveryScanHistory]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryScanHistory,
+      TPkiDiscoveryScanHistoryInsert,
+      TPkiDiscoveryScanHistoryUpdate
+    >;
     [TableName.CertificateSync]: KnexOriginal.CompositeTableType<
       TCertificateSyncs,
       TCertificateSyncsInsert,
@@ -1459,7 +1499,6 @@ declare module "knex/types/tables" {
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
 
-    [TableName.Namespace]: KnexOriginal.CompositeTableType<TNamespaces, TNamespacesInsert, TNamespacesUpdate>;
     [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
     [TableName.MembershipRole]: KnexOriginal.CompositeTableType<
       TMembershipRoles,
@@ -1563,5 +1602,7 @@ declare module "knex/types/tables" {
       TOrganizationAssetsInsert,
       TOrganizationAssetsUpdate
     >;
+
+    [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
   }
 }

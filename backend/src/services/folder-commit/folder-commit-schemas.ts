@@ -29,7 +29,10 @@ const secretVersionSchema = z.object({
   skipMultilineEncoding: z.boolean().nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
   metadata: z.unknown().nullable().optional(),
-  secretValue: z.string()
+  secretValue: z.string(),
+  isRedacted: z.boolean(),
+  redactedAt: z.date().nullable(),
+  redactedByUserId: z.string().nullable()
 });
 
 // Folder-specific versions schema
@@ -122,7 +125,10 @@ const secretResourceChangeSchema = baseResourceChangeSchema.extend({
         tags: z.array(z.string()).nullable().optional(),
         metadata: z.unknown().nullable().optional(),
         secretReminderNote: z.string().nullable().optional(),
-        secretValue: z.string().optional()
+        secretValue: z.string().optional(),
+        isRedacted: z.boolean(),
+        redactedAt: z.date().nullable(),
+        redactedByUserId: z.string().nullable()
       })
     )
     .optional()

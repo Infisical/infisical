@@ -40,7 +40,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
             message: "AccessKeyId must be alphanumeric"
           })
           .describe(ALICLOUD_AUTH.LOGIN.AccessKeyId),
-        subOrganizationName: slugSchema().optional().describe(ALICLOUD_AUTH.LOGIN.subOrganizationName),
+        organizationSlug: slugSchema().optional().describe(ALICLOUD_AUTH.LOGIN.organizationSlug),
         SignatureMethod: z.enum(["HMAC-SHA1"]).describe(ALICLOUD_AUTH.LOGIN.SignatureMethod),
         Timestamp: z
           .string()

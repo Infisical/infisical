@@ -8,11 +8,6 @@ You can use it across various environments, whether it's local development, CI/C
 
 ## Installation
 
-<Warning>
-	As of 04/08/25, all future releases for Debian/Ubuntu will be distributed via the official Infisical repository at https://artifacts-cli.infisical.com.
-	No new releases will be published for Debian/Ubuntu on Cloudsmith going forward.
-</Warning>
-
 <Tabs>
   <Tab title="MacOS">
   	Use [brew](https://brew.sh/) package manager
@@ -72,14 +67,12 @@ You can use it across various environments, whether it's local development, CI/C
 	 <Tab title="Alpine">
 	 Install prerequisite
 		```bash
-		apk add --no-cache bash sudo
+		apk add --no-cache bash sudo wget
 		```
 
     	Add Infisical repository
     	```bash
-    	curl -1sLf \
-    		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
-    		| bash
+    	wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sudo sh
     	```
 
     	Then install CLI
@@ -88,14 +81,14 @@ You can use it across various environments, whether it's local development, CI/C
     	```
 		###
 		<Tip>
-			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
 		</Tip>
    </Tab>
 	 <Tab title="RedHat/CentOs/Amazon">
 	 Add Infisical repository
 		```bash
 		curl -1sLf \
-		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' \
+		'https://artifacts-cli.infisical.com/setup.rpm.sh' \
 		| sudo -E bash
 		```
 
@@ -105,7 +98,7 @@ You can use it across various environments, whether it's local development, CI/C
     	```
 		###
 		<Tip>
-			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
 		</Tip>
    </Tab>
 	 <Tab title="Debian/Ubuntu">
@@ -124,7 +117,7 @@ You can use it across various environments, whether it's local development, CI/C
     	```
 	###
 	<Tip>
-		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
 	</Tip>
    </Tab>
 	<Tab title="Arch Linux">
@@ -136,7 +129,7 @@ You can use it across various environments, whether it's local development, CI/C
 
 	###
 	<Tip>
-		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
 	</Tip>
    </Tab>
 </Tabs>

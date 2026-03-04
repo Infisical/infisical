@@ -78,11 +78,13 @@ const setupTelemetry = () => {
   const appCfg = getTelemetryConfig();
 
   if (appCfg.useOtel) {
+    // eslint-disable-next-line no-console
     console.log("Initializing telemetry instrumentation");
     initTelemetryInstrumentation({ ...appCfg.OTEL });
   }
 
   if (appCfg.useDataDogTracer) {
+    // eslint-disable-next-line no-console
     console.log("Initializing Datadog tracer");
     tracer.init({ ...appCfg.TRACER });
   }

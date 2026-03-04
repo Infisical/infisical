@@ -15,6 +15,7 @@ const $glob: FieldInstruction<string> = {
 const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
   const secretPath = context.get(object, node.field) as string;
   const permissionSecretGlobPath = node.value;
+  if (permissionSecretGlobPath.trim() === "") return false;
   return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
 };
 

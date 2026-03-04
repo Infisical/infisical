@@ -1,4 +1,3 @@
-import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AlertTriangleIcon } from "lucide-react";
@@ -7,9 +6,9 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 type Props = {
   secretSync: TSecretSync;
@@ -19,13 +18,7 @@ type Props = {
 export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => {
   const { folder, environment } = secretSync;
 
-  const permissionSubject =
-    environment && folder
-      ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path
-        })
-      : ProjectPermissionSub.SecretSyncs;
+  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
   return (
     <div>

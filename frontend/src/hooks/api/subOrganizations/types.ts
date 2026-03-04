@@ -9,6 +9,7 @@ export type TSubOrganization = {
 
 export type TCreateSubOrganizationDTO = {
   name: string;
+  slug?: string;
 };
 
 export type TListSubOrganizationsDTO = {
@@ -19,5 +20,6 @@ export type TListSubOrganizationsDTO = {
 
 export type TUpdateSubOrganizationDTO = {
   subOrgId: string;
-  name: string;
+  name?: string;
+  slug?: string;
 };

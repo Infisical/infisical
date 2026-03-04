@@ -43,17 +43,22 @@ type SubjectAttributesFieldProps = {
   control: Control<any>;
   allowedAttributeTypes: CertSubjectAttributeType[];
   error?: string;
+  shouldUnregister?: boolean;
+  namePrefix?: string;
 };
 
 export const SubjectAttributesField = ({
   control,
   allowedAttributeTypes,
-  error
+  error,
+  shouldUnregister,
+  namePrefix = "subjectAttributes"
 }: SubjectAttributesFieldProps) => {
   return (
     <Controller
       control={control}
-      name="subjectAttributes"
+      name={namePrefix}
+      shouldUnregister={shouldUnregister}
       render={({ field: { onChange, value } }) => {
         const currentValues = value || [];
         const usedTypes = currentValues.map((attr: SubjectAttribute) => attr.type);
@@ -69,8 +74,7 @@ export const SubjectAttributesField = ({
                 );
 
                 return (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <div key={`subject-attr-${index}`} className="flex items-center gap-2">
+                  <div key={`subject-attr-${attr.type}`} className="flex items-center gap-2">
                     <Select
                       value={attr.type}
                       onValueChange={(newType) => {

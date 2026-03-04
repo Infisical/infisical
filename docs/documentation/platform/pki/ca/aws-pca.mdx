@@ -1,0 +1,119 @@
+---
+title: "AWS Private CA"
+description: "Learn how to issue and manage certificates using AWS Private Certificate Authority (PCA) with Infisical."
+---
+
+Issue and manage certificates using AWS Private Certificate Authority (PCA) for cloud-native private certificate management.
+
+## Prerequisites
+
+Before setting up AWS PCA integration, ensure you have:
+
+- An AWS account with AWS Private CA service access
+- An AWS Private CA in **ACTIVE** status
+- An [AWS App Connection](/integrations/app-connections/aws) configured in Infisical with the required IAM permissions (see below)
+
+### IAM Permissions
+
+Your AWS connection's IAM role or user needs the following permissions on your Private CA resource(s):
+
+- `acm-pca:DescribeCertificateAuthority`
+- `acm-pca:GetCertificateAuthorityCertificate`
+- `acm-pca:IssueCertificate`
+- `acm-pca:GetCertificate`
+- `acm-pca:RevokeCertificate`
+
+To scope permissions to a single CA, set the `Resource` to that CA's ARN:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "acm-pca:DescribeCertificateAuthority",
+        "acm-pca:GetCertificateAuthorityCertificate",
+        "acm-pca:IssueCertificate",
+        "acm-pca:GetCertificate",
+        "acm-pca:RevokeCertificate"
+      ],
+      "Resource": "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/your-ca-id"
+    }
+  ]
+}
+```
+
+To allow access to multiple CAs, list each ARN in the `Resource` array:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "acm-pca:DescribeCertificateAuthority",
+        "acm-pca:GetCertificateAuthorityCertificate",
+        "acm-pca:IssueCertificate",
+        "acm-pca:GetCertificate",
+        "acm-pca:RevokeCertificate"
+      ],
+      "Resource": [
+        "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/ca-id-1",
+        "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/ca-id-2"
+      ]
+    }
+  ]
+}
+```
+
+<Note>
+  Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
+</Note>
+
+See the [AWS Connection](/integrations/app-connections/aws) page for full setup instructions.
+
+## Complete Workflow: From Setup to Certificate Issuance
+
+<Steps>
+  <Step title="Copy Your AWS PCA ARN">
+    In the AWS Console, navigate to **AWS Private CA** and select your certificate authority. Copy the **ARN** from the CA details page.
+    ![Copy PCA ARN](/images/platform/pki/aws-pca/aws-pca-copy-arn.png)
+  </Step>
+
+  <Step title="Navigate to External Certificate Authorities">
+    In your Infisical project, go to **Certificate Authorities** and scroll to the **External Certificate Authorities** section.
+    ![External CA Page](/images/platform/pki/aws-pca/aws-pca-external-ca-page.png)
+  </Step>
+
+  <Step title="Create New AWS PCA Certificate Authority">
+    Click **Create CA** and configure:
+    - **CA Type**: Choose **AWS Private CA (PCA)**
+    - **Name**: A slug name for this CA — lowercase letters, numbers, and hyphens only (e.g., "production-aws-pca")
+    - **AWS Connection**: Select your AWS connection from the dropdown
+    - **Certificate Authority ARN**: Paste the ARN copied from the previous step
+    - **Region**: Select the AWS region where your PCA is hosted
+
+    ![External CA Form](/images/platform/pki/aws-pca/aws-pca-external-ca-form.png)
+  </Step>
+
+  <Step title="Create a Certificate Profile and Issue a Certificate">
+    Create a certificate profile linked to your AWS PCA CA, then submit a certificate request. The request will be sent to AWS PCA and the issued certificate will be available once the order completes.
+    ![Certificate Created](/images/platform/pki/aws-pca/aws-pca-certificate-created.png)
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+**CA Not in ACTIVE Status**
+
+- AWS PCA must be in the **ACTIVE** state before Infisical can issue certificates. Verify the status in the AWS Console under **AWS Private CA**.
+
+**IAM Permission Errors**
+
+- Ensure your AWS connection's IAM role or user has the required `acm-pca:*` permissions scoped to the correct CA ARN. See the [IAM Permissions](#iam-permissions) section above.
+
+**Invalid CA ARN**
+
+- Double-check the ARN format: `arn:aws:acm-pca:<region>:<account-id>:certificate-authority/<ca-id>`.

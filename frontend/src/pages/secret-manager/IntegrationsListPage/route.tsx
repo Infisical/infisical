@@ -65,7 +65,7 @@ export const Route = createFileRoute(
             orgId,
             projectId
           },
-          search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
+          search: { selectedTab: IntegrationsListPageTabs.AppConnections }
         });
       }
 
@@ -80,13 +80,14 @@ export const Route = createFileRoute(
         });
       }
 
+      // Default to App Connections tab if no existing syncs or integrations
       throw redirect({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
           orgId,
           projectId
         },
-        search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
+        search: { selectedTab: IntegrationsListPageTabs.AppConnections }
       });
     }
 

@@ -9,7 +9,8 @@ export enum TokenType {
   TOKEN_EMAIL_PASSWORD_RESET = "passwordReset",
   TOKEN_EMAIL_PASSWORD_SETUP = "passwordSetup",
   TOKEN_USER_UNLOCK = "userUnlock",
-  TOKEN_WEBAUTHN_SESSION = "webauthnSession"
+  TOKEN_WEBAUTHN_SESSION = "webauthnSession",
+  TOKEN_PAM_WS_TICKET = "pamWsTicket"
 }
 
 export type TCreateTokenForUserDTO = {

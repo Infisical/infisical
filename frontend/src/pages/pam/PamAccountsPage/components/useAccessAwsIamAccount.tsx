@@ -8,7 +8,7 @@ export const useAccessAwsIamAccount = () => {
   const accessPamAccount = useAccessPamAccount();
   const [loadingAccountId, setLoadingAccountId] = useState<string | null>(null);
 
-  const accessAwsIam = async (account: TPamAccount, accountPath: string) => {
+  const accessAwsIam = async (account: TPamAccount) => {
     if (account.resource.resourceType !== PamResourceType.AwsIam) {
       return false;
     }
@@ -18,7 +18,8 @@ export const useAccessAwsIamAccount = () => {
     try {
       const response = await accessPamAccount.mutateAsync({
         accountId: account.id,
-        accountPath,
+        resourceName: account.resource.name,
+        accountName: account.name,
         projectId: account.projectId,
         duration: `${(account.credentials as TAwsIamCredentials).defaultSessionDuration}s`
       });

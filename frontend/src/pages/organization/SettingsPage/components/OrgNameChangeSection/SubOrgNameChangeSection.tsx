@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,11 +15,11 @@ import {
   useOrgPermission
 } from "@app/context";
 import { useUpdateSubOrganization } from "@app/hooks/api";
+import { GenericResourceNameSchema, slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
-  name: z
-    .string()
-    .regex(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
+  name: GenericResourceNameSchema,
+  slug: slugSchema()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -30,24 +31,36 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { handleSubmit, control } = useForm<FormData>({
+  const { handleSubmit, control, reset } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: currentOrg?.name || ""
+      name: currentOrg?.name || "",
+      slug: currentOrg?.slug || ""
     }
   });
+
+  useEffect(() => {
+    if (currentOrg) {
+      reset({
+        name: currentOrg.name || "",
+        slug: currentOrg.slug || ""
+      });
+    }
+  }, [currentOrg?.id, currentOrg?.name, currentOrg?.slug, reset]);
+
   const { mutateAsync, isPending } = useUpdateSubOrganization();
 
-  const onFormSubmit = async ({ name }: FormData) => {
+  const onFormSubmit = async ({ name, slug }: FormData) => {
     await mutateAsync({
       name,
+      slug,
       subOrgId: currentOrg.id
     });
 
     navigate({
       to: "/organizations/$orgId/settings",
       params: { orgId: currentOrg.id },
-      search: { subOrganization: name }
+      search: { subOrganization: slug }
     });
     queryClient.invalidateQueries();
     await router.invalidate({ sync: true });
@@ -59,8 +72,8 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="py-4">
-      <div>
-        <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization Name</h2>
+      <div className="mb-4">
+        <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization Display Name</h2>
         <Controller
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
@@ -77,6 +90,31 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
           )}
           control={control}
           name="name"
+        />
+      </div>
+      <div className="mb-4">
+        <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization Slug</h2>
+        <Controller
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              isError={Boolean(error)}
+              errorText={error?.message}
+              helperText="Must be slug-friendly (lowercase letters, numbers, and hyphens only)"
+              className="max-w-md"
+            >
+              <Input
+                isDisabled={permission.cannot(
+                  OrgPermissionActions.Edit,
+                  OrgPermissionSubjects.Settings
+                )}
+                placeholder="acme-corp"
+                {...field}
+              />
+            </FormControl>
+          )}
+          control={control}
+          name="slug"
         />
       </div>
       <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>

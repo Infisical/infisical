@@ -6,14 +6,14 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface SecretRequestCompletedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   name?: string;
-  respondentUsername: string;
+  senderUsername?: string;
   secretRequestUrl: string;
 }
 
 export const SecretRequestCompletedTemplate = ({
   name,
   siteUrl,
-  respondentUsername,
+  senderUsername,
   secretRequestUrl
 }: SecretRequestCompletedTemplateProps) => {
   return (
@@ -23,7 +23,7 @@ export const SecretRequestCompletedTemplate = ({
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] text-center pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">
-          {respondentUsername ? <strong>{respondentUsername}</strong> : "Someone"} shared a secret{" "}
+          {senderUsername ? <strong>{senderUsername}</strong> : "Someone"} shared a secret{" "}
           {name && (
             <>
               <strong>{name}</strong>{" "}
@@ -42,7 +42,7 @@ export const SecretRequestCompletedTemplate = ({
 export default SecretRequestCompletedTemplate;
 
 SecretRequestCompletedTemplate.PreviewProps = {
-  respondentUsername: "Gracie",
+  senderUsername: "Gracie",
   siteUrl: "https://infisical.com",
   secretRequestUrl: "https://infisical.com",
   name: "API_TOKEN"

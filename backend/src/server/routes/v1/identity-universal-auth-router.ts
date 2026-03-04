@@ -38,7 +38,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         clientId: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientId),
         clientSecret: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientSecret),
-        subOrganizationName: slugSchema().optional().describe(UNIVERSAL_AUTH.LOGIN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(UNIVERSAL_AUTH.LOGIN.organizationSlug)
       }),
       response: {
         200: z.object({

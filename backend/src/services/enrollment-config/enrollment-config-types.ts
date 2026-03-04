@@ -39,4 +39,5 @@ export interface TApiConfigData {
 
 export interface TAcmeConfigData {
   skipDnsOwnershipVerification?: boolean;
+  skipEabBinding?: boolean;
 }

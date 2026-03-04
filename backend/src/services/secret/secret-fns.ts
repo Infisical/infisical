@@ -21,10 +21,10 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
-  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllSecretReferences
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";

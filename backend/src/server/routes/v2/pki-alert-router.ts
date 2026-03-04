@@ -8,8 +8,10 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import {
   CreatePkiAlertV2Schema,
   createSecureAlertBeforeValidator,
+  NotificationConfigSchema,
   PkiAlertChannelType,
   PkiAlertEventType,
+  PkiAlertRunStatus,
   PkiFilterRuleSchema,
   UpdatePkiAlertV2Schema
 } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -40,6 +42,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -113,6 +116,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
               alertBefore: z.string(),
               filters: z.array(PkiFilterRuleSchema),
               enabled: z.boolean(),
+              notificationConfig: NotificationConfigSchema.nullable(),
               channels: z.array(
                 z.object({
                   id: z.string().uuid(),
@@ -123,6 +127,13 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
                   updatedAt: z.date()
                 })
               ),
+              lastRun: z
+                .object({
+                  timestamp: z.date(),
+                  status: z.nativeEnum(PkiAlertRunStatus),
+                  error: z.string().nullable()
+                })
+                .nullable(),
               createdAt: z.date(),
               updatedAt: z.date()
             })
@@ -169,6 +180,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -235,6 +247,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -304,6 +317,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
+            notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
                 id: z.string().uuid(),
@@ -442,6 +456,48 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/test-webhook",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      operationId: "testPkiAlertWebhook",
+      description: "Test a webhook configuration by sending a test payload",
+      tags: [ApiDocsTags.PkiAlerting],
+      body: z.object({
+        projectId: z.string().uuid().describe("Project ID for permission check"),
+        url: z
+          .string()
+          .url()
+          .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS")
+          .describe("Webhook URL to test"),
+        signingSecret: z.string().max(256).optional().describe("Optional signing secret for HMAC signature")
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          error: z.string().optional()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.pkiAlertV2.testWebhookConfig({
+        projectId: req.body.projectId,
+        url: req.body.url,
+        signingSecret: req.body.signingSecret,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return result;

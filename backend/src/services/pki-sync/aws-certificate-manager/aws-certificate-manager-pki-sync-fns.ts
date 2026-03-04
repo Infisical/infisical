@@ -272,7 +272,12 @@ export const awsCertificateManagerPkiSyncFactory = ({
         const listParams: AWS.ACM.ListCertificatesRequest = {
           CertificateStatuses: ["ISSUED"],
           NextToken: nextToken,
-          MaxItems: 100
+          MaxItems: 100,
+          // By default, listCertificates only returns RSA_1024 and RSA_2048 certificates.
+          // We must explicitly include all key types to get all certificates.
+          Includes: {
+            keyTypes: ["RSA_1024", "RSA_2048", "RSA_3072", "RSA_4096", "EC_prime256v1", "EC_secp384r1", "EC_secp521r1"]
+          }
         };
 
         const response = await withRateLimitRetry(() => acm.listCertificates(listParams).promise(), {

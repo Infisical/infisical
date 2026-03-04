@@ -114,6 +114,7 @@ export const UpdateSSHAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedSSHAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
+  resourceType: z.literal(PamResource.SSH),
   credentials: z.discriminatedUnion("authMethod", [
     z.object({
       authMethod: z.literal(SSHAuthMethod.Password),

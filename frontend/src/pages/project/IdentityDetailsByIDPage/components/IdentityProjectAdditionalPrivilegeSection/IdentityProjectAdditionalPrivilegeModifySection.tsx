@@ -1,9 +1,9 @@
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faCaretDown, faClock, faSave } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
+import { ChevronDownIcon, ClockIcon, SaveIcon } from "lucide-react";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -11,17 +11,15 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
   FormControl,
   FormLabel,
   Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Tag,
   Tooltip
 } from "@app/components/v2";
-import { UnstableSeparator } from "@app/components/v3";
+import { Badge, Button, UnstableAccordion, UnstableSeparator } from "@app/components/v3";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
@@ -50,6 +48,7 @@ type Props = {
   identityId: string;
   onGoBack: () => void;
   isDisabled?: boolean;
+  menuPortalContainerRef?: React.RefObject<HTMLElement | null>;
 };
 
 export const formSchema = z.object({
@@ -73,18 +72,20 @@ export const formSchema = z.object({
 type TFormSchema = z.infer<typeof formSchema>;
 
 export const IdentityProjectAdditionalPrivilegeModifySection = ({
-  privilegeId = "",
+  privilegeId,
   onGoBack,
   identityId,
-  isDisabled
+  isDisabled,
+  menuPortalContainerRef
 }: Props) => {
   const isCreate = !privilegeId;
+  const [openPolicies, setOpenPolicies] = useState<string[]>([]);
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
   const { data: privilegeDetails, isPending } = useGetIdentityProjectPrivilegeDetails({
     identityId,
     projectId,
-    privilegeId
+    privilegeId: privilegeId || ""
   });
   const { permission } = useProjectPermission();
   const isIdentityEditDisabled = permission.cannot(
@@ -93,23 +94,12 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   );
 
   const form = useForm<TFormSchema>({
-    values: privilegeDetails
-      ? {
-          ...privilegeDetails,
-          permissions: rolePermission2Form(privilegeDetails.permissions),
-          temporaryAccess: privilegeDetails.isTemporary
-            ? {
-                isTemporary: true,
-                temporaryRange: privilegeDetails.temporaryRange || "",
-                temporaryAccessEndTime: privilegeDetails.temporaryAccessEndTime || "",
-                temporaryAccessStartTime: privilegeDetails.temporaryAccessStartTime || ""
-              }
-            : {
-                isTemporary: privilegeDetails.isTemporary
-              }
-        }
-      : undefined,
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      slug: "",
+      temporaryAccess: { isTemporary: false },
+      permissions: {}
+    }
   });
 
   const {
@@ -118,10 +108,36 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     formState: { isDirty, isSubmitting }
   } = form;
 
+  useEffect(() => {
+    if (privilegeDetails) {
+      reset({
+        ...privilegeDetails,
+        permissions: rolePermission2Form(privilegeDetails.permissions),
+        temporaryAccess: privilegeDetails.isTemporary
+          ? {
+              isTemporary: true,
+              temporaryRange: privilegeDetails.temporaryRange || "",
+              temporaryAccessEndTime: privilegeDetails.temporaryAccessEndTime || "",
+              temporaryAccessStartTime: privilegeDetails.temporaryAccessStartTime || ""
+            }
+          : {
+              isTemporary: privilegeDetails.isTemporary
+            }
+      });
+    }
+  }, [privilegeDetails, reset]);
+
   const { mutateAsync: updateIdentityProjectAdditionalPrivilege } =
     useUpdateIdentityProjectAdditionalPrivilege();
   const { mutateAsync: createIdentityProjectAdditionalPrivilege } =
     useCreateIdentityProjectAdditionalPrivilege();
+
+  const permissions = useWatch({ control: form.control, name: "permissions" });
+
+  const hasPermissions = useMemo(
+    () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
+    [permissions]
+  );
 
   const onSubmit = async (el: TFormSchema) => {
     const accessType = !el.temporaryAccess.isTemporary
@@ -157,6 +173,18 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     onGoBack();
   };
 
+  // Expand accordion items that have validation errors
+  const handleFormSubmit = handleSubmit(onSubmit, (formErrors) => {
+    if (formErrors.permissions) {
+      const subjectsWithErrors = Object.keys(formErrors.permissions) as ProjectPermissionSub[];
+      setOpenPolicies((prev) => {
+        const newOpenPolicies = new Set(prev);
+        subjectsWithErrors.forEach((permissionSubject) => newOpenPolicies.add(permissionSubject));
+        return Array.from(newOpenPolicies);
+      });
+    }
+  });
+
   const privilegeTemporaryAccess = form.watch("temporaryAccess");
   const isTemporary = privilegeTemporaryAccess?.isTemporary;
   const isExpired =
@@ -182,7 +210,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   }
 
   return (
-    <form className="flex flex-col gap-y-4" onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-y-4" onSubmit={handleFormSubmit}>
       <FormProvider {...form}>
         <div>
           <div className="flex items-end space-x-6">
@@ -204,17 +232,18 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                     <FormLabel label="Duration" />
                     <Tooltip content={toolTipText}>
                       <Button
-                        variant="outline_bg"
-                        leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
-                        rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                        isDisabled={isIdentityEditDisabled}
+                        type="button"
+                        variant="outline"
+                        disabled={isIdentityEditDisabled}
                         className={twMerge(
                           "w-full border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
                           isTemporary && "text-primary",
                           isExpired && "text-red-600"
                         )}
                       >
+                        {isTemporary && <ClockIcon className="size-4" />}
                         {text}
+                        <ChevronDownIcon className="ml-2 size-4" />
                       </Button>
                     </Tooltip>
                   </div>
@@ -230,7 +259,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                     <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
                       Configure Timed Access
                     </div>
-                    {isExpired && <Tag colorSchema="red">Expired</Tag>}
+                    {isExpired && <Badge variant="danger">Expired</Badge>}
                     <Controller
                       control={form.control}
                       defaultValue="1h"
@@ -248,6 +277,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                     <div className="flex items-center space-x-2">
                       <Button
                         size="xs"
+                        variant="outline"
                         onClick={() => {
                           const temporaryRange = form.getValues("temporaryAccess.temporaryRange");
                           if (!temporaryRange) {
@@ -278,8 +308,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                       {isTemporary && (
                         <Button
                           size="xs"
-                          variant="outline_bg"
-                          colorSchema="danger"
+                          variant="danger"
                           onClick={() => {
                             form.setValue(
                               "temporaryAccess",
@@ -304,55 +333,85 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
         <div>
           <div className="mb-3 flex w-full items-center justify-between">
             <div className="text-lg">Policies</div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-2">
               {isDirty && (
                 <Button
-                  className="mr-4 text-mineshaft-300"
-                  variant="link"
-                  isDisabled={isSubmitting}
-                  isLoading={isSubmitting}
-                  onClick={() => reset()}
+                  type="button"
+                  className="mr-4 text-muted"
+                  variant="ghost"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    if (privilegeDetails) {
+                      reset({
+                        ...privilegeDetails,
+                        permissions: rolePermission2Form(privilegeDetails.permissions),
+                        temporaryAccess: privilegeDetails.isTemporary
+                          ? {
+                              isTemporary: true,
+                              temporaryRange: privilegeDetails.temporaryRange || "",
+                              temporaryAccessEndTime: privilegeDetails.temporaryAccessEndTime || "",
+                              temporaryAccessStartTime:
+                                privilegeDetails.temporaryAccessStartTime || ""
+                            }
+                          : { isTemporary: false }
+                      });
+                    } else {
+                      reset({
+                        slug: "",
+                        temporaryAccess: { isTemporary: false },
+                        permissions: {}
+                      });
+                    }
+                  }}
                 >
-                  Discard Changes
+                  Discard
                 </Button>
               )}
-              <div className="flex items-center">
+              {currentProject && (
                 <AddPoliciesButton
                   isDisabled={isDisabled}
                   projectType={currentProject.type}
                   projectId={projectId}
                 />
-              </div>
+              )}
             </div>
           </div>
-          {(isCreate || !isPending) && <PermissionEmptyState />}
-          <div className="scrollbar-thin max-h-[50vh] overflow-y-auto">
-            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
-              (permissionSubject) => (
-                <GeneralPermissionPolicies
-                  subject={permissionSubject}
-                  actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
-                  title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
-                  key={`project-permission-${permissionSubject}`}
-                  isDisabled={isDisabled}
-                >
-                  {renderConditionalComponents(permissionSubject, isDisabled)}
-                </GeneralPermissionPolicies>
-              )
-            )}
-          </div>
+          {(isCreate || !isPending) && !hasPermissions && <PermissionEmptyState />}
+          {hasPermissions && (
+            <div className="scrollbar-thin max-h-[50vh] overflow-y-auto">
+              <UnstableAccordion
+                type="multiple"
+                value={openPolicies}
+                onValueChange={setOpenPolicies}
+                className="overflow-clip rounded-md border border-border bg-container"
+              >
+                {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
+                  (permissionSubject) => (
+                    <GeneralPermissionPolicies
+                      subject={permissionSubject}
+                      actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                      title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
+                      description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
+                      key={`project-permission-${permissionSubject}`}
+                      isDisabled={isDisabled}
+                      isOpen={openPolicies.includes(permissionSubject)}
+                      menuPortalContainerRef={menuPortalContainerRef}
+                    >
+                      {renderConditionalComponents(permissionSubject, isDisabled)}
+                    </GeneralPermissionPolicies>
+                  )
+                )}
+              </UnstableAccordion>
+            </div>
+          )}
         </div>
         <UnstableSeparator />
         <div className="flex w-full items-center justify-end gap-x-2">
-          <Button colorSchema="secondary" variant="plain" onClick={onGoBack}>
+          <Button variant="ghost" onClick={onGoBack}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            isDisabled={isSubmitting || !isDirty || isDisabled}
-            isLoading={isSubmitting}
-            leftIcon={<FontAwesomeIcon icon={faSave} />}
-          >
+          <Button variant="project" type="submit" disabled={isSubmitting || !isDirty}>
+            <SaveIcon />
             Save
           </Button>
         </div>

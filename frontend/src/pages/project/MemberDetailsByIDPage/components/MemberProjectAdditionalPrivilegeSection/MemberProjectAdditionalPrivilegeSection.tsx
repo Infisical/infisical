@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon, ShieldIcon } from "lucide-react";
 
@@ -51,6 +52,7 @@ type Props = {
 };
 
 export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: Props) => {
+  const modalContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
   const userId = user?.id;
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
@@ -274,6 +276,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
         onOpenChange={(isOpen) => handlePopUpToggle("modifyPrivilege", isOpen)}
       >
         <ModalContent
+          ref={modalContainerRef}
           className="max-w-6xl"
           title="Additional Privileges"
           subTitle="Additional privileges take precedence over roles when permissions conflict"
@@ -286,6 +289,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
               isOwnProjectMembershipDetails ||
               permission.cannot(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member)
             }
+            menuPortalContainerRef={modalContainerRef}
           />
         </ModalContent>
       </Modal>

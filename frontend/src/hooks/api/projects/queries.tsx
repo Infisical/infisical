@@ -459,7 +459,7 @@ export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId
       const {
         data: { groupMembership }
       } = await apiRequest.get<{ groupMembership: TGroupMembership }>(
-        `/api/v1/projects/${projectId}/groups/${groupId}`
+        `/api/v1/projects/${projectId}/memberships/groups/${groupId}`
       );
       return groupMembership;
     }
@@ -473,7 +473,7 @@ export const useListWorkspaceGroups = (projectId: string) => {
       const {
         data: { groupMemberships }
       } = await apiRequest.get<{ groupMemberships: TGroupMembership[] }>(
-        `/api/v1/projects/${projectId}/groups`
+        `/api/v1/projects/${projectId}/memberships/groups`
       );
       return groupMemberships;
     },
@@ -523,7 +523,8 @@ export const useListWorkspaceCertificates = ({
   status,
   profileIds,
   fromDate,
-  toDate
+  toDate,
+  metadataFilter
 }: {
   projectId: string;
   offset: number;
@@ -536,6 +537,7 @@ export const useListWorkspaceCertificates = ({
   profileIds?: string[];
   fromDate?: Date;
   toDate?: Date;
+  metadataFilter?: Array<{ key: string; value?: string }>;
 }) => {
   return useQuery({
     queryKey: projectKeys.specificProjectCertificates({
@@ -549,53 +551,26 @@ export const useListWorkspaceCertificates = ({
       status,
       profileIds,
       fromDate,
-      toDate
+      toDate,
+      metadataFilter
     }),
     queryFn: async () => {
-      const params = new URLSearchParams({
-        offset: String(offset),
-        limit: String(limit)
-      });
-
-      if (friendlyName) {
-        params.append("friendlyName", friendlyName);
-      }
-      if (commonName) {
-        params.append("commonName", commonName);
-      }
-      if (forPkiSync) {
-        params.append("forPkiSync", "true");
-      }
-      if (search) {
-        params.append("search", search);
-      }
-      if (status) {
-        if (Array.isArray(status)) {
-          status.forEach((statusValue) => {
-            params.append("status", statusValue);
-          });
-        } else {
-          params.append("status", status);
-        }
-      }
-      if (fromDate) {
-        params.append("fromDate", fromDate.toISOString());
-      }
-      if (toDate) {
-        params.append("toDate", toDate.toISOString());
-      }
-      if (profileIds && profileIds.length > 0) {
-        profileIds.forEach((id) => {
-          params.append("profileIds", id);
-        });
-      }
-
       const {
         data: { certificates, totalCount }
-      } = await apiRequest.get<{ certificates: TCertificate[]; totalCount: number }>(
-        `/api/v1/projects/${projectId}/certificates`,
+      } = await apiRequest.post<{ certificates: TCertificate[]; totalCount: number }>(
+        `/api/v1/projects/${projectId}/certificates/search`,
         {
-          params
+          offset,
+          limit,
+          ...(friendlyName && { friendlyName }),
+          ...(commonName && { commonName }),
+          ...(forPkiSync && { forPkiSync }),
+          ...(search && { search }),
+          ...(status && { status: Array.isArray(status) ? status.join(",") : status }),
+          ...(profileIds && profileIds.length > 0 && { profileIds }),
+          ...(fromDate && { fromDate: fromDate.toISOString() }),
+          ...(toDate && { toDate: toDate.toISOString() }),
+          ...(metadataFilter && metadataFilter.length > 0 && { metadata: metadataFilter })
         }
       );
 

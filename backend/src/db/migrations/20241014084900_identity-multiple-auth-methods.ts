@@ -50,6 +50,7 @@ export async function up(knex: Knex): Promise<void> {
         .select("id");
 
       totalUpdated += batchIds.length;
+      // eslint-disable-next-line no-console
       console.log(`Updated ${batchIds.length} access tokens in batch <> Total updated: ${totalUpdated}`);
     } while (nullableAccessTokens.length > 0);
 

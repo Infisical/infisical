@@ -67,6 +67,7 @@ export const UpdateMySQLAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedMySQLAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
+  resourceType: z.literal(PamResource.MySQL),
   credentials: MySQLAccountCredentialsSchema.pick({
     username: true
   })

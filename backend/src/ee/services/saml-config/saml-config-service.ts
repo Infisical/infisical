@@ -729,7 +729,7 @@ export const samlConfigServiceFactory = ({
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted && user.isEmailVerified && userAlias.isEmailVerified);
+    const isUserCompleted = Boolean(user.isAccepted && userAlias.isEmailVerified);
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,

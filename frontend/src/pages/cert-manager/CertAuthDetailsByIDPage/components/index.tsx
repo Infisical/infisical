@@ -1,3 +1,4 @@
+export { CaCertDetailsSection } from "./CaCertDetailsSection";
 export { CaCertificatesSection } from "./CaCertificatesSection/CaCertificatesSection";
 export { CaCrlsSection } from "./CaCrlsSection";
 export { CaDetailsSection } from "./CaDetailsSection";
