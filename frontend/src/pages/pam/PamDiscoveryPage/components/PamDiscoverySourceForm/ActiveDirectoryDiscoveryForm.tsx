@@ -52,6 +52,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
         }
       : {
           discoveryType: PamDiscoveryType.ActiveDirectory,
+          schedule: "manual",
           discoveryConfiguration: {
             domainFQDN: "",
             dcAddress: "",
@@ -93,6 +94,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
                 errorText={error?.message}
                 isError={Boolean(error?.message)}
                 label="Domain FQDN"
+                tooltipText="The fully qualified domain name of the Active Directory domain (e.g. corp.example.com)"
               >
                 <Input placeholder="corp.example.com" {...field} />
               </FormControl>
@@ -108,6 +110,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
                   errorText={error?.message}
                   isError={Boolean(error?.message)}
                   label="DC Address"
+                  tooltipText="The hostname or IP address of the Domain Controller to connect to"
                 >
                   <Input placeholder="dc01.corp.example.com" {...field} />
                 </FormControl>
@@ -122,6 +125,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
                   errorText={error?.message}
                   isError={Boolean(error?.message)}
                   label="Port"
+                  tooltipText="The LDAP port on the Domain Controller. Default is 389 for LDAP or 636 for LDAPS"
                 >
                   <Input type="number" {...field} />
                 </FormControl>
@@ -140,6 +144,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
                   errorText={error?.message}
                   isError={Boolean(error?.message)}
                   label="Username"
+                  tooltipText="The username of an Active Directory account with read access to query the directory"
                 >
                   <Input placeholder="admin" autoComplete="off" {...field} />
                 </FormControl>
@@ -154,6 +159,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
                   errorText={error?.message}
                   isError={Boolean(error?.message)}
                   label="Password"
+                  tooltipText="The password for the Active Directory account used to authenticate with the Domain Controller"
                 >
                   <Input
                     {...field}
