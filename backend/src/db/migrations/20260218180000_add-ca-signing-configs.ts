@@ -79,6 +79,8 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  await dropOnUpdateTrigger(knex, TableName.CaSigningConfig);
-  await knex.schema.dropTableIfExists(TableName.CaSigningConfig);
+  if (await knex.schema.hasTable(TableName.CaSigningConfig)) {
+    await dropOnUpdateTrigger(knex, TableName.CaSigningConfig);
+    await knex.schema.dropTableIfExists(TableName.CaSigningConfig);
+  }
 }
