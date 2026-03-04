@@ -61,11 +61,25 @@ export const newProjectAdditionalPrivilegesFactory = ({
     permissionAction: string,
     permissionSubject: string
   ): boolean => {
+    const actionMatches = (ruleAction: unknown): boolean => {
+      if (Array.isArray(ruleAction)) {
+        return ruleAction.some((a) => a === permissionAction || a === "manage");
+      }
+      return ruleAction === permissionAction || ruleAction === "manage";
+    };
+
+    const subjectMatches = (ruleSubject: unknown): boolean => {
+      if (Array.isArray(ruleSubject)) {
+        return ruleSubject.some((s) => s === permissionSubject || s === "all");
+      }
+      return ruleSubject === permissionSubject || ruleSubject === "all";
+    };
+
     return actorPermission.rules.some(
       (rule) =>
         !rule.inverted &&
-        (rule.action === permissionAction || rule.action === "manage") &&
-        (rule.subject === permissionSubject || rule.subject === "all") &&
+        actionMatches(rule.action) &&
+        subjectMatches(rule.subject) &&
         (!rule.conditions || Object.keys(rule.conditions).length === 0)
     );
   };
@@ -90,10 +104,17 @@ export const newProjectAdditionalPrivilegesFactory = ({
     const validatedSubjectActions = new Set<string>();
 
     for (const rule of permissionRules) {
-      const ruleSubject = rule.subject as string | undefined;
+      let ruleSubjects: string[];
+      if (Array.isArray(rule.subject)) {
+        ruleSubjects = rule.subject;
+      } else if (rule.subject) {
+        ruleSubjects = [rule.subject];
+      } else {
+        ruleSubjects = [];
+      }
       const actions = Array.isArray(rule.action) ? rule.action : [rule.action].filter(Boolean);
 
-      if (ruleSubject) {
+      for (const ruleSubject of ruleSubjects) {
         if (!validatedSubjects.has(ruleSubject)) {
           const subjectBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
