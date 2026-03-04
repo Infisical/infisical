@@ -905,18 +905,13 @@ export const queueServiceFactory = (
 
     const { persistence, ...restQueueSettings } = queueSettings || {};
 
+    const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
+
     queueContainer[name] = new Queue(name as string, {
       // ref: docs.bullmq.io/bull/patterns/redis-cluster
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...restQueueSettings,
-      ...(crypto.isFipsModeEnabled()
-        ? {
-            settings: {
-              ...restQueueSettings?.settings,
-              repeatKeyHashAlgorithm: "sha256"
-            }
-          }
-        : {}),
+      ...fipsSettings,
       connection
     });
 
@@ -928,8 +923,6 @@ export const queueServiceFactory = (
     const isPersistenceEnabled = persistence === true || (typeof persistence === "object" && persistence.enabled);
 
     const wrappedJobFn = isPersistenceEnabled ? wrapJobWithHeartbeat(name, jobFn) : jobFn;
-
-    const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
 
     workerContainer[name] = new Worker(name, wrappedJobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
