@@ -123,7 +123,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         leaseId
       },
       {
-        jobId: `dynamic-secret-lease-revocation-failed-email-${dynamicSecretId}`,
+        jobId: `dynamic-secret-lease-revocation-failure-email-${dynamicSecretId}`,
         delay,
         attempts: 3,
         backoff: {

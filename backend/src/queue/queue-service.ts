@@ -1005,7 +1005,8 @@ export const queueServiceFactory = (
       removeOnFail: true,
       removeOnComplete: true,
       ...opts,
-      repeat: repeat ? { ...repeat, utc: true } : undefined
+      repeat: repeat ? { ...repeat, utc: true } : undefined,
+      jobId
     };
 
     if (persistantQueues.has(name)) {
@@ -1024,12 +1025,12 @@ export const queueServiceFactory = (
           tx
         );
         // if this fails transaction rollback happens
-        await q.add(job, data, { ...opts, jobId });
+        await q.add(job, data, finalOptions);
       });
       return;
     }
 
-    await q.add(job, data, { ...opts, jobId });
+    await q.add(job, data, finalOptions);
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {
