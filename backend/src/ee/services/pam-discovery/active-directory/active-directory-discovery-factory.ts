@@ -35,7 +35,7 @@ import {
 
 const LDAP_TIMEOUT = 30 * 1000;
 const LDAP_PAGE_SIZE = 500;
-const SERVICE_ACCOUNT_PATTERNS = [/^svc[_-]/i, /[_-]service$/i, /[_-]svc$/i];
+const SERVICE_ACCOUNT_PATTERNS = [new RE2(/^svc[_-]/i), new RE2(/[_-]service$/i), new RE2(/[_-]svc$/i)];
 
 type TLdapComputer = {
   cn: string;
