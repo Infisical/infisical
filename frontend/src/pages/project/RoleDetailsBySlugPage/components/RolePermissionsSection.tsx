@@ -1,21 +1,16 @@
-import { useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
-import { faSave } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { SaveIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
-import { Button } from "@app/components/v2";
+import { Button, UnstableAccordion } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
-import {
-  useGetProjectRoleBySlug,
-  useGetWorkspaceIntegrations,
-  useUpdateProjectRole
-} from "@app/hooks/api";
+import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -139,16 +134,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
   const { data: role, isPending } = useGetProjectRoleBySlug(projectId, roleSlug as string);
-  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId, {
-    enabled: isSecretManagerProject,
-    refetchInterval: false
-  });
-  const hasNativeIntegrations = integrations.length > 0;
 
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
+  const [openPolicies, setOpenPolicies] = useState<string[]>([]);
 
   const form = useForm<TFormSchema>({
-    values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
     resolver: zodResolver(projectRoleFormSchema)
   });
 
@@ -157,6 +147,13 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     formState: { isDirty, isSubmitting },
     reset
   } = form;
+
+  // This is to reset the form so that the form is not dirty when the role is loaded
+  useEffect(() => {
+    if (role) {
+      reset({ ...role, permissions: rolePermission2Form(role.permissions) });
+    }
+  }, [role, reset]);
 
   const { mutateAsync: updateRole } = useUpdateProjectRole();
 
@@ -171,11 +168,28 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     createNotification({ type: "success", text: "Successfully updated role" });
   };
 
+  // Expand accordion items that have validation errors
+  const handleFormSubmit = handleSubmit(onSubmit, (formErrors) => {
+    if (formErrors.permissions) {
+      const subjectsWithErrors = Object.keys(formErrors.permissions) as ProjectPermissionSub[];
+      setOpenPolicies((prev) => {
+        const newOpenPolicies = new Set(prev);
+        subjectsWithErrors.forEach((subject) => newOpenPolicies.add(subject));
+        return Array.from(newOpenPolicies);
+      });
+    }
+  });
+
   const isCustomRole = !Object.values(ProjectMembershipRole).includes(
     (role?.slug ?? "") as ProjectMembershipRole
   );
 
-  const permissions = form.watch("permissions");
+  const permissions = useWatch({ control: form.control, name: "permissions" });
+
+  const hasPermissions = useMemo(
+    () => Object.entries(permissions || {}).some(([key, value]) => key && value?.length > 0),
+    [permissions]
+  );
 
   const formattedPermissions = useMemo(
     () =>
@@ -184,47 +198,43 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           MongoAbility<ProjectPermissionSet, MongoQuery>
         >[]
       ),
-    [JSON.stringify(permissions)]
+    [permissions]
   );
 
   return (
     <div className="w-full">
       <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="flex h-full w-full flex-1 flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-900 py-4"
+        onSubmit={handleFormSubmit}
+        className="flex h-full w-full flex-1 flex-col rounded-lg border border-border bg-card py-4"
       >
         <FormProvider {...form}>
-          <div className="mx-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+          <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
             <div>
-              <h3 className="text-lg font-medium text-mineshaft-100">Policies</h3>
-              <p className="text-sm leading-3 text-mineshaft-400">
-                Configure granular access policies
-              </p>
+              <h3 className="text-lg font-medium text-foreground">Policies</h3>
+              <p className="text-sm leading-3 text-muted">Configure granular access policies</p>
             </div>
             {isCustomRole && (
               <div className="flex items-center gap-2">
                 {isDirty && (
                   <Button
-                    className="mr-4 text-mineshaft-300"
-                    variant="link"
-                    isDisabled={isSubmitting}
-                    isLoading={isSubmitting}
-                    onClick={() => reset()}
+                    type="button"
+                    className="mr-4 text-muted"
+                    variant="ghost"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      if (role) {
+                        reset({ ...role, permissions: rolePermission2Form(role.permissions) });
+                      }
+                    }}
                   >
                     Discard
                   </Button>
                 )}
-                <Button
-                  colorSchema="secondary"
-                  type="submit"
-                  className="h-10 border"
-                  isDisabled={isSubmitting || !isDirty}
-                  isLoading={isSubmitting}
-                  leftIcon={<FontAwesomeIcon icon={faSave} />}
-                >
+                <Button variant="project" type="submit" disabled={isSubmitting || !isDirty}>
+                  <SaveIcon className="size-4" />
                   Save
                 </Button>
-                <div className="ml-2 border-l border-mineshaft-500 pl-4">
+                <div className="ml-2 border-l border-border pl-4">
                   <AddPoliciesButton
                     isDisabled={isDisabled}
                     projectType={currentProject.type}
@@ -234,38 +244,46 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               </div>
             )}
           </div>
-          <div className="flex flex-1 flex-col overflow-hidden pr-1 pl-4">
+          <div className="flex flex-1 flex-col overflow-hidden px-4">
             <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
-              {!isPending && <PermissionEmptyState />}
-              {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
-                .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
-                .filter((subject) => ProjectTypePermissionSubjects[currentProject.type][subject])
-                .filter(
-                  (subject) =>
-                    // Hide Native Integrations policy if project has no integrations
-                    subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
-                )
-                .map((subject) => (
-                  <GeneralPermissionPolicies
-                    subject={subject}
-                    actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-                    title={PROJECT_PERMISSION_OBJECT[subject].title}
-                    key={`project-permission-${subject}`}
-                    isDisabled={isDisabled}
-                    onShowAccessTree={
-                      [
-                        ProjectPermissionSub.Secrets,
-                        ProjectPermissionSub.SecretFolders,
-                        ProjectPermissionSub.DynamicSecrets,
-                        ProjectPermissionSub.SecretImports
-                      ].includes(subject)
-                        ? setShowAccessTree
-                        : undefined
-                    }
-                  >
-                    {renderConditionalComponents(subject, isDisabled)}
-                  </GeneralPermissionPolicies>
-                ))}
+              {!isPending && !hasPermissions && <PermissionEmptyState />}
+              {hasPermissions && (
+                <UnstableAccordion
+                  type="multiple"
+                  value={openPolicies}
+                  onValueChange={setOpenPolicies}
+                  className="overflow-clip rounded-md border border-border bg-container hover:bg-container-hover"
+                >
+                  {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
+                    .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
+                    .filter(
+                      (subject) => ProjectTypePermissionSubjects[currentProject.type][subject]
+                    )
+                    .map((subject) => (
+                      <GeneralPermissionPolicies
+                        subject={subject}
+                        actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                        title={PROJECT_PERMISSION_OBJECT[subject].title}
+                        description={PROJECT_PERMISSION_OBJECT[subject].description}
+                        key={`project-permission-${subject}`}
+                        isDisabled={isDisabled}
+                        isOpen={openPolicies.includes(subject)}
+                        onShowAccessTree={
+                          [
+                            ProjectPermissionSub.Secrets,
+                            ProjectPermissionSub.SecretFolders,
+                            ProjectPermissionSub.DynamicSecrets,
+                            ProjectPermissionSub.SecretImports
+                          ].includes(subject)
+                            ? setShowAccessTree
+                            : undefined
+                        }
+                      >
+                        {renderConditionalComponents(subject, isDisabled)}
+                      </GeneralPermissionPolicies>
+                    ))}
+                </UnstableAccordion>
+              )}
             </div>
           </div>
         </FormProvider>

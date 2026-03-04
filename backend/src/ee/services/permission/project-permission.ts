@@ -330,6 +330,12 @@ export enum ProjectPermissionSub {
   McpActivityLogs = "mcp-activity-logs"
 }
 
+// Structure: { [subject]: { [action]: allowedConditionKeys[] } }
+// Actions without restrictions (undefined or not in map) allow all conditions
+export type ActionAllowedConditionsType = Partial<Record<ProjectPermissionSub, Partial<Record<string, string[]>>>>;
+
+export const ActionAllowedConditions: ActionAllowedConditionsType = {};
+
 export type SecretSubjectFields = {
   environment: string;
   secretPath: string;

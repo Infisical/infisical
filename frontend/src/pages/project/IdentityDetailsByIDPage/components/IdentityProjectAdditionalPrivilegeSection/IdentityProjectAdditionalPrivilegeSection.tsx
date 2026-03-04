@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { subject } from "@casl/ability";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon } from "lucide-react";
@@ -50,6 +51,7 @@ type Props = {
 };
 
 export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDetails }: Props) => {
+  const modalContainerRef = useRef<HTMLDivElement>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege",
     "modifyPrivilege"
@@ -274,6 +276,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
         onOpenChange={(isOpen) => handlePopUpToggle("modifyPrivilege", isOpen)}
       >
         <ModalContent
+          ref={modalContainerRef}
           className="max-w-6xl"
           title="Additional Privileges"
           subTitle="Additional privileges take precedence over roles when permissions conflict"
@@ -288,6 +291,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                 identityId
               })
             )}
+            menuPortalContainerRef={modalContainerRef}
           />
         </ModalContent>
       </Modal>

@@ -308,7 +308,9 @@ const createPermissionRuleKey = (rule: SecretPermissionRule | FolderPermissionRu
     .map(([key, value]) => `${key}:${value}`)
     .join("|");
 
-  const conditions = (rule.conditions || [])
+  const ruleConditions =
+    (rule.conditions as Array<{ lhs: string; operator: string; rhs: string }> | undefined) || [];
+  const conditions = ruleConditions
     .map((c) => `${c.lhs}${c.operator}${c.rhs}`)
     .sort()
     .join("|");
