@@ -140,13 +140,12 @@ export const pamDiscoveryQueueFactory = ({
   };
 
   const queuePamDiscoveryScan = async (discoverySourceId: string) => {
-    const jobId = `pam-discovery-scan-${discoverySourceId}-${Date.now()}`;
     await queueService.queue(
       QueueName.PamDiscoveryScan,
       QueueJobs.PamDiscoverySourceRunScan,
       { discoverySourceId, triggeredBy: PamDiscoverySourceRunTrigger.Manual },
       {
-        jobId,
+        jobId: `pam-discovery-scan-${discoverySourceId}`,
         attempts: 1,
         removeOnComplete: true,
         removeOnFail: true
