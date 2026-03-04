@@ -612,6 +612,208 @@ timedatectl status
 
 **Regular updates**. Monitor [Cloudsmith releases](https://cloudsmith.io/~infisical/repos/infisical-core/packages) for new binary versions and update your installation regularly.
 
+### Linux Package (infisical-ctl) Deployment
+
+These recommendations are specific to deployments using the [Infisical Linux package](/self-hosting/deployment-options/native/linux-package/installation), which is managed by the `infisical-ctl` CLI tool. This is distinct from the standalone Linux binary deployment above.
+
+#### Built-in Security Features
+
+The Infisical Linux package (omnibus) includes several security measures out of the box:
+
+- **Privilege dropping**: The package uses `chpst` to automatically drop the running application process from `root` to the dedicated `infisical` user. You do not need to configure this manually.
+- **Service supervision**: Services are managed by `runsvdir`, which provides automatic process supervision and restart.
+- **Structured directories**: Application files, data, and logs are organized under standard paths (`/opt/infisical-core`, `/var/opt/infisical-core`, `/var/log/infisical-core`).
+
+#### systemd Hardening
+
+The `infisical-core` package ships a systemd unit (`infisical-runsvdir.service`) that starts the `runsvdir` process supervisor. You can apply additional hardening using a systemd drop-in override without modifying the original unit file:
+
+```bash
+# Create a systemd drop-in override
+sudo systemctl edit infisical-runsvdir.service
+```
+
+Add the following content to the override file:
+
+```ini
+# /etc/systemd/system/infisical-runsvdir.service.d/override.conf
+[Service]
+RestartSec=10
+
+# Prevent child processes from gaining new privileges
+NoNewPrivileges=true
+
+# Isolate /tmp from the rest of the system
+PrivateTmp=true
+
+# Protect /home, /root, and /run/user from access
+ProtectHome=true
+
+# Make the entire filesystem read-only except for explicitly allowed paths
+ProtectSystem=strict
+ReadWritePaths=/opt/infisical-core
+ReadWritePaths=/var/opt/infisical-core
+ReadWritePaths=/var/log/infisical-core
+
+# Prevent loading of kernel modules
+ProtectKernelModules=true
+
+# Protect cgroup hierarchy from modification
+ProtectControlGroups=true
+
+# Restrict creation of SUID/SGID files
+RestrictSUIDSGID=true
+
+# Disable core dumps to prevent sensitive data exposure
+LimitCORE=0
+
+# Disable memory swap to prevent secrets from being written to disk
+MemorySwapMax=0
+```
+
+After saving, reload systemd and restart the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart infisical-runsvdir.service
+```
+
+<Warning>
+**Do not** set `User=` or `Group=` in the systemd override. The Infisical omnibus package uses `chpst` internally to drop privileges to the `infisical` user. Setting these directives in systemd will conflict with `chpst` and break the service.
+</Warning>
+
+<Warning>
+**Do not** enable `ProtectKernelTunables=true`. The `runsvdir-start` script adjusts `/proc/sys/fs/file-max` at startup. Enabling this setting makes `/proc/sys` read-only, which will cause errors. While the service may still start, it will log warnings and may not perform optimally.
+</Warning>
+
+#### Configuration Security
+
+**Secure the configuration file**. The `infisical.rb` file contains sensitive credentials and should be properly protected:
+
+```bash
+# Restrict permissions on the configuration file
+sudo chmod 600 /etc/infisical/infisical.rb
+sudo chown root:root /etc/infisical/infisical.rb
+```
+
+**Use secure values in configuration**. Generate strong cryptographic keys:
+
+```ruby
+# /etc/infisical/infisical.rb
+# Generate with: openssl rand -hex 16
+infisical_core['ENCRYPTION_KEY'] = '<secure-random-hex-key>'
+
+# Generate with: openssl rand -base64 32
+infisical_core['AUTH_SECRET'] = '<secure-random-base64-key>'
+
+# Use SSL for database connections
+infisical_core['DB_CONNECTION_URI'] = 'postgres://user:pass@host:5432/db?sslmode=require'
+
+# Use TLS for Redis if supported
+infisical_core['REDIS_URL'] = 'rediss://user:password@redis:6380'
+```
+
+After making configuration changes, apply them with:
+
+```bash
+infisical-ctl reconfigure
+```
+
+#### File Permissions
+
+**Verify directory permissions**. Ensure proper ownership on application directories:
+
+```bash
+# Application directory
+sudo chown -R root:root /opt/infisical-core
+sudo chmod 755 /opt/infisical-core
+
+# Data directory
+sudo chown -R infisical:infisical /var/opt/infisical-core
+sudo chmod 750 /var/opt/infisical-core
+
+# Log directory
+sudo chown -R infisical:infisical /var/log/infisical-core
+sudo chmod 750 /var/log/infisical-core
+```
+
+#### System Security
+
+**Disable memory swapping**. Prevent sensitive data from being written to disk:
+
+```bash
+# Disable swap immediately
+sudo swapoff -a
+
+# Disable swap permanently (comment out swap entries)
+sudo sed -i '/swap/d' /etc/fstab
+```
+
+**Disable core dumps**. Prevent potential exposure of encryption keys:
+
+```bash
+# Set system-wide core dump limits
+echo "* hard core 0" | sudo tee -a /etc/security/limits.conf
+
+# Disable core dumps for current session
+ulimit -c 0
+```
+
+#### Network Security
+
+**Host firewall configuration**. Configure comprehensive firewall for Linux package deployments:
+
+```bash
+# Configure UFW firewall
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# Allow Infisical API access
+sudo ufw allow 8080/tcp
+
+# Allow HTTPS (if terminating TLS at Infisical)
+sudo ufw allow 443/tcp
+
+# If running PostgreSQL locally, restrict to localhost
+sudo ufw allow from 127.0.0.1 to any port 5432
+
+# If running Redis locally, restrict to localhost
+sudo ufw allow from 127.0.0.1 to any port 6379
+
+# Enable firewall
+sudo ufw --force enable
+```
+
+#### Health Monitoring
+
+**Monitor service health**. Use `infisical-ctl` to monitor the service:
+
+```bash
+# Check service status
+infisical-ctl status
+
+# Stream real-time logs for monitoring
+infisical-ctl tail
+```
+
+#### Maintenance
+
+**Regular updates**. Monitor [Infisical releases](https://github.com/Infisical/infisical/releases) for new package versions. Update using your package manager:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get update && sudo apt-get install --only-upgrade infisical-core
+
+# RHEL/CentOS/Amazon Linux
+sudo yum update infisical-core
+```
+
+After updating, apply the new version:
+
+```bash
+infisical-ctl reconfigure
+```
+
 ## Enterprise Security Features
 
 ### Hardware Security Module (HSM) Integration
