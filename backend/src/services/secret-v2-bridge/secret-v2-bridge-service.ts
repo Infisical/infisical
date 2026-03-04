@@ -1432,7 +1432,7 @@ export const secretV2BridgeServiceFactory = ({
         if (!currentEnvSecretKeys.has(localRef)) {
           const pathParts = inputSecret.secretPath.split("/").filter(Boolean);
           const absoluteRef = `\${${[inputSecret.environment, ...pathParts, localRef].join(".")}}`;
-          modifiedValue = modifiedValue.replaceAll(`\${${localRef}}`, absoluteRef);
+          modifiedValue = modifiedValue.replaceAll(`\${${localRef}}`, () => absoluteRef);
         }
       }
 
