@@ -132,7 +132,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     metadataFilter: appliedMetadataEntries.filter((e) => e.key.trim()).length
       ? appliedMetadataEntries
           .filter((e) => e.key.trim())
-          .map((e) => ({ key: e.key.trim(), value: e.value.trim() }))
+          .map((e) => ({ key: e.key.trim(), ...(e.value.trim() ? { value: e.value.trim() } : {}) }))
       : undefined
   });
 
