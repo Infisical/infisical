@@ -307,6 +307,7 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
+  | ProjectPermissionSub.PamResources
   | ProjectPermissionSub.McpEndpoints;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
@@ -488,6 +489,12 @@ export type CertificatePolicySubjectFields = {
 export type PamAccountSubjectFields = {
   resourceName: string;
   accountName: string;
+  metadata?: { key: string; value: string }[];
+};
+
+export type PamResourceSubjectFields = {
+  name: string;
+  metadata?: { key: string; value: string }[];
 };
 
 export type McpEndpointSubjectFields = {
@@ -654,7 +661,13 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.PamFolders]
-  | [ProjectPermissionActions, ProjectPermissionSub.PamResources]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.PamResources
+        | (ForcedSubject<ProjectPermissionSub.PamResources> & PamResourceSubjectFields)
+      )
+    ]
   | [
       ProjectPermissionPamAccountActions,
       (

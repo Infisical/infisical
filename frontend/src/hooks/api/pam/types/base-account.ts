@@ -20,6 +20,7 @@ export interface TBasePamAccount {
   lastRotatedAt?: string | null;
   lastRotationMessage?: string | null;
   rotationStatus?: string | null;
+  metadata?: { key: string; value: string }[];
   createdAt: string;
   updatedAt: string;
 }

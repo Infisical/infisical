@@ -19,6 +19,8 @@ import { useProject } from "@app/context";
 import { PamResourceType, TAwsIamResource } from "@app/hooks/api/pam";
 import { slugSchema } from "@app/lib/schemas";
 
+import { MetadataFields } from "./MetadataFields";
+
 type Props = {
   resource?: TAwsIamResource;
   onSubmit: (formData: FormData) => Promise<void>;
@@ -39,7 +41,14 @@ const AwsIamConnectionDetailsSchema = z.object({
 const formSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
   resourceType: z.literal(PamResourceType.AwsIam),
-  connectionDetails: AwsIamConnectionDetailsSchema
+  connectionDetails: AwsIamConnectionDetailsSchema,
+  metadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().default("")
+    })
+    .array()
+    .optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -200,6 +209,8 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+
+        <MetadataFields />
 
         <div className="mt-6 flex items-center">
           <Button

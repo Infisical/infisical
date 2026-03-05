@@ -9,6 +9,7 @@ import { PamResourceType, TMySQLResource } from "@app/hooks/api/pam";
 import { BaseSqlResourceSchema } from "./shared/sql-resource-schemas";
 import { SqlResourceFields } from "./shared/SqlResourceFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   resource?: TMySQLResource;
@@ -61,6 +62,7 @@ export const MySQLResourceForm = ({ resource, onSubmit }: Props) => {
           selectedTabIndex={selectedTabIndex}
           setSelectedTabIndex={setSelectedTabIndex}
         />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

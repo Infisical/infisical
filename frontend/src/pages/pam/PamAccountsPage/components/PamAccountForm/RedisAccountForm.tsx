@@ -8,6 +8,7 @@ import { PamResourceType, TRedisAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 
 const formSchema = genericAccountFieldsSchema
   .extend({
@@ -207,6 +208,7 @@ export const RedisAccountForm = ({ account, onSubmit }: Props) => {
             />
           </div>
         )}
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

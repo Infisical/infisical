@@ -44,6 +44,7 @@ import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TPamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -88,6 +89,7 @@ type TPamAccountServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -108,7 +110,8 @@ export const pamAccountServiceFactory = ({
   auditLogService,
   approvalPolicyDAL,
   approvalRequestGrantsDAL,
-  pamSessionExpirationService
+  pamSessionExpirationService,
+  resourceMetadataDAL
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
     {
@@ -120,6 +123,7 @@ export const pamAccountServiceFactory = ({
       rotationEnabled,
       rotationIntervalSeconds,
       requireMfa,
+      internalMetadata,
       metadata
     }: TCreateAccountDTO,
     actor: OrgServiceActor
@@ -150,7 +154,8 @@ export const pamAccountServiceFactory = ({
       ProjectPermissionPamAccountActions.Create,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
-        accountName: name
+        accountName: name,
+        metadata: (metadata || []).map(({ key, value }) => ({ key, value: value ?? "" }))
       })
     );
 
@@ -186,21 +191,42 @@ export const pamAccountServiceFactory = ({
     });
 
     try {
-      const account = await pamAccountDAL.create({
-        projectId: resource.projectId,
-        resourceId: resource.id,
-        encryptedCredentials,
-        name,
-        description,
-        folderId,
-        rotationEnabled,
-        rotationIntervalSeconds,
-        requireMfa,
-        metadata: metadata ?? null
+      const { account, insertedMetadata } = await pamAccountDAL.transaction(async (tx) => {
+        const newAccount = await pamAccountDAL.create(
+          {
+            projectId: resource.projectId,
+            resourceId: resource.id,
+            encryptedCredentials,
+            name,
+            description,
+            folderId,
+            rotationEnabled,
+            rotationIntervalSeconds,
+            requireMfa,
+            internalMetadata: internalMetadata ?? null
+          },
+          tx
+        );
+
+        let metadataRows: Awaited<ReturnType<typeof resourceMetadataDAL.insertMany>> | undefined;
+        if (metadata && metadata.length > 0) {
+          metadataRows = await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value: value ?? "",
+              pamAccountId: newAccount.id,
+              orgId: actor.orgId
+            })),
+            tx
+          );
+        }
+
+        return { account: newAccount, insertedMetadata: metadataRows };
       });
 
       return {
         ...(await decryptAccount(account, resource.projectId, kmsService)),
+        metadata: insertedMetadata?.map(({ id, key, value }) => ({ id, key, value: value ?? "" })) ?? [],
         resourceType: resource.resourceType,
         resource: {
           id: resource.id,
@@ -229,6 +255,7 @@ export const pamAccountServiceFactory = ({
       rotationEnabled,
       rotationIntervalSeconds,
       requireMfa,
+      internalMetadata,
       metadata
     }: TUpdateAccountDTO,
     actor: OrgServiceActor
@@ -248,13 +275,30 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
+    const existingAccountMeta = await pamAccountDAL.findMetadataByAccountIds([accountId]);
+    const currentMetadata = existingAccountMeta[accountId] || [];
+
+    // Check against current state
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
-        accountName: account.name
+        accountName: account.name,
+        metadata: currentMetadata
       })
     );
+
+    // If any conditionable field is changing, also check permission against proposed state
+    if (metadata || name) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPamAccountActions.Edit,
+        subject(ProjectPermissionSub.PamAccounts, {
+          resourceName: resource.name,
+          accountName: name ?? account.name,
+          metadata: metadata ? metadata.map(({ key, value }) => ({ key, value: value ?? "" })) : currentMetadata
+        })
+      );
+    }
 
     const updateDoc: Partial<TPamAccounts> = {};
 
@@ -281,8 +325,8 @@ export const pamAccountServiceFactory = ({
       updateDoc.rotationIntervalSeconds = rotationIntervalSeconds;
     }
 
-    if (metadata !== undefined) {
-      updateDoc.metadata = metadata;
+    if (internalMetadata !== undefined) {
+      updateDoc.internalMetadata = internalMetadata;
     }
 
     if (credentials !== undefined) {
@@ -332,15 +376,48 @@ export const pamAccountServiceFactory = ({
     }
 
     // If nothing was updated, return the fetched account
-    if (Object.keys(updateDoc).length === 0) {
-      return decryptAccount(account, account.projectId, kmsService);
+    if (Object.keys(updateDoc).length === 0 && metadata === undefined) {
+      const existingMeta = await pamAccountDAL.findMetadataByAccountIds([accountId]);
+      return {
+        ...(await decryptAccount(account, account.projectId, kmsService)),
+        metadata: existingMeta[accountId] || [],
+        resourceType: resource.resourceType,
+        resource: {
+          id: resource.id,
+          name: resource.name,
+          resourceType: resource.resourceType,
+          rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
+        }
+      };
     }
 
     try {
-      const updatedAccount = await pamAccountDAL.updateById(accountId, updateDoc);
+      const updatedAccount = await pamAccountDAL.transaction(async (tx) => {
+        if (metadata) {
+          await resourceMetadataDAL.delete({ pamAccountId: accountId }, tx);
+          if (metadata.length > 0) {
+            await resourceMetadataDAL.insertMany(
+              metadata.map(({ key, value }) => ({
+                key,
+                value: value ?? "",
+                pamAccountId: accountId,
+                orgId: actor.orgId
+              })),
+              tx
+            );
+          }
+        }
+        if (Object.keys(updateDoc).length > 0) {
+          return pamAccountDAL.updateById(accountId, updateDoc, tx);
+        }
+        return account;
+      });
+
+      const freshMeta = await pamAccountDAL.findMetadataByAccountIds([accountId]);
 
       return {
         ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
+        metadata: freshMeta[accountId] || [],
         resourceType: resource.resourceType,
         resource: {
           id: resource.id,
@@ -376,11 +453,14 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
+    const accountMeta = await pamAccountDAL.findMetadataByAccountIds([id]);
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Delete,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
-        accountName: account.name
+        accountName: account.name,
+        metadata: accountMeta[id] || []
       })
     );
 
@@ -428,7 +508,8 @@ export const pamAccountServiceFactory = ({
         search: params.search,
         orderBy: params.orderBy,
         orderDirection: params.orderDirection,
-        filterResourceIds: params.filterResourceIds
+        filterResourceIds: params.filterResourceIds,
+        metadataFilter: params.metadataFilter
       });
 
     const decryptedAndPermittedAccounts: Array<
@@ -440,6 +521,10 @@ export const pamAccountServiceFactory = ({
       }
     > = [];
 
+    // Fetch metadata for all accounts before permission loop
+    const allAccountIds = accountsWithResourceDetails.map((a) => a.id);
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds(allAccountIds);
+
     for await (const account of accountsWithResourceDetails) {
       // Check permission for each individual account
       if (
@@ -447,7 +532,8 @@ export const pamAccountServiceFactory = ({
           ProjectPermissionPamAccountActions.Read,
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: account.resource.name,
-            accountName: account.name
+            accountName: account.name,
+            metadata: metadataByAccountId[account.id] || []
           })
         )
       ) {
@@ -468,7 +554,10 @@ export const pamAccountServiceFactory = ({
     }
 
     return {
-      accounts: decryptedAndPermittedAccounts,
+      accounts: decryptedAndPermittedAccounts.map((a) => ({
+        ...a,
+        metadata: metadataByAccountId[a.id] || []
+      })),
       totalCount
     };
   };
@@ -486,11 +575,15 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds([accountWithResource.id]);
+    const accountMetadata = metadataByAccountId[accountWithResource.id] || [];
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Read,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
-        accountName: accountWithResource.name
+        accountName: accountWithResource.name,
+        metadata: accountMetadata
       })
     );
 
@@ -498,6 +591,7 @@ export const pamAccountServiceFactory = ({
 
     return {
       ...decryptedAccount,
+      metadata: accountMetadata,
       resourceType: accountWithResource.resource.resourceType,
       resource: {
         id: accountWithResource.resource.id,
@@ -576,11 +670,14 @@ export const pamAccountServiceFactory = ({
         actionProjectType: ActionProjectType.PAM
       });
 
+      const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
+
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
-          accountName: account.name
+          accountName: account.name,
+          metadata: accountMeta[account.id] || []
         })
       );
     }

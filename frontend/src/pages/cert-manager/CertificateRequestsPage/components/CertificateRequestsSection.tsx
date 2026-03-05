@@ -91,7 +91,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   const activeMetadataFilters = useMemo(() => {
     const filtered = appliedMetadataFilters
       .filter((m) => m.key.trim())
-      .map(({ key, value }) => ({ key, value }));
+      .map(({ key, value }) => ({ key, ...(value?.trim() ? { value } : {}) }));
     return filtered.length > 0 ? filtered : undefined;
   }, [appliedMetadataFilters]);
 

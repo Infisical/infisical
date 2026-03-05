@@ -1,27 +1,19 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import {
-  faChevronLeft,
-  faCopy,
-  faEdit,
-  faEllipsisV,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { ChevronLeftIcon, CopyIcon, EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  PageHeader
-} from "@app/components/v2";
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -89,7 +81,7 @@ const Page = () => {
   );
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-foreground">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
@@ -101,9 +93,9 @@ const Page = () => {
             search={{
               selectedTab: ProjectAccessControlTabs.Roles
             }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+            className="mb-4 flex items-center gap-x-2 text-sm text-muted"
           >
-            <FontAwesomeIcon icon={faChevronLeft} />
+            <ChevronLeftIcon className="size-4" />
             Project Roles
           </Link>
           <PageHeader
@@ -116,48 +108,44 @@ const Page = () => {
             }
           >
             {isCustomRole && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild className="rounded-lg">
-                  <Button
-                    colorSchema="secondary"
-                    rightIcon={<FontAwesomeIcon icon={faEllipsisV} className="ml-2" />}
-                  >
+              <UnstableDropdownMenu>
+                <UnstableDropdownMenuTrigger asChild>
+                  <Button variant="outline">
                     Options
+                    <EllipsisIcon />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" sideOffset={2} className="p-1">
-                  <DropdownMenuItem
+                </UnstableDropdownMenuTrigger>
+                <UnstableDropdownMenuContent align="end">
+                  <UnstableDropdownMenuItem
                     onClick={() => {
                       navigator.clipboard.writeText(data.id);
-
                       createNotification({
                         text: "Copied ID to clipboard",
                         type: "info"
                       });
                     }}
-                    icon={<FontAwesomeIcon icon={faCopy} />}
                   >
+                    <CopyIcon />
                     Copy ID
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
+                  </UnstableDropdownMenuItem>
+                  <UnstableDropdownMenuItem
                     onClick={() => {
                       navigator.clipboard.writeText(data.slug);
-
                       createNotification({
                         text: "Copied slug to clipboard",
                         type: "info"
                       });
                     }}
-                    icon={<FontAwesomeIcon icon={faCopy} />}
                   >
+                    <CopyIcon />
                     Copy Slug
-                  </DropdownMenuItem>
+                  </UnstableDropdownMenuItem>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Role}
                   >
                     {(isAllowed) => (
-                      <DropdownMenuItem
+                      <UnstableDropdownMenuItem
                         className={twMerge(
                           !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
@@ -166,11 +154,11 @@ const Page = () => {
                             roleSlug
                           })
                         }
-                        icon={<FontAwesomeIcon icon={faEdit} />}
-                        disabled={!isAllowed}
+                        isDisabled={!isAllowed}
                       >
+                        <PencilIcon />
                         Edit Role
-                      </DropdownMenuItem>
+                      </UnstableDropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
@@ -178,18 +166,18 @@ const Page = () => {
                     a={ProjectPermissionSub.Role}
                   >
                     {(isAllowed) => (
-                      <DropdownMenuItem
+                      <UnstableDropdownMenuItem
                         className={twMerge(
                           !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
-                        icon={<FontAwesomeIcon icon={faCopy} />}
                         onClick={() => {
                           handlePopUpOpen("duplicateRole");
                         }}
-                        disabled={!isAllowed}
+                        isDisabled={!isAllowed}
                       >
+                        <CopyIcon />
                         Duplicate Role
-                      </DropdownMenuItem>
+                      </UnstableDropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
@@ -197,17 +185,18 @@ const Page = () => {
                     a={ProjectPermissionSub.Role}
                   >
                     {(isAllowed) => (
-                      <DropdownMenuItem
-                        icon={<FontAwesomeIcon icon={faTrash} />}
+                      <UnstableDropdownMenuItem
+                        variant="danger"
                         onClick={() => handlePopUpOpen("deleteRole")}
                         isDisabled={!isAllowed}
                       >
+                        <TrashIcon />
                         Delete Role
-                      </DropdownMenuItem>
+                      </UnstableDropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </UnstableDropdownMenuContent>
+              </UnstableDropdownMenu>
             )}
           </PageHeader>
           <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole} />

@@ -20,7 +20,7 @@ export const pkiAcmeQueueServiceFactory = async ({
 
   queueService.start(QueueName.PkiAcmeChallengeValidation, async (job) => {
     const { challengeId } = job.data;
-    const retryCount = job.attemptsMade || 0;
+    const retryCount = job.attemptsMade + 1;
     try {
       logger.info({ challengeId, retryCount }, "Processing ACME challenge validation job");
       await acmeChallengeService.validateChallengeResponse(challengeId, retryCount);
