@@ -121,6 +121,27 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
     defaultValue: {}
   });
 
+  const secretsRead = Boolean(permissionRule?.read);
+  const memberGrantPrivileges = Boolean(
+    permissionRule?.[ProjectPermissionMemberActions.GrantPrivileges]
+  );
+  const identityGrantPrivileges = Boolean(
+    permissionRule?.[ProjectPermissionIdentityActions.GrantPrivileges]
+  );
+  const groupsGrantPrivileges = Boolean(
+    permissionRule?.[ProjectPermissionGroupActions.GrantPrivileges]
+  );
+
+  const legacyActionsState = useMemo(
+    () => ({
+      secretsRead,
+      memberGrantPrivileges,
+      identityGrantPrivileges,
+      groupsGrantPrivileges
+    }),
+    [secretsRead, memberGrantPrivileges, identityGrantPrivileges, groupsGrantPrivileges]
+  );
+
   const visibleActions = useMemo(
     () =>
       actions.filter(({ value }) => {
@@ -128,7 +149,7 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
 
         // Hide legacy "read" action for secrets unless already selected
         if (subject === ProjectPermissionSub.Secrets && value === "read") {
-          return Boolean(permissionRule?.read);
+          return legacyActionsState.secretsRead;
         }
 
         // Hide legacy "grant-privileges" actions unless already selected
@@ -136,24 +157,24 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
           subject === ProjectPermissionSub.Member &&
           value === ProjectPermissionMemberActions.GrantPrivileges
         ) {
-          return Boolean(permissionRule?.[ProjectPermissionMemberActions.GrantPrivileges]);
+          return legacyActionsState.memberGrantPrivileges;
         }
         if (
           subject === ProjectPermissionSub.Identity &&
           value === ProjectPermissionIdentityActions.GrantPrivileges
         ) {
-          return Boolean(permissionRule?.[ProjectPermissionIdentityActions.GrantPrivileges]);
+          return legacyActionsState.identityGrantPrivileges;
         }
         if (
           subject === ProjectPermissionSub.Groups &&
           value === ProjectPermissionGroupActions.GrantPrivileges
         ) {
-          return Boolean(permissionRule?.[ProjectPermissionGroupActions.GrantPrivileges]);
+          return legacyActionsState.groupsGrantPrivileges;
         }
 
         return true;
       }),
-    [actions, subject, permissionRule]
+    [actions, subject, legacyActionsState]
   );
 
   const actionOptions = useMemo(
