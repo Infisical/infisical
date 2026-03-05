@@ -214,7 +214,8 @@ export const Navbar = () => {
   const subOrgQuery = subOrganizationsQuery.list({ limit: 500, isAccessible: true });
   const { data: subOrganizations = [] } = useQuery({
     ...subOrgQuery,
-    enabled: Boolean(subscription.subOrganization)
+    enabled: Boolean(subscription.subOrganization),
+    select: (data) => data.organizations
   });
 
   const isCardDeclined = Boolean(subscription?.cardDeclined);

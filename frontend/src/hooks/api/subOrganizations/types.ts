@@ -15,6 +15,9 @@ export type TCreateSubOrganizationDTO = {
 export type TListSubOrganizationsDTO = {
   limit?: number;
   offset?: number;
+  search?: string;
+  orderBy?: "name";
+  orderDirection?: "asc" | "desc";
   isAccessible?: boolean;
 };
 

@@ -47,7 +47,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, useResetPageHelper, useToggle } from "@app/hooks";
+import { useDebounce, usePagination, useResetPageHelper, useToggle } from "@app/hooks";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -118,6 +118,7 @@ export const SubOrgsView = () => {
   const [listView, setListView] = useState<SubOrgListView>(SubOrgListView.MySubOrgs);
   const effectiveListView = hasDirectAccess ? listView : SubOrgListView.AllSubOrgs;
   const [searchFilter, setSearchFilter] = useState("");
+  const [debouncedSearch] = useDebounce(searchFilter);
   const [selectedSubOrg, setSelectedSubOrg] = useState<TSubOrganization | null>(null);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
@@ -144,22 +145,46 @@ export const SubOrgsView = () => {
     setUserTablePreference("subOrgsTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { data: allSubOrgs = [], isPending: isAllLoading } = useQuery(
-    subOrganizationsQuery.list({ limit: 500 })
+  const isAllSubOrgsView = hasDirectAccess && effectiveListView === SubOrgListView.AllSubOrgs;
+  const orderDir = orderDirection === OrderByDirection.ASC ? "asc" : "desc";
+
+  const { data: allSubOrgsData, isPending: isAllLoading } = useQuery({
+    ...subOrganizationsQuery.list({
+      search: debouncedSearch || undefined,
+      orderBy: "name",
+      orderDirection: orderDir,
+      limit,
+      offset
+    }),
+    enabled: isAllSubOrgsView
+  });
+
+  const { data: mySubOrgsData, isPending: isMyLoading } = useQuery(
+    subOrganizationsQuery.list({
+      search: debouncedSearch || undefined,
+      orderBy: "name",
+      orderDirection: orderDir,
+      limit,
+      offset,
+      isAccessible: true
+    })
   );
 
-  const { data: mySubOrgs = [], isPending: isMyLoading } = useQuery(
-    subOrganizationsQuery.list({ limit: 500, isAccessible: true })
-  );
+  // Used only to determine isMember flag when showing the full list; unaffected by search/pagination.
+  const { data: mySubOrgIds = new Set<string>() } = useQuery({
+    ...subOrganizationsQuery.list({ limit: 500, isAccessible: true }),
+    enabled: isAllSubOrgsView,
+    select: (data) => new Set(data.organizations.map((o) => o.id))
+  });
 
-  const isLoading = isAllLoading || isMyLoading;
+  const isLoading = isAllSubOrgsView ? isAllLoading : isMyLoading;
+  const activeData = isAllSubOrgsView ? allSubOrgsData : mySubOrgsData;
+  const totalCount = activeData?.totalCount ?? 0;
+  const activeOrgs = activeData?.organizations ?? [];
 
-  const mySubOrgIds = new Set(mySubOrgs.map((o) => o.id));
-
-  const subOrgsWithMember: SubOrgWithMember[] =
-    !hasDirectAccess || effectiveListView === SubOrgListView.MySubOrgs
-      ? mySubOrgs.map((o) => ({ ...o, isMember: true }))
-      : allSubOrgs.map((o) => ({ ...o, isMember: mySubOrgIds.has(o.id) }));
+  const paginatedSubOrgs: SubOrgWithMember[] = isAllSubOrgsView
+    ? activeOrgs.map((o) => ({ ...o, isMember: mySubOrgIds.has(o.id) }))
+    : activeOrgs.map((o) => ({ ...o, isMember: true }));
 
   const { mutateAsync: updateSubOrg, isPending: isUpdating } = useUpdateSubOrganization();
   const { mutateAsync: deleteSubOrg } = useDeleteSubOrganization();
@@ -174,17 +199,7 @@ export const SubOrgsView = () => {
     resolver: zodResolver(editSubOrgSchema)
   });
 
-  const filteredSubOrgs = subOrgsWithMember
-    .filter((org) => org.name.toLowerCase().includes(searchFilter.toLowerCase()))
-    .sort((a, b) =>
-      orderDirection === OrderByDirection.ASC
-        ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-        : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
-    );
-
-  useResetPageHelper({ setPage, offset, totalCount: filteredSubOrgs.length });
-
-  const paginatedSubOrgs = filteredSubOrgs.slice(offset, limit * page);
+  useResetPageHelper({ setPage, offset, totalCount });
 
   const handleLoginSubOrg = async (subOrgId: string) => {
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
@@ -408,7 +423,7 @@ export const SubOrgsView = () => {
           {paginatedSubOrgs.map((subOrg, index) => renderListItem(subOrg, index))}
         </div>
       );
-  } else if (filteredSubOrgs.length === 0 && searchFilter) {
+  } else if (totalCount === 0 && searchFilter) {
     content = (
       <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
         <FontAwesomeIcon
@@ -547,7 +562,7 @@ export const SubOrgsView = () => {
 
       {content}
 
-      {!isLoading && filteredSubOrgs.length > 0 && (
+      {!isLoading && totalCount > 0 && (
         <Pagination
           className={
             viewMode === SubOrgsViewMode.GRID
@@ -556,7 +571,7 @@ export const SubOrgsView = () => {
           }
           perPage={perPage}
           perPageList={[12, 24, 48, 96]}
-          count={filteredSubOrgs.length}
+          count={totalCount}
           page={page}
           onChangePage={setPage}
           onChangePerPage={handlePerPageChange}
