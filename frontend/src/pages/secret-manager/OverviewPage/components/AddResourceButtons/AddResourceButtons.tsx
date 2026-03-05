@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  ClipboardPasteIcon,
   FingerprintIcon,
   FolderIcon,
   ImportIcon,
@@ -30,10 +31,15 @@ type Props = {
   onAddSecretRotation: () => void;
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
+  onReplicateSecrets: () => void;
+  onImportFromVault: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
+  isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
+  hasVaultConnection: boolean;
+  isOrgAdmin: boolean;
 };
 
 export function AddResourceButtons({
@@ -43,10 +49,15 @@ export function AddResourceButtons({
   onAddSecretRotation,
   onAddSecretImport,
   onImportSecrets,
+  onReplicateSecrets,
+  onImportFromVault,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
+  isReplicateSecretsAvailable,
   isSecretImportAvailable,
-  isSingleEnvSelected
+  isSingleEnvSelected,
+  hasVaultConnection,
+  isOrgAdmin
 }: Props) {
   return (
     <UnstableButtonGroup>
@@ -147,6 +158,65 @@ export function AddResourceButtons({
               </Tooltip>
             )}
           </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.SecretFolders}
+          >
+            {(isAllowed) => (
+              <Tooltip open={!isReplicateSecretsAvailable || !isAllowed ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <UnstableDropdownMenuItem
+                    onClick={onReplicateSecrets}
+                    isDisabled={!isReplicateSecretsAvailable || !isAllowed}
+                  >
+                    <ClipboardPasteIcon className="text-accent" />
+                    Replicate Secrets
+                  </UnstableDropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {!isReplicateSecretsAvailable
+                    ? "Select a single environment to replicate secrets"
+                    : "Access Denied"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+          {hasVaultConnection && (
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={ProjectPermissionSub.Secrets}
+            >
+              {(isAllowed) => (
+                <Tooltip
+                  open={!isAllowed || !isOrgAdmin || !isSingleEnvSelected ? undefined : false}
+                >
+                  <TooltipTrigger className="block w-full">
+                    <UnstableDropdownMenuItem
+                      onClick={onImportFromVault}
+                      isDisabled={!isAllowed || !isOrgAdmin || !isSingleEnvSelected}
+                    >
+                      <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
+                        <img
+                          src="/images/integrations/Vault.png"
+                          alt="HashiCorp Vault"
+                          className="mt-0.5 h-4 w-4"
+                        />
+                      </div>
+                      Add from HashiCorp Vault
+                    </UnstableDropdownMenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {/* eslint-disable-next-line no-nested-ternary */}
+                    {!isOrgAdmin
+                      ? "Only organization admins can import secrets from HashiCorp Vault"
+                      : !isSingleEnvSelected
+                        ? "Select a single environment to import from HashiCorp Vault"
+                        : "Access Restricted"}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </ProjectPermissionCan>
+          )}
         </UnstableDropdownMenuContent>
       </UnstableDropdownMenu>
     </UnstableButtonGroup>

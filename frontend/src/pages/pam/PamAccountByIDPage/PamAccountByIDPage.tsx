@@ -32,6 +32,8 @@ import { useAccessAwsIamAccount } from "../PamAccountsPage/components/useAccessA
 import {
   PamAccountCredentialsSection,
   PamAccountDetailsSection,
+  PamAccountMetadataSection,
+  PamAccountPropertiesSection,
   PamAccountResourcesSection
 } from "./components";
 
@@ -208,6 +210,8 @@ const PageContent = () => {
         <div className="flex w-80 flex-col gap-4">
           <PamAccountDetailsSection account={account} onEdit={() => setIsEditModalOpen(true)} />
           <PamAccountCredentialsSection account={account} onEdit={() => setIsEditModalOpen(true)} />
+          <PamAccountPropertiesSection account={account} />
+          <PamAccountMetadataSection account={account} />
         </div>
 
         {/* Right Column - Tabbed Content */}

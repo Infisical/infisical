@@ -15,6 +15,7 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 import { RotateAccountFields, rotateAccountFieldsSchema } from "./RotateAccountFields";
 
@@ -80,6 +81,7 @@ export const PostgresAccountForm = ({ account, resourceId, resourceType, onSubmi
         <SqlAccountFields isUpdate={isUpdate} />
         <RotateAccountFields rotationCredentialsConfigured={rotationCredentialsConfigured} />
         <RequireMfaField />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

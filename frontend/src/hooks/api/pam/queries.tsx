@@ -87,9 +87,18 @@ export const useListPamResources = (
   return useQuery({
     queryKey: pamKeys.listResources(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TListPamResourcesResponse>("/api/v1/pam/resources", {
-        params
-      });
+      const { metadataFilter, filterResourceTypes, ...rest } = params;
+      const { data } = await apiRequest.post<TListPamResourcesResponse>(
+        "/api/v1/pam/resources/search",
+        {
+          ...rest,
+          metadata: metadataFilter,
+          filterResourceTypes: filterResourceTypes
+            ?.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        }
+      );
 
       return data;
     },
@@ -167,9 +176,18 @@ export const useListPamAccounts = (
   return useQuery({
     queryKey: pamKeys.listAccounts(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TListPamAccountsResponse>("/api/v1/pam/accounts", {
-        params
-      });
+      const { metadataFilter, filterResourceIds, ...rest } = params;
+      const { data } = await apiRequest.post<TListPamAccountsResponse>(
+        "/api/v1/pam/accounts/search",
+        {
+          ...rest,
+          metadata: metadataFilter,
+          filterResourceIds: filterResourceIds
+            ?.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        }
+      );
 
       return data;
     },

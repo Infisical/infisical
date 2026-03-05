@@ -18,6 +18,7 @@ import {
 import { PamResourceType, TRedisResource } from "@app/hooks/api/pam";
 
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   resource?: TRedisResource;
@@ -206,6 +207,7 @@ export const RedisResourceForm = ({ resource, onSubmit }: Props) => {
             </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

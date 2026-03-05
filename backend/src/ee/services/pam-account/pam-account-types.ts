@@ -1,4 +1,7 @@
+import { z } from "zod";
+
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TPamAccount } from "../pam-resource/pam-resource-types";
 import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
@@ -9,7 +12,8 @@ export type TCreateAccountDTO = Pick<
   "name" | "description" | "credentials" | "folderId" | "resourceId" | "rotationIntervalSeconds" | "requireMfa"
 > & {
   rotationEnabled?: boolean;
-  metadata?: Record<string, unknown>;
+  internalMetadata?: Record<string, unknown>;
+  metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
 
 export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "resourceId">> & {
@@ -36,6 +40,7 @@ export type TListAccountsDTO = {
   limit?: number;
   offset?: number;
   filterResourceIds?: string[];
+  metadataFilter?: Array<{ key: string; value?: string }>;
 } & TProjectPermission;
 
 export type TGetAccountByIdDTO = {

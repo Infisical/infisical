@@ -56,7 +56,7 @@ import {
 } from "./pam-web-access-types";
 
 type TPamWebAccessServiceFactoryDep = {
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findMetadataByAccountIds">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -195,11 +195,14 @@ export const pamWebAccessServiceFactory = ({
         actionProjectType: ActionProjectType.PAM
       });
 
+      const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
+
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
-          accountName: account.name
+          accountName: account.name,
+          metadata: accountMeta[account.id] || []
         })
       );
     }

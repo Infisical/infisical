@@ -1195,6 +1195,7 @@ export const projectServiceFactory = ({
     profileIds,
     fromDate,
     toDate,
+    metadataFilter,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1226,7 +1227,8 @@ export const projectServiceFactory = ({
       ...(status && { status: Array.isArray(status) ? status[0] : status }),
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),
-      ...(toDate && { toDate })
+      ...(toDate && { toDate }),
+      ...(metadataFilter && { metadataFilter })
     };
     const permissionFilters = getProcessedPermissionRules(
       permission,
@@ -1254,7 +1256,8 @@ export const projectServiceFactory = ({
       ...(regularFilters.status && { status: String(regularFilters.status) }),
       ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
       ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
-      ...(regularFilters.toDate && { toDate: regularFilters.toDate })
+      ...(regularFilters.toDate && { toDate: regularFilters.toDate }),
+      ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter })
     };
 
     const count = forPkiSync

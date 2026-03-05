@@ -9,6 +9,7 @@ import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
 import {
+  ActionAllowedConditions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub,
@@ -83,22 +84,39 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
         const hasReadValue = permission.action.includes(ProjectPermissionSecretActions.ReadValue);
         const hasDescribeSecret = permission.action.includes(ProjectPermissionSecretActions.DescribeSecret);
 
-        // eslint-disable-next-line no-continue
-        if (!hasReadValue && !hasDescribeSecret) continue;
+        if (hasReadValue || hasDescribeSecret) {
+          const hasBothDescribeAndReadValue = hasReadValue && hasDescribeSecret;
 
-        const hasBothDescribeAndReadValue = hasReadValue && hasDescribeSecret;
+          throw new BadRequestError({
+            message: `You have selected Read, and ${
+              hasBothDescribeAndReadValue
+                ? "both Read Value and Describe Secret"
+                : hasReadValue
+                  ? "Read Value"
+                  : hasDescribeSecret
+                    ? "Describe Secret"
+                    : ""
+            }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
+          });
+        }
+      }
+    }
 
-        throw new BadRequestError({
-          message: `You have selected Read, and ${
-            hasBothDescribeAndReadValue
-              ? "both Read Value and Describe Secret"
-              : hasReadValue
-                ? "Read Value"
-                : hasDescribeSecret
-                  ? "Describe Secret"
-                  : ""
-          }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
-        });
+    const subjectConditions = ActionAllowedConditions[permission.subject as ProjectPermissionSub];
+    const permissionConditions = "conditions" in permission ? permission.conditions : undefined;
+    if (permissionConditions && subjectConditions) {
+      const conditionKeys = Object.keys(permissionConditions);
+      for (const action of permission.action) {
+        const allowedConditions = subjectConditions[action];
+        if (allowedConditions) {
+          for (const condKey of conditionKeys) {
+            if (!allowedConditions.includes(condKey)) {
+              throw new BadRequestError({
+                message: `Condition "${condKey}" is not allowed for action "${action}" on subject "${permission.subject}"`
+              });
+            }
+          }
+        }
       }
     }
   }

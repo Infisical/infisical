@@ -3,7 +3,6 @@ import { faCircleXmark } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowDown,
   faArrowUp,
-  faCheckCircle,
   faFilter,
   faMagnifyingGlass,
   faPlus,
@@ -18,10 +17,9 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   EmptyState,
+  FilterableSelect,
   IconButton,
   Input,
   Pagination,
@@ -53,15 +51,22 @@ import {
   PamResourceType,
   useListPamResources
 } from "@app/hooks/api/pam";
+import {
+  MetadataFilterEntry,
+  MetadataFilterSection
+} from "@app/pages/cert-manager/components/MetadataFilterSection";
 
 import { PamAddResourceModal } from "./PamAddResourceModal";
 import { PamDeleteResourceModal } from "./PamDeleteResourceModal";
 import { PamResourceRow } from "./PamResourceRow";
 import { PamUpdateResourceModal } from "./PamUpdateResourceModal";
 
-type PamResourceFilter = {
-  resourceTypes: PamResourceType[];
-};
+const ResourceTypeOptionLabel = ({ label, image }: { label: string; image?: string }) => (
+  <div className="flex items-center gap-2">
+    <img alt={`${label} resource type`} src={`/images/integrations/${image}`} className="h-4 w-4" />
+    <span>{label}</span>
+  </div>
+);
 
 type Props = {
   projectId: string;
@@ -80,9 +85,10 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     from: ROUTE_PATHS.Pam.ResourcesPage.id
   });
 
-  const [filter, setFilter] = useState<PamResourceFilter>({
-    resourceTypes: []
-  });
+  const [pendingResourceTypes, setPendingResourceTypes] = useState<PamResourceType[]>([]);
+  const [appliedResourceTypes, setAppliedResourceTypes] = useState<PamResourceType[]>([]);
+  const [pendingMetadataEntries, setPendingMetadataEntries] = useState<MetadataFilterEntry[]>([]);
+  const [appliedMetadataEntries, setAppliedMetadataEntries] = useState<MetadataFilterEntry[]>([]);
 
   const {
     search,
@@ -115,7 +121,12 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     search: debouncedSearch,
     orderBy,
     orderDirection,
-    filterResourceTypes: filter.resourceTypes.length ? filter.resourceTypes.join(",") : undefined
+    filterResourceTypes: appliedResourceTypes.length ? appliedResourceTypes.join(",") : undefined,
+    metadataFilter: appliedMetadataEntries.filter((e) => e.key.trim()).length
+      ? appliedMetadataEntries
+          .filter((e) => e.key.trim())
+          .map((e) => ({ key: e.key.trim(), ...(e.value.trim() ? { value: e.value.trim() } : {}) }))
+      : undefined
   });
 
   const resources = data?.resources || [];
@@ -126,25 +137,6 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     offset,
     setPage
   });
-
-  const filteredResources = useMemo(
-    () =>
-      resources.filter((resource) => {
-        const { name, resourceType } = resource;
-
-        if (filter.resourceTypes.length && !filter.resourceTypes.includes(resourceType)) {
-          return false;
-        }
-
-        const searchValue = search.trim().toLowerCase();
-
-        return (
-          name.toLowerCase().includes(searchValue) ||
-          resourceType.toLowerCase().includes(searchValue)
-        );
-      }),
-    [resources, search, filter]
-  );
 
   const handleSort = (column: PamResourceOrderBy) => {
     if (column === orderBy) {
@@ -162,8 +154,46 @@ export const PamResourcesTable = ({ projectId }: Props) => {
   const getColSortIcon = (col: PamResourceOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
-  const isTableFiltered = Boolean(filter.resourceTypes.length);
-  const isContentEmpty = !filteredResources.length;
+  const isTableFiltered = Boolean(
+    appliedResourceTypes.length || appliedMetadataEntries.some((e) => e.key.trim())
+  );
+
+  const hasFilterChanges = useMemo(() => {
+    const typesChanged =
+      JSON.stringify([...pendingResourceTypes].sort()) !==
+      JSON.stringify([...appliedResourceTypes].sort());
+    const metadataChanged =
+      JSON.stringify(pendingMetadataEntries) !== JSON.stringify(appliedMetadataEntries);
+    return typesChanged || metadataChanged;
+  }, [pendingResourceTypes, appliedResourceTypes, pendingMetadataEntries, appliedMetadataEntries]);
+
+  const handleApplyFilters = () => {
+    setAppliedResourceTypes(pendingResourceTypes);
+    setAppliedMetadataEntries(pendingMetadataEntries);
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setPendingResourceTypes([]);
+    setAppliedResourceTypes([]);
+    setPendingMetadataEntries([]);
+    setAppliedMetadataEntries([]);
+    setPage(1);
+  };
+
+  const handleClearResourceTypes = () => {
+    setPendingResourceTypes([]);
+  };
+
+  const resourceTypeOptions = Object.entries(PAM_RESOURCE_TYPE_MAP).map(
+    ([type, { name, image }]) => ({
+      value: type as PamResourceType,
+      label: name,
+      image
+    })
+  );
+
+  const isContentEmpty = !resources.length;
   const isSearchEmpty = isContentEmpty && (Boolean(search) || isTableFiltered);
 
   return (
@@ -197,40 +227,79 @@ export const PamResourcesTable = ({ projectId }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
-            <DropdownMenuLabel>Resource Type</DropdownMenuLabel>
-            {Object.entries(PAM_RESOURCE_TYPE_MAP).map(([type, { name, image }]) => {
-              const resourceType = type as PamResourceType;
-              return (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setFilter((prev) => ({
-                      ...prev,
-                      resourceTypes: prev.resourceTypes.includes(resourceType)
-                        ? prev.resourceTypes.filter((a) => a !== resourceType)
-                        : [...prev.resourceTypes, resourceType]
-                    }));
+          <DropdownMenuContent
+            sideOffset={2}
+            className="max-h-[70vh] thin-scrollbar w-80 overflow-y-auto p-4"
+            align="end"
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-mineshaft-100">Filters</h3>
+                <span className="text-xs text-bunker-300">
+                  {isTableFiltered && (
+                    <button
+                      type="button"
+                      onClick={handleClearFilters}
+                      className="cursor-pointer text-primary hover:text-primary-600"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-bunker-300 uppercase">
+                    Resource Type
+                  </span>
+                  {pendingResourceTypes.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearResourceTypes}
+                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <FilterableSelect
+                  value={pendingResourceTypes.map((type) => ({
+                    value: type,
+                    label: PAM_RESOURCE_TYPE_MAP[type].name,
+                    image: PAM_RESOURCE_TYPE_MAP[type].image
+                  }))}
+                  onChange={(selectedOptions) => {
+                    const types = Array.isArray(selectedOptions)
+                      ? selectedOptions.map((opt) => opt.value as PamResourceType)
+                      : [];
+                    setPendingResourceTypes(types);
                   }}
-                  key={resourceType}
-                  icon={
-                    filter.resourceTypes.includes(resourceType) && (
-                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                    )
-                  }
-                  iconPos="right"
+                  options={resourceTypeOptions}
+                  formatOptionLabel={ResourceTypeOptionLabel}
+                  placeholder="Select resource types..."
+                  className="w-full border-mineshaft-600 bg-mineshaft-700 text-bunker-200"
+                  isMulti
+                  maxMenuHeight={120}
+                />
+              </div>
+
+              <MetadataFilterSection
+                entries={pendingMetadataEntries}
+                onChange={setPendingMetadataEntries}
+              />
+
+              <div className="pt-2">
+                <Button
+                  onClick={handleApplyFilters}
+                  className="w-full bg-primary font-medium text-black hover:bg-primary-600"
+                  size="sm"
+                  isDisabled={!hasFilterChanges}
                 >
-                  <div className="flex items-center gap-2">
-                    <img
-                      alt={`${name} resource type`}
-                      src={`/images/integrations/${image}`}
-                      className="h-4 w-4"
-                    />
-                    <span>{name}</span>
-                  </div>
-                </DropdownMenuItem>
-              );
-            })}
+                  Apply Filters
+                </Button>
+              </div>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
         <OrgPermissionCan
@@ -284,7 +353,7 @@ export const PamResourcesTable = ({ projectId }: Props) => {
           <TBody>
             {isLoading && <TableSkeleton columns={2} innerKey="pam-resources" />}
             {!isLoading &&
-              filteredResources.map((resource) => (
+              resources.map((resource) => (
                 <PamResourceRow
                   key={resource.id}
                   resource={resource}

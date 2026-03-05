@@ -364,7 +364,9 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      deprecated: true,
+      description: "Deprecated: Use POST /api/v1/projects/{projectId}/certificates/search instead.",
+      hide: true,
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
         slug: slugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
