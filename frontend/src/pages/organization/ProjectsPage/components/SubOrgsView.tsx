@@ -10,7 +10,6 @@ import {
   faMagnifyingGlass,
   faPen,
   faPlus,
-  faRightToBracket,
   faSearch,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -107,6 +106,7 @@ export const SubOrgsView = () => {
     (localStorage.getItem("subOrgsViewMode") as SubOrgsViewMode) || SubOrgsViewMode.GRID
   );
   const [listView, setListView] = useState<SubOrgListView>(SubOrgListView.MySubOrgs);
+  const effectiveListView = hasDirectAccess ? listView : SubOrgListView.AllSubOrgs;
   const [searchFilter, setSearchFilter] = useState("");
   const [selectedSubOrg, setSelectedSubOrg] = useState<TSubOrganization | null>(null);
 
@@ -147,7 +147,7 @@ export const SubOrgsView = () => {
   const mySubOrgIds = new Set(mySubOrgs.map((o) => o.id));
 
   const subOrgsWithMember: SubOrgWithMember[] =
-    listView === SubOrgListView.MySubOrgs
+    !hasDirectAccess || effectiveListView === SubOrgListView.MySubOrgs
       ? mySubOrgs.map((o) => ({ ...o, isMember: true }))
       : allSubOrgs.map((o) => ({ ...o, isMember: mySubOrgIds.has(o.id) }));
 
@@ -213,54 +213,40 @@ export const SubOrgsView = () => {
     handlePopUpClose("deleteSubOrg");
   };
 
-  const renderMemberActions = (subOrg: TSubOrganization) => (
-    <>
-      <Tooltip content="Login to sub-org">
-        <IconButton
-          ariaLabel="login"
-          size="sm"
-          variant="plain"
-          className="text-mineshaft-400 hover:text-primary"
-          onClick={() => handleLoginSubOrg(subOrg.id)}
-        >
-          <FontAwesomeIcon icon={faRightToBracket} />
-        </IconButton>
-      </Tooltip>
-      {canManageSubOrgs && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="options"
-              size="sm"
-              variant="plain"
-              className="text-mineshaft-400 hover:text-mineshaft-100"
+  const renderMemberActions = (subOrg: TSubOrganization) =>
+    canManageSubOrgs ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <IconButton
+            ariaLabel="options"
+            size="sm"
+            variant="plain"
+            className="text-mineshaft-400 hover:text-mineshaft-100"
+          >
+            <FontAwesomeIcon icon={faEllipsisV} />
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent sideOffset={2} align="end">
+          {canEditSubOrg && (
+            <DropdownMenuItem
+              icon={<FontAwesomeIcon icon={faPen} />}
+              onClick={() => handleOpenEditModal(subOrg)}
             >
-              <FontAwesomeIcon icon={faEllipsisV} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent sideOffset={2} align="end">
-            {canEditSubOrg && (
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={faPen} />}
-                onClick={() => handleOpenEditModal(subOrg)}
-              >
-                Edit
-              </DropdownMenuItem>
-            )}
-            {canDeleteSubOrg && (
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={faTrash} />}
-                onClick={() => handleOpenDeleteModal(subOrg)}
-                className="text-red-600 hover:text-red-500"
-              >
-                Delete
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </>
-  );
+              Edit
+            </DropdownMenuItem>
+          )}
+          {canDeleteSubOrg && (
+            <DropdownMenuItem
+              icon={<FontAwesomeIcon icon={faTrash} />}
+              onClick={() => handleOpenDeleteModal(subOrg)}
+              className="text-red-600 hover:text-red-500"
+            >
+              Delete
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : null;
 
   const renderNonMemberActions = (subOrg: SubOrgWithMember) => {
     if (!hasDirectAccess) return null;
@@ -274,16 +260,28 @@ export const SubOrgsView = () => {
   const renderGridItem = (subOrg: SubOrgWithMember) => (
     <div
       key={subOrg.id}
-      className="overflow-clip rounded-sm border border-l-4 border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 p-4 transition-transform duration-100 hover:border-l-primary hover:bg-mineshaft-700"
+      role="button"
+      tabIndex={0}
+      className={`overflow-clip rounded-sm border border-l-4 border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 p-4 transition-transform duration-100 hover:border-l-primary hover:bg-mineshaft-700 ${subOrg.isMember ? "cursor-pointer" : ""}`}
+      onClick={() => {
+        if (subOrg.isMember) handleLoginSubOrg(subOrg.id);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && subOrg.isMember) handleLoginSubOrg(subOrg.id);
+      }}
     >
       <div className="flex items-center gap-4">
         <p className="min-w-0 flex-1 truncate text-lg font-medium text-mineshaft-100">
           {subOrg.name}
         </p>
-        <div className="flex shrink-0 items-center gap-1">
+        <div
+          className="flex shrink-0 items-center gap-1"
+          onClick={(e) => e.stopPropagation()}
+          role="none"
+        >
           {subOrg.isMember ? (
             <>
-              {listView === SubOrgListView.AllSubOrgs && (
+              {hasDirectAccess && effectiveListView === SubOrgListView.AllSubOrgs && (
                 <Badge variant="info" className="mr-1">
                   <CheckIcon />
                   Joined
@@ -305,9 +303,17 @@ export const SubOrgsView = () => {
   const renderListItem = (subOrg: SubOrgWithMember, index: number) => (
     <div
       key={subOrg.id}
+      role="button"
+      tabIndex={0}
       className={`group flex min-w-72 border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:bg-mineshaft-700 ${
-        index === 0 && "rounded-t-md"
-      }`}
+        index === 0 ? "rounded-t-md" : ""
+      } ${subOrg.isMember ? "cursor-pointer" : ""}`}
+      onClick={() => {
+        if (subOrg.isMember) handleLoginSubOrg(subOrg.id);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && subOrg.isMember) handleLoginSubOrg(subOrg.id);
+      }}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="-mt-0.5 flex min-w-0 flex-col">
@@ -317,10 +323,14 @@ export const SubOrgsView = () => {
           </p>
         </div>
       </div>
-      <div className="flex items-center justify-end gap-1">
+      <div
+        className="flex items-center justify-end gap-1"
+        onClick={(e) => e.stopPropagation()}
+        role="none"
+      >
         {subOrg.isMember ? (
           <>
-            {listView === SubOrgListView.AllSubOrgs && (
+            {hasDirectAccess && effectiveListView === SubOrgListView.AllSubOrgs && (
               <Badge variant="info" className="mr-1">
                 <CheckIcon />
                 Joined
@@ -397,11 +407,11 @@ export const SubOrgsView = () => {
           className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
         />
         <div className="text-center font-light">
-          {listView === SubOrgListView.MySubOrgs
+          {effectiveListView === SubOrgListView.MySubOrgs
             ? "You are not a member of any sub-organizations yet."
             : "No sub-organizations found in this organization."}
         </div>
-        {listView === SubOrgListView.MySubOrgs && (
+        {effectiveListView === SubOrgListView.MySubOrgs && (
           <div className="mt-0.5 text-center font-light">
             Create a sub-org using the button above, or ask an admin to add you.
           </div>
@@ -413,28 +423,30 @@ export const SubOrgsView = () => {
   return (
     <div>
       <div className="flex w-full flex-row flex-wrap gap-2 md:flex-nowrap md:gap-0">
-        <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <Button
-            variant="outline_bg"
-            size="xs"
-            onClick={() => setListView(SubOrgListView.MySubOrgs)}
-            className={`${
-              listView === SubOrgListView.MySubOrgs ? "bg-mineshaft-500" : "bg-transparent"
-            } min-w-[5rem] border-none hover:bg-mineshaft-600`}
-          >
-            My Sub Orgs
-          </Button>
-          <Button
-            variant="outline_bg"
-            size="xs"
-            onClick={() => setListView(SubOrgListView.AllSubOrgs)}
-            className={`${
-              listView === SubOrgListView.AllSubOrgs ? "bg-mineshaft-500" : "bg-transparent"
-            } min-w-[5rem] border-none hover:bg-mineshaft-600`}
-          >
-            All Sub Orgs
-          </Button>
-        </div>
+        {hasDirectAccess && (
+          <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+            <Button
+              variant="outline_bg"
+              size="xs"
+              onClick={() => setListView(SubOrgListView.MySubOrgs)}
+              className={`${
+                listView === SubOrgListView.MySubOrgs ? "bg-mineshaft-500" : "bg-transparent"
+              } min-w-[5rem] border-none hover:bg-mineshaft-600`}
+            >
+              My Sub Orgs
+            </Button>
+            <Button
+              variant="outline_bg"
+              size="xs"
+              onClick={() => setListView(SubOrgListView.AllSubOrgs)}
+              className={`${
+                listView === SubOrgListView.AllSubOrgs ? "bg-mineshaft-500" : "bg-transparent"
+              } min-w-[5rem] border-none hover:bg-mineshaft-600`}
+            >
+              All Sub Orgs
+            </Button>
+          </div>
+        )}
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50/60 duration-200 focus:bg-mineshaft-700/80"
           containerClassName="w-full ml-2"
