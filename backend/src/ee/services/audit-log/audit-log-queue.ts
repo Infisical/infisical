@@ -70,7 +70,7 @@ export const auditLogQueueServiceFactory = async ({
 
         const ttl = ttlInDays * MS_IN_DAY;
 
-        if (plan.auditLogsRetentionDays !== 0) {
+        if (ttl > 0) {
           await keyStore.streamAdd(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, "*", {
             data: JSON.stringify({
               id: randomUUID(),
@@ -84,8 +84,7 @@ export const auditLogQueueServiceFactory = async ({
               projectId: projectId ?? "",
               orgId,
               expiresAt: new Date(Date.now() + ttl),
-              createdAt: new Date(),
-              updatedAt: new Date()
+              createdAt: new Date()
             })
           });
         }
