@@ -77,18 +77,21 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 orgSlug
               });
 
-            void server.services.telemetry.identifyUser(user.username, {
-              email: user.email ?? undefined,
-              username: user.username,
-              userId: user.id,
-              firstName: user.firstName ?? undefined,
-              lastName: user.lastName ?? undefined
-            });
+            const googleDistinctId = user.username ?? user.email ?? "";
+            if (googleDistinctId) {
+              void server.services.telemetry.identifyUser(googleDistinctId, {
+                email: user.email ?? undefined,
+                username: user.username,
+                userId: user.id,
+                firstName: user.firstName ?? undefined,
+                lastName: user.lastName ?? undefined
+              });
+            }
 
             if (!isUserCompleted) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
-                distinctId: user.username,
+                distinctId: googleDistinctId,
                 ...(orgId ? { organizationId: orgId } : {}),
                 ...(orgName ? { organizationName: orgName } : {}),
                 properties: {
@@ -170,18 +173,21 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 callbackPort
               });
 
-            void server.services.telemetry.identifyUser(user.username, {
-              email: user.email ?? undefined,
-              username: user.username,
-              userId: user.id,
-              firstName: user.firstName ?? undefined,
-              lastName: user.lastName ?? undefined
-            });
+            const githubDistinctId = user.username ?? user.email ?? "";
+            if (githubDistinctId) {
+              void server.services.telemetry.identifyUser(githubDistinctId, {
+                email: user.email ?? undefined,
+                username: user.username,
+                userId: user.id,
+                firstName: user.firstName ?? undefined,
+                lastName: user.lastName ?? undefined
+              });
+            }
 
             if (!isUserCompleted) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
-                distinctId: user.username,
+                distinctId: githubDistinctId,
                 ...(orgId ? { organizationId: orgId } : {}),
                 ...(orgName ? { organizationName: orgName } : {}),
                 properties: {
@@ -255,18 +261,21 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 callbackPort
               });
 
-            void server.services.telemetry.identifyUser(user.username, {
-              email: user.email ?? undefined,
-              username: user.username,
-              userId: user.id,
-              firstName: user.firstName ?? undefined,
-              lastName: user.lastName ?? undefined
-            });
+            const gitlabDistinctId = user.username ?? user.email ?? "";
+            if (gitlabDistinctId) {
+              void server.services.telemetry.identifyUser(gitlabDistinctId, {
+                email: user.email ?? undefined,
+                username: user.username,
+                userId: user.id,
+                firstName: user.firstName ?? undefined,
+                lastName: user.lastName ?? undefined
+              });
+            }
 
             if (!isUserCompleted) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
-                distinctId: user.username,
+                distinctId: gitlabDistinctId,
                 ...(orgId ? { organizationId: orgId } : {}),
                 ...(orgName ? { organizationName: orgName } : {}),
                 properties: {
@@ -622,11 +631,14 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         providerAuthToken: req.body.providerAuthToken
       });
 
-      void server.services.telemetry.identifyUser(data.user.username, {
-        email: data.user.email ?? undefined,
-        username: data.user.username,
-        userId: data.user.userId
-      });
+      const tokenExchangeDistinctId = data.user.username ?? data.user.email ?? "";
+      if (tokenExchangeDistinctId) {
+        void server.services.telemetry.identifyUser(tokenExchangeDistinctId, {
+          email: data.user.email ?? undefined,
+          username: data.user.username,
+          userId: data.user.userId
+        });
+      }
 
       if ([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB].includes(data.decodedProviderToken.authMethod)) {
         void res.setCookie("jid", data.token.refresh, {

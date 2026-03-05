@@ -104,7 +104,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       const instanceType = licenseService.getInstanceType();
 
       // Resolve org name: prefer explicit value, fall back to request context
-      const resolvedOrgName = event.organizationName || requestContext.get("orgName");
+      const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
 
       // capture posthog only when its cloud or signup event happens in self-hosted
       if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
