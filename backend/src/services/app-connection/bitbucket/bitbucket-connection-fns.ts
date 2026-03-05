@@ -88,7 +88,6 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
 interface BitbucketPaginatedResponse<T> {
   values: T[];
   next?: string;
-  size?: number;
 }
 
 const BITBUCKET_MAX_PAGES = 10;
@@ -130,7 +129,7 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
   const reposByProject = await Promise.all(
     projects.map((project) =>
       paginateBitbucketRequest<TBitbucketRepo>(
-        `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}?pagelen=${BITBUCKET_PAGE_SIZE}&sort=slug&q=project.key="${project.key}"`,
+        `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}?pagelen=${BITBUCKET_PAGE_SIZE}&sort=slug&q=project.key="${encodeURIComponent(project.key)}"`,
         headers
       )
     )
