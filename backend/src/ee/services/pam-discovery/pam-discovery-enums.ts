@@ -3,6 +3,10 @@ export enum PamDiscoveryType {
   ActiveDirectory = "active-directory"
 }
 
+export const PAM_DISCOVERY_TYPE_PASCAL_MAP: Record<PamDiscoveryType, string> = {
+  [PamDiscoveryType.ActiveDirectory]: "ActiveDirectory"
+};
+
 export enum PamDiscoverySourceStatus {
   Active = "active",
   Paused = "paused",

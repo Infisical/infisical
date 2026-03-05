@@ -297,10 +297,11 @@ const upsertAdServerResource = async (
   configuration: TAdDiscoveryConfiguration,
   gatewayId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find">,
+  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find" | "updateById">,
   tx: Knex
 ) => {
   const domainResourceName = toSlugName(configuration.domainFQDN);
+  const fingerprint = configuration.domainFQDN.toLowerCase();
 
   const encryptedConnectionDetails = await encryptResourceConnectionDetails({
     projectId,
@@ -315,13 +316,20 @@ const upsertAdServerResource = async (
   const existing = await pamResourceDAL.find(
     {
       projectId,
-      resourceType: PamResource.ActiveDirectory
+      resourceType: PamResource.ActiveDirectory,
+      discoveryFingerprint: fingerprint
     },
     { tx }
   );
 
-  const matched = existing.find((r) => r.name === domainResourceName);
-  if (matched) return { resource: matched, isNew: false };
+  if (existing.length > 0) {
+    const resource = await pamResourceDAL.updateById(
+      existing[0].id,
+      { name: domainResourceName, encryptedConnectionDetails },
+      tx
+    );
+    return { resource, isNew: false };
+  }
 
   const resource = await pamResourceDAL.create(
     {
@@ -329,7 +337,8 @@ const upsertAdServerResource = async (
       name: domainResourceName,
       resourceType: PamResource.ActiveDirectory,
       gatewayId,
-      encryptedConnectionDetails
+      encryptedConnectionDetails,
+      discoveryFingerprint: fingerprint
     },
     tx
   );
@@ -343,11 +352,12 @@ const upsertWindowsServerResource = async (
   adServerResourceId: string,
   gatewayId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find">,
+  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find" | "updateById">,
   tx: Knex
 ) => {
   const hostname = computer.dNSHostName || computer.cn;
   const resourceName = toSlugName(hostname);
+  const fingerprint = computer.objectGUID;
 
   const [encryptedConnectionDetails, encryptedResourceMetadata] = await Promise.all([
     encryptResourceConnectionDetails({
@@ -373,13 +383,20 @@ const upsertWindowsServerResource = async (
     {
       projectId,
       resourceType: PamResource.Windows,
-      name: resourceName,
+      discoveryFingerprint: fingerprint,
       adServerResourceId
     },
     { tx }
   );
 
-  if (existing.length > 0) return { resource: existing[0], isNew: false };
+  if (existing.length > 0) {
+    const resource = await pamResourceDAL.updateById(
+      existing[0].id,
+      { name: resourceName, encryptedConnectionDetails, encryptedResourceMetadata },
+      tx
+    );
+    return { resource, isNew: false };
+  }
 
   const resource = await pamResourceDAL.create(
     {
@@ -389,7 +406,8 @@ const upsertWindowsServerResource = async (
       gatewayId,
       encryptedConnectionDetails,
       encryptedResourceMetadata,
-      adServerResourceId
+      adServerResourceId,
+      discoveryFingerprint: fingerprint
     },
     tx
   );
@@ -402,11 +420,12 @@ const upsertDomainAccount = async (
   user: TLdapUser,
   adServerResourceId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find">,
+  pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find" | "updateById">,
   tx: Knex
 ) => {
   const accountName = user.sAMAccountName;
   const accountType = isServiceAccount(user) ? "service" : "user";
+  const fingerprint = user.objectGUID;
 
   const encryptedCredentials = await encryptAccountCredentials({
     projectId,
@@ -438,12 +457,19 @@ const upsertDomainAccount = async (
   const existing = await pamAccountDAL.find(
     {
       resourceId: adServerResourceId,
-      name: accountName
+      discoveryFingerprint: fingerprint
     },
     { tx }
   );
 
-  if (existing.length > 0) return { account: existing[0], isNew: false };
+  if (existing.length > 0) {
+    const account = await pamAccountDAL.updateById(
+      existing[0].id,
+      { name: accountName, encryptedCredentials, metadata },
+      tx
+    );
+    return { account, isNew: false };
+  }
 
   const account = await pamAccountDAL.create(
     {
@@ -451,7 +477,8 @@ const upsertDomainAccount = async (
       resourceId: adServerResourceId,
       name: accountName,
       encryptedCredentials,
-      metadata
+      metadata,
+      discoveryFingerprint: fingerprint
     },
     tx
   );

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamDiscoveryType } from "@app/ee/services/pam-discovery/pam-discovery-enums";
+import { PAM_DISCOVERY_TYPE_PASCAL_MAP, PamDiscoveryType } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   DiscoveredAccountSchema,
   DiscoveredResourceSchema
@@ -39,12 +39,7 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
   discoveryResponseSchema: z.ZodTypeAny;
   discoveryRunResponseSchema: z.ZodTypeAny;
 }) => {
-  // Convert discovery type enum value to PascalCase for operation IDs
-  // e.g., "active-directory" -> "ActiveDirectory"
-  const discoveryTypeId = discoveryType
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join("");
+  const discoveryTypeId = PAM_DISCOVERY_TYPE_PASCAL_MAP[discoveryType];
 
   server.route({
     method: "GET",

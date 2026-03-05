@@ -27,8 +27,8 @@ export type TPamDiscoveryScanDeps = {
     "upsertJunction" | "markStaleForRun"
   >;
   pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "upsertDependency">;
-  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find" | "findById" | "transaction">;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find" | "transaction">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find" | "findById" | "updateById" | "transaction">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
