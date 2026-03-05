@@ -83,7 +83,11 @@ export const OrgTabGroup = () => {
   ];
 
   const visibleTabs = tabs.filter((el) => !el.isHidden);
-  const [selectedTab, setSelectedTab] = useState(search.selectedTab || visibleTabs[0].key);
+  const defaultTab = visibleTabs.find((t) => !t.requiresFeature)?.key ?? visibleTabs[0].key;
+  const initialTab = search.selectedTab
+    ? (visibleTabs.find((t) => t.key === search.selectedTab && !t.requiresFeature)?.key ?? defaultTab)
+    : defaultTab;
+  const [selectedTab, setSelectedTab] = useState(initialTab);
 
   const handleTabChange = (key: string) => {
     const tab = visibleTabs.find((t) => t.key === key);
