@@ -101,9 +101,7 @@ export const PamAccountPropertiesSection = ({ account }: Props) => {
         property.type === "date" ? (
           <Detail key={property.label}>
             <DetailLabel>{property.label}</DetailLabel>
-            <DetailValue>
-              {format(new Date(property.value), "MM/dd/yyyy, hh:mm a")}
-            </DetailValue>
+            <DetailValue>{format(new Date(property.value), "MM/dd/yyyy, hh:mm a")}</DetailValue>
           </Detail>
         ) : (
           <CopyableField key={property.label} label={property.label} value={property.value} />
