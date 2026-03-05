@@ -2,35 +2,17 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Outlet, useMatches, useNavigate, useSearch } from "@tanstack/react-router";
-
-import { ROUTE_PATHS } from "@app/const/routes";
+import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
 import { MyProjectView } from "./components/MyProjectView";
 import { ProjectListView } from "./components/ProjectListToggle";
-import { SubOrgsView } from "./components/SubOrgsView";
-
-const TAB_PROJECTS = "tab-projects";
-const TAB_SUB_ORGS = "tab-sub-organizations";
-
-// const formatDescription = (type: ProjectType) => {
-//   if (type === ProjectType.SecretManager)
-//     return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
-//   if (type === ProjectType.CertificateManager)
-//     return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
-//   if (type === ProjectType.KMS)
-//     return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
-//   if (type === ProjectType.SecretScanning)
-//     return "Connect and monitor data sources to prevent secret leaks.";
-//   return "Infisical SSH lets you issue SSH credentials to users for short-lived, secure SSH access to infrastructure.";
-// };
 
 export const ProjectsPage = () => {
   const { t } = useTranslation();
@@ -67,27 +49,14 @@ export const ProjectsPage = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
-    "upgradePlan",
-    "upgradeSubOrgs"
+    "upgradePlan"
   ] as const);
 
   const { subscription } = useSubscription();
-  const { isSubOrganization, isRootOrganization } = useOrganization();
+  const { isSubOrganization } = useOrganization();
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
-
-  const search = useSearch({ from: ROUTE_PATHS.Organization.ProjectsPage.id });
-  const navigate = useNavigate({ from: ROUTE_PATHS.Organization.ProjectsPage.path });
-  const selectedTab = search.selectedTab || TAB_PROJECTS;
-
-  const handleTabChange = (tab: string) => {
-    if (tab === TAB_SUB_ORGS && !subscription?.subOrganization) {
-      handlePopUpOpen("upgradeSubOrgs");
-      return;
-    }
-    navigate({ search: (prev) => ({ ...prev, selectedTab: tab === TAB_PROJECTS ? "" : tab }) });
-  };
 
   if (hasChildRoute) {
     return <Outlet />;
@@ -119,24 +88,7 @@ export const ProjectsPage = () => {
         title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}
         description="Your team's complete security toolkit - organized and ready when you need them."
       />
-      {isRootOrganization ? (
-        <Tabs orientation="vertical" value={selectedTab} onValueChange={handleTabChange}>
-          <TabList>
-            <Tab value={TAB_PROJECTS} variant="org">
-              Projects
-            </Tab>
-            <Tab value={TAB_SUB_ORGS} variant="org">
-              Sub Orgs
-            </Tab>
-          </TabList>
-          <TabPanel value={TAB_PROJECTS}>{projectView}</TabPanel>
-          <TabPanel value={TAB_SUB_ORGS}>
-            <SubOrgsView />
-          </TabPanel>
-        </Tabs>
-      ) : (
-        projectView
-      )}
+      {projectView}
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
@@ -145,11 +97,6 @@ export const ProjectsPage = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have reached the maximum number of projects allowed on your current plan. Upgrade to Infisical Pro plan to add more projects."
-      />
-      <UpgradePlanModal
-        isOpen={popUp.upgradeSubOrgs.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradeSubOrgs", isOpen)}
-        text="Sub-organizations are not available on your current plan. Upgrade to Infisical's Enterprise plan to create and manage sub-organizations."
       />
     </div>
   );
