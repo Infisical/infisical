@@ -9,7 +9,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
+import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TCreateSubOrgDTO, TDeleteSubOrgDTO, TJoinSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
 
@@ -138,7 +138,10 @@ export const subOrgServiceFactory = ({
       scope: OrganizationActionScope.ChildOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSubOrgActions.Edit,
+      OrgPermissionSubjects.SubOrganization
+    );
 
     const updateData: { name?: string; slug?: string } = {};
 
@@ -253,7 +256,10 @@ export const subOrgServiceFactory = ({
       scope: OrganizationActionScope.ChildOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSubOrgActions.Delete,
+      OrgPermissionSubjects.SubOrganization
+    );
 
     await orgDAL.deleteById(subOrgId);
 

@@ -40,10 +40,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubOrgActions
-} from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -91,10 +88,13 @@ export const SubOrgsView = () => {
   const queryClient = useQueryClient();
   const { permission } = useOrgPermission();
 
-  const canEditSubOrg = permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+  const canEditSubOrg = permission.can(
+    OrgPermissionSubOrgActions.Edit,
+    OrgPermissionSubjects.SubOrganization
+  );
   const canDeleteSubOrg = permission.can(
-    OrgPermissionActions.Delete,
-    OrgPermissionSubjects.Settings
+    OrgPermissionSubOrgActions.Delete,
+    OrgPermissionSubjects.SubOrganization
   );
   const canManageSubOrgs = canEditSubOrg || canDeleteSubOrg;
   const hasDirectAccess = permission.can(
