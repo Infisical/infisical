@@ -324,7 +324,10 @@ export const GitLabSyncFns = {
       const currentVariableMap = new Map(currentVariables.map((v) => [v.key, v]));
 
       for (const [key, { value }] of Object.entries(secretMap)) {
-        if ((destinationConfig.shouldMaskSecrets || destinationConfig.shouldHideSecrets) && !isValidMaskedValue(value)) {
+        if (
+          (destinationConfig.shouldMaskSecrets || destinationConfig.shouldHideSecrets) &&
+          !isValidMaskedValue(value)
+        ) {
           if (value.length < 8) {
             throw new SecretSyncError({
               message: `Secret '${key}' is too short to be masked. GitLab requires a minimum of 8 characters for masked secrets.`,
