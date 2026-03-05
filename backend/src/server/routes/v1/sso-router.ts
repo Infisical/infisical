@@ -85,7 +85,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               lastName: user.lastName ?? undefined
             });
 
-            if (orgId && orgName) {
+            if (!isUserCompleted && orgId && orgName) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: user.username,
@@ -178,7 +178,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               lastName: user.lastName ?? undefined
             });
 
-            if (orgId && orgName) {
+            if (!isUserCompleted && orgId && orgName) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: user.username,
@@ -263,7 +263,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               lastName: user.lastName ?? undefined
             });
 
-            if (orgId && orgName) {
+            if (!isUserCompleted && orgId && orgName) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: user.username,

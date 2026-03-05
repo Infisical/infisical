@@ -307,7 +307,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const identifyUser = async (
+  const identifyUser = (
     distinctId: string,
     properties: {
       email?: string;
