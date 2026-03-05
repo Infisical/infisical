@@ -24,7 +24,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
@@ -393,19 +393,36 @@ export const GroupRoles = ({
   const canModifyGroupRoles = useMemo(() => {
     if (!groupName) return false;
 
+    const hasAnyGroupPrivilegeRule = permission.rules.some((rule) => {
+      const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+      if (!ruleSubjects.includes(ProjectPermissionSub.Groups)) return false;
+      const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
+      return actions.some((a) => String(a) === "grant-privileges" || String(a) === "assign-role");
+    });
+
+    // if user has no grant-privileges or assign-role rules, they cannot modify group roles
+    if (!hasAnyGroupPrivilegeRule) {
+      return false;
+    }
+
+    // If no specific conditions, user has unconditional access
+    if (!grantPrivilegeConditions) {
+      return true;
+    }
+
     if (
-      grantPrivilegeConditions?.forbiddenGroupNames?.length &&
+      grantPrivilegeConditions.forbiddenGroupNames?.length &&
       grantPrivilegeConditions.forbiddenGroupNames.includes(groupName)
     ) {
       return false;
     }
 
-    if (!grantPrivilegeConditions?.groupNames || grantPrivilegeConditions.groupNames.length === 0) {
+    if (!grantPrivilegeConditions.groupNames || grantPrivilegeConditions.groupNames.length === 0) {
       return true;
     }
 
     return grantPrivilegeConditions.groupNames.includes(groupName);
-  }, [grantPrivilegeConditions, groupName]);
+  }, [permission, grantPrivilegeConditions, groupName]);
 
   const filteredProjectRoles = useMemo(() => {
     if (!projectRoles) return [];

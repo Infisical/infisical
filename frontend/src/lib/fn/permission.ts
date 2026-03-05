@@ -102,6 +102,15 @@ const extractConditionValues = (condition: ConditionValue | undefined): string[]
   return Array.isArray(value) ? value : [value];
 };
 
+const extractNegatedConditionValues = (condition: ConditionValue | undefined): string[] => {
+  if (!condition) return [];
+  if (typeof condition === "string") return [];
+
+  const neqValue = condition[PermissionConditionOperators.$NEQ];
+  if (neqValue === undefined) return [];
+  return Array.isArray(neqValue) ? neqValue : [neqValue];
+};
+
 const isGrantPrivilegesMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
   const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
   if (!ruleSubjects.includes(ProjectPermissionSub.Member)) return false;
@@ -152,6 +161,21 @@ export function getGrantPrivilegeConditions(
       if (subjectValues.length > 0)
         result.subjects = [...(result.subjects || []), ...subjectValues];
       if (actionValues.length > 0) result.actions = [...(result.actions || []), ...actionValues];
+
+      // Extract $NEQ values from allow rules as forbidden values
+      const neqEmailValues = extractNegatedConditionValues(conditions.email);
+      const neqRoleValues = extractNegatedConditionValues(conditions.role);
+      const neqSubjectValues = extractNegatedConditionValues(conditions.subject);
+      const neqActionValues = extractNegatedConditionValues(conditions.action);
+
+      if (neqEmailValues.length > 0)
+        result.forbiddenEmails = [...(result.forbiddenEmails || []), ...neqEmailValues];
+      if (neqRoleValues.length > 0)
+        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...neqRoleValues];
+      if (neqSubjectValues.length > 0)
+        result.forbiddenSubjects = [...(result.forbiddenSubjects || []), ...neqSubjectValues];
+      if (neqActionValues.length > 0)
+        result.forbiddenActions = [...(result.forbiddenActions || []), ...neqActionValues];
     });
   }
 
@@ -259,6 +283,24 @@ export function getIdentityGrantPrivilegeConditions(
       if (subjectValues.length > 0)
         result.subjects = [...(result.subjects || []), ...subjectValues];
       if (actionValues.length > 0) result.actions = [...(result.actions || []), ...actionValues];
+
+      // Extract $NEQ values from allow rules as forbidden values
+      const neqIdentityIdValues = extractNegatedConditionValues(conditions.identityId);
+      const neqRoleValues = extractNegatedConditionValues(conditions.role);
+      const neqSubjectValues = extractNegatedConditionValues(conditions.subject);
+      const neqActionValues = extractNegatedConditionValues(conditions.action);
+
+      if (neqIdentityIdValues.length > 0)
+        result.forbiddenIdentityIds = [
+          ...(result.forbiddenIdentityIds || []),
+          ...neqIdentityIdValues
+        ];
+      if (neqRoleValues.length > 0)
+        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...neqRoleValues];
+      if (neqSubjectValues.length > 0)
+        result.forbiddenSubjects = [...(result.forbiddenSubjects || []), ...neqSubjectValues];
+      if (neqActionValues.length > 0)
+        result.forbiddenActions = [...(result.forbiddenActions || []), ...neqActionValues];
     });
   }
 
@@ -335,6 +377,8 @@ export const getGroupGrantPrivilegeConditions = (
     (rule) => (isGrantPrivilegesGroupRule(rule) || isAssignRoleGroupRule(rule)) && rule.inverted
   );
 
+  if (allowedRules.length === 0 && invertedRules.length === 0) return null;
+
   const hasUnconditionalAllowRule = allowedRules.some(
     (rule) => !rule.conditions || Object.keys(rule.conditions).length === 0
   );
@@ -351,6 +395,15 @@ export const getGroupGrantPrivilegeConditions = (
       if (groupNameValues.length > 0)
         result.groupNames = [...(result.groupNames || []), ...groupNameValues];
       if (roleValues.length > 0) result.roles = [...(result.roles || []), ...roleValues];
+
+      // Extract $NEQ values from allow rules as forbidden values
+      const neqGroupNameValues = extractNegatedConditionValues(conditions.groupName);
+      const neqRoleValues = extractNegatedConditionValues(conditions.role);
+
+      if (neqGroupNameValues.length > 0)
+        result.forbiddenGroupNames = [...(result.forbiddenGroupNames || []), ...neqGroupNameValues];
+      if (neqRoleValues.length > 0)
+        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...neqRoleValues];
     });
   }
 

@@ -181,6 +181,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionMemberActions.Delete,
       ProjectPermissionMemberActions.Read,
       ProjectPermissionMemberActions.GrantPrivileges,
+      ProjectPermissionMemberActions.AssignRole,
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
       ProjectPermissionMemberActions.AssumePrivileges
     ],
     ProjectPermissionSub.Member
@@ -205,6 +207,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.Delete,
       ProjectPermissionIdentityActions.Read,
       ProjectPermissionIdentityActions.GrantPrivileges,
+      ProjectPermissionIdentityActions.AssignRole,
+      ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
       ProjectPermissionIdentityActions.AssumePrivileges,
       ProjectPermissionIdentityActions.GetToken,
       ProjectPermissionIdentityActions.CreateToken,
