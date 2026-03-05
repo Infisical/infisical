@@ -252,7 +252,7 @@ const constructPermissionErrorMessage = (
 ) => {
   return `${baseMessage}${
     shouldUseNewPrivilegeSystem
-      ? `. Actor is missing permission ${opAction as string} on ${opSubject as string}`
+      ? `. Actor is missing permission to perform ${opAction as string} on ${opSubject as string}`
       : ". Actor privilege level is not high enough to perform this action"
   }`;
 };

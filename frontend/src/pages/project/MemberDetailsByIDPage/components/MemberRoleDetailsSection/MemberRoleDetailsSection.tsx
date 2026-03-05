@@ -1,12 +1,17 @@
+import { useMemo } from "react";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
+import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -30,12 +35,19 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3/generic";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useUser
+} from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
+import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 import { MemberRoleModify } from "./MemberRoleModify";
 
@@ -53,6 +65,34 @@ export const MemberRoleDetailsSection = ({
   const { user } = useUser();
   const userId = user?.id;
   const { projectId } = useProject();
+  const { permission } = useProjectPermission();
+
+  const grantPrivilegeConditions = useMemo(
+    () => getGrantPrivilegeConditions(permission),
+    [permission]
+  );
+
+  const canModifyMemberRoles = useMemo(() => {
+    const memberEmail = membershipDetails?.user?.email;
+    if (!memberEmail) return false;
+
+    if (
+      grantPrivilegeConditions?.forbiddenEmails?.length &&
+      grantPrivilegeConditions.forbiddenEmails.some((pattern) =>
+        picomatch.isMatch(memberEmail, pattern)
+      )
+    ) {
+      return false;
+    }
+
+    if (!grantPrivilegeConditions?.emails || grantPrivilegeConditions.emails.length === 0) {
+      return true;
+    }
+    return grantPrivilegeConditions.emails.some((pattern) =>
+      picomatch.isMatch(memberEmail, pattern)
+    );
+  }, [grantPrivilegeConditions, membershipDetails?.user?.email]);
+
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole"
@@ -110,19 +150,34 @@ export const MemberRoleDetailsSection = ({
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.Member}
               >
-                {(isAllowed) => (
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={() => {
-                      handlePopUpOpen("modifyRole");
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <PencilIcon />
-                    Edit Roles
-                  </Button>
-                )}
+                {(isAllowed) => {
+                  const isEditDisabled = !isAllowed || !canModifyMemberRoles;
+                  const button = (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => {
+                        handlePopUpOpen("modifyRole");
+                      }}
+                      isDisabled={isEditDisabled}
+                    >
+                      <PencilIcon />
+                      Edit Roles
+                    </Button>
+                  );
+                  return isEditDisabled ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block">{button}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        You don&apos;t have permission to edit this user&apos;s roles
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    button
+                  );
+                }}
               </ProjectPermissionCan>
             </UnstableCardAction>
           )}
@@ -181,14 +236,17 @@ export const MemberRoleDetailsSection = ({
                         </UnstableTableCell>
                         <UnstableTableCell>
                           {isTemporary ? (
-                            <Tooltip content={toolTipText}>
-                              <Badge
-                                className="capitalize"
-                                variant={isExpired ? "danger" : "warning"}
-                              >
-                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                {text}
-                              </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  className="capitalize"
+                                  variant={isExpired ? "danger" : "warning"}
+                                >
+                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                  {text}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{toolTipText}</TooltipContent>
                             </Tooltip>
                           ) : (
                             text
@@ -216,7 +274,7 @@ export const MemberRoleDetailsSection = ({
                                           slug: roleDetails?.customRoleName || roleDetails?.role
                                         });
                                       }}
-                                      isDisabled={!isAllowed}
+                                      isDisabled={!isAllowed || !canModifyMemberRoles}
                                       variant="danger"
                                     >
                                       Remove Role
@@ -245,19 +303,35 @@ export const MemberRoleDetailsSection = ({
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Member}
                   >
-                    {(isAllowed) => (
-                      <Button
-                        variant="project"
-                        size="xs"
-                        onClick={() => {
-                          handlePopUpOpen("modifyRole");
-                        }}
-                        isDisabled={!isAllowed || isOwnProjectMembershipDetails}
-                      >
-                        <PencilIcon />
-                        Edit Roles
-                      </Button>
-                    )}
+                    {(isAllowed) => {
+                      const isEditDisabled =
+                        !isAllowed || isOwnProjectMembershipDetails || !canModifyMemberRoles;
+                      const button = (
+                        <Button
+                          variant="project"
+                          size="xs"
+                          onClick={() => {
+                            handlePopUpOpen("modifyRole");
+                          }}
+                          isDisabled={isEditDisabled}
+                        >
+                          <PencilIcon />
+                          Edit Roles
+                        </Button>
+                      );
+                      return isEditDisabled ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">{button}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            You don&apos;t have permission to edit this user&apos;s roles
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        button
+                      );
+                    }}
                   </ProjectPermissionCan>
                 </UnstableEmptyContent>
               </UnstableEmpty>

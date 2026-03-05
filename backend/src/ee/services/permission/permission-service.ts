@@ -678,7 +678,8 @@ export const permissionServiceFactory = ({
           {
             conditionsMatcher
           }
-        )
+        ),
+        role: { slug: el.name }
       };
     });
   };

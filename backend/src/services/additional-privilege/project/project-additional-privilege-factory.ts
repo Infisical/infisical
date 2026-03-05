@@ -265,7 +265,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
-            "Failed to update more privileged actor",
+            "Failed to create additional privileges",
             shouldUseNewPrivilegeSystem,
             permissionAction,
             permissionSubject
@@ -345,7 +345,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
-            "Failed to update more privileged actor",
+            "Failed to update additional privileges",
             shouldUseNewPrivilegeSystem,
             permissionAction,
             permissionSubject

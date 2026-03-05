@@ -101,7 +101,8 @@ const extractConditionValues = (condition: ConditionValue | undefined): string[]
 };
 
 const isGrantPrivilegesMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
-  if (rule.subject !== ProjectPermissionSub.Member) return false;
+  const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+  if (!ruleSubjects.includes(ProjectPermissionSub.Member)) return false;
 
   const privilegeActions = [
     ProjectPermissionMemberActions.GrantPrivileges,
@@ -109,13 +110,10 @@ const isGrantPrivilegesMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermiss
     ProjectPermissionMemberActions.AssignAdditionalPrivileges
   ];
 
-  if (privilegeActions.includes(rule.action as ProjectPermissionMemberActions)) return true;
-
-  if (Array.isArray(rule.action)) {
-    return privilegeActions.some((action) => (rule.action as string[]).includes(action));
-  }
-
-  return false;
+  const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
+  return ruleActions.some((action) =>
+    privilegeActions.includes(action as ProjectPermissionMemberActions)
+  );
 };
 
 export function getGrantPrivilegeConditions(
