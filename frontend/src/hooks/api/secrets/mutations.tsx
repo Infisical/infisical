@@ -22,6 +22,20 @@ import {
   TUpdateSecretsV3DTO
 } from "./types";
 
+const splitKeyAndPath = (secretKey: string, secretPath: string = "/") => {
+  if (!secretKey.includes("/")) {
+    return { actualSecretKey: secretKey, actualSecretPath: secretPath };
+  }
+  const parts = secretKey.split("/");
+  const actualSecretKey = parts.pop() as string;
+  const folderPart = parts.join("/");
+  const actualSecretPath =
+    secretPath === "/"
+      ? `/${folderPart}`
+      : `${secretPath}/${folderPart}`;
+  return { actualSecretKey, actualSecretPath };
+};
+
 export const useCreateSecretV3 = ({
   options
 }: {
@@ -40,6 +54,9 @@ export const useCreateSecretV3 = ({
       skipMultilineEncoding,
       tagIds
     }) => {
+      const { actualSecretKey, actualSecretPath } = splitKeyAndPath(secretKey, secretPath);
+      secretKey = actualSecretKey;
+      secretPath = actualSecretPath;
       const { data } = await apiRequest.post(`/api/v4/secrets/${secretKey}`, {
         secretPath,
         type,
@@ -106,6 +123,9 @@ export const useUpdateSecretV3 = ({
       skipMultilineEncoding,
       secretMetadata
     }) => {
+      const { actualSecretKey, actualSecretPath } = splitKeyAndPath(secretKey, secretPath);
+      secretKey = actualSecretKey;
+      secretPath = actualSecretPath;
       const { data } = await apiRequest.patch(`/api/v4/secrets/${secretKey}`, {
         projectId,
         environment,
@@ -163,6 +183,9 @@ export const useDeleteSecretV3 = ({
 
   return useMutation<object, object, TDeleteSecretsV3DTO>({
     mutationFn: async ({ secretPath = "/", type, environment, projectId, secretKey, secretId }) => {
+      const { actualSecretKey, actualSecretPath } = splitKeyAndPath(secretKey, secretPath);
+      secretKey = actualSecretKey;
+      secretPath = actualSecretPath;
       const { data } = await apiRequest.delete(`/api/v4/secrets/${secretKey}`, {
         data: {
           projectId,
