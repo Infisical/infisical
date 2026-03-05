@@ -606,12 +606,12 @@ const ResourcesTab = ({
                 <UnstableTableCell className="text-muted" isTruncatable>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span>{resource.resourceMetadata?.osVersion || "-"}</span>
+                      <span>{resource.resourceInternalMetadata?.osVersion || "-"}</span>
                     </TooltipTrigger>
                     <TooltipContent side="left">
-                      {resource.resourceMetadata?.osVersion || "-"}
-                      {resource.resourceMetadata?.osVersionDetail &&
-                        ` ${resource.resourceMetadata?.osVersionDetail}`}
+                      {resource.resourceInternalMetadata?.osVersion || "-"}
+                      {resource.resourceInternalMetadata?.osVersionDetail &&
+                        ` ${resource.resourceInternalMetadata?.osVersionDetail}`}
                     </TooltipContent>
                   </Tooltip>
                 </UnstableTableCell>

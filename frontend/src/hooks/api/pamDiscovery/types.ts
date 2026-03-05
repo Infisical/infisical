@@ -74,7 +74,7 @@ export type TDiscoveredResource = {
   lastDiscoveredAt: string;
   isStale: boolean;
   createdAt: string;
-  resourceMetadata?: {
+  resourceInternalMetadata?: {
     osVersion?: string;
     osVersionDetail?: string;
   };

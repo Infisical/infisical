@@ -5,14 +5,14 @@ import {
   WindowsAccountMetadataSchema,
   WindowsAccountSchema,
   WindowsResourceConnectionDetailsSchema,
-  WindowsResourceMetadataSchema,
+  WindowsResourceInternalMetadataSchema,
   WindowsResourceSchema
 } from "./windows-server-resource-schemas";
 
 // Resources
 export type TWindowsResource = z.infer<typeof WindowsResourceSchema>;
 export type TWindowsResourceConnectionDetails = z.infer<typeof WindowsResourceConnectionDetailsSchema>;
-export type TWindowsResourceMetadata = z.infer<typeof WindowsResourceMetadataSchema>;
+export type TWindowsResourceInternalMetadata = z.infer<typeof WindowsResourceInternalMetadataSchema>;
 
 // Accounts
 export type TWindowsAccount = z.infer<typeof WindowsAccountSchema>;

@@ -20,11 +20,11 @@ import {
 } from "../../pam-resource/active-directory/active-directory-resource-types";
 import { TPamResourceDALFactory } from "../../pam-resource/pam-resource-dal";
 import { PamResource } from "../../pam-resource/pam-resource-enums";
-import { encryptResourceConnectionDetails, encryptResourceMetadata } from "../../pam-resource/pam-resource-fns";
+import { encryptResourceConnectionDetails, encryptResourceInternalMetadata } from "../../pam-resource/pam-resource-fns";
 import { WindowsProtocol } from "../../pam-resource/windows-server/windows-server-resource-enums";
 import {
   TWindowsResourceConnectionDetails,
-  TWindowsResourceMetadata
+  TWindowsResourceInternalMetadata
 } from "../../pam-resource/windows-server/windows-server-resource-types";
 import {
   PamDiscoverySourceRunStatus,
@@ -369,12 +369,12 @@ const upsertWindowsServerResource = async (
       } as TWindowsResourceConnectionDetails,
       kmsService
     }),
-    encryptResourceMetadata({
+    encryptResourceInternalMetadata({
       projectId,
-      metadata: {
+      internalMetadata: {
         osVersion: computer.operatingSystem || undefined,
         osVersionDetail: computer.operatingSystemVersion || undefined
-      } as TWindowsResourceMetadata,
+      } as TWindowsResourceInternalMetadata,
       kmsService
     })
   ]);
@@ -676,8 +676,10 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       }
 
       if (adEnumerationSucceeded) {
-        const staleResourcesCount = (await pamDiscoverySourceResourcesDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
-        const staleAccountsCount = (await pamDiscoverySourceAccountsDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
+        const staleResourcesCount =
+          (await pamDiscoverySourceResourcesDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
+        const staleAccountsCount =
+          (await pamDiscoverySourceAccountsDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
 
         await pamDiscoveryRunDAL.updateById(run.id, {
           status: PamDiscoverySourceRunStatus.Completed,

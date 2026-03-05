@@ -40,7 +40,7 @@ export const WindowsAccountMetadataSchema = z.object({
 });
 
 // Resource Metadata
-export const WindowsResourceMetadataSchema = z.object({
+export const WindowsResourceInternalMetadataSchema = z.object({
   osVersion: z.string().optional(),
   osVersionDetail: z.string().optional()
 });

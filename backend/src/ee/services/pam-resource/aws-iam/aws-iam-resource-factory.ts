@@ -6,7 +6,7 @@ import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
   TPamResourceFactoryValidateAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 } from "../pam-resource-types";
 import { validatePamRoleConnection, validateTargetRoleAssumption } from "./aws-iam-federation";
 import { TAwsIamAccountCredentials, TAwsIamResourceConnectionDetails } from "./aws-iam-resource-types";
@@ -14,7 +14,7 @@ import { TAwsIamAccountCredentials, TAwsIamResourceConnectionDetails } from "./a
 export const awsIamResourceFactory: TPamResourceFactory<
   TAwsIamResourceConnectionDetails,
   TAwsIamAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 > = (
   resourceType: PamResource,
   connectionDetails: TAwsIamResourceConnectionDetails,

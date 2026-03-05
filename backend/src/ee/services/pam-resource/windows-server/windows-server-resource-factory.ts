@@ -16,7 +16,7 @@ import {
 import {
   TWindowsAccountCredentials,
   TWindowsResourceConnectionDetails,
-  TWindowsResourceMetadata
+  TWindowsResourceInternalMetadata
 } from "./windows-server-resource-types";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
@@ -63,7 +63,7 @@ const executeWithGateway = async <T>(
 export const windowsResourceFactory: TPamResourceFactory<
   TWindowsResourceConnectionDetails,
   TWindowsAccountCredentials,
-  TWindowsResourceMetadata
+  TWindowsResourceInternalMetadata
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {

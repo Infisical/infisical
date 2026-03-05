@@ -531,12 +531,12 @@ export const pamDiscoverySourceServiceFactory = ({
         };
         if (!encryptedResourceMetadata) return rest;
         try {
-          const resourceMetadata = await decryptResourceMetadata({
+          const resourceInternalMetadata = await decryptResourceMetadata({
             projectId: discoverySource.projectId,
             encryptedMetadata: encryptedResourceMetadata,
             kmsService
           });
-          return { ...rest, resourceMetadata };
+          return { ...rest, resourceInternalMetadata };
         } catch {
           return rest;
         }

@@ -27,11 +27,11 @@ import {
   decryptResourceConnectionDetails,
   decryptResourceMetadata,
   encryptResourceConnectionDetails,
-  encryptResourceMetadata,
+  encryptResourceInternalMetadata,
   listResourceOptions
 } from "./pam-resource-fns";
 import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
-import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
+import { TSSHResourceInternalMetadata } from "./ssh/ssh-resource-types";
 import { TWindowsResource } from "./windows-server/windows-server-resource-types";
 
 type TPamResourceServiceFactoryDep = {
@@ -456,7 +456,7 @@ export const pamResourceServiceFactory = ({
 
     // Check if metadata already exists with CA
     if (resource.encryptedResourceMetadata) {
-      const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+      const metadata = await decryptResourceMetadata<TSSHResourceInternalMetadata>({
         encryptedMetadata: resource.encryptedResourceMetadata,
         projectId: resource.projectId,
         kmsService
@@ -471,7 +471,7 @@ export const pamResourceServiceFactory = ({
       // Re-check after acquiring lock in case another transaction created it
       const currentResource = await pamResourceDAL.findById(resourceId, tx);
       if (currentResource?.encryptedResourceMetadata) {
-        const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+        const metadata = await decryptResourceMetadata<TSSHResourceInternalMetadata>({
           encryptedMetadata: currentResource.encryptedResourceMetadata,
           projectId: currentResource.projectId,
           kmsService
@@ -483,21 +483,21 @@ export const pamResourceServiceFactory = ({
       const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
       const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
-      const metadata: TSSHResourceMetadata = {
+      const internalMetadata: TSSHResourceInternalMetadata = {
         caPrivateKey: privateKey,
         caPublicKey: publicKey.trim(),
         caKeyAlgorithm: keyAlgorithm
       };
 
-      const encryptedResourceMetadata = await encryptResourceMetadata({
-        metadata,
+      const encryptedResourceMetadata = await encryptResourceInternalMetadata({
+        internalMetadata,
         projectId: resource.projectId,
         kmsService
       });
 
       await pamResourceDAL.updateById(resourceId, { encryptedResourceMetadata }, tx);
 
-      return metadata.caPublicKey;
+      return internalMetadata.caPublicKey;
     });
 
     return { caPublicKey };

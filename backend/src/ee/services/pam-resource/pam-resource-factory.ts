@@ -6,7 +6,7 @@ import {
   TPamAccountCredentials,
   TPamResourceConnectionDetails,
   TPamResourceFactory,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 } from "./pam-resource-types";
 import { redisResourceFactory } from "./redis/redis-resource-factory";
 import { sqlResourceFactory } from "./shared/sql/sql-resource-factory";
@@ -16,7 +16,7 @@ import { windowsResourceFactory } from "./windows-server/windows-server-resource
 type TPamResourceFactoryImplementation = TPamResourceFactory<
   TPamResourceConnectionDetails,
   TPamAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 >;
 
 export const PAM_RESOURCE_FACTORY_MAP: Record<PamResource, TPamResourceFactoryImplementation> = {

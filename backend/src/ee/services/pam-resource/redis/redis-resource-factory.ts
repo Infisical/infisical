@@ -11,7 +11,7 @@ import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
   TPamResourceFactoryValidateAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 } from "../pam-resource-types";
 import { TRedisAccountCredentials, TRedisResourceConnectionDetails } from "./redis-resource-types";
 
@@ -188,7 +188,7 @@ export const executeWithGateway = async <T>(
 export const redisResourceFactory: TPamResourceFactory<
   TRedisResourceConnectionDetails,
   TRedisAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {

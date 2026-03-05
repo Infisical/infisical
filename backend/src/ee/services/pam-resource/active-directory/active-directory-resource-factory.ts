@@ -12,7 +12,7 @@ import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
   TPamResourceFactoryValidateAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 } from "../pam-resource-types";
 import {
   TActiveDirectoryAccountCredentials,
@@ -63,7 +63,7 @@ const executeWithGateway = async <T>(
 export const activeDirectoryResourceFactory: TPamResourceFactory<
   TActiveDirectoryResourceConnectionDetails,
   TActiveDirectoryAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {

@@ -54,7 +54,7 @@ import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TRedisAccountCredentials } from "../pam-resource/redis/redis-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
-import { TSSHAccountCredentials, TSSHResourceMetadata } from "../pam-resource/ssh/ssh-resource-types";
+import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -161,7 +161,7 @@ export const pamAccountServiceFactory = ({
     });
 
     // Decrypt resource metadata if available
-    const resourceMetadata = resource.encryptedResourceMetadata
+    const resourceInternalMetadata = resource.encryptedResourceMetadata
       ? await decryptResourceMetadata({
           encryptedMetadata: resource.encryptedResourceMetadata,
           projectId: resource.projectId,
@@ -175,7 +175,7 @@ export const pamAccountServiceFactory = ({
       resource.gatewayId,
       gatewayV2Service,
       resource.projectId,
-      resourceMetadata
+      resourceInternalMetadata
     );
     const validatedCredentials = await factory.validateAccountCredentials(credentials);
 
@@ -293,7 +293,7 @@ export const pamAccountServiceFactory = ({
       });
 
       // Decrypt resource metadata if available
-      const resourceMetadata = resource.encryptedResourceMetadata
+      const resourceInternalMetadata = resource.encryptedResourceMetadata
         ? await decryptResourceMetadata({
             encryptedMetadata: resource.encryptedResourceMetadata,
             projectId: account.projectId,
@@ -307,7 +307,7 @@ export const pamAccountServiceFactory = ({
         resource.gatewayId,
         gatewayV2Service,
         account.projectId,
-        resourceMetadata
+        resourceInternalMetadata
       );
 
       const decryptedCredentials = await decryptAccountCredentials({
@@ -926,7 +926,7 @@ export const pamAccountServiceFactory = ({
           });
         }
 
-        const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+        const metadata = await decryptResourceMetadata<TSSHResourceInternalMetadata>({
           encryptedMetadata: resource.encryptedResourceMetadata,
           projectId: session.projectId,
           kmsService

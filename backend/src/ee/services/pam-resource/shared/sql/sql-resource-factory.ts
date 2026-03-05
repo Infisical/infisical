@@ -14,7 +14,7 @@ import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
   TPamResourceFactoryValidateAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 } from "../../pam-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "./sql-resource-types";
 
@@ -234,7 +234,7 @@ export const executeWithGateway = async <T>(
 export const sqlResourceFactory: TPamResourceFactory<
   TSqlResourceConnectionDetails,
   TSqlAccountCredentials,
-  TPamResourceMetadata
+  TPamResourceInternalMetadata
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {

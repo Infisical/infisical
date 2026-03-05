@@ -14,7 +14,11 @@ import {
   TPamResourceFactoryValidateAccountCredentials
 } from "../pam-resource-types";
 import { SSHAuthMethod } from "./ssh-resource-enums";
-import { TSSHAccountCredentials, TSSHResourceConnectionDetails, TSSHResourceMetadata } from "./ssh-resource-types";
+import {
+  TSSHAccountCredentials,
+  TSSHResourceConnectionDetails,
+  TSSHResourceInternalMetadata
+} from "./ssh-resource-types";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -59,8 +63,8 @@ export const executeWithGateway = async <T>(
 export const sshResourceFactory: TPamResourceFactory<
   TSSHResourceConnectionDetails,
   TSSHAccountCredentials,
-  TSSHResourceMetadata
-> = (resourceType, connectionDetails, gatewayId, gatewayV2Service, _projectId, resourceMetadata) => {
+  TSSHResourceInternalMetadata
+> = (resourceType, connectionDetails, gatewayId, gatewayV2Service, _projectId, resourceInternalMetadata) => {
   const validateConnection = async () => {
     try {
       if (!gatewayId) {
@@ -196,7 +200,7 @@ export const sshResourceFactory: TPamResourceFactory<
               break;
             case SSHAuthMethod.Certificate:
               // We cant fully validate the connection since ssh2 doesn't support cert auth
-              if (!resourceMetadata) {
+              if (!resourceInternalMetadata) {
                 reject(
                   new BadRequestError({
                     message:
