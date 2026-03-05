@@ -56,19 +56,19 @@ export const MemberPermissionConditions = ({ position = 0, isDisabled }: Props) 
           value: "role",
           label: "Assignable Roles",
           description:
-            "The roles that this user is allowed to assign to other members. (e.g., admin, developer, viewer)"
+            "The roles that the actor is allowed to assign to the target users. (e.g., admin, developer, viewer)"
         },
         {
           value: "subject",
           label: "Assignable Subjects",
           description:
-            "The permission subjects that can be granted in additional privileges. (e.g., secrets, environments, members)"
+            "The permission subjects that the actor is allowed to grant in additional privileges to the target users. (e.g., secrets, environments, members)"
         },
         {
           value: "action",
           label: "Assignable Actions",
           description:
-            "The specific actions that can be granted in additional privileges. (e.g., secrets:read, environments:edit)"
+            "The specific actions that the actor is allowed to grant in additional privileges to the target users. (e.g., secrets:read, environments:edit)"
         }
       ]}
       selectedActions={selectedActions}

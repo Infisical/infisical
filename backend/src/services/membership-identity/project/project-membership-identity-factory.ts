@@ -85,19 +85,39 @@ export const newProjectMembershipIdentityFactory = ({
     );
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
+        let permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionIdentityActions.GrantPrivileges,
+          ProjectPermissionIdentityActions.AssignRole,
           ProjectPermissionSub.Identity,
           permission,
-          permissionRole.permission
+          permissionRole.permission,
+          {
+            identityId: identityDetails.id,
+            role: permissionRole.role?.slug
+          }
         );
+
+        // If new action fails, try legacy action
+        if (!permissionBoundary.isValid) {
+          permissionBoundary = validatePrivilegeChangeOperation(
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionSub.Identity,
+            permission,
+            permissionRole.permission,
+            {
+              identityId: identityDetails.id,
+              role: permissionRole.role?.slug
+            }
+          );
+        }
+
         if (!permissionBoundary.isValid)
           throw new PermissionBoundaryError({
             message: constructPermissionErrorMessage(
               "Failed to create identity project membership",
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionIdentityActions.GrantPrivileges,
+              ProjectPermissionIdentityActions.AssignRole,
               ProjectPermissionSub.Identity
             ),
             details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -134,19 +154,39 @@ export const newProjectMembershipIdentityFactory = ({
       scope.value
     );
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
+      let permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
-        ProjectPermissionIdentityActions.GrantPrivileges,
+        ProjectPermissionIdentityActions.AssignRole,
         ProjectPermissionSub.Identity,
         permission,
-        permissionRole.permission
+        permissionRole.permission,
+        {
+          identityId: identityDetails.id,
+          role: permissionRole.role?.slug
+        }
       );
+
+      // If new action fails, try legacy action
+      if (!permissionBoundary.isValid) {
+        permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.GrantPrivileges,
+          ProjectPermissionSub.Identity,
+          permission,
+          permissionRole.permission,
+          {
+            identityId: identityDetails.id,
+            role: permissionRole.role?.slug
+          }
+        );
+      }
+
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to update identity project membership",
             shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionIdentityActions.AssignRole,
             ProjectPermissionSub.Identity
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }

@@ -96,6 +96,8 @@ export enum ProjectPermissionIdentityActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role",
+  AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
   CreateToken = "create-token",
@@ -275,7 +277,10 @@ export enum ProjectPermissionSecretApprovalRequestActions {
 }
 
 export type IdentityManagementSubjectFields = {
-  identityId: string;
+  identityId?: string;
+  role?: string;
+  subject?: string;
+  action?: string;
 };
 
 export type AppConnectionSubjectFields = {

@@ -1,13 +1,17 @@
+import { useMemo } from "react";
 import { subject } from "@casl/ability";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -31,12 +35,18 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
+import { getIdentityGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 import { IdentityRoleModify } from "./IdentityRoleModify";
 
@@ -50,11 +60,37 @@ export const IdentityRoleDetailsSection = ({
   isMembershipDetailsLoading
 }: Props) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole"
   ] as const);
   const { mutateAsync: updateIdentityProjectMembership } = useUpdateProjectIdentityMembership();
+
+  const grantPrivilegeConditions = useMemo(
+    () => getIdentityGrantPrivilegeConditions(permission),
+    [permission]
+  );
+
+  const canModifyIdentityRoles = useMemo(() => {
+    const targetIdentityId = identityMembershipDetails?.identity?.id;
+    if (!targetIdentityId) return false;
+
+    if (
+      grantPrivilegeConditions?.forbiddenIdentityIds?.length &&
+      grantPrivilegeConditions.forbiddenIdentityIds.includes(targetIdentityId)
+    ) {
+      return false;
+    }
+
+    if (
+      !grantPrivilegeConditions?.identityIds ||
+      grantPrivilegeConditions.identityIds.length === 0
+    ) {
+      return true;
+    }
+    return grantPrivilegeConditions.identityIds.includes(targetIdentityId);
+  }, [grantPrivilegeConditions, identityMembershipDetails?.identity?.id]);
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
@@ -109,19 +145,34 @@ export const IdentityRoleDetailsSection = ({
                   identityId: identityMembershipDetails.identity.id
                 })}
               >
-                {(isAllowed) => (
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={() => {
-                      handlePopUpOpen("modifyRole");
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <PencilIcon />
-                    Edit Roles
-                  </Button>
-                )}
+                {(isAllowed) => {
+                  const isEditDisabled = !isAllowed || !canModifyIdentityRoles;
+                  const button = (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => {
+                        handlePopUpOpen("modifyRole");
+                      }}
+                      isDisabled={isEditDisabled}
+                    >
+                      <PencilIcon />
+                      Edit Roles
+                    </Button>
+                  );
+                  return isEditDisabled ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block">{button}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        You don&apos;t have permission to edit this identity&apos;s roles
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    button
+                  );
+                }}
               </ProjectPermissionCan>
             </UnstableCardAction>
           )}
@@ -177,14 +228,17 @@ export const IdentityRoleDetailsSection = ({
                         </UnstableTableCell>
                         <UnstableTableCell>
                           {isTemporary ? (
-                            <Tooltip content={toolTipText}>
-                              <Badge
-                                className="capitalize"
-                                variant={isExpired ? "danger" : "warning"}
-                              >
-                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                {text}
-                              </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  className="capitalize"
+                                  variant={isExpired ? "danger" : "warning"}
+                                >
+                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                  {text}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{toolTipText}</TooltipContent>
                             </Tooltip>
                           ) : (
                             text
@@ -213,7 +267,7 @@ export const IdentityRoleDetailsSection = ({
                                         slug: roleDetails?.customRoleName || roleDetails?.role
                                       });
                                     }}
-                                    isDisabled={!isAllowed}
+                                    isDisabled={!isAllowed || !canModifyIdentityRoles}
                                     variant="danger"
                                   >
                                     Remove Role
@@ -245,19 +299,34 @@ export const IdentityRoleDetailsSection = ({
                       identityId: identityMembershipDetails.identity.id
                     })}
                   >
-                    {(isAllowed) => (
-                      <Button
-                        variant="project"
-                        size="xs"
-                        onClick={() => {
-                          handlePopUpOpen("modifyRole");
-                        }}
-                        isDisabled={!isAllowed}
-                      >
-                        <PencilIcon />
-                        Edit Roles
-                      </Button>
-                    )}
+                    {(isAllowed) => {
+                      const isEditDisabled = !isAllowed || !canModifyIdentityRoles;
+                      const button = (
+                        <Button
+                          variant="project"
+                          size="xs"
+                          onClick={() => {
+                            handlePopUpOpen("modifyRole");
+                          }}
+                          isDisabled={isEditDisabled}
+                        >
+                          <PencilIcon />
+                          Edit Roles
+                        </Button>
+                      );
+                      return isEditDisabled ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">{button}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            You don&apos;t have permission to edit this identity&apos;s roles
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        button
+                      );
+                    }}
                   </ProjectPermissionCan>
                 </UnstableEmptyContent>
               </UnstableEmpty>

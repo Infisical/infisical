@@ -14,6 +14,7 @@ import {
 import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -30,13 +31,15 @@ type TProjectAdditionalPrivilegesScopeFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export const newProjectAdditionalPrivilegesFactory = ({
   permissionService,
   orgDAL,
   membershipDAL,
-  userDAL
+  userDAL,
+  identityDAL
 }: TProjectAdditionalPrivilegesScopeFactoryDep): TAdditionalPrivilegesScopeFactory => {
   const $getPermission = (permission: OrgServiceActor, projectId: string) => {
     return permissionService.getProjectPermission({
@@ -120,11 +123,12 @@ export const newProjectAdditionalPrivilegesFactory = ({
     permissionAction:
       | typeof ProjectPermissionMemberActions.GrantPrivileges
       | typeof ProjectPermissionMemberActions.AssignAdditionalPrivileges
-      | typeof ProjectPermissionIdentityActions.GrantPrivileges,
+      | typeof ProjectPermissionIdentityActions.GrantPrivileges
+      | typeof ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
     permissionSubject: ProjectPermissionSub.Member | ProjectPermissionSub.Identity,
     actorPermission: MongoAbility,
     targetUserPermission: MongoAbility,
-    targetUserEmail: string | undefined,
+    targetIdentifier: string | undefined,
     permissions: unknown
   ) => {
     if (hasUnrestrictedGrantPrivileges(actorPermission, permissionAction, permissionSubject)) {
@@ -133,8 +137,18 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
     // Also check legacy action if new action is being used
     if (
-      permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges &&
-      hasUnrestrictedGrantPrivileges(actorPermission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject)
+      (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges &&
+        hasUnrestrictedGrantPrivileges(
+          actorPermission,
+          ProjectPermissionMemberActions.GrantPrivileges,
+          permissionSubject
+        )) ||
+      (permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges &&
+        hasUnrestrictedGrantPrivileges(
+          actorPermission,
+          ProjectPermissionIdentityActions.GrantPrivileges,
+          permissionSubject
+        ))
     ) {
       return;
     }
@@ -147,7 +161,9 @@ export const newProjectAdditionalPrivilegesFactory = ({
     const actorHasActionConditions =
       hasActionConditions(actorPermission, permissionAction, permissionSubject) ||
       (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges &&
-        hasActionConditions(actorPermission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject));
+        hasActionConditions(actorPermission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject)) ||
+      (permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges &&
+        hasActionConditions(actorPermission, ProjectPermissionIdentityActions.GrantPrivileges, permissionSubject));
 
     for (const rule of permissionRules) {
       let ruleSubjects: string[];
@@ -162,33 +178,38 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
       for (const ruleSubject of ruleSubjects) {
         if (!actorHasActionConditions && !validatedSubjects.has(ruleSubject)) {
+          const subjectFields =
+            permissionSubject === ProjectPermissionSub.Member
+              ? { email: targetIdentifier, subject: ruleSubject }
+              : { identityId: targetIdentifier, subject: ruleSubject };
+
           let subjectBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
             permissionAction,
             permissionSubject,
             actorPermission,
             targetUserPermission,
-            {
-              email: targetUserEmail,
-              subject: ruleSubject
-            }
+            subjectFields
           );
 
           // If new action fails try legacy
           if (
             !subjectBoundary.isValid &&
-            permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges
+            (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges ||
+              permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges)
           ) {
+            const legacyAction =
+              permissionSubject === ProjectPermissionSub.Member
+                ? ProjectPermissionMemberActions.GrantPrivileges
+                : ProjectPermissionIdentityActions.GrantPrivileges;
+
             subjectBoundary = validatePrivilegeChangeOperation(
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionMemberActions.GrantPrivileges,
+              legacyAction,
               permissionSubject,
               actorPermission,
               targetUserPermission,
-              {
-                email: targetUserEmail,
-                subject: ruleSubject
-              }
+              subjectFields
             );
           }
 
@@ -204,35 +225,38 @@ export const newProjectAdditionalPrivilegesFactory = ({
           const subjectActionKey = `${ruleSubject}:${actionItem}`;
 
           if (!validatedSubjectActions.has(subjectActionKey)) {
+            const subjectActionFields =
+              permissionSubject === ProjectPermissionSub.Member
+                ? { email: targetIdentifier, subject: ruleSubject, action: subjectActionKey }
+                : { identityId: targetIdentifier, subject: ruleSubject, action: subjectActionKey };
+
             let subjectActionBoundary = validatePrivilegeChangeOperation(
               shouldUseNewPrivilegeSystem,
               permissionAction,
               permissionSubject,
               actorPermission,
               targetUserPermission,
-              {
-                email: targetUserEmail,
-                subject: ruleSubject,
-                action: subjectActionKey
-              }
+              subjectActionFields
             );
 
             // If new action fails try legacy
             if (
               !subjectActionBoundary.isValid &&
-              permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges
+              (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges ||
+                permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges)
             ) {
+              const legacyAction =
+                permissionSubject === ProjectPermissionSub.Member
+                  ? ProjectPermissionMemberActions.GrantPrivileges
+                  : ProjectPermissionIdentityActions.GrantPrivileges;
+
               subjectActionBoundary = validatePrivilegeChangeOperation(
                 shouldUseNewPrivilegeSystem,
-                ProjectPermissionMemberActions.GrantPrivileges,
+                legacyAction,
                 permissionSubject,
                 actorPermission,
                 targetUserPermission,
-                {
-                  email: targetUserEmail,
-                  subject: ruleSubject,
-                  action: subjectActionKey
-                }
+                subjectActionFields
               );
             }
 
@@ -269,41 +293,64 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const permissionAction =
         actorType === ActorType.USER
           ? ProjectPermissionMemberActions.AssignAdditionalPrivileges
-          : ProjectPermissionIdentityActions.GrantPrivileges;
+          : ProjectPermissionIdentityActions.AssignAdditionalPrivileges;
       const permissionSubject =
         actorType === ActorType.USER ? ProjectPermissionSub.Member : ProjectPermissionSub.Identity;
 
-      let targetUserEmail: string | undefined;
-      if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem) {
-        const targetUser = await userDAL.findById(dto.data.actorId);
-        targetUserEmail = targetUser?.email ?? undefined;
+      let targetIdentifier: string | undefined;
+      if (shouldUseNewPrivilegeSystem) {
+        if (actorType === ActorType.USER) {
+          const targetUser = await userDAL.findById(dto.data.actorId);
+          targetIdentifier = targetUser?.email ?? undefined;
+        } else {
+          const targetIdentity = await identityDAL.findById(dto.data.actorId);
+          targetIdentifier = targetIdentity?.id ?? undefined;
+        }
       }
 
       const hasDetailedConditions =
-        actorType === ActorType.USER &&
         shouldUseNewPrivilegeSystem &&
         (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
-          hasSubjectOrActionConditions(permission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject));
+          (actorType === ActorType.USER &&
+            hasSubjectOrActionConditions(
+              permission,
+              ProjectPermissionMemberActions.GrantPrivileges,
+              permissionSubject
+            )) ||
+          (actorType === ActorType.IDENTITY &&
+            hasSubjectOrActionConditions(
+              permission,
+              ProjectPermissionIdentityActions.GrantPrivileges,
+              permissionSubject
+            )));
 
       if (!hasDetailedConditions) {
+        const subjectFields =
+          actorType === ActorType.USER ? { email: targetIdentifier } : { identityId: targetIdentifier };
+
         let permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
           permissionAction,
           permissionSubject,
           permission,
           targetUserPermission,
-          actorType === ActorType.USER ? { email: targetUserEmail } : undefined
+          subjectFields
         );
 
         // If new action fails try legacy action
-        if (!permissionBoundary.isValid && actorType === ActorType.USER) {
+        if (!permissionBoundary.isValid) {
+          const legacyAction =
+            actorType === ActorType.USER
+              ? ProjectPermissionMemberActions.GrantPrivileges
+              : ProjectPermissionIdentityActions.GrantPrivileges;
+
           permissionBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.GrantPrivileges,
+            legacyAction,
             permissionSubject,
             permission,
             targetUserPermission,
-            { email: targetUserEmail }
+            subjectFields
           );
         }
         if (!permissionBoundary.isValid)
@@ -318,14 +365,14 @@ export const newProjectAdditionalPrivilegesFactory = ({
           });
       }
 
-      if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem && dto.data.permissions) {
+      if (shouldUseNewPrivilegeSystem && dto.data.permissions) {
         validateGrantPrivilegeSubjectActionConditions(
           shouldUseNewPrivilegeSystem,
           permissionAction,
           permissionSubject,
           permission,
           targetUserPermission,
-          targetUserEmail,
+          targetIdentifier,
           dto.data.permissions
         );
       }
@@ -357,41 +404,64 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const permissionAction =
         actorType === ActorType.USER
           ? ProjectPermissionMemberActions.AssignAdditionalPrivileges
-          : ProjectPermissionIdentityActions.GrantPrivileges;
+          : ProjectPermissionIdentityActions.AssignAdditionalPrivileges;
       const permissionSubject =
         actorType === ActorType.USER ? ProjectPermissionSub.Member : ProjectPermissionSub.Identity;
 
-      let targetUserEmail: string | undefined;
-      if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem) {
-        const targetUser = await userDAL.findById(dto.selector.actorId);
-        targetUserEmail = targetUser?.email ?? undefined;
+      let targetIdentifier: string | undefined;
+      if (shouldUseNewPrivilegeSystem) {
+        if (actorType === ActorType.USER) {
+          const targetUser = await userDAL.findById(dto.selector.actorId);
+          targetIdentifier = targetUser?.email ?? undefined;
+        } else {
+          const targetIdentity = await identityDAL.findById(dto.selector.actorId);
+          targetIdentifier = targetIdentity?.id ?? undefined;
+        }
       }
 
       const hasDetailedConditions =
-        actorType === ActorType.USER &&
         shouldUseNewPrivilegeSystem &&
         (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
-          hasSubjectOrActionConditions(permission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject));
+          (actorType === ActorType.USER &&
+            hasSubjectOrActionConditions(
+              permission,
+              ProjectPermissionMemberActions.GrantPrivileges,
+              permissionSubject
+            )) ||
+          (actorType === ActorType.IDENTITY &&
+            hasSubjectOrActionConditions(
+              permission,
+              ProjectPermissionIdentityActions.GrantPrivileges,
+              permissionSubject
+            )));
 
       if (!hasDetailedConditions) {
+        const subjectFields =
+          actorType === ActorType.USER ? { email: targetIdentifier } : { identityId: targetIdentifier };
+
         let permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
           permissionAction,
           permissionSubject,
           permission,
           targetUserPermission,
-          actorType === ActorType.USER ? { email: targetUserEmail } : undefined
+          subjectFields
         );
 
         // If new action fails try legacy action
-        if (!permissionBoundary.isValid && actorType === ActorType.USER) {
+        if (!permissionBoundary.isValid) {
+          const legacyAction =
+            actorType === ActorType.USER
+              ? ProjectPermissionMemberActions.GrantPrivileges
+              : ProjectPermissionIdentityActions.GrantPrivileges;
+
           permissionBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.GrantPrivileges,
+            legacyAction,
             permissionSubject,
             permission,
             targetUserPermission,
-            { email: targetUserEmail }
+            subjectFields
           );
         }
         if (!permissionBoundary.isValid)
@@ -406,14 +476,14 @@ export const newProjectAdditionalPrivilegesFactory = ({
           });
       }
 
-      if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem && dto.data.permissions) {
+      if (shouldUseNewPrivilegeSystem && dto.data.permissions) {
         validateGrantPrivilegeSubjectActionConditions(
           shouldUseNewPrivilegeSystem,
           permissionAction,
           permissionSubject,
           permission,
           targetUserPermission,
-          targetUserEmail,
+          targetIdentifier,
           dto.data.permissions
         );
       }

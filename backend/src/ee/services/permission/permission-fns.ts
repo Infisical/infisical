@@ -10,6 +10,7 @@ import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 import { OrgPermissionSet } from "./org-permission";
 import {
   ActionAllowedConditions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
@@ -108,6 +109,31 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
         const hasAssignRole = permission.action.includes(ProjectPermissionMemberActions.AssignRole);
         const hasAssignAdditionalPrivileges = permission.action.includes(
           ProjectPermissionMemberActions.AssignAdditionalPrivileges
+        );
+
+        if (hasAssignRole || hasAssignAdditionalPrivileges) {
+          const hasBothNewActions = hasAssignRole && hasAssignAdditionalPrivileges;
+
+          throw new BadRequestError({
+            message: `You have selected Grant Privileges, and ${
+              hasBothNewActions
+                ? "both Assign Role and Assign Additional Privileges"
+                : hasAssignRole
+                  ? "Assign Role"
+                  : hasAssignAdditionalPrivileges
+                    ? "Assign Additional Privileges"
+                    : ""
+            }. You cannot select Assign Role or Assign Additional Privileges if you have selected Grant Privileges. The Grant Privileges permission is a legacy action which has been replaced by Assign Role and Assign Additional Privileges.`
+          });
+        }
+      }
+    }
+
+    if (permission.subject === ProjectPermissionSub.Identity) {
+      if (permission.action.includes(ProjectPermissionIdentityActions.GrantPrivileges)) {
+        const hasAssignRole = permission.action.includes(ProjectPermissionIdentityActions.AssignRole);
+        const hasAssignAdditionalPrivileges = permission.action.includes(
+          ProjectPermissionIdentityActions.AssignAdditionalPrivileges
         );
 
         if (hasAssignRole || hasAssignAdditionalPrivileges) {

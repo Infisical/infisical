@@ -181,19 +181,6 @@ const KmipPolicyActionSchema = z.object({
   [ProjectPermissionKmipActions.GenerateClientCertificates]: z.boolean().optional()
 });
 
-const IdentityPolicyActionSchema = z.object({
-  [ProjectPermissionIdentityActions.Read]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.Create]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.GetToken]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.CreateToken]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.DeleteToken]: z.boolean().optional()
-});
-
 const GroupPolicyActionSchema = z.object({
   [ProjectPermissionGroupActions.Read]: z.boolean().optional(),
   [ProjectPermissionGroupActions.Create]: z.boolean().optional(),
@@ -461,6 +448,24 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"],
     [ProjectPermissionMemberActions.AssignRole]: ["email", "role"],
     [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["email", "subject", "action"]
+  },
+  [ProjectPermissionSub.Identity]: {
+    [ProjectPermissionIdentityActions.Read]: [],
+    [ProjectPermissionIdentityActions.Create]: [],
+    [ProjectPermissionIdentityActions.Edit]: [],
+    [ProjectPermissionIdentityActions.Delete]: [],
+    [ProjectPermissionIdentityActions.AssumePrivileges]: [],
+    [ProjectPermissionIdentityActions.RevokeAuth]: [],
+    [ProjectPermissionIdentityActions.CreateToken]: [],
+    [ProjectPermissionIdentityActions.GetToken]: [],
+    [ProjectPermissionIdentityActions.DeleteToken]: [],
+    [ProjectPermissionIdentityActions.GrantPrivileges]: ["identityId", "role", "subject", "action"],
+    [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "role"],
+    [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: [
+      "identityId",
+      "subject",
+      "action"
+    ]
   }
 };
 
@@ -556,6 +561,26 @@ const MemberPolicyActionSchema = createPolicySchemaWithConditions(
   ProjectPermissionMemberActions
 );
 
+// Create schema with condition validation for Identity
+const IdentityPolicyActionSchema = createPolicySchemaWithConditions(
+  z.object({
+    [ProjectPermissionIdentityActions.Read]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.Create]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.Edit]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.Delete]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.AssignRole]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.GetToken]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.CreateToken]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.DeleteToken]: z.boolean().optional()
+  }),
+  ProjectPermissionSub.Identity,
+  ProjectPermissionIdentityActions
+);
+
 export const projectRoleFormSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().nullish(),
@@ -585,12 +610,7 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.Identity]: IdentityPolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
+      [ProjectPermissionSub.Identity]: IdentityPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -799,6 +819,7 @@ export const isConditionalSubjects = (
 
 const CONDITION_DISPLAY_ORDER = [
   "email",
+  "identityId",
   "role",
   "subject",
   "action",
@@ -807,8 +828,7 @@ const CONDITION_DISPLAY_ORDER = [
   "secretName",
   "secretTags",
   "metadataKey",
-  "metadataValue",
-  "identityId"
+  "metadataValue"
 ];
 
 const sortConditionsByDisplayOrder = (
@@ -1137,6 +1157,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canGrantPrivileges = action.includes(
             ProjectPermissionIdentityActions.GrantPrivileges
           );
+          const canAssignRole = action.includes(ProjectPermissionIdentityActions.AssignRole);
+          const canAssignAdditionalPrivileges = action.includes(
+            ProjectPermissionIdentityActions.AssignAdditionalPrivileges
+          );
           const canAssumePrivileges = action.includes(
             ProjectPermissionIdentityActions.AssumePrivileges
           );
@@ -1152,6 +1176,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionIdentityActions.Edit]: canEdit,
             [ProjectPermissionIdentityActions.Delete]: canDelete,
             [ProjectPermissionIdentityActions.GrantPrivileges]: canGrantPrivileges,
+            [ProjectPermissionIdentityActions.AssignRole]: canAssignRole,
+            [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]:
+              canAssignAdditionalPrivileges,
             [ProjectPermissionIdentityActions.AssumePrivileges]: canAssumePrivileges,
             [ProjectPermissionIdentityActions.RevokeAuth]: canRevokeAuth,
             [ProjectPermissionIdentityActions.CreateToken]: canCreateToken,
@@ -2118,10 +2145,20 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "Delete machine identities"
       },
       {
-        label: "Grant Privileges",
+        label: "Grant Privileges (Legacy)",
         value: ProjectPermissionIdentityActions.GrantPrivileges,
         description:
-          "Grant temporary elevated privileges and update role assignments to machine identities"
+          "Legacy action that combines role assignment and additional privileges granting without any conditions. Use Assign Roles and Assign Additional Privileges instead."
+      },
+      {
+        label: "Assign Roles",
+        value: ProjectPermissionIdentityActions.AssignRole,
+        description: "Assign or update roles for machine identities"
+      },
+      {
+        label: "Assign Additional Privileges",
+        value: ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+        description: "Grant additional privileges to machine identities"
       },
       {
         label: "Assume Privileges",

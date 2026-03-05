@@ -32,7 +32,7 @@ import {
   useUpdateIdentityProjectAdditionalPrivilege
 } from "@app/hooks/api";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
-import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import { getIdentityGrantPrivilegeConditions } from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -95,7 +95,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   );
 
   const grantPrivilegeConditions = useMemo(
-    () => getGrantPrivilegeConditions(permission),
+    () => getIdentityGrantPrivilegeConditions(permission),
     [permission]
   );
 

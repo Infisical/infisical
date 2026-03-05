@@ -1,4 +1,5 @@
 /* eslint-disable no-nested-ternary */
+import { useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faCaretDown, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -36,6 +37,7 @@ import { useGetProjectRoles, useUpdateProjectIdentityMembership } from "@app/hoo
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared";
+import { getIdentityGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 const roleFormSchema = z.object({
   roles: z
@@ -69,6 +71,46 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
     ProjectPermissionIdentityActions.Edit,
     ProjectPermissionSub.Identity
   );
+
+  const grantPrivilegeConditions = useMemo(
+    () => getIdentityGrantPrivilegeConditions(permission),
+    [permission]
+  );
+
+  const canModifyIdentityRoles = useMemo(() => {
+    const targetIdentityId = identityProjectMembership?.identity?.id;
+    if (!targetIdentityId) return false;
+
+    if (
+      grantPrivilegeConditions?.forbiddenIdentityIds?.length &&
+      grantPrivilegeConditions.forbiddenIdentityIds.includes(targetIdentityId)
+    ) {
+      return false;
+    }
+
+    if (
+      !grantPrivilegeConditions?.identityIds ||
+      grantPrivilegeConditions.identityIds.length === 0
+    ) {
+      return true;
+    }
+    return grantPrivilegeConditions.identityIds.includes(targetIdentityId);
+  }, [grantPrivilegeConditions, identityProjectMembership?.identity?.id]);
+
+  const filteredRoles = useMemo(() => {
+    if (!projectRoles) return [];
+    let roles = projectRoles;
+    if (grantPrivilegeConditions?.roles && grantPrivilegeConditions.roles.length > 0) {
+      roles = roles.filter((role) => grantPrivilegeConditions.roles?.includes(role.slug));
+    }
+    if (
+      grantPrivilegeConditions?.forbiddenRoles &&
+      grantPrivilegeConditions.forbiddenRoles.length > 0
+    ) {
+      roles = roles.filter((role) => !grantPrivilegeConditions.forbiddenRoles?.includes(role.slug));
+    }
+    return roles;
+  }, [projectRoles, grantPrivilegeConditions]);
 
   const roleForm = useForm<TRoleForm>({
     resolver: zodResolver(roleFormSchema),
@@ -148,12 +190,12 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                   <Select
                     defaultValue={field.value}
                     {...field}
-                    isDisabled={isIdentityEditDisabled}
+                    isDisabled={isIdentityEditDisabled || !canModifyIdentityRoles}
                     onValueChange={(e) => onChange(e)}
                     className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
                     containerClassName="w-1/2"
                   >
-                    {projectRoles?.map(({ name, slug, id: projectRoleId }) => (
+                    {filteredRoles?.map(({ name, slug, id: projectRoleId }) => (
                       <SelectItem value={slug} key={projectRoleId}>
                         {name}
                       </SelectItem>
@@ -162,7 +204,10 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                 )}
               />
               <Popover>
-                <PopoverTrigger disabled={isIdentityEditDisabled} asChild>
+                <PopoverTrigger
+                  disabled={isIdentityEditDisabled || !canModifyIdentityRoles}
+                  asChild
+                >
                   <div className="grow">
                     <Tooltip
                       content={
@@ -180,7 +225,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                         variant="outline_bg"
                         leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                        isDisabled={isIdentityEditDisabled}
+                        isDisabled={isIdentityEditDisabled || !canModifyIdentityRoles}
                         className={twMerge(
                           "w-full border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
                           isTemporary && "text-primary",
@@ -279,7 +324,11 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                 variant="outline_bg"
                 className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                 ariaLabel="delete-role"
-                isDisabled={isIdentityEditDisabled || selectedRoleList.fields.length === 1}
+                isDisabled={
+                  isIdentityEditDisabled ||
+                  !canModifyIdentityRoles ||
+                  selectedRoleList.fields.length === 1
+                }
                 onClick={() => {
                   if (selectedRoleList.fields.length > 1) {
                     selectedRoleList.remove(index);
@@ -297,11 +346,11 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
           {(isAllowed) => (
             <Button
               variant="outline_bg"
-              isDisabled={!isAllowed}
+              isDisabled={!isAllowed || !canModifyIdentityRoles}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() =>
                 selectedRoleList.append({
-                  slug: ProjectMembershipRole.Member,
+                  slug: filteredRoles[0]?.slug || ProjectMembershipRole.Member,
                   temporaryAccess: { isTemporary: false }
                 })
               }

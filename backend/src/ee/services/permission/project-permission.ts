@@ -77,6 +77,8 @@ export enum ProjectPermissionIdentityActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role",
+  AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
   CreateToken = "create-token",
@@ -342,6 +344,11 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"],
     [ProjectPermissionMemberActions.AssignRole]: ["email", "role"],
     [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["email", "subject", "action"]
+  },
+  [ProjectPermissionSub.Identity]: {
+    [ProjectPermissionIdentityActions.GrantPrivileges]: ["identityId", "role", "subject", "action"],
+    [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "role"],
+    [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: ["identityId", "subject", "action"]
   }
 };
 
@@ -396,7 +403,10 @@ export type SecretRotationsSubjectFields = {
 };
 
 export type IdentityManagementSubjectFields = {
-  identityId: string;
+  identityId?: string;
+  role?: string;
+  subject?: string;
+  action?: string;
 };
 
 export type MemberSubjectFields = {
@@ -837,21 +847,6 @@ const SecretConditionV2Schema = z
   })
   .partial();
 
-const IdentityManagementConditionSchema = z
-  .object({
-    identityId: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-        })
-        .partial()
-    ])
-  })
-  .partial();
-
 type SubjectValidationConfig = {
   allowedSubjects?: Set<string>;
   forbiddenSubjects?: Set<string>;
@@ -909,6 +904,85 @@ const MemberConditionSchema = z
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
           [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
           [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    role: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ]),
+    subject: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    action: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ])
+  })
+  .partial()
+  .superRefine((conditions, ctx) => {
+    const actionValues = extractConditionValues(conditions.action);
+    if (actionValues.length === 0) return;
+
+    let subjectConfig: SubjectValidationConfig | null = null;
+    const subjectVal = conditions.subject;
+
+    if (typeof subjectVal === "string") {
+      const trimmed = subjectVal.trim();
+      if (trimmed) subjectConfig = { allowedSubjects: new Set([trimmed]) };
+    } else if (subjectVal != null) {
+      const { $eq, $in, $ne, $glob } = subjectVal;
+      if ($eq != null || $in != null) {
+        const values = extractConditionValues(subjectVal);
+        if (values.length > 0) subjectConfig = { allowedSubjects: new Set(values) };
+      } else if ($ne != null) {
+        const values = extractConditionValues(subjectVal);
+        if (values.length > 0) subjectConfig = { forbiddenSubjects: new Set(values) };
+      } else if (typeof $glob === "string" && $glob.trim()) {
+        subjectConfig = { globPattern: $glob.trim() };
+      }
+    }
+
+    const error = actionValues.map((v) => validateAssignableActionFormat(v, subjectConfig)).find((e) => e !== null);
+    if (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: error,
+        path: ["action"]
+      });
+    }
+  });
+
+const IdentityManagementConditionSchema = z
+  .object({
+    identityId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
         })
         .partial()
     ]),
