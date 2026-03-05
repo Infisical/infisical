@@ -76,6 +76,63 @@ import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
 
+type SubOrgFilterListProps = {
+  search: string;
+  onSearchChange: (value: string) => void;
+  subOrganizations: { id: string; name: string }[];
+  currentOrgId: string | undefined;
+  onSelect: (orgId: string) => void;
+};
+
+const SubOrgFilterList = ({
+  search,
+  onSearchChange,
+  subOrganizations,
+  currentOrgId,
+  onSelect
+}: SubOrgFilterListProps) => {
+  const filtered = subOrganizations.filter((s) =>
+    s.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <>
+      <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
+        <Input
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          size="xs"
+          variant="plain"
+          placeholder="Filter sub-orgs..."
+          className="text-bunker-100 placeholder-mineshaft-300"
+          onKeyDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+      <div className="max-h-48 thin-scrollbar overflow-y-auto">
+        {filtered.map((subOrg) => (
+          <DropdownMenuItem
+            onClick={() => onSelect(subOrg.id)}
+            className="cursor-pointer font-normal"
+            key={subOrg.id}
+          >
+            <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
+              {currentOrgId === subOrg.id && (
+                <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
+              )}
+              <p className="truncate">{subOrg.name}</p>
+            </div>
+          </DropdownMenuItem>
+        ))}
+        {filtered.length === 0 && (
+          <p className="px-2 py-1.5 text-xs text-mineshaft-400">No sub-organizations found.</p>
+        )}
+      </div>
+    </>
+  );
+};
+
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
   if (subscription.pitRecovery) return "Pro";
@@ -462,51 +519,13 @@ export const Navbar = () => {
                             className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
                             style={{ minWidth: "220px" }}
                           >
-                            <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
-                              <Input
-                                value={subOrgMenuSearch}
-                                onChange={(e) => setSubOrgMenuSearch(e.target.value)}
-                                leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                                size="xs"
-                                variant="plain"
-                                placeholder="Filter sub-orgs..."
-                                className="text-bunker-100 placeholder-mineshaft-300"
-                                onKeyDown={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                            <div className="max-h-48 thin-scrollbar overflow-y-auto">
-                              {subOrganizations
-                                .filter((s) =>
-                                  s.name.toLowerCase().includes(subOrgMenuSearch.toLowerCase())
-                                )
-                                .map((subOrg) => (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleOrgSelection({ organizationId: subOrg.id })
-                                    }
-                                    className="cursor-pointer font-normal"
-                                    key={subOrg.id}
-                                  >
-                                    <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
-                                      {currentOrg?.id === subOrg.id && (
-                                        <FontAwesomeIcon
-                                          icon={faCheck}
-                                          className="shrink-0 text-primary"
-                                        />
-                                      )}
-                                      <p className="truncate">{subOrg.name}</p>
-                                    </div>
-                                  </DropdownMenuItem>
-                                ))}
-                              {subOrganizations.filter((s) =>
-                                s.name.toLowerCase().includes(subOrgMenuSearch.toLowerCase())
-                              ).length === 0 && (
-                                <p className="px-2 py-1.5 text-xs text-mineshaft-400">
-                                  No sub-organizations found.
-                                </p>
-                              )}
-                            </div>
+                            <SubOrgFilterList
+                              search={subOrgMenuSearch}
+                              onSearchChange={setSubOrgMenuSearch}
+                              subOrganizations={subOrganizations}
+                              currentOrgId={currentOrg?.id}
+                              onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
+                            />
                             <div className="mt-1 h-px border-t border-mineshaft-600" />
                             <DropdownMenuItem
                               className="cursor-pointer"
@@ -608,49 +627,13 @@ export const Navbar = () => {
                       style={{ minWidth: "220px" }}
                       onCloseAutoFocus={(e) => e.preventDefault()}
                     >
-                      <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
-                        <Input
-                          value={subOrgBreadcrumbSearch}
-                          onChange={(e) => setSubOrgBreadcrumbSearch(e.target.value)}
-                          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                          size="xs"
-                          variant="plain"
-                          placeholder="Filter sub-orgs..."
-                          className="text-bunker-100 placeholder-mineshaft-300"
-                          onKeyDown={(e) => e.stopPropagation()}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                      <div className="max-h-48 thin-scrollbar overflow-y-auto">
-                        {subOrganizations
-                          .filter((s) =>
-                            s.name.toLowerCase().includes(subOrgBreadcrumbSearch.toLowerCase())
-                          )
-                          .map((subOrg) => (
-                            <DropdownMenuItem
-                              onClick={() => handleOrgSelection({ organizationId: subOrg.id })}
-                              className="cursor-pointer font-normal"
-                              key={subOrg.id}
-                            >
-                              <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
-                                {currentOrg?.id === subOrg.id && (
-                                  <FontAwesomeIcon
-                                    icon={faCheck}
-                                    className="shrink-0 text-primary"
-                                  />
-                                )}
-                                <p className="truncate">{subOrg.name}</p>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        {subOrganizations.filter((s) =>
-                          s.name.toLowerCase().includes(subOrgBreadcrumbSearch.toLowerCase())
-                        ).length === 0 && (
-                          <p className="px-2 py-1.5 text-xs text-mineshaft-400">
-                            No sub-organizations found.
-                          </p>
-                        )}
-                      </div>
+                      <SubOrgFilterList
+                        search={subOrgBreadcrumbSearch}
+                        onSearchChange={setSubOrgBreadcrumbSearch}
+                        subOrganizations={subOrganizations}
+                        currentOrgId={currentOrg?.id}
+                        onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
+                      />
                       <div className="mt-1 h-px border-t border-mineshaft-600" />
                       <DropdownMenuItem
                         className="cursor-pointer"
