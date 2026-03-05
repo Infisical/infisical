@@ -49,7 +49,7 @@ export const MemberPermissionConditions = ({ position = 0, isDisabled }: Props) 
       selectOptions={[
         {
           value: "email",
-          label: "Target Email",
+          label: "User Email",
           description: "The email address of the target user whose roles are being updated"
         },
         {
