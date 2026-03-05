@@ -158,6 +158,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.identifyUser(user.username ?? "", {
+        email: user.email ?? undefined,
+        username: user.username,
+        userId: user.id,
+        firstName: user.firstName ?? undefined,
+        lastName: user.lastName ?? undefined,
+        isEmailVerified: user.isEmailVerified ?? undefined,
+        isMfaEnabled: user.isMfaEnabled ?? undefined,
+        superAdmin: user.superAdmin ?? undefined
+      });
+
       void res.setCookie("jid", refreshToken, {
         httpOnly: true,
         path: "/",
@@ -218,6 +229,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           email: user.email ?? "",
           attributionSource: "Team Invite"
         }
+      });
+
+      void server.services.telemetry.identifyUser(user.username ?? "", {
+        email: user.email ?? undefined,
+        username: user.username,
+        userId: user.id,
+        firstName: user.firstName ?? undefined,
+        lastName: user.lastName ?? undefined,
+        isEmailVerified: user.isEmailVerified ?? undefined,
+        isMfaEnabled: user.isMfaEnabled ?? undefined,
+        superAdmin: user.superAdmin ?? undefined
       });
 
       void res.setCookie("jid", refreshToken, {

@@ -155,6 +155,12 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         password: req.body.password
       });
 
+      void server.services.telemetry.identifyUser(data.user.username, {
+        email: data.user.email ?? undefined,
+        username: data.user.username,
+        userId: data.user.userId
+      });
+
       void res.setCookie("jid", data.token.refresh, {
         httpOnly: true,
         path: "/",
@@ -211,7 +217,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       const userAgent = req.headers["user-agent"];
       if (!userAgent) throw new Error("user agent header is required");
 
-      const { tokens } = await server.services.login.login({
+      const { tokens, user } = await server.services.login.login({
         email: req.body.email,
         password: req.body.password,
         ip: req.realIp,
@@ -220,6 +226,12 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         captchaToken: req.body.captchaToken
       });
       const appCfg = getConfig();
+
+      void server.services.telemetry.identifyUser(user.username, {
+        email: user.email ?? undefined,
+        username: user.username,
+        userId: user.userId
+      });
 
       void res.setCookie("jid", tokens.refreshToken, {
         httpOnly: true,

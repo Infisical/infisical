@@ -290,7 +290,7 @@ export type TNotificationUpdatedEvent = {
   };
 };
 
-export type TPostHogEvent = { distinctId: string; organizationId?: string } & (
+export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent

@@ -641,6 +641,15 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.identifyUser(user.user.username ?? "", {
+        email: user.user.email ?? undefined,
+        username: user.user.username,
+        userId: user.user.id,
+        firstName: user.user.firstName ?? undefined,
+        lastName: user.user.lastName ?? undefined,
+        superAdmin: true
+      });
+
       void res.setCookie("jid", token.refresh, {
         httpOnly: true,
         path: "/",
@@ -788,6 +797,15 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           lastName: user.user.lastName || "",
           firstName: user.user.firstName || ""
         }
+      });
+
+      void server.services.telemetry.identifyUser(user.user.username ?? "", {
+        email: user.user.email ?? undefined,
+        username: user.user.username,
+        userId: user.user.id,
+        firstName: user.user.firstName ?? undefined,
+        lastName: user.user.lastName ?? undefined,
+        superAdmin: true
       });
 
       return {

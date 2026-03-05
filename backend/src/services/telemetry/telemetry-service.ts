@@ -117,7 +117,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         } else {
           if (event.organizationId) {
             try {
-              postHog.groupIdentify({ groupType: "organization", groupKey: event.organizationId });
+              postHog.groupIdentify({
+                groupType: "organization",
+                groupKey: event.organizationId,
+                ...(event.organizationName ? { groupProperties: { name: event.organizationName } } : {})
+              });
             } catch (error) {
               logger.error(error, "Failed to identify PostHog organization");
             }
@@ -303,6 +307,27 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const identifyUser = async (
+    distinctId: string,
+    properties: {
+      email?: string;
+      username?: string;
+      userId?: string;
+      firstName?: string;
+      lastName?: string;
+      isMfaEnabled?: boolean;
+      isEmailVerified?: boolean;
+      superAdmin?: boolean;
+    }
+  ) => {
+    if (postHog) {
+      const instanceType = licenseService.getInstanceType();
+      if (instanceType === InstanceType.Cloud) {
+        postHog.identify({ distinctId, properties });
+      }
+    }
+  };
+
   const flushAll = async () => {
     if (postHog) {
       await postHog.shutdownAsync();
@@ -312,6 +337,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   return {
     sendLoopsEvent,
     sendPostHogEvents,
+    identifyUser,
     processAggregatedEvents,
     flushAll,
     getBucketForDistinctId
