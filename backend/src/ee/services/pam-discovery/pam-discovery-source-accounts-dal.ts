@@ -31,7 +31,7 @@ export const pamDiscoverySourceAccountsDALFactory = (db: TDbClient) => {
         db.ref("name").withSchema(TableName.PamAccount).as("accountName"),
         db.ref("resourceId").withSchema(TableName.PamAccount).as("resourceId"),
         db.ref("resourceType").withSchema(TableName.PamResource).as("resourceType"),
-        db.ref("metadata").withSchema(TableName.PamAccount).as("metadata"),
+        db.ref("internalMetadata").withSchema(TableName.PamAccount).as("internalMetadata"),
         db.ref("name").withSchema(TableName.PamResource).as("resourceName")
       );
 

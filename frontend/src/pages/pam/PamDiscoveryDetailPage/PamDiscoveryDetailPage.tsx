@@ -725,10 +725,10 @@ const AccountsTab = ({
                 <UnstableTableCell className="font-medium">{account.accountName}</UnstableTableCell>
                 <UnstableTableCell className="text-muted">{account.resourceName}</UnstableTableCell>
                 <UnstableTableCell className="text-muted capitalize">
-                  {account.metadata?.accountType ?? "-"}
+                  {account.internalMetadata?.accountType ?? "-"}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
-                  {formatWindowsFileTime(account.metadata?.lastLogonTimestamp)}
+                  {formatWindowsFileTime(account.internalMetadata?.lastLogonTimestamp)}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {format(new Date(account.lastDiscoveredAt), "MMM d, yyyy HH:mm")}

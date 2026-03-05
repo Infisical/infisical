@@ -97,7 +97,7 @@ export type TDiscoveredAccount = {
   resourceType: string;
   lastDiscoveredAt: string;
   isStale: boolean;
-  metadata?: TDiscoveredAccountMetadata;
+  internalMetadata?: TDiscoveredAccountMetadata;
   createdAt: string;
 };
 

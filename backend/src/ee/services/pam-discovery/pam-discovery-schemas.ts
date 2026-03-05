@@ -66,5 +66,5 @@ export const DiscoveredAccountSchema = PamDiscoverySourceAccountsSchema.extend({
   resourceName: z.string(),
   resourceId: z.string().uuid(),
   accountName: z.string(),
-  metadata: z.union([ActiveDirectoryAccountMetadataSchema, WindowsAccountMetadataSchema])
+  internalMetadata: z.union([ActiveDirectoryAccountMetadataSchema, WindowsAccountMetadataSchema])
 });
