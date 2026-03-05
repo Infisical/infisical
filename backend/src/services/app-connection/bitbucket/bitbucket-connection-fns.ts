@@ -85,10 +85,31 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
   return allWorkspaces;
 };
 
-interface BitbucketRepositoriesResponse {
-  values: TBitbucketRepo[];
+interface BitbucketPaginatedResponse<T> {
+  values: T[];
   next?: string;
+  size?: number;
 }
+
+const BITBUCKET_MAX_PAGES = 10;
+const BITBUCKET_PAGE_SIZE = 100;
+
+const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, string>): Promise<T[]> => {
+  let allItems: T[] = [];
+  let nextUrl: string | undefined = url;
+  let iterationCount = 0;
+
+  while (nextUrl && iterationCount < BITBUCKET_MAX_PAGES) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data }: { data: BitbucketPaginatedResponse<T> } = await request.get(nextUrl, { headers });
+
+    allItems = allItems.concat(data.values);
+    nextUrl = data.next;
+    iterationCount += 1;
+  }
+
+  return allItems;
+};
 
 export const listBitbucketRepositories = async (appConnection: TBitbucketConnection, workspaceSlug: string) => {
   const { email, apiToken } = appConnection.credentials;
@@ -98,27 +119,24 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
     Accept: "application/json"
   };
 
-  let allRepos: TBitbucketRepo[] = [];
-  let nextUrl: string | undefined =
-    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}?pagelen=100`;
-  let iterationCount = 0;
+  const encodedSlug = encodeURIComponent(workspaceSlug);
 
-  // Limit to 10 iterations, fetching at most 10 * 100 = 1000 repositories
-  while (nextUrl && iterationCount < 10) {
-    // eslint-disable-next-line no-await-in-loop
-    const { data }: { data: BitbucketRepositoriesResponse } = await request.get<BitbucketRepositoriesResponse>(
-      nextUrl,
-      {
+  // Fetch repos per-project to avoid Bitbucket's 1,000-result pagination cap
+  const projects = await paginateBitbucketRequest<{ key: string }>(
+    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodedSlug}/projects?pagelen=${BITBUCKET_PAGE_SIZE}`,
+    headers
+  );
+
+  const reposByProject = await Promise.all(
+    projects.map((project) =>
+      paginateBitbucketRequest<TBitbucketRepo>(
+        `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}?pagelen=${BITBUCKET_PAGE_SIZE}&sort=slug&q=project.key="${project.key}"`,
         headers
-      }
-    );
+      )
+    )
+  );
 
-    allRepos = allRepos.concat(data.values);
-    nextUrl = data.next;
-    iterationCount += 1;
-  }
-
-  return allRepos;
+  return reposByProject.flat();
 };
 
 export const listBitbucketEnvironments = async (
