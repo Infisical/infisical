@@ -808,6 +808,19 @@ export const orgDALFactory = (db: TDbClient) => {
         });
       }
 
+      // Order so that direct memberships (actorUserId / actorIdentityId set) come
+      // before group-based memberships. This ensures findEffectiveOrgMembership
+      // (which returns list[0]) prefers the direct membership when one exists.
+      if (dto.actorType === ActorType.USER) {
+        void query.orderByRaw(`CASE WHEN ?? IS NOT NULL THEN 0 ELSE 1 END ASC`, [
+          `${TableName.Membership}.actorUserId`
+        ]);
+      } else {
+        void query.orderByRaw(`CASE WHEN ?? IS NOT NULL THEN 0 ELSE 1 END ASC`, [
+          `${TableName.Membership}.actorIdentityId`
+        ]);
+      }
+
       const rows = await query.select(selectAllTableCols(TableName.Membership));
       return rows as TMemberships[];
     } catch (error) {
