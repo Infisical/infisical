@@ -92,7 +92,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         isAccessible: z
           .enum(["true", "false"])
           .optional()
-          .transform((value) => (value === undefined ? undefined : value === "true"))
+          .transform((value) => value === "true")
           .describe(SUB_ORGANIZATIONS.LIST.isAccessible)
       }),
       response: {
