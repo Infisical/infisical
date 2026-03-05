@@ -222,6 +222,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "accessPamAccount",
       description: "Access PAM account",
       body: z.object({
         resourceName: z.string().trim(),

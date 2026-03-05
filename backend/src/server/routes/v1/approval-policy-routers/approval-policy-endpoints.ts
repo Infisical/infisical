@@ -45,6 +45,13 @@ export const registerApprovalPolicyEndpoints = ({
   grantResponseSchema: z.ZodObject<z.ZodRawShape>;
   inputsSchema: z.ZodType<TApprovalPolicyInputs>;
 }) => {
+  // Convert policy type enum value to PascalCase for operation IDs
+  // e.g., "pam-access" -> "PamAccess", "cert-request" -> "CertRequest"
+  const policyTypeId = policyType
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+
   // Policies
   server.route({
     method: "POST",
@@ -53,7 +60,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "createApprovalPolicy",
+      operationId: `create${policyTypeId}ApprovalPolicy`,
       description: "Create approval policy",
       body: createPolicySchema,
       response: {
@@ -94,7 +101,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listApprovalPolicies",
+      operationId: `list${policyTypeId}ApprovalPolicies`,
       description: "List approval policies",
       querystring: z.object({
         projectId: z.string().uuid()
@@ -133,7 +140,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getApprovalPolicy",
+      operationId: `get${policyTypeId}ApprovalPolicy`,
       description: "Get approval policy",
       params: z.object({
         policyId: z.string().uuid()
@@ -173,7 +180,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "updateApprovalPolicy",
+      operationId: `update${policyTypeId}ApprovalPolicy`,
       description: "Update approval policy",
       params: z.object({
         policyId: z.string().uuid()
@@ -218,7 +225,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "deleteApprovalPolicy",
+      operationId: `delete${policyTypeId}ApprovalPolicy`,
       description: "Delete approval policy",
       params: z.object({
         policyId: z.string().uuid()
@@ -261,7 +268,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listApprovalRequests",
+      operationId: `list${policyTypeId}ApprovalRequests`,
       description: "List approval requests",
       querystring: z.object({
         projectId: z.string().uuid()
@@ -304,7 +311,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "createApprovalRequest",
+      operationId: `create${policyTypeId}ApprovalRequest`,
       description: "Create approval request",
       body: createRequestSchema,
       response: {
@@ -355,7 +362,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getApprovalRequest",
+      operationId: `get${policyTypeId}ApprovalRequest`,
       description: "Get approval request",
       params: z.object({
         requestId: z.string().uuid()
@@ -395,7 +402,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "approveApprovalRequest",
+      operationId: `approve${policyTypeId}ApprovalRequest`,
       description: "Approve approval request",
       params: z.object({
         requestId: z.string().uuid()
@@ -442,7 +449,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "rejectApprovalRequest",
+      operationId: `reject${policyTypeId}ApprovalRequest`,
       description: "Reject approval request",
       params: z.object({
         requestId: z.string().uuid()
@@ -489,7 +496,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "cancelApprovalRequest",
+      operationId: `cancel${policyTypeId}ApprovalRequest`,
       description: "Cancel approval request",
       params: z.object({
         requestId: z.string().uuid()
@@ -529,7 +536,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listApprovalGrants",
+      operationId: `list${policyTypeId}ApprovalGrants`,
       description: "List approval grants",
       querystring: z.object({
         projectId: z.string().uuid()
@@ -572,7 +579,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getApprovalGrant",
+      operationId: `get${policyTypeId}ApprovalGrant`,
       description: "Get approval grant",
       params: z.object({
         grantId: z.string().uuid()
@@ -612,7 +619,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "revokeApprovalGrant",
+      operationId: `revoke${policyTypeId}ApprovalGrant`,
       description: "Revoke approval grant",
       params: z.object({
         grantId: z.string().uuid()
@@ -655,7 +662,7 @@ export const registerApprovalPolicyEndpoints = ({
       rateLimit: readLimit
     },
     schema: {
-      operationId: "checkApprovalPolicyMatch",
+      operationId: `check${policyTypeId}ApprovalPolicyMatch`,
       description: "Check if a resource path matches any approval policy and if the user has an active grant",
       body: z.object({
         projectId: z.string().uuid(),
