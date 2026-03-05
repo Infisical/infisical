@@ -303,6 +303,25 @@ const WorkspacePolicyActionSchema = z.object({
   delete: z.boolean().optional()
 });
 
+const validateAssignableActionFormat = (
+  value: string,
+  allowedSubjects: Set<string> | null
+): string | null => {
+  const colonIndex = value.indexOf(":");
+  if (colonIndex === -1 || colonIndex === 0 || colonIndex === value.length - 1) {
+    return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
+  }
+  const subject = value.slice(0, colonIndex).trim();
+  const action = value.slice(colonIndex + 1).trim();
+  if (!subject || !action) {
+    return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
+  }
+  if (allowedSubjects !== null && !allowedSubjects.has(subject)) {
+    return `Subject "${subject}" is not in the assignable subject list`;
+  }
+  return null;
+};
+
 const ConditionSchema = z
   .object({
     operator: z.string(),
@@ -338,6 +357,38 @@ const ConditionSchema = z
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Invalid Secret Path. Must start with '/'",
+            path: [index, "rhs"]
+          });
+        }
+      }
+
+      if (lhs === "action") {
+        const assignableSubjectsCondition = conditions.find((c) => c.lhs === "subject");
+        const allowedSubjects: Set<string> | null =
+          assignableSubjectsCondition != null
+            ? new Set(
+                (assignableSubjectsCondition.operator === PermissionConditionOperators.$IN
+                  ? assignableSubjectsCondition.rhs.split(",").map((v) => v.trim())
+                  : [assignableSubjectsCondition.rhs.trim()]
+                ).filter(Boolean)
+              )
+            : null;
+
+        const valuesToValidate =
+          operator === PermissionConditionOperators.$IN
+            ? rhs
+                .split(",")
+                .map((v) => v.trim())
+                .filter(Boolean)
+            : [rhs.trim()];
+
+        const error = valuesToValidate
+          .map((v) => validateAssignableActionFormat(v, allowedSubjects))
+          .find((e) => e !== null);
+        if (error) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: error,
             path: [index, "rhs"]
           });
         }

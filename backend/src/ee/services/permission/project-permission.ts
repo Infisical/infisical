@@ -851,6 +851,41 @@ const IdentityManagementConditionSchema = z
   })
   .partial();
 
+const validateAssignableActionFormat = (value: string, allowedSubjects: Set<string> | null): string | null => {
+  const colonIndex = value.indexOf(":");
+  if (colonIndex === -1 || colonIndex === 0 || colonIndex === value.length - 1) {
+    return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
+  }
+  const subject = value.slice(0, colonIndex).trim();
+  const action = value.slice(colonIndex + 1).trim();
+  if (!subject || !action) {
+    return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
+  }
+  if (allowedSubjects !== null && !allowedSubjects.has(subject)) {
+    return `Subject "${subject}" is not in the assignable subject list`;
+  }
+  return null;
+};
+
+const extractConditionValues = (value: string | Record<string, unknown> | undefined): string[] => {
+  if (value == null) return [];
+  if (typeof value === "string") return [value.trim()].filter(Boolean);
+  if (typeof value !== "object") return [];
+  const eq = value[PermissionConditionOperators.$EQ];
+  if (typeof eq === "string") return [eq.trim()].filter(Boolean);
+  const ne = value[PermissionConditionOperators.$NEQ];
+  if (typeof ne === "string") return [ne.trim()].filter(Boolean);
+  const inVal = value[PermissionConditionOperators.$IN];
+  if (Array.isArray(inVal))
+    return inVal
+      .filter((v): v is string => typeof v === "string")
+      .map((v) => v.trim())
+      .filter(Boolean);
+  const glob = value[PermissionConditionOperators.$GLOB];
+  if (typeof glob === "string") return [glob.trim()].filter(Boolean);
+  return [];
+};
+
 const MemberConditionSchema = z
   .object({
     email: z.union([
@@ -890,12 +925,29 @@ const MemberConditionSchema = z
         .object({
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
     ])
   })
-  .partial();
+  .partial()
+  .superRefine((conditions, ctx) => {
+    const actionValues = extractConditionValues(conditions.action);
+    if (actionValues.length === 0) return;
+
+    const subjectValues = extractConditionValues(conditions.subject);
+    const allowedSubjects = subjectValues.length > 0 ? new Set(subjectValues) : null;
+
+    const error = actionValues.map((v) => validateAssignableActionFormat(v, allowedSubjects)).find((e) => e !== null);
+    if (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: error,
+        path: ["action"]
+      });
+    }
+  });
 
 const SshHostConditionSchema = z
   .object({
