@@ -15,7 +15,7 @@ import { TPamAccountDALFactory } from "../../pam-account/pam-account-dal";
 import { encryptAccountCredentials } from "../../pam-account/pam-account-fns";
 import {
   TActiveDirectoryAccountCredentials,
-  TActiveDirectoryAccountMetadata,
+  TActiveDirectoryAccountInternalMetadata,
   TActiveDirectoryResourceConnectionDetails
 } from "../../pam-resource/active-directory/active-directory-resource-types";
 import { TPamResourceDALFactory } from "../../pam-resource/pam-resource-dal";
@@ -457,7 +457,7 @@ const upsertDomainAccount = async (
     userAccountControl: user.userAccountControl ? parseInt(user.userAccountControl, 10) : undefined,
     pwdLastSet: user.pwdLastSet || undefined,
     lastLogonTimestamp: user.lastLogonTimestamp || undefined
-  } as TActiveDirectoryAccountMetadata;
+  } as TActiveDirectoryAccountInternalMetadata;
 
   const account = await pamAccountDAL.create(
     {
