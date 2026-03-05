@@ -307,9 +307,16 @@ export type TSecretRotationRotateGeneratedCredentials = {
 };
 
 export type TSecretRotationRotateSecretsJobPayload = { rotationId: string; queuedAt: Date; isManualRotation?: boolean };
-
 export type TSecretRotationSendNotificationJobPayload = {
-  secretRotation: TSecretRotationV2Raw;
+  secretRotation: {
+    id: string;
+    name: string;
+    type: string;
+    projectId: string;
+    folder: { path: string };
+    lastRotationAttemptedAt: Date;
+    environment: { name: string; slug: string };
+  };
 };
 
 // scott: the reason for the callback structure of the rotation factory is to facilitate, when possible,

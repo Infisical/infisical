@@ -46,17 +46,18 @@ const CreateForm = ({
       TPamAccount,
       "name" | "description" | "credentials" | "requireMfa"
     > & {
-      metadata?: Record<string, unknown>;
+      internalMetadata?: Record<string, unknown>;
+      metadata?: { key: string; value: string }[];
     }
   ) => {
-    const { metadata, ...rest } = formData;
+    const { internalMetadata, ...rest } = formData;
     const account = await createPamAccount.mutateAsync({
       ...rest,
       folderId,
       resourceId,
       resourceType,
       projectId,
-      metadata
+      internalMetadata
     });
     createNotification({
       text: "Successfully created account",
@@ -135,15 +136,16 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       TPamAccount,
       "name" | "description" | "credentials" | "requireMfa"
     > & {
-      metadata?: Record<string, unknown>;
+      internalMetadata?: Record<string, unknown>;
+      metadata?: { key: string; value: string }[];
     }
   ) => {
-    const { metadata, ...rest } = formData;
+    const { internalMetadata, ...rest } = formData;
     const updatedAccount = await updatePamAccount.mutateAsync({
       accountId: account.id,
       resourceType: account.resource.resourceType,
       ...rest,
-      metadata
+      internalMetadata
     });
     createNotification({
       text: "Successfully updated account",

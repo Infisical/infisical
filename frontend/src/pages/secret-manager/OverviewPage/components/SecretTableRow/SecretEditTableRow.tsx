@@ -1044,6 +1044,7 @@ export const SecretEditTableRow = ({
                     secretPath={secretPath}
                     environment={environment}
                     secretKey={secretName}
+                    onClose={() => setIsSecretReferenceOpen(false)}
                   />
                 </ModalContent>
               </Modal>

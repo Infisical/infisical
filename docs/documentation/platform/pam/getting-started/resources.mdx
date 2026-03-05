@@ -38,6 +38,22 @@ In this PostgreSQL example, you provide details such as host, port, gateway, and
 
 Clicking **Create Resource** will trigger a connection test from the selected Gateway to your target resource. If the connection fails, an error message will be displayed to help you troubleshoot (usually indicating a network firewall issue between the Gateway and the Resource).
 
+## Resource Metadata
+
+Resources support custom key-value metadata that can be used to organize and classify your infrastructure. Common use cases include environment labels, cost centers, compliance tags, and team ownership.
+
+- **At creation**: You can attach metadata key-value pairs when creating a resource through the creation modal.
+
+  ![pam resource creation metadata](/images/pam/getting-started/resources/resource-create-metadata.png)
+
+- **On the details page**: After creation, resource metadata can be viewed and edited from the resource details page.
+
+  ![pam resource metadata section](/images/pam/getting-started/resources/resource-metadata-section.png)
+
+- **Filtering**: You can filter the resources list view by metadata key-value pairs.
+
+  ![pam resource metadata filter](/images/pam/getting-started/resources/resource-metadata-filter.png)
+
 ## Automated Credential Rotation
 
 Some resources, such as PostgreSQL, support automated credential rotation to enhance your security posture. This feature requires configuring a privileged "Rotation Account" on the resource.

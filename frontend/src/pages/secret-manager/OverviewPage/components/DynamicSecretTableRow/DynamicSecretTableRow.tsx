@@ -55,6 +55,7 @@ const DYNAMIC_SECRET_PROVIDER_NAMES: Record<DynamicSecretProviders, string> = {
   [DynamicSecretProviders.Vertica]: "Vertica",
   [DynamicSecretProviders.GcpIam]: "GCP IAM",
   [DynamicSecretProviders.Github]: "GitHub",
+  [DynamicSecretProviders.Clickhouse]: "ClickHouse",
   [DynamicSecretProviders.Couchbase]: "Couchbase"
 };
 

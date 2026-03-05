@@ -582,7 +582,8 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   if (err instanceof SecretSyncError) {
     errorMessage = JSON.stringify({
       secretKey: err.secretKey,
-      error: err.message || parseSyncErrorMessage(err.error)
+      message: err.message || undefined,
+      error: err.error ? parseSyncErrorMessage(err.error) : undefined
     });
   } else if (err instanceof AxiosError) {
     errorMessage = err?.response?.data

@@ -12,6 +12,8 @@ import {
   CopyIcon,
   DownloadIcon,
   GitCommitIcon,
+  InfoIcon,
+  LockIcon,
   LogInIcon,
   SettingsIcon,
   TrashIcon
@@ -45,6 +47,8 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableAlert,
+  UnstableAlertTitle,
   UnstableCard,
   UnstableCardContent,
   UnstableCardHeader,
@@ -66,6 +70,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useOrgPermission,
   useProject,
   useProjectPermission,
   useSubscription
@@ -76,6 +81,7 @@ import {
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -98,6 +104,7 @@ import {
   useDeleteWsEnvironment,
   useGetImportedSecretsAllEnvs,
   useGetOrCreateFolder,
+  useGetSecretApprovalPolicyOfABoard,
   useGetWsTags,
   useUpdateSecretImport,
   useUpdateSecretV3
@@ -107,6 +114,11 @@ import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/ap
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import {
+  useGetVaultExternalMigrationConfigs,
+  useImportVaultSecrets
+} from "@app/hooks/api/migration";
+import { VaultImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
@@ -124,6 +136,7 @@ import {
   TApiErrors,
   TSecretFolder
 } from "@app/hooks/api/types";
+import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
@@ -131,10 +144,12 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
+import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
+import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
 import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
 import {
@@ -218,6 +233,11 @@ export const OverviewPage = () => {
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
+  const { hasOrgRole } = useOrgPermission();
+  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
   const prevPageSize = useRef(0);
 
   const canReadCommits = permission.can(
@@ -370,6 +390,44 @@ export const OverviewPage = () => {
     isPaused: !singleVisibleEnv || !canReadCommits
   });
 
+  const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
+    projectId,
+    environment: singleVisibleEnv?.slug ?? "",
+    secretPath,
+    options: { enabled: Boolean(singleVisibleEnv) }
+  });
+  const isProtectedBranch = Boolean(boardPolicy);
+
+  const isSingleEnvView = visibleEnvs.length === 1;
+  const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
+  const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
+    secretPath,
+    environment: singleEnvSlug
+  });
+
+  const secretSubject = subject(ProjectPermissionSub.Secrets, {
+    environment: singleEnvSlug,
+    secretPath,
+    secretName: "*",
+    secretTags: ["*"]
+  });
+
+  const canReadSecrets = singleVisibleEnv
+    ? permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject)
+    : true;
+
+  const canEditSecrets = singleVisibleEnv
+    ? permission.can(ProjectPermissionSecretActions.Edit, secretSubject)
+    : true;
+
+  const canDeleteSecrets = singleVisibleEnv
+    ? permission.can(ProjectPermissionSecretActions.Delete, secretSubject)
+    : true;
+
+  const canCreateSecrets = singleVisibleEnv
+    ? permission.can(ProjectPermissionSecretActions.Create, secretSubject)
+    : true;
+
   const singleEnvChangesCount = subscription.pitRecovery ? singleEnvCommitCount : 0;
   const isSingleEnvChangesCountLoading = subscription.pitRecovery
     ? isSingleEnvCommitCountPending && isSingleEnvCommitCountFetching
@@ -508,8 +566,6 @@ export const OverviewPage = () => {
   const { mutate: updateSecretImport } = useUpdateSecretImport();
   const { mutateAsync: deleteWsEnvironment } = useDeleteWsEnvironment();
 
-  const isSingleEnvView = visibleEnvs.length === 1;
-  const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
   const singleEnvImports = useMemo(
     () => (isSingleEnvView ? getSecretImportsForEnv(singleEnvSlug) : []),
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
@@ -548,7 +604,9 @@ export const OverviewPage = () => {
     "snapshots",
     "deleteSecretImport",
     "addSecretImport",
-    "deleteEnv"
+    "deleteEnv",
+    "requestAccess",
+    "importFromVault"
   ] as const);
 
   const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
@@ -584,6 +642,28 @@ export const OverviewPage = () => {
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
+  };
+
+  const handleVaultImport = async (vaultPath: string, namespace: string) => {
+    const result = await importVaultSecrets({
+      projectId,
+      environment: singleEnvSlug,
+      secretPath,
+      vaultNamespace: namespace,
+      vaultSecretPath: vaultPath
+    });
+
+    if (result.status === VaultImportStatus.ApprovalRequired) {
+      createNotification({
+        type: "info",
+        text: "Secret change request created successfully. Awaiting approval."
+      });
+    } else {
+      createNotification({
+        type: "success",
+        text: "Successfully imported secrets from HashiCorp Vault"
+      });
+    }
   };
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
@@ -1375,12 +1455,69 @@ export const OverviewPage = () => {
                     onAddSecretImport={handleAddSecretImport}
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
                     isSingleEnvSelected={isSingleEnvView}
+                    hasVaultConnection={hasVaultConnection}
+                    isOrgAdmin={isOrgAdmin}
+                    onImportFromVault={() => handlePopUpOpen("importFromVault")}
                   />
                 )}
               </div>
             </div>
           </UnstableCardHeader>
           <UnstableCardContent>
+            {isSingleEnvView &&
+              hasPathPolicies &&
+              // eslint-disable-next-line no-nested-ternary
+              (!canReadSecrets ? (
+                <UnstableAlert variant="info" className="mb-6 py-1.5">
+                  <InfoIcon className="mt-1" />
+                  <UnstableAlertTitle className="flex items-center">
+                    <span>You do not have permission to read secrets in this folder</span>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="ml-auto"
+                      onClick={() =>
+                        handlePopUpOpen("requestAccess", [ProjectPermissionActions.Read])
+                      }
+                    >
+                      Request Access
+                    </Button>
+                  </UnstableAlertTitle>
+                </UnstableAlert>
+              ) : !canCreateSecrets || !canEditSecrets || !canDeleteSecrets ? (
+                <UnstableAlert variant="info" className="mb-6 py-1.5">
+                  <InfoIcon className="mt-1" />
+                  <UnstableAlertTitle className="flex items-center">
+                    <span>
+                      You do not have permission to{" "}
+                      {(() => {
+                        const missing = [
+                          ...(!canCreateSecrets ? ["create"] : []),
+                          ...(!canEditSecrets ? ["edit"] : []),
+                          ...(!canDeleteSecrets ? ["delete"] : [])
+                        ];
+                        if (missing.length <= 2) return missing.join(" or ");
+                        return `${missing.slice(0, -1).join(", ")}, or ${missing[missing.length - 1]}`;
+                      })()}{" "}
+                      secrets in this folder
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="ml-auto"
+                      onClick={() =>
+                        handlePopUpOpen("requestAccess", [
+                          ...(!canCreateSecrets ? [ProjectPermissionActions.Create] : []),
+                          ...(!canEditSecrets ? [ProjectPermissionActions.Edit] : []),
+                          ...(!canDeleteSecrets ? [ProjectPermissionActions.Delete] : [])
+                        ])
+                      }
+                    >
+                      Request Access
+                    </Button>
+                  </UnstableAlertTitle>
+                </UnstableAlert>
+              ) : null)}
             {
               // eslint-disable-next-line no-nested-ternary
               isTableEmpty ? (
@@ -1562,31 +1699,47 @@ export const OverviewPage = () => {
                             <UnstableTableHead className="w-full">
                               <div className="flex w-full items-center justify-between">
                                 Value
-                                <Badge
-                                  asChild
-                                  className="float-right cursor-pointer"
-                                  variant="neutral"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (singleVisibleEnv) {
-                                        handleViewCommitHistory(
-                                          singleVisibleEnv.slug,
-                                          singleEnvFolderId
-                                        );
-                                      }
-                                    }}
+                                <div className="flex items-center gap-2">
+                                  {isProtectedBranch && (
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <Badge variant="info">
+                                          <LockIcon />
+                                          Protected
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        Protected
+                                        {boardPolicy?.name ? ` by policy ${boardPolicy.name}` : ""}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  <Badge
+                                    asChild
+                                    className="float-right cursor-pointer"
+                                    variant="neutral"
                                   >
-                                    <GitCommitIcon />
-                                    {/* eslint-disable-next-line no-nested-ternary */}
-                                    {subscription.pitRecovery
-                                      ? isSingleEnvChangesCountLoading
-                                        ? "Loading..."
-                                        : `${singleEnvChangesCount} Commit${singleEnvChangesCount === 1 ? "" : "s"}`
-                                      : "Commit History"}
-                                  </button>
-                                </Badge>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (singleVisibleEnv) {
+                                          handleViewCommitHistory(
+                                            singleVisibleEnv.slug,
+                                            singleEnvFolderId
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <GitCommitIcon />
+                                      {/* eslint-disable-next-line no-nested-ternary */}
+                                      {subscription.pitRecovery
+                                        ? isSingleEnvChangesCountLoading
+                                          ? "Loading..."
+                                          : `${singleEnvChangesCount} Commit${singleEnvChangesCount === 1 ? "" : "s"}`
+                                        : "Commit History"}
+                                    </button>
+                                  </Badge>
+                                </div>
                               </div>
                             </UnstableTableHead>
                           )}
@@ -2033,6 +2186,13 @@ export const OverviewPage = () => {
         secretPath={secretPath}
         initialParsedSecrets={importParsedSecrets}
       />
+      <VaultSecretImportModal
+        isOpen={popUp.importFromVault.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
+        environment={singleEnvSlug}
+        secretPath={secretPath}
+        onImport={handleVaultImport}
+      />
       <AlertDialog
         open={popUp.deleteFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
@@ -2057,6 +2217,7 @@ export const OverviewPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+<<<<<<< HEAD
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
@@ -2083,6 +2244,19 @@ export const OverviewPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+=======
+      {!!pathPolicies && pathPolicies.length > 0 && (
+        <RequestAccessModal
+          policies={pathPolicies}
+          isOpen={popUp.requestAccess.isOpen}
+          onOpenChange={() => {
+            handlePopUpClose("requestAccess");
+          }}
+          selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
+          secretPath={pathPolicies[0].secretPath}
+        />
+      )}
+>>>>>>> main
     </div>
   );
 };

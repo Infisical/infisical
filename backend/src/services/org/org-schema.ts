@@ -1,4 +1,23 @@
+import { z } from "zod";
+
 import { OrganizationsSchema } from "@app/db/schemas";
+
+/** Zod schema for API response: org with sub-orgs */
+export const OrgWithSubOrgsSchema = OrganizationsSchema.pick({
+  id: true,
+  name: true,
+  slug: true,
+  createdAt: true
+}).extend({
+  userJoinedAt: z.date().optional().nullable(),
+  subOrganizations: OrganizationsSchema.pick({
+    id: true,
+    name: true,
+    slug: true
+  })
+    .extend({ userJoinedAt: z.date().optional().nullable() })
+    .array()
+});
 
 export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   id: true,

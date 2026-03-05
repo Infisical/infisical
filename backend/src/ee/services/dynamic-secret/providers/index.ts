@@ -7,6 +7,7 @@ import { AwsIamProvider } from "./aws-iam";
 import { AzureEntraIDProvider } from "./azure-entra-id";
 import { AzureSqlDatabaseProvider } from "./azure-sql-database";
 import { CassandraProvider } from "./cassandra";
+import { ClickhouseProvider } from "./clickhouse";
 import { CouchbaseProvider } from "./couchbase";
 import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
@@ -34,6 +35,7 @@ export const buildDynamicSecretProviders = ({
   gatewayV2Service
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
   [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService, gatewayV2Service }),
+  [DynamicSecretProviders.Clickhouse]: ClickhouseProvider({ gatewayService, gatewayV2Service }),
   [DynamicSecretProviders.Cassandra]: CassandraProvider(),
   [DynamicSecretProviders.AwsIam]: AwsIamProvider(),
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),

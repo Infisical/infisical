@@ -18,6 +18,7 @@ import { SSHAuthMethod } from "@app/hooks/api/pam/types/ssh-resource";
 
 import { SshCaSetupSection } from "../../../components/SshCaSetupSection";
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
 type Props = {
@@ -252,6 +253,7 @@ export const SshAccountForm = ({ account, resourceId, onSubmit }: Props) => {
         <GenericAccountFields />
         <SshAccountFields isUpdate={isUpdate} resourceId={effectiveResourceId} />
         <RequireMfaField />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

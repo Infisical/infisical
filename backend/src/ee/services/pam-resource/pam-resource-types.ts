@@ -1,4 +1,7 @@
+import { z } from "zod";
+
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
@@ -100,6 +103,7 @@ export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails"
   gatewayId?: string | null;
   rotationAccountCredentials?: TPamAccountCredentials | null;
   adServerResourceId?: string | null;
+  metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
 
 export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType" | "projectId">> & {
@@ -113,6 +117,7 @@ export type TListResourcesDTO = {
   limit?: number;
   offset?: number;
   filterResourceTypes?: string[];
+  metadataFilter?: Array<{ key: string; value?: string }>;
 } & TProjectPermission;
 
 // Resource factory

@@ -6,6 +6,7 @@ import { TPamAccount } from "@app/ee/services/pam-resource/pam-resource-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 export const registerPamAccountEndpoints = <C extends TPamAccount>({
   server,
@@ -25,7 +26,8 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
-    metadata?: Record<string, unknown>;
+    internalMetadata?: Record<string, unknown>;
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   updateAccountSchema: z.ZodType<{
     credentials?: C["credentials"];
@@ -34,7 +36,8 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
-    metadata?: Record<string, unknown>;
+    internalMetadata?: Record<string, unknown>;
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   accountResponseSchema: z.ZodTypeAny;
 }) => {
