@@ -82,7 +82,7 @@ const WindowsCredentialsContent = ({ account }: { account: TWindowsAccount }) =>
     <>
       <Detail>
         <DetailLabel>Account Type</DetailLabel>
-        <DetailValue className="capitalize">{account.metadata.accountType}</DetailValue>
+        <DetailValue className="capitalize">{account.internalMetadata.accountType}</DetailValue>
       </Detail>
       <CopyableField label="Username" value={account.credentials.username} />
     </>
@@ -94,7 +94,7 @@ const ActiveDirectoryCredentialsContent = ({ account }: { account: TActiveDirect
     <>
       <Detail>
         <DetailLabel>Account Type</DetailLabel>
-        <DetailValue className="capitalize">{account.metadata.accountType}</DetailValue>
+        <DetailValue className="capitalize">{account.internalMetadata.accountType}</DetailValue>
       </Detail>
       <CopyableField label="Username" value={account.credentials.username} />
     </>

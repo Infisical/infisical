@@ -24,6 +24,8 @@ import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/ce
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
+import { copyMetadataFromRequestToCertificate } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
 import {
@@ -61,6 +63,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   projectDAL: TProjectDALFactory;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest" | "getPolicyById">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
 };
 
 export type TCertificateApprovalService = {
@@ -83,7 +86,8 @@ export const certificateApprovalServiceFactory = (
     kmsService,
     projectDAL,
     certificatePolicyService,
-    certificateIssuanceQueue
+    certificateIssuanceQueue,
+    resourceMetadataDAL
   } = deps;
 
   const $validateProfileAndPermissions = async ({
@@ -389,6 +393,13 @@ export const certificateApprovalServiceFactory = (
           tx
         );
 
+        // Copy metadata from cert request to newly issued cert
+        await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+          certificateRequestId,
+          certificateId: certResult.certificateId,
+          tx
+        });
+
         return { ...certResult, cert: signedCertRecord };
       });
 
@@ -513,6 +524,13 @@ export const certificateApprovalServiceFactory = (
         },
         tx
       );
+
+      // Copy metadata from cert request to newly issued cert
+      await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+        certificateRequestId,
+        certificateId: processResult.certificateData.id,
+        tx
+      });
 
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         profile,
@@ -655,6 +673,13 @@ export const certificateApprovalServiceFactory = (
           },
           tx
         );
+
+        // Copy metadata from cert request to newly issued cert
+        await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+          certificateRequestId,
+          certificateId: certResult.certificateId,
+          tx
+        });
 
         return { ...certResult, cert: certificateRecord };
       });

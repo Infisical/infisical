@@ -96,13 +96,6 @@ export const useCertificatePolicy = (
     maxPathLength: undefined
   });
 
-  const [pendingDefaults, setPendingDefaults] = useState<{
-    keyAlgorithm?: string;
-    signatureAlgorithm?: string;
-    basicConstraints?: { isCA: boolean; pathLength?: number };
-    subjectAttributes?: Array<{ type: CertSubjectAttributeType; value: string }>;
-  } | null>(null);
-
   const filteredKeyUsages = useMemo(() => {
     return KEY_USAGES_OPTIONS.filter(({ value }) => constraints.allowedKeyUsages.includes(value));
   }, [constraints.allowedKeyUsages]);
@@ -134,7 +127,6 @@ export const useCertificatePolicy = (
   }, [constraints.allowedKeyAlgorithms]);
 
   const resetConstraints = () => {
-    setPendingDefaults(null);
     setConstraints({
       allowedKeyUsages: [],
       allowedExtendedKeyUsages: [],
@@ -205,25 +197,20 @@ export const useCertificatePolicy = (
         setValue("ttl", convertTemplateTtlToCertificateTtl(policyMaxValidity));
       }
 
-      // Collect defaults that need to be applied after constraints update
-      const deferred: {
-        keyAlgorithm?: string;
-        signatureAlgorithm?: string;
-        basicConstraints?: { isCA: boolean; pathLength?: number };
-        subjectAttributes?: Array<{ type: CertSubjectAttributeType; value: string }>;
-      } = {};
-
-      // Defer algorithm defaults (Controllers use shouldUnregister)
+      // Set algorithm defaults
       if (defaults?.keyAlgorithm) {
-        deferred.keyAlgorithm = defaults.keyAlgorithm;
+        setValue("keyAlgorithm", defaults.keyAlgorithm);
       }
       if (defaults?.signatureAlgorithm) {
-        deferred.signatureAlgorithm = defaults.signatureAlgorithm;
+        setValue("signatureAlgorithm", defaults.signatureAlgorithm);
       }
 
-      // Defer basic constraints defaults (Controller is behind templateAllowsCA gate)
+      // Set basic constraints defaults
       if (defaults?.basicConstraints) {
-        deferred.basicConstraints = defaults.basicConstraints;
+        setValue("basicConstraints.isCA", defaults.basicConstraints.isCA);
+        if (defaults.basicConstraints.pathLength !== undefined) {
+          setValue("basicConstraints.pathLength", defaults.basicConstraints.pathLength);
+        }
       }
 
       // Handle SAN types
@@ -299,13 +286,14 @@ export const useCertificatePolicy = (
             const filteredDefaults = defaultSubjectAttrs.filter((attr) =>
               newConstraints.allowedSubjectAttributeTypes.includes(attr.type)
             );
-            deferred.subjectAttributes =
+            const subjectValue =
               filteredDefaults.length > 0
                 ? filteredDefaults
                 : [{ type: newConstraints.allowedSubjectAttributeTypes[0], value: "" }];
+            setValue("subjectAttributes", subjectValue);
           } else {
             const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
-            deferred.subjectAttributes = [{ type: defaultType, value: "" }];
+            setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
           }
         }
       } else {
@@ -314,21 +302,12 @@ export const useCertificatePolicy = (
         setValue("subjectAttributes", undefined);
       }
 
-      // Merge templateRequiresCA into deferred basicConstraints
+      // Set isCA if template requires it
       if (templateRequiresCA) {
-        deferred.basicConstraints = {
-          isCA: true,
-          ...(deferred.basicConstraints?.pathLength !== undefined
-            ? { pathLength: deferred.basicConstraints.pathLength }
-            : {})
-        };
+        setValue("basicConstraints.isCA", true);
       }
 
       setConstraints(newConstraints);
-
-      if (Object.keys(deferred).length > 0) {
-        setPendingDefaults(deferred);
-      }
 
       // Set initial usages: merge required usages with profile defaults
       const initialKeyUsages: Record<string, boolean> = {};
@@ -362,30 +341,6 @@ export const useCertificatePolicy = (
       setValue("extendedKeyUsages", initialExtendedKeyUsages);
     }
   }, [templateData, selectedProfile, setValue, watch, isModalOpen]);
-
-  // Apply deferred defaults after constraints update has committed and Controllers have mounted
-  useEffect(() => {
-    if (!pendingDefaults) return undefined;
-    const timeoutId = setTimeout(() => {
-      if (pendingDefaults.keyAlgorithm) {
-        setValue("keyAlgorithm", pendingDefaults.keyAlgorithm);
-      }
-      if (pendingDefaults.signatureAlgorithm) {
-        setValue("signatureAlgorithm", pendingDefaults.signatureAlgorithm);
-      }
-      if (pendingDefaults.basicConstraints) {
-        setValue("basicConstraints.isCA", pendingDefaults.basicConstraints.isCA);
-        if (pendingDefaults.basicConstraints.pathLength !== undefined) {
-          setValue("basicConstraints.pathLength", pendingDefaults.basicConstraints.pathLength);
-        }
-      }
-      if (pendingDefaults.subjectAttributes) {
-        setValue("subjectAttributes", pendingDefaults.subjectAttributes);
-      }
-      setPendingDefaults(null);
-    }, 0);
-    return () => clearTimeout(timeoutId);
-  }, [pendingDefaults, setValue]);
 
   return {
     constraints,

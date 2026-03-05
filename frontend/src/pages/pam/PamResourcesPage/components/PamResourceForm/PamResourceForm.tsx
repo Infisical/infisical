@@ -39,7 +39,7 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
     formData: DiscriminativePick<
       TPamResource,
       "name" | "resourceType" | "connectionDetails" | "gatewayId" | "adServerResourceId"
-    >
+    > & { metadata?: { key: string; value: string }[] }
   ) => {
     const resource = await createPamResource.mutateAsync({
       ...formData,
@@ -82,7 +82,7 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
     formData: DiscriminativePick<
       TPamResource,
       "name" | "resourceType" | "connectionDetails" | "adServerResourceId"
-    >
+    > & { metadata?: { key: string; value: string }[] }
   ) => {
     const updatedResource = await updatePamResource.mutateAsync({
       resourceId: resource.id,

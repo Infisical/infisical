@@ -7,6 +7,7 @@ import { KubernetesAuthMethod, PamResourceType, TKubernetesAccount } from "@app/
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 
 type Props = {
   account?: TKubernetesAccount;
@@ -100,6 +101,7 @@ export const KubernetesAccountForm = ({ account, onSubmit }: Props) => {
       >
         <GenericAccountFields />
         <KubernetesAccountFields isUpdate={isUpdate} />
+        <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

@@ -64,15 +64,6 @@ export enum KmipClientOrderBy {
   Name = "name"
 }
 
-export type OrgKmipConfig = {
-  serverCertificateChain: string;
-  clientCertificateChain: string;
-};
-
-export type TSetupOrgKmipDTO = {
-  caKeyAlgorithm: CertKeyAlgorithm;
-};
-
 export type OrgKmipServerCert = {
   serialNumber: string;
   certificate: string;

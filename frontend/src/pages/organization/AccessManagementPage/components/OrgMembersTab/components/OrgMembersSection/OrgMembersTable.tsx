@@ -656,14 +656,6 @@ export const OrgMembersTable = ({
                                       onClick={async (e) => {
                                         e.stopPropagation();
 
-                                        if (currentOrg?.scimEnabled) {
-                                          createNotification({
-                                            text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
-                                            type: "error"
-                                          });
-                                          return;
-                                        }
-
                                         if (!isActive) {
                                           // activate user
                                           await updateOrgMembership({
@@ -697,14 +689,6 @@ export const OrgMembersTable = ({
                                       variant="danger"
                                       onClick={(e) => {
                                         e.stopPropagation();
-
-                                        if (currentOrg?.scimEnabled && isActive) {
-                                          createNotification({
-                                            text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
-                                            type: "error"
-                                          });
-                                          return;
-                                        }
 
                                         handlePopUpOpen("removeMember", {
                                           orgMembershipId,

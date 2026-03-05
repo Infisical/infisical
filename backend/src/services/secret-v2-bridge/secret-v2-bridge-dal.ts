@@ -245,17 +245,18 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     tx?: Knex
   ) => {
     try {
-      const secs = await Promise.all(
-        data.map(async ({ filter, data: updateData }) => {
-          const [doc] = await (tx || db)(TableName.SecretV2)
-            .where(filter)
-            .update(updateData)
-            .increment("version", 1)
-            .returning("*");
-          if (!doc) throw new BadRequestError({ message: "Failed to update document" });
-          return doc;
-        })
-      );
+      const secs: TSecretsV2[] = [];
+
+      for await (const { filter, data: updateData } of data) {
+        const [doc] = await (tx || db)(TableName.SecretV2)
+          .where(filter)
+          .update(updateData)
+          .increment("version", 1)
+          .returning("*");
+        if (!doc) throw new BadRequestError({ message: "Failed to update document" });
+        secs.push(doc);
+      }
+
       return secs;
     } catch (error) {
       throw new DatabaseError({ error, name: "bulk update secret" });

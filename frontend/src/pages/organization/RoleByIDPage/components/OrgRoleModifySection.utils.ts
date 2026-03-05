@@ -51,8 +51,7 @@ const appConnectionsPermissionSchema = z
 
 const kmipPermissionSchema = z
   .object({
-    [OrgPermissionKmipActions.Proxy]: z.boolean().optional(),
-    [OrgPermissionKmipActions.Setup]: z.boolean().optional()
+    [OrgPermissionKmipActions.Proxy]: z.boolean().optional()
   })
   .optional();
 

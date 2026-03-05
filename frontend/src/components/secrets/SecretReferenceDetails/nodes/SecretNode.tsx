@@ -1,14 +1,18 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useContext, useRef, useState } from "react";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { Handle, NodeProps, Position } from "@xyflow/react";
 import { FolderIcon, KeyIcon, LayersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
+import { useProject } from "@app/context";
 
+import { SecretReferenceCloseContext } from "../SecretReferenceContext";
 import { SecretNodeData } from "../utils/convertToFlowElements";
 
 export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
@@ -20,6 +24,11 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
   const envTextRef = useRef<HTMLSpanElement>(null);
   const [isPathTruncated, setIsPathTruncated] = useState(false);
   const [isEnvTruncated, setIsEnvTruncated] = useState(false);
+
+  const navigate = useNavigate();
+  const routeParams = useParams({ strict: false });
+  const { currentProject } = useProject();
+  const onClose = useContext(SecretReferenceCloseContext);
 
   const checkPathTruncation = useCallback(() => {
     const el = pathTextRef.current;
@@ -34,6 +43,32 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
       setIsEnvTruncated(el.scrollWidth > el.clientWidth);
     }
   }, []);
+
+  const handleNavigate = useCallback(() => {
+    if (isRoot) return;
+    onClose?.();
+    navigate({
+      to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
+      params: {
+        orgId: routeParams.orgId as string,
+        projectId: currentProject?.id || "",
+        envSlug: environment
+      },
+      search: {
+        secretPath,
+        search: secretKey
+      }
+    });
+  }, [
+    navigate,
+    routeParams.orgId,
+    currentProject,
+    environment,
+    secretPath,
+    secretKey,
+    isRoot,
+    onClose
+  ]);
 
   const envBadge = (
     <Badge
@@ -79,8 +114,19 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
             className={twMerge(
               "flex h-full w-full items-stretch gap-2.5 rounded-md border border-mineshaft bg-mineshaft-800 p-2 font-inter shadow-lg",
               isCircular && "border-red/40",
-              isRoot && "border-project/40"
+              isRoot && "border-project/40",
+              !isRoot && "cursor-pointer transition-colors hover:border-mineshaft-400"
             )}
+            onClick={!isRoot ? handleNavigate : undefined}
+            role={!isRoot ? "button" : undefined}
+            tabIndex={!isRoot ? 0 : undefined}
+            onKeyDown={
+              !isRoot
+                ? (e) => {
+                    if (e.key === "Enter") handleNavigate();
+                  }
+                : undefined
+            }
           >
             <Badge
               variant={isCircular ? "danger" : isRoot ? "project" : "neutral"}
