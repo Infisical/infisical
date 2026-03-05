@@ -193,58 +193,42 @@ function VersionItem({
   };
 
   const handleRestore = async () => {
-    try {
-      // For redacted versions, restore with empty string
-      const value = version.isRedacted ? "" : await handleFetchSecretValue();
+    // For redacted versions, restore with empty string
+    const value = version.isRedacted ? "" : await handleFetchSecretValue();
 
-      const result = await updateSecret({
-        projectId: currentProject.id,
-        environment,
-        secretPath,
-        secretKey,
-        secretValue: value,
-        type: SecretType.Shared
-      });
+    const result = await updateSecret({
+      projectId: currentProject.id,
+      environment,
+      secretPath,
+      secretKey,
+      secretValue: value,
+      type: SecretType.Shared
+    });
 
-      if ("approval" in result) {
-        createNotification({
-          type: "info",
-          text: "Requested change has been sent for review"
-        });
-      } else {
-        createNotification({
-          type: "success",
-          text: `Secret restored to version ${version.version}`
-        });
-      }
-
-      setIsRestoreDialogOpen(false);
-      onRestoreSuccess();
-    } catch (e) {
-      console.error(e);
+    if ("approval" in result) {
       createNotification({
-        type: "error",
-        text: "Failed to restore secret version"
+        type: "info",
+        text: "Requested change has been sent for review"
+      });
+    } else {
+      createNotification({
+        type: "success",
+        text: `Secret restored to version ${version.version}`
       });
     }
+
+    setIsRestoreDialogOpen(false);
+    onRestoreSuccess();
   };
 
   const handleRedact = async () => {
-    try {
-      await redactSecretValue({ versionId: version.id, secretId });
-      createNotification({
-        type: "success",
-        text: "The secret value has been redacted successfully and is no longer persisted or viewable."
-      });
-      setIsRedactDialogOpen(false);
-      onRestoreSuccess();
-    } catch (e) {
-      console.error(e);
-      createNotification({
-        type: "error",
-        text: "Failed to redact secret version"
-      });
-    }
+    await redactSecretValue({ versionId: version.id, secretId });
+    createNotification({
+      type: "success",
+      text: "The secret value has been redacted successfully and is no longer persisted or viewable."
+    });
+    setIsRedactDialogOpen(false);
+    onRestoreSuccess();
   };
 
   return (
