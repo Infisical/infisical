@@ -812,12 +812,12 @@ export const orgDALFactory = (db: TDbClient) => {
       // before group-based memberships. This ensures findEffectiveOrgMembership
       // (which returns list[0]) prefers the direct membership when one exists.
       if (dto.actorType === ActorType.USER) {
-        void query.orderByRaw(`CASE WHEN ?? IS NOT NULL THEN 0 ELSE 1 END ASC`, [
-          `${TableName.Membership}.actorUserId`
+        void query.orderByRaw(`CASE WHEN ${TableName.Membership}.?? IS NOT NULL THEN 0 ELSE 1 END ASC`, [
+          "actorUserId"
         ]);
       } else {
-        void query.orderByRaw(`CASE WHEN ?? IS NOT NULL THEN 0 ELSE 1 END ASC`, [
-          `${TableName.Membership}.actorIdentityId`
+        void query.orderByRaw(`CASE WHEN ${TableName.Membership}.?? IS NOT NULL THEN 0 ELSE 1 END ASC`, [
+          "actorIdentityId"
         ]);
       }
 
