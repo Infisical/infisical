@@ -1,3 +1,4 @@
+import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -101,6 +102,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   const sendPostHogEvents = async (event: TPostHogEvent) => {
     if (postHog) {
       const instanceType = licenseService.getInstanceType();
+
+      // Resolve org name: prefer explicit value, fall back to request context
+      const resolvedOrgName = event.organizationName || requestContext.get("orgName");
+
       // capture posthog only when its cloud or signup event happens in self-hosted
       if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
         if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
@@ -113,7 +118,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
               event: event.event,
               properties: event.properties,
               organizationId: event.organizationId,
-              ...(event.organizationName ? { organizationName: event.organizationName } : {})
+              ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
             })
           );
         } else {
@@ -122,7 +127,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
               postHog.groupIdentify({
                 groupType: "organization",
                 groupKey: event.organizationId,
-                ...(event.organizationName ? { groupProperties: { name: event.organizationName } } : {})
+                ...(resolvedOrgName ? { groupProperties: { name: resolvedOrgName } } : {})
               });
             } catch (error) {
               logger.error(error, "Failed to identify PostHog organization");
