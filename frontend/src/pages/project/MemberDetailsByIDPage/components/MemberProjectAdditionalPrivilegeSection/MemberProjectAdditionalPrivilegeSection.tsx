@@ -83,7 +83,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
     if (!grantPrivilegeConditions) return true;
 
     const targetEmail = membershipDetails?.user?.email;
-    if (!targetEmail) return true;
+    if (!targetEmail) return false;
 
     if (grantPrivilegeConditions.emails && grantPrivilegeConditions.emails.length > 0) {
       const emailMatches = grantPrivilegeConditions.emails.some((pattern) =>

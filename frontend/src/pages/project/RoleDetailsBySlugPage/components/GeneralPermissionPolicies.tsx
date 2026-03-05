@@ -21,7 +21,12 @@ import {
   UnstableAccordionTrigger,
   UnstableIconButton
 } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
+import {
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/context";
 
 import {
   isConditionalSubjects,
@@ -121,13 +126,34 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
       actions.filter(({ value }) => {
         if (typeof value !== "string") return false;
 
+        // Hide legacy "read" action for secrets unless already selected
         if (subject === ProjectPermissionSub.Secrets && value === "read") {
           return Boolean(permissionRule?.read);
         }
 
+        // Hide legacy "grant-privileges" actions unless already selected
+        if (
+          subject === ProjectPermissionSub.Member &&
+          value === ProjectPermissionMemberActions.GrantPrivileges
+        ) {
+          return Boolean(permissionRule?.[ProjectPermissionMemberActions.GrantPrivileges]);
+        }
+        if (
+          subject === ProjectPermissionSub.Identity &&
+          value === ProjectPermissionIdentityActions.GrantPrivileges
+        ) {
+          return Boolean(permissionRule?.[ProjectPermissionIdentityActions.GrantPrivileges]);
+        }
+        if (
+          subject === ProjectPermissionSub.Groups &&
+          value === ProjectPermissionGroupActions.GrantPrivileges
+        ) {
+          return Boolean(permissionRule?.[ProjectPermissionGroupActions.GrantPrivileges]);
+        }
+
         return true;
       }),
-    [actions, subject, permissionRule?.read]
+    [actions, subject, permissionRule]
   );
 
   const actionOptions = useMemo(

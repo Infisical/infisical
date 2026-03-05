@@ -1992,7 +1992,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Grant Privileges (Legacy)",
         value: ProjectPermissionMemberActions.GrantPrivileges,
         description:
-          "Legacy action that combines role assignment and additional privileges granting"
+          "Legacy action that combines role assignment and additional privileges granting without any conditions. Use Assign Roles and Assign Additional Privileges instead."
       },
       {
         label: "Assign Roles",
