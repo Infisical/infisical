@@ -41,7 +41,7 @@ export type TDynamicSecretLeaseQueueServiceFactory = {
   queueFailedRevocation: (leaseId: string, dynamicSecretId: string) => Promise<void>;
 };
 
-const MAX_REVOCATION_RETRY_COUNT = 10;
+const MAX_REVOCATION_RETRY_COUNT = 3;
 
 export const dynamicSecretLeaseQueueServiceFactory = ({
   queueService,
@@ -123,7 +123,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         leaseId
       },
       {
-        jobId: `dynamic-secret-lease-revocation-failed-email-${dynamicSecretId}`,
+        jobId: `dynamic-secret-lease-revocation-failure-email-${dynamicSecretId}-${leaseId}`,
         delay,
         attempts: 3,
         backoff: {
@@ -331,7 +331,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   queueService.start(
     QueueName.DynamicSecretRevocation,
     async (job) => {
-      await $dynamicSecretQueueJob(job.name, job.id as string, job.data);
+      await $dynamicSecretQueueJob(job.name, job.id as string, job.data, job.attemptsMade + 1);
     },
     {
       persistence: true

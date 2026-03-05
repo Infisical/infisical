@@ -23,6 +23,7 @@ import {
   getCertSourceLabel,
   getCertValidUntilBadgeDetails
 } from "../../CertificatesPage/components/CertificatesTable.utils";
+import { CertificateMetadataSection } from "./CertificateMetadataSection";
 
 type Props = {
   certificateId: string;
@@ -237,6 +238,8 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
           </DetailGroup>
         </UnstableCardContent>
       </UnstableCard>
+
+      <CertificateMetadataSection certificateId={certificateId} />
     </div>
   );
 };

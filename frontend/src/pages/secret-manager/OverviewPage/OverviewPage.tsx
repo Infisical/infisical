@@ -69,6 +69,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useOrgPermission,
   useProject,
   useProjectPermission,
   useSubscription
@@ -79,6 +80,7 @@ import {
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -110,6 +112,11 @@ import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/ap
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import {
+  useGetVaultExternalMigrationConfigs,
+  useImportVaultSecrets
+} from "@app/hooks/api/migration";
+import { VaultImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
@@ -140,6 +147,7 @@ import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPag
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
+import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
 import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
 import {
@@ -223,6 +231,11 @@ export const OverviewPage = () => {
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
+  const { hasOrgRole } = useOrgPermission();
+  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
   const prevPageSize = useRef(0);
 
   const canReadCommits = permission.can(
@@ -588,7 +601,8 @@ export const OverviewPage = () => {
     "snapshots",
     "deleteSecretImport",
     "addSecretImport",
-    "requestAccess"
+    "requestAccess",
+    "importFromVault"
   ] as const);
 
   const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
@@ -624,6 +638,28 @@ export const OverviewPage = () => {
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
+  };
+
+  const handleVaultImport = async (vaultPath: string, namespace: string) => {
+    const result = await importVaultSecrets({
+      projectId,
+      environment: singleEnvSlug,
+      secretPath,
+      vaultNamespace: namespace,
+      vaultSecretPath: vaultPath
+    });
+
+    if (result.status === VaultImportStatus.ApprovalRequired) {
+      createNotification({
+        type: "info",
+        text: "Secret change request created successfully. Awaiting approval."
+      });
+    } else {
+      createNotification({
+        type: "success",
+        text: "Successfully imported secrets from HashiCorp Vault"
+      });
+    }
   };
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
@@ -1406,6 +1442,9 @@ export const OverviewPage = () => {
                     onAddSecretImport={handleAddSecretImport}
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
                     isSingleEnvSelected={isSingleEnvView}
+                    hasVaultConnection={hasVaultConnection}
+                    isOrgAdmin={isOrgAdmin}
+                    onImportFromVault={() => handlePopUpOpen("importFromVault")}
                   />
                 )}
               </div>
@@ -2106,6 +2145,13 @@ export const OverviewPage = () => {
         projectId={projectId}
         secretPath={secretPath}
         initialParsedSecrets={importParsedSecrets}
+      />
+      <VaultSecretImportModal
+        isOpen={popUp.importFromVault.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
+        environment={singleEnvSlug}
+        secretPath={secretPath}
+        onImport={handleVaultImport}
       />
       <AlertDialog
         open={popUp.deleteFolder.isOpen}

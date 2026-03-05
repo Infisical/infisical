@@ -287,7 +287,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "removeProjectGroupMembership",
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Remove group from project (delete project group membership).",
+      description: "Remove group from project.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),

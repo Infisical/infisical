@@ -1,5 +1,5 @@
 import { GlobPermissionInfo } from "@app/components/permissions";
-import { SelectItem } from "@app/components/v2";
+import { SelectItem } from "@app/components/v3";
 import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
 
 export const getConditionOperatorHelperInfo = (type: PermissionConditionOperators) => {
@@ -24,6 +24,8 @@ export const renderOperatorSelectItems = (type: string) => {
       return <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>;
     case "identityId":
     case "connectionId":
+    case "metadataKey":
+    case "metadataValue":
       return (
         <>
           <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>

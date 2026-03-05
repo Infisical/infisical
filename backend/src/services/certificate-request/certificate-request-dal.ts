@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertificateRequestStatus } from "./certificate-request-types";
 
@@ -124,12 +125,13 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<TCertificateRequests[]> => {
     try {
-      const { offset = 0, limit = 20, search, status, fromDate, toDate, profileIds } = options;
+      const { offset = 0, limit = 20, search, status, fromDate, toDate, profileIds, metadataFilter } = options;
 
       let query = (tx || db)(TableName.CertificateRequests)
         .leftJoin(
@@ -169,6 +171,10 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.CertificateRequests))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"));
 
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = applyMetadataFilter(query, metadataFilter, "certificateRequestId", TableName.CertificateRequests);
+      }
+
       if (processedRules) {
         query = applyProcessedPermissionRulesToQuery(
           query,
@@ -193,12 +199,13 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       fromDate?: Date;
       toDate?: Date;
       profileIds?: string[];
+      metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<number> => {
     try {
-      const { search, status, fromDate, toDate, profileIds } = options;
+      const { search, status, fromDate, toDate, profileIds, metadataFilter } = options;
 
       let query = (tx || db)(TableName.CertificateRequests)
         .leftJoin(
@@ -233,6 +240,10 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         query = query.where(`${TableName.CertificateRequests}.createdAt`, "<=", toDate);
       }
 
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = applyMetadataFilter(query, metadataFilter, "certificateRequestId", TableName.CertificateRequests);
+      }
+
       if (processedRules) {
         query = applyProcessedPermissionRulesToQuery(
           query,
@@ -261,6 +272,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       profileIds?: string[];
       sortBy?: string;
       sortOrder?: "asc" | "desc";
+      metadataFilter?: Array<{ key: string; value?: string }>;
     } = {},
     processedRules?: ProcessedPermissionRules,
     tx?: Knex
@@ -275,7 +287,8 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         toDate,
         profileIds,
         sortBy = "createdAt",
-        sortOrder = "desc"
+        sortOrder = "desc",
+        metadataFilter
       } = options;
 
       let query: Knex.QueryBuilder = (tx || db)(TableName.CertificateRequests)
@@ -322,6 +335,10 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
 
       if (toDate) {
         query = query.where(`${TableName.CertificateRequests}.createdAt`, "<=", toDate);
+      }
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = applyMetadataFilter(query, metadataFilter, "certificateRequestId", TableName.CertificateRequests);
       }
 
       if (processedRules) {
