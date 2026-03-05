@@ -109,6 +109,8 @@ export enum ProjectPermissionMemberActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role",
+  AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges"
 }
 

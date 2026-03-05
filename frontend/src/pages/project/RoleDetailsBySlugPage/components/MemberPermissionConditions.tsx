@@ -49,25 +49,26 @@ export const MemberPermissionConditions = ({ position = 0, isDisabled }: Props) 
       selectOptions={[
         {
           value: "email",
-          label: "Email",
-          description: "The email address of the project member (e.g., user@example.com)"
+          label: "Target Email",
+          description: "The email address of the target user whose roles are being updated"
         },
         {
           value: "role",
-          label: "Role Slug",
+          label: "Assignable Roles",
           description:
-            "The slug of the role being granted to the member (e.g., admin, developer, viewer)"
+            "The roles that this user is allowed to assign to other members. (e.g., admin, developer, viewer)"
         },
         {
           value: "subject",
-          label: "Subject",
-          description: "The permission subject being granted (e.g., secrets, environments, members)"
+          label: "Assignable Subjects",
+          description:
+            "The permission subjects that can be granted in additional privileges. (e.g., secrets, environments, members)"
         },
         {
           value: "action",
-          label: "Action",
+          label: "Assignable Actions",
           description:
-            "The specific action being granted on a subject. Format: subject:action (e.g., secrets:read, environments:edit)"
+            "The specific actions that can be granted in additional privileges. (e.g., secrets:read, environments:edit)"
         }
       ]}
       selectedActions={selectedActions}

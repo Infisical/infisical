@@ -89,6 +89,8 @@ export enum ProjectPermissionMemberActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role",
+  AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges"
 }
 
@@ -336,7 +338,9 @@ export type ActionAllowedConditionsType = Partial<Record<ProjectPermissionSub, P
 
 export const ActionAllowedConditions: ActionAllowedConditionsType = {
   [ProjectPermissionSub.Member]: {
-    [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"]
+    [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"],
+    [ProjectPermissionMemberActions.AssignRole]: ["email", "role"],
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["email", "subject", "action"]
   }
 };
 

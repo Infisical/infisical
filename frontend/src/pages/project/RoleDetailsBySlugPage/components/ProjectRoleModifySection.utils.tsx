@@ -376,7 +376,9 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.Edit]: [],
     [ProjectPermissionMemberActions.Delete]: [],
     [ProjectPermissionMemberActions.AssumePrivileges]: [],
-    [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"]
+    [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"],
+    [ProjectPermissionMemberActions.AssignRole]: ["email", "role"],
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["email", "subject", "action"]
   }
 };
 
@@ -464,6 +466,8 @@ const MemberPolicyActionSchema = createPolicySchemaWithConditions(
     [ProjectPermissionMemberActions.Edit]: z.boolean().optional(),
     [ProjectPermissionMemberActions.Delete]: z.boolean().optional(),
     [ProjectPermissionMemberActions.GrantPrivileges]: z.boolean().optional(),
+    [ProjectPermissionMemberActions.AssignRole]: z.boolean().optional(),
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: z.boolean().optional(),
     [ProjectPermissionMemberActions.AssumePrivileges]: z.boolean().optional()
   }),
   ProjectPermissionSub.Member,
@@ -808,6 +812,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.CertificateAuthorities,
         ProjectPermissionSub.PkiAlerts,
         ProjectPermissionSub.Identity,
+        ProjectPermissionSub.Member,
         ProjectPermissionSub.PkiCollections,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
@@ -1086,6 +1091,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canGrantPrivileges = action.includes(
             ProjectPermissionMemberActions.GrantPrivileges
           );
+          const canAssignRole = action.includes(ProjectPermissionMemberActions.AssignRole);
+          const canAssignAdditionalPrivileges = action.includes(
+            ProjectPermissionMemberActions.AssignAdditionalPrivileges
+          );
           const canAssumePrivileges = action.includes(
             ProjectPermissionMemberActions.AssumePrivileges
           );
@@ -1096,6 +1105,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionMemberActions.Edit]: canEdit,
             [ProjectPermissionMemberActions.Delete]: canDelete,
             [ProjectPermissionMemberActions.GrantPrivileges]: canGrantPrivileges,
+            [ProjectPermissionMemberActions.AssignRole]: canAssignRole,
+            [ProjectPermissionMemberActions.AssignAdditionalPrivileges]:
+              canAssignAdditionalPrivileges,
             [ProjectPermissionMemberActions.AssumePrivileges]: canAssumePrivileges,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
@@ -1212,7 +1224,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
       // from above statement we are sure it won't be undefined
       if (canEdit) formVal[subject as ProjectPermissionSub.Project]![0].edit = true;
-      if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
+      if (canDelete) formVal[subject as ProjectPermissionSub.Project]![0].delete = true;
       return;
     }
 
@@ -1951,9 +1963,20 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "Remove users from the project"
       },
       {
-        label: "Grant Privileges",
+        label: "Grant Privileges (Legacy)",
         value: ProjectPermissionMemberActions.GrantPrivileges,
-        description: "Grant temporary elevated privileges and update role assignments to users"
+        description:
+          "Legacy action that combines role assignment and additional privileges granting"
+      },
+      {
+        label: "Assign Roles",
+        value: ProjectPermissionMemberActions.AssignRole,
+        description: "Assign or update roles for project members"
+      },
+      {
+        label: "Assign Additional Privileges",
+        value: ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+        description: "Grant additional privileges to project members"
       },
       {
         label: "Assume Privileges",

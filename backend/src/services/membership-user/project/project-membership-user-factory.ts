@@ -92,9 +92,9 @@ export const newProjectMembershipUserFactory = ({
 
     for (const permissionRole of permissionRoles) {
       for (const newUser of newUsers) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
+        let permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionMemberActions.GrantPrivileges,
+          ProjectPermissionMemberActions.AssignRole,
           ProjectPermissionSub.Member,
           permission,
           permissionRole.permission,
@@ -103,12 +103,28 @@ export const newProjectMembershipUserFactory = ({
             role: permissionRole.role?.slug
           }
         );
+
+        // If new action fails, try legacy action
+        if (!permissionBoundary.isValid) {
+          permissionBoundary = validatePrivilegeChangeOperation(
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionMemberActions.GrantPrivileges,
+            ProjectPermissionSub.Member,
+            permission,
+            permissionRole.permission,
+            {
+              email: newUser.email ?? undefined,
+              role: permissionRole.role?.slug
+            }
+          );
+        }
+
         if (!permissionBoundary.isValid)
           throw new PermissionBoundaryError({
             message: constructPermissionErrorMessage(
               "Failed to create user project membership",
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionMemberActions.GrantPrivileges,
+              ProjectPermissionMemberActions.AssignRole,
               ProjectPermissionSub.Member
             ),
             details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -178,9 +194,9 @@ export const newProjectMembershipUserFactory = ({
     );
 
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
+      let permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
-        ProjectPermissionMemberActions.GrantPrivileges,
+        ProjectPermissionMemberActions.AssignRole,
         ProjectPermissionSub.Member,
         permission,
         permissionRole.permission,
@@ -189,12 +205,28 @@ export const newProjectMembershipUserFactory = ({
           role: permissionRole.role?.slug
         }
       );
+
+      // If new action fails, try legacy action
+      if (!permissionBoundary.isValid) {
+        permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          ProjectPermissionMemberActions.GrantPrivileges,
+          ProjectPermissionSub.Member,
+          permission,
+          permissionRole.permission,
+          {
+            email: targetUser.email || undefined,
+            role: permissionRole.role?.slug
+          }
+        );
+      }
+
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to update user project membership",
             shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.GrantPrivileges,
+            ProjectPermissionMemberActions.AssignRole,
             ProjectPermissionSub.Member
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }

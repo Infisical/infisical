@@ -10,6 +10,7 @@ import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 import { OrgPermissionSet } from "./org-permission";
 import {
   ActionAllowedConditions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub,
@@ -97,6 +98,31 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
                     ? "Describe Secret"
                     : ""
             }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
+          });
+        }
+      }
+    }
+
+    if (permission.subject === ProjectPermissionSub.Member) {
+      if (permission.action.includes(ProjectPermissionMemberActions.GrantPrivileges)) {
+        const hasAssignRole = permission.action.includes(ProjectPermissionMemberActions.AssignRole);
+        const hasAssignAdditionalPrivileges = permission.action.includes(
+          ProjectPermissionMemberActions.AssignAdditionalPrivileges
+        );
+
+        if (hasAssignRole || hasAssignAdditionalPrivileges) {
+          const hasBothNewActions = hasAssignRole && hasAssignAdditionalPrivileges;
+
+          throw new BadRequestError({
+            message: `You have selected Grant Privileges, and ${
+              hasBothNewActions
+                ? "both Assign Role and Assign Additional Privileges"
+                : hasAssignRole
+                  ? "Assign Role"
+                  : hasAssignAdditionalPrivileges
+                    ? "Assign Additional Privileges"
+                    : ""
+            }. You cannot select Assign Role or Assign Additional Privileges if you have selected Grant Privileges. The Grant Privileges permission is a legacy action which has been replaced by Assign Role and Assign Additional Privileges.`
           });
         }
       }
