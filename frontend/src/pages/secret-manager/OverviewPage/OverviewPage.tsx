@@ -2217,7 +2217,6 @@ export const OverviewPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-<<<<<<< HEAD
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
@@ -2244,7 +2243,6 @@ export const OverviewPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-=======
       {!!pathPolicies && pathPolicies.length > 0 && (
         <RequestAccessModal
           policies={pathPolicies}
@@ -2256,7 +2254,6 @@ export const OverviewPage = () => {
           secretPath={pathPolicies[0].secretPath}
         />
       )}
->>>>>>> main
     </div>
   );
 };
