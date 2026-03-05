@@ -482,6 +482,7 @@
                       "documentation/platform/dynamic-secrets/azure-entra-id",
                       "documentation/platform/dynamic-secrets/azure-sql-database",
                       "documentation/platform/dynamic-secrets/cassandra",
+                      "documentation/platform/dynamic-secrets/clickhouse",
                       "documentation/platform/dynamic-secrets/couchbase",
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
