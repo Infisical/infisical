@@ -85,23 +85,27 @@ export const newProjectMembershipIdentityFactory = ({
     );
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        let permissionBoundary = validatePrivilegeChangeOperation(
+        // Quick unconditional check - skip per-identity check if actor has unrestricted permission
+        let unconditionalBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
           ProjectPermissionIdentityActions.AssignRole,
           ProjectPermissionSub.Identity,
           permission,
-          permissionRole.permission,
-          {
-            identityId: identityDetails.id,
-            role: permissionRole.role?.slug
-          }
+          permissionRole.permission
         );
-
-        // If new action fails, try legacy action
-        if (!permissionBoundary.isValid) {
-          permissionBoundary = validatePrivilegeChangeOperation(
+        if (!unconditionalBoundary.isValid) {
+          unconditionalBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
             ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionSub.Identity,
+            permission,
+            permissionRole.permission
+          );
+        }
+        if (!unconditionalBoundary.isValid) {
+          let permissionBoundary = validatePrivilegeChangeOperation(
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.AssignRole,
             ProjectPermissionSub.Identity,
             permission,
             permissionRole.permission,
@@ -110,18 +114,33 @@ export const newProjectMembershipIdentityFactory = ({
               role: permissionRole.role?.slug
             }
           );
-        }
 
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create identity project membership",
+          // If new action fails, try legacy action
+          if (!permissionBoundary.isValid) {
+            permissionBoundary = validatePrivilegeChangeOperation(
+              shouldUseNewPrivilegeSystem,
+              ProjectPermissionIdentityActions.GrantPrivileges,
+              ProjectPermissionSub.Identity,
+              permission,
+              permissionRole.permission,
+              {
+                identityId: identityDetails.id,
+                role: permissionRole.role?.slug
+              }
+            );
+          }
+
+          if (!permissionBoundary.isValid)
+            throw new PermissionBoundaryError({
+              message: constructPermissionErrorMessage(
+                "Failed to create identity project membership",
               shouldUseNewPrivilegeSystem,
               ProjectPermissionIdentityActions.AssignRole,
               ProjectPermissionSub.Identity
             ),
             details: { missingPermissions: permissionBoundary.missingPermissions }
           });
+        }
       }
     }
   };
@@ -154,23 +173,27 @@ export const newProjectMembershipIdentityFactory = ({
       scope.value
     );
     for (const permissionRole of permissionRoles) {
-      let permissionBoundary = validatePrivilegeChangeOperation(
+      // Quick unconditional check - skip per-identity check if actor has unrestricted permission
+      let unconditionalBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         ProjectPermissionIdentityActions.AssignRole,
         ProjectPermissionSub.Identity,
         permission,
-        permissionRole.permission,
-        {
-          identityId: identityDetails.id,
-          role: permissionRole.role?.slug
-        }
+        permissionRole.permission
       );
-
-      // If new action fails, try legacy action
-      if (!permissionBoundary.isValid) {
-        permissionBoundary = validatePrivilegeChangeOperation(
+      if (!unconditionalBoundary.isValid) {
+        unconditionalBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
           ProjectPermissionIdentityActions.GrantPrivileges,
+          ProjectPermissionSub.Identity,
+          permission,
+          permissionRole.permission
+        );
+      }
+      if (!unconditionalBoundary.isValid) {
+        let permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.AssignRole,
           ProjectPermissionSub.Identity,
           permission,
           permissionRole.permission,
@@ -179,18 +202,33 @@ export const newProjectMembershipIdentityFactory = ({
             role: permissionRole.role?.slug
           }
         );
-      }
 
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update identity project membership",
+        // If new action fails, try legacy action
+        if (!permissionBoundary.isValid) {
+          permissionBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.AssignRole,
-            ProjectPermissionSub.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+            ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionSub.Identity,
+            permission,
+            permissionRole.permission,
+            {
+              identityId: identityDetails.id,
+              role: permissionRole.role?.slug
+            }
+          );
+        }
+
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to update identity project membership",
+              shouldUseNewPrivilegeSystem,
+              ProjectPermissionIdentityActions.AssignRole,
+              ProjectPermissionSub.Identity
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+      }
     }
   };
 
