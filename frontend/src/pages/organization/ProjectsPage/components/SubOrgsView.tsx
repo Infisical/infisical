@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import { CheckIcon } from "lucide-react";
 import { z } from "zod";
 
+import { Mfa } from "@app/components/auth/Mfa";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Button,
@@ -39,15 +40,16 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
+import { OrgPermissionSubjects, useOrgPermission, useUser } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import { usePagination, useResetPageHelper, useToggle } from "@app/hooks";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   subOrganizationsQuery,
@@ -87,6 +89,10 @@ export const SubOrgsView = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { permission } = useOrgPermission();
+  const { user } = useUser();
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
 
   const canEditSubOrg = permission.can(
     OrgPermissionSubOrgActions.Edit,
@@ -177,8 +183,22 @@ export const SubOrgsView = () => {
   const paginatedSubOrgs = filteredSubOrgs.slice(offset, limit * page);
 
   const handleLoginSubOrg = async (subOrgId: string) => {
-    const { token, isMfaEnabled } = await selectOrganization({ organizationId: subOrgId });
-    if (isMfaEnabled) return;
+    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
+      organizationId: subOrgId
+    });
+
+    if (isMfaEnabled) {
+      SecurityClient.setMfaToken(token);
+      if (mfaMethod) {
+        setRequiredMfaMethod(mfaMethod);
+      }
+      toggleShowMfa.on();
+      setMfaSuccessCallback(() => async () => {
+        await handleLoginSubOrg(subOrgId);
+      });
+      return;
+    }
+
     SecurityClient.setToken(token);
     SecurityClient.setProviderAuthToken("");
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
@@ -411,6 +431,19 @@ export const SubOrgsView = () => {
             Create a sub-org using the button above, or ask an admin to add you.
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (shouldShowMfa) {
+    return (
+      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+        <Mfa
+          email={user.email as string}
+          method={requiredMfaMethod}
+          successCallback={mfaSuccessCallback}
+          closeMfa={() => toggleShowMfa.off()}
+        />
       </div>
     );
   }
