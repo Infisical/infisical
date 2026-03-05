@@ -94,6 +94,10 @@ export const SubOrgsView = () => {
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
 
+  const canCreateSubOrg = permission.can(
+    OrgPermissionSubOrgActions.Create,
+    OrgPermissionSubjects.SubOrganization
+  );
   const canEditSubOrg = permission.can(
     OrgPermissionSubOrgActions.Edit,
     OrgPermissionSubjects.SubOrganization
@@ -529,14 +533,16 @@ export const SubOrgsView = () => {
             <FontAwesomeIcon icon={faList} />
           </IconButton>
         </div>
-        <Button
-          colorSchema="secondary"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => handlePopUpOpen("addSubOrg")}
-          className="ml-2"
-        >
-          Add Sub Org
-        </Button>
+        {canCreateSubOrg && (
+          <Button
+            colorSchema="secondary"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={() => handlePopUpOpen("addSubOrg")}
+            className="ml-2"
+          >
+            Add Sub Org
+          </Button>
+        )}
       </div>
 
       {content}
