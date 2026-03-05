@@ -12,6 +12,8 @@ import {
   ChevronDownIcon,
   CopyIcon,
   DownloadIcon,
+  EyeIcon,
+  EyeOffIcon,
   GitCommitIcon,
   InfoIcon,
   LockIcon,
@@ -99,7 +101,8 @@ import {
   useLocalStorageState,
   usePagination,
   usePopUp,
-  useResetPageHelper
+  useResetPageHelper,
+  useToggle
 } from "@app/hooks";
 import {
   useCreateFolder,
@@ -268,6 +271,8 @@ export const OverviewPage = () => {
     ProjectPermissionSub.Commits
   );
 
+  const [isSingleEnvSecretsVisible, setIsSingleEnvSecretsVisible] = useToggle();
+
   // scott: keeping incase we bring it back
   // const [collapseEnvironments, setCollapseEnvironments] = useToggle(
   //   Boolean(localStorage.getItem("overview-collapse-environments"))
@@ -427,6 +432,10 @@ export const OverviewPage = () => {
     secretPath,
     environment: singleEnvSlug
   });
+
+  useEffect(() => {
+    setIsSingleEnvSecretsVisible.off();
+  }, [singleVisibleEnv?.slug]);
 
   const secretSubject = subject(ProjectPermissionSub.Secrets, {
     environment: singleEnvSlug,
@@ -1998,6 +2007,25 @@ export const OverviewPage = () => {
                               <div className="flex w-full items-center justify-between">
                                 Value
                                 <div className="flex items-center gap-2">
+                                  <Badge variant="ghost" asChild>
+                                    <button
+                                      type="button"
+                                      onClick={setIsSingleEnvSecretsVisible.toggle}
+                                    >
+                                      {isSingleEnvSecretsVisible ? (
+                                        <>
+                                          <EyeOffIcon />
+                                          Hide
+                                        </>
+                                      ) : (
+                                        <>
+                                          <EyeIcon />
+                                          Reveal
+                                        </>
+                                      )}{" "}
+                                      Values
+                                    </button>
+                                  </Badge>
                                   {isProtectedBranch && (
                                     <Tooltip>
                                       <TooltipTrigger>
@@ -2211,6 +2239,7 @@ export const OverviewPage = () => {
                                 getSecretByKey={getSecretByKey}
                                 tableWidth={tableWidth}
                                 importedBy={importedBy}
+                                isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
                               />
                             ))}
                             <SecretNoAccessTableRow
