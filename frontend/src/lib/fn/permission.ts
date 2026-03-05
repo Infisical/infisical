@@ -111,6 +111,74 @@ const extractNegatedConditionValues = (condition: ConditionValue | undefined): s
   return Array.isArray(neqValue) ? neqValue : [neqValue];
 };
 
+type ConditionMapping = {
+  conditionKey: string;
+  resultKey: string;
+  forbiddenResultKey: string;
+};
+
+function extractGrantConditions<T extends Record<string, string[]>>(
+  permission: MongoAbility<ProjectPermissionSet>,
+  config: {
+    isRelevantRule: (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => boolean;
+    mappings: ConditionMapping[];
+    getConditions: (
+      rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>
+    ) => Record<string, ConditionValue | undefined>;
+  }
+): T | null {
+  const { isRelevantRule, mappings, getConditions } = config;
+  const allowedRules = permission.rules.filter((r) => !r.inverted && isRelevantRule(r));
+  const invertedRules = permission.rules.filter((r) => r.inverted && isRelevantRule(r));
+
+  if (allowedRules.length === 0 && invertedRules.length === 0) return null;
+
+  const hasUnconditionalAllowRule = allowedRules.some(
+    (r) => !r.conditions || Object.keys(r.conditions).length === 0
+  );
+
+  const result: Record<string, string[]> = {};
+
+  if (!hasUnconditionalAllowRule) {
+    allowedRules.forEach((rule) => {
+      const conditions = getConditions(rule);
+      mappings.forEach(({ conditionKey, resultKey, forbiddenResultKey }) => {
+        const cond = conditions[conditionKey];
+        const values = extractConditionValues(cond);
+        if (values.length > 0) {
+          result[resultKey] = [...(result[resultKey] ?? []), ...values];
+        }
+        const neqValues = extractNegatedConditionValues(cond);
+        if (neqValues.length > 0) {
+          result[forbiddenResultKey] = [...(result[forbiddenResultKey] ?? []), ...neqValues];
+        }
+      });
+    });
+  }
+
+  invertedRules
+    .filter((rule) => {
+      const conditions = getConditions(rule);
+      return conditions && Object.keys(conditions).length > 0;
+    })
+    .forEach((rule) => {
+      const conditions = getConditions(rule);
+      mappings.forEach(({ conditionKey, forbiddenResultKey }) => {
+        const values = extractConditionValues(conditions[conditionKey]);
+        if (values.length > 0) {
+          result[forbiddenResultKey] = [...(result[forbiddenResultKey] ?? []), ...values];
+        }
+      });
+    });
+
+  const dedupe = (arr: string[]) => [...new Set(arr)];
+  Object.keys(result).forEach((key) => {
+    result[key] = dedupe(result[key]);
+  });
+
+  return Object.keys(result).length > 0 ? (result as T) : null;
+}
+
 const isGrantPrivilegesMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
   const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
   if (!ruleSubjects.includes(ProjectPermissionSub.Member)) return false;
@@ -127,91 +195,21 @@ const isGrantPrivilegesMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermiss
   );
 };
 
+const MEMBER_CONDITION_MAPPINGS: ConditionMapping[] = [
+  { conditionKey: "email", resultKey: "emails", forbiddenResultKey: "forbiddenEmails" },
+  { conditionKey: "role", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
+  { conditionKey: "subject", resultKey: "subjects", forbiddenResultKey: "forbiddenSubjects" },
+  { conditionKey: "action", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
+];
+
 export function getGrantPrivilegeConditions(
   permission: MongoAbility<ProjectPermissionSet>
 ): GrantPrivilegeConditions | null {
-  const allowedRules = permission.rules.filter(
-    (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
-      !rule.inverted && isGrantPrivilegesMemberRule(rule)
-  );
-  const invertedRules = permission.rules.filter(
-    (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
-      rule.inverted && isGrantPrivilegesMemberRule(rule)
-  );
-
-  if (allowedRules.length === 0 && invertedRules.length === 0) return null;
-
-  const hasUnconditionalAllowRule = allowedRules.some(
-    (rule) => !rule.conditions || Object.keys(rule.conditions).length === 0
-  );
-
-  const result: GrantPrivilegeConditions = {};
-
-  if (!hasUnconditionalAllowRule) {
-    allowedRules.forEach((rule) => {
-      const conditions = (rule.conditions ?? {}) as MemberConditions;
-
-      const emailValues = extractConditionValues(conditions.email);
-      const roleValues = extractConditionValues(conditions.role);
-      const subjectValues = extractConditionValues(conditions.subject);
-      const actionValues = extractConditionValues(conditions.action);
-
-      if (emailValues.length > 0) result.emails = [...(result.emails || []), ...emailValues];
-      if (roleValues.length > 0) result.roles = [...(result.roles || []), ...roleValues];
-      if (subjectValues.length > 0)
-        result.subjects = [...(result.subjects || []), ...subjectValues];
-      if (actionValues.length > 0) result.actions = [...(result.actions || []), ...actionValues];
-
-      // Extract $NEQ values from allow rules as forbidden values
-      const neqEmailValues = extractNegatedConditionValues(conditions.email);
-      const neqRoleValues = extractNegatedConditionValues(conditions.role);
-      const neqSubjectValues = extractNegatedConditionValues(conditions.subject);
-      const neqActionValues = extractNegatedConditionValues(conditions.action);
-
-      if (neqEmailValues.length > 0)
-        result.forbiddenEmails = [...(result.forbiddenEmails || []), ...neqEmailValues];
-      if (neqRoleValues.length > 0)
-        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...neqRoleValues];
-      if (neqSubjectValues.length > 0)
-        result.forbiddenSubjects = [...(result.forbiddenSubjects || []), ...neqSubjectValues];
-      if (neqActionValues.length > 0)
-        result.forbiddenActions = [...(result.forbiddenActions || []), ...neqActionValues];
-    });
-  }
-
-  invertedRules
-    .filter((rule) => {
-      const conditions = rule.conditions as MemberConditions | undefined;
-      return conditions && Object.keys(conditions).length > 0;
-    })
-    .forEach((rule) => {
-      const conditions = (rule.conditions ?? {}) as MemberConditions;
-      const emailValues = extractConditionValues(conditions.email);
-      const roleValues = extractConditionValues(conditions.role);
-      const subjectValues = extractConditionValues(conditions.subject);
-      const actionValues = extractConditionValues(conditions.action);
-
-      if (emailValues.length > 0)
-        result.forbiddenEmails = [...(result.forbiddenEmails || []), ...emailValues];
-      if (roleValues.length > 0)
-        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...roleValues];
-      if (subjectValues.length > 0)
-        result.forbiddenSubjects = [...(result.forbiddenSubjects || []), ...subjectValues];
-      if (actionValues.length > 0)
-        result.forbiddenActions = [...(result.forbiddenActions || []), ...actionValues];
-    });
-
-  const dedupe = (arr: string[]) => [...new Set(arr)];
-  if (result.emails) result.emails = dedupe(result.emails);
-  if (result.roles) result.roles = dedupe(result.roles);
-  if (result.subjects) result.subjects = dedupe(result.subjects);
-  if (result.actions) result.actions = dedupe(result.actions);
-  if (result.forbiddenEmails) result.forbiddenEmails = dedupe(result.forbiddenEmails);
-  if (result.forbiddenRoles) result.forbiddenRoles = dedupe(result.forbiddenRoles);
-  if (result.forbiddenSubjects) result.forbiddenSubjects = dedupe(result.forbiddenSubjects);
-  if (result.forbiddenActions) result.forbiddenActions = dedupe(result.forbiddenActions);
-
-  return Object.keys(result).length > 0 ? result : null;
+  return extractGrantConditions<GrantPrivilegeConditions>(permission, {
+    isRelevantRule: isGrantPrivilegesMemberRule,
+    mappings: MEMBER_CONDITION_MAPPINGS,
+    getConditions: (rule) => (rule.conditions ?? {}) as MemberConditions
+  });
 }
 
 export type IdentityGrantPrivilegeConditions = {
@@ -248,96 +246,25 @@ const isGrantPrivilegesIdentityRule = (rule: RawRuleOf<MongoAbility<ProjectPermi
   );
 };
 
+const IDENTITY_CONDITION_MAPPINGS: ConditionMapping[] = [
+  {
+    conditionKey: "identityId",
+    resultKey: "identityIds",
+    forbiddenResultKey: "forbiddenIdentityIds"
+  },
+  { conditionKey: "role", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
+  { conditionKey: "subject", resultKey: "subjects", forbiddenResultKey: "forbiddenSubjects" },
+  { conditionKey: "action", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
+];
+
 export function getIdentityGrantPrivilegeConditions(
   permission: MongoAbility<ProjectPermissionSet>
 ): IdentityGrantPrivilegeConditions | null {
-  const allowedRules = permission.rules.filter(
-    (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
-      !rule.inverted && isGrantPrivilegesIdentityRule(rule)
-  );
-  const invertedRules = permission.rules.filter(
-    (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
-      rule.inverted && isGrantPrivilegesIdentityRule(rule)
-  );
-
-  if (allowedRules.length === 0 && invertedRules.length === 0) return null;
-
-  const hasUnconditionalAllowRule = allowedRules.some(
-    (rule) => !rule.conditions || Object.keys(rule.conditions).length === 0
-  );
-
-  const result: IdentityGrantPrivilegeConditions = {};
-
-  if (!hasUnconditionalAllowRule) {
-    allowedRules.forEach((rule) => {
-      const conditions = (rule.conditions ?? {}) as IdentityConditions;
-
-      const identityIdValues = extractConditionValues(conditions.identityId);
-      const roleValues = extractConditionValues(conditions.role);
-      const subjectValues = extractConditionValues(conditions.subject);
-      const actionValues = extractConditionValues(conditions.action);
-
-      if (identityIdValues.length > 0)
-        result.identityIds = [...(result.identityIds || []), ...identityIdValues];
-      if (roleValues.length > 0) result.roles = [...(result.roles || []), ...roleValues];
-      if (subjectValues.length > 0)
-        result.subjects = [...(result.subjects || []), ...subjectValues];
-      if (actionValues.length > 0) result.actions = [...(result.actions || []), ...actionValues];
-
-      // Extract $NEQ values from allow rules as forbidden values
-      const neqIdentityIdValues = extractNegatedConditionValues(conditions.identityId);
-      const neqRoleValues = extractNegatedConditionValues(conditions.role);
-      const neqSubjectValues = extractNegatedConditionValues(conditions.subject);
-      const neqActionValues = extractNegatedConditionValues(conditions.action);
-
-      if (neqIdentityIdValues.length > 0)
-        result.forbiddenIdentityIds = [
-          ...(result.forbiddenIdentityIds || []),
-          ...neqIdentityIdValues
-        ];
-      if (neqRoleValues.length > 0)
-        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...neqRoleValues];
-      if (neqSubjectValues.length > 0)
-        result.forbiddenSubjects = [...(result.forbiddenSubjects || []), ...neqSubjectValues];
-      if (neqActionValues.length > 0)
-        result.forbiddenActions = [...(result.forbiddenActions || []), ...neqActionValues];
-    });
-  }
-
-  invertedRules
-    .filter((rule) => {
-      const conditions = rule.conditions as IdentityConditions | undefined;
-      return conditions && Object.keys(conditions).length > 0;
-    })
-    .forEach((rule) => {
-      const conditions = (rule.conditions ?? {}) as IdentityConditions;
-      const identityIdValues = extractConditionValues(conditions.identityId);
-      const roleValues = extractConditionValues(conditions.role);
-      const subjectValues = extractConditionValues(conditions.subject);
-      const actionValues = extractConditionValues(conditions.action);
-
-      if (identityIdValues.length > 0)
-        result.forbiddenIdentityIds = [...(result.forbiddenIdentityIds || []), ...identityIdValues];
-      if (roleValues.length > 0)
-        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...roleValues];
-      if (subjectValues.length > 0)
-        result.forbiddenSubjects = [...(result.forbiddenSubjects || []), ...subjectValues];
-      if (actionValues.length > 0)
-        result.forbiddenActions = [...(result.forbiddenActions || []), ...actionValues];
-    });
-
-  const dedupe = (arr: string[]) => [...new Set(arr)];
-  if (result.identityIds) result.identityIds = dedupe(result.identityIds);
-  if (result.roles) result.roles = dedupe(result.roles);
-  if (result.subjects) result.subjects = dedupe(result.subjects);
-  if (result.actions) result.actions = dedupe(result.actions);
-  if (result.forbiddenIdentityIds)
-    result.forbiddenIdentityIds = dedupe(result.forbiddenIdentityIds);
-  if (result.forbiddenRoles) result.forbiddenRoles = dedupe(result.forbiddenRoles);
-  if (result.forbiddenSubjects) result.forbiddenSubjects = dedupe(result.forbiddenSubjects);
-  if (result.forbiddenActions) result.forbiddenActions = dedupe(result.forbiddenActions);
-
-  return Object.keys(result).length > 0 ? result : null;
+  return extractGrantConditions<IdentityGrantPrivilegeConditions>(permission, {
+    isRelevantRule: isGrantPrivilegesIdentityRule,
+    mappings: IDENTITY_CONDITION_MAPPINGS,
+    getConditions: (rule) => (rule.conditions ?? {}) as IdentityConditions
+  });
 }
 
 export type GroupGrantPrivilegeConditions = {
@@ -366,70 +293,25 @@ const isAssignRoleGroupRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet
   return actions.some((a) => String(a) === ProjectPermissionGroupActions.AssignRole);
 };
 
+const GROUP_CONDITION_MAPPINGS: ConditionMapping[] = [
+  {
+    conditionKey: "groupName",
+    resultKey: "groupNames",
+    forbiddenResultKey: "forbiddenGroupNames"
+  },
+  { conditionKey: "role", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" }
+];
+
 export const getGroupGrantPrivilegeConditions = (
   permission: MongoAbility<ProjectPermissionSet>
 ): GroupGrantPrivilegeConditions | null => {
-  const allowedRules = permission.rules.filter(
-    (rule) => (isGrantPrivilegesGroupRule(rule) || isAssignRoleGroupRule(rule)) && !rule.inverted
-  );
-
-  const invertedRules = permission.rules.filter(
-    (rule) => (isGrantPrivilegesGroupRule(rule) || isAssignRoleGroupRule(rule)) && rule.inverted
-  );
-
-  if (allowedRules.length === 0 && invertedRules.length === 0) return null;
-
-  const hasUnconditionalAllowRule = allowedRules.some(
-    (rule) => !rule.conditions || Object.keys(rule.conditions).length === 0
-  );
-
-  const result: GroupGrantPrivilegeConditions = {};
-
-  if (!hasUnconditionalAllowRule) {
-    allowedRules.forEach((rule) => {
-      const conditions = (rule.conditions ?? {}) as GroupConditions;
-
-      const groupNameValues = extractConditionValues(conditions.groupName);
-      const roleValues = extractConditionValues(conditions.role);
-
-      if (groupNameValues.length > 0)
-        result.groupNames = [...(result.groupNames || []), ...groupNameValues];
-      if (roleValues.length > 0) result.roles = [...(result.roles || []), ...roleValues];
-
-      // Extract $NEQ values from allow rules as forbidden values
-      const neqGroupNameValues = extractNegatedConditionValues(conditions.groupName);
-      const neqRoleValues = extractNegatedConditionValues(conditions.role);
-
-      if (neqGroupNameValues.length > 0)
-        result.forbiddenGroupNames = [...(result.forbiddenGroupNames || []), ...neqGroupNameValues];
-      if (neqRoleValues.length > 0)
-        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...neqRoleValues];
-    });
-  }
-
-  invertedRules
-    .filter((rule) => {
-      const conditions = rule.conditions as GroupConditions | undefined;
-      return conditions && Object.keys(conditions).length > 0;
-    })
-    .forEach((rule) => {
-      const conditions = (rule.conditions ?? {}) as GroupConditions;
-      const groupNameValues = extractConditionValues(conditions.groupName);
-      const roleValues = extractConditionValues(conditions.role);
-
-      if (groupNameValues.length > 0)
-        result.forbiddenGroupNames = [...(result.forbiddenGroupNames || []), ...groupNameValues];
-      if (roleValues.length > 0)
-        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...roleValues];
-    });
-
-  const dedupe = (arr: string[]) => [...new Set(arr)];
-  if (result.groupNames) result.groupNames = dedupe(result.groupNames);
-  if (result.roles) result.roles = dedupe(result.roles);
-  if (result.forbiddenGroupNames) result.forbiddenGroupNames = dedupe(result.forbiddenGroupNames);
-  if (result.forbiddenRoles) result.forbiddenRoles = dedupe(result.forbiddenRoles);
-
-  return Object.keys(result).length > 0 ? result : null;
+  const isRelevantRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
+    isGrantPrivilegesGroupRule(rule) || isAssignRoleGroupRule(rule);
+  return extractGrantConditions<GroupGrantPrivilegeConditions>(permission, {
+    isRelevantRule,
+    mappings: GROUP_CONDITION_MAPPINGS,
+    getConditions: (rule) => (rule.conditions ?? {}) as GroupConditions
+  });
 };
 
 const PERMISSION_DISPLAY_NAMES: Record<string, string> = {

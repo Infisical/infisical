@@ -394,6 +394,7 @@ export const GroupRoles = ({
     if (!groupName) return false;
 
     const hasAnyGroupPrivilegeRule = permission.rules.some((rule) => {
+      if (rule.inverted) return false;
       const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
       if (!ruleSubjects.includes(ProjectPermissionSub.Groups)) return false;
       const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
