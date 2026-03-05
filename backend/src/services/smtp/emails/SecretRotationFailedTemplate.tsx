@@ -10,6 +10,7 @@ interface SecretRotationFailedTemplateProps extends Omit<BaseEmailWrapperProps, 
   rotationUrl: string;
   projectName: string;
   environment: string;
+  environmentSlug: string;
   secretPath: string;
   content: string;
 }
@@ -21,6 +22,7 @@ export const SecretRotationFailedTemplate = ({
   projectName,
   siteUrl,
   environment,
+  environmentSlug,
   secretPath,
   content
 }: SecretRotationFailedTemplateProps) => {
@@ -44,7 +46,7 @@ export const SecretRotationFailedTemplate = ({
         <Text className="text-[14px] text-red-600 mt-[4px]">{content}</Text>
       </Section>
       <Section className="text-center">
-        <BaseButton href={`${rotationUrl}?search=${rotationName}&secretPath=${secretPath}`}>
+        <BaseButton href={`${rotationUrl}?search=${encodeURIComponent(rotationName)}&secretPath=${encodeURIComponent(secretPath)}&environments=${encodeURIComponent(environmentSlug)}&filterBy=rotation`}>
           View in Infisical
         </BaseButton>
       </Section>
@@ -61,6 +63,7 @@ SecretRotationFailedTemplate.PreviewProps = {
   projectName: "Example Project",
   secretPath: "/api/secrets",
   environment: "Production",
+  environmentSlug: "production",
   rotationName: "my-auth0-rotation",
   siteUrl: "https://infisical.com"
 } as SecretRotationFailedTemplateProps;
