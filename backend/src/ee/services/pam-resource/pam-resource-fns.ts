@@ -6,6 +6,7 @@ import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { getActiveDirectoryResourceListItem } from "./active-directory/active-directory-resource-fns";
 import { getAwsIamResourceListItem } from "./aws-iam/aws-iam-resource-fns";
 import { getKubernetesResourceListItem } from "./kubernetes/kubernetes-resource-fns";
+import { getMsSQLResourceListItem } from "./mssql/mssql-resource-fns";
 import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
 import { TPamResource, TPamResourceConnectionDetails, TPamResourceMetadata } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
@@ -16,6 +17,7 @@ export const listResourceOptions = () => {
   return [
     getPostgresResourceListItem(),
     getMySQLResourceListItem(),
+    getMsSQLResourceListItem(),
     getAwsIamResourceListItem(),
     getKubernetesResourceListItem(),
     getRedisResourceListItem(),

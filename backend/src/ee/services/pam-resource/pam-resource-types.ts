@@ -23,6 +23,12 @@ import {
   TKubernetesResourceConnectionDetails
 } from "./kubernetes/kubernetes-resource-types";
 import {
+  TMsSQLAccount,
+  TMsSQLAccountCredentials,
+  TMsSQLResource,
+  TMsSQLResourceConnectionDetails
+} from "./mssql/mssql-resource-types";
+import {
   TMySQLAccount,
   TMySQLAccountCredentials,
   TMySQLResource,
@@ -59,6 +65,7 @@ import {
 export type TPamResource =
   | TPostgresResource
   | TMySQLResource
+  | TMsSQLResource
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
@@ -68,6 +75,7 @@ export type TPamResource =
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
+  | TMsSQLResourceConnectionDetails
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
@@ -80,6 +88,7 @@ export type TPamResourceMetadata = TSSHResourceMetadata;
 export type TPamAccount =
   | TPostgresAccount
   | TMySQLAccount
+  | TMsSQLAccount
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
@@ -91,6 +100,8 @@ export type TPamAccountCredentials =
   | TPostgresAccountCredentials
   // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | TMySQLAccountCredentials
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
+  | TMsSQLAccountCredentials
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials
