@@ -986,7 +986,7 @@
                   "api-reference/endpoints/sub-organizations/list",
                   "api-reference/endpoints/sub-organizations/update",
                   "api-reference/endpoints/sub-organizations/delete",
-                  "api-reference/endpoints/sub-organizations/join"
+                  "api-reference/endpoints/sub-organizations/memberships"
                 ]
               },
               {
