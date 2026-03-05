@@ -39,7 +39,11 @@ import { useGetProjectRoles, useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import {
+  canModifyByGrantConditions,
+  filterByGrantConditions,
+  getGrantPrivilegeConditions
+} from "@app/lib/fn/permission";
 
 const roleFormSchema = z.object({
   roles: z
@@ -85,37 +89,23 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
     const memberEmail = projectMember?.user?.email;
     if (!memberEmail) return false;
 
-    if (
-      grantPrivilegeConditions?.forbiddenEmails?.length &&
-      grantPrivilegeConditions.forbiddenEmails.some((pattern) =>
-        picomatch.isMatch(memberEmail, pattern)
-      )
-    ) {
-      return false;
-    }
-
-    if (!grantPrivilegeConditions?.emails || grantPrivilegeConditions.emails.length === 0) {
-      return true;
-    }
-    return grantPrivilegeConditions.emails.some((pattern) =>
-      picomatch.isMatch(memberEmail, pattern)
-    );
+    return canModifyByGrantConditions({
+      targetValue: memberEmail,
+      allowed: grantPrivilegeConditions?.emails,
+      forbidden: grantPrivilegeConditions?.forbiddenEmails,
+      isMatch: (value, pattern) => picomatch.isMatch(value, pattern)
+    });
   }, [grantPrivilegeConditions, projectMember?.user?.email]);
 
-  const filteredRoles = useMemo(() => {
-    if (!projectRoles) return [];
-    let roles = projectRoles;
-    if (grantPrivilegeConditions?.roles && grantPrivilegeConditions.roles.length > 0) {
-      roles = roles.filter((role) => grantPrivilegeConditions.roles?.includes(role.slug));
-    }
-    if (
-      grantPrivilegeConditions?.forbiddenRoles &&
-      grantPrivilegeConditions.forbiddenRoles.length > 0
-    ) {
-      roles = roles.filter((role) => !grantPrivilegeConditions.forbiddenRoles?.includes(role.slug));
-    }
-    return roles;
-  }, [projectRoles, grantPrivilegeConditions]);
+  const filteredRoles = useMemo(
+    () =>
+      filterByGrantConditions(projectRoles ?? [], {
+        getKey: (role) => role.slug,
+        allowed: grantPrivilegeConditions?.roles,
+        forbidden: grantPrivilegeConditions?.forbiddenRoles
+      }),
+    [projectRoles, grantPrivilegeConditions]
+  );
 
   const roleForm = useForm<TRoleForm>({
     resolver: zodResolver(roleFormSchema),

@@ -314,6 +314,42 @@ export const getGroupGrantPrivilegeConditions = (
   });
 };
 
+export function filterByGrantConditions<T>(
+  items: T[],
+  options: {
+    getKey: (item: T) => string;
+    allowed?: string[];
+    forbidden?: string[];
+  }
+): T[] {
+  const { getKey, allowed, forbidden } = options;
+  let result = items;
+  if (allowed?.length) {
+    result = result.filter((item) => allowed.includes(getKey(item)));
+  }
+  if (forbidden?.length) {
+    result = result.filter((item) => !forbidden.includes(getKey(item)));
+  }
+  return result;
+}
+
+export function canModifyByGrantConditions(options: {
+  targetValue: string;
+  allowed?: string[];
+  forbidden?: string[];
+  /** For glob patterns (e.g. email). Default: exact match */
+  isMatch?: (value: string, pattern: string) => boolean;
+}): boolean {
+  const { targetValue, allowed, forbidden, isMatch } = options;
+  const matches = isMatch ?? ((v, p) => v === p);
+
+  if (forbidden?.length && forbidden.some((p) => matches(targetValue, p))) {
+    return false;
+  }
+  if (!allowed?.length) return true;
+  return allowed.some((p) => matches(targetValue, p));
+}
+
 const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
   [ProjectPermissionSub.Secrets]: "Secrets",
   [ProjectPermissionSub.SecretFolders]: "Secret Folders",

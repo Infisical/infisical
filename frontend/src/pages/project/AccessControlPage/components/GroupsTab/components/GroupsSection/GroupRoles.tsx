@@ -32,7 +32,11 @@ import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { groupBy } from "@app/lib/fn/array";
-import { getGroupGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import {
+  canModifyByGrantConditions,
+  filterByGrantConditions,
+  getGroupGrantPrivilegeConditions
+} from "@app/lib/fn/permission";
 
 const temporaryRoleFormSchema = z.object({
   temporaryRange: z.string().min(1, "Required")
@@ -401,51 +405,25 @@ export const GroupRoles = ({
       return actions.some((a) => String(a) === "grant-privileges" || String(a) === "assign-role");
     });
 
-    // if user has no grant-privileges or assign-role rules, they cannot modify group roles
-    if (!hasAnyGroupPrivilegeRule) {
-      return false;
-    }
+    if (!hasAnyGroupPrivilegeRule) return false;
+    if (!grantPrivilegeConditions) return true;
 
-    // If no specific conditions, user has unconditional access
-    if (!grantPrivilegeConditions) {
-      return true;
-    }
-
-    if (
-      grantPrivilegeConditions.forbiddenGroupNames?.length &&
-      grantPrivilegeConditions.forbiddenGroupNames.includes(groupName)
-    ) {
-      return false;
-    }
-
-    if (!grantPrivilegeConditions.groupNames || grantPrivilegeConditions.groupNames.length === 0) {
-      return true;
-    }
-
-    return grantPrivilegeConditions.groupNames.includes(groupName);
+    return canModifyByGrantConditions({
+      targetValue: groupName,
+      allowed: grantPrivilegeConditions.groupNames,
+      forbidden: grantPrivilegeConditions.forbiddenGroupNames
+    });
   }, [permission, grantPrivilegeConditions, groupName]);
 
-  const filteredProjectRoles = useMemo(() => {
-    if (!projectRoles) return [];
-    let filteredRoles = projectRoles;
-
-    if (grantPrivilegeConditions?.roles && grantPrivilegeConditions.roles.length > 0) {
-      filteredRoles = filteredRoles.filter((role) =>
-        grantPrivilegeConditions.roles?.includes(role.slug)
-      );
-    }
-
-    if (
-      grantPrivilegeConditions?.forbiddenRoles &&
-      grantPrivilegeConditions.forbiddenRoles.length > 0
-    ) {
-      filteredRoles = filteredRoles.filter(
-        (role) => !grantPrivilegeConditions.forbiddenRoles?.includes(role.slug)
-      );
-    }
-
-    return filteredRoles;
-  }, [projectRoles, grantPrivilegeConditions]);
+  const filteredProjectRoles = useMemo(
+    () =>
+      filterByGrantConditions(projectRoles ?? [], {
+        getKey: (role) => role.slug,
+        allowed: grantPrivilegeConditions?.roles,
+        forbidden: grantPrivilegeConditions?.forbiddenRoles
+      }),
+    [projectRoles, grantPrivilegeConditions]
+  );
 
   const isEditDisabled = disableEdit || !canModifyGroupRoles;
 

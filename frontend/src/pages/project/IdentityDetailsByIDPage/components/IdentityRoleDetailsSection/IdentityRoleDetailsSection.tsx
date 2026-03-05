@@ -46,7 +46,10 @@ import { usePopUp } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
-import { getIdentityGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import {
+  canModifyByGrantConditions,
+  getIdentityGrantPrivilegeConditions
+} from "@app/lib/fn/permission";
 
 import { IdentityRoleModify } from "./IdentityRoleModify";
 
@@ -76,20 +79,11 @@ export const IdentityRoleDetailsSection = ({
     const targetIdentityId = identityMembershipDetails?.identity?.id;
     if (!targetIdentityId) return false;
 
-    if (
-      grantPrivilegeConditions?.forbiddenIdentityIds?.length &&
-      grantPrivilegeConditions.forbiddenIdentityIds.includes(targetIdentityId)
-    ) {
-      return false;
-    }
-
-    if (
-      !grantPrivilegeConditions?.identityIds ||
-      grantPrivilegeConditions.identityIds.length === 0
-    ) {
-      return true;
-    }
-    return grantPrivilegeConditions.identityIds.includes(targetIdentityId);
+    return canModifyByGrantConditions({
+      targetValue: targetIdentityId,
+      allowed: grantPrivilegeConditions?.identityIds,
+      forbidden: grantPrivilegeConditions?.forbiddenIdentityIds
+    });
   }, [grantPrivilegeConditions, identityMembershipDetails?.identity?.id]);
 
   const handleRoleDelete = async () => {

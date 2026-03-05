@@ -33,7 +33,7 @@ import {
 } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import { filterByGrantConditions, getGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -80,22 +80,15 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     [projectPermission]
   );
 
-  const filteredRoles = useMemo(() => {
-    if (!roles) return [];
-    let result = roles;
-    if (grantPrivilegeConditions?.roles && grantPrivilegeConditions.roles.length > 0) {
-      result = result.filter((role) => grantPrivilegeConditions.roles?.includes(role.slug));
-    }
-    if (
-      grantPrivilegeConditions?.forbiddenRoles &&
-      grantPrivilegeConditions.forbiddenRoles.length > 0
-    ) {
-      result = result.filter(
-        (role) => !grantPrivilegeConditions.forbiddenRoles?.includes(role.slug)
-      );
-    }
-    return result;
-  }, [roles, grantPrivilegeConditions]);
+  const filteredRoles = useMemo(
+    () =>
+      filterByGrantConditions(roles ?? [], {
+        getKey: (role) => role.slug,
+        allowed: grantPrivilegeConditions?.roles,
+        forbidden: grantPrivilegeConditions?.forbiddenRoles
+      }),
+    [roles, grantPrivilegeConditions]
+  );
 
   const {
     control,

@@ -47,7 +47,7 @@ import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import { canModifyByGrantConditions, getGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 import { MemberRoleModify } from "./MemberRoleModify";
 
@@ -76,21 +76,12 @@ export const MemberRoleDetailsSection = ({
     const memberEmail = membershipDetails?.user?.email;
     if (!memberEmail) return false;
 
-    if (
-      grantPrivilegeConditions?.forbiddenEmails?.length &&
-      grantPrivilegeConditions.forbiddenEmails.some((pattern) =>
-        picomatch.isMatch(memberEmail, pattern)
-      )
-    ) {
-      return false;
-    }
-
-    if (!grantPrivilegeConditions?.emails || grantPrivilegeConditions.emails.length === 0) {
-      return true;
-    }
-    return grantPrivilegeConditions.emails.some((pattern) =>
-      picomatch.isMatch(memberEmail, pattern)
-    );
+    return canModifyByGrantConditions({
+      targetValue: memberEmail,
+      allowed: grantPrivilegeConditions?.emails,
+      forbidden: grantPrivilegeConditions?.forbiddenEmails,
+      isMatch: (value, pattern) => picomatch.isMatch(value, pattern)
+    });
   }, [grantPrivilegeConditions, membershipDetails?.user?.email]);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([

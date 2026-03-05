@@ -32,7 +32,10 @@ import {
   useUpdateIdentityProjectAdditionalPrivilege
 } from "@app/hooks/api";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
-import { getIdentityGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import {
+  filterByGrantConditions,
+  getIdentityGrantPrivilegeConditions
+} from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -99,49 +102,25 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     [permission]
   );
 
-  const filteredPermissionSubjects = useMemo(() => {
-    const allSubjects = Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[];
-    let result = allSubjects;
-    if (grantPrivilegeConditions?.subjects && grantPrivilegeConditions.subjects.length > 0) {
-      result = result.filter((permissionSubject) =>
-        grantPrivilegeConditions.subjects?.includes(permissionSubject)
-      );
-    }
-    if (
-      grantPrivilegeConditions?.forbiddenSubjects &&
-      grantPrivilegeConditions.forbiddenSubjects.length > 0
-    ) {
-      result = result.filter(
-        (permissionSubject) =>
-          !grantPrivilegeConditions.forbiddenSubjects?.includes(permissionSubject)
-      );
-    }
-    return result;
-  }, [grantPrivilegeConditions]);
+  const filteredPermissionSubjects = useMemo(
+    () =>
+      filterByGrantConditions(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[], {
+        getKey: (s) => s,
+        allowed: grantPrivilegeConditions?.subjects,
+        forbidden: grantPrivilegeConditions?.forbiddenSubjects
+      }),
+    [grantPrivilegeConditions]
+  );
 
-  const getFilteredActionsForSubject = useMemo(() => {
-    return (permissionSubject: ProjectPermissionSub) => {
-      const allActions = PROJECT_PERMISSION_OBJECT[permissionSubject].actions;
-      let result = allActions;
-      if (grantPrivilegeConditions?.actions && grantPrivilegeConditions.actions.length > 0) {
-        result = result.filter((action) =>
-          grantPrivilegeConditions.actions?.includes(`${permissionSubject}:${action.value}`)
-        );
-      }
-      if (
-        grantPrivilegeConditions?.forbiddenActions &&
-        grantPrivilegeConditions.forbiddenActions.length > 0
-      ) {
-        result = result.filter(
-          (action) =>
-            !grantPrivilegeConditions.forbiddenActions?.includes(
-              `${permissionSubject}:${action.value}`
-            )
-        );
-      }
-      return result;
-    };
-  }, [grantPrivilegeConditions]);
+  const getFilteredActionsForSubject = useMemo(
+    () => (permissionSubject: ProjectPermissionSub) =>
+      filterByGrantConditions(PROJECT_PERMISSION_OBJECT[permissionSubject].actions, {
+        getKey: (action) => `${permissionSubject}:${action.value}`,
+        allowed: grantPrivilegeConditions?.actions,
+        forbidden: grantPrivilegeConditions?.forbiddenActions
+      }),
+    [grantPrivilegeConditions]
+  );
 
   const form = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),

@@ -46,7 +46,10 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
-import { getIdentityGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import {
+  canModifyByGrantConditions,
+  getIdentityGrantPrivilegeConditions
+} from "@app/lib/fn/permission";
 
 import { IdentityProjectAdditionalPrivilegeModifySection } from "./IdentityProjectAdditionalPrivilegeModifySection";
 
@@ -82,21 +85,11 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
     const targetIdentityId = identityMembershipDetails?.identity?.id;
     if (!targetIdentityId) return false;
 
-    if (grantPrivilegeConditions.identityIds && grantPrivilegeConditions.identityIds.length > 0) {
-      const identityIdMatches = grantPrivilegeConditions.identityIds.includes(targetIdentityId);
-      if (!identityIdMatches) return false;
-    }
-
-    if (
-      grantPrivilegeConditions.forbiddenIdentityIds &&
-      grantPrivilegeConditions.forbiddenIdentityIds.length > 0
-    ) {
-      const identityIdForbidden =
-        grantPrivilegeConditions.forbiddenIdentityIds.includes(targetIdentityId);
-      if (identityIdForbidden) return false;
-    }
-
-    return true;
+    return canModifyByGrantConditions({
+      targetValue: targetIdentityId,
+      allowed: grantPrivilegeConditions.identityIds,
+      forbidden: grantPrivilegeConditions.forbiddenIdentityIds
+    });
   }, [grantPrivilegeConditions, identityMembershipDetails?.identity?.id]);
 
   const handlePrivilegeDelete = async () => {

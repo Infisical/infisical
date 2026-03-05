@@ -48,7 +48,7 @@ import {
   useListProjectUserPrivileges
 } from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import { canModifyByGrantConditions, getGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 import { MembershipProjectAdditionalPrivilegeModifySection } from "./MembershipProjectAdditionalPrivilegeModifySection";
 
@@ -85,24 +85,12 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
     const targetEmail = membershipDetails?.user?.email;
     if (!targetEmail) return false;
 
-    if (grantPrivilegeConditions.emails && grantPrivilegeConditions.emails.length > 0) {
-      const emailMatches = grantPrivilegeConditions.emails.some((pattern) =>
-        picomatch.isMatch(targetEmail, pattern, { nocase: true })
-      );
-      if (!emailMatches) return false;
-    }
-
-    if (
-      grantPrivilegeConditions.forbiddenEmails &&
-      grantPrivilegeConditions.forbiddenEmails.length > 0
-    ) {
-      const emailForbidden = grantPrivilegeConditions.forbiddenEmails.some((pattern) =>
-        picomatch.isMatch(targetEmail, pattern, { nocase: true })
-      );
-      if (emailForbidden) return false;
-    }
-
-    return true;
+    return canModifyByGrantConditions({
+      targetValue: targetEmail,
+      allowed: grantPrivilegeConditions.emails,
+      forbidden: grantPrivilegeConditions.forbiddenEmails,
+      isMatch: (value, pattern) => picomatch.isMatch(value, pattern, { nocase: true })
+    });
   }, [grantPrivilegeConditions, membershipDetails?.user?.email]);
 
   const handlePrivilegeDelete = async () => {
