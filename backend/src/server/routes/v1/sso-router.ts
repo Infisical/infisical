@@ -85,12 +85,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               lastName: user.lastName ?? undefined
             });
 
-            if (!isUserCompleted && orgId && orgName) {
+            if (!isUserCompleted) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: user.username,
-                organizationId: orgId,
-                organizationName: orgName,
+                ...(orgId ? { organizationId: orgId } : {}),
+                ...(orgName ? { organizationName: orgName } : {}),
                 properties: {
                   username: user.username,
                   email: user.email ?? "",
@@ -178,12 +178,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               lastName: user.lastName ?? undefined
             });
 
-            if (!isUserCompleted && orgId && orgName) {
+            if (!isUserCompleted) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: user.username,
-                organizationId: orgId,
-                organizationName: orgName,
+                ...(orgId ? { organizationId: orgId } : {}),
+                ...(orgName ? { organizationName: orgName } : {}),
                 properties: {
                   username: user.username,
                   email: user.email ?? "",
@@ -263,12 +263,12 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               lastName: user.lastName ?? undefined
             });
 
-            if (!isUserCompleted && orgId && orgName) {
+            if (!isUserCompleted) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: user.username,
-                organizationId: orgId,
-                organizationName: orgName,
+                ...(orgId ? { organizationId: orgId } : {}),
+                ...(orgName ? { organizationName: orgName } : {}),
                 properties: {
                   username: user.username,
                   email: user.email ?? "",

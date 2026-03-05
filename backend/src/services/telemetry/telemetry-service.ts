@@ -29,6 +29,7 @@ type SingleEventData = {
   event: string;
   properties: unknown;
   organizationId: string;
+  organizationName?: string;
 };
 
 export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory>;
@@ -111,7 +112,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
               distinctId: event.distinctId,
               event: event.event,
               properties: event.properties,
-              organizationId: event.organizationId
+              organizationId: event.organizationId,
+              ...(event.organizationName ? { organizationName: event.organizationName } : {})
             })
           );
         } else {
@@ -258,7 +260,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         const key = JSON.parse(eventsKey) as { id: string; org?: string };
         if (key.org) {
           try {
-            postHog.groupIdentify({ groupType: "organization", groupKey: key.org });
+            // Use the organizationName from the first event in the group (all events in a group share the same org)
+            const orgName = events[0]?.organizationName;
+            postHog.groupIdentify({
+              groupType: "organization",
+              groupKey: key.org,
+              ...(orgName ? { groupProperties: { name: orgName } } : {})
+            });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
           }
@@ -320,7 +328,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       superAdmin?: boolean;
     }
   ) => {
-    if (postHog) {
+    if (postHog && distinctId) {
       const instanceType = licenseService.getInstanceType();
       if (instanceType === InstanceType.Cloud) {
         postHog.identify({ distinctId, properties });
