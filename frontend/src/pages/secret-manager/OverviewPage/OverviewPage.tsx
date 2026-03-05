@@ -22,6 +22,7 @@ import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
@@ -100,6 +101,7 @@ import {
   useDeleteFolder,
   useDeleteSecretImport,
   useDeleteSecretV3,
+  useDeleteWsEnvironment,
   useGetImportedSecretsAllEnvs,
   useGetOrCreateFolder,
   useGetSecretApprovalPolicyOfABoard,
@@ -562,6 +564,7 @@ export const OverviewPage = () => {
   const deleteDynamicSecret = useDeleteDynamicSecret();
   const { mutateAsync: deleteSecretImport } = useDeleteSecretImport();
   const { mutate: updateSecretImport } = useUpdateSecretImport();
+  const { mutateAsync: deleteWsEnvironment } = useDeleteWsEnvironment();
 
   const singleEnvImports = useMemo(
     () => (isSingleEnvView ? getSecretImportsForEnv(singleEnvSlug) : []),
@@ -601,6 +604,7 @@ export const OverviewPage = () => {
     "snapshots",
     "deleteSecretImport",
     "addSecretImport",
+    "deleteEnv",
     "requestAccess",
     "importFromVault"
   ] as const);
@@ -860,6 +864,15 @@ export const OverviewPage = () => {
         text: "Failed to remove secret link"
       });
     }
+  };
+
+  const handleDeleteEnvironment = async () => {
+    const { id } = popUp.deleteEnv.data as { id: string };
+    if (!id) return;
+
+    await deleteWsEnvironment({ projectId: currentProject.id, id });
+    createNotification({ text: "Successfully removed environment", type: "success" });
+    handlePopUpClose("deleteEnv");
   };
 
   const handleSecretImportReorder: DragEndEvent = (event) => {
@@ -1561,7 +1574,7 @@ export const OverviewPage = () => {
                             />
                           </UnstableTableHead>
                           {visibleEnvs.length > 1 ? (
-                            visibleEnvs?.map(({ name, slug }, index) => {
+                            visibleEnvs?.map(({ name, slug, id }, index) => {
                               return (
                                 <UnstableTableHead
                                   className="w-40 max-w-40 border-r p-0 text-center last:border-r-0"
@@ -1650,6 +1663,33 @@ export const OverviewPage = () => {
                                         <GitCommitIcon />
                                         View Commit History
                                       </UnstableDropdownMenuItem>
+                                      <ProjectPermissionCan
+                                        I={ProjectPermissionActions.Delete}
+                                        a={ProjectPermissionSub.Environments}
+                                      >
+                                        {(isAllowed) => (
+                                          <Tooltip open={!isAllowed ? undefined : false}>
+                                            <TooltipTrigger className="block w-full">
+                                              <UnstableDropdownMenuItem
+                                                isDisabled={!isAllowed}
+                                                onClick={() =>
+                                                  handlePopUpOpen("deleteEnv", {
+                                                    name,
+                                                    slug,
+                                                    id
+                                                  })
+                                                }
+                                              >
+                                                <TrashIcon />
+                                                Delete Environment
+                                              </UnstableDropdownMenuItem>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="left">
+                                              Access Restricted
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        )}
+                                      </ProjectPermissionCan>
                                     </UnstableDropdownMenuContent>
                                   </UnstableDropdownMenu>
                                 </UnstableTableHead>
@@ -2172,6 +2212,32 @@ export const OverviewPage = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction variant="danger" onClick={handleFolderDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={popUp.deleteEnv.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TrashIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete Environment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {(popUp?.deleteEnv?.data as { name: string })?.name}
+              </span>
+              ? This action is irreversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={handleDeleteEnvironment}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
