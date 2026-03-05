@@ -139,7 +139,7 @@ export function getGrantPrivilegeConditions(
 
   if (!hasUnconditionalAllowRule) {
     allowedRules.forEach((rule) => {
-      const conditions = rule.conditions as MemberConditions;
+      const conditions = (rule.conditions ?? {}) as MemberConditions;
 
       const emailValues = extractConditionValues(conditions.email);
       const roleValues = extractConditionValues(conditions.role);
@@ -160,7 +160,7 @@ export function getGrantPrivilegeConditions(
       return conditions && Object.keys(conditions).length > 0;
     })
     .forEach((rule) => {
-      const conditions = rule.conditions as MemberConditions;
+      const conditions = (rule.conditions ?? {}) as MemberConditions;
       const emailValues = extractConditionValues(conditions.email);
       const roleValues = extractConditionValues(conditions.role);
       const subjectValues = extractConditionValues(conditions.subject);
@@ -245,7 +245,7 @@ export function getIdentityGrantPrivilegeConditions(
 
   if (!hasUnconditionalAllowRule) {
     allowedRules.forEach((rule) => {
-      const conditions = rule.conditions as IdentityConditions;
+      const conditions = (rule.conditions ?? {}) as IdentityConditions;
 
       const identityIdValues = extractConditionValues(conditions.identityId);
       const roleValues = extractConditionValues(conditions.role);
@@ -267,7 +267,7 @@ export function getIdentityGrantPrivilegeConditions(
       return conditions && Object.keys(conditions).length > 0;
     })
     .forEach((rule) => {
-      const conditions = rule.conditions as IdentityConditions;
+      const conditions = (rule.conditions ?? {}) as IdentityConditions;
       const identityIdValues = extractConditionValues(conditions.identityId);
       const roleValues = extractConditionValues(conditions.role);
       const subjectValues = extractConditionValues(conditions.subject);
