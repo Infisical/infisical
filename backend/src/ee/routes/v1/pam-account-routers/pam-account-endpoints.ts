@@ -98,6 +98,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `update${resourceTypeId}PamAccount`,
       description: "Update PAM account",
       params: z.object({
         accountId: z.string().uuid()
@@ -149,6 +150,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `delete${resourceTypeId}PamAccount`,
       description: "Delete PAM account",
       params: z.object({
         accountId: z.string().uuid()
