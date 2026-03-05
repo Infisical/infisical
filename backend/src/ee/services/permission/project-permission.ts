@@ -102,7 +102,8 @@ export enum ProjectPermissionGroupActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  GrantPrivileges = "grant-privileges"
+  GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role"
 }
 
 export enum ProjectPermissionSshHostActions {
@@ -349,6 +350,10 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     [ProjectPermissionIdentityActions.GrantPrivileges]: ["identityId", "role", "subject", "action"],
     [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "role"],
     [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: ["identityId", "subject", "action"]
+  },
+  [ProjectPermissionSub.Groups]: {
+    [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "role"],
+    [ProjectPermissionGroupActions.AssignRole]: ["groupName", "role"]
   }
 };
 
@@ -414,6 +419,11 @@ export type MemberSubjectFields = {
   role?: string;
   subject?: string;
   action?: string;
+};
+
+export type GroupSubjectFields = {
+  groupName?: string;
+  role?: string;
 };
 
 export type SshHostSubjectFields = {
@@ -511,7 +521,10 @@ export type ProjectPermissionSet =
       ProjectPermissionMemberActions,
       ProjectPermissionSub.Member | (ForcedSubject<ProjectPermissionSub.Member> & MemberSubjectFields)
     ]
-  | [ProjectPermissionGroupActions, ProjectPermissionSub.Groups]
+  | [
+      ProjectPermissionGroupActions,
+      ProjectPermissionSub.Groups | (ForcedSubject<ProjectPermissionSub.Groups> & GroupSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
   | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs]
@@ -1053,6 +1066,32 @@ const IdentityManagementConditionSchema = z
     }
   });
 
+const GroupConditionSchema = z
+  .object({
+    groupName: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    role: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
 const SshHostConditionSchema = z
   .object({
     hostname: z.union([
@@ -1336,9 +1375,13 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Groups).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionGroupActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: GroupConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Role).describe("The entity this permission pertains to."),

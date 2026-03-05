@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faClock, faEdit, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,7 +24,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
@@ -32,6 +32,7 @@ import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { groupBy } from "@app/lib/fn/array";
+import { getGroupGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 const temporaryRoleFormSchema = z.object({
   temporaryRange: z.string().min(1, "Required")
@@ -198,6 +199,7 @@ type TForm = z.infer<typeof formSchema>;
 export type TMemberRolesProp = {
   disableEdit?: boolean;
   groupId: string;
+  groupName: string;
   className?: string;
   roles: TGroupMembership["roles"];
   popperContentProps?: PopperContentProps;
@@ -371,15 +373,63 @@ export const GroupRoles = ({
   roles = [],
   disableEdit = false,
   groupId,
+  groupName,
   className,
   popperContentProps
 }: TMemberRolesProp) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
 
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
     currentProject?.id ?? ""
   );
+
+  const grantPrivilegeConditions = useMemo(
+    () => getGroupGrantPrivilegeConditions(permission),
+    [permission]
+  );
+
+  const canModifyGroupRoles = useMemo(() => {
+    if (!groupName) return false;
+
+    if (
+      grantPrivilegeConditions?.forbiddenGroupNames?.length &&
+      grantPrivilegeConditions.forbiddenGroupNames.includes(groupName)
+    ) {
+      return false;
+    }
+
+    if (!grantPrivilegeConditions?.groupNames || grantPrivilegeConditions.groupNames.length === 0) {
+      return true;
+    }
+
+    return grantPrivilegeConditions.groupNames.includes(groupName);
+  }, [grantPrivilegeConditions, groupName]);
+
+  const filteredProjectRoles = useMemo(() => {
+    if (!projectRoles) return [];
+    let filteredRoles = projectRoles;
+
+    if (grantPrivilegeConditions?.roles && grantPrivilegeConditions.roles.length > 0) {
+      filteredRoles = filteredRoles.filter((role) =>
+        grantPrivilegeConditions.roles?.includes(role.slug)
+      );
+    }
+
+    if (
+      grantPrivilegeConditions?.forbiddenRoles &&
+      grantPrivilegeConditions.forbiddenRoles.length > 0
+    ) {
+      filteredRoles = filteredRoles.filter(
+        (role) => !grantPrivilegeConditions.forbiddenRoles?.includes(role.slug)
+      );
+    }
+
+    return filteredRoles;
+  }, [projectRoles, grantPrivilegeConditions]);
+
+  const isEditDisabled = disableEdit || !canModifyGroupRoles;
 
   return (
     <div className={twMerge("flex items-center space-x-1", className)}>
@@ -450,7 +500,7 @@ export const GroupRoles = ({
             handlePopUpToggle("editRole", isOpen);
           }}
         >
-          {!disableEdit && (
+          {!isEditDisabled && (
             <PopoverTrigger onClick={(e) => e.stopPropagation()}>
               <IconButton size="sm" variant="plain" ariaLabel="update">
                 <FontAwesomeIcon icon={faEdit} />
@@ -469,7 +519,7 @@ export const GroupRoles = ({
               </div>
             ) : (
               <GroupRolesForm
-                projectRoles={projectRoles}
+                projectRoles={filteredProjectRoles}
                 groupId={groupId}
                 roles={roles}
                 onClose={() => handlePopUpToggle("editRole")}

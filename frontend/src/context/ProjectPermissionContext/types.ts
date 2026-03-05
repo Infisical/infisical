@@ -121,7 +121,8 @@ export enum ProjectPermissionGroupActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  GrantPrivileges = "grant-privileges"
+  GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role"
 }
 
 export enum ProjectPermissionSshHostActions {
@@ -308,7 +309,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.PamResources
   | ProjectPermissionSub.McpEndpoints
-  | ProjectPermissionSub.Member;
+  | ProjectPermissionSub.Member
+  | ProjectPermissionSub.Groups;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",

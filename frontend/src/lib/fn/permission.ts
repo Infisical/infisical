@@ -3,6 +3,7 @@ import { MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import {
   PermissionConditionOperators,
+  ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
@@ -296,6 +297,87 @@ export function getIdentityGrantPrivilegeConditions(
 
   return Object.keys(result).length > 0 ? result : null;
 }
+
+export type GroupGrantPrivilegeConditions = {
+  groupNames?: string[];
+  roles?: string[];
+  forbiddenGroupNames?: string[];
+  forbiddenRoles?: string[];
+};
+
+type GroupConditions = {
+  groupName?: ConditionValue;
+  role?: ConditionValue;
+};
+
+const isGrantPrivilegesGroupRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
+  const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+  if (!ruleSubjects.includes(ProjectPermissionSub.Groups)) return false;
+  const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
+  return actions.some((a) => String(a) === ProjectPermissionGroupActions.GrantPrivileges);
+};
+
+const isAssignRoleGroupRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
+  const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+  if (!ruleSubjects.includes(ProjectPermissionSub.Groups)) return false;
+  const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
+  return actions.some((a) => String(a) === ProjectPermissionGroupActions.AssignRole);
+};
+
+export const getGroupGrantPrivilegeConditions = (
+  permission: MongoAbility<ProjectPermissionSet>
+): GroupGrantPrivilegeConditions | null => {
+  const allowedRules = permission.rules.filter(
+    (rule) => (isGrantPrivilegesGroupRule(rule) || isAssignRoleGroupRule(rule)) && !rule.inverted
+  );
+
+  const invertedRules = permission.rules.filter(
+    (rule) => (isGrantPrivilegesGroupRule(rule) || isAssignRoleGroupRule(rule)) && rule.inverted
+  );
+
+  const hasUnconditionalAllowRule = allowedRules.some(
+    (rule) => !rule.conditions || Object.keys(rule.conditions).length === 0
+  );
+
+  const result: GroupGrantPrivilegeConditions = {};
+
+  if (!hasUnconditionalAllowRule) {
+    allowedRules.forEach((rule) => {
+      const conditions = (rule.conditions ?? {}) as GroupConditions;
+
+      const groupNameValues = extractConditionValues(conditions.groupName);
+      const roleValues = extractConditionValues(conditions.role);
+
+      if (groupNameValues.length > 0)
+        result.groupNames = [...(result.groupNames || []), ...groupNameValues];
+      if (roleValues.length > 0) result.roles = [...(result.roles || []), ...roleValues];
+    });
+  }
+
+  invertedRules
+    .filter((rule) => {
+      const conditions = rule.conditions as GroupConditions | undefined;
+      return conditions && Object.keys(conditions).length > 0;
+    })
+    .forEach((rule) => {
+      const conditions = (rule.conditions ?? {}) as GroupConditions;
+      const groupNameValues = extractConditionValues(conditions.groupName);
+      const roleValues = extractConditionValues(conditions.role);
+
+      if (groupNameValues.length > 0)
+        result.forbiddenGroupNames = [...(result.forbiddenGroupNames || []), ...groupNameValues];
+      if (roleValues.length > 0)
+        result.forbiddenRoles = [...(result.forbiddenRoles || []), ...roleValues];
+    });
+
+  const dedupe = (arr: string[]) => [...new Set(arr)];
+  if (result.groupNames) result.groupNames = dedupe(result.groupNames);
+  if (result.roles) result.roles = dedupe(result.roles);
+  if (result.forbiddenGroupNames) result.forbiddenGroupNames = dedupe(result.forbiddenGroupNames);
+  if (result.forbiddenRoles) result.forbiddenRoles = dedupe(result.forbiddenRoles);
+
+  return Object.keys(result).length > 0 ? result : null;
+};
 
 const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
   [ProjectPermissionSub.Secrets]: "Secrets",

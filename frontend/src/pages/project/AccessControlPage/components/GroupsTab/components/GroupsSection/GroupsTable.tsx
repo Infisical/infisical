@@ -198,6 +198,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                               roles={roles}
                               disableEdit={!isAllowed || isLinkedGroup}
                               groupId={id}
+                              groupName={name}
                             />
                           )}
                         </ProjectPermissionCan>

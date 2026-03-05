@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -21,12 +22,14 @@ type TProjectMembershipGroupScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne">;
+  groupDAL: Pick<TGroupDALFactory, "findById">;
 };
 
 export const newProjectMembershipGroupFactory = ({
   permissionService,
   orgDAL,
-  membershipGroupDAL
+  membershipGroupDAL,
+  groupDAL
 }: TProjectMembershipGroupScopeFactoryDep): TMembershipGroupScopeFactory => {
   const getScopeField: TMembershipGroupScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -63,6 +66,9 @@ export const newProjectMembershipGroupFactory = ({
     if (!orgMembership)
       throw new BadRequestError({ message: `Group ${dto.data.groupId} is missing organization membership` });
 
+    const groupDetails = await groupDAL.findById(dto.data.groupId);
+    if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
+
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),
@@ -70,19 +76,32 @@ export const newProjectMembershipGroupFactory = ({
     );
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
+        let permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionGroupActions.GrantPrivileges,
+          ProjectPermissionGroupActions.AssignRole,
           ProjectPermissionSub.Groups,
           permission,
-          permissionRole.permission
+          permissionRole.permission,
+          { groupName: groupDetails.name, role: permissionRole.role?.slug }
         );
+
+        if (!permissionBoundary.isValid && shouldUseNewPrivilegeSystem) {
+          permissionBoundary = validatePrivilegeChangeOperation(
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionGroupActions.GrantPrivileges,
+            ProjectPermissionSub.Groups,
+            permission,
+            permissionRole.permission,
+            { groupName: groupDetails.name, role: permissionRole.role?.slug }
+          );
+        }
+
         if (!permissionBoundary.isValid)
           throw new PermissionBoundaryError({
             message: constructPermissionErrorMessage(
               "Failed to create group project membership",
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionGroupActions.GrantPrivileges,
+              ProjectPermissionGroupActions.AssignRole,
               ProjectPermissionSub.Groups
             ),
             details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -103,6 +122,17 @@ export const newProjectMembershipGroupFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Edit, ProjectPermissionSub.Groups);
 
+    const orgMembership = await membershipGroupDAL.findOne({
+      actorGroupId: dto.selector.groupId,
+      scopeOrgId: dto.permission.orgId,
+      scope: AccessScope.Organization
+    });
+    if (!orgMembership)
+      throw new BadRequestError({ message: `Group ${dto.selector.groupId} is missing organization membership` });
+
+    const groupDetails = await groupDAL.findById(dto.selector.groupId);
+    if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
+
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),
@@ -110,19 +140,32 @@ export const newProjectMembershipGroupFactory = ({
     );
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
+        let permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionGroupActions.GrantPrivileges,
+          ProjectPermissionGroupActions.AssignRole,
           ProjectPermissionSub.Groups,
           permission,
-          permissionRole.permission
+          permissionRole.permission,
+          { groupName: groupDetails.name, role: permissionRole.role?.slug }
         );
+
+        if (!permissionBoundary.isValid && shouldUseNewPrivilegeSystem) {
+          permissionBoundary = validatePrivilegeChangeOperation(
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionGroupActions.GrantPrivileges,
+            ProjectPermissionSub.Groups,
+            permission,
+            permissionRole.permission,
+            { groupName: groupDetails.name, role: permissionRole.role?.slug }
+          );
+        }
+
         if (!permissionBoundary.isValid)
           throw new PermissionBoundaryError({
             message: constructPermissionErrorMessage(
               "Failed to update group project membership",
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionGroupActions.GrantPrivileges,
+              ProjectPermissionGroupActions.AssignRole,
               ProjectPermissionSub.Groups
             ),
             details: { missingPermissions: permissionBoundary.missingPermissions }

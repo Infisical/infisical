@@ -10,6 +10,7 @@ import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 import { OrgPermissionSet } from "./org-permission";
 import {
   ActionAllowedConditions,
+  ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
@@ -149,6 +150,19 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
                     ? "Assign Additional Privileges"
                     : ""
             }. You cannot select Assign Role or Assign Additional Privileges if you have selected Grant Privileges. The Grant Privileges permission is a legacy action which has been replaced by Assign Role and Assign Additional Privileges.`
+          });
+        }
+      }
+    }
+
+    if (permission.subject === ProjectPermissionSub.Groups) {
+      if (permission.action.includes(ProjectPermissionGroupActions.GrantPrivileges)) {
+        const hasAssignRole = permission.action.includes(ProjectPermissionGroupActions.AssignRole);
+
+        if (hasAssignRole) {
+          throw new BadRequestError({
+            message:
+              "You have selected Grant Privileges and Assign Role. You cannot select Assign Role if you have selected Grant Privileges. The Grant Privileges permission is a legacy action which has been replaced by Assign Role."
           });
         }
       }

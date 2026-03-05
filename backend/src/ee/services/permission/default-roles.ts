@@ -192,7 +192,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionGroupActions.Edit,
       ProjectPermissionGroupActions.Delete,
       ProjectPermissionGroupActions.Read,
-      ProjectPermissionGroupActions.GrantPrivileges
+      ProjectPermissionGroupActions.GrantPrivileges,
+      ProjectPermissionGroupActions.AssignRole
     ],
     ProjectPermissionSub.Groups
   );
