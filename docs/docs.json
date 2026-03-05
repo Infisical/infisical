@@ -1068,11 +1068,11 @@
               {
                 "group": "Project Groups",
                 "pages": [
-                  "api-reference/endpoints/project-groups/create",
-                  "api-reference/endpoints/project-groups/delete",
-                  "api-reference/endpoints/project-groups/get-by-id",
-                  "api-reference/endpoints/project-groups/list",
-                  "api-reference/endpoints/project-groups/update",
+                  "api-reference/endpoints/project-group-memberships/create",
+                  "api-reference/endpoints/project-group-memberships/delete",
+                  "api-reference/endpoints/project-group-memberships/get-by-id",
+                  "api-reference/endpoints/project-group-memberships/list",
+                  "api-reference/endpoints/project-group-memberships/update",
                   {
                     "group": "Legacy",
                     "pages": [
