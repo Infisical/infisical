@@ -217,14 +217,14 @@ export const SubOrgsView = () => {
     canManageSubOrgs ? (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <IconButton
-            ariaLabel="options"
-            size="sm"
-            variant="plain"
-            className="text-mineshaft-400 hover:text-mineshaft-100"
-          >
-            <FontAwesomeIcon icon={faEllipsisV} />
-          </IconButton>
+            <IconButton
+              ariaLabel="options"
+              colorSchema="secondary"
+              variant="plain"
+              className="w-6"
+            >
+              <FontAwesomeIcon icon={faEllipsisV} />
+            </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent sideOffset={2} align="end">
           {canEditSubOrg && (
