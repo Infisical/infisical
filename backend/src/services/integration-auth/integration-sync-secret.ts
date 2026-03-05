@@ -2977,7 +2977,7 @@ const syncSecretsGitLab = async ({
 
   // GitLab only allows masking values that match this character set.
   // Reference: https://docs.gitlab.com/ee/ci/variables/#mask-a-cicd-variable
-  const gitLabMaskedValueRegex = /^[a-zA-Z0-9+/=@:.~ -]+$/;
+  const gitLabMaskedValueRegex = new RE2("^[a-zA-Z0-9+/=@:.~ -]+$");
 
   for await (const key of Object.keys(secrets)) {
     if (Boolean(metadata.shouldMaskSecrets) && secrets[key].value) {

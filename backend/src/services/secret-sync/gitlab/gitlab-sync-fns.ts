@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { GitbeakerRequestError } from "@gitbeaker/rest";
+import RE2 from "re2";
 
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import {
@@ -19,7 +20,7 @@ import { GitLabSyncScope } from "./gitlab-sync-enums";
 
 // GitLab only allows masking values that match this character set.
 // Reference: https://docs.gitlab.com/ee/ci/variables/#mask-a-cicd-variable
-const GITLAB_MASKED_VARIABLE_REGEX = /^[a-zA-Z0-9+/=@:.~ -]+$/;
+const GITLAB_MASKED_VARIABLE_REGEX = new RE2("^[a-zA-Z0-9+/=@:.~ -]+$");
 
 const isValidMaskedValue = (value: string): boolean => {
   return value.length >= 8 && GITLAB_MASKED_VARIABLE_REGEX.test(value);
