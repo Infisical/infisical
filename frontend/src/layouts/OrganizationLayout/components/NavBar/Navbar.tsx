@@ -470,7 +470,7 @@ export const Navbar = () => {
                                 size="xs"
                                 variant="plain"
                                 placeholder="Filter sub-orgs..."
-                                className="placeholder-mineshaft-300 text-bunker-100"
+                                className="text-bunker-100 placeholder-mineshaft-300"
                                 onKeyDown={(e) => e.stopPropagation()}
                                 onClick={(e) => e.stopPropagation()}
                               />
@@ -616,7 +616,7 @@ export const Navbar = () => {
                           size="xs"
                           variant="plain"
                           placeholder="Filter sub-orgs..."
-                          className="placeholder-mineshaft-300 text-bunker-100"
+                          className="text-bunker-100 placeholder-mineshaft-300"
                           onKeyDown={(e) => e.stopPropagation()}
                           onClick={(e) => e.stopPropagation()}
                         />
