@@ -1,4 +1,5 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
@@ -851,7 +852,13 @@ const IdentityManagementConditionSchema = z
   })
   .partial();
 
-const validateAssignableActionFormat = (value: string, allowedSubjects: Set<string> | null): string | null => {
+type SubjectValidationConfig = {
+  allowedSubjects?: Set<string>;
+  forbiddenSubjects?: Set<string>;
+  globPattern?: string;
+};
+
+const validateAssignableActionFormat = (value: string, config: SubjectValidationConfig | null): string | null => {
   const colonIndex = value.indexOf(":");
   if (colonIndex === -1 || colonIndex === 0 || colonIndex === value.length - 1) {
     return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
@@ -861,8 +868,14 @@ const validateAssignableActionFormat = (value: string, allowedSubjects: Set<stri
   if (!subject || !action) {
     return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
   }
-  if (allowedSubjects !== null && !allowedSubjects.has(subject)) {
+  if (config?.forbiddenSubjects?.has(subject)) {
+    return `Subject "${subject}" is forbidden by the assignable subject condition`;
+  }
+  if (config?.allowedSubjects && !config.allowedSubjects.has(subject)) {
     return `Subject "${subject}" is not in the assignable subject list`;
+  }
+  if (config?.globPattern && !picomatch.isMatch(subject, config.globPattern)) {
+    return `Subject "${subject}" does not match the assignable subject pattern "${config.globPattern}"`;
   }
   return null;
 };
@@ -915,7 +928,8 @@ const MemberConditionSchema = z
         .object({
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
     ]),
@@ -936,10 +950,26 @@ const MemberConditionSchema = z
     const actionValues = extractConditionValues(conditions.action);
     if (actionValues.length === 0) return;
 
-    const subjectValues = extractConditionValues(conditions.subject);
-    const allowedSubjects = subjectValues.length > 0 ? new Set(subjectValues) : null;
+    let subjectConfig: SubjectValidationConfig | null = null;
+    const subjectVal = conditions.subject;
 
-    const error = actionValues.map((v) => validateAssignableActionFormat(v, allowedSubjects)).find((e) => e !== null);
+    if (typeof subjectVal === "string") {
+      const trimmed = subjectVal.trim();
+      if (trimmed) subjectConfig = { allowedSubjects: new Set([trimmed]) };
+    } else if (subjectVal != null) {
+      const { $eq, $in, $ne, $glob } = subjectVal;
+      if ($eq != null || $in != null) {
+        const values = extractConditionValues(subjectVal);
+        if (values.length > 0) subjectConfig = { allowedSubjects: new Set(values) };
+      } else if ($ne != null) {
+        const values = extractConditionValues(subjectVal);
+        if (values.length > 0) subjectConfig = { forbiddenSubjects: new Set(values) };
+      } else if (typeof $glob === "string" && $glob.trim()) {
+        subjectConfig = { globPattern: $glob.trim() };
+      }
+    }
+
+    const error = actionValues.map((v) => validateAssignableActionFormat(v, subjectConfig)).find((e) => e !== null);
     if (error) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

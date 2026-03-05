@@ -1,3 +1,4 @@
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import {
@@ -303,9 +304,15 @@ const WorkspacePolicyActionSchema = z.object({
   delete: z.boolean().optional()
 });
 
+type SubjectValidationConfig = {
+  allowedSubjects?: Set<string>;
+  forbiddenSubjects?: Set<string>;
+  globPattern?: string;
+};
+
 const validateAssignableActionFormat = (
   value: string,
-  allowedSubjects: Set<string> | null
+  config: SubjectValidationConfig | null
 ): string | null => {
   const colonIndex = value.indexOf(":");
   if (colonIndex === -1 || colonIndex === 0 || colonIndex === value.length - 1) {
@@ -316,8 +323,14 @@ const validateAssignableActionFormat = (
   if (!subject || !action) {
     return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
   }
-  if (allowedSubjects !== null && !allowedSubjects.has(subject)) {
+  if (config?.forbiddenSubjects?.has(subject)) {
+    return `Subject "${subject}" is forbidden by the assignable subject condition`;
+  }
+  if (config?.allowedSubjects && !config.allowedSubjects.has(subject)) {
     return `Subject "${subject}" is not in the assignable subject list`;
+  }
+  if (config?.globPattern && !picomatch.isMatch(subject, config.globPattern)) {
+    return `Subject "${subject}" does not match the assignable subject pattern "${config.globPattern}"`;
   }
   return null;
 };
@@ -364,15 +377,32 @@ const ConditionSchema = z
 
       if (lhs === "action") {
         const assignableSubjectsCondition = conditions.find((c) => c.lhs === "subject");
-        const allowedSubjects: Set<string> | null =
-          assignableSubjectsCondition != null
-            ? new Set(
-                (assignableSubjectsCondition.operator === PermissionConditionOperators.$IN
-                  ? assignableSubjectsCondition.rhs.split(",").map((v) => v.trim())
-                  : [assignableSubjectsCondition.rhs.trim()]
-                ).filter(Boolean)
-              )
-            : null;
+
+        let subjectConfig: SubjectValidationConfig | null = null;
+        if (assignableSubjectsCondition != null) {
+          const subjectOperator = assignableSubjectsCondition.operator;
+          const subjectValues = assignableSubjectsCondition.rhs
+            .split(",")
+            .map((v) => v.trim())
+            .filter(Boolean);
+          if (subjectOperator === PermissionConditionOperators.$IN) {
+            subjectConfig = { allowedSubjects: new Set(subjectValues) };
+          } else if (subjectOperator === PermissionConditionOperators.$EQ) {
+            const trimmed = assignableSubjectsCondition.rhs.trim();
+            if (trimmed) {
+              subjectConfig = { allowedSubjects: new Set([trimmed]) };
+            }
+          } else if (subjectOperator === PermissionConditionOperators.$NEQ) {
+            if (subjectValues.length > 0) {
+              subjectConfig = { forbiddenSubjects: new Set(subjectValues) };
+            }
+          } else if (subjectOperator === PermissionConditionOperators.$GLOB) {
+            const trimmed = assignableSubjectsCondition.rhs.trim();
+            if (trimmed) {
+              subjectConfig = { globPattern: trimmed };
+            }
+          }
+        }
 
         const valuesToValidate =
           operator === PermissionConditionOperators.$IN
@@ -383,7 +413,7 @@ const ConditionSchema = z
             : [rhs.trim()];
 
         const error = valuesToValidate
-          .map((v) => validateAssignableActionFormat(v, allowedSubjects))
+          .map((v) => validateAssignableActionFormat(v, subjectConfig))
           .find((e) => e !== null);
         if (error) {
           ctx.addIssue({
