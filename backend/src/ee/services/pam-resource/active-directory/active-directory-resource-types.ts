@@ -15,4 +15,4 @@ export type TActiveDirectoryResourceConnectionDetails = z.infer<typeof ActiveDir
 // Accounts
 export type TActiveDirectoryAccount = z.infer<typeof ActiveDirectoryAccountSchema>;
 export type TActiveDirectoryAccountCredentials = z.infer<typeof ActiveDirectoryAccountCredentialsSchema>;
-export type TActiveDirectoryAccountMetadata = z.infer<typeof ActiveDirectoryAccountMetadataSchema>;
+export type TActiveDirectoryAccountInternalMetadata = z.infer<typeof ActiveDirectoryAccountMetadataSchema>;

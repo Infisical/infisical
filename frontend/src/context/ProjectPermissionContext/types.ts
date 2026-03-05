@@ -250,6 +250,14 @@ export enum ProjectPermissionPamSessionActions {
   // Terminate = "terminate"
 }
 
+export enum ProjectPermissionPamDiscoveryActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  RunScan = "run-scan"
+}
+
 export enum ProjectPermissionMcpEndpointActions {
   Read = "read",
   Create = "create",
@@ -391,6 +399,7 @@ export enum ProjectPermissionSub {
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
+  PamDiscovery = "pam-discovery",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
@@ -667,6 +676,7 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]

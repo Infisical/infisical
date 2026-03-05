@@ -19,6 +19,7 @@ import {
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
+  ProjectPermissionPamDiscoveryActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -381,6 +382,17 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionPamDiscoveryActions.Read,
+      ProjectPermissionPamDiscoveryActions.Create,
+      ProjectPermissionPamDiscoveryActions.Edit,
+      ProjectPermissionPamDiscoveryActions.Delete,
+      ProjectPermissionPamDiscoveryActions.RunScan
+    ],
+    ProjectPermissionSub.PamDiscovery
+  );
+
+  can(
+    [
       ProjectPermissionMcpEndpointActions.Read,
       ProjectPermissionMcpEndpointActions.Connect,
       ProjectPermissionMcpEndpointActions.Create,
@@ -653,6 +665,8 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.PamAccounts
   );
 
+  can([ProjectPermissionPamDiscoveryActions.Read], ProjectPermissionSub.PamDiscovery);
+
   can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.McpActivityLogs);
@@ -728,6 +742,8 @@ const buildViewerPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
 
   can([ProjectPermissionPamAccountActions.Read], ProjectPermissionSub.PamAccounts);
+
+  can([ProjectPermissionPamDiscoveryActions.Read], ProjectPermissionSub.PamDiscovery);
 
   can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);

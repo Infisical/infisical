@@ -23,6 +23,7 @@ import {
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
+  ProjectPermissionPamDiscoveryActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -267,6 +268,14 @@ const PamAccountPolicyActionSchema = z.object({
 
 const PamSessionPolicyActionSchema = z.object({
   [ProjectPermissionPamSessionActions.Read]: z.boolean().optional()
+});
+
+const PamDiscoveryPolicyActionSchema = z.object({
+  [ProjectPermissionPamDiscoveryActions.RunScan]: z.boolean().optional(),
+  [ProjectPermissionPamDiscoveryActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPamDiscoveryActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPamDiscoveryActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPamDiscoveryActions.Delete]: z.boolean().optional()
 });
 
 const McpEndpointPolicyActionSchema = z.object({
@@ -627,6 +636,7 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PamDiscovery]: PamDiscoveryPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -1531,6 +1541,22 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
       // Map actions to the keys defined in ApprovalPolicyActionSchema
       if (canRead) formVal[subject]![0][ProjectPermissionPamAccountActions.Read] = true;
+    }
+
+    if (subject === ProjectPermissionSub.PamDiscovery) {
+      const canRead = action.includes(ProjectPermissionPamDiscoveryActions.Read);
+      const canCreate = action.includes(ProjectPermissionPamDiscoveryActions.Create);
+      const canDelete = action.includes(ProjectPermissionPamDiscoveryActions.Delete);
+      const canEdit = action.includes(ProjectPermissionPamDiscoveryActions.Edit);
+      const canRunScan = action.includes(ProjectPermissionPamDiscoveryActions.RunScan);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Create] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Delete] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Edit] = true;
+      if (canRunScan) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.RunScan] = true;
     }
 
     if (subject === ProjectPermissionSub.McpEndpoints) {
@@ -2825,6 +2851,37 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.PamDiscovery]: {
+    title: "Discovery",
+    description: "Manage privileged access discovery",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionPamDiscoveryActions.Read,
+        description: "View PAM discovery sources"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionPamDiscoveryActions.Create,
+        description: "Create PAM discovery sources"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionPamDiscoveryActions.Edit,
+        description: "Update PAM discovery sources"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionPamDiscoveryActions.Delete,
+        description: "Delete PAM discovery sources"
+      },
+      {
+        label: "Run Scan",
+        value: ProjectPermissionPamDiscoveryActions.RunScan,
+        description: "Run PAM discovery source scans"
+      }
+    ]
+  },
   [ProjectPermissionSub.ApprovalRequests]: {
     title: "Access Requests",
     description: "View and submit access requests",
@@ -3000,7 +3057,8 @@ const PamPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PamFolders]: enabled,
   [ProjectPermissionSub.PamResources]: enabled,
   [ProjectPermissionSub.PamAccounts]: enabled,
-  [ProjectPermissionSub.PamSessions]: enabled
+  [ProjectPermissionSub.PamSessions]: enabled,
+  [ProjectPermissionSub.PamDiscovery]: enabled
 });
 
 const AiPermissionSubjects = (enabled = false) => ({
