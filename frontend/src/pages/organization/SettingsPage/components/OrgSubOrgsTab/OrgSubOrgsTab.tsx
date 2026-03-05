@@ -20,6 +20,7 @@ import { CheckIcon } from "lucide-react";
 import { z } from "zod";
 
 import { Mfa } from "@app/components/auth/Mfa";
+import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Button,
@@ -154,7 +155,7 @@ export const OrgSubOrgsTab = () => {
 
   const { mutateAsync: updateSubOrg, isPending: isUpdating } = useUpdateSubOrganization();
   const { mutateAsync: deleteSubOrg } = useDeleteSubOrganization();
-  const { mutateAsync: joinSubOrg } = useJoinSubOrganization();
+  const { mutateAsync: joinSubOrg, isPending: isJoining } = useJoinSubOrganization();
 
   const {
     register,
@@ -204,18 +205,28 @@ export const OrgSubOrgsTab = () => {
 
   const handleEditSubmit = async (data: EditSubOrgFormData) => {
     if (!selectedSubOrg) return;
-    await updateSubOrg({
-      subOrgId: selectedSubOrg.id,
-      name: data.name,
-      slug: data.slug || undefined
-    });
-    handlePopUpClose("editSubOrg");
+    try {
+      await updateSubOrg({
+        subOrgId: selectedSubOrg.id,
+        name: data.name,
+        slug: data.slug || undefined
+      });
+      handlePopUpClose("editSubOrg");
+      createNotification({ type: "success", text: "Sub-organization updated successfully" });
+    } catch {
+      createNotification({ type: "error", text: "Failed to update sub-organization" });
+    }
   };
 
   const handleDeleteApproved = async () => {
     if (!selectedSubOrg) return;
-    await deleteSubOrg({ subOrgId: selectedSubOrg.id });
-    handlePopUpClose("deleteSubOrg");
+    try {
+      await deleteSubOrg({ subOrgId: selectedSubOrg.id });
+      handlePopUpClose("deleteSubOrg");
+      createNotification({ type: "success", text: "Sub-organization deleted successfully" });
+    } catch {
+      createNotification({ type: "error", text: "Failed to delete sub-organization" });
+    }
   };
 
   const renderActions = (subOrg: SubOrgWithMember) => {
@@ -253,7 +264,12 @@ export const OrgSubOrgsTab = () => {
     if (!canDirectAccess) return null;
 
     return (
-      <Button size="xs" variant="outline_bg" onClick={() => joinSubOrg({ subOrgId: subOrg.id })}>
+      <Button
+        size="xs"
+        variant="outline_bg"
+        isDisabled={isJoining}
+        onClick={() => joinSubOrg({ subOrgId: subOrg.id })}
+      >
         Join
       </Button>
     );
@@ -338,7 +354,9 @@ export const OrgSubOrgsTab = () => {
           icon={faFolderOpen}
           className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
         />
-        <div className="text-center font-light">No sub-organizations found in this organization.</div>
+        <div className="text-center font-light">
+          No sub-organizations found in this organization.
+        </div>
       </div>
     );
   }

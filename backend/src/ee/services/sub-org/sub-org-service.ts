@@ -244,7 +244,7 @@ export const subOrgServiceFactory = ({
       await membershipRoleDAL.create(
         {
           membershipId: membership.id,
-          role: OrgMembershipRole.Admin
+          role: OrgMembershipRole.Member
         },
         tx
       );
