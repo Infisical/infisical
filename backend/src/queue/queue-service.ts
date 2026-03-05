@@ -95,7 +95,8 @@ export enum QueueName {
   PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
-  PkiDiscoveryScan = "pki-discovery-scan"
+  PkiDiscoveryScan = "pki-discovery-scan",
+  AuditLogClickHouseBatch = "audit-log-clickhouse-batch"
 }
 
 export enum QueueJobs {
@@ -158,7 +159,8 @@ export enum QueueJobs {
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
-  PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan"
+  PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job"
 }
 
 export type TQueueOptions = {
@@ -489,6 +491,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
       };
+  [QueueName.AuditLogClickHouseBatch]: {
+    name: QueueJobs.AuditLogClickHouseBatch;
+    payload: undefined;
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
