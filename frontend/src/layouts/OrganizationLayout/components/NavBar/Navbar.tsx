@@ -30,6 +30,7 @@ import { twMerge } from "tailwind-merge";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Button,
@@ -526,14 +527,25 @@ export const Navbar = () => {
                               currentOrgId={currentOrg?.id}
                               onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
                             />
-                            <div className="mt-1 h-px border-t border-mineshaft-600" />
-                            <DropdownMenuItem
-                              className="cursor-pointer"
-                              icon={<FontAwesomeIcon icon={faPlus} />}
-                              onClick={() => setShowSubOrgForm(true)}
+                            <OrgPermissionCan
+                              I={OrgPermissionSubOrgActions.Create}
+                              a={OrgPermissionSubjects.SubOrganization}
                             >
-                              New Sub-Organization
-                            </DropdownMenuItem>
+                              {(isAllowed) =>
+                                isAllowed ? (
+                                  <>
+                                    <div className="mt-1 h-px border-t border-mineshaft-600" />
+                                    <DropdownMenuItem
+                                      className="cursor-pointer"
+                                      icon={<FontAwesomeIcon icon={faPlus} />}
+                                      onClick={() => setShowSubOrgForm(true)}
+                                    >
+                                      New Sub-Organization
+                                    </DropdownMenuItem>
+                                  </>
+                                ) : null
+                              }
+                            </OrgPermissionCan>
                           </DropdownSubMenuContent>
                         </DropdownSubMenu>
                       );
@@ -634,14 +646,25 @@ export const Navbar = () => {
                         currentOrgId={currentOrg?.id}
                         onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
                       />
-                      <div className="mt-1 h-px border-t border-mineshaft-600" />
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        icon={<FontAwesomeIcon icon={faPlus} />}
-                        onClick={() => setShowSubOrgForm(true)}
+                      <OrgPermissionCan
+                        I={OrgPermissionSubOrgActions.Create}
+                        a={OrgPermissionSubjects.SubOrganization}
                       >
-                        New Sub-Organization
-                      </DropdownMenuItem>
+                        {(isAllowed) =>
+                          isAllowed ? (
+                            <>
+                              <div className="mt-1 h-px border-t border-mineshaft-600" />
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                icon={<FontAwesomeIcon icon={faPlus} />}
+                                onClick={() => setShowSubOrgForm(true)}
+                              >
+                                New Sub-Organization
+                              </DropdownMenuItem>
+                            </>
+                          ) : null
+                        }
+                      </OrgPermissionCan>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
