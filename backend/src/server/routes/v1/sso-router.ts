@@ -88,7 +88,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            if (!isUserCompleted) {
+            if (!isUserCompleted && googleDistinctId) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: googleDistinctId,
@@ -184,7 +184,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            if (!isUserCompleted) {
+            if (!isUserCompleted && githubDistinctId) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: githubDistinctId,
@@ -272,7 +272,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            if (!isUserCompleted) {
+            if (!isUserCompleted && gitlabDistinctId) {
               void server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.UserSignedUp,
                 distinctId: gitlabDistinctId,
