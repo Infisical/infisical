@@ -284,10 +284,16 @@ export const OrgSubOrgsTab = () => {
         index === 0 ? "rounded-t-md" : ""
       } ${subOrg.isMember ? "cursor-pointer" : ""}`}
       onClick={() => {
-        if (subOrg.isMember) handleLoginSubOrg(subOrg.id);
+        if (subOrg.isMember)
+          handleLoginSubOrg(subOrg.id).catch(() =>
+            createNotification({ type: "error", text: "Failed to log in to sub-organization" })
+          );
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && subOrg.isMember) handleLoginSubOrg(subOrg.id);
+        if (e.key === "Enter" && subOrg.isMember)
+          handleLoginSubOrg(subOrg.id).catch(() =>
+            createNotification({ type: "error", text: "Failed to log in to sub-organization" })
+          );
       }}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
