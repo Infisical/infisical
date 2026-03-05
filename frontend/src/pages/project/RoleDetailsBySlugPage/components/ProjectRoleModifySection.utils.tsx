@@ -393,8 +393,9 @@ const ConditionSchema = z
               subjectConfig = { allowedSubjects: new Set([trimmed]) };
             }
           } else if (subjectOperator === PermissionConditionOperators.$NEQ) {
-            if (subjectValues.length > 0) {
-              subjectConfig = { forbiddenSubjects: new Set(subjectValues) };
+            const trimmed = assignableSubjectsCondition.rhs.trim();
+            if (trimmed) {
+              subjectConfig = { forbiddenSubjects: new Set([trimmed]) };
             }
           } else if (subjectOperator === PermissionConditionOperators.$GLOB) {
             const trimmed = assignableSubjectsCondition.rhs.trim();
