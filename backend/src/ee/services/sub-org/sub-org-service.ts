@@ -20,7 +20,7 @@ type TSubOrgServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  membershipDAL: Pick<TMembershipDALFactory, "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
 };
 
@@ -215,11 +215,22 @@ export const subOrgServiceFactory = ({
       OrgPermissionSubjects.SubOrganization
     );
 
+    const actorField = permissionActor.type === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
+    const existingMembership = await membershipDAL.findOne({
+      scope: AccessScope.Organization,
+      [actorField]: permissionActor.id,
+      scopeOrgId: subOrgId
+    });
+
+    if (existingMembership) {
+      throw new BadRequestError({ message: "You are already a member of this sub-organization" });
+    }
+
     await orgDAL.transaction(async (tx) => {
       const membership = await membershipDAL.create(
         {
           scope: AccessScope.Organization,
-          [permissionActor.type === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"]: permissionActor.id,
+          [actorField]: permissionActor.id,
           scopeOrgId: subOrgId,
           status: OrgMembershipStatus.Accepted,
           isActive: true
