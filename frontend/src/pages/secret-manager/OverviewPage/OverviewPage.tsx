@@ -430,6 +430,10 @@ export const OverviewPage = () => {
     environment: singleEnvSlug
   });
 
+  useEffect(() => {
+    setIsSingleEnvSecretsVisible.off();
+  }, [singleVisibleEnv?.slug]);
+
   const secretSubject = subject(ProjectPermissionSub.Secrets, {
     environment: singleEnvSlug,
     secretPath,
@@ -1973,7 +1977,7 @@ export const OverviewPage = () => {
                                   <Badge variant="ghost" asChild>
                                     <button
                                       type="button"
-                                      onClick={() => setIsSingleEnvSecretsVisible.toggle()}
+                                      onClick={setIsSingleEnvSecretsVisible.toggle}
                                     >
                                       {isSingleEnvSecretsVisible ? (
                                         <>
