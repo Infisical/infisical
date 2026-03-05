@@ -106,17 +106,21 @@ export const subOrgServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    const organizations = await orgDAL.listSubOrganizations({
+    const { orgs: organizations, totalCount } = await orgDAL.listSubOrganizations({
       actorId: permissionActor.id,
       actorType: permissionActor.type,
       orgId: permissionActor.rootOrgId,
       isAccessible: data?.isAccessible,
+      search: data?.search,
+      orderBy: data?.orderBy,
+      orderDirection: data?.orderDirection,
       limit: data?.limit,
       offset: data?.offset
     });
 
     return {
-      organizations
+      organizations,
+      totalCount
     };
   };
 

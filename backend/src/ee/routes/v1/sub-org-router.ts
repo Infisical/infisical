@@ -86,6 +86,9 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         limit: z.coerce.number().min(1).max(1000).default(25).describe(SUB_ORGANIZATIONS.LIST.limit),
         offset: z.coerce.number().min(0).default(0).describe(SUB_ORGANIZATIONS.LIST.offset),
+        search: z.string().trim().optional().describe(SUB_ORGANIZATIONS.LIST.search),
+        orderBy: z.enum(["name"]).default("name").describe(SUB_ORGANIZATIONS.LIST.orderBy),
+        orderDirection: z.enum(["asc", "desc"]).default("asc").describe(SUB_ORGANIZATIONS.LIST.orderDirection),
         isAccessible: z
           .enum(["true", "false"])
           .optional()
@@ -94,22 +97,26 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organizations: sanitizedSubOrganizationSchema.array()
+          organizations: sanitizedSubOrganizationSchema.array(),
+          totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { organizations } = await server.services.subOrganization.listSubOrgs({
+      const { organizations, totalCount } = await server.services.subOrganization.listSubOrgs({
         permissionActor: req.permission,
         data: {
           limit: req.query.limit,
           offset: req.query.offset,
+          search: req.query.search,
+          orderBy: req.query.orderBy,
+          orderDirection: req.query.orderDirection,
           isAccessible: req.query.isAccessible
         }
       });
 
-      return { organizations };
+      return { organizations, totalCount };
     }
   });
 

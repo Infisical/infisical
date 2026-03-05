@@ -12,6 +12,8 @@ export type TListSubOrgDTO = {
     limit?: number;
     offset?: number;
     search?: string;
+    orderBy?: string;
+    orderDirection?: "asc" | "desc";
     isAccessible?: boolean;
   }>;
 };
