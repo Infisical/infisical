@@ -413,6 +413,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                   isDisabled={isDisabled}
                   projectType={currentProject.type}
                   projectId={projectId}
+                  allowedSubjects={filteredPermissionSubjects}
                 />
               )}
             </div>

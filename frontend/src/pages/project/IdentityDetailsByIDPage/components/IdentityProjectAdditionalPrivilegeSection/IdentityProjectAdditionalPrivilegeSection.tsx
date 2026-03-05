@@ -5,10 +5,13 @@ import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon } from "lucide-react"
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -96,19 +99,33 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                   identityId
                 })}
               >
-                {(isAllowed) => (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => {
-                      handlePopUpOpen("modifyPrivilege");
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <PlusIcon />
-                    Add Additional Privileges
-                  </Button>
-                )}
+                {(isAllowed) => {
+                  const button = (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => {
+                        handlePopUpOpen("modifyPrivilege");
+                      }}
+                      isDisabled={!isAllowed}
+                    >
+                      <PlusIcon />
+                      Add Additional Privileges
+                    </Button>
+                  );
+                  return !isAllowed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block">{button}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        You don&apos;t have permission to edit this identity&apos;s privileges
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    button
+                  );
+                }}
               </ProjectPermissionCan>
             </UnstableCardAction>
           )}
@@ -162,14 +179,17 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                         </UnstableTableCell>
                         <UnstableTableCell>
                           {isTemporary ? (
-                            <Tooltip content={toolTipText}>
-                              <Badge
-                                className="capitalize"
-                                variant={isExpired ? "danger" : "warning"}
-                              >
-                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                {text}
-                              </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  className="capitalize"
+                                  variant={isExpired ? "danger" : "warning"}
+                                >
+                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                  {text}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{toolTipText}</TooltipContent>
                             </Tooltip>
                           ) : (
                             text
@@ -252,19 +272,33 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                     identityId
                   })}
                 >
-                  {(isAllowed) => (
-                    <Button
-                      variant="project"
-                      size="xs"
-                      onClick={() => {
-                        handlePopUpOpen("modifyPrivilege");
-                      }}
-                      isDisabled={!isAllowed}
-                    >
-                      <PlusIcon />
-                      Add Additional Privileges
-                    </Button>
-                  )}
+                  {(isAllowed) => {
+                    const button = (
+                      <Button
+                        variant="project"
+                        size="xs"
+                        onClick={() => {
+                          handlePopUpOpen("modifyPrivilege");
+                        }}
+                        isDisabled={!isAllowed}
+                      >
+                        <PlusIcon />
+                        Add Additional Privileges
+                      </Button>
+                    );
+                    return !isAllowed ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-block">{button}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          You don&apos;t have permission to edit this identity&apos;s privileges
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      button
+                    );
+                  }}
                 </ProjectPermissionCan>
               </UnstableEmptyContent>
             </UnstableEmpty>

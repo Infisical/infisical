@@ -715,6 +715,32 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.McpEndpoints ||
   subject === ProjectPermissionSub.Member;
 
+const CONDITION_DISPLAY_ORDER = [
+  "email",
+  "role",
+  "subject",
+  "action",
+  "environment",
+  "secretPath",
+  "secretName",
+  "secretTags",
+  "metadataKey",
+  "metadataValue",
+  "identityId"
+];
+
+const sortConditionsByDisplayOrder = (
+  conditions: z.infer<typeof ConditionSchema>
+): z.infer<typeof ConditionSchema> => {
+  return [...conditions].sort((a, b) => {
+    const indexA = CONDITION_DISPLAY_ORDER.indexOf(a.lhs);
+    const indexB = CONDITION_DISPLAY_ORDER.indexOf(b.lhs);
+    const orderA = indexA === -1 ? CONDITION_DISPLAY_ORDER.length : indexA;
+    const orderB = indexB === -1 ? CONDITION_DISPLAY_ORDER.length : indexB;
+    return orderA - orderB;
+  });
+};
+
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
   Object.entries(caslConditions).forEach(([type, condition]) => {
@@ -783,7 +809,7 @@ const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition
       });
     }
   });
-  return formConditions;
+  return sortConditionsByDisplayOrder(formConditions);
 };
 
 // convert role permission to form compatible data structure

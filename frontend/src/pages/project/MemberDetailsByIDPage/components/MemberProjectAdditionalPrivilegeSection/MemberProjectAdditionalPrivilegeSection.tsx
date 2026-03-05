@@ -1,13 +1,17 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon, ShieldIcon } from "lucide-react";
+import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -44,6 +48,7 @@ import {
   useListProjectUserPrivileges
 } from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
+import { getGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 import { MembershipProjectAdditionalPrivilegeModifySection } from "./MembershipProjectAdditionalPrivilegeModifySection";
 
@@ -69,6 +74,37 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
 
   const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
 
+  const grantPrivilegeConditions = useMemo(
+    () => getGrantPrivilegeConditions(permission),
+    [permission]
+  );
+
+  const canModifyMemberPrivileges = useMemo(() => {
+    if (!grantPrivilegeConditions) return true;
+
+    const targetEmail = membershipDetails?.user?.email;
+    if (!targetEmail) return true;
+
+    if (grantPrivilegeConditions.emails && grantPrivilegeConditions.emails.length > 0) {
+      const emailMatches = grantPrivilegeConditions.emails.some((pattern) =>
+        picomatch.isMatch(targetEmail, pattern, { nocase: true })
+      );
+      if (!emailMatches) return false;
+    }
+
+    if (
+      grantPrivilegeConditions.forbiddenEmails &&
+      grantPrivilegeConditions.forbiddenEmails.length > 0
+    ) {
+      const emailForbidden = grantPrivilegeConditions.forbiddenEmails.some((pattern) =>
+        picomatch.isMatch(targetEmail, pattern, { nocase: true })
+      );
+      if (emailForbidden) return false;
+    }
+
+    return true;
+  }, [grantPrivilegeConditions, membershipDetails?.user?.email]);
+
   const handlePrivilegeDelete = async () => {
     const { id } = popUp?.deletePrivilege?.data as { id: string };
     await deletePrivilege({
@@ -93,19 +129,34 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.Member}
               >
-                {(isAllowed) => (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => {
-                      handlePopUpOpen("modifyPrivilege");
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <PlusIcon />
-                    Add Additional Privileges
-                  </Button>
-                )}
+                {(isAllowed) => {
+                  const isEditDisabled = !isAllowed || !canModifyMemberPrivileges;
+                  const button = (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => {
+                        handlePopUpOpen("modifyPrivilege");
+                      }}
+                      isDisabled={isEditDisabled}
+                    >
+                      <PlusIcon />
+                      Add Additional Privileges
+                    </Button>
+                  );
+                  return isEditDisabled ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block">{button}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        You don&apos;t have permission to edit this user&apos;s privileges
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    button
+                  );
+                }}
               </ProjectPermissionCan>
             </UnstableCardAction>
           )}
@@ -158,24 +209,33 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                         <UnstableTableCell className="flex items-center gap-2">
                           <span className="truncate">{privilegeDetails.slug}</span>
                           {isLinkedToAccessApproval && (
-                            <Tooltip content="This privilege was granted via an access request, therefore it cannot be edited or deleted">
-                              <Badge className="capitalize" variant="info">
-                                <ShieldIcon />
-                                Managed
-                              </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge className="capitalize" variant="info">
+                                  <ShieldIcon />
+                                  Managed
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                This privilege was granted via an access request, therefore it
+                                cannot be edited or deleted
+                              </TooltipContent>
                             </Tooltip>
                           )}
                         </UnstableTableCell>
                         <UnstableTableCell>
                           {isTemporary ? (
-                            <Tooltip content={toolTipText}>
-                              <Badge
-                                className="capitalize"
-                                variant={isExpired ? "danger" : "warning"}
-                              >
-                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                {text}
-                              </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  className="capitalize"
+                                  variant={isExpired ? "danger" : "warning"}
+                                >
+                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                  {text}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{toolTipText}</TooltipContent>
                             </Tooltip>
                           ) : (
                             text
@@ -197,7 +257,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                   >
                                     {(isAllowed) => (
                                       <UnstableDropdownMenuItem
-                                        isDisabled={!isAllowed}
+                                        isDisabled={!isAllowed || !canModifyMemberPrivileges}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handlePopUpOpen("modifyPrivilege", privilegeDetails);
@@ -213,7 +273,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                   >
                                     {(isAllowed) => (
                                       <UnstableDropdownMenuItem
-                                        isDisabled={!isAllowed}
+                                        isDisabled={!isAllowed || !canModifyMemberPrivileges}
                                         variant="danger"
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -251,19 +311,35 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Member}
                   >
-                    {(isAllowed) => (
-                      <Button
-                        variant="project"
-                        size="xs"
-                        onClick={() => {
-                          handlePopUpOpen("modifyPrivilege");
-                        }}
-                        isDisabled={!isAllowed || isOwnProjectMembershipDetails}
-                      >
-                        <PlusIcon />
-                        Add Additional Privileges
-                      </Button>
-                    )}
+                    {(isAllowed) => {
+                      const isEditDisabled =
+                        !isAllowed || !canModifyMemberPrivileges || isOwnProjectMembershipDetails;
+                      const button = (
+                        <Button
+                          variant="project"
+                          size="xs"
+                          onClick={() => {
+                            handlePopUpOpen("modifyPrivilege");
+                          }}
+                          isDisabled={isEditDisabled}
+                        >
+                          <PlusIcon />
+                          Add Additional Privileges
+                        </Button>
+                      );
+                      return isEditDisabled ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">{button}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            You don&apos;t have permission to edit this user&apos;s privileges
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        button
+                      );
+                    }}
                   </ProjectPermissionCan>
                 </UnstableEmptyContent>
               )}

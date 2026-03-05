@@ -422,6 +422,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                   isDisabled={isDisabled}
                   projectType={currentProject.type}
                   projectId={projectId}
+                  allowedSubjects={filteredPermissionSubjects}
                 />
               )}
             </div>

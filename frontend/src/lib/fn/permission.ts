@@ -130,25 +130,28 @@ export function getGrantPrivilegeConditions(
 
   if (allowedRules.length === 0 && invertedRules.length === 0) return null;
 
-  if (allowedRules.some((rule) => !rule.conditions || Object.keys(rule.conditions).length === 0)) {
-    return null;
-  }
+  const hasUnconditionalAllowRule = allowedRules.some(
+    (rule) => !rule.conditions || Object.keys(rule.conditions).length === 0
+  );
 
   const result: GrantPrivilegeConditions = {};
 
-  allowedRules.forEach((rule) => {
-    const conditions = rule.conditions as MemberConditions;
+  if (!hasUnconditionalAllowRule) {
+    allowedRules.forEach((rule) => {
+      const conditions = rule.conditions as MemberConditions;
 
-    const emailValues = extractConditionValues(conditions.email);
-    const roleValues = extractConditionValues(conditions.role);
-    const subjectValues = extractConditionValues(conditions.subject);
-    const actionValues = extractConditionValues(conditions.action);
+      const emailValues = extractConditionValues(conditions.email);
+      const roleValues = extractConditionValues(conditions.role);
+      const subjectValues = extractConditionValues(conditions.subject);
+      const actionValues = extractConditionValues(conditions.action);
 
-    if (emailValues.length > 0) result.emails = [...(result.emails || []), ...emailValues];
-    if (roleValues.length > 0) result.roles = [...(result.roles || []), ...roleValues];
-    if (subjectValues.length > 0) result.subjects = [...(result.subjects || []), ...subjectValues];
-    if (actionValues.length > 0) result.actions = [...(result.actions || []), ...actionValues];
-  });
+      if (emailValues.length > 0) result.emails = [...(result.emails || []), ...emailValues];
+      if (roleValues.length > 0) result.roles = [...(result.roles || []), ...roleValues];
+      if (subjectValues.length > 0)
+        result.subjects = [...(result.subjects || []), ...subjectValues];
+      if (actionValues.length > 0) result.actions = [...(result.actions || []), ...actionValues];
+    });
+  }
 
   invertedRules
     .filter((rule) => {

@@ -56,10 +56,13 @@ export const newProjectAdditionalPrivilegesFactory = ({
     throw new BadRequestError({ message: "Invalid scope provided for the factory" });
   };
 
-  const hasUnrestrictedGrantPrivileges = (
+  type ConditionCheckType = "unrestricted" | "hasSubjectOrAction" | "hasAction";
+
+  const checkPermissionConditions = (
     actorPermission: MongoAbility,
     permissionAction: string,
-    permissionSubject: string
+    permissionSubject: string,
+    checkType: ConditionCheckType
   ): boolean => {
     const actionMatches = (ruleAction: unknown): boolean => {
       if (Array.isArray(ruleAction)) {
@@ -75,14 +78,42 @@ export const newProjectAdditionalPrivilegesFactory = ({
       return ruleSubject === permissionSubject || ruleSubject === "all";
     };
 
+    const conditionCheck = (conditions: unknown): boolean => {
+      switch (checkType) {
+        case "unrestricted":
+          return !conditions || Object.keys(conditions as object).length === 0;
+        case "hasSubjectOrAction":
+          return Boolean(conditions) && ("subject" in (conditions as object) || "action" in (conditions as object));
+        case "hasAction":
+          return Boolean(conditions) && "action" in (conditions as object);
+        default:
+          return false;
+      }
+    };
+
     return actorPermission.rules.some(
       (rule) =>
-        !rule.inverted &&
-        actionMatches(rule.action) &&
-        subjectMatches(rule.subject) &&
-        (!rule.conditions || Object.keys(rule.conditions).length === 0)
+        !rule.inverted && actionMatches(rule.action) && subjectMatches(rule.subject) && conditionCheck(rule.conditions)
     );
   };
+
+  const hasUnrestrictedGrantPrivileges = (
+    actorPermission: MongoAbility,
+    permissionAction: string,
+    permissionSubject: string
+  ): boolean => checkPermissionConditions(actorPermission, permissionAction, permissionSubject, "unrestricted");
+
+  const hasSubjectOrActionConditions = (
+    actorPermission: MongoAbility,
+    permissionAction: string,
+    permissionSubject: string
+  ): boolean => checkPermissionConditions(actorPermission, permissionAction, permissionSubject, "hasSubjectOrAction");
+
+  const hasActionConditions = (
+    actorPermission: MongoAbility,
+    permissionAction: string,
+    permissionSubject: string
+  ): boolean => checkPermissionConditions(actorPermission, permissionAction, permissionSubject, "hasAction");
 
   const validateGrantPrivilegeSubjectActionConditions = (
     shouldUseNewPrivilegeSystem: boolean,
@@ -112,6 +143,12 @@ export const newProjectAdditionalPrivilegesFactory = ({
     const validatedSubjects = new Set<string>();
     const validatedSubjectActions = new Set<string>();
 
+    // Check if the actor has action conditions - if so, skip subject-only validation
+    const actorHasActionConditions =
+      hasActionConditions(actorPermission, permissionAction, permissionSubject) ||
+      (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges &&
+        hasActionConditions(actorPermission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject));
+
     for (const rule of permissionRules) {
       let ruleSubjects: string[];
       if (Array.isArray(rule.subject)) {
@@ -124,7 +161,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const actions = Array.isArray(rule.action) ? rule.action : [rule.action].filter(Boolean);
 
       for (const ruleSubject of ruleSubjects) {
-        if (!validatedSubjects.has(ruleSubject)) {
+        if (!actorHasActionConditions && !validatedSubjects.has(ruleSubject)) {
           let subjectBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
             permissionAction,
@@ -242,36 +279,44 @@ export const newProjectAdditionalPrivilegesFactory = ({
         targetUserEmail = targetUser?.email ?? undefined;
       }
 
-      let permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        permissionAction,
-        permissionSubject,
-        permission,
-        targetUserPermission,
-        actorType === ActorType.USER ? { email: targetUserEmail } : undefined
-      );
+      const hasDetailedConditions =
+        actorType === ActorType.USER &&
+        shouldUseNewPrivilegeSystem &&
+        (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
+          hasSubjectOrActionConditions(permission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject));
 
-      // If new action fails try legacy action
-      if (!permissionBoundary.isValid && actorType === ActorType.USER) {
-        permissionBoundary = validatePrivilegeChangeOperation(
+      if (!hasDetailedConditions) {
+        let permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionMemberActions.GrantPrivileges,
+          permissionAction,
           permissionSubject,
           permission,
           targetUserPermission,
-          { email: targetUserEmail }
+          actorType === ActorType.USER ? { email: targetUserEmail } : undefined
         );
-      }
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create additional privileges",
+
+        // If new action fails try legacy action
+        if (!permissionBoundary.isValid && actorType === ActorType.USER) {
+          permissionBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
-            permissionAction,
-            permissionSubject
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+            ProjectPermissionMemberActions.GrantPrivileges,
+            permissionSubject,
+            permission,
+            targetUserPermission,
+            { email: targetUserEmail }
+          );
+        }
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to create additional privileges",
+              shouldUseNewPrivilegeSystem,
+              permissionAction,
+              permissionSubject
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+      }
 
       if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem && dto.data.permissions) {
         validateGrantPrivilegeSubjectActionConditions(
@@ -322,36 +367,44 @@ export const newProjectAdditionalPrivilegesFactory = ({
         targetUserEmail = targetUser?.email ?? undefined;
       }
 
-      let permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        permissionAction,
-        permissionSubject,
-        permission,
-        targetUserPermission,
-        actorType === ActorType.USER ? { email: targetUserEmail } : undefined
-      );
+      const hasDetailedConditions =
+        actorType === ActorType.USER &&
+        shouldUseNewPrivilegeSystem &&
+        (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
+          hasSubjectOrActionConditions(permission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject));
 
-      // If new action fails try legacy action
-      if (!permissionBoundary.isValid && actorType === ActorType.USER) {
-        permissionBoundary = validatePrivilegeChangeOperation(
+      if (!hasDetailedConditions) {
+        let permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionMemberActions.GrantPrivileges,
+          permissionAction,
           permissionSubject,
           permission,
           targetUserPermission,
-          { email: targetUserEmail }
+          actorType === ActorType.USER ? { email: targetUserEmail } : undefined
         );
-      }
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update additional privileges",
+
+        // If new action fails try legacy action
+        if (!permissionBoundary.isValid && actorType === ActorType.USER) {
+          permissionBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
-            permissionAction,
-            permissionSubject
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+            ProjectPermissionMemberActions.GrantPrivileges,
+            permissionSubject,
+            permission,
+            targetUserPermission,
+            { email: targetUserEmail }
+          );
+        }
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to update additional privileges",
+              shouldUseNewPrivilegeSystem,
+              permissionAction,
+              permissionSubject
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+      }
 
       if (actorType === ActorType.USER && shouldUseNewPrivilegeSystem && dto.data.permissions) {
         validateGrantPrivilegeSubjectActionConditions(
