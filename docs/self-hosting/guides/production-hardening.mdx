@@ -503,7 +503,9 @@ ProtectSystem=strict
 ReadWritePaths=/opt/infisical-core
 ReadWritePaths=/var/opt/infisical-core
 ReadWritePaths=/var/log/infisical-core
-ReadWritePaths=/run/infisical-core
+
+# Create and manage /run/infisical-core automatically at service start
+RuntimeDirectory=infisical-core
 
 # Prevent loading of kernel modules
 ProtectKernelModules=true
@@ -607,6 +609,16 @@ echo "* hard core 0" | sudo tee -a /etc/security/limits.conf
 
 # Disable core dumps for current session
 ulimit -c 0
+```
+
+**Synchronize system clocks**. Ensure accurate time for JWT token validation and audit log timestamps:
+
+```bash
+# Verify time synchronization is active
+# (systemd-timesyncd is enabled by default on most modern distributions;
+# replace with chrony or ntp if preferred)
+timedatectl status
+sudo systemctl enable --now systemd-timesyncd
 ```
 
 #### Network Security
