@@ -48,8 +48,12 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("resourcesDiscoveredCount").defaultTo(0);
       t.integer("accountsDiscoveredCount").defaultTo(0);
       t.integer("dependenciesDiscoveredCount").defaultTo(0);
-      t.integer("newSinceLastRunCount").defaultTo(0);
-      t.integer("staleSinceLastRunCount").defaultTo(0);
+      t.integer("newResourcesCount").defaultTo(0);
+      t.integer("staleResourcesCount").defaultTo(0);
+      t.integer("newAccountsCount").defaultTo(0);
+      t.integer("staleAccountsCount").defaultTo(0);
+      t.integer("newDependenciesCount").defaultTo(0);
+      t.integer("staleDependenciesCount").defaultTo(0);
 
       t.jsonb("progress").notNullable();
       t.text("errorMessage").nullable();

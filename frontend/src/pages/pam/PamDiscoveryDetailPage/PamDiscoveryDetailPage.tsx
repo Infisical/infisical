@@ -15,7 +15,6 @@ import {
   PlayIcon,
   TrashIcon
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -340,7 +339,7 @@ const RunsTab = ({
 
   const runs = data?.runs || [];
   const totalCount = data?.totalCount || 0;
-  const COL_COUNT = 9;
+  const COL_COUNT = 8;
 
   return (
     <div>
@@ -354,8 +353,7 @@ const RunsTab = ({
             <UnstableTableHead>Status</UnstableTableHead>
             <UnstableTableHead>Resources</UnstableTableHead>
             <UnstableTableHead>Accounts</UnstableTableHead>
-            <UnstableTableHead>New</UnstableTableHead>
-            <UnstableTableHead>Stale</UnstableTableHead>
+            <UnstableTableHead>Dependencies</UnstableTableHead>
           </UnstableTableRow>
         </UnstableTableHeader>
         <UnstableTableBody>
@@ -415,16 +413,90 @@ const RunsTab = ({
                     <UnstableTableCell>
                       <Badge variant={STATUS_BADGE_MAP[run.status] || "info"}>{run.status}</Badge>
                     </UnstableTableCell>
-                    <UnstableTableCell>{run.resourcesDiscoveredCount}</UnstableTableCell>
-                    <UnstableTableCell>{run.accountsDiscoveredCount}</UnstableTableCell>
-                    <UnstableTableCell
-                      className={twMerge(run.newSinceLastRunCount > 0 && "text-green-400")}
-                    >
-                      {run.newSinceLastRunCount > 0
-                        ? `+${run.newSinceLastRunCount}`
-                        : run.newSinceLastRunCount}
+                    <UnstableTableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            {run.resourcesDiscoveredCount}
+                            {run.newResourcesCount > 0 && (
+                              <span className="ml-1 text-green-400">
+                                (+{run.newResourcesCount})
+                              </span>
+                            )}
+                            {run.staleResourcesCount > 0 && (
+                              <span className="ml-1 text-red-400">
+                                (-{run.staleResourcesCount})
+                              </span>
+                            )}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          hidden={!run.newResourcesCount && !run.staleResourcesCount}
+                        >
+                          {run.newResourcesCount > 0 && (
+                            <p>{run.newResourcesCount} new resources</p>
+                          )}
+                          {run.staleResourcesCount > 0 && (
+                            <p>{run.staleResourcesCount} stale resources</p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
                     </UnstableTableCell>
-                    <UnstableTableCell>{run.staleSinceLastRunCount}</UnstableTableCell>
+                    <UnstableTableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            {run.accountsDiscoveredCount}
+                            {run.newAccountsCount > 0 && (
+                              <span className="ml-1 text-green-400">(+{run.newAccountsCount})</span>
+                            )}
+                            {run.staleAccountsCount > 0 && (
+                              <span className="ml-1 text-red-400">(-{run.staleAccountsCount})</span>
+                            )}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          hidden={!run.newAccountsCount && !run.staleAccountsCount}
+                        >
+                          {run.newAccountsCount > 0 && <p>{run.newAccountsCount} new accounts</p>}
+                          {run.staleAccountsCount > 0 && (
+                            <p>{run.staleAccountsCount} stale accounts</p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            {run.dependenciesDiscoveredCount}
+                            {run.newDependenciesCount > 0 && (
+                              <span className="ml-1 text-green-400">
+                                (+{run.newDependenciesCount})
+                              </span>
+                            )}
+                            {run.staleDependenciesCount > 0 && (
+                              <span className="ml-1 text-red-400">
+                                (-{run.staleDependenciesCount})
+                              </span>
+                            )}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          hidden={!run.newDependenciesCount && !run.staleDependenciesCount}
+                        >
+                          {run.newDependenciesCount > 0 && (
+                            <p>{run.newDependenciesCount} new dependencies</p>
+                          )}
+                          {run.staleDependenciesCount > 0 && (
+                            <p>{run.staleDependenciesCount} stale dependencies</p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </UnstableTableCell>
                   </UnstableTableRow>
                   {isExpanded && (
                     <UnstableTableRow key={`${run.id}-expanded`}>

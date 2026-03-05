@@ -557,7 +557,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
     let adEnumerationSucceeded = false;
     let resourcesDiscoveredCount = 0;
     let accountsDiscoveredCount = 0;
-    let newItems = 0;
+    let newResourcesCount = 0;
+    let newAccountsCount = 0;
 
     try {
       const { computers, users } = await executeLdapEnumeration(
@@ -602,7 +603,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         return result;
       });
       resourcesDiscoveredCount += 1;
-      if (isAdServerNew) newItems += 1;
+      if (isAdServerNew) newResourcesCount += 1;
 
       // Auto-import Windows Server resources
       for await (const computer of computers) {
@@ -631,7 +632,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           });
 
           resourcesDiscoveredCount += 1;
-          if (isNew) newItems += 1;
+          if (isNew) newResourcesCount += 1;
         } catch (err) {
           logger.warn({ err, computer: computer.dNSHostName }, "Failed to import Windows Server resource");
         }
@@ -668,24 +669,27 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           });
 
           accountsDiscoveredCount += 1;
-          if (isNew) newItems += 1;
+          if (isNew) newAccountsCount += 1;
         } catch (err) {
           logger.warn({ err, user: user.sAMAccountName }, "Failed to import domain account");
         }
       }
 
       if (adEnumerationSucceeded) {
-        const staleResources = await pamDiscoverySourceResourcesDAL.markStaleForRun(discoverySourceId, run.id);
-        const staleAccounts = await pamDiscoverySourceAccountsDAL.markStaleForRun(discoverySourceId, run.id);
-        const staleSinceLastRunCount = (staleResources || 0) + (staleAccounts || 0);
+        const staleResourcesCount = (await pamDiscoverySourceResourcesDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
+        const staleAccountsCount = (await pamDiscoverySourceAccountsDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
 
         await pamDiscoveryRunDAL.updateById(run.id, {
           status: PamDiscoverySourceRunStatus.Completed,
           resourcesDiscoveredCount,
           accountsDiscoveredCount,
           dependenciesDiscoveredCount: 0,
-          newSinceLastRunCount: newItems,
-          staleSinceLastRunCount,
+          newResourcesCount,
+          staleResourcesCount,
+          newAccountsCount,
+          staleAccountsCount,
+          newDependenciesCount: 0,
+          staleDependenciesCount: 0,
           completedAt: new Date()
         });
       }

@@ -52,8 +52,12 @@ export type TPamDiscoverySourceRun = {
   resourcesDiscoveredCount: number;
   accountsDiscoveredCount: number;
   dependenciesDiscoveredCount: number;
-  newSinceLastRunCount: number;
-  staleSinceLastRunCount: number;
+  newResourcesCount: number;
+  staleResourcesCount: number;
+  newAccountsCount: number;
+  staleAccountsCount: number;
+  newDependenciesCount: number;
+  staleDependenciesCount: number;
   progress?: TPamDiscoverySourceRunProgress;
   errorMessage?: string | null;
   startedAt?: string | null;
