@@ -142,6 +142,7 @@ import { CreateSecretImportForm } from "../SecretDashboardPage/components/Action
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
+import { DynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/DynamicSecretLease";
 import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
 import {
   HIDDEN_SECRET_VALUE,
@@ -207,7 +208,9 @@ export const OverviewPage = () => {
     select: (el) => ({
       secretPath: el.secretPath,
       search: el.search,
-      environments: el.environments
+      environments: el.environments,
+      dynamicSecretId: el.dynamicSecretId,
+      filterBy: el.filterBy
     })
   });
 
@@ -553,6 +556,7 @@ export const OverviewPage = () => {
     "reconcileSecretRotation",
     "importSecrets",
     "editDynamicSecret",
+    "dynamicSecretLeases",
     "createDynamicSecretLease",
     "deleteDynamicSecret",
     "snapshots",
@@ -560,6 +564,40 @@ export const OverviewPage = () => {
     "addSecretImport",
     "importFromVault"
   ] as const);
+
+  // Auto-open dynamic secret leases modal when linked via notification/email
+  useEffect(() => {
+    if (routerSearch.dynamicSecretId && dynamicSecrets?.length) {
+      const match = dynamicSecrets.find((ds) => ds.id === routerSearch.dynamicSecretId);
+      if (match) {
+        handlePopUpOpen("dynamicSecretLeases", match);
+        navigate({ search: (prev) => ({ ...prev, dynamicSecretId: undefined }), replace: true });
+      }
+    }
+  }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
+
+  // Apply search and/or resource type filter when linked via notification/email
+  useEffect(() => {
+    if (routerSearch.search || routerSearch.filterBy) {
+      const { search, filterBy, ...query } = routerSearch;
+      // temp workaround until we transition state to query params
+      navigate({ search: query, replace: true });
+
+      const initialFilter = { ...DEFAULT_FILTER_STATE };
+      if (filterBy) {
+        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
+        if (rowType) {
+          initialFilter[rowType] = true;
+        }
+      }
+      setFilter(initialFilter);
+
+      if (search) {
+        setSearchFilter(search as string);
+        setDebouncedSearchFilter(search as string);
+      }
+    }
+  }, [routerSearch.search, routerSearch.filterBy]);
 
   const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
     if (!subscription?.pitRecovery) {
@@ -1017,7 +1055,10 @@ export const OverviewPage = () => {
       }
     }
 
-    const query: Record<string, string | string[]> = { ...routerSearch, search: searchFilter };
+    const query: Record<string, string | string[] | undefined> = {
+      ...routerSearch,
+      search: searchFilter
+    };
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({
@@ -1121,19 +1162,6 @@ export const OverviewPage = () => {
 
     setSelectedEntries(newChecks);
   };
-
-  useEffect(() => {
-    if (routerSearch.search) {
-      const { search, ...query } = routerSearch;
-      // temp workaround until we transition state to query params
-      navigate({
-        search: query
-      });
-      setFilter(DEFAULT_FILTER_STATE);
-      setSearchFilter(routerSearch.search as string);
-      setDebouncedSearchFilter(routerSearch.search as string);
-    }
-  }, [routerSearch.search]);
 
   const selectedKeysCount = Object.keys(selectedEntries.secret).length;
 
@@ -1279,6 +1307,11 @@ export const OverviewPage = () => {
         <SecretV2MigrationSection />
       </div>
     );
+
+  const dynamicSecretLeaseData = popUp.dynamicSecretLeases?.data as
+    | (TDynamicSecret & { environment: string })
+    | undefined;
+
   return (
     <div className="">
       <Helmet>
@@ -1695,6 +1728,9 @@ export const OverviewPage = () => {
                                 onEdit={(dynamicSecret) =>
                                   handlePopUpOpen("editDynamicSecret", dynamicSecret)
                                 }
+                                onViewLeases={(dynamicSecret) =>
+                                  handlePopUpOpen("dynamicSecretLeases", dynamicSecret)
+                                }
                                 onGenerateLease={(dynamicSecret) =>
                                   handlePopUpOpen("createDynamicSecretLease", dynamicSecret)
                                 }
@@ -1873,6 +1909,36 @@ export const OverviewPage = () => {
         environments={userAvailableDynamicSecretEnvs}
         secretPath={secretPath}
       />
+      <Modal
+        isOpen={popUp.dynamicSecretLeases.isOpen}
+        onOpenChange={(state) => handlePopUpToggle("dynamicSecretLeases", state)}
+      >
+        <ModalContent
+          title={
+            <div className="flex items-center space-x-2">
+              <p>Dynamic secret leases</p>
+              <Badge variant="neutral">{dynamicSecretLeaseData?.name}</Badge>
+            </div>
+          }
+          subTitle="Revoke or renew your secret leases"
+          className="max-w-3xl"
+        >
+          {dynamicSecretLeaseData && (
+            <DynamicSecretLease
+              dynamicSecret={dynamicSecretLeaseData}
+              onClickNewLease={() =>
+                handlePopUpOpen("createDynamicSecretLease", dynamicSecretLeaseData)
+              }
+              onClose={() => handlePopUpClose("dynamicSecretLeases")}
+              projectSlug={projectSlug}
+              key={dynamicSecretLeaseData.id}
+              dynamicSecretName={dynamicSecretLeaseData.name}
+              secretPath={secretPath}
+              environment={dynamicSecretLeaseData.environment}
+            />
+          )}
+        </ModalContent>
+      </Modal>
       <Modal
         isOpen={popUp.editDynamicSecret.isOpen}
         onOpenChange={(state) => handlePopUpToggle("editDynamicSecret", state)}

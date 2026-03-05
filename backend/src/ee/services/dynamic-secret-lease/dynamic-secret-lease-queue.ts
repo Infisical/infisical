@@ -31,7 +31,7 @@ type TDynamicSecretLeaseQueueServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findById">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findSecretPathByFolderIds">;
 };
 
 export type TDynamicSecretLeaseQueueServiceFactory = {
@@ -296,6 +296,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       const folder = await folderDAL.findById(lease.dynamicSecret.folderId);
       if (!folder) throw new NotFoundError({ message: `Failed to find folder with ${lease.dynamicSecret.folderId}` });
 
+      const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+      const secretPath = folderWithPath?.path ?? "/";
+
       const project = await projectDAL.findById(folder.projectId);
       const projectMembers = await projectMembershipDAL.findAllProjectMembers(project.id);
 
@@ -308,7 +311,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         template: SmtpTemplates.DynamicSecretLeaseRevocationFailed,
         subjectLine: "Dynamic Secret Lease Revocation Failed",
         substitutions: {
-          dynamicSecretLeaseUrl: `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/secrets/${folder.environment.envSlug}?dynamicSecretId=${lease.dynamicSecret.id}&filterBy=dynamic&search=${lease.dynamicSecret.name}`,
+          dynamicSecretLeaseUrl: `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/overview?search=${encodeURIComponent(lease.dynamicSecret.name)}&secretPath=${encodeURIComponent(secretPath)}&environments=${folder.environment.envSlug}&filterBy=dynamic&dynamicSecretId=${lease.dynamicSecret.id}`,
           dynamicSecretName: lease.dynamicSecret.name,
           projectName: project.name,
           environmentSlug: folder.environment.envSlug,
