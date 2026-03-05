@@ -2,7 +2,9 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Outlet, useMatches } from "@tanstack/react-router";
+import { Outlet, useMatches, useNavigate, useSearch } from "@tanstack/react-router";
+
+import { ROUTE_PATHS } from "@app/const/routes";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
@@ -75,14 +77,16 @@ export const ProjectsPage = () => {
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
 
-  const [selectedTab, setSelectedTab] = useState(TAB_PROJECTS);
+  const search = useSearch({ from: ROUTE_PATHS.Organization.ProjectsPage.id });
+  const navigate = useNavigate({ from: ROUTE_PATHS.Organization.ProjectsPage.path });
+  const selectedTab = search.selectedTab || TAB_PROJECTS;
 
   const handleTabChange = (tab: string) => {
     if (tab === TAB_SUB_ORGS && !subscription?.subOrganization) {
       handlePopUpOpen("upgradeSubOrgs");
       return;
     }
-    setSelectedTab(tab);
+    navigate({ search: (prev) => ({ ...prev, selectedTab: tab === TAB_PROJECTS ? "" : tab }) });
   };
 
   if (hasChildRoute) {
