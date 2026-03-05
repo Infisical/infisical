@@ -443,7 +443,7 @@ const upsertDomainAccount = async (
     servicePrincipalName = [user.servicePrincipalName];
   }
 
-  const metadata = {
+  const internalMetadata = {
     accountType,
     adGuid: user.objectGUID,
     displayName: user.displayName || undefined,
@@ -465,7 +465,7 @@ const upsertDomainAccount = async (
   if (existing.length > 0) {
     const account = await pamAccountDAL.updateById(
       existing[0].id,
-      { name: accountName, encryptedCredentials, metadata },
+      { name: accountName, encryptedCredentials, internalMetadata },
       tx
     );
     return { account, isNew: false };
@@ -477,7 +477,7 @@ const upsertDomainAccount = async (
       resourceId: adServerResourceId,
       name: accountName,
       encryptedCredentials,
-      metadata,
+      internalMetadata,
       discoveryFingerprint: fingerprint
     },
     tx

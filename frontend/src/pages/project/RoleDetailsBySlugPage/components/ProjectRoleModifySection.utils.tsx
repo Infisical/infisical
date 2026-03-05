@@ -2853,12 +2853,33 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PamDiscovery]: {
     title: "Discovery",
+    description: "Manage privileged access discovery",
     actions: [
-      { label: "Read", value: ProjectPermissionPamDiscoveryActions.Read },
-      { label: "Create", value: ProjectPermissionPamDiscoveryActions.Create },
-      { label: "Modify", value: ProjectPermissionPamDiscoveryActions.Edit },
-      { label: "Remove", value: ProjectPermissionPamDiscoveryActions.Delete },
-      { label: "Run Scan", value: ProjectPermissionPamDiscoveryActions.RunScan }
+      {
+        label: "Read",
+        value: ProjectPermissionPamDiscoveryActions.Read,
+        description: "View PAM discovery sources"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionPamDiscoveryActions.Create,
+        description: "Create PAM discovery sources"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionPamDiscoveryActions.Edit,
+        description: "Update PAM discovery sources"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionPamDiscoveryActions.Delete,
+        description: "Delete PAM discovery sources"
+      },
+      {
+        label: "Run Scan",
+        value: ProjectPermissionPamDiscoveryActions.RunScan,
+        description: "Run PAM discovery source scans"
+      }
     ]
   },
   [ProjectPermissionSub.ApprovalRequests]: {
