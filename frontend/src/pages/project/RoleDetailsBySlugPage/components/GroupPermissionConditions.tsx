@@ -53,7 +53,7 @@ export const GroupPermissionConditions = ({ position = 0, isDisabled }: Props) =
           description: "The name of the target group"
         },
         {
-          value: "role",
+          value: "assignableRole",
           label: "Assignable Roles",
           description:
             "The roles that the actor is allowed to assign to the target groups. (e.g., admin, developer, viewer)"

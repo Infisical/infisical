@@ -253,27 +253,33 @@ const escapeHandlebarsMissingDict = (obj: Record<string, string>, key: string) =
 // regardless of the actor's privilege level.
 const validatePrivilegeChangeOperation = (
   shouldUseNewPrivilegeSystem: boolean,
-  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
+  opActions: (OrgPermissionSet[0] | ProjectPermissionSet[0]) | (OrgPermissionSet[0] | ProjectPermissionSet[0])[],
   opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1],
   actorPermission: MongoAbility,
   managedPermission: MongoAbility,
   subjectFields?: Record<string, string | undefined>
 ) => {
+  const actions = Array.isArray(opActions) ? opActions : [opActions];
+
   if (shouldUseNewPrivilegeSystem) {
     const subjectToCheck = subjectFields ? subject(opSubject as string, subjectFields) : opSubject;
 
-    if (actorPermission.can(opAction, subjectToCheck)) {
-      return {
-        isValid: true,
-        missingPermissions: []
-      };
+    for (const opAction of actions) {
+      if (actorPermission.can(opAction, subjectToCheck)) {
+        return {
+          isValid: true,
+          missingPermissions: []
+        };
+      }
     }
 
+    // Report the first (primary) action in missingPermissions.
+    // For example, when evaluating legacy actions fallback, it returns the error related to the new one not the legacy one.
     return {
       isValid: false,
       missingPermissions: [
         {
-          action: opAction,
+          action: actions[0],
           subject: opSubject
         }
       ]

@@ -76,56 +76,25 @@ export const newProjectMembershipGroupFactory = ({
     );
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        // Quick unconditional check - skip per-group check if actor has unrestricted permission
-        let unconditionalBoundary = validatePrivilegeChangeOperation(
+        const permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionGroupActions.AssignRole,
+          [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
           ProjectPermissionSub.Groups,
           permission,
-          permissionRole.permission
+          permissionRole.permission,
+          { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
         );
-        if (!unconditionalBoundary.isValid) {
-          unconditionalBoundary = validatePrivilegeChangeOperation(
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionGroupActions.GrantPrivileges,
-            ProjectPermissionSub.Groups,
-            permission,
-            permissionRole.permission
-          );
-        }
-        if (!unconditionalBoundary.isValid) {
-          let permissionBoundary = validatePrivilegeChangeOperation(
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionGroupActions.AssignRole,
-            ProjectPermissionSub.Groups,
-            permission,
-            permissionRole.permission,
-            { groupName: groupDetails.name, role: permissionRole.role?.slug }
-          );
 
-          // If new action fails, try legacy action
-          if (!permissionBoundary.isValid) {
-            permissionBoundary = validatePrivilegeChangeOperation(
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to create group project membership",
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionGroupActions.GrantPrivileges,
-              ProjectPermissionSub.Groups,
-              permission,
-              permissionRole.permission,
-              { groupName: groupDetails.name, role: permissionRole.role?.slug }
-            );
-          }
-
-          if (!permissionBoundary.isValid)
-            throw new PermissionBoundaryError({
-              message: constructPermissionErrorMessage(
-                "Failed to create group project membership",
-                shouldUseNewPrivilegeSystem,
-                ProjectPermissionGroupActions.AssignRole,
-                ProjectPermissionSub.Groups
-              ),
-              details: { missingPermissions: permissionBoundary.missingPermissions }
-            });
-        }
+              ProjectPermissionGroupActions.AssignRole,
+              ProjectPermissionSub.Groups
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
       }
     }
   };
@@ -160,56 +129,25 @@ export const newProjectMembershipGroupFactory = ({
     );
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        // Quick unconditional check - skip per-group check if actor has unrestricted permission
-        let unconditionalBoundary = validatePrivilegeChangeOperation(
+        const permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionGroupActions.AssignRole,
+          [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
           ProjectPermissionSub.Groups,
           permission,
-          permissionRole.permission
+          permissionRole.permission,
+          { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
         );
-        if (!unconditionalBoundary.isValid) {
-          unconditionalBoundary = validatePrivilegeChangeOperation(
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionGroupActions.GrantPrivileges,
-            ProjectPermissionSub.Groups,
-            permission,
-            permissionRole.permission
-          );
-        }
-        if (!unconditionalBoundary.isValid) {
-          let permissionBoundary = validatePrivilegeChangeOperation(
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionGroupActions.AssignRole,
-            ProjectPermissionSub.Groups,
-            permission,
-            permissionRole.permission,
-            { groupName: groupDetails.name, role: permissionRole.role?.slug }
-          );
 
-          // If new action fails, try legacy action
-          if (!permissionBoundary.isValid) {
-            permissionBoundary = validatePrivilegeChangeOperation(
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to update group project membership",
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionGroupActions.GrantPrivileges,
-              ProjectPermissionSub.Groups,
-              permission,
-              permissionRole.permission,
-              { groupName: groupDetails.name, role: permissionRole.role?.slug }
-            );
-          }
-
-          if (!permissionBoundary.isValid)
-            throw new PermissionBoundaryError({
-              message: constructPermissionErrorMessage(
-                "Failed to update group project membership",
-                shouldUseNewPrivilegeSystem,
-                ProjectPermissionGroupActions.AssignRole,
-                ProjectPermissionSub.Groups
-              ),
-              details: { missingPermissions: permissionBoundary.missingPermissions }
-            });
-        }
+              ProjectPermissionGroupActions.AssignRole,
+              ProjectPermissionSub.Groups
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
       }
     }
   };

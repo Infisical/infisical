@@ -56,29 +56,29 @@ type ConditionMapping = {
 };
 
 type MemberConditions = {
-  email?: ConditionValue;
-  role?: ConditionValue;
-  subject?: ConditionValue;
-  action?: ConditionValue;
+  userEmail?: ConditionValue;
+  assignableRole?: ConditionValue;
+  assignableSubject?: ConditionValue;
+  assignableAction?: ConditionValue;
 };
 
 type IdentityConditions = {
   identityId?: ConditionValue;
-  role?: ConditionValue;
-  subject?: ConditionValue;
-  action?: ConditionValue;
+  assignableRole?: ConditionValue;
+  assignableSubject?: ConditionValue;
+  assignableAction?: ConditionValue;
 };
 
 type GroupConditions = {
   groupName?: ConditionValue;
-  role?: ConditionValue;
+  assignableRole?: ConditionValue;
 };
 
 const MEMBER_CONDITION_MAPPINGS: ConditionMapping[] = [
-  { conditionKey: "email", resultKey: "emails", forbiddenResultKey: "forbiddenEmails" },
-  { conditionKey: "role", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
-  { conditionKey: "subject", resultKey: "subjects", forbiddenResultKey: "forbiddenSubjects" },
-  { conditionKey: "action", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
+  { conditionKey: "userEmail", resultKey: "emails", forbiddenResultKey: "forbiddenEmails" },
+  { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
+  { conditionKey: "assignableSubject", resultKey: "subjects", forbiddenResultKey: "forbiddenSubjects" },
+  { conditionKey: "assignableAction", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
 ];
 
 const IDENTITY_CONDITION_MAPPINGS: ConditionMapping[] = [
@@ -87,9 +87,9 @@ const IDENTITY_CONDITION_MAPPINGS: ConditionMapping[] = [
     resultKey: "identityIds",
     forbiddenResultKey: "forbiddenIdentityIds"
   },
-  { conditionKey: "role", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
-  { conditionKey: "subject", resultKey: "subjects", forbiddenResultKey: "forbiddenSubjects" },
-  { conditionKey: "action", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
+  { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
+  { conditionKey: "assignableSubject", resultKey: "subjects", forbiddenResultKey: "forbiddenSubjects" },
+  { conditionKey: "assignableAction", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
 ];
 
 const GROUP_CONDITION_MAPPINGS: ConditionMapping[] = [
@@ -98,7 +98,7 @@ const GROUP_CONDITION_MAPPINGS: ConditionMapping[] = [
     resultKey: "groupNames",
     forbiddenResultKey: "forbiddenGroupNames"
   },
-  { conditionKey: "role", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" }
+  { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" }
 ];
 
 const PERMISSION_DISPLAY_NAMES: Record<string, string> = {

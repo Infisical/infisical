@@ -437,9 +437,9 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.Edit]: [],
     [ProjectPermissionMemberActions.Delete]: [],
     [ProjectPermissionMemberActions.AssumePrivileges]: [],
-    [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"],
-    [ProjectPermissionMemberActions.AssignRole]: ["email", "role"],
-    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["email", "subject", "action"]
+    [ProjectPermissionMemberActions.GrantPrivileges]: ["userEmail", "assignableRole", "assignableSubject", "assignableAction"],
+    [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
   },
   [ProjectPermissionSub.Identity]: {
     [ProjectPermissionIdentityActions.Read]: [],
@@ -451,12 +451,12 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionIdentityActions.CreateToken]: [],
     [ProjectPermissionIdentityActions.GetToken]: [],
     [ProjectPermissionIdentityActions.DeleteToken]: [],
-    [ProjectPermissionIdentityActions.GrantPrivileges]: ["identityId", "role", "subject", "action"],
-    [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "role"],
+    [ProjectPermissionIdentityActions.GrantPrivileges]: ["identityId", "assignableRole", "assignableSubject", "assignableAction"],
+    [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "assignableRole"],
     [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: [
       "identityId",
-      "subject",
-      "action"
+      "assignableSubject",
+      "assignableAction"
     ]
   },
   [ProjectPermissionSub.Groups]: {
@@ -464,8 +464,8 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionGroupActions.Create]: [],
     [ProjectPermissionGroupActions.Edit]: [],
     [ProjectPermissionGroupActions.Delete]: [],
-    [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "role"],
-    [ProjectPermissionGroupActions.AssignRole]: ["groupName", "role"]
+    [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "assignableRole"],
+    [ProjectPermissionGroupActions.AssignRole]: ["groupName", "assignableRole"]
   }
 };
 

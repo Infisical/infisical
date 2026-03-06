@@ -9,6 +9,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
@@ -69,16 +70,16 @@ export const newProjectAdditionalPrivilegesFactory = ({
   ): boolean => {
     const actionMatches = (ruleAction: unknown): boolean => {
       if (Array.isArray(ruleAction)) {
-        return ruleAction.some((a) => a === permissionAction || a === "manage");
+        return ruleAction.some((a) => a === permissionAction);
       }
-      return ruleAction === permissionAction || ruleAction === "manage";
+      return ruleAction === permissionAction;
     };
 
     const subjectMatches = (ruleSubject: unknown): boolean => {
       if (Array.isArray(ruleSubject)) {
-        return ruleSubject.some((s) => s === permissionSubject || s === "all");
+        return ruleSubject.some((s) => s === permissionSubject);
       }
-      return ruleSubject === permissionSubject || ruleSubject === "all";
+      return ruleSubject === permissionSubject;
     };
 
     const conditionCheck = (conditions: unknown): boolean => {
@@ -86,9 +87,12 @@ export const newProjectAdditionalPrivilegesFactory = ({
         case "unrestricted":
           return !conditions || Object.keys(conditions as object).length === 0;
         case "hasSubjectOrAction":
-          return Boolean(conditions) && ("subject" in (conditions as object) || "action" in (conditions as object));
+          return (
+            Boolean(conditions) &&
+            ("assignableSubject" in (conditions as object) || "assignableAction" in (conditions as object))
+          );
         case "hasAction":
-          return Boolean(conditions) && "action" in (conditions as object);
+          return Boolean(conditions) && "assignableAction" in (conditions as object);
         default:
           return false;
       }
@@ -98,6 +102,34 @@ export const newProjectAdditionalPrivilegesFactory = ({
       (rule) =>
         !rule.inverted && actionMatches(rule.action) && subjectMatches(rule.subject) && conditionCheck(rule.conditions)
     );
+  };
+
+  type PrivilegeValidationAction =
+    | typeof ProjectPermissionMemberActions.GrantPrivileges
+    | typeof ProjectPermissionMemberActions.AssignAdditionalPrivileges
+    | typeof ProjectPermissionIdentityActions.GrantPrivileges
+    | typeof ProjectPermissionIdentityActions.AssignAdditionalPrivileges;
+
+  type PrivilegeValidationSubject = ProjectPermissionSub.Member | ProjectPermissionSub.Identity;
+
+  const getActionsToTryForPrivilegeValidation = (
+    permissionAction: PrivilegeValidationAction,
+    permissionSubject: PrivilegeValidationSubject
+  ): ProjectPermissionSet[0][] => {
+    const isAssignAdditionalPrivileges =
+      permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges ||
+      permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges;
+
+    if (!isAssignAdditionalPrivileges) {
+      return [permissionAction];
+    }
+
+    const legacyGrantPrivileges =
+      permissionSubject === ProjectPermissionSub.Member
+        ? ProjectPermissionMemberActions.GrantPrivileges
+        : ProjectPermissionIdentityActions.GrantPrivileges;
+
+    return [permissionAction, legacyGrantPrivileges];
   };
 
   const hasUnrestrictedGrantPrivileges = (
@@ -192,38 +224,19 @@ export const newProjectAdditionalPrivilegesFactory = ({
         if (!actorHasActionConditions && !validatedSubjects.has(ruleSubject)) {
           const subjectFields =
             permissionSubject === ProjectPermissionSub.Member
-              ? { email: targetIdentifier, subject: ruleSubject }
-              : { identityId: targetIdentifier, subject: ruleSubject };
+              ? { userEmail: targetIdentifier, assignableSubject: ruleSubject }
+              : { identityId: targetIdentifier, assignableSubject: ruleSubject };
 
-          let subjectBoundary = validatePrivilegeChangeOperation(
+          const actionsToTry = getActionsToTryForPrivilegeValidation(permissionAction, permissionSubject);
+
+          const subjectBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
-            permissionAction,
+            actionsToTry,
             permissionSubject,
             actorPermission,
             targetUserPermission,
             subjectFields
           );
-
-          // If new action fails try legacy
-          if (
-            !subjectBoundary.isValid &&
-            (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges ||
-              permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges)
-          ) {
-            const legacyAction =
-              permissionSubject === ProjectPermissionSub.Member
-                ? ProjectPermissionMemberActions.GrantPrivileges
-                : ProjectPermissionIdentityActions.GrantPrivileges;
-
-            subjectBoundary = validatePrivilegeChangeOperation(
-              shouldUseNewPrivilegeSystem,
-              legacyAction,
-              permissionSubject,
-              actorPermission,
-              targetUserPermission,
-              subjectFields
-            );
-          }
 
           if (!subjectBoundary.isValid)
             throw new PermissionBoundaryError({
@@ -239,38 +252,19 @@ export const newProjectAdditionalPrivilegesFactory = ({
           if (!validatedSubjectActions.has(subjectActionKey)) {
             const subjectActionFields =
               permissionSubject === ProjectPermissionSub.Member
-                ? { email: targetIdentifier, subject: ruleSubject, action: subjectActionKey }
-                : { identityId: targetIdentifier, subject: ruleSubject, action: subjectActionKey };
+                ? { userEmail: targetIdentifier, assignableSubject: ruleSubject, assignableAction: subjectActionKey }
+                : { identityId: targetIdentifier, assignableSubject: ruleSubject, assignableAction: subjectActionKey };
 
-            let subjectActionBoundary = validatePrivilegeChangeOperation(
+            const actionsToTry = getActionsToTryForPrivilegeValidation(permissionAction, permissionSubject);
+
+            const subjectActionBoundary = validatePrivilegeChangeOperation(
               shouldUseNewPrivilegeSystem,
-              permissionAction,
+              actionsToTry,
               permissionSubject,
               actorPermission,
               targetUserPermission,
               subjectActionFields
             );
-
-            // If new action fails try legacy
-            if (
-              !subjectActionBoundary.isValid &&
-              (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges ||
-                permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges)
-            ) {
-              const legacyAction =
-                permissionSubject === ProjectPermissionSub.Member
-                  ? ProjectPermissionMemberActions.GrantPrivileges
-                  : ProjectPermissionIdentityActions.GrantPrivileges;
-
-              subjectActionBoundary = validatePrivilegeChangeOperation(
-                shouldUseNewPrivilegeSystem,
-                legacyAction,
-                permissionSubject,
-                actorPermission,
-                targetUserPermission,
-                subjectActionFields
-              );
-            }
 
             if (!subjectActionBoundary.isValid)
               throw new PermissionBoundaryError({
@@ -330,33 +324,24 @@ export const newProjectAdditionalPrivilegesFactory = ({
             permissionSubject
           )));
 
-    const subjectFields = actorType === ActorType.USER ? { email: targetIdentifier } : { identityId: targetIdentifier };
+    const subjectFields =
+      actorType === ActorType.USER ? { userEmail: targetIdentifier } : { identityId: targetIdentifier };
 
     if (!hasDetailedConditions) {
-      let permissionBoundary = validatePrivilegeChangeOperation(
+      const legacyAction =
+        actorType === ActorType.USER
+          ? ProjectPermissionMemberActions.GrantPrivileges
+          : ProjectPermissionIdentityActions.GrantPrivileges;
+
+      const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
-        permissionAction,
+        [permissionAction, legacyAction],
         permissionSubject,
         permission,
         targetUserPermission,
         subjectFields
       );
 
-      if (!permissionBoundary.isValid) {
-        const legacyAction =
-          actorType === ActorType.USER
-            ? ProjectPermissionMemberActions.GrantPrivileges
-            : ProjectPermissionIdentityActions.GrantPrivileges;
-
-        permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          legacyAction,
-          permissionSubject,
-          permission,
-          targetUserPermission,
-          subjectFields
-        );
-      }
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(

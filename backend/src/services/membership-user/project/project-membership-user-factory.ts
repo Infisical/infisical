@@ -91,64 +91,30 @@ export const newProjectMembershipUserFactory = ({
     );
 
     for (const permissionRole of permissionRoles) {
-      // Quick unconditional check - skip per-user loop if actor has unrestricted permission
-      let unconditionalBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        ProjectPermissionMemberActions.AssignRole,
-        ProjectPermissionSub.Member,
-        permission,
-        permissionRole.permission
-      );
-      if (!unconditionalBoundary.isValid) {
-        unconditionalBoundary = validatePrivilegeChangeOperation(
+      // Per-user checks
+      for (const newUser of newUsers) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionMemberActions.GrantPrivileges,
+          [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
           ProjectPermissionSub.Member,
           permission,
-          permissionRole.permission
-        );
-      }
-      if (!unconditionalBoundary.isValid) {
-        // Per-user checks only when permission has conditions
-        for (const newUser of newUsers) {
-          let permissionBoundary = validatePrivilegeChangeOperation(
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.AssignRole,
-            ProjectPermissionSub.Member,
-            permission,
-            permissionRole.permission,
-            {
-              email: newUser.email ?? undefined,
-              role: permissionRole.role?.slug
-            }
-          );
-
-          // If new action fails, try legacy action
-          if (!permissionBoundary.isValid) {
-            permissionBoundary = validatePrivilegeChangeOperation(
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionMemberActions.GrantPrivileges,
-              ProjectPermissionSub.Member,
-              permission,
-              permissionRole.permission,
-              {
-                email: newUser.email ?? undefined,
-                role: permissionRole.role?.slug
-              }
-            );
+          permissionRole.permission,
+          {
+            userEmail: newUser.email ?? undefined,
+            assignableRole: permissionRole.role?.slug
           }
+        );
 
-          if (!permissionBoundary.isValid)
-            throw new PermissionBoundaryError({
-              message: constructPermissionErrorMessage(
-                "Failed to create user project membership",
-                shouldUseNewPrivilegeSystem,
-                ProjectPermissionMemberActions.AssignRole,
-                ProjectPermissionSub.Member
-              ),
-              details: { missingPermissions: permissionBoundary.missingPermissions }
-            });
-        }
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to create user project membership",
+              shouldUseNewPrivilegeSystem,
+              ProjectPermissionMemberActions.AssignRole,
+              ProjectPermissionSub.Member
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
       }
     }
   };
@@ -214,32 +180,17 @@ export const newProjectMembershipUserFactory = ({
     );
 
     for (const permissionRole of permissionRoles) {
-      let permissionBoundary = validatePrivilegeChangeOperation(
+      const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
-        ProjectPermissionMemberActions.AssignRole,
+        [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
         ProjectPermissionSub.Member,
         permission,
         permissionRole.permission,
         {
-          email: targetUser.email || undefined,
-          role: permissionRole.role?.slug
+          userEmail: targetUser.email || undefined,
+          assignableRole: permissionRole.role?.slug
         }
       );
-
-      // If new action fails, try legacy action
-      if (!permissionBoundary.isValid) {
-        permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          ProjectPermissionMemberActions.GrantPrivileges,
-          ProjectPermissionSub.Member,
-          permission,
-          permissionRole.permission,
-          {
-            email: targetUser.email || undefined,
-            role: permissionRole.role?.slug
-          }
-        );
-      }
 
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({

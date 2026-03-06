@@ -279,9 +279,9 @@ export enum ProjectPermissionSecretApprovalRequestActions {
 
 export type IdentityManagementSubjectFields = {
   identityId?: string;
-  role?: string;
-  subject?: string;
-  action?: string;
+  assignableRole?: string;
+  assignableSubject?: string;
+  assignableAction?: string;
 };
 
 export type AppConnectionSubjectFields = {

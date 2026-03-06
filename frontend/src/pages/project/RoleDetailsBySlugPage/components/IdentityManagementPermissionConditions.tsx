@@ -56,19 +56,19 @@ export const IdentityManagementPermissionConditions = ({ position = 0, isDisable
           description: "The unique identifier of the target machine identity"
         },
         {
-          value: "role",
+          value: "assignableRole",
           label: "Assignable Roles",
           description:
             "The roles that the actor is allowed to assign to the target machine identities. (e.g., admin, developer, viewer)"
         },
         {
-          value: "subject",
+          value: "assignableSubject",
           label: "Assignable Subjects",
           description:
             "The permission subjects that the actor is allowed to grant in additional privileges to the target machine identities. (e.g., secrets, environments, members)"
         },
         {
-          value: "action",
+          value: "assignableAction",
           label: "Assignable Actions",
           description:
             "The specific actions that the actor is allowed to grant in additional privileges to the target machine identities. (e.g., secrets:read, environments:edit)"

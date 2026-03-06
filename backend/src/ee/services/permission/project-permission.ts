@@ -342,18 +342,32 @@ export type ActionAllowedConditionsType = Partial<Record<ProjectPermissionSub, P
 
 export const ActionAllowedConditions: ActionAllowedConditionsType = {
   [ProjectPermissionSub.Member]: {
-    [ProjectPermissionMemberActions.GrantPrivileges]: ["email", "role", "subject", "action"],
-    [ProjectPermissionMemberActions.AssignRole]: ["email", "role"],
-    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["email", "subject", "action"]
+    [ProjectPermissionMemberActions.GrantPrivileges]: [
+      "userEmail",
+      "assignableRole",
+      "assignableSubject",
+      "assignableAction"
+    ],
+    [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
   },
   [ProjectPermissionSub.Identity]: {
-    [ProjectPermissionIdentityActions.GrantPrivileges]: ["identityId", "role", "subject", "action"],
-    [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "role"],
-    [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: ["identityId", "subject", "action"]
+    [ProjectPermissionIdentityActions.GrantPrivileges]: [
+      "identityId",
+      "assignableRole",
+      "assignableSubject",
+      "assignableAction"
+    ],
+    [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "assignableRole"],
+    [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: [
+      "identityId",
+      "assignableSubject",
+      "assignableAction"
+    ]
   },
   [ProjectPermissionSub.Groups]: {
-    [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "role"],
-    [ProjectPermissionGroupActions.AssignRole]: ["groupName", "role"]
+    [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "assignableRole"],
+    [ProjectPermissionGroupActions.AssignRole]: ["groupName", "assignableRole"]
   }
 };
 
@@ -409,21 +423,21 @@ export type SecretRotationsSubjectFields = {
 
 export type IdentityManagementSubjectFields = {
   identityId?: string;
-  role?: string;
-  subject?: string;
-  action?: string;
+  assignableRole?: string;
+  assignableSubject?: string;
+  assignableAction?: string;
 };
 
 export type MemberSubjectFields = {
-  email?: string;
-  role?: string;
-  subject?: string;
-  action?: string;
+  userEmail?: string;
+  assignableRole?: string;
+  assignableSubject?: string;
+  assignableAction?: string;
 };
 
 export type GroupSubjectFields = {
   groupName?: string;
-  role?: string;
+  assignableRole?: string;
 };
 
 export type SshHostSubjectFields = {
@@ -909,16 +923,16 @@ const extractConditionValues = (value: string | Record<string, unknown> | undefi
 
 const refineSubjectActionConditions = (
   conditions: {
-    action?: string | Record<string, unknown> | undefined;
-    subject?: string | Record<string, unknown> | undefined;
+    assignableAction?: string | Record<string, unknown> | undefined;
+    assignableSubject?: string | Record<string, unknown> | undefined;
   },
   ctx: z.RefinementCtx
 ) => {
-  const actionValues = extractConditionValues(conditions.action);
+  const actionValues = extractConditionValues(conditions.assignableAction);
   if (actionValues.length === 0) return;
 
   let subjectConfig: SubjectValidationConfig | null = null;
-  const subjectVal = conditions.subject;
+  const subjectVal = conditions.assignableSubject;
 
   if (typeof subjectVal === "string") {
     const trimmed = subjectVal.trim();
@@ -941,14 +955,14 @@ const refineSubjectActionConditions = (
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: error,
-      path: ["action"]
+      path: ["assignableAction"]
     });
   }
 };
 
 const MemberConditionSchema = z
   .object({
-    email: z.union([
+    userEmail: z.union([
       z.string(),
       z
         .object({
@@ -959,7 +973,7 @@ const MemberConditionSchema = z
         })
         .partial()
     ]),
-    role: z.union([
+    assignableRole: z.union([
       z.string(),
       z
         .object({
@@ -969,7 +983,7 @@ const MemberConditionSchema = z
         })
         .partial()
     ]),
-    subject: z.union([
+    assignableSubject: z.union([
       z.string(),
       z
         .object({
@@ -980,7 +994,7 @@ const MemberConditionSchema = z
         })
         .partial()
     ]),
-    action: z.union([
+    assignableAction: z.union([
       z.string(),
       z
         .object({
@@ -1007,7 +1021,7 @@ const IdentityManagementConditionSchema = z
         })
         .partial()
     ]),
-    role: z.union([
+    assignableRole: z.union([
       z.string(),
       z
         .object({
@@ -1017,7 +1031,7 @@ const IdentityManagementConditionSchema = z
         })
         .partial()
     ]),
-    subject: z.union([
+    assignableSubject: z.union([
       z.string(),
       z
         .object({
@@ -1028,7 +1042,7 @@ const IdentityManagementConditionSchema = z
         })
         .partial()
     ]),
-    action: z.union([
+    assignableAction: z.union([
       z.string(),
       z
         .object({
@@ -1056,7 +1070,7 @@ const GroupConditionSchema = z
         })
         .partial()
     ]),
-    role: z.union([
+    assignableRole: z.union([
       z.string(),
       z
         .object({
