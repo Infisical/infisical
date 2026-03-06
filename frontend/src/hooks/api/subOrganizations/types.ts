@@ -1,3 +1,9 @@
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+
+export enum SubOrgOrderBy {
+  Name = "name"
+}
+
 export type TSubOrganization = {
   id: string;
   name: string;
@@ -16,8 +22,8 @@ export type TListSubOrganizationsDTO = {
   limit?: number;
   offset?: number;
   search?: string;
-  orderBy?: "name";
-  orderDirection?: "asc" | "desc";
+  orderBy?: SubOrgOrderBy;
+  orderDirection?: OrderByDirection;
   isAccessible?: boolean;
 };
 

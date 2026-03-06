@@ -51,6 +51,7 @@ import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  SubOrgOrderBy,
   subOrganizationsQuery,
   TSubOrganization,
   useDeleteSubOrganization,
@@ -60,10 +61,6 @@ import {
 import { usePopUp } from "@app/hooks/usePopUp";
 import { NewSubOrganizationForm } from "@app/layouts/OrganizationLayout/components/NavBar/NewSubOrganizationForm";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
-
-enum SubOrgOrderBy {
-  Name = "name"
-}
 
 const editSubOrgSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -129,13 +126,11 @@ export const OrgSubOrgsTab = () => {
     setUserTablePreference("subOrgsTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const orderDir = orderDirection === OrderByDirection.ASC ? "asc" : "desc";
-
   const { data: allSubOrgsData, isPending: isLoading } = useQuery(
     subOrganizationsQuery.list({
       search: debouncedSearch || undefined,
-      orderBy: "name",
-      orderDirection: orderDir,
+      orderBy: SubOrgOrderBy.Name,
+      orderDirection,
       limit,
       offset
     })
