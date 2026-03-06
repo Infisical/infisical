@@ -120,7 +120,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 };
 
 const commonClassName =
-  "text-sm leading-[1.85rem] caret-white border-none outline-hidden w-full break-all";
+  "text-sm leading-[1.45rem] caret-white border-none outline-hidden w-full break-all";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
