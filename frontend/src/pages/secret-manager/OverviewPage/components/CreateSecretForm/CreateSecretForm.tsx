@@ -210,10 +210,8 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
     }
 
     if (!updatedEnvs.length && !forApprovalEnvs.length) {
-      createNotification({
-        type: "error",
-        text: "Failed to create secrets"
-      });
+      // this should only occur when a toast notifcation is created from failed mutation
+      console.warn("failed to create secrets");
     } else if (createMore) {
       setValue("key", "");
       setValue("value", "");
