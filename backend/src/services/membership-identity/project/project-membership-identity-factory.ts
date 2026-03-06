@@ -134,12 +134,12 @@ export const newProjectMembershipIdentityFactory = ({
             throw new PermissionBoundaryError({
               message: constructPermissionErrorMessage(
                 "Failed to create identity project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionIdentityActions.AssignRole,
-              ProjectPermissionSub.Identity
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
+                shouldUseNewPrivilegeSystem,
+                ProjectPermissionIdentityActions.AssignRole,
+                ProjectPermissionSub.Identity
+              ),
+              details: { missingPermissions: permissionBoundary.missingPermissions }
+            });
         }
       }
     }
