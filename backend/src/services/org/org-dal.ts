@@ -26,6 +26,7 @@ import {
   withTransaction
 } from "@app/lib/knex";
 import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
+import { OrderByDirection } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 import { OrgAuthMethod, TOrgWithSubOrgs } from "./org-types";
@@ -164,7 +165,7 @@ export const orgDALFactory = (db: TDbClient) => {
     isAccessible?: boolean;
     search?: string;
     orderBy?: string;
-    orderDirection?: "asc" | "desc";
+    orderDirection?: OrderByDirection;
     limit?: number;
     offset?: number;
   }) => {

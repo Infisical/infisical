@@ -1,4 +1,8 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+
+export enum SubOrgOrderBy {
+  Name = "name"
+}
 
 export type TCreateSubOrgDTO = {
   name: string;
@@ -12,8 +16,8 @@ export type TListSubOrgDTO = {
     limit?: number;
     offset?: number;
     search?: string;
-    orderBy?: string;
-    orderDirection?: "asc" | "desc";
+    orderBy?: SubOrgOrderBy;
+    orderDirection?: OrderByDirection;
     isAccessible?: boolean;
   }>;
 };

@@ -2,8 +2,10 @@ import { z } from "zod";
 
 import { OrganizationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { SubOrgOrderBy } from "@app/ee/services/sub-org/sub-org-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
 import { pick } from "@app/lib/fn";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -89,8 +91,8 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         limit: z.coerce.number().min(1).max(1000).default(25).describe(SUB_ORGANIZATIONS.LIST.limit),
         offset: z.coerce.number().min(0).default(0).describe(SUB_ORGANIZATIONS.LIST.offset),
         search: z.string().trim().optional().describe(SUB_ORGANIZATIONS.LIST.search),
-        orderBy: z.enum(["name"]).default("name").describe(SUB_ORGANIZATIONS.LIST.orderBy),
-        orderDirection: z.enum(["asc", "desc"]).default("asc").describe(SUB_ORGANIZATIONS.LIST.orderDirection),
+        orderBy: z.nativeEnum(SubOrgOrderBy).default(SubOrgOrderBy.Name).describe(SUB_ORGANIZATIONS.LIST.orderBy),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC).describe(SUB_ORGANIZATIONS.LIST.orderDirection),
         isAccessible: z
           .enum(["true", "false"])
           .optional()
