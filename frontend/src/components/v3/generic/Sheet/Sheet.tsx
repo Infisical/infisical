@@ -69,7 +69,6 @@ function SheetContent({
       >
         {children}
         <SheetPrimitive.Close
-          autoFocus
           className="data-[state=open]:bg-secondary absolute top-4 right-4 cursor-pointer rounded-xs text-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
         >
           <XIcon className="size-4" />
