@@ -1,44 +1,56 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import {
-  faArrowDownAZ,
-  faArrowUpZA,
-  faEllipsisV,
-  faFolderOpen,
-  faMagnifyingGlass,
-  faPen,
-  faPlus,
-  faSearch,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { CheckIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { DeleteActionModal, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import {
+  Badge,
   Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  FormControl,
-  IconButton,
-  Input,
-  Modal,
-  ModalContent,
-  Pagination,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Skeleton,
-  Tooltip
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { OrgPermissionSubjects, useOrgPermission, useUser } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import {
@@ -80,23 +92,9 @@ export const OrgSubOrgsTab = () => {
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
 
-  const canCreateSubOrg = permission.can(
-    OrgPermissionSubOrgActions.Create,
-    OrgPermissionSubjects.SubOrganization
-  );
-  const canEditSubOrg = permission.can(
-    OrgPermissionSubOrgActions.Edit,
-    OrgPermissionSubjects.SubOrganization
-  );
-  const canDeleteSubOrg = permission.can(
-    OrgPermissionSubOrgActions.Delete,
-    OrgPermissionSubjects.SubOrganization
-  );
-  const canDirectAccess = permission.can(
-    OrgPermissionSubOrgActions.DirectAccess,
-    OrgPermissionSubjects.SubOrganization
-  );
-  const canManageSubOrgs = canEditSubOrg || canDeleteSubOrg;
+  const canManageSubOrgs =
+    permission.can(OrgPermissionSubOrgActions.Edit, OrgPermissionSubjects.SubOrganization) ||
+    permission.can(OrgPermissionSubOrgActions.Delete, OrgPermissionSubjects.SubOrganization);
 
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
@@ -118,7 +116,7 @@ export const OrgSubOrgsTab = () => {
     toggleOrderDirection,
     orderDirection
   } = usePagination(SubOrgOrderBy.Name, {
-    initPerPage: getUserTablePreference("subOrgsTable", PreferenceKey.PerPage, 24)
+    initPerPage: getUserTablePreference("subOrgsTable", PreferenceKey.PerPage, 20)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
@@ -136,7 +134,6 @@ export const OrgSubOrgsTab = () => {
     })
   );
 
-  // Used only to determine isMember flag; unaffected by search/pagination.
   const { data: mySubOrgIds = new Set<string>() } = useQuery({
     ...subOrganizationsQuery.list({ limit: 500, isAccessible: true }),
     select: (data) => new Set(data.organizations.map((o) => o.id))
@@ -224,144 +221,6 @@ export const OrgSubOrgsTab = () => {
     }
   };
 
-  const renderActions = (subOrg: SubOrgWithMember) => {
-    if (subOrg.isMember) {
-      return canManageSubOrgs ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton ariaLabel="options" colorSchema="secondary" variant="plain" className="w-6">
-              <FontAwesomeIcon icon={faEllipsisV} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent sideOffset={2} align="end">
-            {canEditSubOrg && (
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={faPen} />}
-                onClick={() => handleOpenEditModal(subOrg)}
-              >
-                Edit
-              </DropdownMenuItem>
-            )}
-            {canDeleteSubOrg && (
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={faTrash} />}
-                onClick={() => handleOpenDeleteModal(subOrg)}
-                className="text-red-600 hover:text-red-500"
-              >
-                Delete
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null;
-    }
-
-    if (!canDirectAccess) return null;
-
-    return (
-      <Button
-        size="xs"
-        variant="outline_bg"
-        isDisabled={isJoining}
-        onClick={() => joinSubOrg({ subOrgId: subOrg.id })}
-      >
-        Join
-      </Button>
-    );
-  };
-
-  const renderListItem = (subOrg: SubOrgWithMember, index: number) => (
-    <div
-      key={subOrg.id}
-      role="button"
-      tabIndex={0}
-      className={`group flex min-w-72 border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:bg-mineshaft-700 ${
-        index === 0 ? "rounded-t-md" : ""
-      } ${subOrg.isMember ? "cursor-pointer" : ""}`}
-      onClick={() => {
-        if (subOrg.isMember)
-          handleLoginSubOrg(subOrg.id).catch(() =>
-            createNotification({ type: "error", text: "Failed to log in to sub-organization" })
-          );
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && subOrg.isMember)
-          handleLoginSubOrg(subOrg.id).catch(() =>
-            createNotification({ type: "error", text: "Failed to log in to sub-organization" })
-          );
-      }}
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="-mt-0.5 flex min-w-0 flex-col">
-          <p className="truncate text-sm text-mineshaft-100">{subOrg.name}</p>
-          <p className="truncate text-xs text-mineshaft-400">
-            Created {format(new Date(subOrg.createdAt), "MMM d, yyyy")}
-          </p>
-        </div>
-      </div>
-      <div
-        className="flex items-center justify-end gap-1"
-        onClick={(e) => e.stopPropagation()}
-        role="none"
-      >
-        {subOrg.isMember && (
-          <Badge variant="info" className="mr-1">
-            <CheckIcon />
-            Joined
-          </Badge>
-        )}
-        {renderActions(subOrg)}
-      </div>
-    </div>
-  );
-
-  let content;
-
-  if (isLoading) {
-    content = (
-      <div className="mt-4 w-full rounded-md">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={`sub-org-loading-${i + 1}`}
-            className={`group flex h-12 min-w-72 flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-              i === 0 && "rounded-t-md"
-            } ${i === 2 && "rounded-b-md border-b"}`}
-          >
-            <Skeleton className="w-full bg-mineshaft-600" />
-          </div>
-        ))}
-      </div>
-    );
-  } else if (paginatedSubOrgs.length > 0) {
-    content = (
-      <div className="mt-4 w-full rounded-md">
-        {paginatedSubOrgs.map((subOrg, index) => renderListItem(subOrg, index))}
-      </div>
-    );
-  } else if (totalCount === 0 && searchFilter) {
-    content = (
-      <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
-        <FontAwesomeIcon
-          icon={faSearch}
-          className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
-        />
-        <div className="text-center font-light">No sub-orgs match search...</div>
-      </div>
-    );
-  } else {
-    content = (
-      <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
-        <FontAwesomeIcon
-          icon={faFolderOpen}
-          className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
-        />
-        <div className="text-center font-light">
-          No sub-organizations found in this organization.
-        </div>
-      </div>
-    );
-  }
-
   if (shouldShowMfa) {
     return (
       <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
@@ -376,57 +235,224 @@ export const OrgSubOrgsTab = () => {
   }
 
   return (
-    <div>
-      <div className="flex w-full flex-row flex-wrap gap-2 md:flex-nowrap md:gap-0">
-        <Input
-          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50/60 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full"
-          placeholder="Search by name..."
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        />
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <Tooltip content="Toggle Sort Direction">
-            <IconButton
-              className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
-              ariaLabel={`Sort ${orderDirection === OrderByDirection.ASC ? "descending" : "ascending"}`}
-              variant="plain"
-              size="xs"
-              colorSchema="secondary"
-              onClick={toggleOrderDirection}
+    <>
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>Sub-Organizations</UnstableCardTitle>
+          <UnstableCardDescription>
+            Manage sub-organizations under this organization.
+          </UnstableCardDescription>
+          <UnstableCardAction>
+            <OrgPermissionCan
+              I={OrgPermissionSubOrgActions.Create}
+              a={OrgPermissionSubjects.SubOrganization}
             >
-              <FontAwesomeIcon
-                icon={orderDirection === OrderByDirection.ASC ? faArrowDownAZ : faArrowUpZA}
+              {(isAllowed) => (
+                <Button
+                  variant="org"
+                  onClick={() => handlePopUpOpen("addSubOrg")}
+                  isDisabled={!isAllowed}
+                >
+                  <PlusIcon />
+                  Add Sub Org
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </UnstableCardAction>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <div className="mb-4 flex gap-2">
+            <InputGroup className="flex-1">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                placeholder="Search sub-organizations..."
               />
-            </IconButton>
-          </Tooltip>
-        </div>
-        {canCreateSubOrg && (
-          <Button
-            colorSchema="secondary"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => handlePopUpOpen("addSubOrg")}
-            className="ml-2"
-          >
-            Add Sub Org
-          </Button>
-        )}
-      </div>
-
-      {content}
-
-      {!isLoading && totalCount > 0 && (
-        <Pagination
-          className="rounded-b-md border border-mineshaft-600"
-          perPage={perPage}
-          perPageList={[12, 24, 48, 96]}
-          count={totalCount}
-          page={page}
-          onChangePage={setPage}
-          onChangePerPage={handlePerPageChange}
-        />
-      )}
+            </InputGroup>
+          </div>
+          {!isLoading && paginatedSubOrgs.length === 0 ? (
+            <UnstableEmpty className="border">
+              <UnstableEmptyHeader>
+                <UnstableEmptyTitle>
+                  {searchFilter
+                    ? "No sub-organizations match search"
+                    : "No sub-organizations found"}
+                </UnstableEmptyTitle>
+                <UnstableEmptyDescription>
+                  {searchFilter
+                    ? "Adjust your search criteria."
+                    : "Create a sub-organization to get started."}
+                </UnstableEmptyDescription>
+              </UnstableEmptyHeader>
+            </UnstableEmpty>
+          ) : (
+            <>
+              <UnstableTable>
+                <UnstableTableHeader>
+                  <UnstableTableRow>
+                    <UnstableTableHead
+                      onClick={toggleOrderDirection}
+                      className="w-1/3"
+                    >
+                      Name
+                      <ChevronDownIcon
+                        className={twMerge(
+                          orderDirection === OrderByDirection.DESC && "rotate-180",
+                          "transition-transform"
+                        )}
+                      />
+                    </UnstableTableHead>
+                    <UnstableTableHead className="w-1/4">Slug</UnstableTableHead>
+                    <UnstableTableHead className="w-1/4">Created</UnstableTableHead>
+                    <UnstableTableHead>Status</UnstableTableHead>
+                    <UnstableTableHead className="w-5" />
+                  </UnstableTableRow>
+                </UnstableTableHeader>
+                <UnstableTableBody>
+                  {isLoading &&
+                    Array.from({ length: perPage }).map((_, i) => (
+                      <UnstableTableRow key={`skeleton-${i + 1}`}>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-full" />
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-full" />
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-full" />
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-16" />
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-4" />
+                        </UnstableTableCell>
+                      </UnstableTableRow>
+                    ))}
+                  {!isLoading &&
+                    paginatedSubOrgs.map((subOrg) => (
+                      <UnstableTableRow
+                        key={subOrg.id}
+                        className="group"
+                        onClick={
+                          subOrg.isMember
+                            ? () => {
+                                handleLoginSubOrg(subOrg.id).catch(() =>
+                                  createNotification({
+                                    type: "error",
+                                    text: "Failed to log in to sub-organization"
+                                  })
+                                );
+                              }
+                            : undefined
+                        }
+                      >
+                        <UnstableTableCell isTruncatable>
+                          {subOrg.name}
+                        </UnstableTableCell>
+                        <UnstableTableCell isTruncatable className="text-muted">
+                          {subOrg.slug}
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          {format(new Date(subOrg.createdAt), "MMM d, yyyy")}
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          {subOrg.isMember && (
+                            <Badge variant="info">
+                              <CheckIcon />
+                              Joined
+                            </Badge>
+                          )}
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <div
+                            className="flex items-center justify-end gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                            role="none"
+                          >
+                            {subOrg.isMember && canManageSubOrgs && (
+                              <UnstableDropdownMenu>
+                                <UnstableDropdownMenuTrigger asChild>
+                                  <UnstableIconButton variant="ghost" size="xs">
+                                    <MoreHorizontalIcon />
+                                  </UnstableIconButton>
+                                </UnstableDropdownMenuTrigger>
+                                <UnstableDropdownMenuContent sideOffset={2} align="end">
+                                  <OrgPermissionCan
+                                    I={OrgPermissionSubOrgActions.Edit}
+                                    a={OrgPermissionSubjects.SubOrganization}
+                                  >
+                                    {(isAllowed) =>
+                                      isAllowed ? (
+                                        <UnstableDropdownMenuItem
+                                          onClick={() => handleOpenEditModal(subOrg)}
+                                        >
+                                          <PencilIcon />
+                                          Edit
+                                        </UnstableDropdownMenuItem>
+                                      ) : null
+                                    }
+                                  </OrgPermissionCan>
+                                  <OrgPermissionCan
+                                    I={OrgPermissionSubOrgActions.Delete}
+                                    a={OrgPermissionSubjects.SubOrganization}
+                                  >
+                                    {(isAllowed) =>
+                                      isAllowed ? (
+                                        <UnstableDropdownMenuItem
+                                          variant="danger"
+                                          onClick={() => handleOpenDeleteModal(subOrg)}
+                                        >
+                                          <TrashIcon />
+                                          Delete
+                                        </UnstableDropdownMenuItem>
+                                      ) : null
+                                    }
+                                  </OrgPermissionCan>
+                                </UnstableDropdownMenuContent>
+                              </UnstableDropdownMenu>
+                            )}
+                            {!subOrg.isMember && (
+                              <OrgPermissionCan
+                                I={OrgPermissionSubOrgActions.DirectAccess}
+                                a={OrgPermissionSubjects.SubOrganization}
+                              >
+                                {(isAllowed) =>
+                                  isAllowed ? (
+                                    <Button
+                                      size="xs"
+                                      variant="org"
+                                      isDisabled={isJoining}
+                                      onClick={() => joinSubOrg({ subOrgId: subOrg.id })}
+                                    >
+                                      Join
+                                    </Button>
+                                  ) : null
+                                }
+                              </OrgPermissionCan>
+                            )}
+                          </div>
+                        </UnstableTableCell>
+                      </UnstableTableRow>
+                    ))}
+                </UnstableTableBody>
+              </UnstableTable>
+              {Boolean(totalCount) && (
+                <UnstablePagination
+                  count={totalCount}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={setPage}
+                  onChangePerPage={handlePerPageChange}
+                />
+              )}
+            </>
+          )}
+        </UnstableCardContent>
+      </UnstableCard>
 
       <Modal
         isOpen={popUp.addSubOrg.isOpen}
@@ -453,16 +479,15 @@ export const OrgSubOrgsTab = () => {
           footerContent={
             <div className="flex items-center gap-2">
               <Button
-                colorSchema="secondary"
+                variant="org"
                 type="submit"
                 form="edit-sub-org-form"
-                isLoading={isUpdating}
+                isPending={isUpdating}
               >
                 Save Changes
               </Button>
               <Button
-                variant="plain"
-                colorSchema="secondary"
+                variant="outline"
                 onClick={() => handlePopUpClose("editSubOrg")}
               >
                 Cancel
@@ -498,6 +523,6 @@ export const OrgSubOrgsTab = () => {
         deleteKey="confirm"
         onDeleteApproved={handleDeleteApproved}
       />
-    </div>
+    </>
   );
 };
