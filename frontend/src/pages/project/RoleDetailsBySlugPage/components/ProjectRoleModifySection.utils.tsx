@@ -437,9 +437,18 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.Edit]: [],
     [ProjectPermissionMemberActions.Delete]: [],
     [ProjectPermissionMemberActions.AssumePrivileges]: [],
-    [ProjectPermissionMemberActions.GrantPrivileges]: ["userEmail", "assignableRole", "assignableSubject", "assignableAction"],
+    [ProjectPermissionMemberActions.GrantPrivileges]: [
+      "userEmail",
+      "assignableRole",
+      "assignableSubject",
+      "assignableAction"
+    ],
     [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
-    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: [
+      "userEmail",
+      "assignableSubject",
+      "assignableAction"
+    ]
   },
   [ProjectPermissionSub.Identity]: {
     [ProjectPermissionIdentityActions.Read]: [],
@@ -451,7 +460,12 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionIdentityActions.CreateToken]: [],
     [ProjectPermissionIdentityActions.GetToken]: [],
     [ProjectPermissionIdentityActions.DeleteToken]: [],
-    [ProjectPermissionIdentityActions.GrantPrivileges]: ["identityId", "assignableRole", "assignableSubject", "assignableAction"],
+    [ProjectPermissionIdentityActions.GrantPrivileges]: [
+      "identityId",
+      "assignableRole",
+      "assignableSubject",
+      "assignableAction"
+    ],
     [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "assignableRole"],
     [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: [
       "identityId",

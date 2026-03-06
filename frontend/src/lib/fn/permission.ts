@@ -77,7 +77,11 @@ type GroupConditions = {
 const MEMBER_CONDITION_MAPPINGS: ConditionMapping[] = [
   { conditionKey: "userEmail", resultKey: "emails", forbiddenResultKey: "forbiddenEmails" },
   { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
-  { conditionKey: "assignableSubject", resultKey: "subjects", forbiddenResultKey: "forbiddenSubjects" },
+  {
+    conditionKey: "assignableSubject",
+    resultKey: "subjects",
+    forbiddenResultKey: "forbiddenSubjects"
+  },
   { conditionKey: "assignableAction", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
 ];
 
@@ -88,7 +92,11 @@ const IDENTITY_CONDITION_MAPPINGS: ConditionMapping[] = [
     forbiddenResultKey: "forbiddenIdentityIds"
   },
   { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
-  { conditionKey: "assignableSubject", resultKey: "subjects", forbiddenResultKey: "forbiddenSubjects" },
+  {
+    conditionKey: "assignableSubject",
+    resultKey: "subjects",
+    forbiddenResultKey: "forbiddenSubjects"
+  },
   { conditionKey: "assignableAction", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
 ];
 

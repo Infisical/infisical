@@ -1,4 +1,4 @@
-import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRule } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import {
@@ -354,14 +354,13 @@ export const newProjectAdditionalPrivilegesFactory = ({
         });
     } else {
       // This prevents bypassing authorization by providing an empty permissions payload.
-      const subjectToCheck = subject(permissionSubject, subjectFields);
-      const canPerformNewAction = permission.can(permissionAction, subjectToCheck);
+      const canPerformNewAction = permission.can(permissionAction, permissionSubject);
 
       const legacyAction =
         actorType === ActorType.USER
           ? ProjectPermissionMemberActions.GrantPrivileges
           : ProjectPermissionIdentityActions.GrantPrivileges;
-      const canPerformLegacyAction = permission.can(legacyAction, subjectToCheck);
+      const canPerformLegacyAction = permission.can(legacyAction, permissionSubject);
 
       if (!canPerformNewAction && !canPerformLegacyAction) {
         throw new PermissionBoundaryError({
