@@ -43,6 +43,6 @@ export const GenericResourceNameSchema = z
 export const BaseSecretNameSchema = z.string().trim().min(1);
 
 export const SecretNameSchema = BaseSecretNameSchema.refine(
-  (el) => !el.includes(":") && !el.includes("/"),
-  "Secret name cannot contain colon or forward slash."
+  (el) => !el.includes(":"),
+  "Secret name cannot contain colon"
 );
