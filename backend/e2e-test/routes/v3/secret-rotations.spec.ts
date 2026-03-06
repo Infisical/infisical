@@ -32,7 +32,7 @@ const formatSqlUsername = (username: string) => `${username}_${uuidv4().slice(0,
 
 const getSecretValue = async (secretKey: string) => {
   const passwordSecret = await testServer.inject({
-    url: `/api/v3/secrets/raw/${secretKey}`,
+    url: `/api/v3/secrets/raw/${encodeURIComponent(secretKey)}`,
     method: "GET",
     query: {
       workspaceId: seedData1.projectV3.id,

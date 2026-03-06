@@ -40,7 +40,7 @@ export const useCreateSecretV3 = ({
       skipMultilineEncoding,
       tagIds
     }) => {
-      const { data } = await apiRequest.post(`/api/v4/secrets/${secretKey}`, {
+      const { data } = await apiRequest.post(`/api/v4/secrets/${encodeURIComponent(secretKey)}`, {
         secretPath,
         type,
         environment,
@@ -106,7 +106,7 @@ export const useUpdateSecretV3 = ({
       skipMultilineEncoding,
       secretMetadata
     }) => {
-      const { data } = await apiRequest.patch(`/api/v4/secrets/${secretKey}`, {
+      const { data } = await apiRequest.patch(`/api/v4/secrets/${encodeURIComponent(secretKey)}`, {
         projectId,
         environment,
         type,
@@ -163,7 +163,7 @@ export const useDeleteSecretV3 = ({
 
   return useMutation<object, object, TDeleteSecretsV3DTO>({
     mutationFn: async ({ secretPath = "/", type, environment, projectId, secretKey, secretId }) => {
-      const { data } = await apiRequest.delete(`/api/v4/secrets/${secretKey}`, {
+      const { data } = await apiRequest.delete(`/api/v4/secrets/${encodeURIComponent(secretKey)}`, {
         data: {
           projectId,
           environment,
@@ -443,7 +443,7 @@ export const useMoveSecrets = ({
 };
 
 export const createSecret = async (dto: TCreateSecretsV3DTO) => {
-  const { data } = await apiRequest.post(`/api/v4/secrets/${dto.secretKey}`, dto);
+  const { data } = await apiRequest.post(`/api/v4/secrets/${encodeURIComponent(dto.secretKey)}`, dto);
   return data;
 };
 
