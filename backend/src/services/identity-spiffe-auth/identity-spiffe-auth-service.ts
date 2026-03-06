@@ -1,7 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import jwt from "jsonwebtoken";
-import { importJWK } from "jose";
+import { decodeProtectedHeader, errors as joseErrors, importJWK, jwtVerify } from "jose";
 
 import {
   AccessScope,
@@ -72,27 +71,30 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
 export type TIdentitySpiffeAuthServiceFactory = ReturnType<typeof identitySpiffeAuthServiceFactory>;
 
 const verifyJwtSvid = async (jwtValue: string, jwksJson: string) => {
-  const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
-  if (!decodedToken || typeof decodedToken === "string") {
-    throw new UnauthorizedError({ message: "Invalid JWT" });
-  }
-
-  const { kid, alg } = (decodedToken as jwt.Jwt).header;
-  if (!kid) {
+  const header = decodeProtectedHeader(jwtValue);
+  if (!header.kid) {
     throw new UnauthorizedError({ message: "JWT missing kid header" });
   }
 
-  const jwk = findSigningKeyInJwks(jwksJson, kid);
-  const keyLike = await importJWK(jwk, alg);
+  let jwk;
+  try {
+    jwk = findSigningKeyInJwks(jwksJson, header.kid);
+  } catch {
+    throw new UnauthorizedError({ message: `No key found in JWKS matching kid: ${header.kid}` });
+  }
+  const key = await importJWK(jwk, header.alg);
 
   try {
-    const tokenData = crypto.jwt().verify(jwtValue, keyLike as jwt.Secret) as Record<string, unknown>;
-    return { tokenData, kid };
+    const { payload } = await jwtVerify(jwtValue, key);
+    return { tokenData: payload as Record<string, unknown>, kid: header.kid };
   } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      throw new UnauthorizedError({ message: `Access denied: ${error.message}` });
+    if (error instanceof joseErrors.JWTExpired) {
+      throw new UnauthorizedError({ message: "JWT-SVID has expired" });
     }
-    throw error;
+    if (error instanceof joseErrors.JWSSignatureVerificationFailed) {
+      throw new UnauthorizedError({ message: "JWT-SVID signature verification failed" });
+    }
+    throw new UnauthorizedError({ message: "JWT-SVID verification failed" });
   }
 };
 
@@ -194,7 +196,13 @@ export const identitySpiffeAuthServiceFactory = ({
       caCert = orgDataKeyDecryptor({ cipherTextBlob: config.encryptedBundleEndpointCaCert }).toString();
     }
 
-    const bundleJson = await fetchRemoteBundleJwks(config.bundleEndpointUrl, caCert);
+    let bundleJson: string;
+    try {
+      bundleJson = await fetchRemoteBundleJwks(config.bundleEndpointUrl, caCert);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      throw new BadRequestError({ message: `Failed to fetch SPIFFE trust bundle from remote endpoint: ${msg}` });
+    }
 
     const { cipherTextBlob: encryptedCachedBundleJwks } = orgDataKeyEncryptor({
       plainText: Buffer.from(bundleJson)
