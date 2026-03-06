@@ -240,8 +240,31 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   };
 
   const bulkUpdate = async (
-    data: Array<{ filter: Pick<TSecretsV2, "id"> & Partial<TSecretsV2>; data: TSecretsV2Update }>,
+    data: Array<{ filter: Partial<TSecretsV2>; data: TSecretsV2Update }>,
 
+    tx?: Knex
+  ) => {
+    try {
+      const secs: TSecretsV2[] = [];
+
+      for await (const { filter, data: updateData } of data) {
+        const [doc] = await (tx || db)(TableName.SecretV2)
+          .where(filter)
+          .update(updateData)
+          .increment("version", 1)
+          .returning("*");
+        if (!doc) throw new BadRequestError({ message: "Failed to update document" });
+        secs.push(doc);
+      }
+
+      return secs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
+
+  const bulkUpdateById = async (
+    data: Array<{ filter: Pick<TSecretsV2, "id"> & Partial<TSecretsV2>; data: TSecretsV2Update }>,
     tx?: Knex
   ) => {
     try {
@@ -276,7 +299,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
 
       return updatedSecrets;
     } catch (error) {
-      throw new DatabaseError({ error, name: "bulk update secret" });
+      throw new DatabaseError({ error, name: "bulk update secret by id" });
     }
   };
 
@@ -1108,6 +1131,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     ...secretOrm,
     update,
     bulkUpdate,
+    bulkUpdateById,
     deleteMany,
     bulkUpdateNoVersionIncrement,
     getSecretTags,

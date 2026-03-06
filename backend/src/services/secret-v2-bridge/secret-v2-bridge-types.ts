@@ -207,7 +207,7 @@ export type TFnSecretBulkUpdate = {
   folderId: string;
   orgId: string;
   inputSecrets: {
-    filter: Pick<TSecretsV2, "id"> & Partial<TSecretsV2>;
+    filter: Partial<TSecretsV2>;
     data: TRequireReferenceIfValue & {
       tags?: string[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
@@ -215,7 +215,7 @@ export type TFnSecretBulkUpdate = {
     };
   }[];
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences" | "find">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "bulkUpdateById" | "upsertSecretReferences" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
