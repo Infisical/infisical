@@ -87,8 +87,9 @@ export const secretVersionDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
+      const sorted = [...data].sort((a, b) => (a.filter.id ?? "").localeCompare(b.filter.id ?? ""));
       const secs = await Promise.all(
-        data.map(async ({ filter, data: updateData }) => {
+        sorted.map(async ({ filter, data: updateData }) => {
           const [doc] = await (tx || db)(TableName.SecretVersion)
             .where(filter)
             .update(updateData)

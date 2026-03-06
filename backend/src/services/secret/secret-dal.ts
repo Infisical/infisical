@@ -26,8 +26,9 @@ export const secretDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
+      const sorted = [...data].sort((a, b) => (a.filter.id ?? "").localeCompare(b.filter.id ?? ""));
       const secs = await Promise.all(
-        data.map(async ({ filter, data: updateData }) => {
+        sorted.map(async ({ filter, data: updateData }) => {
           const [doc] = await (tx || db)(TableName.Secret)
             .where(filter)
             .update(updateData)

@@ -246,10 +246,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   ) => {
     try {
       const BATCH_SIZE = 500;
+      const sorted = [...data].sort((a, b) => (a.filter.id ?? "").localeCompare(b.filter.id ?? ""));
       const secs: TSecretsV2[] = [];
 
-      for (let i = 0; i < data.length; i += BATCH_SIZE) {
-        const batch = data.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < sorted.length; i += BATCH_SIZE) {
+        const batch = sorted.slice(i, i + BATCH_SIZE);
         // eslint-disable-next-line no-await-in-loop
         const batchResults = await Promise.all(
           batch.map(async ({ filter, data: updateData }) => {
