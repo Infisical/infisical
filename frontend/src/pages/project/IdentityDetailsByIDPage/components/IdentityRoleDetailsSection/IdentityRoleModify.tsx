@@ -35,7 +35,6 @@ import {
 } from "@app/context";
 import { useGetProjectRoles, useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared";
 import {
   canModifyByGrantConditions,
