@@ -27,6 +27,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createSubOrganization",
       tags: [ApiDocsTags.SubOrganizations],
       description: "Create a sub organization",
       security: [
@@ -76,6 +77,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listSubOrganizations",
       tags: [ApiDocsTags.SubOrganizations],
       description: "List of sub organizations",
       security: [
@@ -128,6 +130,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateSubOrganization",
       tags: [ApiDocsTags.SubOrganizations],
       description: "Update a sub organization",
       security: [
@@ -185,6 +188,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createSubOrganizationMembership",
       tags: [ApiDocsTags.SubOrganizations],
       description: "Join a sub organization",
       security: [
@@ -232,6 +236,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteSubOrganization",
       tags: [ApiDocsTags.SubOrganizations],
       description: "Delete a sub organization",
       security: [
