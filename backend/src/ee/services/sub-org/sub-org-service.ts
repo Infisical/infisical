@@ -136,10 +136,10 @@ export const subOrgServiceFactory = ({
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       actorId: permission.id,
       actor: permission.type,
-      orgId: subOrgId,
-      actorOrgId: subOrgId,
+      orgId: permission.rootOrgId,
+      actorOrgId: permission.rootOrgId,
       actorAuthMethod: permission.authMethod,
-      scope: OrganizationActionScope.ChildOrganization
+      scope: OrganizationActionScope.ParentOrganization
     });
 
     ForbiddenError.from(orgPermission).throwUnlessCan(
@@ -265,10 +265,10 @@ export const subOrgServiceFactory = ({
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       actorId: permission.id,
       actor: permission.type,
-      orgId: subOrgId,
-      actorOrgId: subOrgId,
+      orgId: permission.rootOrgId,
+      actorOrgId: permission.rootOrgId,
       actorAuthMethod: permission.authMethod,
-      scope: OrganizationActionScope.ChildOrganization
+      scope: OrganizationActionScope.ParentOrganization
     });
 
     ForbiddenError.from(orgPermission).throwUnlessCan(
