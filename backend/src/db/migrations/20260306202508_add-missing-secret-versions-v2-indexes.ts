@@ -12,13 +12,9 @@ export async function up(knex: Knex): Promise<void> {
   try {
     await knex.raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
 
-    const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE indexname = ?`, [INDEX_NAME]);
-
-    if (indexExists.rows.length === 0) {
-      await knex.raw(
-        `CREATE INDEX CONCURRENTLY "${INDEX_NAME}" ON "${TableName.SecretVersionV2}" ("secretId", "version")`
-      );
-    }
+    await knex.raw(
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${INDEX_NAME}" ON "${TableName.SecretVersionV2}" ("secretId", "version")`
+    );
   } finally {
     await knex.raw(`SET statement_timeout = '${originalTimeout}'`);
   }
