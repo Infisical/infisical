@@ -94,7 +94,7 @@ export const UpdateSSHResourceSchema = BaseUpdateGatewayPamResourceSchema.extend
 });
 
 // Resource Metadata
-export const SSHResourceMetadataSchema = z.object({
+export const SSHResourceInternalMetadataSchema = z.object({
   caPrivateKey: z.string(),
   caPublicKey: z.string(),
   caKeyAlgorithm: z.string()

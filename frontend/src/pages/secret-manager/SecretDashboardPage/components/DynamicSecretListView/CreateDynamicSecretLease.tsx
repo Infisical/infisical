@@ -139,7 +139,8 @@ const renderOutputForm = (
     provider === DynamicSecretProviders.MongoDB ||
     provider === DynamicSecretProviders.Vertica ||
     provider === DynamicSecretProviders.SapAse ||
-    provider === DynamicSecretProviders.AzureSqlDatabase
+    provider === DynamicSecretProviders.AzureSqlDatabase ||
+    provider === DynamicSecretProviders.Clickhouse
   ) {
     const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
     return (

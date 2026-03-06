@@ -285,6 +285,17 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_RESOURCE_UPDATE]: "Update PAM Resource",
   [EventType.PAM_RESOURCE_DELETE]: "Delete PAM Resource",
 
+  [EventType.PAM_DISCOVERY_SOURCE_LIST]: "List PAM Discovery Sources",
+  [EventType.PAM_DISCOVERY_SOURCE_GET]: "Get PAM Discovery Source",
+  [EventType.PAM_DISCOVERY_SOURCE_CREATE]: "Create PAM Discovery Source",
+  [EventType.PAM_DISCOVERY_SOURCE_UPDATE]: "Update PAM Discovery Source",
+  [EventType.PAM_DISCOVERY_SOURCE_DELETE]: "Delete PAM Discovery Source",
+  [EventType.PAM_DISCOVERY_SCAN]: "PAM Discovery Scan",
+  [EventType.PAM_DISCOVERY_SOURCE_RUN_LIST]: "List PAM Discovery Source Runs",
+  [EventType.PAM_DISCOVERY_SOURCE_RUN_GET]: "Get PAM Discovery Source Run",
+  [EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST]: "List PAM Discovery Source Resources",
+  [EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST]: "List PAM Discovery Source Accounts",
+
   [EventType.CREATE_CERTIFICATE_PROFILE]: "Create Certificate Profile",
   [EventType.UPDATE_CERTIFICATE_PROFILE]: "Update Certificate Profile",
   [EventType.DELETE_CERTIFICATE_PROFILE]: "Delete Certificate Profile",
@@ -404,7 +415,17 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_RESOURCE_GET,
     EventType.PAM_RESOURCE_CREATE,
     EventType.PAM_RESOURCE_UPDATE,
-    EventType.PAM_RESOURCE_DELETE
+    EventType.PAM_RESOURCE_DELETE,
+    EventType.PAM_DISCOVERY_SOURCE_LIST,
+    EventType.PAM_DISCOVERY_SOURCE_GET,
+    EventType.PAM_DISCOVERY_SOURCE_CREATE,
+    EventType.PAM_DISCOVERY_SOURCE_UPDATE,
+    EventType.PAM_DISCOVERY_SOURCE_DELETE,
+    EventType.PAM_DISCOVERY_SCAN,
+    EventType.PAM_DISCOVERY_SOURCE_RUN_LIST,
+    EventType.PAM_DISCOVERY_SOURCE_RUN_GET,
+    EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST,
+    EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST
   ],
   [ProjectType.AI]: [
     ...sharedProjectEvents,

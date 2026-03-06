@@ -2,6 +2,7 @@ import { Job, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from 
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TQueueJobs } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -95,7 +96,8 @@ export enum QueueName {
   PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
-  PkiDiscoveryScan = "pki-discovery-scan"
+  PkiDiscoveryScan = "pki-discovery-scan",
+  PamDiscoveryScan = "pam-discovery-scan"
 }
 
 export enum QueueJobs {
@@ -158,7 +160,9 @@ export enum QueueJobs {
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
-  PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan"
+  PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  PamDiscoverySourceRunScan = "pam-discovery-run-scan",
+  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan"
 }
 
 export type TQueueOptions = {
@@ -487,6 +491,15 @@ export type TQueueJobTypes = {
       }
     | {
         name: QueueJobs.PkiDiscoveryScheduledScan;
+        payload: undefined;
+      };
+  [QueueName.PamDiscoveryScan]:
+    | {
+        name: QueueJobs.PamDiscoverySourceRunScan;
+        payload: { discoverySourceId: string; triggeredBy: PamDiscoverySourceRunTrigger };
+      }
+    | {
+        name: QueueJobs.PamDiscoveryScheduledScan;
         payload: undefined;
       };
 };
@@ -1005,7 +1018,8 @@ export const queueServiceFactory = (
       removeOnFail: true,
       removeOnComplete: true,
       ...opts,
-      repeat: repeat ? { ...repeat, utc: true } : undefined
+      repeat: repeat ? { ...repeat, utc: true } : undefined,
+      jobId
     };
 
     if (persistantQueues.has(name)) {
@@ -1024,12 +1038,12 @@ export const queueServiceFactory = (
           tx
         );
         // if this fails transaction rollback happens
-        await q.add(job, data, { ...opts, jobId });
+        await q.add(job, data, finalOptions);
       });
       return;
     }
 
-    await q.add(job, data, { ...opts, jobId });
+    await q.add(job, data, finalOptions);
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {

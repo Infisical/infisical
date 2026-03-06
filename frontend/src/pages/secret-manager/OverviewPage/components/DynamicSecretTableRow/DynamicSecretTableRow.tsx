@@ -5,6 +5,7 @@ import {
   EditIcon,
   FileKeyIcon,
   FingerprintIcon,
+  ListIcon,
   TrashIcon,
   XIcon
 } from "lucide-react";
@@ -55,6 +56,7 @@ const DYNAMIC_SECRET_PROVIDER_NAMES: Record<DynamicSecretProviders, string> = {
   [DynamicSecretProviders.Vertica]: "Vertica",
   [DynamicSecretProviders.GcpIam]: "GCP IAM",
   [DynamicSecretProviders.Github]: "GitHub",
+  [DynamicSecretProviders.Clickhouse]: "ClickHouse",
   [DynamicSecretProviders.Couchbase]: "Couchbase"
 };
 
@@ -72,6 +74,7 @@ type Props = {
   secretPath: string;
   onEdit: (dynamicSecret: DynamicSecretWithEnv) => void;
   onGenerateLease: (dynamicSecret: DynamicSecretWithEnv) => void;
+  onViewLeases: (dynamicSecret: DynamicSecretWithEnv) => void;
   onDelete: (dynamicSecret: DynamicSecretWithEnv) => void;
   onForceDelete: (dynamicSecret: DynamicSecretWithEnv) => void;
 };
@@ -86,6 +89,7 @@ export const DynamicSecretTableRow = ({
   secretPath,
   onEdit,
   onGenerateLease,
+  onViewLeases,
   onDelete,
   onForceDelete
 }: Props) => {
@@ -126,6 +130,34 @@ export const DynamicSecretTableRow = ({
 
     return (
       <div className="flex items-center transition-all duration-500 group-hover:ml-2 group-hover:space-x-1.5">
+        <ProjectPermissionCan
+          I={ProjectPermissionDynamicSecretActions.Lease}
+          a={subject(ProjectPermissionSub.DynamicSecrets, {
+            environment: dynamicSecret.environment,
+            secretPath,
+            metadata: dynamicSecret.metadata
+          })}
+        >
+          {(isAllowed) => (
+            <Tooltip>
+              <TooltipTrigger>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  isDisabled={!isAllowed || isRevoking}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewLeases(dynamicSecret);
+                  }}
+                >
+                  <ListIcon />
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>View Leases</TooltipContent>
+            </Tooltip>
+          )}
+        </ProjectPermissionCan>
         <ProjectPermissionCan
           I={ProjectPermissionDynamicSecretActions.Lease}
           a={subject(ProjectPermissionSub.DynamicSecrets, {

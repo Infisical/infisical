@@ -9,7 +9,9 @@ const SecretOverviewPageQuerySchema = z.object({
   secretPath: z.string().catch("/"),
   connectionId: z.string().optional(),
   connectionName: z.string().optional(),
-  environments: z.array(z.string()).catch([])
+  environments: z.array(z.string()).catch([]),
+  dynamicSecretId: z.string().optional(),
+  filterBy: z.string().optional()
 });
 
 export const Route = createFileRoute(
