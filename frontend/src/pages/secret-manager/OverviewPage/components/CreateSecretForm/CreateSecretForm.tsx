@@ -249,7 +249,7 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
   const createWsTag = useCreateWsTag();
 
   const createNewTag = async (slug: string) => {
-    const parsedSlug = slugSchema.parse(slug);
+    const parsedSlug = slugSchema().parse(slug);
     const newTag = await createWsTag.mutateAsync({
       projectId,
       tagSlug: parsedSlug,
