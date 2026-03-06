@@ -240,24 +240,21 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   };
 
   const bulkUpdate = async (
-    data: Array<{ filter: Partial<TSecretsV2>; data: TSecretsV2Update }>,
+    data: Array<{ filter: Pick<TSecretsV2, "id"> & Partial<TSecretsV2>; data: TSecretsV2Update }>,
 
     tx?: Knex
   ) => {
     try {
       if (data.length === 0) return [];
 
-      const ids = data.map(({ filter }) => {
-        if (!filter.id) throw new BadRequestError({ message: "bulkUpdate requires id in filter" });
-        return filter.id;
-      });
+      const ids = data.map(({ filter }) => filter.id);
 
       const existingSecrets = await (tx || db)(TableName.SecretV2).whereIn("id", ids).select("*");
 
       const existingById = new Map(existingSecrets.map((s) => [s.id, s]));
 
       const rowsToUpsert = data.map(({ filter, data: updateData }) => {
-        const existing = existingById.get(filter.id!);
+        const existing = existingById.get(filter.id);
         if (!existing) throw new BadRequestError({ message: "Failed to update document" });
 
         return {

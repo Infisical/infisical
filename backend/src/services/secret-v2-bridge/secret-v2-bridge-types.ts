@@ -207,7 +207,7 @@ export type TFnSecretBulkUpdate = {
   folderId: string;
   orgId: string;
   inputSecrets: {
-    filter: Partial<TSecretsV2>;
+    filter: Pick<TSecretsV2, "id"> & Partial<TSecretsV2>;
     data: TRequireReferenceIfValue & {
       tags?: string[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
