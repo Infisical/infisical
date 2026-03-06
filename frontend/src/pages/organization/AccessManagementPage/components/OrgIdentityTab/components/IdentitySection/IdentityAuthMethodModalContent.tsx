@@ -14,6 +14,7 @@ import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
 import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityJwtAuthForm } from "./IdentityJwtAuthForm";
+import { IdentitySpiffeAuthForm } from "./IdentitySpiffeAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
 import { IdentityLdapAuthForm } from "./IdentityLdapAuthForm";
 import { IdentityOciAuthForm } from "./IdentityOciAuthForm";
@@ -58,7 +59,8 @@ const identityAuthMethods = [
   {
     label: "JWT Auth",
     value: IdentityAuthMethod.JWT_AUTH
-  }
+  },
+  { label: "SPIFFE Auth", value: IdentityAuthMethod.SPIFFE_AUTH }
 ];
 
 const schema = z
@@ -229,6 +231,16 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.LDAP_AUTH]: {
       render: () => (
         <IdentityLdapAuthForm
+          identityId={identityAuthMethodData.identityId}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+      )
+    },
+
+    [IdentityAuthMethod.SPIFFE_AUTH]: {
+      render: () => (
+        <IdentitySpiffeAuthForm
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}

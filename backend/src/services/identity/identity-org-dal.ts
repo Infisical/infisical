@@ -106,6 +106,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityTlsCertAuth}.identityId`
         )
+        .leftJoin(
+          TableName.IdentitySpiffeAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentitySpiffeAuth}.identityId`
+        )
         .select(
           selectAllTableCols(TableName.Membership),
 
@@ -121,6 +126,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
           db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
           db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
+          db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth),
           db.ref("name").withSchema(TableName.Identity),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity)
         );
@@ -251,6 +257,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityTlsCertAuth}.identityId`
         )
+        .leftJoin(
+          TableName.IdentitySpiffeAuth,
+          "paginatedIdentity.actorIdentityId",
+          `${TableName.IdentitySpiffeAuth}.identityId`
+        )
         .select(
           db.ref("id").withSchema("paginatedIdentity"),
           db.ref("role").withSchema(TableName.MembershipRole),
@@ -276,7 +287,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
           db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
-          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth)
+          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
+          db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
         )
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.Role))
@@ -323,6 +335,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           tokenId,
           ldapId,
           tlsCertId,
+          spiffeId,
           createdAt,
           updatedAt,
           lastLoginAuthMethod,
@@ -363,7 +376,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               tokenId,
               jwtId,
               ldapId,
-              tlsCertId
+              tlsCertId,
+              spiffeId
             })
           }
         }),
@@ -504,6 +518,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityLdapAuth}.identityId`
         )
+        .leftJoin(
+          TableName.IdentitySpiffeAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentitySpiffeAuth}.identityId`
+        )
         .select(
           db.ref("id").withSchema(TableName.Membership),
           db.ref("total_count").withSchema("searchedIdentities"),
@@ -529,7 +548,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
-          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth)
+          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
+          db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
         )
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.Role))
@@ -587,6 +607,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           azureId,
           tokenId,
           ldapId,
+          spiffeId,
           createdAt,
           updatedAt,
           lastLoginTime,
@@ -627,7 +648,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               azureId,
               tokenId,
               jwtId,
-              ldapId
+              ldapId,
+              spiffeId
             })
           }
         }),

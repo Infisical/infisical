@@ -285,6 +285,8 @@ import { identityGcpAuthDALFactory } from "@app/services/identity-gcp-auth/ident
 import { identityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { identityJwtAuthDALFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-dal";
 import { identityJwtAuthServiceFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-service";
+import { identitySpiffeAuthDALFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-dal";
+import { identitySpiffeAuthServiceFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-service";
 import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { identityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
@@ -535,6 +537,7 @@ export const registerRoutes = async (
   const identityOciAuthDAL = identityOciAuthDALFactory(db);
   const identityOidcAuthDAL = identityOidcAuthDALFactory(db);
   const identityJwtAuthDAL = identityJwtAuthDALFactory(db);
+  const identitySpiffeAuthDAL = identitySpiffeAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
   const identityLdapAuthDAL = identityLdapAuthDALFactory(db);
 
@@ -1958,6 +1961,18 @@ export const registerRoutes = async (
     membershipIdentityDAL
   });
 
+  const identitySpiffeAuthService = identitySpiffeAuthServiceFactory({
+    identityDAL,
+    identitySpiffeAuthDAL,
+    orgDAL,
+    permissionService,
+    identityAccessTokenDAL,
+    licenseService,
+    kmsService,
+    membershipIdentityDAL
+  });
+
+
   const identityLdapAuthService = identityLdapAuthServiceFactory({
     identityLdapAuthDAL,
     orgDAL,
@@ -2874,6 +2889,7 @@ export const registerRoutes = async (
     identityTlsCertAuth: identityTlsCertAuthService,
     identityOidcAuth: identityOidcAuthService,
     identityJwtAuth: identityJwtAuthService,
+    identitySpiffeAuth: identitySpiffeAuthService,
     identityLdapAuth: identityLdapAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,

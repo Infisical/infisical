@@ -35,6 +35,7 @@ import {
   useDeleteIdentityGcpAuth,
   useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentitySpiffeAuth,
   useDeleteIdentityLdapAuth,
   useDeleteIdentityOciAuth,
   useDeleteIdentityOidcAuth,
@@ -48,6 +49,7 @@ import { IdentityAzureAuthForm } from "@app/pages/organization/AccessManagementP
 import { IdentityGcpAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityGcpAuthForm";
 import { IdentityJwtAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityJwtAuthForm";
 import { IdentityKubernetesAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityKubernetesAuthForm";
+import { IdentitySpiffeAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentitySpiffeAuthForm";
 import { IdentityLdapAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityLdapAuthForm";
 import { IdentityOciAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityOciAuthForm";
 import { IdentityOidcAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityOidcAuthForm";
@@ -61,6 +63,7 @@ import { ViewIdentityAzureAuthContent } from "./ViewIdentityAzureAuthContent";
 import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
 import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
+import { ViewIdentitySpiffeAuthContent } from "./ViewIdentitySpiffeAuthContent";
 import { ViewIdentityLdapAuthContent } from "./ViewIdentityLdapAuthContent";
 import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
@@ -87,7 +90,8 @@ const AuthMethodComponentMap = {
   [IdentityAuthMethod.AWS_AUTH]: ViewIdentityAwsAuthContent,
   [IdentityAuthMethod.ALICLOUD_AUTH]: ViewIdentityAliCloudAuthContent,
   [IdentityAuthMethod.AZURE_AUTH]: ViewIdentityAzureAuthContent,
-  [IdentityAuthMethod.JWT_AUTH]: ViewIdentityJwtAuthContent
+  [IdentityAuthMethod.JWT_AUTH]: ViewIdentityJwtAuthContent,
+  [IdentityAuthMethod.SPIFFE_AUTH]: ViewIdentitySpiffeAuthContent
 };
 
 const EditAuthMethodMap = {
@@ -102,7 +106,8 @@ const EditAuthMethodMap = {
   [IdentityAuthMethod.OCI_AUTH]: IdentityOciAuthForm,
   [IdentityAuthMethod.OIDC_AUTH]: IdentityOidcAuthForm,
   [IdentityAuthMethod.JWT_AUTH]: IdentityJwtAuthForm,
-  [IdentityAuthMethod.LDAP_AUTH]: IdentityLdapAuthForm
+  [IdentityAuthMethod.LDAP_AUTH]: IdentityLdapAuthForm,
+  [IdentityAuthMethod.SPIFFE_AUTH]: IdentitySpiffeAuthForm
 };
 
 export const Content = ({
@@ -136,6 +141,7 @@ export const Content = ({
   const { mutateAsync: revokeOciAuth } = useDeleteIdentityOciAuth();
   const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
   const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
+  const { mutateAsync: revokeSpiffeAuth } = useDeleteIdentitySpiffeAuth();
   const { mutateAsync: revokeLdapAuth } = useDeleteIdentityLdapAuth();
 
   const RemoveAuthMethodMap = {
@@ -150,6 +156,7 @@ export const Content = ({
     [IdentityAuthMethod.OCI_AUTH]: revokeOciAuth,
     [IdentityAuthMethod.OIDC_AUTH]: revokeOidcAuth,
     [IdentityAuthMethod.JWT_AUTH]: revokeJwtAuth,
+    [IdentityAuthMethod.SPIFFE_AUTH]: revokeSpiffeAuth,
     [IdentityAuthMethod.LDAP_AUTH]: revokeLdapAuth
   };
 

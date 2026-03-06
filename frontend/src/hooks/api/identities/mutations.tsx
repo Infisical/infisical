@@ -12,6 +12,7 @@ import {
   AddIdentityGcpAuthDTO,
   AddIdentityJwtAuthDTO,
   AddIdentityKubernetesAuthDTO,
+  AddIdentitySpiffeAuthDTO,
   AddIdentityLdapAuthDTO,
   AddIdentityOciAuthDTO,
   AddIdentityOidcAuthDTO,
@@ -31,6 +32,7 @@ import {
   DeleteIdentityGcpAuthDTO,
   DeleteIdentityJwtAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
+  DeleteIdentitySpiffeAuthDTO,
   DeleteIdentityLdapAuthDTO,
   DeleteIdentityOciAuthDTO,
   DeleteIdentityOidcAuthDTO,
@@ -45,6 +47,7 @@ import {
   IdentityGcpAuth,
   IdentityJwtAuth,
   IdentityKubernetesAuth,
+  IdentitySpiffeAuth,
   IdentityLdapAuth,
   IdentityOciAuth,
   IdentityOidcAuth,
@@ -59,6 +62,7 @@ import {
   UpdateIdentityGcpAuthDTO,
   UpdateIdentityJwtAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
+  UpdateIdentitySpiffeAuthDTO,
   UpdateIdentityLdapAuthDTO,
   UpdateIdentityOciAuthDTO,
   UpdateIdentityOidcAuthDTO,
@@ -1205,6 +1209,159 @@ export const useDeleteIdentityJwtAuth = () => {
       }
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
+    }
+  });
+};
+
+export const useAddIdentitySpiffeAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentitySpiffeAuth, object, AddIdentitySpiffeAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      trustDomain,
+      allowedSpiffeIds,
+      allowedAudiences,
+      configurationType,
+      caBundleJwks,
+      bundleEndpointUrl,
+      bundleEndpointProfile,
+      bundleEndpointCaCert,
+      bundleRefreshHintSeconds,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identitySpiffeAuth }
+      } = await apiRequest.post<{ identitySpiffeAuth: IdentitySpiffeAuth }>(
+        `/api/v1/auth/spiffe-auth/identities/${identityId}`,
+        {
+          trustDomain,
+          allowedSpiffeIds,
+          allowedAudiences,
+          configurationType,
+          caBundleJwks,
+          bundleEndpointUrl,
+          bundleEndpointProfile,
+          bundleEndpointCaCert,
+          bundleRefreshHintSeconds,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identitySpiffeAuth;
+    },
+    onSuccess: (_, { identityId, organizationId, projectId }) => {
+      if (organizationId) {
+        queryClient.invalidateQueries({
+          queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+        });
+      }
+      if (projectId) {
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.getProjectIdentityMemberships(projectId)
+        });
+        queryClient.invalidateQueries({
+          queryKey: projectIdentityQuery.getByIdKey({ identityId, projectId })
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentitySpiffeAuth(identityId) });
+    }
+  });
+};
+
+export const useUpdateIdentitySpiffeAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentitySpiffeAuth, object, UpdateIdentitySpiffeAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      trustDomain,
+      allowedSpiffeIds,
+      allowedAudiences,
+      configurationType,
+      caBundleJwks,
+      bundleEndpointUrl,
+      bundleEndpointProfile,
+      bundleEndpointCaCert,
+      bundleRefreshHintSeconds,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identitySpiffeAuth }
+      } = await apiRequest.patch<{ identitySpiffeAuth: IdentitySpiffeAuth }>(
+        `/api/v1/auth/spiffe-auth/identities/${identityId}`,
+        {
+          trustDomain,
+          allowedSpiffeIds,
+          allowedAudiences,
+          configurationType,
+          caBundleJwks,
+          bundleEndpointUrl,
+          bundleEndpointProfile,
+          bundleEndpointCaCert,
+          bundleRefreshHintSeconds,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identitySpiffeAuth;
+    },
+    onSuccess: (_, { identityId, organizationId, projectId }) => {
+      if (organizationId) {
+        queryClient.invalidateQueries({
+          queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+        });
+      }
+      if (projectId) {
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.getProjectIdentityMemberships(projectId)
+        });
+        queryClient.invalidateQueries({
+          queryKey: projectIdentityQuery.getByIdKey({ identityId, projectId })
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentitySpiffeAuth(identityId) });
+    }
+  });
+};
+
+export const useDeleteIdentitySpiffeAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentitySpiffeAuth, object, DeleteIdentitySpiffeAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identitySpiffeAuth }
+      } = await apiRequest.delete(`/api/v1/auth/spiffe-auth/identities/${identityId}`);
+      return identitySpiffeAuth;
+    },
+    onSuccess: (_, { organizationId, identityId, projectId }) => {
+      if (organizationId) {
+        queryClient.invalidateQueries({
+          queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+        });
+      }
+      if (projectId) {
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.getProjectIdentityMemberships(projectId)
+        });
+        queryClient.invalidateQueries({
+          queryKey: projectIdentityQuery.getByIdKey({ identityId, projectId })
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentitySpiffeAuth(identityId) });
     }
   });
 };

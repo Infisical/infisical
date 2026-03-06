@@ -10,10 +10,21 @@ export enum IdentityAuthMethod {
   OIDC_AUTH = "oidc-auth",
   LDAP_AUTH = "ldap-auth",
   JWT_AUTH = "jwt-auth",
-  TLS_CERT_AUTH = "tls-cert-auth"
+  TLS_CERT_AUTH = "tls-cert-auth",
+  SPIFFE_AUTH = "spiffe-auth"
 }
 
 export enum IdentityJwtConfigurationType {
   JWKS = "jwks",
   STATIC = "static"
+}
+
+export enum IdentitySpiffeConfigurationType {
+  STATIC = "static",
+  REMOTE = "remote"
+}
+
+export enum SpiffeBundleEndpointProfile {
+  HTTPS_WEB = "https_web",
+  HTTPS_SPIFFE = "https_spiffe"
 }

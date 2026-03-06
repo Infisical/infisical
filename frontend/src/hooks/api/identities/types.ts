@@ -833,6 +833,72 @@ export type DeleteIdentityJwtAuthDTO = {
   identityId: string;
 } & ({ organizationId: string } | { projectId: string });
 
+export type IdentitySpiffeAuth = {
+  identityId: string;
+  trustDomain: string;
+  allowedSpiffeIds: string;
+  allowedAudiences: string;
+  configurationType: string;
+  caBundleJwks: string;
+  bundleEndpointUrl: string | null;
+  bundleEndpointProfile: string | null;
+  bundleEndpointCaCert: string;
+  cachedBundleLastRefreshedAt: string | null;
+  bundleRefreshHintSeconds: number;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentitySpiffeAuthDTO = {
+  organizationId?: string;
+  projectId?: string;
+  identityId: string;
+  trustDomain: string;
+  allowedSpiffeIds: string;
+  allowedAudiences: string;
+  configurationType: string;
+  caBundleJwks?: string;
+  bundleEndpointUrl?: string;
+  bundleEndpointProfile?: string;
+  bundleEndpointCaCert?: string;
+  bundleRefreshHintSeconds?: number;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+} & ({ organizationId: string } | { projectId: string });
+
+export type UpdateIdentitySpiffeAuthDTO = {
+  organizationId?: string;
+  projectId?: string;
+  identityId: string;
+  trustDomain?: string;
+  allowedSpiffeIds?: string;
+  allowedAudiences?: string;
+  configurationType?: string;
+  caBundleJwks?: string;
+  bundleEndpointUrl?: string;
+  bundleEndpointProfile?: string;
+  bundleEndpointCaCert?: string;
+  bundleRefreshHintSeconds?: number;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+} & ({ organizationId: string } | { projectId: string });
+
+export type DeleteIdentitySpiffeAuthDTO = {
+  organizationId?: string;
+  projectId?: string;
+  identityId: string;
+} & ({ organizationId: string } | { projectId: string });
+
 export type CreateTokenIdentityTokenAuthDTO = {
   identityId: string;
   name: string;
