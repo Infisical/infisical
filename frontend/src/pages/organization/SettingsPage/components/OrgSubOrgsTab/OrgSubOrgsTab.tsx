@@ -197,28 +197,20 @@ export const OrgSubOrgsTab = () => {
 
   const handleEditSubmit = async (data: EditSubOrgFormData) => {
     if (!selectedSubOrg) return;
-    try {
-      await updateSubOrg({
-        subOrgId: selectedSubOrg.id,
-        name: data.name,
-        slug: data.slug || undefined
-      });
-      handlePopUpClose("editSubOrg");
-      createNotification({ type: "success", text: "Sub-organization updated successfully" });
-    } catch {
-      createNotification({ type: "error", text: "Failed to update sub-organization" });
-    }
+    await updateSubOrg({
+      subOrgId: selectedSubOrg.id,
+      name: data.name,
+      slug: data.slug || undefined
+    });
+    handlePopUpClose("editSubOrg");
+    createNotification({ type: "success", text: "Sub-organization updated successfully" });
   };
 
   const handleDeleteApproved = async () => {
     if (!selectedSubOrg) return;
-    try {
-      await deleteSubOrg({ subOrgId: selectedSubOrg.id });
-      handlePopUpClose("deleteSubOrg");
-      createNotification({ type: "success", text: "Sub-organization deleted successfully" });
-    } catch {
-      createNotification({ type: "error", text: "Failed to delete sub-organization" });
-    }
+    await deleteSubOrg({ subOrgId: selectedSubOrg.id });
+    handlePopUpClose("deleteSubOrg");
+    createNotification({ type: "success", text: "Sub-organization deleted successfully" });
   };
 
   if (shouldShowMfa) {
@@ -337,13 +329,8 @@ export const OrgSubOrgsTab = () => {
                         onClick={
                           subOrg.isMember
                             ? () => {
-                              handleLoginSubOrg(subOrg.id).catch(() =>
-                                createNotification({
-                                  type: "error",
-                                  text: "Failed to log in to sub-organization"
-                                })
-                              );
-                            }
+                                handleLoginSubOrg(subOrg.id);
+                              }
                             : undefined
                         }
                       >
