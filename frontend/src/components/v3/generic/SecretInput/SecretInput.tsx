@@ -185,7 +185,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div className="relative overflow-hidden px-3 py-1">
-          <pre aria-hidden className="pointer-events-none relative z-10 m-0 font-sans">
+          <pre aria-hidden className="pointer-events-none relative m-0 font-sans">
             <code className={cn("inline-block w-full font-sans", commonClassName)}>
               <span className={cn("whitespace-break-spaces", !value && "text-muted")}>
                 {syntaxHighlight(
