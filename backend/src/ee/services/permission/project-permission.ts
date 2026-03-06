@@ -907,6 +907,45 @@ const extractConditionValues = (value: string | Record<string, unknown> | undefi
   return [];
 };
 
+const refineSubjectActionConditions = (
+  conditions: {
+    action?: string | Record<string, unknown> | undefined;
+    subject?: string | Record<string, unknown> | undefined;
+  },
+  ctx: z.RefinementCtx
+) => {
+  const actionValues = extractConditionValues(conditions.action);
+  if (actionValues.length === 0) return;
+
+  let subjectConfig: SubjectValidationConfig | null = null;
+  const subjectVal = conditions.subject;
+
+  if (typeof subjectVal === "string") {
+    const trimmed = subjectVal.trim();
+    if (trimmed) subjectConfig = { allowedSubjects: new Set([trimmed]) };
+  } else if (subjectVal != null) {
+    const { $eq, $in, $ne, $glob } = subjectVal;
+    if ($eq != null || $in != null) {
+      const values = extractConditionValues(subjectVal);
+      if (values.length > 0) subjectConfig = { allowedSubjects: new Set(values) };
+    } else if ($ne != null) {
+      const values = extractConditionValues(subjectVal);
+      if (values.length > 0) subjectConfig = { forbiddenSubjects: new Set(values) };
+    } else if (typeof $glob === "string" && $glob.trim()) {
+      subjectConfig = { globPattern: $glob.trim() };
+    }
+  }
+
+  const error = actionValues.map((v) => validateAssignableActionFormat(v, subjectConfig)).find((e) => e !== null);
+  if (error) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: error,
+      path: ["action"]
+    });
+  }
+};
+
 const MemberConditionSchema = z
   .object({
     email: z.union([
@@ -954,38 +993,7 @@ const MemberConditionSchema = z
     ])
   })
   .partial()
-  .superRefine((conditions, ctx) => {
-    const actionValues = extractConditionValues(conditions.action);
-    if (actionValues.length === 0) return;
-
-    let subjectConfig: SubjectValidationConfig | null = null;
-    const subjectVal = conditions.subject;
-
-    if (typeof subjectVal === "string") {
-      const trimmed = subjectVal.trim();
-      if (trimmed) subjectConfig = { allowedSubjects: new Set([trimmed]) };
-    } else if (subjectVal != null) {
-      const { $eq, $in, $ne, $glob } = subjectVal;
-      if ($eq != null || $in != null) {
-        const values = extractConditionValues(subjectVal);
-        if (values.length > 0) subjectConfig = { allowedSubjects: new Set(values) };
-      } else if ($ne != null) {
-        const values = extractConditionValues(subjectVal);
-        if (values.length > 0) subjectConfig = { forbiddenSubjects: new Set(values) };
-      } else if (typeof $glob === "string" && $glob.trim()) {
-        subjectConfig = { globPattern: $glob.trim() };
-      }
-    }
-
-    const error = actionValues.map((v) => validateAssignableActionFormat(v, subjectConfig)).find((e) => e !== null);
-    if (error) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: error,
-        path: ["action"]
-      });
-    }
-  });
+  .superRefine(refineSubjectActionConditions);
 
 const IdentityManagementConditionSchema = z
   .object({
@@ -1033,38 +1041,7 @@ const IdentityManagementConditionSchema = z
     ])
   })
   .partial()
-  .superRefine((conditions, ctx) => {
-    const actionValues = extractConditionValues(conditions.action);
-    if (actionValues.length === 0) return;
-
-    let subjectConfig: SubjectValidationConfig | null = null;
-    const subjectVal = conditions.subject;
-
-    if (typeof subjectVal === "string") {
-      const trimmed = subjectVal.trim();
-      if (trimmed) subjectConfig = { allowedSubjects: new Set([trimmed]) };
-    } else if (subjectVal != null) {
-      const { $eq, $in, $ne, $glob } = subjectVal;
-      if ($eq != null || $in != null) {
-        const values = extractConditionValues(subjectVal);
-        if (values.length > 0) subjectConfig = { allowedSubjects: new Set(values) };
-      } else if ($ne != null) {
-        const values = extractConditionValues(subjectVal);
-        if (values.length > 0) subjectConfig = { forbiddenSubjects: new Set(values) };
-      } else if (typeof $glob === "string" && $glob.trim()) {
-        subjectConfig = { globPattern: $glob.trim() };
-      }
-    }
-
-    const error = actionValues.map((v) => validateAssignableActionFormat(v, subjectConfig)).find((e) => e !== null);
-    if (error) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: error,
-        path: ["action"]
-      });
-    }
-  });
+  .superRefine(refineSubjectActionConditions);
 
 const GroupConditionSchema = z
   .object({
