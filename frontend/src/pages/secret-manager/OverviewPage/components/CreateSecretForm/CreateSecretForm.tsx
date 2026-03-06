@@ -43,6 +43,7 @@ import {
   useGetWsTags
 } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z
   .object({
@@ -245,7 +246,7 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
   };
 
   const createWsTag = useCreateWsTag();
-  const slugSchema = z.string().trim().toLowerCase().min(1);
+
   const createNewTag = async (slug: string) => {
     const parsedSlug = slugSchema.parse(slug);
     const newTag = await createWsTag.mutateAsync({
@@ -415,7 +416,7 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
                     isMulti
                     className="w-full"
                     placeholder="Select tags to assign to secret..."
-                    isValidNewOption={(v) => slugSchema.safeParse(v).success}
+                    isValidNewOption={(v) => slugSchema().safeParse(v).success}
                     name="tagIds"
                     isDisabled={!canReadTags}
                     isLoading={isTagsLoading && canReadTags}

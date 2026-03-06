@@ -2315,6 +2315,7 @@ export const OverviewPage = () => {
         </UnstableCard>
       </div>
       <Sheet
+        modal={false}
         open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
