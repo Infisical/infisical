@@ -11,6 +11,6 @@ export const useResetPageHelper = ({
 }) => {
   useEffect(() => {
     // reset page if no longer valid
-    if (totalCount > 0 && totalCount <= offset) setPage(1);
+    if (totalCount <= offset) setPage(1);
   }, [totalCount]);
 };
