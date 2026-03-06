@@ -3,11 +3,11 @@ import { OrgServiceActor } from "@app/lib/types";
 export type TCreateSubOrgDTO = {
   name: string;
   slug?: string;
-  permissionActor: OrgServiceActor;
+  permission: OrgServiceActor;
 };
 
 export type TListSubOrgDTO = {
-  permissionActor: OrgServiceActor;
+  permission: OrgServiceActor;
   data: Partial<{
     limit?: number;
     offset?: number;
@@ -22,15 +22,15 @@ export type TUpdateSubOrgDTO = {
   subOrgId: string;
   name?: string;
   slug?: string;
-  permissionActor: OrgServiceActor;
+  permission: OrgServiceActor;
 };
 
 export type TDeleteSubOrgDTO = {
   subOrgId: string;
-  permissionActor: OrgServiceActor;
+  permission: OrgServiceActor;
 };
 
 export type TJoinSubOrgDTO = {
   subOrgId: string;
-  permissionActor: OrgServiceActor;
+  permission: OrgServiceActor;
 };
