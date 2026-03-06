@@ -59,10 +59,11 @@ export const PasswordGenerator = ({
 
     if (availableChars === "") availableChars = charset.lowercase + charset.numbers;
 
+    const randomBytes = new Uint32Array(passwordOptions.length);
+    crypto.getRandomValues(randomBytes);
     let newPassword = "";
     for (let i = 0; i < passwordOptions.length; i += 1) {
-      const randomIndex = Math.floor(Math.random() * availableChars.length);
-      newPassword += availableChars[randomIndex];
+      newPassword += availableChars[randomBytes[i] % availableChars.length];
     }
 
     return newPassword;

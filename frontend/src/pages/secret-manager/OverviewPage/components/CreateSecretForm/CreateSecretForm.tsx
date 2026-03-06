@@ -81,7 +81,6 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
     reset,
     setValue,
     getValues,
-    setFocus,
     watch,
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({
