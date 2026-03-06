@@ -197,6 +197,13 @@ export const subOrgServiceFactory = ({
   };
 
   const joinSubOrg = async ({ subOrgId, permission }: TJoinSubOrgDTO) => {
+    const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
+    if (!orgLicensePlan.subOrganization) {
+      throw new BadRequestError({
+        message: "Sub-organization feature is not available. Please upgrade your instance to Infisical's Enterprise plan."
+      });
+    }
+
     const subOrg = await orgDAL.findOne({
       rootOrgId: permission.rootOrgId,
       id: subOrgId
