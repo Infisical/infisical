@@ -89,7 +89,7 @@ export const OrgSubOrgsTab = () => {
   const { permission } = useOrgPermission();
   const { user } = useUser();
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
-  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => { });
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
 
   const canManageSubOrgs =
@@ -337,13 +337,13 @@ export const OrgSubOrgsTab = () => {
                         onClick={
                           subOrg.isMember
                             ? () => {
-                                handleLoginSubOrg(subOrg.id).catch(() =>
-                                  createNotification({
-                                    type: "error",
-                                    text: "Failed to log in to sub-organization"
-                                  })
-                                );
-                              }
+                              handleLoginSubOrg(subOrg.id).catch(() =>
+                                createNotification({
+                                  type: "error",
+                                  text: "Failed to log in to sub-organization"
+                                })
+                              );
+                            }
                             : undefined
                         }
                       >
@@ -354,21 +354,39 @@ export const OrgSubOrgsTab = () => {
                         <UnstableTableCell>
                           {format(new Date(subOrg.createdAt), "MMM d, yyyy")}
                         </UnstableTableCell>
-                        <UnstableTableCell>
-                          {subOrg.isMember && (
+                        <UnstableTableCell onClick={(e) => e.stopPropagation()}>
+                          {subOrg.isMember ? (
                             <Badge variant="info">
                               <CheckIcon />
                               Joined
                             </Badge>
+                          ) : (
+                            <OrgPermissionCan
+                              I={OrgPermissionSubOrgActions.DirectAccess}
+                              a={OrgPermissionSubjects.SubOrganization}
+                            >
+                              {(isAllowed) =>
+                                isAllowed ? (
+                                  <Button
+                                    size="xs"
+                                    variant="org"
+                                    isDisabled={isJoining}
+                                    onClick={() => joinSubOrg({ subOrgId: subOrg.id })}
+                                  >
+                                    Join
+                                  </Button>
+                                ) : null
+                              }
+                            </OrgPermissionCan>
                           )}
                         </UnstableTableCell>
                         <UnstableTableCell>
-                          <div
-                            className="flex items-center justify-end gap-2"
-                            onClick={(e) => e.stopPropagation()}
-                            role="none"
-                          >
-                            {canManageSubOrgs && (
+                          {canManageSubOrgs && (
+                            <div
+                              className="flex items-center justify-end"
+                              onClick={(e) => e.stopPropagation()}
+                              role="none"
+                            >
                               <UnstableDropdownMenu>
                                 <UnstableDropdownMenuTrigger asChild>
                                   <UnstableIconButton variant="ghost" size="xs">
@@ -409,27 +427,8 @@ export const OrgSubOrgsTab = () => {
                                   </OrgPermissionCan>
                                 </UnstableDropdownMenuContent>
                               </UnstableDropdownMenu>
-                            )}
-                            {!subOrg.isMember && (
-                              <OrgPermissionCan
-                                I={OrgPermissionSubOrgActions.DirectAccess}
-                                a={OrgPermissionSubjects.SubOrganization}
-                              >
-                                {(isAllowed) =>
-                                  isAllowed ? (
-                                    <Button
-                                      size="xs"
-                                      variant="org"
-                                      isDisabled={isJoining}
-                                      onClick={() => joinSubOrg({ subOrgId: subOrg.id })}
-                                    >
-                                      Join
-                                    </Button>
-                                  ) : null
-                                }
-                              </OrgPermissionCan>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </UnstableTableCell>
                       </UnstableTableRow>
                     ))}
