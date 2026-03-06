@@ -89,7 +89,7 @@ export const OrgSubOrgsTab = () => {
   const { permission } = useOrgPermission();
   const { user } = useUser();
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
-  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => { });
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
 
   const canManageSubOrgs =
