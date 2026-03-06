@@ -92,7 +92,10 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         offset: z.coerce.number().min(0).default(0).describe(SUB_ORGANIZATIONS.LIST.offset),
         search: z.string().trim().optional().describe(SUB_ORGANIZATIONS.LIST.search),
         orderBy: z.nativeEnum(SubOrgOrderBy).default(SubOrgOrderBy.Name).describe(SUB_ORGANIZATIONS.LIST.orderBy),
-        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC).describe(SUB_ORGANIZATIONS.LIST.orderDirection),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(SUB_ORGANIZATIONS.LIST.orderDirection),
         isAccessible: z
           .enum(["true", "false"])
           .optional()
