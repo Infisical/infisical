@@ -848,12 +848,12 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.Groups;
 
 const CONDITION_DISPLAY_ORDER = [
-  "email",
+  "userEmail",
   "identityId",
   "groupName",
-  "role",
-  "subject",
-  "action",
+  "assignableRole",
+  "assignableSubject",
+  "assignableAction",
   "environment",
   "secretPath",
   "secretName",

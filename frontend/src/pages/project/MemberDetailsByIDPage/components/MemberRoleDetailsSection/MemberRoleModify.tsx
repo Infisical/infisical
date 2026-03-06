@@ -208,7 +208,7 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
                 )}
               />
               <Popover>
-                <PopoverTrigger disabled={isMemberEditDisabled} asChild>
+                <PopoverTrigger disabled={isMemberEditDisabled || !canModifyMemberRoles} asChild>
                   <div className="grow">
                     <Tooltip
                       content={
@@ -226,7 +226,7 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
                         variant="outline_bg"
                         leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                        isDisabled={isMemberEditDisabled}
+                        isDisabled={isMemberEditDisabled || !canModifyMemberRoles}
                         className={twMerge(
                           "w-full border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
                           isTemporary && "text-primary",
@@ -325,7 +325,7 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
                 variant="outline_bg"
                 className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                 ariaLabel="delete-role"
-                isDisabled={isMemberEditDisabled || selectedRoleList.fields.length === 1}
+                isDisabled={isMemberEditDisabled || !canModifyMemberRoles || selectedRoleList.fields.length === 1}
                 onClick={() => {
                   if (selectedRoleList.fields.length > 1) {
                     selectedRoleList.remove(index);
