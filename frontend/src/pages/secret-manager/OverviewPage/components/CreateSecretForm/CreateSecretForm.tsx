@@ -323,7 +323,7 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
                     isError={Boolean(error)}
                     className={currentProject?.autoCapitalization ? "uppercase" : undefined}
                   />
-                  {secretKey?.includes(" ") && (
+                  {secretKey?.trim().includes(" ") && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <AlertTriangleIcon className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-warning" />
