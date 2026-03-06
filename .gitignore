@@ -73,5 +73,8 @@ cli/test/infisical-merge
 /backend/binary
 backend/bdd/.bdd-infisical-bootstrap-result.json
 
+# local tmp (e.g. test scripts, not for version control)
+/tmp
+
 /npm/bin
 __pycache__

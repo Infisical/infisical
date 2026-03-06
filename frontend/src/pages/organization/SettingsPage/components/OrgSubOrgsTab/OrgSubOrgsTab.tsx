@@ -63,8 +63,8 @@ import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
-  SubOrgOrderBy,
   subOrganizationsQuery,
+  SubOrgOrderBy,
   TSubOrganization,
   useDeleteSubOrganization,
   useJoinSubOrganization,
@@ -293,10 +293,7 @@ export const OrgSubOrgsTab = () => {
               <UnstableTable>
                 <UnstableTableHeader>
                   <UnstableTableRow>
-                    <UnstableTableHead
-                      onClick={toggleOrderDirection}
-                      className="w-1/3"
-                    >
+                    <UnstableTableHead onClick={toggleOrderDirection} className="w-1/3">
                       Name
                       <ChevronDownIcon
                         className={twMerge(
@@ -350,9 +347,7 @@ export const OrgSubOrgsTab = () => {
                             : undefined
                         }
                       >
-                        <UnstableTableCell isTruncatable>
-                          {subOrg.name}
-                        </UnstableTableCell>
+                        <UnstableTableCell isTruncatable>{subOrg.name}</UnstableTableCell>
                         <UnstableTableCell isTruncatable className="text-muted">
                           {subOrg.slug}
                         </UnstableTableCell>
@@ -478,18 +473,10 @@ export const OrgSubOrgsTab = () => {
           subTitle="Update the name and slug of this sub-organization."
           footerContent={
             <div className="flex items-center gap-2">
-              <Button
-                variant="org"
-                type="submit"
-                form="edit-sub-org-form"
-                isPending={isUpdating}
-              >
+              <Button variant="org" type="submit" form="edit-sub-org-form" isPending={isUpdating}>
                 Save Changes
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => handlePopUpClose("editSubOrg")}
-              >
+              <Button variant="outline" onClick={() => handlePopUpClose("editSubOrg")}>
                 Cancel
               </Button>
             </div>

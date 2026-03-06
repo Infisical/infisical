@@ -5,7 +5,6 @@ export {
   useUpdateSubOrganization
 } from "./mutations";
 export { subOrganizationsQuery } from "./queries";
-export { SubOrgOrderBy } from "./types";
 export type {
   TCreateSubOrganizationDTO,
   TDeleteSubOrganizationDTO,
@@ -14,3 +13,4 @@ export type {
   TSubOrganization,
   TUpdateSubOrganizationDTO
 } from "./types";
+export { SubOrgOrderBy } from "./types";
