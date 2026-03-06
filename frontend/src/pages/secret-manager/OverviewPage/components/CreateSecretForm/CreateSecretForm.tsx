@@ -216,6 +216,9 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
       setValue("key", "");
       setValue("value", "");
       setValue("comment", "");
+      setValue("skipMultilineEncoding", false);
+      setValue("tags", []);
+      setValue("metadata", []);
       setTimeout(() => secretKeyInputRef.current?.focus(), 150);
     } else {
       onClose();
