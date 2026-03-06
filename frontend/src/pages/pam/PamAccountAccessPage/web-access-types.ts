@@ -5,6 +5,7 @@ export enum WsMessageType {
   Output = "output",
   Input = "input",
   Control = "control",
+  Resize = "resize",
   SessionEnd = "session_end"
 }
 
