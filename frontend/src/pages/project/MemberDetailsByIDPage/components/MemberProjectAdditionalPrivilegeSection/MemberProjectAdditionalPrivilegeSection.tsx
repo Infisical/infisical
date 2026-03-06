@@ -303,8 +303,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                     a={ProjectPermissionSub.Member}
                   >
                     {(isAllowed) => {
-                      const isEditDisabled =
-                        !isAllowed || !canModifyMemberPrivileges || isOwnProjectMembershipDetails;
+                      const isEditDisabled = !isAllowed || !canModifyMemberPrivileges;
                       const button = (
                         <Button
                           variant="project"

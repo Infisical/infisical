@@ -336,11 +336,11 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
           {(isAllowed) => (
             <Button
               variant="outline_bg"
-              isDisabled={!isAllowed || !canModifyIdentityRoles}
+              isDisabled={!isAllowed || !canModifyIdentityRoles || filteredRoles.length === 0}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() =>
                 selectedRoleList.append({
-                  slug: filteredRoles[0]?.slug || ProjectMembershipRole.Member,
+                  slug: filteredRoles[0]?.slug ?? "",
                   temporaryAccess: { isTemporary: false }
                 })
               }
