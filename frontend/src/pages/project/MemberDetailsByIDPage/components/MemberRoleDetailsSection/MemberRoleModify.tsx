@@ -325,7 +325,11 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
                 variant="outline_bg"
                 className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                 ariaLabel="delete-role"
-                isDisabled={isMemberEditDisabled || !canModifyMemberRoles || selectedRoleList.fields.length === 1}
+                isDisabled={
+                  isMemberEditDisabled ||
+                  !canModifyMemberRoles ||
+                  selectedRoleList.fields.length === 1
+                }
                 onClick={() => {
                   if (selectedRoleList.fields.length > 1) {
                     selectedRoleList.remove(index);
