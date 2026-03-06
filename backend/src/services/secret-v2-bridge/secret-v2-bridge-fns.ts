@@ -15,8 +15,9 @@ import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretReminderRecipient } from "../secret-reminder-recipients/secret-reminder-recipients-types";
-import { getAllSecretReferences } from "./secret-reference-fns";
+import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
@@ -1208,4 +1209,121 @@ export const fnUpdateMovedSecretReferences = async ({
       })
     );
   }
+};
+
+type TCreateRelativeImportExpanderArg = {
+  projectId: string;
+  currentEnvironment: string;
+  currentSecretPath: string;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  decryptSecretValue: (value?: Buffer | null) => string;
+  canExpandValue: (environment: string, secretPath: string, secretKey: string, secretTagSlugs: string[]) => boolean;
+  userId?: string;
+};
+
+export const createRelativeImportExpander = ({
+  projectId,
+  currentEnvironment,
+  currentSecretPath,
+  secretDAL,
+  secretImportDAL,
+  folderDAL,
+  decryptSecretValue,
+  canExpandValue,
+  userId
+}: TCreateRelativeImportExpanderArg): {
+  expandImportedSecretReferences: (inputSecret: {
+    value?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretPath: string;
+    environment: string;
+    secretKey: string;
+  }) => Promise<string | undefined>;
+} => {
+  const relativeImportExpanders = new Map<string, ReturnType<typeof expandSecretReferencesFactory>>();
+
+  // returns direct secrets for a folder merged with its one-level-deep imported secrets
+  // direct secrets take priority. imported secrets act as fallback for absent keys
+  const fetchFolderSecretsWithImports = async (folderId: string, userIdArg: string | undefined) => {
+    const [directSecrets, folderImports] = await Promise.all([
+      secretDAL.findByFolderId({ folderId, userId: userIdArg }),
+      secretImportDAL.findByFolderIds([folderId])
+    ]);
+
+    const activeImports = folderImports.filter((i) => !i.isReserved);
+    if (!activeImports.length) return directSecrets;
+
+    const importedFolders = await Promise.all(
+      activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
+    );
+    const importedSecretArrays = await Promise.all(
+      importedFolders.filter(Boolean).map((f) => secretDAL.findByFolderId({ folderId: f!.id, userId: userIdArg }))
+    );
+    const importedMerged = new Map(importedSecretArrays.flat().map((s) => [s.key, s]));
+    directSecrets.forEach((s) => importedMerged.set(s.key, s));
+    return [...importedMerged.values()];
+  };
+
+  const getRelativeExpander = (sourceEnvironment: string, sourcePath: string) => {
+    const expanderKey = `${sourceEnvironment}:${sourcePath}`;
+    if (relativeImportExpanders.has(expanderKey)) return relativeImportExpanders.get(expanderKey)!;
+
+    const virtualFolderId = `__relative_import_${expanderKey}`;
+
+    const expander = expandSecretReferencesFactory({
+      projectId,
+      folderDAL: {
+        findBySecretPath: async (pId, env, sPath) => {
+          if (env === currentEnvironment && sPath === currentSecretPath) {
+            // Intercept current-env lookups and return the virtual merged-folder sentinel
+            return { id: virtualFolderId } as unknown as Awaited<ReturnType<typeof folderDAL.findBySecretPath>>;
+          }
+          return folderDAL.findBySecretPath(pId, env, sPath);
+        }
+      },
+      secretDAL: {
+        findByFolderId: async (folderIdArgs) => {
+          if (folderIdArgs.folderId !== virtualFolderId) {
+            // non-virtual folder (e.g. prod, staging, etc). use import-aware fetch so that local refs within absolute-ref chains can resolve through the env's own secret imports.
+            return fetchFolderSecretsWithImports(folderIdArgs.folderId, folderIdArgs.userId);
+          }
+          const [currentFolder, sourceFolder] = await Promise.all([
+            folderDAL.findBySecretPath(projectId, currentEnvironment, currentSecretPath),
+            folderDAL.findBySecretPath(projectId, sourceEnvironment, sourcePath)
+          ]);
+          const [currentSecrets, sourceSecrets] = await Promise.all([
+            currentFolder ? fetchFolderSecretsWithImports(currentFolder.id, folderIdArgs.userId) : [],
+            sourceFolder ? fetchFolderSecretsWithImports(sourceFolder.id, folderIdArgs.userId) : []
+          ]);
+          const envMerged = new Map(sourceSecrets.map((s) => [s.key, s]));
+          currentSecrets.forEach((s) => envMerged.set(s.key, s));
+          return [...envMerged.values()];
+        }
+      },
+      decryptSecretValue,
+      canExpandValue,
+      userId
+    });
+
+    relativeImportExpanders.set(expanderKey, expander);
+    return expander;
+  };
+
+  const expandImportedSecretReferences = (inputSecret: {
+    value?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretPath: string;
+    environment: string;
+    secretKey: string;
+  }) => {
+    const { expandSecretReferences: relativeExpand } = getRelativeExpander(
+      inputSecret.environment,
+      inputSecret.secretPath
+    );
+    return relativeExpand({ ...inputSecret, environment: currentEnvironment, secretPath: currentSecretPath });
+  };
+
+  return { expandImportedSecretReferences };
 };

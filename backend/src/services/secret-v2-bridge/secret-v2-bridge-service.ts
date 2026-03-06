@@ -70,6 +70,7 @@ import {
 } from "./secret-v2-bridge-dal";
 import {
   buildHierarchy,
+  createRelativeImportExpander,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
@@ -1411,33 +1412,23 @@ export const secretV2BridgeServiceFactory = ({
     const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
     const allowedImports = secretImports.filter(({ isReplication }) => !isReplication);
 
-    const mainPathFolderId = paths.find((p) => p.path === path)?.folderId;
-    const currentEnvSecretsForImportRefs = mainPathFolderId
-      ? await secretDAL.findByFolderIds({ folderIds: [mainPathFolderId] })
-      : [];
-    const currentEnvSecretKeys = new Set(currentEnvSecretsForImportRefs.map((s) => s.key));
-
-    // for imported secrets local references (${KEY}): resolve against the current environment first. if the key doesn't exist in the current environment the reference falls back to the source import environment.
-    // nested references (${env.folder.KEY}): they always resolve via their absolute path
-    const expandImportedSecretReferences = (inputSecret: Parameters<typeof expandSecretReferences>[number]) => {
-      const { localReferences } = getAllSecretReferences(inputSecret.value || "");
-      if (!localReferences.length) {
-        return expandSecretReferences({ ...inputSecret, environment, secretPath: path });
-      }
-
-      // rewrite local refs absent from the current environment into absolute nested refs
-      // pointing to the source environment so the existing expander handles the fallback
-      let modifiedValue = inputSecret.value || "";
-      for (const localRef of localReferences) {
-        if (!currentEnvSecretKeys.has(localRef)) {
-          const pathParts = inputSecret.secretPath.split("/").filter(Boolean);
-          const absoluteRef = `\${${[inputSecret.environment, ...pathParts, localRef].join(".")}}`;
-          modifiedValue = modifiedValue.replaceAll(`\${${localRef}}`, () => absoluteRef);
-        }
-      }
-
-      return expandSecretReferences({ ...inputSecret, value: modifiedValue, environment, secretPath: path });
-    };
+    const { expandImportedSecretReferences } = createRelativeImportExpander({
+      projectId,
+      currentEnvironment: environment,
+      currentSecretPath: path,
+      secretDAL,
+      secretImportDAL,
+      folderDAL,
+      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+      canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment: expandEnvironment,
+          secretPath: expandSecretPath,
+          secretName: expandSecretKey,
+          secretTags: expandSecretTags
+        }),
+      userId: expandPersonalOverrides ? actorId : undefined
+    });
 
     const importedSecrets = await fnSecretsV2FromImports({
       viewSecretValue,
