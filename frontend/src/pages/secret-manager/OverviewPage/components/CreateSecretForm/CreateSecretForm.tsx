@@ -50,7 +50,10 @@ const formSchema = z
     value: z.string().optional(),
     comment: z.string().optional(),
     skipMultilineEncoding: z.boolean().optional(),
-    environments: z.object({ name: z.string(), slug: z.string() }).array(),
+    environments: z
+      .object({ name: z.string(), slug: z.string() })
+      .array()
+      .min(1, { message: "Required" }),
     tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).optional(),
     metadata: z
       .array(
@@ -272,6 +275,7 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
               <FieldContent>
                 <FilterableSelect
                   isMulti
+                  isError={Boolean(error)}
                   options={environments.filter((environment) =>
                     permission.can(
                       ProjectPermissionSecretActions.Create,
