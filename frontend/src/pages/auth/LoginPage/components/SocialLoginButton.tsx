@@ -2,6 +2,7 @@ import { IconDefinition } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { IconButton, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 
 type Props = {
   icon: IconDefinition;
@@ -23,9 +24,9 @@ export const SocialLoginButton = ({ icon, label, onClick, showLastUsed }: Props)
         <FontAwesomeIcon icon={icon} />
       </IconButton>
       {showLastUsed && (
-        <span className="absolute -top-2 -right-2 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
+        <Badge variant="project" className="absolute -top-2 -right-2 rounded-full">
           Last used
-        </span>
+        </Badge>
       )}
     </div>
   </Tooltip>

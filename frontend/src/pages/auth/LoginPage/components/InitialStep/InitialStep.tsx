@@ -12,6 +12,7 @@ import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
@@ -74,12 +75,14 @@ export const InitialStep = ({
 
   useEffect(() => {
     if (serverDetails?.samlDefaultOrgSlug && !isAdmin) {
+      saveLastLogin({ method: LoginMethod.SAML, orgSlug: serverDetails.samlDefaultOrgSlug });
       redirectToSaml(serverDetails.samlDefaultOrgSlug);
     }
   }, [serverDetails?.samlDefaultOrgSlug]);
 
   const handleSaml = () => {
     if (config.defaultAuthOrgSlug) {
+      saveLastLogin({ method: LoginMethod.SAML, orgSlug: config.defaultAuthOrgSlug });
       redirectToSaml(config.defaultAuthOrgSlug);
     } else {
       setStep(2);
@@ -88,6 +91,7 @@ export const InitialStep = ({
 
   const handleOidc = () => {
     if (config.defaultAuthOrgSlug) {
+      saveLastLogin({ method: LoginMethod.OIDC, orgSlug: config.defaultAuthOrgSlug });
       redirectToOidc(config.defaultAuthOrgSlug);
     } else {
       setStep(3);
@@ -333,9 +337,9 @@ export const InitialStep = ({
               Continue with Email
             </Button>
             {isLastUsedMethod(LoginMethod.EMAIL) && (
-              <span className="absolute -top-2 -right-2 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
+              <Badge variant="default" className="absolute -top-2 -right-2 rounded-full">
                 Last used
-              </span>
+              </Badge>
             )}
           </div>
         </>

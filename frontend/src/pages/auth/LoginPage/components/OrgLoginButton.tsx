@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { Button } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 
 type Props = {
   label: string;
@@ -28,9 +29,9 @@ export const OrgLoginButton = ({ label, onClick, className, showLastUsed }: Prop
       {label}
     </Button>
     {showLastUsed && (
-      <span className="absolute -top-2 -right-2 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
+      <Badge variant="project" className="absolute -top-2 -right-2 rounded-full">
         Last used
-      </span>
+      </Badge>
     )}
   </div>
 );
