@@ -232,7 +232,7 @@ export const Navbar = () => {
   const [subOrgMenuSearch, setSubOrgMenuSearch] = useState("");
   const [subOrgBreadcrumbSearch, setSubOrgBreadcrumbSearch] = useState("");
 
-  const subOrgQuery = subOrganizationsQuery.list({ limit: 500, isAccessible: true });
+  const subOrgQuery = subOrganizationsQuery.list({ isAccessible: true });
   const { data: subOrganizations = [] } = useQuery({
     ...subOrgQuery,
     enabled: Boolean(subscription.subOrganization),
