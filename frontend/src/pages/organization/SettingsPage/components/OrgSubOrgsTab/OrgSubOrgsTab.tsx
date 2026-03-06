@@ -135,7 +135,7 @@ export const OrgSubOrgsTab = () => {
   );
 
   const { data: mySubOrgIds = new Set<string>() } = useQuery({
-    ...subOrganizationsQuery.list({ limit: 500, isAccessible: true }),
+    ...subOrganizationsQuery.list({ isAccessible: true }),
     select: (data) => new Set(data.organizations.map((o) => o.id))
   });
 
@@ -373,7 +373,7 @@ export const OrgSubOrgsTab = () => {
                             onClick={(e) => e.stopPropagation()}
                             role="none"
                           >
-                            {subOrg.isMember && canManageSubOrgs && (
+                            {canManageSubOrgs && (
                               <UnstableDropdownMenu>
                                 <UnstableDropdownMenuTrigger asChild>
                                   <UnstableIconButton variant="ghost" size="xs">
