@@ -330,12 +330,12 @@ export const GitLabSyncFns = {
         ) {
           if (value.length < 8) {
             throw new SecretSyncError({
-              message: `Secret '${key}' is too short to be masked. GitLab requires a minimum of 8 characters for masked secrets.`,
+              message: `Secret '${key}' is too short to be masked/hidden. GitLab requires a minimum of 8 characters for masked or hidden secrets.`,
               secretKey: key
             });
           }
           throw new SecretSyncError({
-            message: `Secret '${key}' contains characters that are not compatible with GitLab variable masking. Only alphanumeric characters and the following special characters are allowed: + / = @ : . ~ - (space). Either disable the 'Mask Secrets' option or update the secret value.`,
+            message: `Secret '${key}' contains characters that are not compatible with GitLab variable masking. Only alphanumeric characters and the following special characters are allowed: + / = @ : . ~ - (space). Either disable the 'Mask Secrets' / 'Hide Secrets' option or update the secret value.`,
             secretKey: key
           });
         }
