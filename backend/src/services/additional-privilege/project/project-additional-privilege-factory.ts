@@ -1,4 +1,4 @@
-import { ForbiddenError, MongoAbility, RawRule } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import {
@@ -104,7 +104,19 @@ export const newProjectAdditionalPrivilegesFactory = ({
     actorPermission: MongoAbility,
     permissionAction: string,
     permissionSubject: string
-  ): boolean => checkPermissionConditions(actorPermission, permissionAction, permissionSubject, "unrestricted");
+  ): boolean => {
+    const hasUnconditionalAllowRule = checkPermissionConditions(
+      actorPermission,
+      permissionAction,
+      permissionSubject,
+      "unrestricted"
+    );
+    if (!hasUnconditionalAllowRule) {
+      return false;
+    }
+    // This ensures that cannot rules take precedence over can rules.
+    return actorPermission.can(permissionAction, permissionSubject);
+  };
 
   const hasSubjectOrActionConditions = (
     actorPermission: MongoAbility,
@@ -272,11 +284,143 @@ export const newProjectAdditionalPrivilegesFactory = ({
     }
   };
 
+  const $validateAdditionalPrivilegesGuard = async (params: {
+    actorType: ActorType;
+    actorId: string;
+    permissions: unknown;
+    permission: MongoAbility;
+    targetUserPermission: MongoAbility;
+    memberships: Array<{ actorUserId?: string | null; actorIdentityId?: string | null }>;
+    shouldUseNewPrivilegeSystem: boolean;
+    targetIdentifier: string | undefined;
+    errorMessage: string;
+  }) => {
+    const {
+      actorType,
+      actorId,
+      permissions,
+      permission,
+      targetUserPermission,
+      memberships,
+      shouldUseNewPrivilegeSystem,
+      targetIdentifier,
+      errorMessage
+    } = params;
+
+    const permissionAction =
+      actorType === ActorType.USER
+        ? ProjectPermissionMemberActions.AssignAdditionalPrivileges
+        : ProjectPermissionIdentityActions.AssignAdditionalPrivileges;
+    const permissionSubject =
+      actorType === ActorType.USER ? ProjectPermissionSub.Member : ProjectPermissionSub.Identity;
+
+    const hasDetailedConditions =
+      shouldUseNewPrivilegeSystem &&
+      (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
+        (actorType === ActorType.USER &&
+          hasSubjectOrActionConditions(
+            permission,
+            ProjectPermissionMemberActions.GrantPrivileges,
+            permissionSubject
+          )) ||
+        (actorType === ActorType.IDENTITY &&
+          hasSubjectOrActionConditions(
+            permission,
+            ProjectPermissionIdentityActions.GrantPrivileges,
+            permissionSubject
+          )));
+
+    const subjectFields = actorType === ActorType.USER ? { email: targetIdentifier } : { identityId: targetIdentifier };
+
+    if (!hasDetailedConditions) {
+      let permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        permissionAction,
+        permissionSubject,
+        permission,
+        targetUserPermission,
+        subjectFields
+      );
+
+      if (!permissionBoundary.isValid) {
+        const legacyAction =
+          actorType === ActorType.USER
+            ? ProjectPermissionMemberActions.GrantPrivileges
+            : ProjectPermissionIdentityActions.GrantPrivileges;
+
+        permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          legacyAction,
+          permissionSubject,
+          permission,
+          targetUserPermission,
+          subjectFields
+        );
+      }
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            errorMessage,
+            shouldUseNewPrivilegeSystem,
+            permissionAction,
+            permissionSubject
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    } else {
+      // This prevents bypassing authorization by providing an empty permissions payload.
+      const subjectToCheck = subject(permissionSubject, subjectFields);
+      const canPerformNewAction = permission.can(permissionAction, subjectToCheck);
+
+      const legacyAction =
+        actorType === ActorType.USER
+          ? ProjectPermissionMemberActions.GrantPrivileges
+          : ProjectPermissionIdentityActions.GrantPrivileges;
+      const canPerformLegacyAction = permission.can(legacyAction, subjectToCheck);
+
+      if (!canPerformNewAction && !canPerformLegacyAction) {
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            errorMessage,
+            shouldUseNewPrivilegeSystem,
+            permissionAction,
+            permissionSubject
+          ),
+          details: {
+            missingPermissions: [
+              {
+                action: permissionAction,
+                subject: permissionSubject
+              }
+            ]
+          }
+        });
+      }
+    }
+
+    if (shouldUseNewPrivilegeSystem && permissions) {
+      validateGrantPrivilegeSubjectActionConditions(
+        shouldUseNewPrivilegeSystem,
+        permissionAction,
+        permissionSubject,
+        permission,
+        targetUserPermission,
+        targetIdentifier,
+        permissions
+      );
+    }
+
+    const membership = memberships.find(
+      (el) => el[actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"] === actorId
+    );
+    if (!membership) throw new BadRequestError({ message: "Actor doesn't have membership" });
+  };
+
   const onCreateAdditionalPrivilegesGuard: TAdditionalPrivilegesScopeFactory["onCreateAdditionalPrivilegesGuard"] =
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
+      const { actorType, actorId } = dto.data;
 
-      const { actorType } = dto.data;
       const { permission } = await $getPermission(dto.permission, scope.value);
       const permissionSet =
         actorType === ActorType.USER
@@ -286,107 +430,38 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
       const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
       const { permission: targetUserPermission, memberships } = await $getPermission(
-        { ...dto.permission, type: actorType, id: dto.data.actorId },
+        { ...dto.permission, type: actorType, id: actorId },
         scope.value
       );
-
-      const permissionAction =
-        actorType === ActorType.USER
-          ? ProjectPermissionMemberActions.AssignAdditionalPrivileges
-          : ProjectPermissionIdentityActions.AssignAdditionalPrivileges;
-      const permissionSubject =
-        actorType === ActorType.USER ? ProjectPermissionSub.Member : ProjectPermissionSub.Identity;
 
       let targetIdentifier: string | undefined;
       if (shouldUseNewPrivilegeSystem) {
         if (actorType === ActorType.USER) {
-          const targetUser = await userDAL.findById(dto.data.actorId);
+          const targetUser = await userDAL.findById(actorId);
           targetIdentifier = targetUser?.email ?? undefined;
         } else {
-          const targetIdentity = await identityDAL.findById(dto.data.actorId);
+          const targetIdentity = await identityDAL.findById(actorId);
           targetIdentifier = targetIdentity?.id ?? undefined;
         }
       }
 
-      const hasDetailedConditions =
-        shouldUseNewPrivilegeSystem &&
-        (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
-          (actorType === ActorType.USER &&
-            hasSubjectOrActionConditions(
-              permission,
-              ProjectPermissionMemberActions.GrantPrivileges,
-              permissionSubject
-            )) ||
-          (actorType === ActorType.IDENTITY &&
-            hasSubjectOrActionConditions(
-              permission,
-              ProjectPermissionIdentityActions.GrantPrivileges,
-              permissionSubject
-            )));
-
-      if (!hasDetailedConditions) {
-        const subjectFields =
-          actorType === ActorType.USER ? { email: targetIdentifier } : { identityId: targetIdentifier };
-
-        let permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          permissionAction,
-          permissionSubject,
-          permission,
-          targetUserPermission,
-          subjectFields
-        );
-
-        // If new action fails try legacy action
-        if (!permissionBoundary.isValid) {
-          const legacyAction =
-            actorType === ActorType.USER
-              ? ProjectPermissionMemberActions.GrantPrivileges
-              : ProjectPermissionIdentityActions.GrantPrivileges;
-
-          permissionBoundary = validatePrivilegeChangeOperation(
-            shouldUseNewPrivilegeSystem,
-            legacyAction,
-            permissionSubject,
-            permission,
-            targetUserPermission,
-            subjectFields
-          );
-        }
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create additional privileges",
-              shouldUseNewPrivilegeSystem,
-              permissionAction,
-              permissionSubject
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
-
-      if (shouldUseNewPrivilegeSystem && dto.data.permissions) {
-        validateGrantPrivilegeSubjectActionConditions(
-          shouldUseNewPrivilegeSystem,
-          permissionAction,
-          permissionSubject,
-          permission,
-          targetUserPermission,
-          targetIdentifier,
-          dto.data.permissions
-        );
-      }
-
-      const membership = memberships.find(
-        (el) => el[actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"] === dto.data.actorId
-      );
-      if (!membership) throw new BadRequestError({ message: "Actor doesn't have membership" });
+      await $validateAdditionalPrivilegesGuard({
+        actorType,
+        actorId,
+        permissions: dto.data.permissions,
+        permission,
+        targetUserPermission,
+        memberships,
+        shouldUseNewPrivilegeSystem,
+        targetIdentifier,
+        errorMessage: "Failed to create additional privileges"
+      });
     };
 
   const onUpdateAdditionalPrivilegesGuard: TAdditionalPrivilegesScopeFactory["onUpdateAdditionalPrivilegesGuard"] =
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
-      const { actorType } = dto.selector;
+      const { actorType, actorId } = dto.selector;
 
       const { permission } = await $getPermission(dto.permission, scope.value);
       const permissionSet =
@@ -397,101 +472,32 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
       const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
       const { permission: targetUserPermission, memberships } = await $getPermission(
-        { ...dto.permission, type: actorType, id: dto.selector.actorId },
+        { ...dto.permission, type: actorType, id: actorId },
         scope.value
       );
-
-      const permissionAction =
-        actorType === ActorType.USER
-          ? ProjectPermissionMemberActions.AssignAdditionalPrivileges
-          : ProjectPermissionIdentityActions.AssignAdditionalPrivileges;
-      const permissionSubject =
-        actorType === ActorType.USER ? ProjectPermissionSub.Member : ProjectPermissionSub.Identity;
 
       let targetIdentifier: string | undefined;
       if (shouldUseNewPrivilegeSystem) {
         if (actorType === ActorType.USER) {
-          const targetUser = await userDAL.findById(dto.selector.actorId);
+          const targetUser = await userDAL.findById(actorId);
           targetIdentifier = targetUser?.email ?? undefined;
         } else {
-          const targetIdentity = await identityDAL.findById(dto.selector.actorId);
+          const targetIdentity = await identityDAL.findById(actorId);
           targetIdentifier = targetIdentity?.id ?? undefined;
         }
       }
 
-      const hasDetailedConditions =
-        shouldUseNewPrivilegeSystem &&
-        (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
-          (actorType === ActorType.USER &&
-            hasSubjectOrActionConditions(
-              permission,
-              ProjectPermissionMemberActions.GrantPrivileges,
-              permissionSubject
-            )) ||
-          (actorType === ActorType.IDENTITY &&
-            hasSubjectOrActionConditions(
-              permission,
-              ProjectPermissionIdentityActions.GrantPrivileges,
-              permissionSubject
-            )));
-
-      if (!hasDetailedConditions) {
-        const subjectFields =
-          actorType === ActorType.USER ? { email: targetIdentifier } : { identityId: targetIdentifier };
-
-        let permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          permissionAction,
-          permissionSubject,
-          permission,
-          targetUserPermission,
-          subjectFields
-        );
-
-        // If new action fails try legacy action
-        if (!permissionBoundary.isValid) {
-          const legacyAction =
-            actorType === ActorType.USER
-              ? ProjectPermissionMemberActions.GrantPrivileges
-              : ProjectPermissionIdentityActions.GrantPrivileges;
-
-          permissionBoundary = validatePrivilegeChangeOperation(
-            shouldUseNewPrivilegeSystem,
-            legacyAction,
-            permissionSubject,
-            permission,
-            targetUserPermission,
-            subjectFields
-          );
-        }
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to update additional privileges",
-              shouldUseNewPrivilegeSystem,
-              permissionAction,
-              permissionSubject
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
-
-      if (shouldUseNewPrivilegeSystem && dto.data.permissions) {
-        validateGrantPrivilegeSubjectActionConditions(
-          shouldUseNewPrivilegeSystem,
-          permissionAction,
-          permissionSubject,
-          permission,
-          targetUserPermission,
-          targetIdentifier,
-          dto.data.permissions
-        );
-      }
-
-      const membership = memberships.find(
-        (el) => el[actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"] === dto.selector.actorId
-      );
-      if (!membership) throw new BadRequestError({ message: "Actor doesn't have membership" });
+      await $validateAdditionalPrivilegesGuard({
+        actorType,
+        actorId,
+        permissions: dto.data.permissions,
+        permission,
+        targetUserPermission,
+        memberships,
+        shouldUseNewPrivilegeSystem,
+        targetIdentifier,
+        errorMessage: "Failed to update additional privileges"
+      });
     };
 
   const onDeleteAdditionalPrivilegesGuard: TAdditionalPrivilegesScopeFactory["onDeleteAdditionalPrivilegesGuard"] =

@@ -84,7 +84,7 @@ export const newProjectMembershipGroupFactory = ({
           permission,
           permissionRole.permission
         );
-        if (!unconditionalBoundary.isValid && shouldUseNewPrivilegeSystem) {
+        if (!unconditionalBoundary.isValid) {
           unconditionalBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
             ProjectPermissionGroupActions.GrantPrivileges,
@@ -103,7 +103,8 @@ export const newProjectMembershipGroupFactory = ({
             { groupName: groupDetails.name, role: permissionRole.role?.slug }
           );
 
-          if (!permissionBoundary.isValid && shouldUseNewPrivilegeSystem) {
+          // If new action fails, try legacy action
+          if (!permissionBoundary.isValid) {
             permissionBoundary = validatePrivilegeChangeOperation(
               shouldUseNewPrivilegeSystem,
               ProjectPermissionGroupActions.GrantPrivileges,
@@ -167,7 +168,7 @@ export const newProjectMembershipGroupFactory = ({
           permission,
           permissionRole.permission
         );
-        if (!unconditionalBoundary.isValid && shouldUseNewPrivilegeSystem) {
+        if (!unconditionalBoundary.isValid) {
           unconditionalBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
             ProjectPermissionGroupActions.GrantPrivileges,
@@ -186,7 +187,8 @@ export const newProjectMembershipGroupFactory = ({
             { groupName: groupDetails.name, role: permissionRole.role?.slug }
           );
 
-          if (!permissionBoundary.isValid && shouldUseNewPrivilegeSystem) {
+          // If new action fails, try legacy action
+          if (!permissionBoundary.isValid) {
             permissionBoundary = validatePrivilegeChangeOperation(
               shouldUseNewPrivilegeSystem,
               ProjectPermissionGroupActions.GrantPrivileges,
