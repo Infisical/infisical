@@ -42,7 +42,7 @@ import { TWorkspaceUser } from "@app/hooks/api/types";
 import {
   canModifyByGrantConditions,
   filterByGrantConditions,
-  getGrantPrivilegeConditions
+  getMemberGrantPrivilegeConditions
 } from "@app/lib/fn/permission";
 
 const roleFormSchema = z.object({
@@ -81,7 +81,7 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
   );
 
   const grantPrivilegeConditions = useMemo(
-    () => getGrantPrivilegeConditions(permission),
+    () => getMemberGrantPrivilegeConditions(permission),
     [permission]
   );
 

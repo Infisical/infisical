@@ -33,7 +33,7 @@ import {
 } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { filterByGrantConditions, getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import { filterByGrantConditions, getMemberGrantPrivilegeConditions } from "@app/lib/fn/permission";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -76,7 +76,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: roles } = useGetProjectRoles(currentProject?.id || "");
 
   const grantPrivilegeConditions = useMemo(
-    () => getGrantPrivilegeConditions(projectPermission),
+    () => getMemberGrantPrivilegeConditions(projectPermission),
     [projectPermission]
   );
 

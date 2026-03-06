@@ -48,7 +48,10 @@ import {
   useListProjectUserPrivileges
 } from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import { canModifyByGrantConditions, getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import {
+  canModifyByGrantConditions,
+  getMemberGrantPrivilegeConditions
+} from "@app/lib/fn/permission";
 
 import { MembershipProjectAdditionalPrivilegeModifySection } from "./MembershipProjectAdditionalPrivilegeModifySection";
 
@@ -75,7 +78,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
   const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
 
   const grantPrivilegeConditions = useMemo(
-    () => getGrantPrivilegeConditions(permission),
+    () => getMemberGrantPrivilegeConditions(permission),
     [permission]
   );
 

@@ -47,7 +47,10 @@ import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import { canModifyByGrantConditions, getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import {
+  canModifyByGrantConditions,
+  getMemberGrantPrivilegeConditions
+} from "@app/lib/fn/permission";
 
 import { MemberRoleModify } from "./MemberRoleModify";
 
@@ -68,7 +71,7 @@ export const MemberRoleDetailsSection = ({
   const { permission } = useProjectPermission();
 
   const grantPrivilegeConditions = useMemo(
-    () => getGrantPrivilegeConditions(permission),
+    () => getMemberGrantPrivilegeConditions(permission),
     [permission]
   );
 

@@ -31,7 +31,7 @@ import {
   useUpdateProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/projectUserAdditionalPrivilege/types";
-import { filterByGrantConditions, getGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import { filterByGrantConditions, getMemberGrantPrivilegeConditions } from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -93,7 +93,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   );
 
   const grantPrivilegeConditions = useMemo(
-    () => getGrantPrivilegeConditions(permission),
+    () => getMemberGrantPrivilegeConditions(permission),
     [permission]
   );
 
