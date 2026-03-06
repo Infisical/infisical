@@ -215,7 +215,8 @@ export type TFnSecretBulkUpdate = {
     };
   }[];
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "bulkUpdateById" | "upsertSecretReferences" | "find">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences" | "find"> &
+    Partial<Pick<TSecretV2BridgeDALFactory, "bulkUpdateById">>;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
