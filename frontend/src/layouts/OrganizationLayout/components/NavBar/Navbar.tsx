@@ -83,6 +83,7 @@ type SubOrgFilterListProps = {
   subOrganizations: { id: string; name: string }[];
   currentOrgId: string | undefined;
   onSelect: (orgId: string) => void;
+  onCreateSubOrg: () => void;
 };
 
 const SubOrgFilterList = ({
@@ -90,7 +91,8 @@ const SubOrgFilterList = ({
   onSearchChange,
   subOrganizations,
   currentOrgId,
-  onSelect
+  onSelect,
+  onCreateSubOrg
 }: SubOrgFilterListProps) => {
   const filtered = subOrganizations.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase())
@@ -130,6 +132,25 @@ const SubOrgFilterList = ({
           <p className="px-2 py-1.5 text-xs text-mineshaft-400">No sub-organizations found.</p>
         )}
       </div>
+      <OrgPermissionCan
+        I={OrgPermissionSubOrgActions.Create}
+        a={OrgPermissionSubjects.SubOrganization}
+      >
+        {(isAllowed) =>
+          isAllowed ? (
+            <>
+              <div className="mt-1 h-px border-t border-mineshaft-600" />
+              <DropdownMenuItem
+                className="cursor-pointer"
+                icon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={onCreateSubOrg}
+              >
+                New Sub-Organization
+              </DropdownMenuItem>
+            </>
+          ) : null
+        }
+      </OrgPermissionCan>
     </>
   );
 };
@@ -527,26 +548,8 @@ export const Navbar = () => {
                               subOrganizations={subOrganizations}
                               currentOrgId={currentOrg?.id}
                               onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
+                              onCreateSubOrg={() => setShowSubOrgForm(true)}
                             />
-                            <OrgPermissionCan
-                              I={OrgPermissionSubOrgActions.Create}
-                              a={OrgPermissionSubjects.SubOrganization}
-                            >
-                              {(isAllowed) =>
-                                isAllowed ? (
-                                  <>
-                                    <div className="mt-1 h-px border-t border-mineshaft-600" />
-                                    <DropdownMenuItem
-                                      className="cursor-pointer"
-                                      icon={<FontAwesomeIcon icon={faPlus} />}
-                                      onClick={() => setShowSubOrgForm(true)}
-                                    >
-                                      New Sub-Organization
-                                    </DropdownMenuItem>
-                                  </>
-                                ) : null
-                              }
-                            </OrgPermissionCan>
                           </DropdownSubMenuContent>
                         </DropdownSubMenu>
                       );
@@ -646,26 +649,8 @@ export const Navbar = () => {
                         subOrganizations={subOrganizations}
                         currentOrgId={currentOrg?.id}
                         onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
+                        onCreateSubOrg={() => setShowSubOrgForm(true)}
                       />
-                      <OrgPermissionCan
-                        I={OrgPermissionSubOrgActions.Create}
-                        a={OrgPermissionSubjects.SubOrganization}
-                      >
-                        {(isAllowed) =>
-                          isAllowed ? (
-                            <>
-                              <div className="mt-1 h-px border-t border-mineshaft-600" />
-                              <DropdownMenuItem
-                                className="cursor-pointer"
-                                icon={<FontAwesomeIcon icon={faPlus} />}
-                                onClick={() => setShowSubOrgForm(true)}
-                              >
-                                New Sub-Organization
-                              </DropdownMenuItem>
-                            </>
-                          ) : null
-                        }
-                      </OrgPermissionCan>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
