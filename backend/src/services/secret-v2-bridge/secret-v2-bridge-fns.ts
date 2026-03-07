@@ -3,7 +3,7 @@ import path from "node:path";
 import { Knex } from "knex";
 import RE2 from "re2";
 
-import { SecretType, TableName, TSecretFolders, TSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
+import { SecretType, TableName, TSecretFolders, TSecretImports, TSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -25,6 +25,8 @@ import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
 
 const BULK_BATCH_SIZE = 500;
+
+const RESERVED_REPLICATION_IMPORT_REGEX = new RE2("/__reserve_replication_([a-f0-9-]{36})");
 
 // these functions are special functions shared by a couple of resources
 // used by secret approval, rotation or anywhere in which secret needs to modified
@@ -1216,7 +1218,7 @@ type TCreateRelativeImportExpanderArg = {
   currentEnvironment: string;
   currentSecretPath: string;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   decryptSecretValue: (value?: Buffer | null) => string;
   canExpandValue: (environment: string, secretPath: string, secretKey: string, secretTagSlugs: string[]) => boolean;
@@ -1247,13 +1249,31 @@ export const createRelativeImportExpander = ({
   // returns direct secrets for a folder merged with its one-level-deep imported secrets
   // direct secrets take priority. imported secrets act as fallback for absent keys
   const fetchFolderSecretsWithImports = async (folderId: string, userIdArg: string | undefined) => {
-    const [directSecrets, folderImports] = await Promise.all([
-      secretDAL.findByFolderId({ folderId, userId: userIdArg }),
-      secretImportDAL.findByFolderIds([folderId])
-    ]);
+    type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
+    const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg });
+    const rawImports = (await secretImportDAL.findByFolderIds([folderId])) as ImportRow[];
+    if (!rawImports.length) return directSecrets;
 
-    const activeImports = folderImports.filter((i) => !i.isReserved);
-    if (!activeImports.length) return directSecrets;
+    // resolve reserved imports (replication read-side) to their actual source env/path
+    const reservedIds: string[] = [];
+    for (const imp of rawImports) {
+      if (imp.isReserved) {
+        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
+        if (match) reservedIds.push(match[1]);
+      }
+    }
+    let activeImports: ImportRow[] = rawImports;
+    if (reservedIds.length) {
+      const referenced = (await secretImportDAL.findByIds(reservedIds)) as ImportRow[];
+      const detailMap = new Map(referenced.map((r) => [r.id, { importPath: r.importPath, importEnv: r.importEnv }]));
+      activeImports = rawImports.map((imp) => {
+        if (!imp.isReserved) return imp;
+        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
+        if (!match) return imp;
+        const details = detailMap.get(match[1]);
+        return details ? { ...imp, importPath: details.importPath, importEnv: details.importEnv } : imp;
+      });
+    }
 
     const importedFolders = await Promise.all(
       activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
