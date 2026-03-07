@@ -10,6 +10,7 @@ import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
 import { TPamResource, TPamResourceConnectionDetails, TPamResourceInternalMetadata } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 import { getRedisResourceListItem } from "./redis/redis-resource-fns";
+import { getWebAppResourceListItem } from "./webapp/webapp-resource-fns";
 import { getWindowsResourceListItem } from "./windows-server/windows-server-resource-fns";
 
 export const listResourceOptions = () => {
@@ -20,7 +21,8 @@ export const listResourceOptions = () => {
     getKubernetesResourceListItem(),
     getRedisResourceListItem(),
     getWindowsResourceListItem(),
-    getActiveDirectoryResourceListItem()
+    getActiveDirectoryResourceListItem(),
+    getWebAppResourceListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 

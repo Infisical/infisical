@@ -41,8 +41,14 @@ export const HttpResponseEventSchema = HttpBaseEventSchema.extend({
 
 export const HttpEventSchema = z.discriminatedUnion("eventType", [HttpRequestEventSchema, HttpResponseEventSchema]);
 
+export const ScreenshotEventSchema = z.object({
+  timestamp: z.coerce.date(),
+  eventType: z.literal("screenshot"),
+  image: z.string()
+});
+
 export const SanitizedSessionSchema = PamSessionsSchema.omit({
   encryptedLogsBlob: true
 }).extend({
-  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema]))
+  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema, ScreenshotEventSchema]))
 });

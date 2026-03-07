@@ -202,6 +202,50 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
                 );
               }
 
+              // Handle HTTP events (web sessions)
+              if ("eventType" in log && "requestId" in log) {
+                if (log.eventType === "request") {
+                  return (
+                    <div
+                      key={`${id}-log-${log.requestId}-req`}
+                      className="mb-1 flex items-center gap-1.5 font-mono"
+                    >
+                      <span className="text-bunker-400">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span className="font-semibold text-primary">{log.method}</span>
+                      <span className="text-bunker-200">{log.url}</span>
+                    </div>
+                  );
+                }
+                if (log.eventType === "response") {
+                  const statusCode = parseInt(log.status, 10);
+                  const statusColor =
+                    statusCode >= 200 && statusCode < 300
+                      ? "text-green-400"
+                      : statusCode >= 400
+                        ? "text-red-400"
+                        : "text-yellow-400";
+                  return (
+                    <div
+                      key={`${id}-log-${log.requestId}-res`}
+                      className="mb-3 flex items-center gap-1.5 font-mono last:mb-0"
+                    >
+                      <span className="text-bunker-400">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span className={statusColor}>{log.status}</span>
+                      {log.headers?.["content-type"]?.[0] && (
+                        <span className="text-bunker-500">
+                          ({log.headers["content-type"][0].split(";")[0]})
+                        </span>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              }
+
               // Handle aggregated terminal events (SSH sessions)
               if ("data" in log && typeof log.data === "string") {
                 return (

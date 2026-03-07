@@ -16,6 +16,7 @@ import { MySQLResourceForm } from "./MySQLResourceForm";
 import { PostgresResourceForm } from "./PostgresResourceForm";
 import { RedisResourceForm } from "./RedisResourceForm";
 import { SSHResourceForm } from "./SSHResourceForm";
+import { WebAppResourceForm } from "./WebAppResourceForm";
 import { WindowsResourceForm } from "./WindowsResourceForm";
 
 type FormProps = {
@@ -69,6 +70,8 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <WindowsResourceForm onSubmit={onSubmit} />;
     case PamResourceType.ActiveDirectory:
       return <ActiveDirectoryResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.WebApp:
+      return <WebAppResourceForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -112,6 +115,8 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <WindowsResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.ActiveDirectory:
       return <ActiveDirectoryResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.WebApp:
+      return <WebAppResourceForm resource={resource} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${(resource as any).resourceType}`);
   }

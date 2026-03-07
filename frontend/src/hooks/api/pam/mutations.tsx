@@ -171,6 +171,24 @@ export const useAccessPamAccount = () => {
   });
 };
 
+// Web Sessions
+export type TCreateWebSessionDTO = {
+  accountId: string;
+  projectId: string;
+};
+
+export const useCreateWebSession = () => {
+  return useMutation({
+    mutationFn: async ({ accountId, projectId }: TCreateWebSessionDTO) => {
+      const { data } = await apiRequest.post<{ sessionId: string }>(
+        "/api/v1/pam/web-sessions",
+        { accountId, projectId }
+      );
+      return data;
+    }
+  });
+};
+
 // Folders
 export const useCreatePamFolder = () => {
   const queryClient = useQueryClient();

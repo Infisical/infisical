@@ -35,6 +35,11 @@ import {
   UpdateSSHResourceSchema
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import {
+  CreateWebAppResourceSchema,
+  SanitizedWebAppResourceSchema,
+  UpdateWebAppResourceSchema
+} from "@app/ee/services/pam-resource/webapp/webapp-resource-schemas";
+import {
   CreateWindowsResourceSchema,
   SanitizedWindowsResourceSchema,
   UpdateWindowsResourceSchema
@@ -122,5 +127,14 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       updateResourceSchema: UpdateActiveDirectoryResourceSchema
     });
     registerActiveDirectoryRelatedResourcesEndpoint(server);
+  },
+  [PamResource.WebApp]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.WebApp,
+      resourceResponseSchema: SanitizedWebAppResourceSchema,
+      createResourceSchema: CreateWebAppResourceSchema,
+      updateResourceSchema: UpdateWebAppResourceSchema
+    });
   }
 };

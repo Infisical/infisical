@@ -13,6 +13,7 @@ import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TRedisAccount, TRedisResource } from "./redis-resource";
 import { TSSHAccount, TSSHResource } from "./ssh-resource";
+import { TWebAppAccount, TWebAppResource } from "./webapp-resource";
 import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
 
 export * from "./active-directory-resource";
@@ -22,6 +23,7 @@ export * from "./mysql-resource";
 export * from "./postgres-resource";
 export * from "./redis-resource";
 export * from "./ssh-resource";
+export * from "./webapp-resource";
 export * from "./windows-server-resource";
 
 export type TPamResource =
@@ -32,7 +34,8 @@ export type TPamResource =
   | TAwsIamResource
   | TKubernetesResource
   | TWindowsResource
-  | TActiveDirectoryResource;
+  | TActiveDirectoryResource
+  | TWebAppResource;
 
 export type TPamAccount =
   | TPostgresAccount
@@ -42,7 +45,8 @@ export type TPamAccount =
   | TAwsIamAccount
   | TKubernetesAccount
   | TWindowsAccount
-  | TActiveDirectoryAccount;
+  | TActiveDirectoryAccount
+  | TWebAppAccount;
 
 export type TPamFolder = {
   id: string;
@@ -89,7 +93,13 @@ export type THttpResponseEvent = {
 
 export type THttpEvent = THttpRequestEvent | THttpResponseEvent;
 
-export type TPamSessionLog = TPamCommandLog | TTerminalEvent | THttpEvent;
+export type TScreenshotEvent = {
+  timestamp: string;
+  eventType: "screenshot";
+  image: string; // base64 JPEG
+};
+
+export type TPamSessionLog = TPamCommandLog | TTerminalEvent | THttpEvent | TScreenshotEvent;
 
 export type TPamSession = {
   id: string;

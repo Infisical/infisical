@@ -15,6 +15,7 @@ import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 import { RedisAccountForm } from "./RedisAccountForm";
 import { SshAccountForm } from "./SshAccountForm";
+import { WebAppAccountForm } from "./WebAppAccountForm";
 import { WindowsAccountForm } from "./WindowsAccountForm";
 
 type FormProps = {
@@ -123,6 +124,14 @@ const CreateForm = ({
           resourceType={resourceType}
         />
       );
+    case PamResourceType.WebApp:
+      return (
+        <WebAppAccountForm
+          onSubmit={onSubmit}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -176,6 +185,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       return <WindowsAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.ActiveDirectory:
       return <ActiveDirectoryAccountForm account={account as any} onSubmit={onSubmit} />;
+    case PamResourceType.WebApp:
+      return <WebAppAccountForm account={account as any} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
   }

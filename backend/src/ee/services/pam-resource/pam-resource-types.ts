@@ -49,6 +49,12 @@ import {
   TSSHResourceInternalMetadata
 } from "./ssh/ssh-resource-types";
 import {
+  TWebAppAccount,
+  TWebAppAccountCredentials,
+  TWebAppResource,
+  TWebAppResourceConnectionDetails
+} from "./webapp/webapp-resource-types";
+import {
   TWindowsAccount,
   TWindowsAccountCredentials,
   TWindowsResource,
@@ -65,7 +71,8 @@ export type TPamResource =
   | TKubernetesResource
   | TRedisResource
   | TWindowsResource
-  | TActiveDirectoryResource;
+  | TActiveDirectoryResource
+  | TWebAppResource;
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
@@ -74,7 +81,8 @@ export type TPamResourceConnectionDetails =
   | TAwsIamResourceConnectionDetails
   | TRedisResourceConnectionDetails
   | TWindowsResourceConnectionDetails
-  | TActiveDirectoryResourceConnectionDetails;
+  | TActiveDirectoryResourceConnectionDetails
+  | TWebAppResourceConnectionDetails;
 export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindowsResourceInternalMetadata;
 
 // Account types
@@ -86,7 +94,8 @@ export type TPamAccount =
   | TKubernetesAccount
   | TRedisAccount
   | TWindowsAccount
-  | TActiveDirectoryAccount;
+  | TActiveDirectoryAccount
+  | TWebAppAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
@@ -97,7 +106,8 @@ export type TPamAccountCredentials =
   | TAwsIamAccountCredentials
   | TRedisAccountCredentials
   | TWindowsAccountCredentials
-  | TActiveDirectoryAccountCredentials;
+  | TActiveDirectoryAccountCredentials
+  | TWebAppAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {

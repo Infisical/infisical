@@ -116,10 +116,6 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    if (session.encryptedLogsBlob) {
-      throw new BadRequestError({ message: "Cannot update logs for sessions with existing logs" });
-    }
-
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
@@ -141,13 +137,25 @@ export const pamSessionServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Identity does not have access to update logs for this session" });
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: session.projectId
     });
 
+    // Merge with existing logs if present (web sessions upload from multiple connections)
+    let mergedLogs = logs;
+    if (session.encryptedLogsBlob) {
+      try {
+        const existingPlainText = decryptor({ cipherTextBlob: session.encryptedLogsBlob });
+        const existingLogs = JSON.parse(existingPlainText.toString()) as typeof logs;
+        mergedLogs = [...existingLogs, ...logs];
+      } catch {
+        // If decryption fails, just use the new logs
+      }
+    }
+
     const { cipherTextBlob } = encryptor({
-      plainText: Buffer.from(JSON.stringify(logs))
+      plainText: Buffer.from(JSON.stringify(mergedLogs))
     });
 
     const updatedSession = await pamSessionDAL.updateById(sessionId, {

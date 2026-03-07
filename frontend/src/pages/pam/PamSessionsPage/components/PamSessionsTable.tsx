@@ -148,6 +148,15 @@ export const PamSessionsTable = ({ sessions }: Props) => {
                   return false;
                 }
               }
+              // Handle HTTP events (web sessions)
+              if ("eventType" in log && "requestId" in log) {
+                const httpLog = log as { method?: string; url?: string; status?: string };
+                return (
+                  (httpLog.method ?? "").toLowerCase().includes(searchValue) ||
+                  (httpLog.url ?? "").toLowerCase().includes(searchValue) ||
+                  (httpLog.status ?? "").toLowerCase().includes(searchValue)
+                );
+              }
               return false;
             })
           : [];

@@ -12,6 +12,7 @@ import {
 import { CommandLogView } from "./CommandLogView";
 import { HttpEventView } from "./HttpEventView";
 import { TerminalEventView } from "./TerminalEventView";
+import { WebHttpEventView } from "./WebHttpEventView";
 
 type Props = {
   session: TPamSession;
@@ -25,6 +26,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
     session.resourceType === PamResourceType.MySQL ||
     session.resourceType === PamResourceType.Redis;
   const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
+  const isWebAppSession = session.resourceType === PamResourceType.WebApp;
   const isAwsIamSession = session.resourceType === PamResourceType.AwsIam;
   const hasLogs = session.logs.length > 0;
 
@@ -37,6 +39,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
       {isDatabaseSession && hasLogs && <CommandLogView logs={session.logs as TPamCommandLog[]} />}
       {isSSHSession && hasLogs && <TerminalEventView events={session.logs as TTerminalEvent[]} />}
       {isHttpSession && hasLogs && <HttpEventView events={session.logs as THttpEvent[]} />}
+      {isWebAppSession && hasLogs && <WebHttpEventView logs={session.logs} />}
       {isAwsIamSession && (
         <div className="flex grow items-center justify-center text-bunker-300">
           <div className="text-center">

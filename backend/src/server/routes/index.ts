@@ -98,6 +98,7 @@ import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-res
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
+import { pamWebSessionServiceFactory } from "@app/ee/services/pam-web-session/pam-web-session-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -2703,6 +2704,18 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const pamWebSessionService = pamWebSessionServiceFactory({
+    pamAccountDAL,
+    pamResourceDAL,
+    permissionService,
+    auditLogService,
+    pamSessionDAL,
+    pamSessionExpirationService,
+    gatewayV2Service,
+    kmsService,
+    userDAL
+  });
+
   const pamDiscoveryQueue = pamDiscoveryQueueFactory({
     pamDiscoverySourceDAL,
     pamDiscoveryRunDAL,
@@ -2953,6 +2966,7 @@ export const registerRoutes = async (
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
     pamWebAccess: pamWebAccessService,
+    pamWebSession: pamWebSessionService,
     pamDiscoverySource: pamDiscoverySourceService,
     mfaSession: mfaSessionService,
     upgradePath: upgradePathService,

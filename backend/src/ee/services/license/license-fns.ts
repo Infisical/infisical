@@ -103,7 +103,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   enforceMfa: false,
   projectTemplates: false,
   kmip: false,
-  gateway: false,
+  gateway: true,
   sshHostGroups: false,
   secretScanning: false,
   enterpriseSecretSyncs: false,

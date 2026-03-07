@@ -35,8 +35,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       { name: "Elasticsearch", resource: PamResourceType.Elasticsearch },
       { name: "RDP", resource: PamResourceType.RDP },
       { name: "SSH", resource: PamResourceType.SSH },
-      { name: "MCP", resource: PamResourceType.MCP },
-      { name: "Web Application", resource: PamResourceType.WebApp }
+      { name: "MCP", resource: PamResourceType.MCP }
     ];
   }, [resourceOptions]);
 
@@ -68,7 +67,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       resource === PamResourceType.RDP ||
       resource === PamResourceType.MCP ||
       resource === PamResourceType.MongoDB ||
-      resource === PamResourceType.WebApp ||
       resource === PamResourceType.Cassandra ||
       resource === PamResourceType.CockroachDB ||
       resource === PamResourceType.Elasticsearch ||

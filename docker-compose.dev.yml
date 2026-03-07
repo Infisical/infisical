@@ -150,6 +150,7 @@ services:
     volumes:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
     env_file: .env
 
   pgadmin:

@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
-import { faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faGlobe, faSpinner, faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
-import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
+import { PamResourceType, TPamAccount, useCreateWebSession } from "@app/hooks/api/pam";
+import { apiRequest } from "@app/config/request";
 
 type Props = {
   account?: TPamAccount;
@@ -85,9 +86,108 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
     }
   }, [account, projectId, cliDuration, siteURL]);
 
+  const createWebSession = useCreateWebSession();
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [webSessionId, setWebSessionId] = useState<string | null>(null);
+
+  const handleWebAppConnect = async () => {
+    if (!account) return;
+    try {
+      setIsConnecting(true);
+      const { sessionId } = await createWebSession.mutateAsync({
+        accountId: account.id,
+        projectId
+      });
+      setWebSessionId(sessionId);
+    } catch (err) {
+      createNotification({
+        text: `Failed to create web session: ${err instanceof Error ? err.message : "Unknown error"}`,
+        type: "error"
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleWebSessionClose = async () => {
+    if (webSessionId) {
+      try {
+        await apiRequest.post(`/api/v1/pam/web-sessions/${webSessionId}/end`);
+      } catch {
+        // best effort
+      }
+    }
+    setWebSessionId(null);
+    onOpenChange(false);
+  };
+
   if (!account) return null;
 
+  const isWebApp = account.resource.resourceType === PamResourceType.WebApp;
   const showWebAccess = account.resource.resourceType === PamResourceType.Postgres;
+
+  // WebApp: full-screen iframe overlay when session is active
+  if (isWebApp && webSessionId) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-bunker-800">
+        <div className="flex items-center gap-3 border-b border-mineshaft-600 bg-mineshaft-900 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faGlobe} className="text-primary" />
+            <span className="text-sm font-medium text-mineshaft-200">
+              {account.resource.name}
+            </span>
+            <span className="text-xs text-mineshaft-400">({account.name})</span>
+          </div>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <span className="text-xs text-mineshaft-400">Connected</span>
+          </div>
+          <Button
+            size="xs"
+            colorSchema="danger"
+            variant="outline_bg"
+            onClick={handleWebSessionClose}
+          >
+            End Session
+          </Button>
+        </div>
+        <iframe
+          src={`/api/v1/pam/web-sessions/${webSessionId}/proxy/`}
+          title="Web Access Session"
+          className="flex-1 border-0"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    );
+  }
+
+  // WebApp: connect modal
+  if (isWebApp) {
+    return (
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+        <ModalContent
+          className="max-w-md pb-2"
+          title="Connect to Web Application"
+          subTitle={`Open ${account.resource.name} in your browser`}
+        >
+          <p className="mb-4 text-sm text-mineshaft-400">
+            This will establish a secure tunnel through the gateway and open the internal website.
+          </p>
+          <Button
+            className="w-full"
+            colorSchema="primary"
+            isLoading={isConnecting}
+            isDisabled={isConnecting}
+            leftIcon={<FontAwesomeIcon icon={isConnecting ? faSpinner : faGlobe} spin={isConnecting} />}
+            onClick={handleWebAppConnect}
+          >
+            {isConnecting ? "Establishing tunnel..." : "Connect"}
+          </Button>
+        </ModalContent>
+      </Modal>
+    );
+  }
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>

@@ -35,6 +35,11 @@ import {
   UpdateSSHAccountSchema
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import {
+  CreateWebAppAccountSchema,
+  SanitizedWebAppAccountWithResourceSchema,
+  UpdateWebAppAccountSchema
+} from "@app/ee/services/pam-resource/webapp/webapp-resource-schemas";
+import {
   CreateWindowsAccountSchema,
   SanitizedWindowsAccountWithResourceSchema,
   UpdateWindowsAccountSchema
@@ -113,6 +118,15 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedActiveDirectoryAccountWithResourceSchema,
       createAccountSchema: CreateActiveDirectoryAccountSchema,
       updateAccountSchema: UpdateActiveDirectoryAccountSchema
+    });
+  },
+  [PamResource.WebApp]: async (server: FastifyZodProvider) => {
+    registerPamAccountEndpoints({
+      server,
+      resourceType: PamResource.WebApp,
+      accountResponseSchema: SanitizedWebAppAccountWithResourceSchema,
+      createAccountSchema: CreateWebAppAccountSchema,
+      updateAccountSchema: UpdateWebAppAccountSchema
     });
   }
 };
