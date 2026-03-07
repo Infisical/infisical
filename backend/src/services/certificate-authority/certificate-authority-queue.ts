@@ -108,8 +108,8 @@ export const certificateAuthorityQueueFactory = ({
 
   const startCaCrlRebuildJob = async () => {
     const appCfg = getConfig();
-    // Every Sunday at midnight UTC (weekly, matching 7-day CRL validity)
-    const cronPattern = appCfg.NODE_ENV === "development" ? "*/5 * * * *" : "0 0 * * 0";
+    // Daily at midnight UTC; only CRLs expiring before next run are rebuilt
+    const cronPattern = appCfg.NODE_ENV === "development" ? "*/5 * * * *" : "0 0 * * *";
 
     // clear previous repeatable job
     await queueService.stopRepeatableJob(
@@ -202,6 +202,10 @@ export const certificateAuthorityQueueFactory = ({
     let totalRebuilt = 0;
     let hasMore = true;
 
+    // Rebuild any CRL whose validity expires before the next daily run (~24h from now)
+    const nextRunAt = new Date();
+    nextRunAt.setDate(nextRunAt.getDate() + 1);
+
     while (hasMore) {
       const internalCas = await internalCertificateAuthorityDAL.find({}, { offset, limit: CRL_REBUILD_BATCH_SIZE });
 
@@ -212,6 +216,17 @@ export const certificateAuthorityQueueFactory = ({
 
       for (const internalCa of internalCas) {
         try {
+          const caCrls = await certificateAuthorityCrlDAL.find(
+            { caId: internalCa.caId },
+            { sort: [["updatedAt", "desc"]], limit: 1 }
+          );
+          if (caCrls.length === 0) continue;
+
+          // Skip if CRL was recently rebuilt and won't expire before next run
+          const crlExpiresAt = new Date(caCrls[0].updatedAt);
+          crlExpiresAt.setDate(crlExpiresAt.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
+          if (crlExpiresAt > nextRunAt) continue;
+
           const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: internalCa.caId });
           const alg = keyAlgorithmToAlgCfg(internalCa.keyAlgorithm as CertKeyAlgorithm);
 
@@ -262,7 +277,7 @@ export const certificateAuthorityQueueFactory = ({
             plainText: Buffer.from(new Uint8Array(crl.rawData))
           });
 
-          await certificateAuthorityCrlDAL.update({ caId: internalCa.caId }, { encryptedCrl });
+          await certificateAuthorityCrlDAL.update({ caId: internalCa.caId }, { encryptedCrl, updatedAt: new Date() });
           totalRebuilt += 1;
         } catch (err) {
           logger.error(err, `${QueueName.CaCrlRotation}: failed to rebuild CRL for CA ${internalCa.caId}`);
