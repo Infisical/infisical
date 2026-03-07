@@ -1291,6 +1291,7 @@ export const createRelativeImportExpander = ({
     if (relativeImportExpanders.has(expanderKey)) return relativeImportExpanders.get(expanderKey)!;
 
     const virtualFolderId = `__relative_import_${expanderKey}`;
+    const keyOriginMap = new Map<string, { environment: string; secretPath: string }>();
 
     const expander = expandSecretReferencesFactory({
       projectId,
@@ -1317,13 +1318,31 @@ export const createRelativeImportExpander = ({
             currentFolder ? fetchFolderSecretsWithImports(currentFolder.id, folderIdArgs.userId) : [],
             sourceFolder ? fetchFolderSecretsWithImports(sourceFolder.id, folderIdArgs.userId) : []
           ]);
-          const envMerged = new Map(sourceSecrets.map((s) => [s.key, s]));
-          currentSecrets.forEach((s) => envMerged.set(s.key, s));
+          // source goes in first (lower priority). current overwrites (higher priority). record the origin of each key so the permission check can use the right env.
+          const envMerged = new Map(
+            sourceSecrets.map((s) => {
+              keyOriginMap.set(s.key, { environment: sourceEnvironment, secretPath: sourcePath });
+              return [s.key, s];
+            })
+          );
+          currentSecrets.forEach((s) => {
+            keyOriginMap.set(s.key, { environment: currentEnvironment, secretPath: currentSecretPath });
+            envMerged.set(s.key, s);
+          });
           return [...envMerged.values()];
         }
       },
       decryptSecretValue,
-      canExpandValue,
+      // for local references resolved through the virtual merged folder, check permission against the secret's actual origin env — not the current env.
+      // without this, a user with broad current-env access could bypass source-env access controls on keys that fall through from the source when the current env has no override.
+      canExpandValue: (environment, secretPath, secretKey, secretTagSlugs) => {
+        if (environment === currentEnvironment && secretPath === currentSecretPath) {
+          const origin = keyOriginMap.get(secretKey);
+          if (origin) return canExpandValue(origin.environment, origin.secretPath, secretKey, secretTagSlugs);
+          return false;
+        }
+        return canExpandValue(environment, secretPath, secretKey, secretTagSlugs);
+      },
       userId
     });
 
