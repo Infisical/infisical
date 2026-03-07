@@ -92,6 +92,13 @@ infisical:
     # -- Optional node port for service when using NodePort type
     nodePort: ""
 
+  # -- Extra environment variables to set on the Infisical container. Useful for setting variables like NODE_EXTRA_CA_CERTS.
+  # -- Example:
+  # -- extraEnv:
+  # --   - name: NODE_EXTRA_CA_CERTS
+  # --     value: /etc/ssl/certs/ca-certificates.crt
+  extraEnv: []
+
   resources:
     limits:
       # -- Memory limit for Infisical container
