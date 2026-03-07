@@ -2272,7 +2272,8 @@ export const registerRoutes = async (
     appConnectionDAL,
     appConnectionService,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    internalCertificateAuthorityDAL
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -2779,6 +2780,7 @@ export const registerRoutes = async (
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
+  await certificateAuthorityQueue.startCaCrlRebuildJob();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await pkiAlertV2Queue.init();
   await certificateV3Queue.init();

@@ -303,9 +303,7 @@ export type TQueueJobTypes = {
       };
   [QueueName.CaCrlRotation]: {
     name: QueueJobs.CaCrlRotation;
-    payload: {
-      caId: string;
-    };
+    payload: undefined;
   };
   [QueueName.SecretReplication]: {
     name: QueueJobs.SecretReplication;
