@@ -1,6 +1,10 @@
+import net from "node:net";
+
+import * as dnsPacket from "dns-packet";
 import { Knex } from "knex";
 import ldapjs from "ldapjs";
 import RE2 from "re2";
+import { runPowershell } from "winrm-client";
 
 import { TPamDiscoveryScanDeps } from "@app/ee/services/pam-discovery/pam-discovery-factory";
 import { BadRequestError } from "@app/lib/errors";
@@ -21,8 +25,10 @@ import {
 import { TPamResourceDALFactory } from "../../pam-resource/pam-resource-dal";
 import { PamResource } from "../../pam-resource/pam-resource-enums";
 import { encryptResourceConnectionDetails, encryptResourceInternalMetadata } from "../../pam-resource/pam-resource-fns";
-import { WindowsProtocol } from "../../pam-resource/windows-server/windows-server-resource-enums";
+import { WindowsAccountType, WindowsProtocol } from "../../pam-resource/windows-server/windows-server-resource-enums";
 import {
+  TWindowsAccountCredentials,
+  TWindowsAccountMetadata,
   TWindowsResourceConnectionDetails,
   TWindowsResourceInternalMetadata
 } from "../../pam-resource/windows-server/windows-server-resource-types";
@@ -40,7 +46,17 @@ import {
 
 const LDAP_TIMEOUT = 30 * 1000;
 const LDAP_PAGE_SIZE = 500;
+const WINRM_PORT = 5985;
 const SERVICE_ACCOUNT_PATTERNS = [new RE2(/^svc[_-]/i), new RE2(/[_-]service$/i), new RE2(/[_-]svc$/i)];
+
+type TWinRmLocalUser = {
+  Name: string;
+  Enabled: boolean;
+  LastLogon: string | null;
+  PasswordLastSet: string | null;
+  Description: string;
+  SID: { Value: string };
+};
 
 type TLdapComputer = {
   cn: string;
@@ -49,6 +65,7 @@ type TLdapComputer = {
   operatingSystemVersion: string;
   objectGUID: string;
   whenChanged: string;
+  resolvedIp?: string;
 };
 
 type TLdapUser = {
@@ -183,6 +200,85 @@ const executeWithGateway = async <T>(
       relayHost: platformConnectionDetails.relayHost,
       gateway: platformConnectionDetails.gateway,
       relay: platformConnectionDetails.relay
+    }
+  );
+};
+
+// Resolve a single hostname to an IP via DNS-over-TCP through the gateway proxy
+const resolveDnsTcp = (hostname: string, port: number): Promise<string | null> => {
+  return new Promise((resolve) => {
+    const query = dnsPacket.streamEncode({
+      type: "query",
+      flags: dnsPacket.RECURSION_DESIRED,
+      questions: [{ type: "A", name: hostname }]
+    });
+
+    const socket = net.connect({ host: "127.0.0.1", port }, () => {
+      socket.write(query);
+    });
+
+    let responseData = Buffer.alloc(0);
+
+    socket.on("data", (chunk: Buffer) => {
+      responseData = Buffer.concat([responseData, chunk]);
+
+      // DNS-over-TCP frames each message with a 2-byte big-endian length prefix
+      // wait until we have the full frame before decoding
+      if (responseData.length >= 2) {
+        const msgLen = responseData.readUInt16BE(0);
+        if (responseData.length >= 2 + msgLen) {
+          const response = dnsPacket.streamDecode(responseData);
+          const aRecord = response.answers?.find((a) => a.type === "A");
+          socket.destroy();
+          resolve(aRecord && "data" in aRecord ? (aRecord.data as string) : null);
+        }
+      }
+    });
+
+    socket.on("error", () => {
+      resolve(null);
+    });
+
+    socket.setTimeout(5000, () => {
+      socket.destroy();
+      resolve(null);
+    });
+  });
+};
+
+// Resolve AD hostnames to IP addresses by querying DNS over TCP through the DC
+const resolveHostnamesViaDc = async (
+  computers: TLdapComputer[],
+  configuration: TAdDiscoveryConfiguration,
+  gatewayId: string,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+): Promise<void> => {
+  await executeWithGateway(
+    { dcAddress: configuration.dcAddress, port: 53, gatewayId },
+    gatewayV2Service,
+    async (proxyPort) => {
+      // Resolve each hostname sequentially to avoid overwhelming the proxy
+      // eslint-disable-next-line no-await-in-loop
+      for (const computer of computers) {
+        const hostname = computer.dNSHostName || computer.cn;
+        if (!hostname) {
+          // skip computers without a hostname
+        } else if (net.isIP(hostname)) {
+          computer.resolvedIp = hostname;
+        } else {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const ip = await resolveDnsTcp(hostname, proxyPort);
+            if (ip) {
+              computer.resolvedIp = ip;
+            } else {
+              logger.warn({ hostname }, "DNS resolution returned no A records");
+            }
+          } catch (err) {
+            logger.warn({ hostname, err: (err as Error).message }, "Failed to resolve hostname via DC DNS");
+          }
+        }
+      }
     }
   );
 };
@@ -474,6 +570,90 @@ const upsertDomainAccount = async (
   return { account, isNew: true };
 };
 
+const executeWinRmLocalAccountEnumeration = async (
+  computer: TLdapComputer,
+  domainFQDN: string,
+  credentials: TAdDiscoveryCredentials,
+  gatewayId: string,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+): Promise<TWinRmLocalUser[]> => {
+  const hostname = computer.dNSHostName || computer.cn;
+  const targetAddress = computer.resolvedIp || hostname;
+
+  return executeWithGateway(
+    { dcAddress: targetAddress, port: WINRM_PORT, gatewayId },
+    gatewayV2Service,
+    async (proxyPort) => {
+      logger.info({ hostname, targetAddress, proxyPort, domain: domainFQDN }, "WinRM: Enumerating local accounts");
+
+      const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
+      const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
+      const script = `Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordLastSet, Description, SID | ConvertTo-Json`;
+      const stdout = await runPowershell(script, "localhost", winrmUsername, credentials.password, proxyPort);
+
+      if (!stdout.trim()) {
+        return [];
+      }
+
+      const parsed = JSON.parse(stdout) as TWinRmLocalUser | TWinRmLocalUser[];
+      return Array.isArray(parsed) ? parsed : [parsed];
+    }
+  );
+};
+
+const upsertLocalAccount = async (
+  projectId: string,
+  localUser: TWinRmLocalUser,
+  computerObjectGUID: string,
+  windowsServerResourceId: string,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find">,
+  tx: Knex
+) => {
+  const fingerprint = `${computerObjectGUID}:${localUser.Name.toLowerCase()}`;
+
+  const existing = await pamAccountDAL.find(
+    {
+      resourceId: windowsServerResourceId,
+      discoveryFingerprint: fingerprint
+    },
+    { tx }
+  );
+
+  if (existing.length > 0) {
+    return { account: existing[0], isNew: false };
+  }
+
+  const accountName = toSlugName(localUser.Name);
+
+  const encryptedCredentials = await encryptAccountCredentials({
+    projectId,
+    credentials: {
+      username: localUser.Name,
+      password: ""
+    } as TWindowsAccountCredentials,
+    kmsService
+  });
+
+  const internalMetadata = {
+    accountType: WindowsAccountType.User
+  } as TWindowsAccountMetadata;
+
+  const account = await pamAccountDAL.create(
+    {
+      projectId,
+      resourceId: windowsServerResourceId,
+      name: accountName,
+      encryptedCredentials,
+      internalMetadata,
+      discoveryFingerprint: fingerprint
+    },
+    tx
+  );
+
+  return { account, isNew: true };
+};
+
 export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
   TAdDiscoveryConfiguration,
   TAdDiscoveryCredentials
@@ -558,12 +738,21 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
 
       adEnumerationSucceeded = true;
 
+      // Resolve computer hostnames to IPs via DC DNS so the gateway can reach them
+      try {
+        await resolveHostnamesViaDc(computers, configuration, gatewayId, gatewayV2Service);
+      } catch (err) {
+        logger.warn({ err }, "Failed to resolve hostnames via DC DNS, will use hostnames directly");
+      }
+
       await pamDiscoveryRunDAL.updateById(run.id, {
         progress: {
           adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
           dependencyScan: {
-            status: PamDiscoveryStepStatus.Skipped,
-            statusMessage: "WinRM scanning not yet implemented"
+            status: PamDiscoveryStepStatus.Running,
+            totalMachines: computers.length,
+            scannedMachines: 0,
+            failedMachines: 0
           }
         } as TActiveDirectoryDiscoverySourceRunProgress
       });
@@ -593,10 +782,12 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       resourcesDiscoveredCount += 1;
       if (isAdServerNew) newResourcesCount += 1;
 
-      // Auto-import Windows Server resources
+      // Auto-import Windows Server resources and build mapping for local account discovery
+      const computerResourceMap = new Map<string, string>(); // objectGUID -> resourceId
+
       for await (const computer of computers) {
         try {
-          const { isNew } = await pamResourceDAL.transaction(async (tx) => {
+          const { resource: windowsResource, isNew } = await pamResourceDAL.transaction(async (tx) => {
             const result = await upsertWindowsServerResource(
               projectId,
               computer,
@@ -619,6 +810,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             return result;
           });
 
+          computerResourceMap.set(computer.objectGUID, windowsResource.id);
           resourcesDiscoveredCount += 1;
           if (isNew) newResourcesCount += 1;
         } catch (err) {
@@ -663,11 +855,97 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         }
       }
 
+      // WinRM local account discovery
+      let scannedMachines = 0;
+      let failedMachines = 0;
+      const machineErrors: Record<string, string> = {};
+
+      // eslint-disable-next-line no-await-in-loop
+      for (const computer of computers) {
+        const windowsResourceId = computerResourceMap.get(computer.objectGUID);
+        if (!windowsResourceId) {
+          failedMachines += 1;
+        } else {
+          const hostname = computer.dNSHostName || computer.cn;
+
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const localUsers = await executeWinRmLocalAccountEnumeration(
+              computer,
+              configuration.domainFQDN,
+              credentials,
+              gatewayId,
+              gatewayV2Service
+            );
+
+            for (const localUser of localUsers) {
+              try {
+                // eslint-disable-next-line no-await-in-loop
+                const { isNew } = await pamAccountDAL.transaction(async (tx) => {
+                  const result = await upsertLocalAccount(
+                    projectId,
+                    localUser,
+                    computer.objectGUID,
+                    windowsResourceId,
+                    kmsService,
+                    pamAccountDAL,
+                    tx
+                  );
+
+                  await pamDiscoverySourceAccountsDAL.upsertJunction(
+                    {
+                      discoverySourceId,
+                      accountId: result.account.id,
+                      lastDiscoveredRunId: run.id
+                    },
+                    tx
+                  );
+
+                  return result;
+                });
+
+                accountsDiscoveredCount += 1;
+                if (isNew) newAccountsCount += 1;
+              } catch (err) {
+                logger.warn({ err, localUser: localUser.Name, computer: hostname }, "Failed to import local account");
+              }
+            }
+
+            scannedMachines += 1;
+          } catch (err) {
+            failedMachines += 1;
+            machineErrors[hostname] = (err as Error).message;
+            logger.warn({ err, computer: hostname }, "WinRM local account enumeration failed for machine");
+          }
+        }
+
+        // Update progress periodically
+        // eslint-disable-next-line no-await-in-loop
+        await pamDiscoveryRunDAL.updateById(run.id, {
+          accountsDiscoveredCount,
+          progress: {
+            adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
+            dependencyScan: {
+              status: PamDiscoveryStepStatus.Running,
+              totalMachines: computers.length,
+              scannedMachines,
+              failedMachines
+            },
+            machineErrors: Object.keys(machineErrors).length > 0 ? machineErrors : undefined
+          } as TActiveDirectoryDiscoverySourceRunProgress
+        });
+      }
+
       if (adEnumerationSucceeded) {
         const staleResourcesCount =
           (await pamDiscoverySourceResourcesDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
         const staleAccountsCount =
           (await pamDiscoverySourceAccountsDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
+
+        const dependencyScanStatus =
+          failedMachines === computers.length && computers.length > 0
+            ? PamDiscoveryStepStatus.Failed
+            : PamDiscoveryStepStatus.Completed;
 
         await pamDiscoveryRunDAL.updateById(run.id, {
           status: PamDiscoverySourceRunStatus.Completed,
@@ -680,7 +958,21 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           staleAccountsCount,
           newDependenciesCount: 0,
           staleDependenciesCount: 0,
-          completedAt: new Date()
+          completedAt: new Date(),
+          progress: {
+            adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
+            dependencyScan: {
+              status: dependencyScanStatus,
+              totalMachines: computers.length,
+              scannedMachines,
+              failedMachines,
+              statusMessage:
+                failedMachines > 0
+                  ? `${failedMachines} of ${computers.length} machines failed local account enumeration`
+                  : undefined
+            },
+            machineErrors: Object.keys(machineErrors).length > 0 ? machineErrors : undefined
+          } as TActiveDirectoryDiscoverySourceRunProgress
         });
       }
     } catch (error) {

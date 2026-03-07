@@ -52,6 +52,7 @@ import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamDiscoveryActions } from "@app/context/ProjectPermissionContext/types";
 import { usePagination } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api";
+import { PamResourceType } from "@app/hooks/api/pam";
 import type {
   PamDiscoveryType,
   TPamDiscoverySource,
@@ -303,6 +304,11 @@ const RunExpandedContent = ({
           <span className="text-xs font-medium tracking-wider text-muted uppercase">
             Machine Errors
           </span>
+          <div className="mb-0.5 flex items-start gap-2 rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
+            <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+            Machines without WinRM enabled will fail with &quot;socket hang up&quot;. This is
+            expected for domain controllers and machines not configured for remote management.
+          </div>
           <div className="flex flex-col gap-1">
             {Object.entries(machineErrors).map(([host, err]) => (
               <div
@@ -724,8 +730,15 @@ const AccountsTab = ({
               >
                 <UnstableTableCell className="font-medium">{account.accountName}</UnstableTableCell>
                 <UnstableTableCell className="text-muted">{account.resourceName}</UnstableTableCell>
-                <UnstableTableCell className="text-muted capitalize">
-                  {account.internalMetadata?.accountType ?? "-"}
+                <UnstableTableCell>
+                  <div className="flex items-center gap-2">
+                    {account.resourceType === PamResourceType.ActiveDirectory && (
+                      <Badge variant="info">AD</Badge>
+                    )}
+                    <span className="text-muted capitalize">
+                      {account.internalMetadata?.accountType ?? "-"}
+                    </span>
+                  </div>
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {formatWindowsFileTime(account.internalMetadata?.lastLogonTimestamp)}
