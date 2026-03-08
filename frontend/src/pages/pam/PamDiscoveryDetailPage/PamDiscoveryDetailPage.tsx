@@ -31,6 +31,10 @@ import {
   UnstableAlert,
   UnstableAlertDescription,
   UnstableAlertTitle,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardHeader,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
@@ -304,10 +308,12 @@ const RunExpandedContent = ({
           <span className="text-xs font-medium tracking-wider text-muted uppercase">
             Machine Errors
           </span>
-          <div className="mb-0.5 flex items-start gap-2 rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
-            <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
-            Machines without WinRM enabled will fail with &quot;socket hang up&quot;. This is
-            expected for domain controllers and machines not configured for remote management.
+          <div className="mb-0.5 flex items-center gap-2 rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
+            <InfoIcon className="size-4 shrink-0" />
+            <span className="whitespace-pre-wrap">
+              Machines without WinRM enabled will fail with &quot;socket hang up&quot;. This is
+              expected for domain controllers and machines not configured for remote management.
+            </span>
           </div>
           <div className="flex flex-col gap-1">
             {Object.entries(machineErrors).map(([host, err]) => (
@@ -875,22 +881,6 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ProjectPermissionCan
-            I={ProjectPermissionPamDiscoveryActions.RunScan}
-            a={ProjectPermissionSub.PamDiscovery}
-          >
-            {(isAllowed) => (
-              <Button
-                variant="neutral"
-                onClick={handleTriggerScan}
-                isDisabled={!isAllowed}
-                isPending={triggerScanMutation.isPending}
-              >
-                <PlayIcon className="size-4" />
-                Trigger Scan
-              </Button>
-            )}
-          </ProjectPermissionCan>
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -940,30 +930,54 @@ const PageContent = () => {
         </div>
 
         {/* Right Column - Tabbed Content */}
-        <div className="flex-1">
-          <Tabs defaultValue="runs">
-            <TabList>
-              <Tab value="runs">Runs</Tab>
-              <Tab value="resources">Resources</Tab>
-              <Tab value="accounts">Accounts</Tab>
-            </TabList>
-            <TabPanel value="runs">
-              <RunsTab discoverySourceId={source.id} discoveryType={source.discoveryType} />
-            </TabPanel>
-            <TabPanel value="resources">
-              <ResourcesTab
-                discoverySourceId={source.id}
-                discoveryType={source.discoveryType}
-                projectId={projectId!}
-              />
-            </TabPanel>
-            <TabPanel value="accounts">
-              <AccountsTab
-                discoverySourceId={source.id}
-                discoveryType={source.discoveryType}
-                projectId={projectId!}
-              />
-            </TabPanel>
+        <div className="flex w-full min-w-0">
+          <Tabs defaultValue="runs" className="w-full">
+            <UnstableCard className="py-3">
+              <UnstableCardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <TabList className="w-fit">
+                    <Tab value="runs">Runs</Tab>
+                    <Tab value="resources">Resources</Tab>
+                    <Tab value="accounts">Accounts</Tab>
+                  </TabList>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionPamDiscoveryActions.RunScan}
+                    a={ProjectPermissionSub.PamDiscovery}
+                  >
+                    {(isAllowed) => (
+                      <Button
+                        variant="neutral"
+                        onClick={handleTriggerScan}
+                        isDisabled={!isAllowed}
+                        isPending={triggerScanMutation.isPending}
+                      >
+                        <PlayIcon className="size-4" />
+                        Trigger Scan
+                      </Button>
+                    )}
+                  </ProjectPermissionCan>
+                </div>
+              </UnstableCardHeader>
+              <UnstableCardContent>
+                <TabPanel value="runs" className="p-0">
+                  <RunsTab discoverySourceId={source.id} discoveryType={source.discoveryType} />
+                </TabPanel>
+                <TabPanel value="resources" className="p-0">
+                  <ResourcesTab
+                    discoverySourceId={source.id}
+                    discoveryType={source.discoveryType}
+                    projectId={projectId!}
+                  />
+                </TabPanel>
+                <TabPanel value="accounts" className="p-0">
+                  <AccountsTab
+                    discoverySourceId={source.id}
+                    discoveryType={source.discoveryType}
+                    projectId={projectId!}
+                  />
+                </TabPanel>
+              </UnstableCardContent>
+            </UnstableCard>
           </Tabs>
         </div>
       </div>
