@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -32,7 +32,6 @@ import {
   UnstableAlertDescription,
   UnstableAlertTitle,
   UnstableCard,
-  UnstableCardAction,
   UnstableCardContent,
   UnstableCardHeader,
   UnstableDropdownMenu,
@@ -242,6 +241,15 @@ const formatWindowsFileTime = (fileTime?: string): string => {
   }
 };
 
+const LiveDuration = ({ startedAt }: { startedAt: string }) => {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{formatDuration(startedAt, null)}</>;
+};
+
 const PROGRESS_BADGE_MAP: Record<string, "success" | "danger" | "info" | "neutral"> = {
   completed: "success",
   failed: "danger",
@@ -269,7 +277,12 @@ const RunExpandedContent = ({
             <span className="text-xs font-medium tracking-wider text-muted uppercase">
               AD Enumeration
             </span>
-            <Badge variant={PROGRESS_BADGE_MAP[adEnum.status] || "info"}>{adEnum.status}</Badge>
+            <Badge
+              variant={PROGRESS_BADGE_MAP[adEnum.status] || "info"}
+              className={adEnum.status === "running" ? "animate-pulse" : undefined}
+            >
+              {adEnum.status}
+            </Badge>
             {adEnum.error && adEnum.error !== errorMessage && (
               <span className="text-xs text-red-400">{adEnum.error}</span>
             )}
@@ -280,7 +293,12 @@ const RunExpandedContent = ({
             <span className="text-xs font-medium tracking-wider text-muted uppercase">
               Dependency Scan
             </span>
-            <Badge variant={PROGRESS_BADGE_MAP[depScan.status] || "info"}>{depScan.status}</Badge>
+            <Badge
+              variant={PROGRESS_BADGE_MAP[depScan.status] || "info"}
+              className={depScan.status === "running" ? "animate-pulse" : undefined}
+            >
+              {depScan.status}
+            </Badge>
             {depScan.totalMachines !== undefined && (
               <span className="text-xs text-muted">
                 {depScan.scannedMachines ?? 0}/{depScan.totalMachines} machines
@@ -334,23 +352,42 @@ const RunExpandedContent = ({
 
 const RunsTab = ({
   discoverySourceId,
-  discoveryType
+  discoveryType,
+  autoExpandLatestRunning
 }: {
   discoverySourceId: string;
   discoveryType: PamDiscoveryType;
+  autoExpandLatestRunning?: boolean;
 }) => {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
     initPerPage: 20
   });
 
-  const { data, isPending } = useListPamDiscoverySourceRuns(discoverySourceId, discoveryType, {
-    offset,
-    limit: perPage
-  });
+  const [isPolling, setIsPolling] = useState(false);
+
+  const { data, isPending } = useListPamDiscoverySourceRuns(
+    discoverySourceId,
+    discoveryType,
+    { offset, limit: perPage },
+    { refetchInterval: isPolling ? 3000 : false }
+  );
 
   const runs = data?.runs || [];
   const totalCount = data?.totalCount || 0;
+  const hasActiveRun = runs.some((r) => r.status === "running");
+
+  // Enable/disable polling based on whether any run is active
+  useEffect(() => {
+    setIsPolling(hasActiveRun);
+  }, [hasActiveRun]);
+
+  // Auto-expand the latest running run
+  useEffect(() => {
+    if (!autoExpandLatestRunning) return;
+    const runningRun = runs.find((r) => r.status === "running");
+    if (runningRun) setExpandedRunId(runningRun.id);
+  }, [runs, autoExpandLatestRunning]);
   const COL_COUNT = 8;
 
   return (
@@ -417,13 +454,22 @@ const RunsTab = ({
                       {run.startedAt ? format(new Date(run.startedAt), "MMM d, yyyy hh:mm a") : "-"}
                     </UnstableTableCell>
                     <UnstableTableCell className="text-muted">
-                      {formatDuration(run.startedAt, run.completedAt)}
+                      {run.status === "running" && run.startedAt ? (
+                        <LiveDuration startedAt={run.startedAt} />
+                      ) : (
+                        formatDuration(run.startedAt, run.completedAt)
+                      )}
                     </UnstableTableCell>
                     <UnstableTableCell className="text-muted capitalize">
                       {run.triggeredBy}
                     </UnstableTableCell>
                     <UnstableTableCell>
-                      <Badge variant={STATUS_BADGE_MAP[run.status] || "info"}>{run.status}</Badge>
+                      <Badge
+                        variant={STATUS_BADGE_MAP[run.status] || "info"}
+                        className={run.status === "running" ? "animate-pulse" : undefined}
+                      >
+                        {run.status}
+                      </Badge>
                     </UnstableTableCell>
                     <UnstableTableCell>
                       <Tooltip>
@@ -784,12 +830,30 @@ const PageContent = () => {
     discoveryType?: string;
     projectId?: string;
   };
+  const selectedTab = useSearch({
+    strict: false,
+    select: (el) => el.selectedTab
+  });
 
   const { discoverySourceId, projectId } = params;
   const discoveryType = params.discoveryType as PamDiscoveryType;
 
+  const handleTabChange = (tab: string) => {
+    navigate({
+      to: "/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId",
+      search: (prev) => ({ ...prev, selectedTab: tab }),
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        discoveryType,
+        discoverySourceId: discoverySourceId!
+      }
+    });
+  };
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [shouldAutoExpand, setShouldAutoExpand] = useState(false);
 
   const { data: source, isPending } = useGetPamDiscoverySource(
     discoverySourceId || "",
@@ -837,6 +901,8 @@ const PageContent = () => {
         discoveryType: source.discoveryType
       });
       createNotification({ text: "Scan triggered successfully", type: "success" });
+      handleTabChange("runs");
+      setShouldAutoExpand(true);
     } catch {
       createNotification({ text: "Failed to trigger scan", type: "error" });
     }
@@ -931,7 +997,7 @@ const PageContent = () => {
 
         {/* Right Column - Tabbed Content */}
         <div className="flex w-full min-w-0">
-          <Tabs defaultValue="runs" className="w-full">
+          <Tabs value={selectedTab} onValueChange={handleTabChange} className="w-full">
             <UnstableCard className="py-3">
               <UnstableCardHeader>
                 <div className="flex items-center justify-between gap-2">
@@ -960,7 +1026,11 @@ const PageContent = () => {
               </UnstableCardHeader>
               <UnstableCardContent>
                 <TabPanel value="runs" className="p-0">
-                  <RunsTab discoverySourceId={source.id} discoveryType={source.discoveryType} />
+                  <RunsTab
+                    discoverySourceId={source.id}
+                    discoveryType={source.discoveryType}
+                    autoExpandLatestRunning={shouldAutoExpand}
+                  />
                 </TabPanel>
                 <TabPanel value="resources" className="p-0">
                   <ResourcesTab
