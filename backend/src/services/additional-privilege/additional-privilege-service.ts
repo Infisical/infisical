@@ -25,7 +25,6 @@ import {
 import { newOrgAdditionalPrivilegesFactory } from "./org/org-additional-privilege-factory";
 import { newProjectAdditionalPrivilegesFactory } from "./project/project-additional-privilege-factory";
 import { ActorType } from "../auth/auth-type";
-import { TIdentityDALFactory } from "../identity/identity-dal";
 
 type TAdditionalPrivilegeServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
@@ -33,7 +32,6 @@ type TAdditionalPrivilegeServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export type TAdditionalPrivilegeServiceFactory = ReturnType<typeof additionalPrivilegeServiceFactory>;
@@ -43,8 +41,7 @@ export const additionalPrivilegeServiceFactory = ({
   permissionService,
   orgDAL,
   membershipDAL,
-  userDAL,
-  identityDAL
+  userDAL
 }: TAdditionalPrivilegeServiceFactoryDep) => {
   const scopeFactory: Record<AccessScope, TAdditionalPrivilegesScopeFactory> = {
     [AccessScope.Organization]: newOrgAdditionalPrivilegesFactory({}),
@@ -52,8 +49,7 @@ export const additionalPrivilegeServiceFactory = ({
       membershipDAL,
       orgDAL,
       permissionService,
-      userDAL,
-      identityDAL
+      userDAL
     })
   };
 
