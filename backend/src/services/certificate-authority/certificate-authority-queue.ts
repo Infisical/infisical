@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop, no-continue */
 import * as x509 from "@peculiar/x509";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -200,19 +201,16 @@ export const certificateAuthorityQueueFactory = ({
     const CRL_REBUILD_BATCH_SIZE = 100;
     let offset = 0;
     let totalRebuilt = 0;
-    let hasMore = true;
 
     // Rebuild any CRL whose validity expires before the next daily run (~24h from now)
     const nextRunAt = new Date();
     nextRunAt.setDate(nextRunAt.getDate() + 1);
 
-    while (hasMore) {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
       const internalCas = await internalCertificateAuthorityDAL.find({}, { offset, limit: CRL_REBUILD_BATCH_SIZE });
 
-      if (internalCas.length === 0) {
-        hasMore = false;
-        break;
-      }
+      if (internalCas.length === 0) break;
 
       for (const internalCa of internalCas) {
         try {
@@ -280,10 +278,11 @@ export const certificateAuthorityQueueFactory = ({
           await certificateAuthorityCrlDAL.update({ caId: internalCa.caId }, { encryptedCrl, updatedAt: new Date() });
           totalRebuilt += 1;
         } catch (err) {
-          logger.error(err, `${QueueName.CaCrlRotation}: failed to rebuild CRL for CA ${internalCa.caId}`);
+          logger.error(err, `${QueueName.CaCrlRotation}: failed to rebuild CRL [caId=${internalCa.caId}]`);
         }
       }
 
+      if (internalCas.length < CRL_REBUILD_BATCH_SIZE) break;
       offset += CRL_REBUILD_BATCH_SIZE;
     }
 
