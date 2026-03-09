@@ -17,6 +17,8 @@ export enum OrgPermissionActions {
 
 export enum OrgPermissionSubOrgActions {
   Create = "create",
+  Edit = "edit",
+  Delete = "delete",
   DirectAccess = "direct-access",
   LinkGroup = "link-group"
 }
@@ -196,12 +198,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.SubOrganization).describe("The entity this permission pertains to."),
-    // Use CASL_ACTION_SCHEMA_ENUM so OpenAPI anyOf structure matches reference (string enum + array), avoiding oasdiff breaking change
-    action: CASL_ACTION_SCHEMA_ENUM([
-      OrgPermissionSubOrgActions.Create,
-      OrgPermissionSubOrgActions.DirectAccess,
-      OrgPermissionSubOrgActions.LinkGroup
-    ]).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionSubOrgActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Member).describe("The entity this permission pertains to."),
@@ -328,6 +327,8 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
 
   can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
+  can(OrgPermissionSubOrgActions.Edit, OrgPermissionSubjects.SubOrganization);
+  can(OrgPermissionSubOrgActions.Delete, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.DirectAccess, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.LinkGroup, OrgPermissionSubjects.SubOrganization);
 

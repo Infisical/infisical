@@ -7,6 +7,7 @@ import {
   CheckIcon,
   CopyIcon,
   EllipsisVerticalIcon,
+  KeyRoundIcon,
   LogInIcon,
   PencilIcon,
   PlusIcon,
@@ -336,34 +337,40 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   onClick={() => handleAccountClick(account)}
                 >
                   <UnstableTableCell>
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col">
                         <span className="font-medium">{account.name}</span>
-                        {lastRotatedAt && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge
-                                variant={rotationStatus === "failed" ? "danger" : "success"}
-                                className="text-xs"
-                              >
-                                <RefreshCwIcon className="size-3" />
-                                <span>
-                                  Rotated {formatDistance(new Date(), new Date(lastRotatedAt))} ago
-                                </span>
-                              </Badge>
-                            </TooltipTrigger>
-                            {lastRotationMessage && (
-                              <TooltipContent className="max-w-sm text-center">
-                                {lastRotationMessage}
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
+                        {account.description && (
+                          <span className="line-clamp-1 text-xs text-muted">
+                            {account.description}
+                          </span>
                         )}
                       </div>
-                      {account.description && (
-                        <span className="line-clamp-1 text-xs text-muted">
-                          {account.description}
-                        </span>
+                      {!account.credentialsConfigured && (
+                        <Badge variant="warning" className="text-xs">
+                          <KeyRoundIcon className="size-3" />
+                          <span>No password</span>
+                        </Badge>
+                      )}
+                      {lastRotatedAt && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant={rotationStatus === "failed" ? "danger" : "success"}
+                              className="text-xs"
+                            >
+                              <RefreshCwIcon className="size-3" />
+                              <span>
+                                Rotated {formatDistance(new Date(), new Date(lastRotatedAt))} ago
+                              </span>
+                            </Badge>
+                          </TooltipTrigger>
+                          {lastRotationMessage && (
+                            <TooltipContent className="max-w-sm text-center">
+                              {lastRotationMessage}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
                       )}
                     </div>
                   </UnstableTableCell>

@@ -41,6 +41,13 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
   }>;
   accountResponseSchema: z.ZodTypeAny;
 }) => {
+  // Convert resource type enum value to PascalCase for operation IDs
+  // e.g., "postgres" -> "Postgres", "aws-iam" -> "AwsIam"
+  const resourceTypeId = resourceType
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+
   server.route({
     method: "POST",
     url: "/",
@@ -48,6 +55,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `create${resourceTypeId}PamAccount`,
       description: "Create PAM account",
       body: createAccountSchema,
       response: {
@@ -90,6 +98,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `update${resourceTypeId}PamAccount`,
       description: "Update PAM account",
       params: z.object({
         accountId: z.string().uuid()
@@ -141,6 +150,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `delete${resourceTypeId}PamAccount`,
       description: "Delete PAM account",
       params: z.object({
         accountId: z.string().uuid()

@@ -1,5 +1,6 @@
 export { useDebounce } from "./useDebounce";
 export * from "./useGetProjectTypeFromRoute";
+export { useLastLogin } from "./useLastLogin";
 export { useLocalStorageState } from "./useLocalStorageState";
 export { usePagination } from "./usePagination";
 export { usePersistentState } from "./usePersistentState";

@@ -6,18 +6,24 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { Button, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
+import { LoginMethod } from "@app/hooks/api/admin/types";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
+import { useLastLogin } from "@app/hooks/useLastLogin";
 
 export const LoginLdapPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { config } = useServerConfig();
+  const { lastLogin, saveLastLogin } = useLastLogin();
   const queryParams = new URLSearchParams(window.location.search);
   const passedOrgSlug = queryParams.get("organizationSlug");
   const passedUsername = queryParams.get("username");
 
+  const lastLoginSlug =
+    lastLogin?.method === LoginMethod.LDAP && lastLogin.orgSlug ? lastLogin.orgSlug : "";
+
   const [organizationSlug, setOrganizationSlug] = useState(
-    config.defaultAuthOrgSlug || passedOrgSlug || ""
+    config.defaultAuthOrgSlug || passedOrgSlug || lastLoginSlug
   );
   const [username, setUsername] = useState(passedUsername || "");
   const [password, setPassword] = useState("");
@@ -39,6 +45,8 @@ export const LoginLdapPage = () => {
 
         return;
       }
+
+      saveLastLogin({ method: LoginMethod.LDAP, orgSlug: organizationSlug });
 
       createNotification({
         text: "Successfully logged in",

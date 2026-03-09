@@ -193,12 +193,14 @@ export const secretRotationV2ServiceFactory = ({
     const appCfg = getConfig();
     if (!appCfg.isSmtpConfigured) return; // comment out if testing email sending
 
+    const { name, type, projectId, lastRotationAttemptedAt, folder, environment, id } = secretRotation;
+
     await queueService.queue(
       QueueName.SecretRotationV2,
       QueueJobs.SecretRotationV2SendNotification,
-      { secretRotation },
+      { secretRotation: { name, type, projectId, lastRotationAttemptedAt, folder, environment, id } },
       {
-        jobId: `secret-rotation-v2-notification-${secretRotation.id}`,
+        jobId: `secret-rotation-v2-notifications-${secretRotation.id}`,
         attempts: 5,
         backoff: {
           type: "exponential",

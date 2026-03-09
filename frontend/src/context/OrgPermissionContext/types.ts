@@ -114,6 +114,8 @@ export enum OrgPermissionGroupActions {
 
 export enum OrgPermissionSubOrgActions {
   Create = "create",
+  Edit = "edit",
+  Delete = "delete",
   DirectAccess = "direct-access",
   LinkGroup = "link-group"
 }

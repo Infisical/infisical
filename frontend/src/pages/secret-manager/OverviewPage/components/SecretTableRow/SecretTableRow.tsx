@@ -85,6 +85,7 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
+  isSingleEnvSecretsVisible?: boolean;
 };
 
 export const SecretTableRow = ({
@@ -100,7 +101,8 @@ export const SecretTableRow = ({
   tableWidth,
   onToggleSecretSelect,
   isSelected,
-  importedBy
+  importedBy,
+  isSingleEnvSecretsVisible
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
@@ -238,7 +240,7 @@ export const SecretTableRow = ({
             isSingleEnvView
             onSecretRename={handleSecretRename}
             secretPath={secretPath}
-            isVisible={isSecretVisible}
+            isVisible={isSecretVisible || isSingleEnvSecretsVisible}
             secretName={secretKey}
             isEmpty={singleEnvSecret?.isEmpty || singleEnvImportedSecret?.secret?.isEmpty}
             secretValueHidden={singleEnvSecret?.secretValueHidden || false}
@@ -356,7 +358,7 @@ export const SecretTableRow = ({
               secretName={secretKey}
               environment={singleEnvSlug}
               secretPath={secretPath}
-              isVisible={isSecretVisible}
+              isVisible={isSecretVisible || isSingleEnvSecretsVisible}
               isOverrideEmpty={singleEnvSecret?.isOverrideEmpty}
               idOverride={singleEnvSecret?.idOverride}
               valueOverride={singleEnvSecret?.valueOverride}

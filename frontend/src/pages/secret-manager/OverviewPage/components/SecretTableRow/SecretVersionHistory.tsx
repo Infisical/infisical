@@ -9,9 +9,9 @@ import {
   EyeIcon,
   EyeOffIcon,
   HardDriveIcon,
-  LockIcon,
   RotateCcwIcon,
   ServerCogIcon,
+  Trash2Icon,
   UserIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -41,7 +41,7 @@ import {
   UnstableIconButton
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { useGetSecretVersion, useUpdateSecretV3 } from "@app/hooks/api";
+import { useGetSecretVersion, useRedactSecretValue, useUpdateSecretV3 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { fetchSecretVersionValue } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretVersions } from "@app/hooks/api/types";
@@ -82,11 +82,13 @@ function VersionItem({
 }: VersionItemProps) {
   const { currentProject } = useProject();
   const { mutateAsync: updateSecret, isPending: isRestoring } = useUpdateSecretV3();
+  const { mutateAsync: redactSecretValue, isPending: isRedacting } = useRedactSecretValue();
 
   const [secretValue, setSecretValue] = useState<string | null>(null);
   const [isValueVisible, setIsValueVisible] = useState(false);
   const [isFetchingValue, setIsFetchingValue] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const [isRedactDialogOpen, setIsRedactDialogOpen] = useState(false);
 
   const isCurrentVersion = version.version === currentVersion;
   const canRestore = !isRotatedSecret && canReadValue && !isCurrentVersion;
@@ -191,40 +193,42 @@ function VersionItem({
   };
 
   const handleRestore = async () => {
-    try {
-      // For redacted versions, restore with empty string
-      const value = version.isRedacted ? "" : await handleFetchSecretValue();
+    // For redacted versions, restore with empty string
+    const value = version.isRedacted ? "" : await handleFetchSecretValue();
 
-      const result = await updateSecret({
-        projectId: currentProject.id,
-        environment,
-        secretPath,
-        secretKey,
-        secretValue: value,
-        type: SecretType.Shared
-      });
+    const result = await updateSecret({
+      projectId: currentProject.id,
+      environment,
+      secretPath,
+      secretKey,
+      secretValue: value,
+      type: SecretType.Shared
+    });
 
-      if ("approval" in result) {
-        createNotification({
-          type: "info",
-          text: "Requested change has been sent for review"
-        });
-      } else {
-        createNotification({
-          type: "success",
-          text: `Secret restored to version ${version.version}`
-        });
-      }
-
-      setIsRestoreDialogOpen(false);
-      onRestoreSuccess();
-    } catch (e) {
-      console.error(e);
+    if ("approval" in result) {
       createNotification({
-        type: "error",
-        text: "Failed to restore secret version"
+        type: "info",
+        text: "Requested change has been sent for review"
+      });
+    } else {
+      createNotification({
+        type: "success",
+        text: `Secret restored to version ${version.version}`
       });
     }
+
+    setIsRestoreDialogOpen(false);
+    onRestoreSuccess();
+  };
+
+  const handleRedact = async () => {
+    await redactSecretValue({ versionId: version.id, secretId });
+    createNotification({
+      type: "success",
+      text: "The secret value has been redacted successfully and is no longer persisted or viewable."
+    });
+    setIsRedactDialogOpen(false);
+    onRestoreSuccess();
   };
 
   return (
@@ -248,7 +252,7 @@ function VersionItem({
               className={twMerge(
                 "text-sm font-semibold",
                 isCurrentVersion && "text-info",
-                version.isRedacted && "text-red-400",
+                version.isRedacted && "text-muted",
                 !isCurrentVersion && !version.isRedacted && "text-foreground"
               )}
             >
@@ -256,8 +260,8 @@ function VersionItem({
             </span>
             {isCurrentVersion && <Badge variant="info">Current</Badge>}
             {version.isRedacted && (
-              <Badge variant="danger" className="gap-1">
-                <LockIcon className="size-3" />
+              <Badge variant="neutral" className="gap-1">
+                <EyeOffIcon className="size-3" />
                 Redacted
               </Badge>
             )}
@@ -293,35 +297,27 @@ function VersionItem({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              {canRestore && (
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Edit}
-                  a={subject(ProjectPermissionSub.Secrets, {
-                    environment,
-                    secretPath,
-                    secretName: secretKey,
-                    secretTags: ["*"]
-                  })}
-                >
-                  {(isAllowed) => (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <UnstableIconButton
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setIsRestoreDialogOpen(true)}
-                          isDisabled={isRestoring || isFetchingValue || !isAllowed}
-                        >
-                          <RotateCcwIcon />
-                        </UnstableIconButton>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {isAllowed ? "Restore Version" : "Access Denied"}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </ProjectPermissionCan>
-              )}
+              <AlertDialog open={isRedactDialogOpen} onOpenChange={setIsRedactDialogOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogMedia>
+                      <Trash2Icon />
+                    </AlertDialogMedia>
+                    <AlertDialogTitle>Redact Secret Version</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to redact the secret value on version {version.version}?
+                      This action is irreversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction variant="danger" onClick={handleRedact}>
+                      Redact
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               {!version.secretValueHidden && !version.isRedacted && (
                 <>
                   <Tooltip>
@@ -352,43 +348,94 @@ function VersionItem({
                   </Tooltip>
                 </>
               )}
+              {canRestore && (
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Edit}
+                  a={subject(ProjectPermissionSub.Secrets, {
+                    environment,
+                    secretPath,
+                    secretName: secretKey,
+                    secretTags: ["*"]
+                  })}
+                >
+                  {(isAllowed) => (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <UnstableIconButton
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setIsRestoreDialogOpen(true)}
+                          isDisabled={isRestoring || isFetchingValue || !isAllowed}
+                        >
+                          <RotateCcwIcon />
+                        </UnstableIconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {isAllowed ? "Restore Version" : "Access Denied"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+              )}
+              {!isRotatedSecret && !version.isRedacted && !isCurrentVersion && (
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Edit}
+                  a={subject(ProjectPermissionSub.Secrets, {
+                    environment,
+                    secretPath,
+                    secretName: secretKey,
+                    secretTags: ["*"]
+                  })}
+                >
+                  {(isAllowed) => (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <UnstableIconButton
+                          variant="ghost"
+                          size="xs"
+                          className="hover:text-danger"
+                          onClick={() => setIsRedactDialogOpen(true)}
+                          isDisabled={isRedacting || !isAllowed}
+                        >
+                          <Trash2Icon />
+                        </UnstableIconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {isAllowed ? "Redact Secret Value" : "Access Denied"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+              )}
             </div>
           )}
         </div>
 
         {/* Value input display */}
         {version.isRedacted ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="mb-2 flex min-w-0 items-center gap-2 rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 font-mono text-sm">
-                <LockIcon className="size-3.5 text-red-400" />
-                <span className="text-red-400">Redacted</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1.5 font-medium text-red-400">
-                  <LockIcon className="size-3" />
-                  <span>Value Redacted</span>
-                </div>
-                {version.redactedByActor && (
-                  <span className="text-muted-foreground text-xs">
-                    Redacted by{" "}
-                    <span className="font-medium">
-                      {!version.redactedByActor.projectMembershipId
-                        ? `${version.redactedByActor.username || version.redactedByActor.email} (Removed from project)`
-                        : version.redactedByActor.username ||
-                          version.redactedByActor.email ||
-                          "Unknown User"}
-                    </span>
-                    {version.redactedAt && (
-                      <span> on {format(new Date(version.redactedAt), "MMM d, yyyy, h:mm a")}</span>
-                    )}
+          <>
+            <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm text-bunker-200">
+              <span className="blur-sm select-none">xxxxxxxxxxxxxxxxxxxx</span>
+            </div>
+            {version.redactedByActor && (
+              <div className="mb-1 flex items-center gap-1.5 text-xs text-muted">
+                <EyeOffIcon className="size-3" />
+                <span>
+                  Redacted by{" "}
+                  <span className="font-medium">
+                    {!version.redactedByActor.projectMembershipId
+                      ? `${version.redactedByActor.username || version.redactedByActor.email} (Removed from project)`
+                      : version.redactedByActor.username ||
+                        version.redactedByActor.email ||
+                        "Unknown User"}
                   </span>
-                )}
+                  {version.redactedAt && (
+                    <span> on {format(new Date(version.redactedAt), "MMM d, yyyy, h:mm a")}</span>
+                  )}
+                </span>
               </div>
-            </TooltipContent>
-          </Tooltip>
+            )}
+          </>
         ) : (
           <Tooltip open={canReadValue && !version.secretValueHidden ? false : undefined}>
             <TooltipTrigger asChild>
@@ -421,7 +468,7 @@ function VersionItem({
               <ServerCogIcon className="size-3" />
             )}
             <span>
-              Modified by{" "}
+              {version.version === 1 ? "Created" : "Modified"} by{" "}
               <button
                 type="button"
                 onClick={
