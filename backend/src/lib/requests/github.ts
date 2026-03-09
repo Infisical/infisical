@@ -18,11 +18,12 @@ export const fetchGithubEmails = async (accessToken: string) => {
 };
 
 type TGithubUser = {
+  id: number;
   name?: string;
   login: string;
 };
 
-export const fetchGithubUser = async (accessToken: string) => {
+export const fetchGithubUser = async (accessToken: string): Promise<TGithubUser> => {
   const { data } = await request.get<TGithubUser>(`${INTEGRATION_GITHUB_API_URL}/user`, {
     headers: {
       Authorization: `Bearer ${accessToken}`
