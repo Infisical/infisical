@@ -275,7 +275,10 @@ export const certificateAuthorityQueueFactory = ({
             plainText: Buffer.from(new Uint8Array(crl.rawData))
           });
 
-          await certificateAuthorityCrlDAL.update({ caId: internalCa.caId }, { encryptedCrl, updatedAt: new Date() });
+          await certificateAuthorityCrlDAL.updateEncryptedCrlAndBumpUpdatedAt(
+            { caId: internalCa.caId },
+            { encryptedCrl }
+          );
           totalRebuilt += 1;
         } catch (err) {
           logger.error(err, `${QueueName.CaCrlRotation}: failed to rebuild CRL [caId=${internalCa.caId}]`);
