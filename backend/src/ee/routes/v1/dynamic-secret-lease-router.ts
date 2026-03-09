@@ -61,19 +61,21 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
           ...req.body
         });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.DynamicSecretLeaseCreated,
-        organizationId: req.permission.orgId,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          provider: dynamicSecret.type,
-          projectId,
-          environment,
-          secretPath,
-          dynamicSecretId: dynamicSecret.id,
-          ttl: `${Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)}s`
-        }
-      }).catch(() => {});
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretLeaseCreated,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            provider: dynamicSecret.type,
+            projectId,
+            environment,
+            secretPath,
+            dynamicSecretId: dynamicSecret.id,
+            ttl: `${Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)}s`
+          }
+        })
+        .catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -217,19 +219,21 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
           ...req.body
         });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.DynamicSecretLeaseRenewed,
-        organizationId: req.permission.orgId,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          provider: dynamicSecret.type,
-          projectId,
-          environment,
-          secretPath,
-          dynamicSecretId: dynamicSecret.id,
-          ttl: `${Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)}s`
-        }
-      }).catch(() => {});
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretLeaseRenewed,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            provider: dynamicSecret.type,
+            projectId,
+            environment,
+            secretPath,
+            dynamicSecretId: dynamicSecret.id,
+            ttl: `${Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)}s`
+          }
+        })
+        .catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
