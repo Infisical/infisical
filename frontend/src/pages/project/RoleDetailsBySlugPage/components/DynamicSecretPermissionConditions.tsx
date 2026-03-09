@@ -14,10 +14,26 @@ export const DynamicSecretPermissionConditions = ({ position = 0, isDisabled }: 
       subject={ProjectPermissionSub.DynamicSecrets}
       position={position}
       selectOptions={[
-        { value: "environment", label: "Environment Slug" },
-        { value: "secretPath", label: "Secret Path" },
-        { value: "metadataKey", label: "Metadata Key" },
-        { value: "metadataValue", label: "Metadata Value" }
+        {
+          value: "environment",
+          label: "Environment Slug",
+          description: "The environment slug (e.g., dev, staging, prod)"
+        },
+        {
+          value: "secretPath",
+          label: "Secret Path",
+          description: "The path within an environment (e.g., /app/config)"
+        },
+        {
+          value: "metadataKey",
+          label: "Metadata Key",
+          description: "The key of a metadata pair (use with $elemMatch for nested matching)"
+        },
+        {
+          value: "metadataValue",
+          label: "Metadata Value",
+          description: "The value of a metadata pair (use with $elemMatch for nested matching)"
+        }
       ]}
     />
   );

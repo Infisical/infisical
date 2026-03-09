@@ -13,7 +13,13 @@ export const AppConnectionPermissionConditions = ({ position = 0, isDisabled }: 
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.AppConnections}
       position={position}
-      selectOptions={[{ value: "connectionId", label: "Connection ID" }]}
+      selectOptions={[
+        {
+          value: "connectionId",
+          label: "Connection ID",
+          description: "Connection identifier for app connections"
+        }
+      ]}
     />
   );
 };

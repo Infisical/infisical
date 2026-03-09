@@ -13,7 +13,13 @@ export const PkiTemplatePermissionConditions = ({ position = 0, isDisabled }: Pr
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.CertificateTemplates}
       position={position}
-      selectOptions={[{ value: "name", label: "Name" }]}
+      selectOptions={[
+        {
+          value: "name",
+          label: "Name",
+          description: "The name of the PKI template"
+        }
+      ]}
     />
   );
 };

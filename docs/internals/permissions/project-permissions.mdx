@@ -31,23 +31,31 @@ Below is a comprehensive list of all available project-level subjects and their 
 
 #### Subject: `member`
 
-| Action             | Description                                 |
-| ------------------ | ------------------------------------------- |
-| `read`             | View project members                        |
-| `create`           | Add new members to the project              |
-| `edit`             | Modify member details                       |
-| `delete`           | Remove members from the project             |
-| `grant-privileges` | Change permission levels of project members |
+Supports conditions for privilege delegation actions.
+
+| Action             | Description                                 | Condition keys                     |
+| ------------------ | ------------------------------------------- | ---------------------------------- |
+| `read`             | View project members                        |                                    |
+| `create`           | Add new members to the project              |                                    |
+| `edit`             | Modify member details                       |                                    |
+| `delete`           | Remove members from the project             |                                    |
+| `grant-privileges` | Legacy: Change permission levels of project members | `userEmail`, `assignableRole`, `assignableSubject`, `assignableAction` |
+| `assign-role`      | Assign or update roles for project members  | `userEmail`, `assignableRole` |
+| `assign-additional-privileges` | Grant additional privileges to project members | `userEmail`, `assignableSubject`, `assignableAction` |
+| `assume-privileges` | Temporarily assume another user's privileges |                                    |
 
 #### Subject: `groups`
 
-| Action             | Description                                |
-| ------------------ | ------------------------------------------ |
-| `read`             | View project groups                        |
-| `create`           | Create new groups within the project       |
-| `edit`             | Modify existing groups                     |
-| `delete`           | Remove groups from the project             |
-| `grant-privileges` | Change permission levels of project groups |
+Supports conditions for privilege delegation actions.
+
+| Action             | Description                                | Condition keys                     |
+| ------------------ | ------------------------------------------ | ---------------------------------- |
+| `read`             | View project groups                        |                                    |
+| `create`           | Create new groups within the project       |                                    |
+| `edit`             | Modify existing groups                     |                                    |
+| `delete`           | Remove groups from the project             |                                    |
+| `grant-privileges` | Legacy: Change permission levels of project groups | `groupName`, `assignableRole` |
+| `assign-role`      | Assign or update roles for project groups  | `groupName`, `assignableRole` |
 
 #### Subject: `identity`
 
@@ -59,7 +67,9 @@ Supports conditions and permission inversion.
 | `create`           | Add new identities to project                  | `identityId` |
 | `edit`             | Modify project identities                      | `identityId` |
 | `delete`           | Remove identities from project                 | `identityId` |
-| `grant-privileges` | Change permission levels of project identities | `identityId` |
+| `grant-privileges` | Legacy: Change permission levels of project identities | `identityId`, `assignableRole`, `assignableSubject`, `assignableAction` |
+| `assign-role`      | Assign or update roles for project identities  | `identityId`, `assignableRole` |
+| `assign-additional-privileges` | Grant additional privileges to project identities | `identityId`, `assignableSubject`, `assignableAction` |
 
 #### Subject: `settings`
 
@@ -163,8 +173,6 @@ Supports conditions and permission inversion.
 | `create` | Add new secrets to the project | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `edit` | Modify existing secret values | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `delete` | Remove secrets from the project | `environment`, `secretPath`, `secretName`, `secretTags` |
-| `importSecret` | Import secrets | `environment` |
-| `duplicateSecret` | Duplicate secrets | `environment`, `secretPath`, `secretName` |
 
 #### Subject: `secret-folders`
 
@@ -449,6 +457,11 @@ The following condition keys can be used to restrict permissions. Each key is av
 | `name` | Resource name | `string` |
 | `resourceName` | PAM resource name | `string` |
 | `accountName` | PAM account name | `string` |
+| `userEmail` | User email - The email address of the user whose roles are being updated | `string` |
+| `groupName` | Group name - The name of the group whose roles are being updated | `string` |
+| `assignableRole` | Assignable roles - The roles that can be assigned to other members | `string` |
+| `assignableSubject` | Assignable subjects - The permission subjects that can be granted in additional privileges | `string` |
+| `assignableAction` | Assignable actions - The permission actions that can be granted in additional privileges. Format: `subject:action` (e.g., `secrets:read`) | `string` |
 
 ## Usage Examples
 

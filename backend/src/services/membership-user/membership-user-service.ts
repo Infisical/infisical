@@ -95,7 +95,8 @@ export const membershipUserServiceFactory = ({
       permissionService,
       membershipUserDAL,
       projectDAL,
-      smtpService
+      smtpService,
+      userDAL
     })
   };
 
