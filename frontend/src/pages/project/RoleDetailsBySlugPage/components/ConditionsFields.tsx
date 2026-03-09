@@ -19,10 +19,6 @@ import {
   UnstableAccordionContent,
   UnstableAccordionItem,
   UnstableAccordionTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
   UnstableIconButton,
   UnstableInput
 } from "@app/components/v3";
@@ -40,11 +36,17 @@ import { TFormSchema } from "./ProjectRoleModifySection.utils";
 type ActionConditionsMap = Partial<Record<string, string[]>>;
 type ActionLabelsMap = Record<string, string>;
 
+type ConditionSelectOption = {
+  value: string;
+  label: string;
+  description?: string;
+};
+
 type ConditionsFieldsProps = {
   isDisabled: boolean | undefined;
   subject: ConditionalProjectPermissionSubject;
   position: number;
-  selectOptions: [{ value: string; label: string }, ...{ value: string; label: string }[]];
+  selectOptions: [ConditionSelectOption, ...ConditionSelectOption[]];
   selectedActions?: string[];
   actionConditionsMap?: ActionConditionsMap;
   actionLabelsMap?: ActionLabelsMap;
@@ -279,7 +281,11 @@ export const ConditionsFields = ({
             </span>
           </TooltipTrigger>
           {!canAddCondition && !isDisabled && (
-            <TooltipContent side="top">All available conditions have been added</TooltipContent>
+            <TooltipContent side="top">
+              {allowedConditions.length === 0
+                ? "No conditions available for the selected group of actions."
+                : "All available conditions have been added"}
+            </TooltipContent>
           )}
         </Tooltip>
       </div>
@@ -314,16 +320,7 @@ export const ConditionsFields = ({
         </UnstableAccordion>
       )}
       <div className="mt-2 flex flex-col space-y-2">
-        {items.fields.length === 0 ? (
-          <UnstableEmpty className="mt-2 border !p-8">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No conditions configured</UnstableEmptyTitle>
-              <UnstableEmptyDescription>
-                Add conditions to control when this policy applies.
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
-        ) : (
+        {items.fields.length > 0 &&
           items.fields.map((el, index) => {
             const conditions = watchedConditions as
               | Array<{ lhs: string; rhs: string; operator: string }>
@@ -421,6 +418,20 @@ export const ConditionsFields = ({
                                 })}
                               </SelectContent>
                             </Select>
+                            {selectOptions.find((opt) => opt.value === condition.lhs)
+                              ?.description && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <InfoIcon className="size-4 shrink-0 text-muted" />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs text-wrap">
+                                  {
+                                    selectOptions.find((opt) => opt.value === condition.lhs)
+                                      ?.description
+                                  }
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
                           <div className="flex w-44 items-center space-x-2">
                             <Controller
@@ -493,8 +504,7 @@ export const ConditionsFields = ({
                 )}
               />
             );
-          })
-        )}
+          })}
       </div>
     </div>
   );

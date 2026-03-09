@@ -96,6 +96,8 @@ export enum ProjectPermissionIdentityActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role",
+  AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
   CreateToken = "create-token",
@@ -109,6 +111,8 @@ export enum ProjectPermissionMemberActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role",
+  AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges"
 }
 
@@ -117,7 +121,8 @@ export enum ProjectPermissionGroupActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  GrantPrivileges = "grant-privileges"
+  GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role"
 }
 
 export enum ProjectPermissionSshHostActions {
@@ -281,7 +286,10 @@ export enum ProjectPermissionSecretApprovalRequestActions {
 }
 
 export type IdentityManagementSubjectFields = {
-  identityId: string;
+  identityId?: string;
+  assignableRole?: string;
+  assignableSubject?: string;
+  assignableAction?: string;
 };
 
 export type AppConnectionSubjectFields = {
@@ -308,7 +316,9 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.PamResources
-  | ProjectPermissionSub.McpEndpoints;
+  | ProjectPermissionSub.McpEndpoints
+  | ProjectPermissionSub.Member
+  | ProjectPermissionSub.Groups;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",

@@ -12,7 +12,7 @@ import {
   UnstableDropdownMenuTrigger,
   UnstableIconButton
 } from "@app/components/v3";
-import { useOrgPermission } from "@app/context";
+import { ProjectPermissionSub, useOrgPermission } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration";
@@ -25,9 +25,15 @@ type Props = {
   isDisabled?: boolean;
   projectType: ProjectType;
   projectId?: string;
+  allowedSubjects?: ProjectPermissionSub[];
 };
 
-export const AddPoliciesButton = ({ isDisabled, projectType, projectId }: Props) => {
+export const AddPoliciesButton = ({
+  isDisabled,
+  projectType,
+  projectId,
+  allowedSubjects
+}: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addPolicy",
     "addPolicyOptions",
@@ -101,6 +107,7 @@ export const AddPoliciesButton = ({ isDisabled, projectType, projectId }: Props)
         type={projectType}
         isOpen={popUp.addPolicy.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
+        allowedSubjects={allowedSubjects}
       />
       <PolicyTemplateModal
         type={projectType}
