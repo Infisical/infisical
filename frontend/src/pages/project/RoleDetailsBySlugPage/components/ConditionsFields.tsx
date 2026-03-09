@@ -19,10 +19,6 @@ import {
   UnstableAccordionContent,
   UnstableAccordionItem,
   UnstableAccordionTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
   UnstableIconButton,
   UnstableInput
 } from "@app/components/v3";
@@ -320,16 +316,7 @@ export const ConditionsFields = ({
         </UnstableAccordion>
       )}
       <div className="mt-2 flex flex-col space-y-2">
-        {items.fields.length === 0 ? (
-          <UnstableEmpty className="mt-2 border !p-8">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No conditions configured</UnstableEmptyTitle>
-              <UnstableEmptyDescription>
-                Add conditions to control when this policy applies.
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
-        ) : (
+        {items.fields.length > 0 &&
           items.fields.map((el, index) => {
             const conditions = watchedConditions as
               | Array<{ lhs: string; rhs: string; operator: string }>
@@ -513,8 +500,7 @@ export const ConditionsFields = ({
                 )}
               />
             );
-          })
-        )}
+          })}
       </div>
     </div>
   );

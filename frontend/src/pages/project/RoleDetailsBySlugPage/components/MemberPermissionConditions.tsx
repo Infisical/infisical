@@ -68,7 +68,7 @@ export const MemberPermissionConditions = ({ position = 0, isDisabled }: Props) 
           value: "assignableAction",
           label: "Assignable Actions",
           description:
-            "The specific actions that the actor is allowed to grant in additional privileges to the target users. (e.g., secrets:read, environments:edit)"
+            "The specific actions that the actor is allowed to grant in additional privileges to the target users. (e.g., secrets:describeSecret, environments:edit)"
         }
       ]}
       selectedActions={selectedActions}

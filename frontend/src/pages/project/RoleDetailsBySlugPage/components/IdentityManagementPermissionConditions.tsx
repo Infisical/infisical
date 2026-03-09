@@ -71,7 +71,7 @@ export const IdentityManagementPermissionConditions = ({ position = 0, isDisable
           value: "assignableAction",
           label: "Assignable Actions",
           description:
-            "The specific actions that the actor is allowed to grant in additional privileges to the target machine identities. (e.g., secrets:read, environments:edit)"
+            "The specific actions that the actor is allowed to grant in additional privileges to the target machine identities. (e.g., secrets:describeSecret, environments:edit)"
         }
       ]}
       selectedActions={selectedActions}
