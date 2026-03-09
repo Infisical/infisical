@@ -35,6 +35,7 @@ import {
   useProjectPermission,
   useSubscription
 } from "@app/context";
+import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetProjectRoles, useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -106,6 +107,24 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
       }),
     [projectRoles, grantPrivilegeConditions]
   );
+
+  const assignableRoleSlugs = useMemo(
+    () => new Set(filteredRoles.map((r) => r.slug)),
+    [filteredRoles]
+  );
+
+  const getRolesForSelect = (currentSlug: string) => {
+    const assignable = filteredRoles;
+    const currentInAssignable = assignableRoleSlugs.has(currentSlug);
+    if (currentInAssignable) return assignable;
+
+    const currentRole = projectRoles?.find((r) => r.slug === currentSlug) ?? {
+      slug: currentSlug,
+      name: formatProjectRoleName(currentSlug),
+      id: currentSlug
+    };
+    return [currentRole, ...assignable];
+  };
 
   const roleForm = useForm<TRoleForm>({
     resolver: zodResolver(roleFormSchema),
@@ -190,22 +209,46 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
               <Controller
                 control={roleForm.control}
                 name={`roles.${index}.slug`}
-                render={({ field: { onChange, ...field } }) => (
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    isDisabled={isMemberEditDisabled || !canModifyMemberRoles}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
-                    containerClassName="w-1/2"
-                  >
-                    {filteredRoles?.map(({ name, slug, id: projectRoleId }) => (
-                      <SelectItem value={slug} key={projectRoleId}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                )}
+                render={({ field: { onChange, ...field } }) => {
+                  const rolesForSelect = getRolesForSelect(field.value);
+                  return (
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      isDisabled={isMemberEditDisabled || !canModifyMemberRoles}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
+                      containerClassName="w-1/2"
+                    >
+                      {rolesForSelect.map(({ name, slug, id: projectRoleId }) => {
+                        const isAssignable = assignableRoleSlugs.has(slug);
+                        if (!isAssignable) {
+                          return (
+                            <Tooltip
+                              key={projectRoleId ?? slug}
+                              content="You don't have permission to assign this role"
+                            >
+                              <div>
+                                <SelectItem
+                                  value={slug}
+                                  isDisabled
+                                  className="cursor-not-allowed opacity-50"
+                                >
+                                  {name}
+                                </SelectItem>
+                              </div>
+                            </Tooltip>
+                          );
+                        }
+                        return (
+                          <SelectItem value={slug} key={projectRoleId}>
+                            {name}
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+                  );
+                }}
               />
               <Popover>
                 <PopoverTrigger disabled={isMemberEditDisabled || !canModifyMemberRoles} asChild>

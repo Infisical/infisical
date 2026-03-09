@@ -33,6 +33,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetProjectRoles, useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared";
@@ -100,6 +101,24 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
       }),
     [projectRoles, grantPrivilegeConditions]
   );
+
+  const assignableRoleSlugs = useMemo(
+    () => new Set(filteredRoles.map((r) => r.slug)),
+    [filteredRoles]
+  );
+
+  const getRolesForSelect = (currentSlug: string) => {
+    const assignable = filteredRoles;
+    const currentInAssignable = assignableRoleSlugs.has(currentSlug);
+    if (currentInAssignable) return assignable;
+
+    const currentRole = projectRoles?.find((r) => r.slug === currentSlug) ?? {
+      slug: currentSlug,
+      name: formatProjectRoleName(currentSlug),
+      id: currentSlug
+    };
+    return [currentRole, ...assignable];
+  };
 
   const roleForm = useForm<TRoleForm>({
     resolver: zodResolver(roleFormSchema),
@@ -175,22 +194,46 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
               <Controller
                 control={roleForm.control}
                 name={`roles.${index}.slug`}
-                render={({ field: { onChange, ...field } }) => (
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    isDisabled={isIdentityEditDisabled || !canModifyIdentityRoles}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
-                    containerClassName="w-1/2"
-                  >
-                    {filteredRoles?.map(({ name, slug, id: projectRoleId }) => (
-                      <SelectItem value={slug} key={projectRoleId}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                )}
+                render={({ field: { onChange, ...field } }) => {
+                  const rolesForSelect = getRolesForSelect(field.value);
+                  return (
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      isDisabled={isIdentityEditDisabled || !canModifyIdentityRoles}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
+                      containerClassName="w-1/2"
+                    >
+                      {rolesForSelect.map(({ name, slug, id: projectRoleId }) => {
+                        const isAssignable = assignableRoleSlugs.has(slug);
+                        if (!isAssignable) {
+                          return (
+                            <Tooltip
+                              key={projectRoleId ?? slug}
+                              content="You don't have permission to assign this role"
+                            >
+                              <div>
+                                <SelectItem
+                                  value={slug}
+                                  isDisabled
+                                  className="cursor-not-allowed opacity-50"
+                                >
+                                  {name}
+                                </SelectItem>
+                              </div>
+                            </Tooltip>
+                          );
+                        }
+                        return (
+                          <SelectItem value={slug} key={projectRoleId}>
+                            {name}
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+                  );
+                }}
               />
               <Popover>
                 <PopoverTrigger
@@ -337,12 +380,13 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
               variant="outline_bg"
               isDisabled={!isAllowed || !canModifyIdentityRoles || filteredRoles.length === 0}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() =>
+              onClick={() => {
+                if (filteredRoles.length === 0) return;
                 selectedRoleList.append({
-                  slug: filteredRoles[0]?.slug ?? "",
+                  slug: filteredRoles[0].slug,
                   temporaryAccess: { isTemporary: false }
-                })
-              }
+                });
+              }}
             >
               Add Role
             </Button>

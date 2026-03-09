@@ -424,8 +424,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
           const targetUser = await userDAL.findById(actorId);
           targetIdentifier = targetUser?.email ?? undefined;
         } else {
-          const targetIdentity = await identityDAL.findById(actorId);
-          targetIdentifier = targetIdentity?.id ?? undefined;
+          targetIdentifier = actorId;
         }
       }
 
@@ -466,8 +465,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
           const targetUser = await userDAL.findById(actorId);
           targetIdentifier = targetUser?.email ?? undefined;
         } else {
-          const targetIdentity = await identityDAL.findById(actorId);
-          targetIdentifier = targetIdentity?.id ?? undefined;
+          targetIdentifier = actorId;
         }
       }
 

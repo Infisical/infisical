@@ -281,7 +281,11 @@ export const ConditionsFields = ({
             </span>
           </TooltipTrigger>
           {!canAddCondition && !isDisabled && (
-            <TooltipContent side="top">All available conditions have been added</TooltipContent>
+            <TooltipContent side="top">
+              {allowedConditions.length === 0
+                ? "No conditions available for the selected group of actions."
+                : "All available conditions have been added"}
+            </TooltipContent>
           )}
         </Tooltip>
       </div>
