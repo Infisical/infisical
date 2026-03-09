@@ -15,7 +15,6 @@ import {
 import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -32,15 +31,13 @@ type TProjectAdditionalPrivilegesScopeFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export const newProjectAdditionalPrivilegesFactory = ({
   permissionService,
   orgDAL,
   membershipDAL,
-  userDAL,
-  identityDAL
+  userDAL
 }: TProjectAdditionalPrivilegesScopeFactoryDep): TAdditionalPrivilegesScopeFactory => {
   const $getPermission = (permission: OrgServiceActor, projectId: string) => {
     return permissionService.getProjectPermission({
