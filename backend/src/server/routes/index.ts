@@ -992,6 +992,7 @@ export const registerRoutes = async (
 
   const loginService = authLoginServiceFactory({
     userDAL,
+    userAliasDAL,
     smtpService,
     tokenService,
     orgDAL,
