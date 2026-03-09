@@ -4,6 +4,8 @@ import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { ApiDocsTags, DYNAMIC_SECRETS } from "@app/lib/api-docs";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { isValidHandleBarTemplate } from "@app/lib/template/validate-handlebars";
@@ -102,6 +104,21 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.DynamicSecretCreated,
+        organizationId: req.permission.orgId,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          provider: dynamicSecretCfg.type,
+          projectId: dynamicSecretCfg.projectId,
+          environment: dynamicSecretCfg.environment,
+          secretPath: dynamicSecretCfg.secretPath,
+          defaultTTL: dynamicSecretCfg.defaultTTL,
+          maxTTL: dynamicSecretCfg.maxTTL,
+          hasGateway: Boolean(dynamicSecretCfg.gatewayId || dynamicSecretCfg.gatewayV2Id)
+        }
       });
 
       await server.services.auditLog.createAuditLog({
@@ -252,6 +269,19 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         name: req.params.name,
         ...req.body
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.DynamicSecretDeleted,
+        organizationId: req.permission.orgId,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          provider: dynamicSecretCfg.type,
+          projectId: dynamicSecretCfg.projectId,
+          environment: dynamicSecretCfg.environment,
+          secretPath: dynamicSecretCfg.secretPath,
+          isForced: req.body.isForced
+        }
       });
 
       await server.services.auditLog.createAuditLog({
