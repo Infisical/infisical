@@ -1367,7 +1367,7 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.Member).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionMemberActions).describe(
+    action: CASL_ACTION_SCHEMA_ENUM(Object.values(ProjectPermissionMemberActions) as [string, ...string[]]).describe(
       "Describe what action an entity can take."
     ),
     conditions: MemberConditionSchema.describe(
@@ -1377,7 +1377,7 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.Groups).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionGroupActions).describe(
+    action: CASL_ACTION_SCHEMA_ENUM(Object.values(ProjectPermissionGroupActions) as [string, ...string[]]).describe(
       "Describe what action an entity can take."
     ),
     conditions: GroupConditionSchema.describe(
@@ -1704,7 +1704,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionIdentityActions).describe(
+    action: CASL_ACTION_SCHEMA_ENUM(Object.values(ProjectPermissionIdentityActions) as [string, ...string[]]).describe(
       "Describe what action an entity can take."
     ),
     conditions: IdentityManagementConditionSchema.describe(
