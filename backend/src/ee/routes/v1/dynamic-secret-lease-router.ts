@@ -73,7 +73,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
           dynamicSecretId: dynamicSecret.id,
           ttl: `${Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)}s`
         }
-      });
+      }).catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -229,7 +229,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
           dynamicSecretId: dynamicSecret.id,
           ttl: `${Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)}s`
         }
-      });
+      }).catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

@@ -115,11 +115,11 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
           projectId: dynamicSecretCfg.projectId,
           environment: dynamicSecretCfg.environment,
           secretPath: dynamicSecretCfg.secretPath,
-          defaultTTL: dynamicSecretCfg.defaultTTL,
-          maxTTL: dynamicSecretCfg.maxTTL,
+          defaultTTL: `${ms(dynamicSecretCfg.defaultTTL) / 1000}s`,
+          maxTTL: dynamicSecretCfg.maxTTL ? `${ms(dynamicSecretCfg.maxTTL) / 1000}s` : null,
           hasGateway: Boolean(dynamicSecretCfg.gatewayId || dynamicSecretCfg.gatewayV2Id)
         }
-      });
+      }).catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -282,7 +282,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
           secretPath: dynamicSecretCfg.secretPath,
           isForced: req.body.isForced
         }
-      });
+      }).catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
