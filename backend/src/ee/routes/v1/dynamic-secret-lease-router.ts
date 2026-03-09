@@ -71,7 +71,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
           environment,
           secretPath,
           dynamicSecretId: dynamicSecret.id,
-          ttl: String(Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)) + "s"
+          ttl: `${Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)}s`
         }
       });
 
@@ -227,7 +227,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
           environment,
           secretPath,
           dynamicSecretId: dynamicSecret.id,
-          ttl: String(Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)) + "s"
+          ttl: `${Math.round((new Date(lease.expireAt).getTime() - Date.now()) / 1000)}s`
         }
       });
 
