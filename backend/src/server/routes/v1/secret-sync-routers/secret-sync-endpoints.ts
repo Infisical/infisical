@@ -222,7 +222,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         req.permission
       )) as T;
 
-      await server.services.telemetry
+      void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretSyncCreated,
           organizationId: req.permission.orgId,
@@ -335,7 +335,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         req.permission
       )) as T;
 
-      await server.services.telemetry
+      void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretSyncDeleted,
           organizationId: req.permission.orgId,
