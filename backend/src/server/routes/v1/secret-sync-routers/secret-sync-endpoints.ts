@@ -4,11 +4,13 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SecretSyncs } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretSync, TSecretSyncInput } from "@app/services/secret-sync/secret-sync-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TSecretSyncInput>({
   server,
@@ -220,6 +222,22 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         req.permission
       )) as T;
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretSyncCreated,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            destination,
+            syncId: secretSync.id,
+            projectId: secretSync.projectId,
+            environment: secretSync.environment?.slug ?? "",
+            secretPath: secretSync.folder?.path ?? "/",
+            isAutoSyncEnabled: secretSync.isAutoSyncEnabled
+          }
+        })
+        .catch(() => {});
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: secretSync.projectId,
@@ -316,6 +334,20 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         { destination, syncId, removeSecrets },
         req.permission
       )) as T;
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretSyncDeleted,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            destination,
+            syncId,
+            projectId: secretSync.projectId,
+            removeSecrets
+          }
+        })
+        .catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
