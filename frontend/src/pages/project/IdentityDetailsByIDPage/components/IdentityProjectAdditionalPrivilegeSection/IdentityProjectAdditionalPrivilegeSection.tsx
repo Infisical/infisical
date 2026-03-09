@@ -48,7 +48,7 @@ import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
 import {
   canModifyByGrantConditions,
-  getIdentityGrantPrivilegeConditions
+  getIdentityAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
 
 import { IdentityProjectAdditionalPrivilegeModifySection } from "./IdentityProjectAdditionalPrivilegeModifySection";
@@ -74,23 +74,21 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
     projectId
   });
 
-  const grantPrivilegeConditions = useMemo(
-    () => getIdentityGrantPrivilegeConditions(permission),
+  const assignPrivilegesConditions = useMemo(
+    () => getIdentityAssignPrivilegesConditions(permission),
     [permission]
   );
 
   const canModifyIdentityPrivileges = useMemo(() => {
-    if (!grantPrivilegeConditions) return true;
-
     const targetIdentityId = identityMembershipDetails?.identity?.id;
     if (!targetIdentityId) return false;
 
     return canModifyByGrantConditions({
       targetValue: targetIdentityId,
-      allowed: grantPrivilegeConditions.identityIds,
-      forbidden: grantPrivilegeConditions.forbiddenIdentityIds
+      allowed: assignPrivilegesConditions?.identityIds,
+      forbidden: assignPrivilegesConditions?.forbiddenIdentityIds
     });
-  }, [grantPrivilegeConditions, identityMembershipDetails?.identity?.id]);
+  }, [assignPrivilegesConditions, identityMembershipDetails?.identity?.id]);
 
   const handlePrivilegeDelete = async () => {
     const { id } = popUp?.deletePrivilege?.data as { id: string };

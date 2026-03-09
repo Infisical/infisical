@@ -48,7 +48,7 @@ import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import {
   canModifyByGrantConditions,
-  getIdentityGrantPrivilegeConditions
+  getIdentityAssignRoleConditions
 } from "@app/lib/fn/permission";
 
 import { IdentityRoleModify } from "./IdentityRoleModify";
@@ -70,8 +70,8 @@ export const IdentityRoleDetailsSection = ({
   ] as const);
   const { mutateAsync: updateIdentityProjectMembership } = useUpdateProjectIdentityMembership();
 
-  const grantPrivilegeConditions = useMemo(
-    () => getIdentityGrantPrivilegeConditions(permission),
+  const assignRoleConditions = useMemo(
+    () => getIdentityAssignRoleConditions(permission),
     [permission]
   );
 
@@ -81,10 +81,10 @@ export const IdentityRoleDetailsSection = ({
 
     return canModifyByGrantConditions({
       targetValue: targetIdentityId,
-      allowed: grantPrivilegeConditions?.identityIds,
-      forbidden: grantPrivilegeConditions?.forbiddenIdentityIds
+      allowed: assignRoleConditions?.identityIds,
+      forbidden: assignRoleConditions?.forbiddenIdentityIds
     });
-  }, [grantPrivilegeConditions, identityMembershipDetails?.identity?.id]);
+  }, [assignRoleConditions, identityMembershipDetails?.identity?.id]);
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;

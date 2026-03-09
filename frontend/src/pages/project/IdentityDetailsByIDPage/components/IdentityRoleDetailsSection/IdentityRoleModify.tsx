@@ -40,7 +40,7 @@ import { TemporaryPermissionMode } from "@app/hooks/api/shared";
 import {
   canModifyByGrantConditions,
   filterByGrantConditions,
-  getIdentityGrantPrivilegeConditions
+  getIdentityAssignRoleConditions
 } from "@app/lib/fn/permission";
 
 const roleFormSchema = z.object({
@@ -76,8 +76,8 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
     ProjectPermissionSub.Identity
   );
 
-  const grantPrivilegeConditions = useMemo(
-    () => getIdentityGrantPrivilegeConditions(permission),
+  const assignRoleConditions = useMemo(
+    () => getIdentityAssignRoleConditions(permission),
     [permission]
   );
 
@@ -87,19 +87,19 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
 
     return canModifyByGrantConditions({
       targetValue: targetIdentityId,
-      allowed: grantPrivilegeConditions?.identityIds,
-      forbidden: grantPrivilegeConditions?.forbiddenIdentityIds
+      allowed: assignRoleConditions?.identityIds,
+      forbidden: assignRoleConditions?.forbiddenIdentityIds
     });
-  }, [grantPrivilegeConditions, identityProjectMembership?.identity?.id]);
+  }, [assignRoleConditions, identityProjectMembership?.identity?.id]);
 
   const filteredRoles = useMemo(
     () =>
       filterByGrantConditions(projectRoles ?? [], {
         getKey: (role) => role.slug,
-        allowed: grantPrivilegeConditions?.roles,
-        forbidden: grantPrivilegeConditions?.forbiddenRoles
+        allowed: assignRoleConditions?.roles,
+        forbidden: assignRoleConditions?.forbiddenRoles
       }),
-    [projectRoles, grantPrivilegeConditions]
+    [projectRoles, assignRoleConditions]
   );
 
   const assignableRoleSlugs = useMemo(

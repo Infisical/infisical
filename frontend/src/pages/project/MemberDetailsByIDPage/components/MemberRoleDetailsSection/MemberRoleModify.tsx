@@ -43,7 +43,7 @@ import { TWorkspaceUser } from "@app/hooks/api/types";
 import {
   canModifyByGrantConditions,
   filterByGrantConditions,
-  getMemberGrantPrivilegeConditions
+  getMemberAssignRoleConditions
 } from "@app/lib/fn/permission";
 
 const roleFormSchema = z.object({
@@ -81,8 +81,8 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
     ProjectPermissionSub.Member
   );
 
-  const grantPrivilegeConditions = useMemo(
-    () => getMemberGrantPrivilegeConditions(permission),
+  const assignRoleConditions = useMemo(
+    () => getMemberAssignRoleConditions(permission),
     [permission]
   );
 
@@ -92,20 +92,20 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
 
     return canModifyByGrantConditions({
       targetValue: memberEmail,
-      allowed: grantPrivilegeConditions?.emails,
-      forbidden: grantPrivilegeConditions?.forbiddenEmails,
+      allowed: assignRoleConditions?.emails,
+      forbidden: assignRoleConditions?.forbiddenEmails,
       isMatch: (value, pattern) => picomatch.isMatch(value, pattern)
     });
-  }, [grantPrivilegeConditions, projectMember?.user?.email]);
+  }, [assignRoleConditions, projectMember?.user?.email]);
 
   const filteredRoles = useMemo(
     () =>
       filterByGrantConditions(projectRoles ?? [], {
         getKey: (role) => role.slug,
-        allowed: grantPrivilegeConditions?.roles,
-        forbidden: grantPrivilegeConditions?.forbiddenRoles
+        allowed: assignRoleConditions?.roles,
+        forbidden: assignRoleConditions?.forbiddenRoles
       }),
-    [projectRoles, grantPrivilegeConditions]
+    [projectRoles, assignRoleConditions]
   );
 
   const assignableRoleSlugs = useMemo(

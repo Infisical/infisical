@@ -50,7 +50,7 @@ import {
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import {
   canModifyByGrantConditions,
-  getMemberGrantPrivilegeConditions
+  getMemberAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
 
 import { MembershipProjectAdditionalPrivilegeModifySection } from "./MembershipProjectAdditionalPrivilegeModifySection";
@@ -77,24 +77,22 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
 
   const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
 
-  const grantPrivilegeConditions = useMemo(
-    () => getMemberGrantPrivilegeConditions(permission),
+  const assignPrivilegesConditions = useMemo(
+    () => getMemberAssignPrivilegesConditions(permission),
     [permission]
   );
 
   const canModifyMemberPrivileges = useMemo(() => {
-    if (!grantPrivilegeConditions) return true;
-
     const targetEmail = membershipDetails?.user?.email;
     if (!targetEmail) return false;
 
     return canModifyByGrantConditions({
       targetValue: targetEmail,
-      allowed: grantPrivilegeConditions.emails,
-      forbidden: grantPrivilegeConditions.forbiddenEmails,
+      allowed: assignPrivilegesConditions?.emails,
+      forbidden: assignPrivilegesConditions?.forbiddenEmails,
       isMatch: (value, pattern) => picomatch.isMatch(value, pattern, { nocase: true })
     });
-  }, [grantPrivilegeConditions, membershipDetails?.user?.email]);
+  }, [assignPrivilegesConditions, membershipDetails?.user?.email]);
 
   const handlePrivilegeDelete = async () => {
     const { id } = popUp?.deletePrivilege?.data as { id: string };

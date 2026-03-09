@@ -31,7 +31,10 @@ import {
   useUpdateProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/projectUserAdditionalPrivilege/types";
-import { filterByGrantConditions, getMemberGrantPrivilegeConditions } from "@app/lib/fn/permission";
+import {
+  filterByGrantConditions,
+  getMemberAssignPrivilegesConditions
+} from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -92,8 +95,8 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
     ProjectPermissionSub.Member
   );
 
-  const grantPrivilegeConditions = useMemo(
-    () => getMemberGrantPrivilegeConditions(permission),
+  const assignPrivilegesConditions = useMemo(
+    () => getMemberAssignPrivilegesConditions(permission),
     [permission]
   );
 
@@ -101,20 +104,20 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
     () =>
       filterByGrantConditions(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[], {
         getKey: (s) => s,
-        allowed: grantPrivilegeConditions?.subjects,
-        forbidden: grantPrivilegeConditions?.forbiddenSubjects
+        allowed: assignPrivilegesConditions?.subjects,
+        forbidden: assignPrivilegesConditions?.forbiddenSubjects
       }),
-    [grantPrivilegeConditions]
+    [assignPrivilegesConditions]
   );
 
   const getFilteredActionsForSubject = useMemo(
     () => (subject: ProjectPermissionSub) =>
       filterByGrantConditions(PROJECT_PERMISSION_OBJECT[subject].actions, {
         getKey: (action) => `${subject}:${action.value}`,
-        allowed: grantPrivilegeConditions?.actions,
-        forbidden: grantPrivilegeConditions?.forbiddenActions
+        allowed: assignPrivilegesConditions?.actions,
+        forbidden: assignPrivilegesConditions?.forbiddenActions
       }),
-    [grantPrivilegeConditions]
+    [assignPrivilegesConditions]
   );
 
   const form = useForm<TFormSchema>({

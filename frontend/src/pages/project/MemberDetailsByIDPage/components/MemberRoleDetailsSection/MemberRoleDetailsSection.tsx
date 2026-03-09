@@ -47,10 +47,7 @@ import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import {
-  canModifyByGrantConditions,
-  getMemberGrantPrivilegeConditions
-} from "@app/lib/fn/permission";
+import { canModifyByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
 import { MemberRoleModify } from "./MemberRoleModify";
 
@@ -70,8 +67,8 @@ export const MemberRoleDetailsSection = ({
   const { projectId } = useProject();
   const { permission } = useProjectPermission();
 
-  const grantPrivilegeConditions = useMemo(
-    () => getMemberGrantPrivilegeConditions(permission),
+  const assignRoleConditions = useMemo(
+    () => getMemberAssignRoleConditions(permission),
     [permission]
   );
 
@@ -81,11 +78,11 @@ export const MemberRoleDetailsSection = ({
 
     return canModifyByGrantConditions({
       targetValue: memberEmail,
-      allowed: grantPrivilegeConditions?.emails,
-      forbidden: grantPrivilegeConditions?.forbiddenEmails,
+      allowed: assignRoleConditions?.emails,
+      forbidden: assignRoleConditions?.forbiddenEmails,
       isMatch: (value, pattern) => picomatch.isMatch(value, pattern)
     });
-  }, [grantPrivilegeConditions, membershipDetails?.user?.email]);
+  }, [assignRoleConditions, membershipDetails?.user?.email]);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",

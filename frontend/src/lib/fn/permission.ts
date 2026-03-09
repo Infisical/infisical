@@ -11,24 +11,34 @@ import {
   SecretSubjectFields
 } from "@app/context/ProjectPermissionContext/types";
 
-type MemberGrantPrivilegeConditions = {
+type MemberAssignRoleConditions = {
   emails?: string[];
   roles?: string[];
+  forbiddenEmails?: string[];
+  forbiddenRoles?: string[];
+};
+
+type MemberAssignPrivilegesConditions = {
+  emails?: string[];
   subjects?: string[];
   actions?: string[];
   forbiddenEmails?: string[];
-  forbiddenRoles?: string[];
   forbiddenSubjects?: string[];
   forbiddenActions?: string[];
 };
 
-type IdentityGrantPrivilegeConditions = {
+type IdentityAssignRoleConditions = {
   identityIds?: string[];
   roles?: string[];
+  forbiddenIdentityIds?: string[];
+  forbiddenRoles?: string[];
+};
+
+type IdentityAssignPrivilegesConditions = {
+  identityIds?: string[];
   subjects?: string[];
   actions?: string[];
   forbiddenIdentityIds?: string[];
-  forbiddenRoles?: string[];
   forbiddenSubjects?: string[];
   forbiddenActions?: string[];
 };
@@ -74,9 +84,13 @@ type GroupConditions = {
   assignableRole?: ConditionValue;
 };
 
-const MEMBER_CONDITION_MAPPINGS: ConditionMapping[] = [
+const MEMBER_ASSIGN_ROLE_CONDITION_MAPPINGS: ConditionMapping[] = [
   { conditionKey: "userEmail", resultKey: "emails", forbiddenResultKey: "forbiddenEmails" },
-  { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
+  { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" }
+];
+
+const MEMBER_ASSIGN_PRIVILEGES_CONDITION_MAPPINGS: ConditionMapping[] = [
+  { conditionKey: "userEmail", resultKey: "emails", forbiddenResultKey: "forbiddenEmails" },
   {
     conditionKey: "assignableSubject",
     resultKey: "subjects",
@@ -85,13 +99,21 @@ const MEMBER_CONDITION_MAPPINGS: ConditionMapping[] = [
   { conditionKey: "assignableAction", resultKey: "actions", forbiddenResultKey: "forbiddenActions" }
 ];
 
-const IDENTITY_CONDITION_MAPPINGS: ConditionMapping[] = [
+const IDENTITY_ASSIGN_ROLE_CONDITION_MAPPINGS: ConditionMapping[] = [
   {
     conditionKey: "identityId",
     resultKey: "identityIds",
     forbiddenResultKey: "forbiddenIdentityIds"
   },
-  { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" },
+  { conditionKey: "assignableRole", resultKey: "roles", forbiddenResultKey: "forbiddenRoles" }
+];
+
+const IDENTITY_ASSIGN_PRIVILEGES_CONDITION_MAPPINGS: ConditionMapping[] = [
+  {
+    conditionKey: "identityId",
+    resultKey: "identityIds",
+    forbiddenResultKey: "forbiddenIdentityIds"
+  },
   {
     conditionKey: "assignableSubject",
     resultKey: "subjects",
@@ -243,50 +265,76 @@ function extractGrantConditions<T extends Record<string, string[]>>(
 
 // ─── Rule predicates ──────────────────────────────────────────────
 
-const isGrantPrivilegesMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
+const isAssignRoleMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
   const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
   if (!ruleSubjects.includes(ProjectPermissionSub.Member)) return false;
 
-  const privilegeActions = [
+  const assignRoleActions = [
     ProjectPermissionMemberActions.GrantPrivileges,
-    ProjectPermissionMemberActions.AssignRole,
-    ProjectPermissionMemberActions.AssignAdditionalPrivileges
+    ProjectPermissionMemberActions.AssignRole
   ];
 
   const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
   return ruleActions.some((action) =>
-    privilegeActions.includes(action as ProjectPermissionMemberActions)
+    assignRoleActions.includes(action as ProjectPermissionMemberActions)
   );
 };
 
-const isGrantPrivilegesIdentityRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
+const isAssignRoleIdentityRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
   const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
   if (!ruleSubjects.includes(ProjectPermissionSub.Identity)) return false;
 
-  const privilegeActions = [
+  const assignRoleActions = [
     ProjectPermissionIdentityActions.GrantPrivileges,
-    ProjectPermissionIdentityActions.AssignRole,
-    ProjectPermissionIdentityActions.AssignAdditionalPrivileges
+    ProjectPermissionIdentityActions.AssignRole
   ];
 
   const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
   return ruleActions.some((action) =>
-    privilegeActions.includes(action as ProjectPermissionIdentityActions)
+    assignRoleActions.includes(action as ProjectPermissionIdentityActions)
   );
-};
-
-const isGrantPrivilegesGroupRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
-  const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
-  if (!ruleSubjects.includes(ProjectPermissionSub.Groups)) return false;
-  const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
-  return actions.some((a) => String(a) === ProjectPermissionGroupActions.GrantPrivileges);
 };
 
 const isAssignRoleGroupRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
   const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
   if (!ruleSubjects.includes(ProjectPermissionSub.Groups)) return false;
   const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
-  return actions.some((a) => String(a) === ProjectPermissionGroupActions.AssignRole);
+  return actions.some(
+    (a) =>
+      String(a) === ProjectPermissionGroupActions.GrantPrivileges ||
+      String(a) === ProjectPermissionGroupActions.AssignRole
+  );
+};
+
+// Predicates for assign-additional-privileges (includes legacy grant-privileges for backward compatibility)
+const isAssignPrivilegesMemberRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
+  const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+  if (!ruleSubjects.includes(ProjectPermissionSub.Member)) return false;
+
+  const assignPrivilegesActions = [
+    ProjectPermissionMemberActions.GrantPrivileges,
+    ProjectPermissionMemberActions.AssignAdditionalPrivileges
+  ];
+
+  const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
+  return ruleActions.some((action) =>
+    assignPrivilegesActions.includes(action as ProjectPermissionMemberActions)
+  );
+};
+
+const isAssignPrivilegesIdentityRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
+  const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+  if (!ruleSubjects.includes(ProjectPermissionSub.Identity)) return false;
+
+  const assignPrivilegesActions = [
+    ProjectPermissionIdentityActions.GrantPrivileges,
+    ProjectPermissionIdentityActions.AssignAdditionalPrivileges
+  ];
+
+  const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
+  return ruleActions.some((action) =>
+    assignPrivilegesActions.includes(action as ProjectPermissionIdentityActions)
+  );
 };
 
 // ─── Subject helpers ─────────────────────────────────────────────────
@@ -344,33 +392,54 @@ export function hasSecretReadValueOrDescribePermission(
 
 // ─── Grant condition extractors ─────────────────────────────────────
 
-export function getMemberGrantPrivilegeConditions(
+// Member extractors
+export function getMemberAssignRoleConditions(
   permission: MongoAbility<ProjectPermissionSet>
-): MemberGrantPrivilegeConditions | null {
-  return extractGrantConditions<MemberGrantPrivilegeConditions>(permission, {
-    isRelevantRule: isGrantPrivilegesMemberRule,
-    mappings: MEMBER_CONDITION_MAPPINGS,
+): MemberAssignRoleConditions | null {
+  return extractGrantConditions<MemberAssignRoleConditions>(permission, {
+    isRelevantRule: isAssignRoleMemberRule,
+    mappings: MEMBER_ASSIGN_ROLE_CONDITION_MAPPINGS,
     getConditions: (rule) => (rule.conditions ?? {}) as MemberConditions
   });
 }
 
-export function getIdentityGrantPrivilegeConditions(
+export function getMemberAssignPrivilegesConditions(
   permission: MongoAbility<ProjectPermissionSet>
-): IdentityGrantPrivilegeConditions | null {
-  return extractGrantConditions<IdentityGrantPrivilegeConditions>(permission, {
-    isRelevantRule: isGrantPrivilegesIdentityRule,
-    mappings: IDENTITY_CONDITION_MAPPINGS,
+): MemberAssignPrivilegesConditions | null {
+  return extractGrantConditions<MemberAssignPrivilegesConditions>(permission, {
+    isRelevantRule: isAssignPrivilegesMemberRule,
+    mappings: MEMBER_ASSIGN_PRIVILEGES_CONDITION_MAPPINGS,
+    getConditions: (rule) => (rule.conditions ?? {}) as MemberConditions
+  });
+}
+
+// Identity extractors
+export function getIdentityAssignRoleConditions(
+  permission: MongoAbility<ProjectPermissionSet>
+): IdentityAssignRoleConditions | null {
+  return extractGrantConditions<IdentityAssignRoleConditions>(permission, {
+    isRelevantRule: isAssignRoleIdentityRule,
+    mappings: IDENTITY_ASSIGN_ROLE_CONDITION_MAPPINGS,
     getConditions: (rule) => (rule.conditions ?? {}) as IdentityConditions
   });
 }
 
-export const getGroupGrantPrivilegeConditions = (
+export function getIdentityAssignPrivilegesConditions(
+  permission: MongoAbility<ProjectPermissionSet>
+): IdentityAssignPrivilegesConditions | null {
+  return extractGrantConditions<IdentityAssignPrivilegesConditions>(permission, {
+    isRelevantRule: isAssignPrivilegesIdentityRule,
+    mappings: IDENTITY_ASSIGN_PRIVILEGES_CONDITION_MAPPINGS,
+    getConditions: (rule) => (rule.conditions ?? {}) as IdentityConditions
+  });
+}
+
+// Group extractor (assign-role only, groups don't have additional privileges)
+export const getGroupAssignRoleConditions = (
   permission: MongoAbility<ProjectPermissionSet>
 ): GroupGrantPrivilegeConditions | null => {
-  const isRelevantRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
-    isGrantPrivilegesGroupRule(rule) || isAssignRoleGroupRule(rule);
   return extractGrantConditions<GroupGrantPrivilegeConditions>(permission, {
-    isRelevantRule,
+    isRelevantRule: isAssignRoleGroupRule,
     mappings: GROUP_CONDITION_MAPPINGS,
     getConditions: (rule) => (rule.conditions ?? {}) as GroupConditions
   });

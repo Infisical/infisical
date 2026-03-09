@@ -34,7 +34,7 @@ import {
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
 import {
   filterByGrantConditions,
-  getIdentityGrantPrivilegeConditions
+  getIdentityAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
@@ -97,8 +97,8 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     subject(ProjectPermissionSub.Identity, { identityId })
   );
 
-  const grantPrivilegeConditions = useMemo(
-    () => getIdentityGrantPrivilegeConditions(permission),
+  const assignPrivilegesConditions = useMemo(
+    () => getIdentityAssignPrivilegesConditions(permission),
     [permission]
   );
 
@@ -106,20 +106,20 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     () =>
       filterByGrantConditions(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[], {
         getKey: (s) => s,
-        allowed: grantPrivilegeConditions?.subjects,
-        forbidden: grantPrivilegeConditions?.forbiddenSubjects
+        allowed: assignPrivilegesConditions?.subjects,
+        forbidden: assignPrivilegesConditions?.forbiddenSubjects
       }),
-    [grantPrivilegeConditions]
+    [assignPrivilegesConditions]
   );
 
   const getFilteredActionsForSubject = useMemo(
     () => (permissionSubject: ProjectPermissionSub) =>
       filterByGrantConditions(PROJECT_PERMISSION_OBJECT[permissionSubject].actions, {
         getKey: (action) => `${permissionSubject}:${action.value}`,
-        allowed: grantPrivilegeConditions?.actions,
-        forbidden: grantPrivilegeConditions?.forbiddenActions
+        allowed: assignPrivilegesConditions?.actions,
+        forbidden: assignPrivilegesConditions?.forbiddenActions
       }),
-    [grantPrivilegeConditions]
+    [assignPrivilegesConditions]
   );
 
   const form = useForm<TFormSchema>({

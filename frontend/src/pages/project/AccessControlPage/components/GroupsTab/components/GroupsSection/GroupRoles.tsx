@@ -35,7 +35,7 @@ import { groupBy } from "@app/lib/fn/array";
 import {
   canModifyByGrantConditions,
   filterByGrantConditions,
-  getGroupGrantPrivilegeConditions
+  getGroupAssignRoleConditions
 } from "@app/lib/fn/permission";
 
 const temporaryRoleFormSchema = z.object({
@@ -389,8 +389,8 @@ export const GroupRoles = ({
     currentProject?.id ?? ""
   );
 
-  const grantPrivilegeConditions = useMemo(
-    () => getGroupGrantPrivilegeConditions(permission),
+  const assignRoleConditions = useMemo(
+    () => getGroupAssignRoleConditions(permission),
     [permission]
   );
 
@@ -406,23 +406,23 @@ export const GroupRoles = ({
     });
 
     if (!hasAnyGroupPrivilegeRule) return false;
-    if (!grantPrivilegeConditions) return true;
+    if (!assignRoleConditions) return true;
 
     return canModifyByGrantConditions({
       targetValue: groupName,
-      allowed: grantPrivilegeConditions.groupNames,
-      forbidden: grantPrivilegeConditions.forbiddenGroupNames
+      allowed: assignRoleConditions.groupNames,
+      forbidden: assignRoleConditions.forbiddenGroupNames
     });
-  }, [permission, grantPrivilegeConditions, groupName]);
+  }, [permission, assignRoleConditions, groupName]);
 
   const filteredProjectRoles = useMemo(
     () =>
       filterByGrantConditions(projectRoles ?? [], {
         getKey: (role) => role.slug,
-        allowed: grantPrivilegeConditions?.roles,
-        forbidden: grantPrivilegeConditions?.forbiddenRoles
+        allowed: assignRoleConditions?.roles,
+        forbidden: assignRoleConditions?.forbiddenRoles
       }),
-    [projectRoles, grantPrivilegeConditions]
+    [projectRoles, assignRoleConditions]
   );
 
   const isEditDisabled = disableEdit || !canModifyGroupRoles;
