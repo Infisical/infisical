@@ -295,7 +295,7 @@ export type TNotificationUpdatedEvent = {
 export type TSecretSyncCreatedEvent = {
   event: PostHogEventTypes.SecretSyncCreated;
   properties: {
-    destination: string;
+    syncDestination: string;
     syncId: string;
     projectId: string;
     environment: string;
@@ -307,9 +307,11 @@ export type TSecretSyncCreatedEvent = {
 export type TSecretSyncDeletedEvent = {
   event: PostHogEventTypes.SecretSyncDeleted;
   properties: {
-    destination: string;
+    syncDestination: string;
     syncId: string;
     projectId: string;
+    environment: string;
+    secretPath: string;
     removeSecrets: boolean;
   };
 };

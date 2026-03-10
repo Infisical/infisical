@@ -228,7 +228,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           organizationId: req.permission.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
-            destination,
+            syncDestination: destination,
             syncId: secretSync.id,
             projectId: secretSync.projectId,
             environment: secretSync.environment?.slug ?? "",
@@ -341,9 +341,11 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           organizationId: req.permission.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
-            destination,
+            syncDestination: destination,
             syncId,
             projectId: secretSync.projectId,
+            environment: secretSync.environment?.slug ?? "",
+            secretPath: secretSync.folder?.path ?? "/",
             removeSecrets
           }
         })
