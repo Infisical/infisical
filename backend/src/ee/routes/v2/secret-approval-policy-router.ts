@@ -83,7 +83,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           distinctId: getTelemetryDistinctId(req),
           properties: {
             policyId: approval.id,
-            projectId: req.body.projectId,
+            projectId: approval.projectId,
             environments: approval.environments.map((e) => e.slug),
             secretPath: req.body.secretPath,
             approvals: req.body.approvals,

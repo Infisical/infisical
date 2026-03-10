@@ -2082,6 +2082,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       notificationService
     });
+
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,

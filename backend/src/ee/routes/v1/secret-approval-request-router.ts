@@ -183,7 +183,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           properties: {
             requestId: approval.id,
             projectId,
-            slug: approval.slug,
+            requestSlug: approval.slug,
             ...req.auditLogInfo
           }
         })

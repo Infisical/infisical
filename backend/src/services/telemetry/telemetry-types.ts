@@ -355,7 +355,7 @@ export type TSecretApprovalRequestMergedEvent = {
   properties: {
     requestId: string;
     projectId: string;
-    slug: string;
+    requestSlug: string;
   };
 };
 
