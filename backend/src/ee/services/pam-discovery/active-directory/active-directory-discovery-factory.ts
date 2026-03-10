@@ -365,10 +365,10 @@ const resolveHostnamesViaDc = async (
             if (ip) {
               computer.resolvedIp = ip;
             } else {
-              logger.warn({ hostname }, "DNS resolution returned no A records");
+              logger.warn(`DNS resolution returned no A records [hostname=${hostname}]`);
             }
           } catch (err) {
-            logger.warn({ hostname, err: (err as Error).message }, "Failed to resolve hostname via DC DNS");
+            logger.warn(err, `Failed to resolve hostname via DC DNS [hostname=${hostname}]`);
           }
         }
       }
@@ -469,8 +469,7 @@ const executeLdapEnumeration = async (
         }));
 
         logger.info(
-          { computerCount: computers.length, userCount: users.length },
-          "PAM AD discovery LDAP enumeration completed"
+          `PAM AD discovery LDAP enumeration completed [computerCount=${computers.length}] [userCount=${users.length}]`
         );
 
         return { computers, users };
@@ -1000,7 +999,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       try {
         await resolveHostnamesViaDc(computers, configuration, gatewayId, gatewayV2Service);
       } catch (err) {
-        logger.warn({ err }, "Failed to resolve hostnames via DC DNS, will use hostnames directly");
+        logger.warn(err, "Failed to resolve hostnames via DC DNS, will use hostnames directly");
       }
 
       await pamDiscoveryRunDAL.updateById(run.id, {
@@ -1072,7 +1071,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           resourcesDiscoveredCount += 1;
           if (isNew) newResourcesCount += 1;
         } catch (err) {
-          logger.warn({ err, computer: computer.dNSHostName }, "Failed to import Windows Server resource");
+          logger.warn(err, `Failed to import Windows Server resource [computer=${computer.dNSHostName}]`);
         }
       }
 
@@ -1112,7 +1111,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           accountsDiscoveredCount += 1;
           if (isNew) newAccountsCount += 1;
         } catch (err) {
-          logger.warn({ err, user: user.sAMAccountName }, "Failed to import domain account");
+          logger.warn(err, `Failed to import domain account [username=${user.sAMAccountName}]`);
         }
       }
 
@@ -1171,7 +1170,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                 accountsDiscoveredCount += 1;
                 if (isNew) newAccountsCount += 1;
               } catch (err) {
-                logger.warn({ err, localUser: localUser.Name, computer: hostname }, "Failed to import local account");
+                logger.warn(err, `Failed to import local account [username=${localUser.Name}] [computer=${hostname}]`);
               }
             }
 
@@ -1286,19 +1285,19 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                       newDependenciesCount += 1;
                     }
                   } catch (err) {
-                    logger.warn({ err, dependency: dep.name, computer: hostname }, "Failed to import dependency");
+                    logger.warn(err, `Failed to import dependency [dependency=${dep.name}] [computer=${hostname}]`);
                   }
                 }
               }
             } catch (err) {
-              logger.warn({ err, computer: hostname }, "WinRM dependency enumeration failed for machine");
+              logger.warn(err, `WinRM dependency enumeration failed for machine [computer=${hostname}]`);
             }
 
             scannedMachines += 1;
           } catch (err) {
             failedMachines += 1;
             machineErrors[hostname] = (err as Error).message;
-            logger.warn({ err, computer: hostname }, "WinRM local account enumeration failed for machine");
+            logger.warn(err, `WinRM local account enumeration failed for machine [computer=${hostname}]`);
           }
         }
 
@@ -1362,7 +1361,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         });
       }
     } catch (error) {
-      logger.error({ error, discoverySourceId, runId: run.id }, "PAM AD discovery scan failed");
+      logger.error(error, `PAM AD discovery scan failed [discoverySourceId=${discoverySourceId}] [runId=${run.id}]`);
 
       const progress: TActiveDirectoryDiscoverySourceRunProgress = adEnumerationSucceeded
         ? {
