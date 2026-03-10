@@ -85,7 +85,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 userId: user.id,
                 firstName: user.firstName ?? undefined,
                 lastName: user.lastName ?? undefined
-              });
+              }, { skipDedup: true });
             }
 
             if (!isUserCompleted && googleDistinctId) {
@@ -181,7 +181,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 userId: user.id,
                 firstName: user.firstName ?? undefined,
                 lastName: user.lastName ?? undefined
-              });
+              }, { skipDedup: true });
             }
 
             if (!isUserCompleted && githubDistinctId) {
@@ -269,7 +269,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 userId: user.id,
                 firstName: user.firstName ?? undefined,
                 lastName: user.lastName ?? undefined
-              });
+              }, { skipDedup: true });
             }
 
             if (!isUserCompleted && gitlabDistinctId) {
@@ -637,7 +637,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           email: data.user.email ?? undefined,
           username: data.user.username,
           userId: data.user.userId
-        });
+        }, { skipDedup: true });
       }
 
       if ([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB].includes(data.decodedProviderToken.authMethod)) {

@@ -184,6 +184,15 @@ export const injectIdentity = fp(
             isMfaVerified: token.isMfaVerified,
             token
           };
+
+          const jwtDistinctId = user.username ?? user.email ?? "";
+          if (jwtDistinctId) {
+            void server.services.telemetry.identifyUser(jwtDistinctId, {
+              email: user.email ?? undefined,
+              username: user.username,
+              userId: user.id
+            });
+          }
           break;
         }
         case AuthMode.MCP_JWT: {
@@ -205,6 +214,15 @@ export const injectIdentity = fp(
             isMfaVerified: token.isMfaVerified,
             token
           };
+
+          const mcpDistinctId = user.username ?? user.email ?? "";
+          if (mcpDistinctId) {
+            void server.services.telemetry.identifyUser(mcpDistinctId, {
+              email: user.email ?? undefined,
+              username: user.username,
+              userId: user.id
+            });
+          }
           break;
         }
         case AuthMode.IDENTITY_ACCESS_TOKEN: {

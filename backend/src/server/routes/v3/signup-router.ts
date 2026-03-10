@@ -169,7 +169,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           isEmailVerified: user.isEmailVerified ?? undefined,
           isMfaEnabled: user.isMfaEnabled ?? undefined,
           superAdmin: user.superAdmin ?? undefined
-        });
+        }, { skipDedup: true });
       }
 
       void res.setCookie("jid", refreshToken, {
@@ -245,7 +245,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           isEmailVerified: user.isEmailVerified ?? undefined,
           isMfaEnabled: user.isMfaEnabled ?? undefined,
           superAdmin: user.superAdmin ?? undefined
-        });
+        }, { skipDedup: true });
       }
 
       void res.setCookie("jid", refreshToken, {

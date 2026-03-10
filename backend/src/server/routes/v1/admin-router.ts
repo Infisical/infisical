@@ -650,7 +650,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           firstName: user.user.firstName ?? undefined,
           lastName: user.user.lastName ?? undefined,
           superAdmin: true
-        });
+        }, { skipDedup: true });
       }
 
       void res.setCookie("jid", token.refresh, {
@@ -811,7 +811,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           firstName: user.user.firstName ?? undefined,
           lastName: user.user.lastName ?? undefined,
           superAdmin: true
-        });
+        }, { skipDedup: true });
       }
 
       return {

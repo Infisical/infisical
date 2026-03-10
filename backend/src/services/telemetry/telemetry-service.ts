@@ -37,7 +37,7 @@ export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory
 export type TTelemetryServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
-    "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "getKeysByPattern" | "getItems"
+    "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "getKeysByPattern" | "getItems" | "getItem"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType">;
 };
@@ -320,7 +320,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const identifyUser = (
+  const TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify";
+  const TELEMETRY_IDENTIFY_CACHE_TTL = 600; // 10 minutes
+
+  const identifyUser = async (
     distinctId: string,
     properties: {
       email?: string;
@@ -331,11 +334,23 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       isMfaEnabled?: boolean;
       isEmailVerified?: boolean;
       superAdmin?: boolean;
-    }
+    },
+    { skipDedup }: { skipDedup?: boolean } = {}
   ) => {
     if (postHog && distinctId) {
       const instanceType = licenseService.getInstanceType();
       if (instanceType === InstanceType.Cloud) {
+        if (!skipDedup) {
+          try {
+            const cacheKey = `${TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX}:${distinctId}`;
+            const cached = await keyStore.getItem(cacheKey);
+            if (cached) return;
+            await keyStore.setItemWithExpiry(cacheKey, TELEMETRY_IDENTIFY_CACHE_TTL, "1");
+          } catch (error) {
+            logger.error(error, "Failed to check PostHog identify dedup cache");
+            // Continue with identify even if cache check fails
+          }
+        }
         postHog.identify({ distinctId, properties });
       }
     }
