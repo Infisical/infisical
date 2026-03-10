@@ -1228,15 +1228,21 @@ export const createFetchFolderSecretsWithImports = ({
   secretImportDAL,
   folderDAL
 }: TCreateFetchFolderSecretsWithImportsArg) => {
-  return async (folderId: string, userIdArg: string | undefined) => {
-    type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
+  type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
+  type SecretRow = Awaited<ReturnType<TCreateFetchFolderSecretsWithImportsArg["secretDAL"]["findByFolderId"]>>[number];
+
+  const fetchFolderSecretsWithImports = async (
+    folderId: string,
+    userIdArg: string | undefined,
+    visitedFolderIds = new Set<string>()
+  ): Promise<SecretRow[]> => {
+    if (visitedFolderIds.has(folderId)) return [];
+    visitedFolderIds.add(folderId);
+
     const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg });
     const rawImports = (await secretImportDAL.findByFolderIds([folderId])) as ImportRow[];
     if (!rawImports.length) return directSecrets;
 
-    // Resolve reserved imports (replication read-side) to their actual source env/path.
-    // Reserved import paths look like /__reserve_replication_<uuid> and must be
-    // translated to the real source before folder lookup.
     const reservedIds: string[] = [];
     for (const imp of rawImports) {
       if (imp.isReserved) {
@@ -1261,12 +1267,14 @@ export const createFetchFolderSecretsWithImports = ({
       activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
     );
     const importedSecretArrays = await Promise.all(
-      importedFolders.filter(Boolean).map((f) => secretDAL.findByFolderId({ folderId: f!.id, userId: userIdArg }))
+      importedFolders.filter(Boolean).map((f) => fetchFolderSecretsWithImports(f!.id, userIdArg, visitedFolderIds))
     );
-    const importedMerged = new Map(importedSecretArrays.flat().map((s) => [s.key, s]));
+    const importedMerged = new Map<string, SecretRow>(importedSecretArrays.flat().map((s) => [s.key, s]));
     directSecrets.forEach((s) => importedMerged.set(s.key, s));
     return [...importedMerged.values()];
   };
+
+  return fetchFolderSecretsWithImports;
 };
 
 type TCreateRelativeImportExpanderArg = {
