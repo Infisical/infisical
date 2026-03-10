@@ -10,10 +10,12 @@ import { isValidHandleBarTemplate } from "@app/lib/template/validate-handlebars"
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const validateUsernameTemplateCharacters = characterValidator([
   CharacterType.AlphaNumeric,
@@ -103,6 +105,23 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretCreated,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            provider: dynamicSecretCfg.type,
+            projectId: dynamicSecretCfg.projectId,
+            environment: dynamicSecretCfg.environment,
+            secretPath: dynamicSecretCfg.secretPath,
+            defaultTTL: `${ms(dynamicSecretCfg.defaultTTL) / 1000}s`,
+            maxTTL: dynamicSecretCfg.maxTTL ? `${ms(dynamicSecretCfg.maxTTL) / 1000}s` : null,
+            hasGateway: Boolean(dynamicSecretCfg.gatewayId || dynamicSecretCfg.gatewayV2Id)
+          }
+        })
+        .catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -253,6 +272,21 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         name: req.params.name,
         ...req.body
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretDeleted,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            provider: dynamicSecretCfg.type,
+            projectId: dynamicSecretCfg.projectId,
+            environment: dynamicSecretCfg.environment,
+            secretPath: dynamicSecretCfg.secretPath,
+            isForced: req.body.isForced
+          }
+        })
+        .catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

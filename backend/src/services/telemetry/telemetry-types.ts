@@ -40,7 +40,11 @@ export enum PostHogEventTypes {
   InvalidateCache = "Invalidate Cache",
   NotificationUpdated = "Notification Updated",
   SecretSyncCreated = "Secret Sync Created",
-  SecretSyncDeleted = "Secret Sync Deleted"
+  SecretSyncDeleted = "Secret Sync Deleted",
+  DynamicSecretCreated = "Dynamic Secret Created",
+  DynamicSecretDeleted = "Dynamic Secret Deleted",
+  DynamicSecretLeaseCreated = "Dynamic Secret Lease Created",
+  DynamicSecretLeaseRenewed = "Dynamic Secret Lease Renewed"
 }
 
 export type TSecretModifiedEvent = {
@@ -313,6 +317,51 @@ export type TSecretSyncDeletedEvent = {
     environment: string;
     secretPath: string;
     removeSecrets: boolean;
+export type TDynamicSecretCreatedEvent = {
+  event: PostHogEventTypes.DynamicSecretCreated;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    defaultTTL: string;
+    maxTTL?: string | null;
+    hasGateway: boolean;
+  };
+};
+
+export type TDynamicSecretDeletedEvent = {
+  event: PostHogEventTypes.DynamicSecretDeleted;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isForced: boolean;
+  };
+};
+
+export type TDynamicSecretLeaseCreatedEvent = {
+  event: PostHogEventTypes.DynamicSecretLeaseCreated;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    dynamicSecretId: string;
+    ttl: string;
+  };
+};
+
+export type TDynamicSecretLeaseRenewedEvent = {
+  event: PostHogEventTypes.DynamicSecretLeaseRenewed;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    dynamicSecretId: string;
+    ttl: string;
   };
 };
 
@@ -340,4 +389,8 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TNotificationUpdatedEvent
   | TSecretSyncCreatedEvent
   | TSecretSyncDeletedEvent
+  | TDynamicSecretCreatedEvent
+  | TDynamicSecretDeletedEvent
+  | TDynamicSecretLeaseCreatedEvent
+  | TDynamicSecretLeaseRenewedEvent
 );
