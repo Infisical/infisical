@@ -230,12 +230,10 @@ const formatDuration = (startedAt?: string | null, completedAt?: string | null):
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 };
 
-const formatWindowsFileTime = (fileTime?: string): string => {
-  if (!fileTime) return "-";
+const formatIsoDate = (isoDate?: string): string => {
+  if (!isoDate) return "-";
   try {
-    const ms = Number(BigInt(fileTime) / 10000n - 11644473600000n);
-    if (Number.isNaN(ms) || ms <= 0) return "-";
-    return format(new Date(ms), "MM/dd/yy, HH:mm");
+    return format(new Date(isoDate), "MM/dd/yy, HH:mm");
   } catch {
     return "-";
   }
@@ -814,7 +812,7 @@ const AccountsTab = ({
                   {account.dependencyCount ?? 0}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
-                  {formatWindowsFileTime(account.internalMetadata?.lastLogonTimestamp)}
+                  {formatIsoDate(account.internalMetadata?.lastLogon)}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {format(new Date(account.lastDiscoveredAt), "MM/dd/yy, HH:mm")}

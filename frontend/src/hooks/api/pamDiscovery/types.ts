@@ -87,7 +87,7 @@ export type TDiscoveredAccountMetadata = {
   adGuid?: string;
   displayName?: string;
   userPrincipalName?: string;
-  lastLogonTimestamp?: string;
+  lastLogon?: string;
 };
 
 export type TDiscoveredAccount = {

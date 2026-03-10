@@ -9,17 +9,12 @@ import {
   UnstableIconButton,
   UnstableInput
 } from "@app/components/v3";
-import { PamResourceType, TActiveDirectoryAccount, TPamAccount } from "@app/hooks/api/pam";
-
-// Converts a Windows FILETIME (100-nanosecond intervals since 1601-01-01) to a JS Date.
-const windowsFileTimeToDate = (filetime: string): Date | null => {
-  const value = BigInt(filetime);
-  if (value === 0n) return null;
-
-  const epochDiffMs = 11644473600000n;
-  const ms = value / 10000n - epochDiffMs;
-  return new Date(Number(ms));
-};
+import {
+  PamResourceType,
+  TActiveDirectoryAccount,
+  TPamAccount,
+  TWindowsAccount
+} from "@app/hooks/api/pam";
 
 const CopyableField = ({ label, value }: { label: string; value: string }) => {
   const handleCopy = () => {
@@ -48,7 +43,7 @@ const CopyableField = ({ label, value }: { label: string; value: string }) => {
 type TPropertyField = {
   label: string;
   value: string;
-  type?: "text" | "date";
+  type?: "text" | "date" | "plain";
 };
 
 const getAccountProperties = (account: TPamAccount): TPropertyField[] => {
@@ -63,17 +58,42 @@ const getAccountProperties = (account: TPamAccount): TPropertyField[] => {
       if (internalMetadata.adGuid) {
         fields.push({ label: "AD GUID", value: internalMetadata.adGuid });
       }
-      if (internalMetadata.pwdLastSet) {
-        const date = windowsFileTimeToDate(internalMetadata.pwdLastSet);
-        if (date) {
-          fields.push({ label: "Password Last Set", value: date.toISOString(), type: "date" });
-        }
+      if (internalMetadata.passwordLastSet) {
+        fields.push({
+          label: "Password Last Set",
+          value: internalMetadata.passwordLastSet,
+          type: "date"
+        });
       }
-      if (internalMetadata.lastLogonTimestamp) {
-        const date = windowsFileTimeToDate(internalMetadata.lastLogonTimestamp);
-        if (date) {
-          fields.push({ label: "Last Logon", value: date.toISOString(), type: "date" });
-        }
+      if (internalMetadata.lastLogon) {
+        fields.push({ label: "Last Logon", value: internalMetadata.lastLogon, type: "date" });
+      }
+
+      return fields;
+    }
+    case PamResourceType.Windows: {
+      const { internalMetadata } = account as TWindowsAccount;
+      const fields: TPropertyField[] = [];
+
+      if (internalMetadata.sid) {
+        fields.push({ label: "SID", value: internalMetadata.sid });
+      }
+      if (internalMetadata.enabled !== undefined) {
+        fields.push({
+          label: "Enabled",
+          value: internalMetadata.enabled ? "Yes" : "No",
+          type: "plain"
+        });
+      }
+      if (internalMetadata.passwordLastSet) {
+        fields.push({
+          label: "Password Last Set",
+          value: internalMetadata.passwordLastSet,
+          type: "date"
+        });
+      }
+      if (internalMetadata.lastLogon) {
+        fields.push({ label: "Last Logon", value: internalMetadata.lastLogon, type: "date" });
       }
 
       return fields;
@@ -97,16 +117,25 @@ export const PamAccountPropertiesSection = ({ account }: Props) => {
       <div className="border-b border-border pb-2">
         <h3 className="text-lg font-medium">Properties</h3>
       </div>
-      {properties.map((property) =>
-        property.type === "date" ? (
-          <Detail key={property.label}>
-            <DetailLabel>{property.label}</DetailLabel>
-            <DetailValue>{format(new Date(property.value), "MM/dd/yyyy, hh:mm a")}</DetailValue>
-          </Detail>
-        ) : (
-          <CopyableField key={property.label} label={property.label} value={property.value} />
-        )
-      )}
+      {properties.map((property) => {
+        if (property.type === "date") {
+          return (
+            <Detail key={property.label}>
+              <DetailLabel>{property.label}</DetailLabel>
+              <DetailValue>{format(new Date(property.value), "MM/dd/yyyy, hh:mm a")}</DetailValue>
+            </Detail>
+          );
+        }
+        if (property.type === "plain") {
+          return (
+            <Detail key={property.label}>
+              <DetailLabel>{property.label}</DetailLabel>
+              <DetailValue>{property.value}</DetailValue>
+            </Detail>
+          );
+        }
+        return <CopyableField key={property.label} label={property.label} value={property.value} />;
+      })}
     </div>
   );
 };

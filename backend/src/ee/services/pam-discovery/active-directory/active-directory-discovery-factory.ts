@@ -163,6 +163,28 @@ const toSlugName = (name: string): string =>
     .replace(new RE2(/-+/g), "-")
     .replace(new RE2(/^-|-$/g), "");
 
+// Parses .NET JSON date format `/Date(ms)/` to ISO 8601 string
+const parseDotNetDate = (value: string | null): string | undefined => {
+  if (!value) return undefined;
+  const match = new RE2(/^\/Date\((\d+)\)\/$/).exec(value);
+  if (!match) return undefined;
+  return new Date(Number(match[1])).toISOString();
+};
+
+// Converts a Windows FILETIME string (100-ns intervals since 1601-01-01) to ISO 8601 string
+const fileTimeToIso = (filetime: string | undefined): string | undefined => {
+  if (!filetime) return undefined;
+  try {
+    const value = BigInt(filetime);
+    if (value === 0n) return undefined;
+    const epochDiffMs = 11644473600000n;
+    const ms = value / 10000n - epochDiffMs;
+    return new Date(Number(ms)).toISOString();
+  } catch {
+    return undefined;
+  }
+};
+
 const buildDomainDN = (domainFQDN: string): string => {
   return domainFQDN
     .split(".")
@@ -280,10 +302,18 @@ const resolveDnsTcp = (hostname: string, port: number): Promise<string | null> =
       socket.write(query);
     });
 
+    // Max legitimate DNS-over-TCP response: 2-byte length prefix + 65535 bytes payload
+    const MAX_DNS_TCP_SIZE = 2 + 65535;
     let responseData = Buffer.alloc(0);
 
     socket.on("data", (chunk: Buffer) => {
       responseData = Buffer.concat([responseData, chunk]);
+
+      if (responseData.length > MAX_DNS_TCP_SIZE) {
+        socket.destroy();
+        resolve(null);
+        return;
+      }
 
       // DNS-over-TCP frames each message with a 2-byte big-endian length prefix
       // wait until we have the full frame before decoding
@@ -614,8 +644,8 @@ const upsertDomainAccount = async (
     userPrincipalName: user.userPrincipalName || undefined,
     servicePrincipalName,
     userAccountControl: user.userAccountControl ? parseInt(user.userAccountControl, 10) : undefined,
-    pwdLastSet: user.pwdLastSet || undefined,
-    lastLogonTimestamp: user.lastLogonTimestamp || undefined
+    passwordLastSet: fileTimeToIso(user.pwdLastSet),
+    lastLogon: fileTimeToIso(user.lastLogonTimestamp)
   } as TActiveDirectoryAccountInternalMetadata;
 
   const account = await pamAccountDAL.create(
@@ -823,7 +853,11 @@ const upsertLocalAccount = async (
   });
 
   const internalMetadata = {
-    accountType: WindowsAccountType.User
+    accountType: WindowsAccountType.User,
+    lastLogon: parseDotNetDate(localUser.LastLogon),
+    passwordLastSet: parseDotNetDate(localUser.PasswordLastSet),
+    sid: localUser.SID?.Value || undefined,
+    enabled: localUser.Enabled
   } as TWindowsAccountMetadata;
 
   const account = await pamAccountDAL.create(

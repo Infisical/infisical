@@ -11,7 +11,8 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { ActorAuthMethod, ActorType, OrgServiceActor } from "@app/lib/types";
+import { OrgServiceActor } from "@app/lib/types";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
@@ -660,7 +661,14 @@ export const pamDiscoverySourceServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
   }) => {
-    await verifyAccountPermission(accountId, ProjectPermissionPamAccountActions.Read, actor, actorId, actorAuthMethod, actorOrgId);
+    await verifyAccountPermission(
+      accountId,
+      ProjectPermissionPamAccountActions.Read,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    );
     return pamAccountDependenciesDAL.findByAccountId(accountId);
   };
 
@@ -681,7 +689,14 @@ export const pamDiscoverySourceServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
   }) => {
-    await verifyAccountPermission(accountId, ProjectPermissionPamAccountActions.Edit, actor, actorId, actorAuthMethod, actorOrgId);
+    await verifyAccountPermission(
+      accountId,
+      ProjectPermissionPamAccountActions.Edit,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
     const dep = await pamAccountDependenciesDAL.findById(dependencyId);
     if (!dep || dep.accountId !== accountId) {
@@ -705,7 +720,14 @@ export const pamDiscoverySourceServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
   }) => {
-    await verifyAccountPermission(accountId, ProjectPermissionPamAccountActions.Delete, actor, actorId, actorAuthMethod, actorOrgId);
+    await verifyAccountPermission(
+      accountId,
+      ProjectPermissionPamAccountActions.Delete,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
     const dep = await pamAccountDependenciesDAL.findById(dependencyId);
     if (!dep || dep.accountId !== accountId) {
