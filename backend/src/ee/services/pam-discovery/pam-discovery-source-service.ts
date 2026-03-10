@@ -722,7 +722,7 @@ export const pamDiscoverySourceServiceFactory = ({
   }) => {
     await verifyAccountPermission(
       accountId,
-      ProjectPermissionPamAccountActions.Delete,
+      ProjectPermissionPamAccountActions.Edit,
       actor,
       actorId,
       actorAuthMethod,
