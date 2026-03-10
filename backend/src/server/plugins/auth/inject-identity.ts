@@ -130,6 +130,19 @@ export const injectIdentity = fp(
   async (server: FastifyZodProvider, opt: { shouldForwardWritesToPrimaryInstance?: boolean }) => {
     server.decorateRequest("auth", null);
     server.decorateRequest("shouldForwardWritesToPrimaryInstance", Boolean(opt.shouldForwardWritesToPrimaryInstance));
+
+    // Hoisted outside onRequest hook to avoid per-request function allocation on this hot path
+    const fireIdentifyForUser = (user: TUsers) => {
+      const distinctId = user.username ?? user.email ?? "";
+      if (distinctId) {
+        void server.services.telemetry.identifyUser(distinctId, {
+          email: user.email ?? undefined,
+          username: user.username,
+          userId: user.id
+        });
+      }
+    };
+
     server.addHook("onRequest", async (req) => {
       const appCfg = getConfig();
 
@@ -163,17 +176,6 @@ export const injectIdentity = fp(
       const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
 
       if (!authMode) return;
-
-      const fireIdentifyForUser = (user: TUsers) => {
-        const distinctId = user.username ?? user.email ?? "";
-        if (distinctId) {
-          void server.services.telemetry.identifyUser(distinctId, {
-            email: user.email ?? undefined,
-            username: user.username,
-            userId: user.id
-          });
-        }
-      };
 
       switch (authMode) {
         case AuthMode.JWT: {
