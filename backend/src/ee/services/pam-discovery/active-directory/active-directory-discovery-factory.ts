@@ -800,8 +800,8 @@ const resolveAccountForDependency = (
       return localAccountMap.get(user.toLowerCase()) ?? null;
     }
     if (domain.toUpperCase() === netbiosDomain) {
-      // NETBIOS\user — could be local or domain, check local first
-      return localAccountMap.get(user.toLowerCase()) ?? domainAccountMap.get(user.toLowerCase()) ?? null;
+      // NETBIOS\user — domain takes priority
+      return domainAccountMap.get(user.toLowerCase()) ?? localAccountMap.get(user.toLowerCase()) ?? null;
     }
     // Domain account
     return domainAccountMap.get(user.toLowerCase()) ?? null;
