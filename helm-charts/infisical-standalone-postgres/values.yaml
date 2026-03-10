@@ -65,7 +65,7 @@ infisical:
     # -- Image repository for the Infisical service
     repository: infisical/infisical
     # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
-    tag: "v0.151.0"
+    tag: "v0.158.0"
     # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
     # -- Secret references for pulling the image, if needed

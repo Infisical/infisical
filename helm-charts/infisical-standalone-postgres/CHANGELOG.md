@@ -1,6 +1,7 @@
 ## 1.7.3 (March 7, 2026)
 Changes:
 * Added support for extra environment variables via `infisical.extraEnv`. This allows setting environment variables like `NODE_EXTRA_CA_CERTS` directly through Helm values without manually editing the deployment manifest.
+* Updated the default `infisical.image.tag` value to `v0.158.0`.
 
 ## 1.7.2 (October 20, 2025)
 Changes:
