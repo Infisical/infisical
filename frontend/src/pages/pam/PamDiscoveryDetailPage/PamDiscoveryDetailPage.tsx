@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -351,11 +351,13 @@ const RunExpandedContent = ({
 const RunsTab = ({
   discoverySourceId,
   discoveryType,
-  autoExpandLatestRunning
+  autoExpandLatestRunning,
+  onAutoExpandConsumed
 }: {
   discoverySourceId: string;
   discoveryType: PamDiscoveryType;
   autoExpandLatestRunning?: boolean;
+  onAutoExpandConsumed?: () => void;
 }) => {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
@@ -384,8 +386,11 @@ const RunsTab = ({
   useEffect(() => {
     if (!autoExpandLatestRunning) return;
     const runningRun = runs.find((r) => r.status === "running");
-    if (runningRun) setExpandedRunId(runningRun.id);
-  }, [runs, autoExpandLatestRunning]);
+    if (runningRun) {
+      setExpandedRunId(runningRun.id);
+      onAutoExpandConsumed?.();
+    }
+  }, [runs, autoExpandLatestRunning, onAutoExpandConsumed]);
   const COL_COUNT = 8;
 
   return (
@@ -873,6 +878,7 @@ const PageContent = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [shouldAutoExpand, setShouldAutoExpand] = useState(false);
+  const handleAutoExpandConsumed = useCallback(() => setShouldAutoExpand(false), []);
 
   const { data: source, isPending } = useGetPamDiscoverySource(
     discoverySourceId || "",
@@ -1049,6 +1055,7 @@ const PageContent = () => {
                     discoverySourceId={source.id}
                     discoveryType={source.discoveryType}
                     autoExpandLatestRunning={shouldAutoExpand}
+                    onAutoExpandConsumed={handleAutoExpandConsumed}
                   />
                 </TabPanel>
                 <TabPanel value="resources" className="p-0">

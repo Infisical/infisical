@@ -20,7 +20,7 @@ export const Route = createFileRoute(
   validateSearch: zodValidator(DiscoveryDetailSearchSchema),
   component: PamDiscoveryDetailPage,
   search: {
-    middlewares: [stripSearchParams({})]
+    middlewares: [stripSearchParams({ selectedTab: DiscoveryDetailTab.Runs })]
   },
   beforeLoad: ({ context }) => {
     return {
