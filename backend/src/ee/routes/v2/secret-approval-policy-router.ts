@@ -77,19 +77,21 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         enforcementLevel: req.body.enforcementLevel
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretApprovalPolicyCreated,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          policyId: approval.id,
-          projectId: req.body.projectId,
-          environments: approval.environments.map((e) => e.slug),
-          secretPath: req.body.secretPath,
-          approvals: req.body.approvals,
-          enforcementLevel: req.body.enforcementLevel,
-          ...req.auditLogInfo
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretApprovalPolicyCreated,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            policyId: approval.id,
+            projectId: req.body.projectId,
+            environments: approval.environments.map((e) => e.slug),
+            secretPath: req.body.secretPath,
+            approvals: req.body.approvals,
+            enforcementLevel: req.body.enforcementLevel,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
 
       return { approval };
     }
@@ -182,15 +184,17 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         secretPolicyId: req.params.sapId
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretApprovalPolicyDeleted,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          policyId: approval.id,
-          projectId: approval.projectId,
-          ...req.auditLogInfo
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretApprovalPolicyDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            policyId: approval.id,
+            projectId: approval.projectId,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
 
       return { approval };
     }

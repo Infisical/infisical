@@ -120,19 +120,21 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         enforcementLevel: req.body.enforcementLevel
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.AccessApprovalPolicyCreated,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          policyId: approval.id,
-          projectId: approval.projectId,
-          environments: approval.environments.map((e: { slug: string }) => e.slug),
-          secretPath: req.body.secretPath,
-          approvals: req.body.approvals,
-          enforcementLevel: req.body.enforcementLevel,
-          ...req.auditLogInfo
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalPolicyCreated,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            policyId: approval.id,
+            projectId: approval.projectId,
+            environments: approval.environments.map((e: { slug: string }) => e.slug),
+            secretPath: req.body.secretPath,
+            approvals: req.body.approvals,
+            enforcementLevel: req.body.enforcementLevel,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
 
       return { approval };
     }
@@ -320,15 +322,17 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         policyId: req.params.policyId
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.AccessApprovalPolicyDeleted,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          policyId: approval.id,
-          projectId: approval.projectId,
-          ...req.auditLogInfo
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalPolicyDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            policyId: approval.id,
+            projectId: approval.projectId,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
 
       return { approval };
     }
