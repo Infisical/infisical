@@ -124,6 +124,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.AccessApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -326,6 +327,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.AccessApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,

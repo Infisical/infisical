@@ -1665,6 +1665,7 @@ export const secretApprovalRequestServiceFactory = ({
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
         distinctId: user.username ?? user.email ?? actorId,
+        organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,
           policyId: policy.id,
@@ -2087,6 +2088,7 @@ export const secretApprovalRequestServiceFactory = ({
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
         distinctId: user.username ?? user.email ?? actorId,
+        organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,
           policyId: policy.id,

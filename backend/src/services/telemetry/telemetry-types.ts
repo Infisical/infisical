@@ -10,6 +10,7 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { EnforcementLevel } from "@app/lib/types";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
@@ -308,7 +309,7 @@ export type TSecretApprovalPolicyCreatedEvent = {
     environments: string[];
     secretPath: string;
     approvals: number;
-    enforcementLevel: string;
+    enforcementLevel: EnforcementLevel;
   };
 };
 
@@ -367,7 +368,7 @@ export type TAccessApprovalPolicyCreatedEvent = {
     environments: string[];
     secretPath: string;
     approvals: number;
-    enforcementLevel: string;
+    enforcementLevel: EnforcementLevel;
   };
 };
 

@@ -180,6 +180,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalRequestMerged,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             requestId: approval.id,
             projectId,
@@ -244,6 +245,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalRequestReviewed,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             requestId: review.requestId,
             projectId: review.projectId,
@@ -308,6 +310,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalRequestStatusChanged,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             requestId: approval.id,
             projectId: approval.projectId,
