@@ -31,6 +31,7 @@ import { PamUpdateAccountModal } from "../PamAccountsPage/components/PamUpdateAc
 import { useAccessAwsIamAccount } from "../PamAccountsPage/components/useAccessAwsIamAccount";
 import {
   PamAccountCredentialsSection,
+  PamAccountDependenciesSection,
   PamAccountDetailsSection,
   PamAccountMetadataSection,
   PamAccountPropertiesSection,
@@ -219,9 +220,13 @@ const PageContent = () => {
           <Tabs defaultValue="resources">
             <TabList>
               <Tab value="resources">Resources</Tab>
+              <Tab value="dependencies">Dependencies</Tab>
             </TabList>
             <TabPanel value="resources">
               <PamAccountResourcesSection account={account} onAccessResource={handleAccess} />
+            </TabPanel>
+            <TabPanel value="dependencies">
+              <PamAccountDependenciesSection account={account} />
             </TabPanel>
           </Tabs>
         </div>

@@ -235,7 +235,7 @@ const formatWindowsFileTime = (fileTime?: string): string => {
   try {
     const ms = Number(BigInt(fileTime) / 10000n - 11644473600000n);
     if (Number.isNaN(ms) || ms <= 0) return "-";
-    return format(new Date(ms), "MMM d, yyyy HH:mm");
+    return format(new Date(ms), "MM/dd/yy, HH:mm");
   } catch {
     return "-";
   }
@@ -615,6 +615,7 @@ const ResourcesTab = ({
             <UnstableTableHead>Name</UnstableTableHead>
             <UnstableTableHead>Type</UnstableTableHead>
             <UnstableTableHead>OS Version</UnstableTableHead>
+            <UnstableTableHead>Deps.</UnstableTableHead>
             <UnstableTableHead>Last Discovered</UnstableTableHead>
             <UnstableTableHead>Status</UnstableTableHead>
           </UnstableTableRow>
@@ -622,14 +623,14 @@ const ResourcesTab = ({
         <UnstableTableBody>
           {isPending && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={5} className="text-center text-muted">
+              <UnstableTableCell colSpan={6} className="text-center text-muted">
                 Loading resources...
               </UnstableTableCell>
             </UnstableTableRow>
           )}
           {!isPending && resources.length === 0 && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={5}>
+              <UnstableTableCell colSpan={6}>
                 <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                   <UnstableEmptyHeader>
                     <UnstableEmptyTitle>No discovered resources</UnstableEmptyTitle>
@@ -672,6 +673,11 @@ const ResourcesTab = ({
                         ` ${resource.resourceInternalMetadata?.osVersionDetail}`}
                     </TooltipContent>
                   </Tooltip>
+                </UnstableTableCell>
+                <UnstableTableCell
+                  className={resource.dependencyCount ? "text-muted" : "text-mineshaft-500"}
+                >
+                  {resource.dependencyCount ?? 0}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {format(new Date(resource.lastDiscoveredAt), "MMM d, yyyy HH:mm")}
@@ -738,6 +744,7 @@ const AccountsTab = ({
             <UnstableTableHead>Name</UnstableTableHead>
             <UnstableTableHead>Resource</UnstableTableHead>
             <UnstableTableHead>Type</UnstableTableHead>
+            <UnstableTableHead>Deps.</UnstableTableHead>
             <UnstableTableHead>Last Logon</UnstableTableHead>
             <UnstableTableHead>Last Discovered</UnstableTableHead>
             <UnstableTableHead>Status</UnstableTableHead>
@@ -746,14 +753,14 @@ const AccountsTab = ({
         <UnstableTableBody>
           {isPending && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={6} className="text-center text-muted">
+              <UnstableTableCell colSpan={7} className="text-center text-muted">
                 Loading accounts...
               </UnstableTableCell>
             </UnstableTableRow>
           )}
           {!isPending && accounts.length === 0 && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={6}>
+              <UnstableTableCell colSpan={7}>
                 <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                   <UnstableEmptyHeader>
                     <UnstableEmptyTitle>No discovered accounts</UnstableEmptyTitle>
@@ -781,7 +788,16 @@ const AccountsTab = ({
                 }
               >
                 <UnstableTableCell className="font-medium">{account.accountName}</UnstableTableCell>
-                <UnstableTableCell className="text-muted">{account.resourceName}</UnstableTableCell>
+                <UnstableTableCell className="text-muted">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex max-w-36">
+                        <span className="truncate">{account.resourceName}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>{account.resourceName}</TooltipContent>
+                  </Tooltip>
+                </UnstableTableCell>
                 <UnstableTableCell>
                   <div className="flex items-center gap-2">
                     {account.resourceType === PamResourceType.ActiveDirectory && (
@@ -792,11 +808,16 @@ const AccountsTab = ({
                     </span>
                   </div>
                 </UnstableTableCell>
+                <UnstableTableCell
+                  className={account.dependencyCount ? "text-muted" : "text-mineshaft-500"}
+                >
+                  {account.dependencyCount ?? 0}
+                </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {formatWindowsFileTime(account.internalMetadata?.lastLogonTimestamp)}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
-                  {format(new Date(account.lastDiscoveredAt), "MMM d, yyyy HH:mm")}
+                  {format(new Date(account.lastDiscoveredAt), "MM/dd/yy, HH:mm")}
                 </UnstableTableCell>
                 <UnstableTableCell>
                   {account.isStale ? (

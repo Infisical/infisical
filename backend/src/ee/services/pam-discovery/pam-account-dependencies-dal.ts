@@ -13,10 +13,12 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
   const findByAccountId = async (accountId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.PamAccountDependency)
-        .where({ accountId })
-        .orderBy("name", "asc");
+        .where(`${TableName.PamAccountDependency}.accountId`, accountId)
+        .leftJoin(TableName.PamResource, `${TableName.PamAccountDependency}.resourceId`, `${TableName.PamResource}.id`)
+        .select(`${TableName.PamAccountDependency}.*`, `${TableName.PamResource}.name as resourceName`)
+        .orderBy(`${TableName.PamAccountDependency}.name`, "asc");
 
-      return docs as TPamAccountDependencies[];
+      return docs as (TPamAccountDependencies & { resourceName: string | null })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PAM account dependencies by account ID" });
     }
@@ -31,6 +33,34 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
       return docs as TPamAccountDependencies[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PAM account dependencies by resource ID" });
+    }
+  };
+
+  const countByAccountIds = async (accountIds: string[], tx?: Knex) => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.PamAccountDependency)
+        .whereIn("accountId", accountIds)
+        .groupBy("accountId")
+        .select("accountId")
+        .count("*", { as: "count" });
+
+      return Object.fromEntries(rows.map((r) => [r.accountId, Number(r.count)])) as Record<string, number>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count PAM account dependencies by account IDs" });
+    }
+  };
+
+  const countByResourceIds = async (resourceIds: string[], tx?: Knex) => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.PamAccountDependency)
+        .whereIn("resourceId", resourceIds)
+        .groupBy("resourceId")
+        .select("resourceId")
+        .count("*", { as: "count" });
+
+      return Object.fromEntries(rows.map((r) => [r.resourceId, Number(r.count)])) as Record<string, number>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count PAM account dependencies by resource IDs" });
     }
   };
 
@@ -74,6 +104,8 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
     ...orm,
     findByAccountId,
     findByResourceId,
+    countByAccountIds,
+    countByResourceIds,
     upsertDependency
   };
 };

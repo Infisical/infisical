@@ -6,7 +6,9 @@ import ldapjs from "ldapjs";
 import RE2 from "re2";
 import { runPowershell } from "winrm-client";
 
+import { TPamAccountDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependencies-dal";
 import { TPamDiscoveryScanDeps } from "@app/ee/services/pam-discovery/pam-discovery-factory";
+import { TPamDiscoverySourceDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dependencies-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -33,6 +35,8 @@ import {
   TWindowsResourceInternalMetadata
 } from "../../pam-resource/windows-server/windows-server-resource-types";
 import {
+  PamAccountDependencySource,
+  PamAccountDependencyType,
   PamDiscoverySourceRunStatus,
   PamDiscoverySourceRunTrigger,
   PamDiscoveryStepStatus
@@ -48,6 +52,12 @@ const LDAP_TIMEOUT = 30 * 1000;
 const LDAP_PAGE_SIZE = 500;
 const WINRM_PORT = 5985;
 const SERVICE_ACCOUNT_PATTERNS = [new RE2(/^svc[_-]/i), new RE2(/[_-]service$/i), new RE2(/[_-]svc$/i)];
+const BUILTIN_SERVICE_ACCOUNTS = new Set([
+  "localsystem",
+  "nt authority\\localservice",
+  "nt authority\\networkservice",
+  "nt authority\\system"
+]);
 
 type TWinRmLocalUser = {
   Name: string;
@@ -56,6 +66,59 @@ type TWinRmLocalUser = {
   PasswordLastSet: string | null;
   Description: string;
   SID: { Value: string };
+};
+
+type TWinRmService = {
+  Name: string;
+  DisplayName: string;
+  State: string;
+  StartMode: string;
+  StartName: string;
+  ProcessId: number | null;
+  PathName: string | null;
+  Description: string | null;
+};
+
+type TWinRmScheduledTask = {
+  TaskName: string;
+  TaskPath: string;
+  State: string;
+  UserId: string;
+  LogonType: string;
+  RunLevel: string;
+  LastRunTime: string | null;
+  NextRunTime: string | null;
+  LastTaskResult: number | null;
+  Triggers: TWinRmTaskTrigger[] | null;
+  Actions: TWinRmTaskAction[] | null;
+};
+
+type TWinRmTaskTrigger = {
+  Type: string;
+  StartBoundary: string | null;
+  Interval: number | null;
+};
+
+type TWinRmTaskAction = {
+  Type: string;
+  Execute: string | null;
+  Arguments: string | null;
+};
+
+type TWinRmIisAppPool = {
+  Name: string;
+  State: string;
+  IdentityType: string;
+  Username: string;
+  ManagedRuntimeVersion: string | null;
+  ManagedPipelineMode: string | null;
+  AutoStart: boolean | null;
+};
+
+type TWinRmDependencies = {
+  services: TWinRmService[];
+  scheduledTasks: TWinRmScheduledTask[];
+  iisAppPools: TWinRmIisAppPool[];
 };
 
 type TLdapComputer = {
@@ -584,8 +647,6 @@ const executeWinRmLocalAccountEnumeration = async (
     { dcAddress: targetAddress, port: WINRM_PORT, gatewayId },
     gatewayV2Service,
     async (proxyPort) => {
-      logger.info({ hostname, targetAddress, proxyPort, domain: domainFQDN }, "WinRM: Enumerating local accounts");
-
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
       const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
       const script = `Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordLastSet, Description, SID | ConvertTo-Json`;
@@ -599,6 +660,132 @@ const executeWinRmLocalAccountEnumeration = async (
       return Array.isArray(parsed) ? parsed : [parsed];
     }
   );
+};
+
+const DEPENDENCY_ENUMERATION_SCRIPT = [
+  "$result = @{};",
+  "$result.services = @(Get-WmiObject Win32_Service | Where-Object { $_.StartName -and $_.StartName -notmatch 'LocalSystem|NT AUTHORITY|NT SERVICE|LocalService|NetworkService' } | Select-Object Name, DisplayName, StartName, State, StartMode, ProcessId, PathName, Description);",
+  "$result.scheduledTasks = @(Get-ScheduledTask | ForEach-Object {",
+  "  $t = $_;",
+  "  $info = $null; try { $info = $t | Get-ScheduledTaskInfo -ErrorAction Stop } catch {};",
+  "  $lrt = $null; $nrt = $null; $ltr = $null;",
+  "  if ($info) {",
+  "    try { $lrt = $info.LastRunTime.ToString('o') } catch {};",
+  "    try { $nrt = $info.NextRunTime.ToString('o') } catch {};",
+  "    $ltr = $info.LastTaskResult",
+  "  };",
+  "  $trig = @();",
+  "  if ($t.Triggers) {",
+  "    $trig = @($t.Triggers | Where-Object { $_ -ne $null } | ForEach-Object {",
+  "      $rep = $null;",
+  "      if ($_.Repetition -and $_.Repetition.Interval) { $rep = $_.Repetition.Interval };",
+  "      [PSCustomObject]@{ Type = $_.GetType().Name; StartBoundary = $_.StartBoundary; Interval = $rep }",
+  "    })",
+  "  };",
+  "  $acts = @();",
+  "  if ($t.Actions) {",
+  "    $acts = @($t.Actions | Where-Object { $_ -ne $null } | ForEach-Object {",
+  "      [PSCustomObject]@{ Type = [string]$_.GetType().Name; Execute = $_.Execute; Arguments = $_.Arguments }",
+  "    })",
+  "  };",
+  "  [PSCustomObject]@{",
+  "    TaskName = $t.TaskName; TaskPath = $t.TaskPath; State = [string]$t.State;",
+  "    UserId = $t.Principal.UserId; LogonType = [string]$t.Principal.LogonType; RunLevel = [string]$t.Principal.RunLevel;",
+  "    LastRunTime = $lrt; NextRunTime = $nrt; LastTaskResult = $ltr;",
+  "    Triggers = $trig; Actions = $acts",
+  "  }",
+  "} | Where-Object { $_.UserId -and $_.UserId -notmatch 'SYSTEM|LOCAL SERVICE|NETWORK SERVICE' });",
+  "try {",
+  "  Import-Module WebAdministration -ErrorAction Stop;",
+  "  $result.iisAppPools = @(Get-ChildItem IIS:\\AppPools | ForEach-Object {",
+  "    [PSCustomObject]@{",
+  "      Name = $_.Name; State = [string]$_.State;",
+  "      IdentityType = [string]$_.processModel.identityType; Username = $_.processModel.userName;",
+  "      ManagedRuntimeVersion = [string]$_.managedRuntimeVersion;",
+  "      ManagedPipelineMode = [string]$_.managedPipelineMode;",
+  "      AutoStart = [bool]$_.autoStart",
+  "    }",
+  "  } | Where-Object { $_.IdentityType -eq 'SpecificUser' })",
+  "} catch { $result.iisAppPools = @() };",
+  "$result | ConvertTo-Json -Depth 4"
+].join(" ");
+
+const executeWinRmDependencyEnumeration = async (
+  computer: TLdapComputer,
+  domainFQDN: string,
+  credentials: TAdDiscoveryCredentials,
+  gatewayId: string,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+): Promise<TWinRmDependencies> => {
+  const hostname = computer.dNSHostName || computer.cn;
+  const targetAddress = computer.resolvedIp || hostname;
+
+  return executeWithGateway(
+    { dcAddress: targetAddress, port: WINRM_PORT, gatewayId },
+    gatewayV2Service,
+    async (proxyPort) => {
+      const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
+      const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
+      const stdout = await runPowershell(
+        DEPENDENCY_ENUMERATION_SCRIPT,
+        "localhost",
+        winrmUsername,
+        credentials.password,
+        proxyPort
+      );
+
+      if (!stdout.trim()) {
+        return { services: [], scheduledTasks: [], iisAppPools: [] };
+      }
+
+      const parsed = JSON.parse(stdout) as Partial<TWinRmDependencies>;
+      const result = {
+        services: Array.isArray(parsed.services) ? parsed.services : [],
+        scheduledTasks: Array.isArray(parsed.scheduledTasks) ? parsed.scheduledTasks : [],
+        iisAppPools: Array.isArray(parsed.iisAppPools) ? parsed.iisAppPools : []
+      };
+
+      return result;
+    }
+  );
+};
+
+// Resolve a dependency's "run as" username to a discovered account ID
+// Handles formats: DOMAIN\user, user@domain.com, .\localuser, plain localuser
+const resolveAccountForDependency = (
+  runAsUser: string,
+  domainFQDN: string,
+  domainAccountMap: Map<string, string>,
+  localAccountMap: Map<string, string>
+): string | null => {
+  if (!runAsUser) return null;
+
+  const normalized = runAsUser.trim();
+  const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
+
+  // DOMAIN\user format
+  if (normalized.includes("\\")) {
+    const [domain, user] = normalized.split("\\", 2);
+    if (domain === ".") {
+      // .\user is explicitly local
+      return localAccountMap.get(user.toLowerCase()) ?? null;
+    }
+    if (domain.toUpperCase() === netbiosDomain) {
+      // NETBIOS\user — could be local or domain, check local first
+      return localAccountMap.get(user.toLowerCase()) ?? domainAccountMap.get(user.toLowerCase()) ?? null;
+    }
+    // Domain account
+    return domainAccountMap.get(user.toLowerCase()) ?? null;
+  }
+
+  // user@domain format
+  if (normalized.includes("@")) {
+    const [user] = normalized.split("@", 2);
+    return domainAccountMap.get(user.toLowerCase()) ?? null;
+  }
+
+  // Plain username — check local first, then domain
+  return localAccountMap.get(normalized.toLowerCase()) ?? domainAccountMap.get(normalized.toLowerCase()) ?? null;
 };
 
 const upsertLocalAccount = async (
@@ -654,6 +841,39 @@ const upsertLocalAccount = async (
   return { account, isNew: true };
 };
 
+const upsertDiscoveredDependency = async (
+  dependencyType: PamAccountDependencyType,
+  name: string,
+  displayName: string | null,
+  state: string | null,
+  data: Record<string, unknown>,
+  accountId: string,
+  resourceId: string,
+  discoverySourceId: string,
+  runId: string,
+  pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "upsertDependency">,
+  pamDiscoverySourceDependenciesDAL: Pick<TPamDiscoverySourceDependenciesDALFactory, "upsertJunction">
+) => {
+  const dependency = await pamAccountDependenciesDAL.upsertDependency({
+    accountId,
+    resourceId,
+    dependencyType,
+    name,
+    displayName,
+    state,
+    data,
+    source: PamAccountDependencySource.Discovery
+  });
+
+  await pamDiscoverySourceDependenciesDAL.upsertJunction({
+    discoverySourceId,
+    dependencyId: dependency.id,
+    lastSeenRunId: runId
+  });
+
+  return dependency;
+};
+
 export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
   TAdDiscoveryConfiguration,
   TAdDiscoveryCredentials
@@ -706,6 +926,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       pamDiscoveryRunDAL,
       pamDiscoverySourceResourcesDAL,
       pamDiscoverySourceAccountsDAL,
+      pamDiscoverySourceDependenciesDAL,
+      pamAccountDependenciesDAL,
       pamResourceDAL,
       pamAccountDAL,
       kmsService
@@ -725,8 +947,10 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
     let adEnumerationSucceeded = false;
     let resourcesDiscoveredCount = 0;
     let accountsDiscoveredCount = 0;
+    let dependenciesDiscoveredCount = 0;
     let newResourcesCount = 0;
     let newAccountsCount = 0;
+    let newDependenciesCount = 0;
 
     try {
       const { computers, users } = await executeLdapEnumeration(
@@ -823,10 +1047,12 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         resourcesDiscoveredCount
       });
 
-      // Auto-import domain accounts
+      // Auto-import domain accounts and build lookup map for dependency resolution
+      const domainAccountMap = new Map<string, string>(); // sAMAccountName (lowercase) -> accountId
+
       for await (const user of users) {
         try {
-          const { isNew } = await pamAccountDAL.transaction(async (tx) => {
+          const { account, isNew } = await pamAccountDAL.transaction(async (tx) => {
             const result = await upsertDomainAccount(
               projectId,
               user,
@@ -848,6 +1074,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             return result;
           });
 
+          domainAccountMap.set(user.sAMAccountName.toLowerCase(), account.id);
           accountsDiscoveredCount += 1;
           if (isNew) newAccountsCount += 1;
         } catch (err) {
@@ -878,10 +1105,12 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               gatewayV2Service
             );
 
+            const localAccountMap = new Map<string, string>(); // Name (lowercase) -> accountId
+
             for (const localUser of localUsers) {
               try {
                 // eslint-disable-next-line no-await-in-loop
-                const { isNew } = await pamAccountDAL.transaction(async (tx) => {
+                const { account, isNew } = await pamAccountDAL.transaction(async (tx) => {
                   const result = await upsertLocalAccount(
                     projectId,
                     localUser,
@@ -904,11 +1133,132 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                   return result;
                 });
 
+                localAccountMap.set(localUser.Name.toLowerCase(), account.id);
                 accountsDiscoveredCount += 1;
                 if (isNew) newAccountsCount += 1;
               } catch (err) {
                 logger.warn({ err, localUser: localUser.Name, computer: hostname }, "Failed to import local account");
               }
+            }
+
+            // Dependency discovery (services, scheduled tasks, IIS app pools)
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              const dependencies = await executeWinRmDependencyEnumeration(
+                computer,
+                configuration.domainFQDN,
+                credentials,
+                gatewayId,
+                gatewayV2Service
+              );
+
+              const depItems: {
+                type: PamAccountDependencyType;
+                name: string;
+                displayName: string | null;
+                state: string | null;
+                runAsUser: string;
+                data: Record<string, unknown>;
+              }[] = [];
+
+              for (const svc of dependencies.services) {
+                const startName = (svc.StartName || "").toLowerCase();
+                if (!startName || BUILTIN_SERVICE_ACCOUNTS.has(startName) || startName.startsWith("nt service\\")) {
+                  // eslint-disable-next-line no-continue
+                  continue;
+                }
+                depItems.push({
+                  type: PamAccountDependencyType.WindowsService,
+                  name: svc.Name,
+                  displayName: svc.DisplayName,
+                  state: svc.State,
+                  runAsUser: svc.StartName,
+                  data: {
+                    startMode: svc.StartMode,
+                    processId: svc.ProcessId,
+                    pathName: svc.PathName,
+                    description: svc.Description,
+                    runAsAccount: svc.StartName
+                  }
+                });
+              }
+
+              for (const task of dependencies.scheduledTasks) {
+                depItems.push({
+                  type: PamAccountDependencyType.ScheduledTask,
+                  name: task.TaskName,
+                  displayName: null,
+                  state: task.State,
+                  runAsUser: task.UserId,
+                  data: {
+                    taskPath: task.TaskPath,
+                    logonType: task.LogonType,
+                    runLevel: task.RunLevel,
+                    lastRunTime: task.LastRunTime,
+                    nextRunTime: task.NextRunTime,
+                    lastTaskResult: task.LastTaskResult,
+                    runAsAccount: task.UserId,
+                    triggers: task.Triggers ?? [],
+                    actions: task.Actions ?? []
+                  }
+                });
+              }
+
+              for (const pool of dependencies.iisAppPools) {
+                depItems.push({
+                  type: PamAccountDependencyType.IisAppPool,
+                  name: pool.Name,
+                  displayName: null,
+                  state: pool.State,
+                  runAsUser: pool.Username,
+                  data: {
+                    identityType: pool.IdentityType,
+                    managedRuntimeVersion: pool.ManagedRuntimeVersion,
+                    managedPipelineMode: pool.ManagedPipelineMode,
+                    autoStart: pool.AutoStart,
+                    runAsAccount: pool.Username
+                  }
+                });
+              }
+
+              for (const dep of depItems) {
+                const accountId = resolveAccountForDependency(
+                  dep.runAsUser,
+                  configuration.domainFQDN,
+                  domainAccountMap,
+                  localAccountMap
+                );
+
+                if (accountId) {
+                  try {
+                    // eslint-disable-next-line no-await-in-loop
+                    const dependency = await upsertDiscoveredDependency(
+                      dep.type,
+                      dep.name,
+                      dep.displayName,
+                      dep.state,
+                      dep.data,
+                      accountId,
+                      windowsResourceId,
+                      discoverySourceId,
+                      run.id,
+                      pamAccountDependenciesDAL,
+                      pamDiscoverySourceDependenciesDAL
+                    );
+
+                    dependenciesDiscoveredCount += 1;
+
+                    // createdAt === updatedAt means this is a newly inserted row
+                    if (dependency.createdAt.getTime() === dependency.updatedAt.getTime()) {
+                      newDependenciesCount += 1;
+                    }
+                  } catch (err) {
+                    logger.warn({ err, dependency: dep.name, computer: hostname }, "Failed to import dependency");
+                  }
+                }
+              }
+            } catch (err) {
+              logger.warn({ err, computer: hostname }, "WinRM dependency enumeration failed for machine");
             }
 
             scannedMachines += 1;
@@ -923,6 +1273,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         // eslint-disable-next-line no-await-in-loop
         await pamDiscoveryRunDAL.updateById(run.id, {
           accountsDiscoveredCount,
+          dependenciesDiscoveredCount,
           progress: {
             adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
             dependencyScan: {
@@ -941,6 +1292,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           (await pamDiscoverySourceResourcesDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
         const staleAccountsCount =
           (await pamDiscoverySourceAccountsDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
+        const staleDependenciesCount =
+          (await pamDiscoverySourceDependenciesDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
 
         const dependencyScanStatus =
           failedMachines === computers.length && computers.length > 0
@@ -951,13 +1304,13 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           status: PamDiscoverySourceRunStatus.Completed,
           resourcesDiscoveredCount,
           accountsDiscoveredCount,
-          dependenciesDiscoveredCount: 0,
+          dependenciesDiscoveredCount,
           newResourcesCount,
           staleResourcesCount,
           newAccountsCount,
           staleAccountsCount,
-          newDependenciesCount: 0,
-          staleDependenciesCount: 0,
+          newDependenciesCount,
+          staleDependenciesCount,
           completedAt: new Date(),
           progress: {
             adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },

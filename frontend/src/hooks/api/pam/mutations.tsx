@@ -171,6 +171,54 @@ export const useAccessPamAccount = () => {
   });
 };
 
+// Account Dependencies
+export const useTogglePamAccountDependency = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accountId,
+      dependencyId,
+      isEnabled
+    }: {
+      accountId: string;
+      dependencyId: string;
+      isEnabled: boolean;
+    }) => {
+      const { data } = await apiRequest.patch(
+        `/api/v1/pam/accounts/${accountId}/dependencies/${dependencyId}`,
+        { isEnabled }
+      );
+
+      return data.dependency;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+    }
+  });
+};
+
+export const useDeletePamAccountDependency = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accountId,
+      dependencyId
+    }: {
+      accountId: string;
+      dependencyId: string;
+    }) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/pam/accounts/${accountId}/dependencies/${dependencyId}`
+      );
+
+      return data.dependency;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+    }
+  });
+};
+
 // Folders
 export const useCreatePamFolder = () => {
   const queryClient = useQueryClient();
