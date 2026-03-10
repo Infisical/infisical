@@ -357,7 +357,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             setTimeout(() => inMemoryIdentifyDedup.delete(distinctId), TELEMETRY_IDENTIFY_CACHE_TTL * 1000);
           }
         }
-        postHog.identify({ distinctId, properties });
+        try {
+          postHog.identify({ distinctId, properties });
+        } catch (err) {
+          logger.error(err, "Failed to call postHog.identify");
+        }
       }
     }
   };
