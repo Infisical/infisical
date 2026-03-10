@@ -31,7 +31,7 @@ export type TAuditLogQueueServiceFactory = {
 // audit log is a crowded queue thus needs to be fast
 export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
-const AUDIT_LOG_CLICKHOUSE_STREAM_KEY = "audit-log-clickhouse-stream";
+const AUDIT_LOG_CLICKHOUSE_STREAM_KEY = "audit-log-stream";
 const AUDIT_LOG_CLICKHOUSE_BATCH_SIZE = 10_000;
 const AUDIT_LOG_CLICKHOUSE_MAX_ENTRIES = 50_000;
 
@@ -50,49 +50,6 @@ export const auditLogQueueServiceFactory = async ({
   const isClickHouseBatchEnabled = Boolean(clickhouseClient && CLICKHOUSE_AUDIT_LOG_ENABLED);
 
   const pushToLog = async (data: TCreateAuditLogDTO) => {
-    // Push to Redis stream for ClickHouse batch processing
-    if (isClickHouseBatchEnabled) {
-      try {
-        const { actor, event, ipAddress, projectId, userAgent, userAgentType } = data;
-        let { orgId } = data;
-
-        let project: TProjects | undefined;
-        if (!orgId) {
-          project = await projectDAL.findById(projectId as string);
-          orgId = project.orgId;
-        }
-
-        const plan = await licenseService.getPlan(orgId);
-        const ttlInDays =
-          project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
-            ? project.auditLogsRetentionDays
-            : plan.auditLogsRetentionDays;
-
-        const ttl = ttlInDays * MS_IN_DAY;
-
-        if (ttl > 0) {
-          await keyStore.streamAdd(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, "*", {
-            data: JSON.stringify({
-              id: randomUUID(),
-              actor: actor.type,
-              actorMetadata: actor.metadata ?? {},
-              ipAddress: ipAddress ?? "",
-              eventType: event.type,
-              eventMetadata: event.metadata ?? {},
-              userAgent: userAgent ?? "",
-              userAgentType: userAgentType ?? "",
-              projectId: projectId ?? "",
-              orgId,
-              expiresAt: new Date(Date.now() + ttl),
-              createdAt: new Date()
-            })
-          });
-        }
-      } catch (error) {
-        logger.error(error, "Failed to push audit log to Redis stream for ClickHouse batch");
-      }
-    }
-
     await queueService.queue<QueueName.AuditLog>(QueueName.AuditLog, QueueJobs.AuditLog, data, {
       removeOnFail: {
         count: 3
@@ -127,7 +84,10 @@ export const auditLogQueueServiceFactory = async ({
 
       const ttl = ttlInDays * MS_IN_DAY;
 
+      const id = randomUUID();
       const auditLog = await auditLogDAL.create({
+        // @ts-expect-error: id is added from our side to make it easier for us to correlate between the database and the stream
+        id,
         actor: actor.type,
         actorMetadata: actor.metadata,
         userAgent,
@@ -141,6 +101,31 @@ export const auditLogQueueServiceFactory = async ({
         userAgentType
       });
       await auditLogStreamService.streamLog(orgId, auditLog);
+
+      const createdAt = new Date(job.timestamp);
+      // Push to Redis stream for ClickHouse batch processing
+      if (isClickHouseBatchEnabled) {
+        try {
+          await keyStore.streamAdd(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, "*", {
+            data: JSON.stringify({
+              id,
+              actor: actor.type,
+              actorMetadata: actor.metadata ?? {},
+              ipAddress: ipAddress ?? "",
+              eventType: event.type,
+              eventMetadata: event.metadata ?? {},
+              userAgent: userAgent ?? "",
+              userAgentType: userAgentType ?? "",
+              projectId: projectId ?? "",
+              orgId,
+              expiresAt: new Date(createdAt.getTime() + ttl),
+              createdAt
+            })
+          });
+        } catch (error) {
+          logger.error(error, "Failed to push audit log to Redis stream for ClickHouse batch");
+        }
+      }
     }
   });
 
