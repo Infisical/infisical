@@ -350,7 +350,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             const wasSet = await keyStore.setItemWithExpiryNX(cacheKey, TELEMETRY_IDENTIFY_CACHE_TTL, "1");
             if (!wasSet) return;
           } catch (error) {
-            logger.error(error, "Failed to check PostHog identify dedup cache");
+            logger.error(error, `Failed to check PostHog identify dedup cache for distinctId=${distinctId}`);
             // In-memory fallback to limit blast radius during Redis outage
             if (inMemoryIdentifyDedup.has(distinctId)) return;
             inMemoryIdentifyDedup.add(distinctId);
@@ -360,7 +360,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         try {
           postHog.identify({ distinctId, properties });
         } catch (err) {
-          logger.error(err, "Failed to call postHog.identify");
+          logger.error(err, `Failed to call postHog.identify for distinctId=${distinctId}`);
         }
       }
     }
