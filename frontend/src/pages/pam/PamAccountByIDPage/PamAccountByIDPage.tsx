@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { BanIcon, EllipsisVerticalIcon, LogInIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -52,6 +52,25 @@ const PageContent = () => {
   };
 
   const { accountId, projectId, resourceType, resourceId } = params;
+
+  const selectedTab = useSearch({
+    strict: false,
+    select: (el) => el.selectedTab
+  });
+
+  const handleTabChange = (tab: string) => {
+    navigate({
+      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
+      search: (prev) => ({ ...prev, selectedTab: tab }),
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        resourceType: resourceType!,
+        resourceId: resourceId!,
+        accountId: accountId!
+      }
+    });
+  };
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -217,7 +236,7 @@ const PageContent = () => {
 
         {/* Right Column - Tabbed Content */}
         <div className="flex-1">
-          <Tabs defaultValue="resources">
+          <Tabs value={selectedTab} onValueChange={handleTabChange}>
             <TabList>
               <Tab value="resources">Resources</Tab>
               <Tab value="dependencies">Dependencies</Tab>
