@@ -1213,6 +1213,62 @@ export const fnUpdateMovedSecretReferences = async ({
   }
 };
 
+type TCreateFetchFolderSecretsWithImportsArg = {
+  projectId: string;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+};
+
+// Returns a function that fetches direct secrets for a folder merged with its
+// one-level-deep imported secrets. Direct secrets take priority over imports.
+export const createFetchFolderSecretsWithImports = ({
+  projectId,
+  secretDAL,
+  secretImportDAL,
+  folderDAL
+}: TCreateFetchFolderSecretsWithImportsArg) => {
+  return async (folderId: string, userIdArg: string | undefined) => {
+    type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
+    const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg });
+    const rawImports = (await secretImportDAL.findByFolderIds([folderId])) as ImportRow[];
+    if (!rawImports.length) return directSecrets;
+
+    // Resolve reserved imports (replication read-side) to their actual source env/path.
+    // Reserved import paths look like /__reserve_replication_<uuid> and must be
+    // translated to the real source before folder lookup.
+    const reservedIds: string[] = [];
+    for (const imp of rawImports) {
+      if (imp.isReserved) {
+        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
+        if (match) reservedIds.push(match[1]);
+      }
+    }
+    let activeImports: ImportRow[] = rawImports;
+    if (reservedIds.length) {
+      const referenced = (await secretImportDAL.findByIds(reservedIds)) as ImportRow[];
+      const detailMap = new Map(referenced.map((r) => [r.id, { importPath: r.importPath, importEnv: r.importEnv }]));
+      activeImports = rawImports.map((imp) => {
+        if (!imp.isReserved) return imp;
+        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
+        if (!match) return imp;
+        const details = detailMap.get(match[1]);
+        return details ? { ...imp, importPath: details.importPath, importEnv: details.importEnv } : imp;
+      });
+    }
+
+    const importedFolders = await Promise.all(
+      activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
+    );
+    const importedSecretArrays = await Promise.all(
+      importedFolders.filter(Boolean).map((f) => secretDAL.findByFolderId({ folderId: f!.id, userId: userIdArg }))
+    );
+    const importedMerged = new Map(importedSecretArrays.flat().map((s) => [s.key, s]));
+    directSecrets.forEach((s) => importedMerged.set(s.key, s));
+    return [...importedMerged.values()];
+  };
+};
+
 type TCreateRelativeImportExpanderArg = {
   projectId: string;
   currentEnvironment: string;
@@ -1245,46 +1301,12 @@ export const createRelativeImportExpander = ({
   }) => Promise<string | undefined>;
 } => {
   const relativeImportExpanders = new Map<string, ReturnType<typeof expandSecretReferencesFactory>>();
-
-  // returns direct secrets for a folder merged with its one-level-deep imported secrets
-  // direct secrets take priority. imported secrets act as fallback for absent keys
-  const fetchFolderSecretsWithImports = async (folderId: string, userIdArg: string | undefined) => {
-    type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
-    const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg });
-    const rawImports = (await secretImportDAL.findByFolderIds([folderId])) as ImportRow[];
-    if (!rawImports.length) return directSecrets;
-
-    // resolve reserved imports (replication read-side) to their actual source env/path
-    const reservedIds: string[] = [];
-    for (const imp of rawImports) {
-      if (imp.isReserved) {
-        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
-        if (match) reservedIds.push(match[1]);
-      }
-    }
-    let activeImports: ImportRow[] = rawImports;
-    if (reservedIds.length) {
-      const referenced = (await secretImportDAL.findByIds(reservedIds)) as ImportRow[];
-      const detailMap = new Map(referenced.map((r) => [r.id, { importPath: r.importPath, importEnv: r.importEnv }]));
-      activeImports = rawImports.map((imp) => {
-        if (!imp.isReserved) return imp;
-        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
-        if (!match) return imp;
-        const details = detailMap.get(match[1]);
-        return details ? { ...imp, importPath: details.importPath, importEnv: details.importEnv } : imp;
-      });
-    }
-
-    const importedFolders = await Promise.all(
-      activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
-    );
-    const importedSecretArrays = await Promise.all(
-      importedFolders.filter(Boolean).map((f) => secretDAL.findByFolderId({ folderId: f!.id, userId: userIdArg }))
-    );
-    const importedMerged = new Map(importedSecretArrays.flat().map((s) => [s.key, s]));
-    directSecrets.forEach((s) => importedMerged.set(s.key, s));
-    return [...importedMerged.values()];
-  };
+  const fetchFolderSecretsWithImports = createFetchFolderSecretsWithImports({
+    projectId,
+    secretDAL,
+    secretImportDAL,
+    folderDAL
+  });
 
   const getRelativeExpander = (sourceEnvironment: string, sourcePath: string) => {
     const expanderKey = `${sourceEnvironment}:${sourcePath}`;

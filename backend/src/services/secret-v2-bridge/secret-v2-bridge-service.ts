@@ -70,6 +70,7 @@ import {
 } from "./secret-v2-bridge-dal";
 import {
   buildHierarchy,
+  createFetchFolderSecretsWithImports,
   createRelativeImportExpander,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
@@ -1328,10 +1329,27 @@ export const secretV2BridgeServiceFactory = ({
         );
       });
 
+    // note(daniel):  when in relative mode, direct secret references also resolve through imported secrets.
+    // wrap secretDAL with import-aware fetch so the expander sees the full merged view.
+    const mainExpanderSecretDAL =
+      secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
+        ? {
+            findByFolderId: async (args: Parameters<(typeof secretDAL)["findByFolderId"]>[0]) => {
+              const fetchWithImports = createFetchFolderSecretsWithImports({
+                projectId,
+                secretDAL,
+                secretImportDAL,
+                folderDAL
+              });
+              return fetchWithImports(args.folderId, args.userId);
+            }
+          }
+        : secretDAL;
+
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
-      secretDAL,
+      secretDAL: mainExpanderSecretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
