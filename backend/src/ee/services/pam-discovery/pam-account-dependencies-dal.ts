@@ -92,9 +92,9 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
           data: data.data
           // Note: isEnabled is NOT merged - preserves admin's explicit enable/disable
         })
-        .returning("*");
+        .returning(["*", knex.raw('(xmax = 0) as "isNew"')]);
 
-      return doc;
+      return doc as typeof doc & { isNew: boolean };
     } catch (error) {
       throw new DatabaseError({ error, name: "Upsert PAM account dependency" });
     }

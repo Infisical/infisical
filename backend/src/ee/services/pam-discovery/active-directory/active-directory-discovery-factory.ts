@@ -1282,8 +1282,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
 
                     dependenciesDiscoveredCount += 1;
 
-                    // createdAt === updatedAt means this is a newly inserted row
-                    if (dependency.createdAt.getTime() === dependency.updatedAt.getTime()) {
+                    if (dependency.isNew) {
                       newDependenciesCount += 1;
                     }
                   } catch (err) {
