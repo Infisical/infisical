@@ -32,7 +32,14 @@ import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
+import {
+  orgAdminPermissions,
+  orgMemberPermissions,
+  orgNoAccessPermissions,
+  OrgPermissionSet,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects
+} from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { escapeHandlebarsMissingDict, validateOrgSSO } from "./permission-fns";
 import {
@@ -244,17 +251,24 @@ export const permissionServiceFactory = ({
     const hasRole = (role: string) =>
       permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
 
-    validateOrgSSO(
-      actorAuthMethod,
-      permissionData?.[0].orgAuthEnforced,
-      Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-      Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-      hasRole(OrgMembershipRole.Admin)
-    );
-
     const permission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
       conditionsMatcher
     });
+
+    const canBypassSso =
+      hasRole(OrgMembershipRole.Admin) ||
+      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+
+    // SSO enforcement applies only to users
+    if (actor === ActorType.USER) {
+      validateOrgSSO(
+        actorAuthMethod,
+        permissionData?.[0].orgAuthEnforced,
+        Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
+        Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+        canBypassSso
+      );
+    }
 
     return {
       permission,

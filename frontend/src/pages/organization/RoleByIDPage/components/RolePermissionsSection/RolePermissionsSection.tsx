@@ -25,6 +25,7 @@ import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
 import { OrgPermissionMachineIdentityAuthTemplateRow } from "./OrgPermissionMachineIdentityAuthTemplateRow";
 import { OrgRelayPermissionRow } from "./OrgPermissionRelayRow";
 import { OrgPermissionSecretShareRow } from "./OrgPermissionSecretShareRow";
+import { OrgPermissionSsoRow } from "./OrgPermissionSsoRow";
 import { OrgPermissionSubOrgRow } from "./OrgPermissionSubOrgRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
@@ -49,10 +50,6 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "Secret Scanning",
     formName: "secret-scanning"
-  },
-  {
-    title: "SSO",
-    formName: "sso"
   },
   {
     title: "LDAP",
@@ -174,6 +171,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
+              <OrgPermissionSsoRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
               <OrgPermissionAuditLogsRow
                 control={control}
                 setValue={setValue}

@@ -13,7 +13,6 @@ import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin"
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -97,24 +96,14 @@ export const SelectOrganizationSection = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      const isUserOrgAdmin = organization.userRole === OrgMembershipRole.Admin;
-      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isUserOrgAdmin && isAdminLogin;
+      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isAdminLogin;
 
-      if (isAdminLogin) {
-        if (!organization.bypassOrgAuthEnabled) {
-          createNotification({
-            text: "This organization does not have bypass org auth enabled",
-            type: "error"
-          });
-          return;
-        }
-        if (!isUserOrgAdmin) {
-          createNotification({
-            text: "Only organization admins can bypass org auth",
-            type: "error"
-          });
-          return;
-        }
+      if (isAdminLogin && !organization.bypassOrgAuthEnabled) {
+        createNotification({
+          text: "This organization does not have bypass org auth enabled",
+          type: "error"
+        });
+        return;
       }
 
       if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
