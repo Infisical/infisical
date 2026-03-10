@@ -783,7 +783,17 @@ export const gatewayV2ServiceFactory = ({
       throw new BadRequestError({ message: `Gateway ${gateway.id} is not reachable` });
     }
 
-    await gatewayV2DAL.updateById(gateway.id, { heartbeat: new Date() });
+    // Validate relay association before doing any expensive crypto work.
+    if (!gateway.relayId) {
+      throw new BadRequestError({
+        message: "Gateway is not associated with a relay"
+      });
+    }
+
+    const relay = await relayDAL.findOne({ id: gateway.relayId });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay for gateway ${gateway.id} not found.` });
+    }
 
     // Renew the gateway server certificate and relay credentials to prevent expiration.
     // The server cert issued during registration has a 1-day TTL, so each heartbeat
@@ -844,23 +854,16 @@ export const gatewayV2ServiceFactory = ({
       extensions: gatewayServerCertExtensions
     });
 
-    if (!gateway.relayId) {
-      throw new BadRequestError({
-        message: "Gateway is not associated with a relay"
-      });
-    }
-
-    const relay = await relayDAL.findOne({ id: gateway.relayId });
-    if (!relay) {
-      throw new NotFoundError({ message: `Relay for gateway ${gateway.id} not found.` });
-    }
-
     const relayCredentials = await relayService.getCredentialsForGateway({
       relayName: relay.name,
       orgId: orgPermission.orgId,
       gatewayId: gateway.id,
       gatewayName: gateway.name
     });
+
+    // Update heartbeat timestamp only after all renewal work succeeds,
+    // so the gateway isn't marked healthy if it never received fresh credentials.
+    await gatewayV2DAL.updateById(gateway.id, { heartbeat: new Date() });
 
     return {
       pki: {
