@@ -26,6 +26,7 @@ import {
   withTransaction
 } from "@app/lib/knex";
 import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
+import { OrderByDirection } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 import { OrgAuthMethod, TOrgWithSubOrgs } from "./org-types";
@@ -162,70 +163,75 @@ export const orgDALFactory = (db: TDbClient) => {
     actorType: ActorType;
     orgId: string;
     isAccessible?: boolean;
+    search?: string;
+    orderBy?: string;
+    orderDirection?: OrderByDirection;
     limit?: number;
     offset?: number;
   }) => {
     try {
       const conn = db.replicaNode();
+      const orderBy = dto.orderBy ?? "name";
+      const orderDirection = dto.orderDirection ?? "asc";
 
-      if (dto.isAccessible) {
-        // Subquery: sub-org ids (children of root)
-        const subOrgIdsSubquery = conn(TableName.Organization)
-          .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
-          .select(db.ref("id").withSchema(TableName.Organization));
+      const buildBaseQuery = () => {
+        if (dto.isAccessible) {
+          const subOrgIdsSubquery = conn(TableName.Organization)
+            .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
+            .select(db.ref("id").withSchema(TableName.Organization));
 
-        // Group IDs the actor belongs to
-        const userGroupIdsSubquery = conn(TableName.Groups)
-          .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-          .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
-          .select(db.ref("id").withSchema(TableName.Groups));
+          const userGroupIdsSubquery = conn(TableName.Groups)
+            .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+            .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
+            .select(db.ref("id").withSchema(TableName.Groups));
 
-        const identityGroupIdsSubquery = conn(TableName.Groups)
-          .join(
-            TableName.IdentityGroupMembership,
-            `${TableName.IdentityGroupMembership}.groupId`,
-            `${TableName.Groups}.id`
-          )
-          .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId)
-          .select(db.ref("id").withSchema(TableName.Groups));
+          const identityGroupIdsSubquery = conn(TableName.Groups)
+            .join(
+              TableName.IdentityGroupMembership,
+              `${TableName.IdentityGroupMembership}.groupId`,
+              `${TableName.Groups}.id`
+            )
+            .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId)
+            .select(db.ref("id").withSchema(TableName.Groups));
 
-        // Accessible sub-org ids: memberships in those orgs where actor is direct or via group
-        const accessibleSubOrgIdsSubquery = conn(TableName.Membership)
-          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-          .whereIn(`${TableName.Membership}.scopeOrgId`, subOrgIdsSubquery)
-          .andWhere((qb) => {
-            if (dto.actorType === ActorType.USER) {
-              void qb
-                .where(`${TableName.Membership}.actorUserId`, dto.actorId)
-                .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
-            } else {
-              void qb
-                .where(`${TableName.Membership}.actorIdentityId`, dto.actorId)
-                .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupIdsSubquery);
-            }
-          })
-          .select(db.ref("scopeOrgId").withSchema(TableName.Membership));
+          const accessibleSubOrgIdsSubquery = conn(TableName.Membership)
+            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+            .whereIn(`${TableName.Membership}.scopeOrgId`, subOrgIdsSubquery)
+            .andWhere((qb) => {
+              if (dto.actorType === ActorType.USER) {
+                void qb
+                  .where(`${TableName.Membership}.actorUserId`, dto.actorId)
+                  .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
+              } else {
+                void qb
+                  .where(`${TableName.Membership}.actorIdentityId`, dto.actorId)
+                  .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupIdsSubquery);
+              }
+            })
+            .select(db.ref("scopeOrgId").withSchema(TableName.Membership));
 
-        const query = conn(TableName.Organization)
-          .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
-          .whereIn(`${TableName.Organization}.id`, accessibleSubOrgIdsSubquery)
-          .select(selectAllTableCols(TableName.Organization));
+          return conn(TableName.Organization)
+            .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
+            .whereIn(`${TableName.Organization}.id`, accessibleSubOrgIdsSubquery);
+        }
 
-        if (dto.limit) void query.limit(dto.limit);
-        if (dto.offset) void query.offset(dto.offset);
+        return conn(TableName.Organization).where(`${TableName.Organization}.rootOrgId`, dto.orgId);
+      };
 
-        const orgs = await query;
-        return orgs;
-      }
+      const baseQuery = buildBaseQuery();
+      if (dto.search) void baseQuery.whereILike(`${TableName.Organization}.name`, `%${dto.search}%`);
 
-      const query = conn(TableName.Organization)
-        .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
-        .select(selectAllTableCols(TableName.Organization));
-      if (dto.limit) void query.limit(dto.limit);
-      if (dto.offset) void query.offset(dto.offset);
+      const [totalResult, orgs] = await Promise.all([
+        baseQuery.clone().count({ count: "*" }).first(),
+        baseQuery
+          .clone()
+          .select(selectAllTableCols(TableName.Organization))
+          .orderBy(`${TableName.Organization}.${orderBy}`, orderDirection)
+          .limit(dto.limit ?? 25)
+          .offset(dto.offset ?? 0)
+      ]);
 
-      const orgs = await query;
-      return orgs;
+      return { orgs, totalCount: Number(totalResult?.count ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "List sub organization" });
     }

@@ -175,6 +175,7 @@ export type TCreateSecretsV3DTO = {
   environment: string;
   type: SecretType;
   tagIds?: string[];
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
 };
 
 export type TUpdateSecretsV3DTO = {

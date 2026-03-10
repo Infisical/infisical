@@ -31,6 +31,10 @@ import {
   useUpdateProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/projectUserAdditionalPrivilege/types";
+import {
+  filterByGrantConditions,
+  getMemberAssignPrivilegesConditions
+} from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -89,6 +93,31 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionMemberActions.Edit,
     ProjectPermissionSub.Member
+  );
+
+  const assignPrivilegesConditions = useMemo(
+    () => getMemberAssignPrivilegesConditions(permission),
+    [permission]
+  );
+
+  const filteredPermissionSubjects = useMemo(
+    () =>
+      filterByGrantConditions(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[], {
+        getKey: (s) => s,
+        allowed: assignPrivilegesConditions?.subjects,
+        forbidden: assignPrivilegesConditions?.forbiddenSubjects
+      }),
+    [assignPrivilegesConditions]
+  );
+
+  const getFilteredActionsForSubject = useMemo(
+    () => (subject: ProjectPermissionSub) =>
+      filterByGrantConditions(PROJECT_PERMISSION_OBJECT[subject].actions, {
+        getKey: (action) => `${subject}:${action.value}`,
+        allowed: assignPrivilegesConditions?.actions,
+        forbidden: assignPrivilegesConditions?.forbiddenActions
+      }),
+    [assignPrivilegesConditions]
   );
 
   const form = useForm<TFormSchema>({
@@ -368,6 +397,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                   isDisabled={isDisabled}
                   projectType={currentProject.type}
                   projectId={projectId}
+                  allowedSubjects={filteredPermissionSubjects}
                 />
               )}
             </div>
@@ -381,11 +411,14 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                 onValueChange={setOpenPolicies}
                 className="overflow-clip rounded-md border border-border bg-container"
               >
-                {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
-                  (permissionSubject) => (
+                {filteredPermissionSubjects.map((permissionSubject) => {
+                  const filteredActions = getFilteredActionsForSubject(permissionSubject);
+                  if (filteredActions.length === 0) return null;
+
+                  return (
                     <GeneralPermissionPolicies
                       subject={permissionSubject}
-                      actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                      actions={filteredActions}
                       title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
                       description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
                       key={`project-permission-${permissionSubject}`}
@@ -395,8 +428,8 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                     >
                       {renderConditionalComponents(permissionSubject, isDisabled)}
                     </GeneralPermissionPolicies>
-                  )
-                )}
+                  );
+                })}
               </UnstableAccordion>
             </div>
           )}

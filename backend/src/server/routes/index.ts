@@ -738,12 +738,12 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     membershipDAL,
     orgDAL,
-    permissionService
+    permissionService,
+    userDAL
   });
 
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
-    keyStore,
     kmsDAL,
     internalKmsDAL,
     orgDAL,

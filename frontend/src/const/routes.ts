@@ -36,6 +36,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/secret-sharing",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing/"
     ),
+    ProjectsPage: setRoute(
+      "/organizations/$orgId/projects",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
+    ),
     SettingsPage: setRoute(
       "/organizations/$orgId/settings",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/"

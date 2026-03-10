@@ -982,6 +982,16 @@
                 ]
               },
               {
+                "group": "Sub Organizations",
+                "pages": [
+                  "api-reference/endpoints/sub-organizations/create",
+                  "api-reference/endpoints/sub-organizations/list",
+                  "api-reference/endpoints/sub-organizations/update",
+                  "api-reference/endpoints/sub-organizations/delete",
+                  "api-reference/endpoints/sub-organizations/memberships"
+                ]
+              },
+              {
                 "group": "OIDC SSO",
                 "pages": [
                   "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",

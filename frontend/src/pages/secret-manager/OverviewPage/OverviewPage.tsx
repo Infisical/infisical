@@ -52,6 +52,11 @@ import {
   Badge,
   Button,
   Checkbox,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -2309,23 +2314,23 @@ export const OverviewPage = () => {
           </UnstableCardContent>
         </UnstableCard>
       </div>
-      <Modal
-        isOpen={popUp.addSecretsInAllEnvs.isOpen}
+      <Sheet
+        modal={false}
+        open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
-        <ModalContent
-          className="max-h-[80vh]"
-          bodyClassName="overflow-visible"
-          title="Create Secrets"
-          subTitle="Create a secret across multiple environments"
-          onPointerDownOutside={(e) => e.preventDefault()}
-        >
+        <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">
+          <SheetHeader className="border-b">
+            <SheetTitle>Create Secret</SheetTitle>
+            <SheetDescription>Create a secret across multiple environments</SheetDescription>
+          </SheetHeader>
           <CreateSecretForm
             secretPath={secretPath}
+            defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
           />
-        </ModalContent>
-      </Modal>
+        </SheetContent>
+      </Sheet>
       <Modal
         isOpen={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}

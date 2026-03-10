@@ -1,3 +1,4 @@
+import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -29,6 +30,7 @@ type SingleEventData = {
   event: string;
   properties: unknown;
   organizationId: string;
+  organizationName?: string;
 };
 
 export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory>;
@@ -100,6 +102,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   const sendPostHogEvents = async (event: TPostHogEvent) => {
     if (postHog) {
       const instanceType = licenseService.getInstanceType();
+
+      // Resolve org name: prefer explicit value, fall back to request context
+      const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
+
       // capture posthog only when its cloud or signup event happens in self-hosted
       if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
         if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
@@ -111,13 +117,18 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
               distinctId: event.distinctId,
               event: event.event,
               properties: event.properties,
-              organizationId: event.organizationId
+              organizationId: event.organizationId,
+              ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
             })
           );
         } else {
           if (event.organizationId) {
             try {
-              postHog.groupIdentify({ groupType: "organization", groupKey: event.organizationId });
+              postHog.groupIdentify({
+                groupType: "organization",
+                groupKey: event.organizationId,
+                ...(resolvedOrgName ? { properties: { name: resolvedOrgName } } : {})
+              });
             } catch (error) {
               logger.error(error, "Failed to identify PostHog organization");
             }
@@ -254,7 +265,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         const key = JSON.parse(eventsKey) as { id: string; org?: string };
         if (key.org) {
           try {
-            postHog.groupIdentify({ groupType: "organization", groupKey: key.org });
+            // Use the organizationName from the first event in the group (all events in a group share the same org)
+            const orgName = events[0]?.organizationName;
+            postHog.groupIdentify({
+              groupType: "organization",
+              groupKey: key.org,
+              ...(orgName ? { properties: { name: orgName } } : {})
+            });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
           }
@@ -303,6 +320,27 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const identifyUser = (
+    distinctId: string,
+    properties: {
+      email?: string;
+      username?: string;
+      userId?: string;
+      firstName?: string;
+      lastName?: string;
+      isMfaEnabled?: boolean;
+      isEmailVerified?: boolean;
+      superAdmin?: boolean;
+    }
+  ) => {
+    if (postHog && distinctId) {
+      const instanceType = licenseService.getInstanceType();
+      if (instanceType === InstanceType.Cloud) {
+        postHog.identify({ distinctId, properties });
+      }
+    }
+  };
+
   const flushAll = async () => {
     if (postHog) {
       await postHog.shutdownAsync();
@@ -312,6 +350,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   return {
     sendLoopsEvent,
     sendPostHogEvents,
+    identifyUser,
     processAggregatedEvents,
     flushAll,
     getBucketForDistinctId

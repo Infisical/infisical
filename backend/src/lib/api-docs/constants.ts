@@ -845,7 +845,16 @@ export const SUB_ORGANIZATIONS = {
   LIST: {
     limit: "The number of sub organizations to return.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th sub organization.",
+    search: "Optional. Filter sub organizations by name (case-insensitive substring match).",
+    orderBy: "The field to order sub organizations by. Currently only 'name' is supported.",
+    orderDirection: "The direction to order sub organizations. Either 'asc' or 'desc'.",
     isAccessible: "Filter to only return sub organizations that the actor has access to."
+  },
+  DELETE: {
+    subOrgId: "The id of the sub organization to delete."
+  },
+  JOIN: {
+    subOrgId: "The id of the sub organization to create a membership in."
   }
 } as const;
 
