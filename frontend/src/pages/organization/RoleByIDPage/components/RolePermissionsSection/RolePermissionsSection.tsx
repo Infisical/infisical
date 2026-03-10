@@ -171,11 +171,13 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
-              <OrgPermissionSsoRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
+              {isRootOrganization && (
+                <OrgPermissionSsoRow
+                  control={control}
+                  setValue={setValue}
+                  isEditable={isCustomRole}
+                />
+              )}
               <OrgPermissionAuditLogsRow
                 control={control}
                 setValue={setValue}

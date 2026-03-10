@@ -418,13 +418,16 @@ export const permissionServiceFactory = ({
     const hasRole = (role: string) =>
       permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
 
-    validateOrgSSO(
-      actorAuthMethod,
-      permissionData?.[0].orgAuthEnforced,
-      Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-      Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-      hasRole(ProjectMembershipRole.Admin)
-    );
+    // SSO enforcement applies only to users
+    if (actor === ActorType.USER) {
+      validateOrgSSO(
+        actorAuthMethod,
+        permissionData?.[0].orgAuthEnforced,
+        Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
+        Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+        hasRole(ProjectMembershipRole.Admin)
+      );
+    }
 
     const rules = buildProjectPermissionRules(permissionFromRoles);
     const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
