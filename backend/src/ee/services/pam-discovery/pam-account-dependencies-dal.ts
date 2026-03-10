@@ -94,7 +94,7 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
         })
         .returning(["*", knex.raw('(xmax = 0) as "isNew"')]);
 
-      return doc as typeof doc & { isNew: boolean };
+      return doc as TPamAccountDependencies & { isNew: boolean };
     } catch (error) {
       throw new DatabaseError({ error, name: "Upsert PAM account dependency" });
     }
