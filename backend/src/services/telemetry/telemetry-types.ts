@@ -317,6 +317,9 @@ export type TSecretSyncDeletedEvent = {
     environment: string;
     secretPath: string;
     removeSecrets: boolean;
+  };
+};
+
 export type TDynamicSecretCreatedEvent = {
   event: PostHogEventTypes.DynamicSecretCreated;
   properties: {
