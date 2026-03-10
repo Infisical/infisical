@@ -385,7 +385,7 @@ export type TAccessApprovalRequestCreatedEvent = {
     requestId: string;
     projectId: string;
     isTemporary: boolean;
-    temporaryRange: string;
+    temporaryRange?: string;
   };
 };
 

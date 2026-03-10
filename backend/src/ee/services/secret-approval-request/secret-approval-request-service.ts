@@ -1661,18 +1661,20 @@ export const secretApprovalRequestServiceFactory = ({
       notificationService
     });
 
-    void telemetryService.sendPostHogEvents({
-      event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-      distinctId: actorId,
-      properties: {
-        requestId: secretApprovalRequest.id,
-        policyId: policy.id,
-        projectId,
-        environment,
-        secretPath,
-        numberOfCommits: commits.length
-      }
-    }).catch(() => {});
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestSubmitted,
+        distinctId: user.username ?? user.email ?? actorId,
+        properties: {
+          requestId: secretApprovalRequest.id,
+          policyId: policy.id,
+          projectId,
+          environment,
+          secretPath,
+          numberOfCommits: commits.length
+        }
+      })
+      .catch(() => {});
 
     return secretApprovalRequest;
   };
@@ -2080,18 +2082,20 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       notificationService
     });
-    void telemetryService.sendPostHogEvents({
-      event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-      distinctId: actorId,
-      properties: {
-        requestId: secretApprovalRequest.id,
-        policyId: policy.id,
-        projectId,
-        environment,
-        secretPath,
-        numberOfCommits: commits.length
-      }
-    }).catch(() => {});
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestSubmitted,
+        distinctId: user.username ?? user.email ?? actorId,
+        properties: {
+          requestId: secretApprovalRequest.id,
+          policyId: policy.id,
+          projectId,
+          environment,
+          secretPath,
+          numberOfCommits: commits.length
+        }
+      })
+      .catch(() => {});
 
     return secretApprovalRequest;
   };
