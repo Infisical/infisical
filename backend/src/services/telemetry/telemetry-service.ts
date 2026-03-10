@@ -37,7 +37,7 @@ export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory
 export type TTelemetryServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
-    "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "getKeysByPattern" | "getItems" | "getItem"
+    "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "setItemWithExpiryNX" | "getKeysByPattern" | "getItems"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType">;
 };
@@ -323,6 +323,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   const TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify";
   const TELEMETRY_IDENTIFY_CACHE_TTL = 600; // 10 minutes
 
+  // In-memory fallback dedup set to limit blast radius during Redis outages
+  const inMemoryIdentifyDedup = new Set<string>();
+
   const identifyUser = async (
     distinctId: string,
     properties: {
@@ -343,12 +346,15 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         if (!skipDedup) {
           try {
             const cacheKey = `${TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX}:${distinctId}`;
-            const cached = await keyStore.getItem(cacheKey);
-            if (cached) return;
-            await keyStore.setItemWithExpiry(cacheKey, TELEMETRY_IDENTIFY_CACHE_TTL, "1");
+            // Atomic SET NX + EX: only the first caller within the TTL window proceeds
+            const wasSet = await keyStore.setItemWithExpiryNX(cacheKey, TELEMETRY_IDENTIFY_CACHE_TTL, "1");
+            if (!wasSet) return;
           } catch (error) {
             logger.error(error, "Failed to check PostHog identify dedup cache");
-            // Continue with identify even if cache check fails
+            // In-memory fallback to limit blast radius during Redis outage
+            if (inMemoryIdentifyDedup.has(distinctId)) return;
+            inMemoryIdentifyDedup.add(distinctId);
+            setTimeout(() => inMemoryIdentifyDedup.delete(distinctId), TELEMETRY_IDENTIFY_CACHE_TTL * 1000);
           }
         }
         postHog.identify({ distinctId, properties });

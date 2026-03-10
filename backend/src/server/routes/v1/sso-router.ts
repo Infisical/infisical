@@ -79,13 +79,17 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
 
             const googleDistinctId = user.username ?? user.email ?? "";
             if (googleDistinctId) {
-              void server.services.telemetry.identifyUser(googleDistinctId, {
-                email: user.email ?? undefined,
-                username: user.username,
-                userId: user.id,
-                firstName: user.firstName ?? undefined,
-                lastName: user.lastName ?? undefined
-              }, { skipDedup: true });
+              void server.services.telemetry.identifyUser(
+                googleDistinctId,
+                {
+                  email: user.email ?? undefined,
+                  username: user.username,
+                  userId: user.id,
+                  firstName: user.firstName ?? undefined,
+                  lastName: user.lastName ?? undefined
+                },
+                { skipDedup: true }
+              );
             }
 
             if (!isUserCompleted && googleDistinctId) {
@@ -175,13 +179,17 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
 
             const githubDistinctId = user.username ?? user.email ?? "";
             if (githubDistinctId) {
-              void server.services.telemetry.identifyUser(githubDistinctId, {
-                email: user.email ?? undefined,
-                username: user.username,
-                userId: user.id,
-                firstName: user.firstName ?? undefined,
-                lastName: user.lastName ?? undefined
-              }, { skipDedup: true });
+              void server.services.telemetry.identifyUser(
+                githubDistinctId,
+                {
+                  email: user.email ?? undefined,
+                  username: user.username,
+                  userId: user.id,
+                  firstName: user.firstName ?? undefined,
+                  lastName: user.lastName ?? undefined
+                },
+                { skipDedup: true }
+              );
             }
 
             if (!isUserCompleted && githubDistinctId) {
@@ -263,13 +271,17 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
 
             const gitlabDistinctId = user.username ?? user.email ?? "";
             if (gitlabDistinctId) {
-              void server.services.telemetry.identifyUser(gitlabDistinctId, {
-                email: user.email ?? undefined,
-                username: user.username,
-                userId: user.id,
-                firstName: user.firstName ?? undefined,
-                lastName: user.lastName ?? undefined
-              }, { skipDedup: true });
+              void server.services.telemetry.identifyUser(
+                gitlabDistinctId,
+                {
+                  email: user.email ?? undefined,
+                  username: user.username,
+                  userId: user.id,
+                  firstName: user.firstName ?? undefined,
+                  lastName: user.lastName ?? undefined
+                },
+                { skipDedup: true }
+              );
             }
 
             if (!isUserCompleted && gitlabDistinctId) {
@@ -633,11 +645,15 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
 
       const tokenExchangeDistinctId = data.user.username ?? data.user.email ?? "";
       if (tokenExchangeDistinctId) {
-        void server.services.telemetry.identifyUser(tokenExchangeDistinctId, {
-          email: data.user.email ?? undefined,
-          username: data.user.username,
-          userId: data.user.userId
-        }, { skipDedup: true });
+        void server.services.telemetry.identifyUser(
+          tokenExchangeDistinctId,
+          {
+            email: data.user.email ?? undefined,
+            username: data.user.username,
+            userId: data.user.userId
+          },
+          { skipDedup: true }
+        );
       }
 
       if ([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB].includes(data.decodedProviderToken.authMethod)) {

@@ -22,6 +22,11 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       store[key] = value;
       return "OK";
     },
+    setItemWithExpiryNX: async (key, _expiryInSeconds, value) => {
+      if (store[key] !== undefined) return null;
+      store[key] = value;
+      return "OK";
+    },
     deleteItem: async (key) => {
       delete store[key];
       return 1;

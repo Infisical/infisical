@@ -157,11 +157,15 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       const login2DistinctId = data.user.username ?? data.user.email ?? "";
       if (login2DistinctId) {
-        void server.services.telemetry.identifyUser(login2DistinctId, {
-          email: data.user.email ?? undefined,
-          username: data.user.username,
-          userId: data.user.userId
-        }, { skipDedup: true });
+        void server.services.telemetry.identifyUser(
+          login2DistinctId,
+          {
+            email: data.user.email ?? undefined,
+            username: data.user.username,
+            userId: data.user.userId
+          },
+          { skipDedup: true }
+        );
       }
 
       void res.setCookie("jid", data.token.refresh, {
@@ -232,11 +236,15 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       const loginDistinctId = user.username ?? user.email ?? "";
       if (loginDistinctId) {
-        void server.services.telemetry.identifyUser(loginDistinctId, {
-          email: user.email ?? undefined,
-          username: user.username,
-          userId: user.userId
-        }, { skipDedup: true });
+        void server.services.telemetry.identifyUser(
+          loginDistinctId,
+          {
+            email: user.email ?? undefined,
+            username: user.username,
+            userId: user.userId
+          },
+          { skipDedup: true }
+        );
       }
 
       void res.setCookie("jid", tokens.refreshToken, {
