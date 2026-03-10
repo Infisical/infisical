@@ -2,10 +2,10 @@ import * as x509 from "@peculiar/x509";
 import acme, { CsrBuffer } from "acme-client";
 import dns from "dns";
 import { Knex } from "knex";
+import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { delay } from "@app/lib/delay";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
@@ -53,6 +53,26 @@ import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-provider
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
+
+const validateDnsResolver = async (resolver: string): Promise<void> => {
+  if (net.isIP(resolver)) {
+    return;
+  }
+
+  // Must be a valid hostname format
+  const HOSTNAME_REGEX = new RE2("^[a-zA-Z0-9.-]+$");
+  if (!HOSTNAME_REGEX.test(resolver)) {
+    throw new BadRequestError({ message: `Invalid DNS resolver address: ${resolver}` });
+  }
+
+  try {
+    await dns.promises.resolve(resolver);
+  } catch {
+    throw new BadRequestError({
+      message: `DNS resolver "${resolver}" could not be resolved. Please provide a valid IP address or resolvable hostname.`
+    });
+  }
+};
 
 const parseTtlToDays = (ttl: string): number => {
   const match = ttl.match(new RE2("^(\\d+)([dhm])$"));
@@ -152,6 +172,7 @@ type DBConfigurationColumn = {
   hostedZoneId: string;
   eabKid?: string;
   eabHmacKey?: string;
+  dnsResolver?: string;
 };
 
 export const castDbEntryToAcmeCertificateAuthority = (
@@ -179,7 +200,8 @@ export const castDbEntryToAcmeCertificateAuthority = (
       directoryUrl: dbConfigurationCol.directoryUrl,
       accountEmail: dbConfigurationCol.accountEmail,
       eabKid: dbConfigurationCol.eabKid,
-      eabHmacKey: dbConfigurationCol.eabHmacKey
+      eabHmacKey: dbConfigurationCol.eabHmacKey,
+      dnsResolver: dbConfigurationCol.dnsResolver
     },
     status: ca.status as CaStatus
   };
@@ -212,14 +234,23 @@ const resolveAcmeChallengeCname = async (recordName: string): Promise<string> =>
   return current;
 };
 
-const waitForDnsPropagation = async (lookupName: string, expectedValue: string): Promise<void> => {
+const waitForDnsPropagation = async (
+  lookupName: string,
+  expectedValue: string,
+  dnsResolver?: string
+): Promise<void> => {
   const unquotedExpected = expectedValue.replace(new RE2('^"|"$', "g"), "");
   let attempts = 0;
+
+  const resolver = new dns.promises.Resolver();
+  if (dnsResolver) {
+    resolver.setServers([dnsResolver]);
+  }
 
   while (attempts < DNS_PROPAGATION_MAX_RETRIES) {
     attempts += 1;
 
-    const found = await dns.promises // eslint-disable-line no-await-in-loop
+    const found = await resolver // eslint-disable-line no-await-in-loop
       .resolveTxt(lookupName)
       .then((records) => records.some((chunks) => chunks.join("") === unquotedExpected))
       .catch(() => false);
@@ -377,9 +408,9 @@ export const orderCertificate = async (
     csr,
     email: acmeCa.configuration.accountEmail,
     challengePriority: ["dns-01"],
-    // For ACME development mode, we mock the DNS challenge API calls. So, no real DNS records are created.
-    // We need to disable the challenge verification to avoid errors.
-    skipChallengeVerification: getConfig().isAcmeDevelopmentMode && getConfig().ACME_SKIP_UPSTREAM_VALIDATION,
+    // We skip the built-in challenge verification and rely on our challengeCreateFn/challengeRemoveFn
+    // to handle DNS record management.
+    skipChallengeVerification: true,
     termsOfServiceAgreed: true,
 
     challengeCreateFn: async (authz, challenge, keyAuthorization) => {
@@ -440,7 +471,7 @@ export const orderCertificate = async (
         acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS
           ? recordName
           : `_acme-challenge.${authz.identifier.value}`;
-      await waitForDnsPropagation(lookupName, recordValue);
+      await waitForDnsPropagation(lookupName, recordValue, acmeCa.configuration.dnsResolver);
     },
     challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
       const { recordName, recordValue } = await getAcmeChallengeRecord(
@@ -616,7 +647,8 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
-    const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey } = configuration;
+    const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey, dnsResolver } =
+      configuration;
     const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
     if (!appConnection) {
@@ -645,6 +677,10 @@ export const AcmeCertificateAuthorityFns = ({
       throw new BadRequestError({
         message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
       });
+    }
+
+    if (dnsResolver) {
+      await validateDnsResolver(dnsResolver);
     }
 
     // validates permission to connect
@@ -677,7 +713,8 @@ export const AcmeCertificateAuthorityFns = ({
               dnsProvider: dnsProviderConfig.provider,
               hostedZoneId: dnsProviderConfig.hostedZoneId,
               eabKid,
-              eabHmacKey
+              eabHmacKey,
+              dnsResolver
             }
           },
           tx
@@ -718,7 +755,8 @@ export const AcmeCertificateAuthorityFns = ({
   }) => {
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey } = configuration;
+        const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey, dnsResolver } =
+          configuration;
         const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
         if (!appConnection) {
@@ -755,6 +793,10 @@ export const AcmeCertificateAuthorityFns = ({
           });
         }
 
+        if (dnsResolver) {
+          await validateDnsResolver(dnsResolver);
+        }
+
         const ca = await certificateAuthorityDAL.findById(id);
 
         if (!ca) {
@@ -781,7 +823,8 @@ export const AcmeCertificateAuthorityFns = ({
               dnsProvider: dnsProviderConfig.provider,
               hostedZoneId: dnsProviderConfig.hostedZoneId,
               eabKid,
-              eabHmacKey
+              eabHmacKey,
+              dnsResolver
             }
           },
           tx

@@ -83,7 +83,8 @@ const acmeConfigurationSchema = z
     directoryUrl: z.string(),
     accountEmail: z.string(),
     eabKid: z.string().optional(),
-    eabHmacKey: z.string().optional()
+    eabHmacKey: z.string().optional(),
+    dnsResolver: z.string().optional()
   })
   .superRefine((data, ctx) => {
     if (REQUIRED_EAB_DIRECTORIES.includes(data.directoryUrl)) {
@@ -226,7 +227,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             directoryUrl: "",
             accountEmail: "",
             eabKid: "",
-            eabHmacKey: ""
+            eabHmacKey: "",
+            dnsResolver: ""
           }
         });
       }
@@ -341,7 +343,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             directoryUrl: ca.configuration.directoryUrl,
             accountEmail: ca.configuration.accountEmail,
             eabKid: ca.configuration.eabKid,
-            eabHmacKey: ca.configuration.eabHmacKey
+            eabHmacKey: ca.configuration.eabHmacKey,
+            dnsResolver: ca.configuration.dnsResolver || ""
           }
         });
       } else if (ca.type === CaType.AZURE_AD_CS && availableConnections?.length) {
@@ -399,7 +402,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         accountEmail: formConfiguration.accountEmail,
         dnsAppConnectionId: formConfiguration.dnsAppConnection.id,
         eabKid: formConfiguration.eabKid,
-        eabHmacKey: formConfiguration.eabHmacKey
+        eabHmacKey: formConfiguration.eabHmacKey,
+        dnsResolver: formConfiguration.dnsResolver || undefined
       };
     } else if (type === CaType.AZURE_AD_CS && "azureAdcsConnection" in formConfiguration) {
       configPayload = {
@@ -715,6 +719,22 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       {...field}
                       placeholder="dGhpc2lzYW5leGFtcGxlaG1hY2tleWZvcmRpZ2ljZXJ0YWNtZXRlc3RpbmcxMjM0NTY3ODkw"
                     />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="configuration.dnsResolver"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="DNS Resolver"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isOptional
+                    tooltipText="A custom DNS resolver IP or hostname used to verify DNS propagation during ACME challenges. Leave empty to use the system default."
+                  >
+                    <Input {...field} placeholder="8.8.8.8" />
                   </FormControl>
                 )}
               />

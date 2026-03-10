@@ -2440,7 +2440,8 @@ export const CertificateAuthorities = {
       provider: `The DNS provider for the ACME Certificate Authority.`,
       hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`,
       eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
-      eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`
+      eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
+      dnsResolver: `An optional custom DNS resolver IP address or hostname to use for verifying DNS propagation during ACME challenges. When not set, the system default DNS resolver is used.`
     },
     AWS_PCA: {
       appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Private Certificate Authority (PCA). This connection must have permissions to issue, get, and revoke certificates from the specified PCA.`,
