@@ -108,6 +108,40 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
   return rules;
 };
 
+type MembershipWithRoles = {
+  roles?: Array<{
+    role: string;
+    permissions?: unknown;
+    isTemporary?: boolean;
+    temporaryAccessEndTime?: Date | null;
+  }>;
+  additionalPrivileges?: Array<{
+    permissions?: unknown;
+    isTemporary?: boolean;
+    temporaryAccessEndTime?: Date | null;
+  }>;
+};
+
+const flattenActiveRolesFromMemberships = <T extends string>(
+  memberships: MembershipWithRoles[],
+  customRoleValue: T
+): { role: string; permissions?: unknown }[] =>
+  memberships.flatMap((membership) => {
+    const activeRoles = (membership?.roles ?? [])
+      .filter(
+        ({ isTemporary, temporaryAccessEndTime }) =>
+          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+      )
+      .map(({ role, permissions }) => ({ role, permissions }));
+    const activeAdditionalPrivileges = (membership?.additionalPrivileges ?? [])
+      .filter(
+        ({ isTemporary, temporaryAccessEndTime }) =>
+          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+      )
+      .map(({ permissions }) => ({ role: customRoleValue, permissions }));
+    return activeRoles.concat(activeAdditionalPrivileges);
+  });
+
 type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -232,21 +266,7 @@ export const permissionServiceFactory = ({
       throw new ForbiddenRequestError({ message: `Parent organization cannot do this operation` });
     }
 
-    const permissionFromRoles = permissionData.flatMap((membership) => {
-      const activeRoles = membership?.roles
-        .filter(
-          ({ isTemporary, temporaryAccessEndTime }) =>
-            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-        )
-        .map(({ role, permissions }) => ({ role, permissions }));
-      const activeAdditionalPrivileges = membership?.additionalPrivileges
-        .filter(
-          ({ isTemporary, temporaryAccessEndTime }) =>
-            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-        )
-        .map(({ permissions }) => ({ role: OrgMembershipRole.Custom, permissions }));
-      return activeRoles.concat(activeAdditionalPrivileges);
-    });
+    const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, OrgMembershipRole.Custom);
 
     const hasRole = (role: string) =>
       permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
@@ -399,33 +419,41 @@ export const permissionServiceFactory = ({
         message: `You are not a member of this project with ID ${projectId}. Please assign this ${actor} to the project with the appropriate permissions, then try again.`
       });
 
-    const permissionFromRoles = permissionData.flatMap((membership) => {
-      const activeRoles = membership?.roles
-        .filter(
-          ({ isTemporary, temporaryAccessEndTime }) =>
-            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-        )
-        .map(({ role, permissions }) => ({ role, permissions }));
-      const activeAdditionalPrivileges = membership?.additionalPrivileges
-        .filter(
-          ({ isTemporary, temporaryAccessEndTime }) =>
-            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-        )
-        .map(({ permissions }) => ({ role: ProjectMembershipRole.Custom, permissions }));
-      return activeRoles.concat(activeAdditionalPrivileges);
-    });
+    const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, ProjectMembershipRole.Custom);
 
     const hasRole = (role: string) =>
       permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
 
-    // SSO enforcement applies only to users
+    // SSO enforcement applies only to users; use org-level bypass criteria (Org Admin or BypassSsoEnforcement permission)
+    // When project is in sub-org, use root org for bypass check (SSO enforced at root; user's bypass permission is in root org)
     if (actor === ActorType.USER) {
+      let canBypassSso = false;
+      if (permissionData?.[0].bypassOrgAuthEnabled) {
+        const orgIdForBypass = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
+        const orgPermissionData = await permissionDAL.getPermission({
+          scopeData: { scope: AccessScope.Organization, orgId: orgIdForBypass },
+          actorId,
+          actorType: ActorType.USER
+        });
+        if (orgPermissionData?.length) {
+          const orgPermissionFromRoles = flattenActiveRolesFromMemberships(orgPermissionData, OrgMembershipRole.Custom);
+          const orgPermission = createMongoAbility<OrgPermissionSet>(
+            buildOrgPermissionRules(orgPermissionFromRoles),
+            { conditionsMatcher }
+          );
+          const orgHasRole = (role: string) =>
+            orgPermissionData.some((m) => m.roles.some((el) => role === (el.customRoleSlug || el.role)));
+          canBypassSso =
+            orgHasRole(OrgMembershipRole.Admin) ||
+            orgPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+        }
+      }
       validateOrgSSO(
         actorAuthMethod,
         permissionData?.[0].orgAuthEnforced,
         Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
         Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-        hasRole(ProjectMembershipRole.Admin)
+        canBypassSso
       );
     }
 
