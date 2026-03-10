@@ -33,6 +33,7 @@ import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-
 import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
+import { registerInfraRouter } from "./infra-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
 import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
@@ -307,6 +308,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(registerEventRouter, { prefix: "/events" });
   await server.register(registerUpgradePathRouter, { prefix: "/upgrade-path" });
+  await server.register(registerInfraRouter, { prefix: "/infra" });
 
   await server.register(
     async (approvalPolicyRouter) => {

@@ -265,7 +265,13 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
 
-  QueueJobs = "queue_jobs"
+  QueueJobs = "queue_jobs",
+
+  // Infra
+  InfraFile = "infra_files",
+  InfraState = "infra_states",
+  InfraRun = "infra_runs",
+  InfraVariable = "infra_variables"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -359,7 +365,8 @@ export enum ProjectType {
   SSH = "ssh",
   SecretScanning = "secret-scanning",
   PAM = "pam",
-  AI = "ai"
+  AI = "ai",
+  Infra = "infra"
 }
 
 export enum ActionProjectType {
@@ -370,6 +377,7 @@ export enum ActionProjectType {
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
   AI = ProjectType.AI,
+  Infra = ProjectType.Infra,
   // project operations that happen on all types
   Any = "any"
 }

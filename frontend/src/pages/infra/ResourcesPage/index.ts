@@ -1,0 +1,1 @@
+export { InfraResourcesPage } from "./InfraResourcesPage";

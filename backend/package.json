@@ -151,6 +151,7 @@
     "@fastify/websocket": "^10.0.1",
     "@gitbeaker/rest": "^42.5.0",
     "@google-cloud/kms": "^4.5.0",
+    "@google/genai": "^1.43.0",
     "@infisical/pg-view-generator": "^1.1.0",
     "@infisical/quic": "^1.0.8",
     "@modelcontextprotocol/sdk": "^1.24.3",

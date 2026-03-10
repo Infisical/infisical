@@ -81,6 +81,12 @@ RUN mkdir -p /opt/oracle && \
 # Install smbclient for Windows SMB operations
 RUN apt-get update && apt-get install -y smbclient
 
+# Install OpenTofu
+RUN curl -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh && \
+    chmod +x install-opentofu.sh && \
+    ./install-opentofu.sh --install-method deb && \
+    rm -f install-opentofu.sh
+
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
     apt-get update && \
