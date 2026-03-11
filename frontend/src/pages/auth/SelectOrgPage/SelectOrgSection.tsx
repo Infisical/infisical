@@ -60,7 +60,7 @@ export const SelectOrganizationSection = () => {
     return (orgEntry?.subOrganizations.length ?? 0) === 0;
   }, [defaultSelectedOrg, callbackPort, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
 
-  const isLoadingSubOrgCheck = !!defaultSelectedOrg && !callbackPort && orgsWithSubOrgs.isPending;
+  const isLoadingSubOrgCheck = Boolean(defaultSelectedOrg) && !callbackPort && orgsWithSubOrgs.isPending;
 
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
@@ -293,13 +293,9 @@ export const SelectOrganizationSection = () => {
       orgsWithSubOrgs.data.length === 1 && orgsWithSubOrgs.data[0].subOrganizations.length === 0;
 
     if (onlyOneRootOrgWithNoSubOrgs) {
-      if (callbackPort) {
-        // CLI flow: auto-select the only org so the token is sent to the CLI
-        // without requiring the user to interact with the selector.
-        handleSelectOrganization(organizations.data[0]);
-      } else if (!defaultSelectedOrg) {
-        // No org_id in URL — auto-select the only org directly.
-        // When defaultSelectedOrg is set, willAutoSelectDefaultOrg handles selection via the second useEffect.
+      // CLI flow (callbackPort) or no org_id in URL: auto-select the only org.
+      // When defaultSelectedOrg is set without callbackPort, willAutoSelectDefaultOrg handles selection via the second useEffect.
+      if (callbackPort || !defaultSelectedOrg) {
         handleSelectOrganization(organizations.data[0]);
       }
     } else {
