@@ -199,6 +199,7 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
       } else if (step >= 1 && (lower.includes("error") || lower.includes("fail") || lower.includes("unchanged"))) {
         // Password change failed
         errorMessage = text.trim();
+        clearTimeout(timeout);
         stream.end();
       }
     });
@@ -208,13 +209,10 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
       if (settled) return;
       settled = true;
 
-      if (completed || step >= 3) {
-        // If we got to step 3 without explicit error, consider it success
-        if (errorMessage && !completed) {
-          reject(new Error(`Password change failed: ${errorMessage}`));
-        } else {
-          resolve();
-        }
+      if (errorMessage && !completed) {
+        reject(new Error(`Password change failed: ${errorMessage}`));
+      } else if (completed || step >= 3) {
+        resolve();
       } else {
         reject(new Error(`Password change incomplete (step ${step}). Output: ${output}`));
       }
