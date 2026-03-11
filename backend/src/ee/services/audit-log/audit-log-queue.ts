@@ -142,18 +142,21 @@ export const auditLogQueueServiceFactory = async ({
 
       const values = entries.map(([, fields]) => JSON.parse(fields[1]) as Record<string, unknown>);
 
-      // Single insert into ClickHouse
-      await clickhouseClient!.insert({
-        table: CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
-        clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
-        values,
-        format: "JSONEachRow"
-      });
+      try {
+        await clickhouseClient!.insert({
+          table: CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
+          clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
+          values,
+          format: "JSONEachRow"
+        });
 
-      // Only trim after successful insert
-      await keyStore.streamTrim(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, lastId, true);
+        // Only trim after successful insert
+        await keyStore.streamTrim(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, lastId, true);
 
-      logger.info({ count: values.length }, "Batch inserted audit logs into ClickHouse");
+        logger.info({ count: values.length }, "Batch inserted audit logs into ClickHouse");
+      } catch (error) {
+        logger.error(error, `Failed to batch insert ${values.length} audit logs into ClickHouse`);
+      }
     });
 
     // Schedule repeatable job every 5 seconds
