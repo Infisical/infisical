@@ -758,17 +758,16 @@ export const SPIFFE_AUTH = {
     allowedSpiffeIds:
       "Comma-separated list of allowed SPIFFE ID patterns. Supports picomatch glob patterns (e.g. spiffe://prod.example.com/**).",
     allowedAudiences: "Comma-separated list of allowed audiences for JWT-SVID validation.",
-    configurationType:
-      "The configuration type for trust bundle management. Must be one of: 'static' (admin uploads JWKS), 'remote' (auto-refresh from SPIRE bundle endpoint).",
-    caBundleJwks:
-      "The JWKS JSON containing public keys for JWT-SVID verification. Required if configurationType is 'static'.",
-    bundleEndpointUrl:
-      "The SPIRE bundle endpoint URL for automatic trust bundle retrieval. Required if configurationType is 'remote'.",
-    bundleEndpointProfile:
-      "The bundle endpoint authentication profile. Must be one of: 'https_web' (standard HTTPS), 'https_spiffe' (mTLS with SPIFFE auth).",
-    bundleEndpointCaCert:
-      "The PEM-encoded CA certificate for verifying the bundle endpoint TLS connection. Required when bundleEndpointProfile is 'https_spiffe'.",
-    bundleRefreshHintSeconds: "The interval in seconds between bundle refresh attempts. Defaults to 300.",
+    trustBundleDistribution: {
+      profile:
+        "The trust bundle distribution profile. Must be one of: 'static' (admin uploads JWKS), 'https_web_bundle' (auto-refresh from HTTPS endpoint).",
+      bundle: "The JWKS JSON containing public keys for JWT-SVID verification. Required when profile is 'static'.",
+      endpointUrl:
+        "The SPIRE bundle endpoint URL for automatic trust bundle retrieval. Required when profile is 'https_web_bundle'.",
+      caCert:
+        "Optional PEM-encoded root CA certificate for verifying the bundle endpoint TLS connection. Defaults to system root CAs when not provided.",
+      refreshHintSeconds: "The interval in seconds between bundle refresh attempts. Defaults to 3600."
+    },
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -779,12 +778,13 @@ export const SPIFFE_AUTH = {
     trustDomain: "The new SPIFFE trust domain.",
     allowedSpiffeIds: "The new comma-separated list of allowed SPIFFE ID patterns.",
     allowedAudiences: "The new comma-separated list of allowed audiences.",
-    configurationType: "The new configuration type for trust bundle management.",
-    caBundleJwks: "The new JWKS JSON containing public keys.",
-    bundleEndpointUrl: "The new SPIRE bundle endpoint URL.",
-    bundleEndpointProfile: "The new bundle endpoint authentication profile.",
-    bundleEndpointCaCert: "The new PEM-encoded CA certificate for the bundle endpoint.",
-    bundleRefreshHintSeconds: "The new interval in seconds between bundle refresh attempts.",
+    trustBundleDistribution: {
+      profile: "The new trust bundle distribution profile.",
+      bundle: "The new JWKS JSON containing public keys.",
+      endpointUrl: "The new SPIRE bundle endpoint URL.",
+      caCert: "The new PEM-encoded CA certificate for the bundle endpoint.",
+      refreshHintSeconds: "The new interval in seconds between bundle refresh attempts."
+    },
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",

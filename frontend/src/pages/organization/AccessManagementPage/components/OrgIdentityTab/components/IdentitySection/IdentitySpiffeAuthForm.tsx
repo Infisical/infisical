@@ -22,10 +22,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import { useAddIdentitySpiffeAuth, useUpdateIdentitySpiffeAuth } from "@app/hooks/api";
-import {
-  IdentitySpiffeConfigurationType,
-  SpiffeBundleEndpointProfile
-} from "@app/hooks/api/identities/enums";
+import { SpiffeTrustBundleProfile } from "@app/hooks/api/identities/enums";
 import { useGetIdentitySpiffeAuth } from "@app/hooks/api/identities/queries";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -52,33 +49,22 @@ const commonSchema = z.object({
   accessTokenNumUsesLimit: z.string()
 });
 
-const schema = z.discriminatedUnion("configurationType", [
-  z
-    .object({
-      configurationType: z.literal(IdentitySpiffeConfigurationType.STATIC),
-      caBundleJwks: z.string().trim().min(1, "CA Bundle JWKS is required for static configuration"),
-      bundleEndpointUrl: z.string().trim().optional().default(""),
-      bundleEndpointProfile: z
-        .nativeEnum(SpiffeBundleEndpointProfile)
-        .optional()
-        .default(SpiffeBundleEndpointProfile.HTTPS_WEB),
-      bundleEndpointCaCert: z.string().trim().optional().default(""),
-      bundleRefreshHintSeconds: z.string().optional().default("300")
-    })
-    .merge(commonSchema),
-  z
-    .object({
-      configurationType: z.literal(IdentitySpiffeConfigurationType.REMOTE),
-      caBundleJwks: z.string().trim().optional().default(""),
-      bundleEndpointUrl: z.string().trim().url("Must be a valid URL"),
-      bundleEndpointProfile: z
-        .nativeEnum(SpiffeBundleEndpointProfile)
-        .default(SpiffeBundleEndpointProfile.HTTPS_WEB),
-      bundleEndpointCaCert: z.string().trim().optional().default(""),
-      bundleRefreshHintSeconds: z.string().default("300")
-    })
-    .merge(commonSchema)
+const trustBundleDistributionSchema = z.discriminatedUnion("profile", [
+  z.object({
+    profile: z.literal(SpiffeTrustBundleProfile.STATIC),
+    bundle: z.string().trim().min(1, "CA Bundle JWKS is required for static configuration")
+  }),
+  z.object({
+    profile: z.literal(SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE),
+    endpointUrl: z.string().trim().url("Must be a valid URL"),
+    caCert: z.string().trim().optional().default(""),
+    refreshHintSeconds: z.string().default("3600")
+  })
 ]);
+
+const schema = commonSchema.extend({
+  trustBundleDistribution: trustBundleDistributionSchema
+});
 
 export type FormData = z.infer<typeof schema>;
 
@@ -124,15 +110,13 @@ export const IdentitySpiffeAuthForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      configurationType: IdentitySpiffeConfigurationType.STATIC,
       trustDomain: "",
       allowedSpiffeIds: "",
       allowedAudiences: "",
-      caBundleJwks: "",
-      bundleEndpointUrl: "",
-      bundleEndpointProfile: SpiffeBundleEndpointProfile.HTTPS_WEB,
-      bundleEndpointCaCert: "",
-      bundleRefreshHintSeconds: "300",
+      trustBundleDistribution: {
+        profile: SpiffeTrustBundleProfile.STATIC,
+        bundle: ""
+      },
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
@@ -140,8 +124,7 @@ export const IdentitySpiffeAuthForm = ({
     }
   });
 
-  const selectedConfigurationType = watch("configurationType") as IdentitySpiffeConfigurationType;
-  const selectedBundleEndpointProfile = watch("bundleEndpointProfile");
+  const selectedProfile = watch("trustBundleDistribution.profile");
 
   const {
     fields: accessTokenTrustedIpsFields,
@@ -151,20 +134,36 @@ export const IdentitySpiffeAuthForm = ({
 
   useEffect(() => {
     if (data) {
+      const dist = data.trustBundleDistribution;
+      let trustBundleDistribution: FormData["trustBundleDistribution"];
+
+      switch (dist.profile) {
+        case SpiffeTrustBundleProfile.STATIC:
+          trustBundleDistribution = {
+            profile: SpiffeTrustBundleProfile.STATIC,
+            bundle: dist.bundle || ""
+          };
+          break;
+        case SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE:
+          trustBundleDistribution = {
+            profile: SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE,
+            endpointUrl: dist.endpointUrl || "",
+            caCert: dist.caCert || "",
+            refreshHintSeconds: String(dist.refreshHintSeconds ?? 3600)
+          };
+          break;
+        default:
+          trustBundleDistribution = {
+            profile: SpiffeTrustBundleProfile.STATIC,
+            bundle: ""
+          };
+      }
+
       reset({
-        configurationType:
-          (data.configurationType as IdentitySpiffeConfigurationType) ||
-          IdentitySpiffeConfigurationType.STATIC,
         trustDomain: data.trustDomain,
         allowedSpiffeIds: data.allowedSpiffeIds,
         allowedAudiences: data.allowedAudiences,
-        caBundleJwks: data.caBundleJwks || "",
-        bundleEndpointUrl: data.bundleEndpointUrl || "",
-        bundleEndpointProfile:
-          (data.bundleEndpointProfile as SpiffeBundleEndpointProfile) ||
-          SpiffeBundleEndpointProfile.HTTPS_WEB,
-        bundleEndpointCaCert: data.bundleEndpointCaCert || "",
-        bundleRefreshHintSeconds: String(data.bundleRefreshHintSeconds ?? 300),
+        trustBundleDistribution,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
@@ -184,33 +183,43 @@ export const IdentitySpiffeAuthForm = ({
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
-    configurationType,
     trustDomain,
     allowedSpiffeIds,
     allowedAudiences,
-    caBundleJwks,
-    bundleEndpointUrl,
-    bundleEndpointProfile,
-    bundleEndpointCaCert,
-    bundleRefreshHintSeconds
+    trustBundleDistribution
   }: FormData) => {
     if (!identityId) {
       return;
     }
 
+    // Build the trust bundle distribution with correct number types
+    const buildDistribution = () => {
+      switch (trustBundleDistribution.profile) {
+        case SpiffeTrustBundleProfile.STATIC:
+          return {
+            profile: trustBundleDistribution.profile,
+            bundle: trustBundleDistribution.bundle
+          };
+        case SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE:
+          return {
+            profile: trustBundleDistribution.profile,
+            endpointUrl: trustBundleDistribution.endpointUrl,
+            caCert: trustBundleDistribution.caCert,
+            refreshHintSeconds: Number(trustBundleDistribution.refreshHintSeconds)
+          };
+        default:
+          return { profile: SpiffeTrustBundleProfile.STATIC as const, bundle: "" };
+      }
+    };
+
     if (data) {
       await updateMutateAsync({
         identityId,
         ...(projectId ? { projectId } : { organizationId: orgId }),
-        configurationType,
         trustDomain,
         allowedSpiffeIds,
         allowedAudiences,
-        caBundleJwks,
-        bundleEndpointUrl,
-        bundleEndpointProfile,
-        bundleEndpointCaCert,
-        bundleRefreshHintSeconds: Number(bundleRefreshHintSeconds),
+        trustBundleDistribution: buildDistribution(),
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -219,16 +228,11 @@ export const IdentitySpiffeAuthForm = ({
     } else {
       await addMutateAsync({
         identityId,
-        configurationType,
+        ...(projectId ? { projectId } : { organizationId: orgId }),
         trustDomain,
         allowedSpiffeIds,
         allowedAudiences,
-        caBundleJwks,
-        bundleEndpointUrl,
-        bundleEndpointProfile,
-        bundleEndpointCaCert,
-        bundleRefreshHintSeconds: Number(bundleRefreshHintSeconds),
-        ...(projectId ? { projectId } : { organizationId: orgId }),
+        trustBundleDistribution: buildDistribution(),
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -263,10 +267,10 @@ export const IdentitySpiffeAuthForm = ({
         <TabPanel value={IdentityFormTab.Configuration}>
           <Controller
             control={control}
-            name="configurationType"
+            name="trustBundleDistribution.profile"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
-                label="Configuration Type"
+                label="Trust Bundle Profile"
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
@@ -278,11 +282,14 @@ export const IdentitySpiffeAuthForm = ({
                   }}
                   className="w-full"
                 >
-                  <SelectItem value={IdentitySpiffeConfigurationType.STATIC} key="static">
+                  <SelectItem value={SpiffeTrustBundleProfile.STATIC} key="static">
                     Static
                   </SelectItem>
-                  <SelectItem value={IdentitySpiffeConfigurationType.REMOTE} key="remote">
-                    Remote
+                  <SelectItem
+                    value={SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE}
+                    key="https_web_bundle"
+                  >
+                    HTTPS Web Bundle
                   </SelectItem>
                 </Select>
               </FormControl>
@@ -333,10 +340,10 @@ export const IdentitySpiffeAuthForm = ({
               </FormControl>
             )}
           />
-          {selectedConfigurationType === IdentitySpiffeConfigurationType.STATIC && (
+          {selectedProfile === SpiffeTrustBundleProfile.STATIC && (
             <Controller
               control={control}
-              name="caBundleJwks"
+              name="trustBundleDistribution.bundle"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   isRequired
@@ -349,11 +356,11 @@ export const IdentitySpiffeAuthForm = ({
               )}
             />
           )}
-          {selectedConfigurationType === IdentitySpiffeConfigurationType.REMOTE && (
+          {selectedProfile === SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE && (
             <>
               <Controller
                 control={control}
-                name="bundleEndpointUrl"
+                name="trustBundleDistribution.endpointUrl"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     isRequired
@@ -361,72 +368,33 @@ export const IdentitySpiffeAuthForm = ({
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
-                    <Input
-                      {...field}
-                      type="text"
-                      placeholder="https://spire-server:8443"
-                    />
+                    <Input {...field} type="text" placeholder="https://spire-server:8443" />
                   </FormControl>
                 )}
               />
               <Controller
                 control={control}
-                name="bundleEndpointProfile"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                name="trustBundleDistribution.caCert"
+                render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="Bundle Endpoint Profile"
+                    label="Root CA Certificate (optional)"
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => {
-                        onChange(e);
-                      }}
-                      className="w-full"
-                    >
-                      <SelectItem
-                        value={SpiffeBundleEndpointProfile.HTTPS_WEB}
-                        key="https_web"
-                      >
-                        HTTPS Web
-                      </SelectItem>
-                      <SelectItem
-                        value={SpiffeBundleEndpointProfile.HTTPS_SPIFFE}
-                        key="https_spiffe"
-                      >
-                        HTTPS SPIFFE
-                      </SelectItem>
-                    </Select>
+                    <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
                   </FormControl>
                 )}
               />
-              {selectedBundleEndpointProfile === SpiffeBundleEndpointProfile.HTTPS_SPIFFE && (
-                <Controller
-                  control={control}
-                  name="bundleEndpointCaCert"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Bundle Endpoint CA Certificate"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-                    </FormControl>
-                  )}
-                />
-              )}
               <Controller
                 control={control}
-                name="bundleRefreshHintSeconds"
+                name="trustBundleDistribution.refreshHintSeconds"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Bundle Refresh Hint (seconds)"
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
-                    <Input {...field} placeholder="300" type="number" min="0" step="1" />
+                    <Input {...field} placeholder="3600" type="number" min="0" step="1" />
                   </FormControl>
                 )}
               />

@@ -36,18 +36,22 @@ sequenceDiagram
 
 At a high level, Infisical authenticates a workload by verifying its JWT-SVID and checking that it meets specific requirements (e.g. its SPIFFE ID matches an allowed pattern, it belongs to the expected trust domain) at the `/api/v1/auth/spiffe-auth/login` endpoint. If successful, Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
+<Note>
+  SPIFFE Auth currently supports JWT-SVID verification only. X.509-SVID (certificate-based) authentication is not supported at this time. If you require X.509-SVID support, please open a feature request.
+</Note>
+
 To be more specific:
 
 1. The workload requests a JWT-SVID from its local SPIRE Agent (via the SPIFFE Workload API).
 2. The JWT-SVID is sent to Infisical at the `/api/v1/auth/spiffe-auth/login` endpoint.
 3. Infisical verifies the JWT-SVID signature using either:
-   - Pre-configured JWKS (Static configuration)
-   - JWKS fetched from a SPIRE bundle endpoint (Remote configuration)
+   - Pre-configured JWKS (Static trust bundle profile)
+   - JWKS fetched from a SPIRE bundle endpoint (HTTPS Web Bundle profile)
 4. Infisical validates that the token's trust domain matches the configured trust domain, the SPIFFE ID (`sub` claim) matches at least one of the allowed SPIFFE ID patterns, and the audience (`aud` claim) is in the allowed audiences list.
 5. If all checks pass, Infisical returns a short-lived access token that the workload can use to make authenticated requests to the Infisical API.
 
 <Note>
-  For Remote configuration, Infisical needs network-level access to the configured SPIRE bundle endpoint. The trust bundle is fetched on-demand at login time and cached. If the cache is older than the configured refresh interval (default: 1 hour), Infisical fetches a fresh bundle before verifying the JWT-SVID. You can also force an immediate refresh via the API without waiting for the cache to expire.
+  For the HTTPS Web Bundle profile, Infisical needs network-level access to the configured SPIRE bundle endpoint. The trust bundle is fetched on-demand at login time and cached. If the cache is older than the configured refresh interval (default: 1 hour), Infisical fetches a fresh bundle before verifying the JWT-SVID. You can also force an immediate refresh via the API without waiting for the cache to expire.
 </Note>
 
 ## Guide
@@ -85,20 +89,22 @@ In the following steps, we explore how to create and use identities to access th
 
     Here's some information about each field:
 
-    **Configuration Type:**
-    - **Static:** You provide the SPIRE JWKS JSON directly. Best for environments where the trust bundle is managed externally or does not change frequently.
-    - **Remote:** Infisical automatically fetches and caches the trust bundle from a SPIRE bundle endpoint. Best for dynamic environments where keys rotate regularly.
+    **Trust Bundle Profile:**
 
-    **Static configuration fields:**
-    - **CA Bundle JWKS (required):** The JWKS JSON containing the public keys used to verify JWT-SVID signatures. You can obtain this from your SPIRE server's bundle endpoint or via `spire-server bundle show -format jwks`.
+    <Tabs>
+      <Tab title="Static">
+        Best for air-gapped environments or environments where the trust bundle does not change frequently. You provide the SPIRE JWKS JSON directly.
 
-    **Remote configuration fields:**
-    - **Bundle Endpoint URL (required):** The URL of the SPIRE bundle endpoint (e.g. `https://spire-server:8443`). Must use HTTPS. Infisical fetches the trust bundle on-demand at login time and caches it for the configured refresh interval.
-    - **Bundle Endpoint Profile:** The authentication profile for the bundle endpoint.
-      - `HTTPS Web` — Standard HTTPS with publicly trusted certificates.
-      - `HTTPS SPIFFE` — HTTPS with a custom CA certificate for mTLS-secured endpoints.
-    - **Bundle Endpoint CA Certificate:** The PEM-encoded CA certificate for verifying the bundle endpoint TLS connection. Required when using the `HTTPS SPIFFE` profile.
-    - **Bundle Refresh Hint (seconds):** How long the cached trust bundle is considered fresh before Infisical re-fetches it on the next login. Defaults to `3600` (1 hour). You can force an immediate refresh at any time using the [refresh bundle API endpoint](/api-reference/endpoints/machine-identities/spiffe-auth/refresh-bundle).
+        - **CA Bundle JWKS (required):** The JWKS JSON containing the public keys used to verify JWT-SVID signatures. You can obtain this from your SPIRE server's bundle endpoint or via `spire-server bundle show -format jwks`.
+      </Tab>
+      <Tab title="HTTPS Web Bundle">
+        Best for dynamic environments where keys rotate regularly. Infisical automatically fetches and caches the trust bundle from a SPIRE bundle endpoint.
+
+        - **Bundle Endpoint URL (required):** The URL of the SPIRE bundle endpoint (e.g. `https://spire-server:8443`). Must use HTTPS. Infisical fetches the trust bundle on-demand at login time and caches it for the configured refresh interval.
+        - **Root CA Certificate (optional):** A PEM-encoded root CA certificate for verifying the bundle endpoint's TLS connection. When not provided, the system's default root CAs are used.
+        - **Bundle Refresh Hint (seconds):** How long the cached trust bundle is considered fresh before Infisical re-fetches it on the next login. Defaults to `3600` (1 hour). You can force an immediate refresh at any time using the [refresh bundle API endpoint](/api-reference/endpoints/machine-identities/spiffe-auth/refresh-bundle).
+      </Tab>
+    </Tabs>
 
     **Common fields for both configurations:**
     - **Trust Domain (required):** The SPIFFE trust domain that authenticating workloads must belong to (e.g. `example.org` or `prod.example.com`).
@@ -125,7 +131,7 @@ In the following steps, we explore how to create and use identities to access th
     To access the Infisical API as the identity, you need to obtain a JWT-SVID from your SPIRE Agent that meets the validation requirements configured in the previous step.
 
     The JWT-SVID must:
-    - Be signed by a key present in the configured JWKS (static or remote).
+    - Be signed by a key present in the configured JWKS (static or fetched via HTTPS web bundle).
     - Have a `sub` claim containing a valid SPIFFE ID that matches one of the allowed SPIFFE ID patterns.
     - Have an `aud` claim containing at least one of the allowed audiences.
     - Belong to the configured trust domain.

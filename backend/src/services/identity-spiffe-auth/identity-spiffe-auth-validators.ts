@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 export const validateSpiffeAllowedAudiencesField = z
@@ -24,8 +25,10 @@ export const validateSpiffeAllowedIdsField = z
       .join(", ");
   });
 
+const TRUST_DOMAIN_REGEX = new RE2("^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$");
+
 export const validateTrustDomain = z
   .string()
   .trim()
   .min(1, "Trust domain is required")
-  .regex(/^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/, "Invalid trust domain format");
+  .refine((val) => TRUST_DOMAIN_REGEX.test(val), "Invalid trust domain format");

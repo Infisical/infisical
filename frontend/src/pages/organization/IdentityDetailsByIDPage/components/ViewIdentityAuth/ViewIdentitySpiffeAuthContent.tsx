@@ -4,11 +4,16 @@ import { EyeIcon } from "lucide-react";
 import { EmptyState, Spinner, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { useGetIdentitySpiffeAuth } from "@app/hooks/api";
-import { IdentitySpiffeConfigurationType } from "@app/hooks/api/identities/enums";
+import { SpiffeTrustBundleProfile } from "@app/hooks/api/identities/enums";
 import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuth/ViewIdentityContentWrapper";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { ViewAuthMethodProps } from "./types";
+
+const PROFILE_DISPLAY_MAP: Record<string, string> = {
+  [SpiffeTrustBundleProfile.STATIC]: "Static",
+  [SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE]: "HTTPS Web Bundle"
+};
 
 export const ViewIdentitySpiffeAuthContent = ({
   identityId,
@@ -27,14 +32,11 @@ export const ViewIdentitySpiffeAuthContent = ({
 
   if (!data) {
     return (
-      <EmptyState
-        icon={faBan}
-        title="Could not find SPIFFE Auth associated with this Identity."
-      />
+      <EmptyState icon={faBan} title="Could not find SPIFFE Auth associated with this Identity." />
     );
   }
 
-  const isRemote = data.configurationType === IdentitySpiffeConfigurationType.REMOTE;
+  const { trustBundleDistribution: dist } = data;
 
   return (
     <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
@@ -53,53 +55,18 @@ export const ViewIdentitySpiffeAuthContent = ({
           .map((aud) => aud.trim())
           .join(", ")}
       </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Configuration Type">
-        {isRemote ? "Remote" : "Static"}
+      <IdentityAuthFieldDisplay label="Trust Bundle Profile">
+        {PROFILE_DISPLAY_MAP[dist.profile] || dist.profile}
       </IdentityAuthFieldDisplay>
-      {isRemote ? (
-        <>
-          <IdentityAuthFieldDisplay className="col-span-2" label="Bundle Endpoint URL">
-            {data.bundleEndpointUrl}
-          </IdentityAuthFieldDisplay>
-          <IdentityAuthFieldDisplay label="Bundle Endpoint Profile">
-            {data.bundleEndpointProfile}
-          </IdentityAuthFieldDisplay>
-          <IdentityAuthFieldDisplay className="col-span-2" label="Bundle Endpoint CA Certificate">
-            {data.bundleEndpointCaCert && (
-              <Tooltip
-                side="right"
-                className="max-w-xl p-2"
-                content={
-                  <p className="rounded-sm bg-mineshaft-600 p-2 break-words">
-                    {data.bundleEndpointCaCert}
-                  </p>
-                }
-              >
-                <Badge variant="neutral">
-                  <EyeIcon />
-                  Reveal
-                </Badge>
-              </Tooltip>
-            )}
-          </IdentityAuthFieldDisplay>
-          <IdentityAuthFieldDisplay label="Last Refreshed">
-            {data.cachedBundleLastRefreshedAt
-              ? new Date(data.cachedBundleLastRefreshedAt).toLocaleString()
-              : null}
-          </IdentityAuthFieldDisplay>
-          <IdentityAuthFieldDisplay label="Bundle Refresh Hint (seconds)">
-            {data.bundleRefreshHintSeconds}
-          </IdentityAuthFieldDisplay>
-        </>
-      ) : (
+      {dist.profile === SpiffeTrustBundleProfile.STATIC ? (
         <IdentityAuthFieldDisplay className="col-span-2" label="CA Bundle JWKS">
-          {data.caBundleJwks && (
+          {dist.bundle && (
             <Tooltip
               side="right"
               className="max-w-xl p-2"
               content={
-                <pre className="rounded-sm bg-mineshaft-600 p-2 whitespace-pre-wrap break-words">
-                  {data.caBundleJwks}
+                <pre className="rounded-sm bg-mineshaft-600 p-2 break-words whitespace-pre-wrap">
+                  {dist.bundle}
                 </pre>
               }
             >
@@ -110,6 +77,36 @@ export const ViewIdentitySpiffeAuthContent = ({
             </Tooltip>
           )}
         </IdentityAuthFieldDisplay>
+      ) : (
+        <>
+          <IdentityAuthFieldDisplay className="col-span-2" label="Bundle Endpoint URL">
+            {dist.endpointUrl}
+          </IdentityAuthFieldDisplay>
+          <IdentityAuthFieldDisplay className="col-span-2" label="Root CA Certificate">
+            {dist.caCert && (
+              <Tooltip
+                side="right"
+                className="max-w-xl p-2"
+                content={
+                  <p className="rounded-sm bg-mineshaft-600 p-2 break-words">{dist.caCert}</p>
+                }
+              >
+                <Badge variant="neutral">
+                  <EyeIcon />
+                  Reveal
+                </Badge>
+              </Tooltip>
+            )}
+          </IdentityAuthFieldDisplay>
+          <IdentityAuthFieldDisplay label="Last Refreshed">
+            {dist.cachedBundleLastRefreshedAt
+              ? new Date(dist.cachedBundleLastRefreshedAt).toLocaleString()
+              : null}
+          </IdentityAuthFieldDisplay>
+          <IdentityAuthFieldDisplay label="Bundle Refresh Hint (seconds)">
+            {dist.refreshHintSeconds}
+          </IdentityAuthFieldDisplay>
+        </>
       )}
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}

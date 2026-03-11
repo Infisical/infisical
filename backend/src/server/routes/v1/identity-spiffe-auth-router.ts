@@ -8,10 +8,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
-import {
-  SpiffeBundleEndpointProfile,
-  SpiffeConfigurationType
-} from "@app/services/identity-spiffe-auth/identity-spiffe-auth-types";
+import { SpiffeTrustBundleProfile } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-types";
 import {
   validateSpiffeAllowedAudiencesField,
   validateSpiffeAllowedIdsField,
@@ -19,19 +16,71 @@ import {
 } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
-const IdentitySpiffeAuthResponseSchema = IdentitySpiffeAuthsSchema.omit({
-  encryptedCaBundleJwks: true,
-  encryptedBundleEndpointCaCert: true,
-  encryptedCachedBundleJwks: true
+const StaticTrustBundleSchema = z.object({
+  profile: z.literal(SpiffeTrustBundleProfile.STATIC).describe(SPIFFE_AUTH.ATTACH.trustBundleDistribution.profile),
+  bundle: z.string().min(1).describe(SPIFFE_AUTH.ATTACH.trustBundleDistribution.bundle)
+});
+
+const HttpsWebBundleSchema = z.object({
+  profile: z
+    .literal(SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE)
+    .describe(SPIFFE_AUTH.ATTACH.trustBundleDistribution.profile),
+  endpointUrl: z
+    .string()
+    .trim()
+    .url()
+    .refine((url) => url.startsWith("https://"), "Bundle endpoint URL must use HTTPS")
+    .describe(SPIFFE_AUTH.ATTACH.trustBundleDistribution.endpointUrl),
+  caCert: z.string().optional().describe(SPIFFE_AUTH.ATTACH.trustBundleDistribution.caCert),
+  refreshHintSeconds: z
+    .number()
+    .int()
+    .min(0)
+    .default(3600)
+    .describe(SPIFFE_AUTH.ATTACH.trustBundleDistribution.refreshHintSeconds)
+});
+
+const TrustBundleDistributionSchema = z.discriminatedUnion("profile", [StaticTrustBundleSchema, HttpsWebBundleSchema]);
+
+const StaticTrustBundleResponseSchema = z.object({
+  profile: z.literal(SpiffeTrustBundleProfile.STATIC),
+  bundle: z.string()
+});
+
+const HttpsWebBundleResponseSchema = z.object({
+  profile: z.literal(SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE),
+  endpointUrl: z.string(),
+  caCert: z.string(),
+  refreshHintSeconds: z.number(),
+  cachedBundleLastRefreshedAt: z.date().nullable().optional()
+});
+
+const TrustBundleDistributionResponseSchema = z.discriminatedUnion("profile", [
+  StaticTrustBundleResponseSchema,
+  HttpsWebBundleResponseSchema
+]);
+
+const IdentitySpiffeAuthResponseSchema = IdentitySpiffeAuthsSchema.pick({
+  id: true,
+  identityId: true,
+  trustDomain: true,
+  allowedSpiffeIds: true,
+  allowedAudiences: true,
+  accessTokenTTL: true,
+  accessTokenMaxTTL: true,
+  accessTokenNumUsesLimit: true,
+  accessTokenTrustedIps: true,
+  createdAt: true,
+  updatedAt: true
 }).extend({
-  caBundleJwks: z.string(),
-  bundleEndpointCaCert: z.string()
+  trustBundleDistribution: TrustBundleDistributionResponseSchema
 });
 
 const CommonCreateFields = z.object({
   trustDomain: validateTrustDomain.describe(SPIFFE_AUTH.ATTACH.trustDomain),
   allowedSpiffeIds: validateSpiffeAllowedIdsField.describe(SPIFFE_AUTH.ATTACH.allowedSpiffeIds),
   allowedAudiences: validateSpiffeAllowedAudiencesField.describe(SPIFFE_AUTH.ATTACH.allowedAudiences),
+  trustBundleDistribution: TrustBundleDistributionSchema,
   accessTokenTrustedIps: z
     .object({
       ipAddress: z.string().trim()
@@ -51,68 +100,7 @@ const CommonCreateFields = z.object({
   accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(SPIFFE_AUTH.ATTACH.accessTokenNumUsesLimit)
 });
 
-const CommonUpdateFields = z
-  .object({
-    trustDomain: validateTrustDomain.describe(SPIFFE_AUTH.UPDATE.trustDomain),
-    allowedSpiffeIds: validateSpiffeAllowedIdsField.describe(SPIFFE_AUTH.UPDATE.allowedSpiffeIds),
-    allowedAudiences: validateSpiffeAllowedAudiencesField.describe(SPIFFE_AUTH.UPDATE.allowedAudiences),
-    accessTokenTrustedIps: z
-      .object({
-        ipAddress: z.string().trim()
-      })
-      .array()
-      .min(1)
-      .describe(SPIFFE_AUTH.UPDATE.accessTokenTrustedIps),
-    accessTokenTTL: z
-      .number()
-      .int()
-      .min(0)
-      .max(315360000)
-      .describe(SPIFFE_AUTH.UPDATE.accessTokenTTL),
-    accessTokenMaxTTL: z
-      .number()
-      .int()
-      .min(0)
-      .max(315360000)
-      .describe(SPIFFE_AUTH.UPDATE.accessTokenMaxTTL),
-    accessTokenNumUsesLimit: z.number().int().min(0).describe(SPIFFE_AUTH.UPDATE.accessTokenNumUsesLimit)
-  })
-  .partial();
-
-const StaticConfigurationSchema = z.object({
-  configurationType: z
-    .literal(SpiffeConfigurationType.STATIC)
-    .describe(SPIFFE_AUTH.ATTACH.configurationType),
-  caBundleJwks: z.string().min(1).describe(SPIFFE_AUTH.ATTACH.caBundleJwks),
-  bundleEndpointUrl: z.string().optional().default(""),
-  bundleEndpointProfile: z.nativeEnum(SpiffeBundleEndpointProfile).optional(),
-  bundleEndpointCaCert: z.string().optional().default(""),
-  bundleRefreshHintSeconds: z.number().int().min(0).optional().default(3600)
-});
-
-const RemoteConfigurationSchema = z.object({
-  configurationType: z
-    .literal(SpiffeConfigurationType.REMOTE)
-    .describe(SPIFFE_AUTH.ATTACH.configurationType),
-  caBundleJwks: z.string().optional().default(""),
-  bundleEndpointUrl: z
-    .string()
-    .trim()
-    .url()
-    .refine((url) => url.startsWith("https://"), "Bundle endpoint URL must use HTTPS")
-    .describe(SPIFFE_AUTH.ATTACH.bundleEndpointUrl),
-  bundleEndpointProfile: z
-    .nativeEnum(SpiffeBundleEndpointProfile)
-    .default(SpiffeBundleEndpointProfile.HTTPS_WEB)
-    .describe(SPIFFE_AUTH.ATTACH.bundleEndpointProfile),
-  bundleEndpointCaCert: z.string().optional().default("").describe(SPIFFE_AUTH.ATTACH.bundleEndpointCaCert),
-  bundleRefreshHintSeconds: z
-    .number()
-    .int()
-    .min(0)
-    .default(3600)
-    .describe(SPIFFE_AUTH.ATTACH.bundleRefreshHintSeconds)
-});
+const CommonUpdateFields = CommonCreateFields.partial();
 
 export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -185,10 +173,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
       params: z.object({
         identityId: z.string().trim().describe(SPIFFE_AUTH.ATTACH.identityId)
       }),
-      body: z.discriminatedUnion("configurationType", [
-        StaticConfigurationSchema.merge(CommonCreateFields),
-        RemoteConfigurationSchema.merge(CommonCreateFields)
-      ]),
+      body: CommonCreateFields,
       response: {
         200: z.object({
           identitySpiffeAuth: IdentitySpiffeAuthResponseSchema
@@ -216,7 +201,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
             trustDomain: identitySpiffeAuth.trustDomain,
             allowedSpiffeIds: identitySpiffeAuth.allowedSpiffeIds,
             allowedAudiences: identitySpiffeAuth.allowedAudiences,
-            configurationType: identitySpiffeAuth.configurationType,
+            configurationType: identitySpiffeAuth.trustBundleDistribution.profile,
             accessTokenTTL: identitySpiffeAuth.accessTokenTTL,
             accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identitySpiffeAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -251,10 +236,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
       params: z.object({
         identityId: z.string().trim().describe(SPIFFE_AUTH.UPDATE.identityId)
       }),
-      body: z.discriminatedUnion("configurationType", [
-        StaticConfigurationSchema.merge(CommonUpdateFields),
-        RemoteConfigurationSchema.merge(CommonUpdateFields)
-      ]),
+      body: CommonUpdateFields,
       response: {
         200: z.object({
           identitySpiffeAuth: IdentitySpiffeAuthResponseSchema
@@ -281,7 +263,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
             trustDomain: identitySpiffeAuth.trustDomain,
             allowedSpiffeIds: identitySpiffeAuth.allowedSpiffeIds,
             allowedAudiences: identitySpiffeAuth.allowedAudiences,
-            configurationType: identitySpiffeAuth.configurationType,
+            configurationType: identitySpiffeAuth.trustBundleDistribution.profile,
             accessTokenTTL: identitySpiffeAuth.accessTokenTTL,
             accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identitySpiffeAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -416,10 +398,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          identitySpiffeAuth: IdentitySpiffeAuthResponseSchema.omit({
-            caBundleJwks: true,
-            bundleEndpointCaCert: true
-          })
+          identitySpiffeAuth: IdentitySpiffeAuthResponseSchema
         })
       }
     },

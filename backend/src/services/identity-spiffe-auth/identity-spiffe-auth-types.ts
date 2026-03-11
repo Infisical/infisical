@@ -1,14 +1,49 @@
 import { TProjectPermission } from "@app/lib/types";
 
-export enum SpiffeConfigurationType {
+export enum SpiffeTrustBundleProfile {
   STATIC = "static",
-  REMOTE = "remote"
+  HTTPS_WEB_BUNDLE = "https_web_bundle"
 }
 
-export enum SpiffeBundleEndpointProfile {
-  HTTPS_WEB = "https_web",
-  HTTPS_SPIFFE = "https_spiffe"
-}
+// FIPS 140-2 approved JWT signing algorithms only.
+// EdDSA (Ed25519) and other non-NIST algorithms are excluded to avoid
+// opaque internal errors when running in FIPS-compliant environments.
+export const FIPS_APPROVED_JWT_ALGORITHMS = [
+  "RS256",
+  "RS384",
+  "RS512",
+  "PS256",
+  "PS384",
+  "PS512",
+  "ES256",
+  "ES384",
+  "ES512"
+];
+
+export type TSpiffeTrustBundleDistribution =
+  | {
+      profile: SpiffeTrustBundleProfile.STATIC;
+      bundle: string;
+    }
+  | {
+      profile: SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE;
+      endpointUrl: string;
+      caCert?: string;
+      refreshHintSeconds?: number;
+    };
+
+export type TSpiffeTrustBundleDistributionResponse =
+  | {
+      profile: SpiffeTrustBundleProfile.STATIC;
+      bundle: string;
+    }
+  | {
+      profile: SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE;
+      endpointUrl: string;
+      caCert: string;
+      refreshHintSeconds: number;
+      cachedBundleLastRefreshedAt: Date | null | undefined;
+    };
 
 export type TLoginSpiffeAuthDTO = {
   identityId: string;
@@ -21,12 +56,7 @@ export type TAttachSpiffeAuthDTO = {
   trustDomain: string;
   allowedSpiffeIds: string;
   allowedAudiences: string;
-  configurationType: SpiffeConfigurationType;
-  caBundleJwks?: string;
-  bundleEndpointUrl?: string;
-  bundleEndpointProfile?: SpiffeBundleEndpointProfile;
-  bundleEndpointCaCert?: string;
-  bundleRefreshHintSeconds?: number;
+  trustBundleDistribution: TSpiffeTrustBundleDistribution;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -39,12 +69,7 @@ export type TUpdateSpiffeAuthDTO = {
   trustDomain?: string;
   allowedSpiffeIds?: string;
   allowedAudiences?: string;
-  configurationType?: SpiffeConfigurationType;
-  caBundleJwks?: string;
-  bundleEndpointUrl?: string;
-  bundleEndpointProfile?: SpiffeBundleEndpointProfile;
-  bundleEndpointCaCert?: string;
-  bundleRefreshHintSeconds?: number;
+  trustBundleDistribution?: TSpiffeTrustBundleDistribution;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

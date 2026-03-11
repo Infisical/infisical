@@ -35,10 +35,10 @@ import {
   useDeleteIdentityGcpAuth,
   useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
-  useDeleteIdentitySpiffeAuth,
   useDeleteIdentityLdapAuth,
   useDeleteIdentityOciAuth,
   useDeleteIdentityOidcAuth,
+  useDeleteIdentitySpiffeAuth,
   useDeleteIdentityTlsCertAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth
@@ -49,10 +49,10 @@ import { IdentityAzureAuthForm } from "@app/pages/organization/AccessManagementP
 import { IdentityGcpAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityGcpAuthForm";
 import { IdentityJwtAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityJwtAuthForm";
 import { IdentityKubernetesAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityKubernetesAuthForm";
-import { IdentitySpiffeAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentitySpiffeAuthForm";
 import { IdentityLdapAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityLdapAuthForm";
 import { IdentityOciAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityOciAuthForm";
 import { IdentityOidcAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityOidcAuthForm";
+import { IdentitySpiffeAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentitySpiffeAuthForm";
 import { IdentityTlsCertAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityTlsCertAuthForm";
 import { IdentityTokenAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthForm";
@@ -63,10 +63,10 @@ import { ViewIdentityAzureAuthContent } from "./ViewIdentityAzureAuthContent";
 import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
 import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
-import { ViewIdentitySpiffeAuthContent } from "./ViewIdentitySpiffeAuthContent";
 import { ViewIdentityLdapAuthContent } from "./ViewIdentityLdapAuthContent";
 import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
+import { ViewIdentitySpiffeAuthContent } from "./ViewIdentitySpiffeAuthContent";
 import { ViewIdentityTlsCertAuthContent } from "./ViewIdentityTlsCertAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";
 import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthContent";

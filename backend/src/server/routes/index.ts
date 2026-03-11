@@ -285,8 +285,6 @@ import { identityGcpAuthDALFactory } from "@app/services/identity-gcp-auth/ident
 import { identityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { identityJwtAuthDALFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-dal";
 import { identityJwtAuthServiceFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-service";
-import { identitySpiffeAuthDALFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-dal";
-import { identitySpiffeAuthServiceFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-service";
 import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { identityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
@@ -297,6 +295,8 @@ import { identityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/ide
 import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identitySpiffeAuthDALFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-dal";
+import { identitySpiffeAuthServiceFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-service";
 import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
 import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
@@ -1971,7 +1971,6 @@ export const registerRoutes = async (
     kmsService,
     membershipIdentityDAL
   });
-
 
   const identityLdapAuthService = identityLdapAuthServiceFactory({
     identityLdapAuthDAL,

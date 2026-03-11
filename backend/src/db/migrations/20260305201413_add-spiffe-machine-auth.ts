@@ -15,7 +15,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("configurationType").notNullable();
       t.binary("encryptedCaBundleJwks").nullable();
       t.string("bundleEndpointUrl").nullable();
-      t.string("bundleEndpointProfile").nullable();
       t.binary("encryptedBundleEndpointCaCert").nullable();
       t.binary("encryptedCachedBundleJwks").nullable();
       t.datetime("cachedBundleLastRefreshedAt").nullable();

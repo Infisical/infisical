@@ -12,6 +12,7 @@ import {
   TIdentityKubernetesAuths,
   TIdentityOciAuths,
   TIdentityOidcAuths,
+  TIdentitySpiffeAuths,
   TIdentityTlsCertAuths,
   TIdentityTokenAuths,
   TIdentityUniversalAuths,
@@ -257,7 +258,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityTlsCertAuth}.identityId`
         )
-        .leftJoin(
+        .leftJoin<TIdentitySpiffeAuths>(
           TableName.IdentitySpiffeAuth,
           "paginatedIdentity.actorIdentityId",
           `${TableName.IdentitySpiffeAuth}.identityId`

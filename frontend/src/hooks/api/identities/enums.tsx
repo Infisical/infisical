@@ -19,12 +19,7 @@ export enum IdentityJwtConfigurationType {
   STATIC = "static"
 }
 
-export enum IdentitySpiffeConfigurationType {
+export enum SpiffeTrustBundleProfile {
   STATIC = "static",
-  REMOTE = "remote"
-}
-
-export enum SpiffeBundleEndpointProfile {
-  HTTPS_WEB = "https_web",
-  HTTPS_SPIFFE = "https_spiffe"
+  HTTPS_WEB_BUNDLE = "https_web_bundle"
 }

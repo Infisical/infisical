@@ -1,12 +1,13 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import { decodeProtectedHeader, errors as joseErrors, importJWK, jwtVerify } from "jose";
+import { createLocalJWKSet, errors as joseErrors, JSONWebKeySet, jwtVerify } from "jose";
 
 import {
   AccessScope,
   ActionProjectType,
   IdentityAuthMethod,
   OrganizationActionScope,
+  TIdentitySpiffeAuths,
   TIdentitySpiffeAuthsUpdate
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -28,8 +29,8 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -45,15 +46,17 @@ import {
   doesSpiffeIdMatchPattern,
   extractTrustDomainFromSpiffeId,
   fetchRemoteBundleJwks,
-  findSigningKeyInJwks,
   isValidSpiffeId
 } from "./identity-spiffe-auth-fns";
 import {
-  SpiffeConfigurationType,
+  FIPS_APPROVED_JWT_ALGORITHMS,
+  SpiffeTrustBundleProfile,
   TAttachSpiffeAuthDTO,
   TGetSpiffeAuthDTO,
   TLoginSpiffeAuthDTO,
   TRevokeSpiffeAuthDTO,
+  TSpiffeTrustBundleDistribution,
+  TSpiffeTrustBundleDistributionResponse,
   TUpdateSpiffeAuthDTO
 } from "./identity-spiffe-auth-types";
 
@@ -70,23 +73,15 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
 
 export type TIdentitySpiffeAuthServiceFactory = ReturnType<typeof identitySpiffeAuthServiceFactory>;
 
-const verifyJwtSvid = async (jwtValue: string, jwksJson: string) => {
-  const header = decodeProtectedHeader(jwtValue);
-  if (!header.kid) {
-    throw new UnauthorizedError({ message: "JWT missing kid header" });
-  }
-
-  let jwk;
-  try {
-    jwk = findSigningKeyInJwks(jwksJson, header.kid);
-  } catch {
-    throw new UnauthorizedError({ message: `No key found in JWKS matching kid: ${header.kid}` });
-  }
-  const key = await importJWK(jwk, header.alg);
+const verifyJwtSvid = async (jwtValue: string, jwksJson: string, allowedAudiences: string[]) => {
+  const jwks = createLocalJWKSet(JSON.parse(jwksJson) as JSONWebKeySet);
 
   try {
-    const { payload } = await jwtVerify(jwtValue, key);
-    return { tokenData: payload as Record<string, unknown>, kid: header.kid };
+    const { payload } = await jwtVerify(jwtValue, jwks, {
+      audience: allowedAudiences,
+      algorithms: FIPS_APPROVED_JWT_ALGORITHMS
+    });
+    return payload as Record<string, unknown>;
   } catch (error) {
     if (error instanceof joseErrors.JWTExpired) {
       throw new UnauthorizedError({ message: "JWT-SVID has expired" });
@@ -94,31 +89,30 @@ const verifyJwtSvid = async (jwtValue: string, jwksJson: string) => {
     if (error instanceof joseErrors.JWSSignatureVerificationFailed) {
       throw new UnauthorizedError({ message: "JWT-SVID signature verification failed" });
     }
+    if (error instanceof joseErrors.JWTClaimValidationFailed) {
+      throw new UnauthorizedError({ message: "JWT-SVID audience validation failed" });
+    }
     throw new UnauthorizedError({ message: "JWT-SVID verification failed" });
   }
 };
 
 const validateSpiffeClaims = (
   tokenData: Record<string, unknown>,
-  config: { allowedAudiences: string; trustDomain: string; allowedSpiffeIds: string }
+  config: { trustDomain: string; allowedSpiffeIds: string }
 ): boolean => {
-  if (!tokenData.aud) return false;
-
-  const tokenAudiences: string[] = Array.isArray(tokenData.aud) ? tokenData.aud : [tokenData.aud as string];
-  const allowedAudiences = config.allowedAudiences
-    .split(", ")
-    .map((a) => a.trim())
-    .filter(Boolean);
-
-  if (!tokenAudiences.some((aud) => allowedAudiences.includes(aud))) return false;
-
   const tokenSub = tokenData.sub as string;
-  if (!tokenSub || !isValidSpiffeId(tokenSub)) return false;
+  if (!tokenSub || !isValidSpiffeId(tokenSub)) {
+    return false;
+  }
 
   const tokenTrustDomain = extractTrustDomainFromSpiffeId(tokenSub);
-  if (tokenTrustDomain !== config.trustDomain) return false;
+  if (tokenTrustDomain !== config.trustDomain) {
+    return false;
+  }
 
-  if (!doesSpiffeIdMatchPattern(tokenSub, config.allowedSpiffeIds)) return false;
+  if (!doesSpiffeIdMatchPattern(tokenSub, config.allowedSpiffeIds)) {
+    return false;
+  }
 
   return true;
 };
@@ -133,22 +127,91 @@ export const identitySpiffeAuthServiceFactory = ({
   kmsService,
   orgDAL
 }: TIdentitySpiffeAuthServiceFactoryDep) => {
-  const resolveJwks = async ({
+  type TFlattenedTrustBundle = {
+    configurationType: string;
+    caBundleJwks: string | null;
+    bundleEndpointUrl: string | null;
+    bundleEndpointCaCert: string | null;
+    bundleRefreshHintSeconds: number | undefined;
+  };
+
+  const $flattenTrustBundleDistribution = (dist: TSpiffeTrustBundleDistribution): TFlattenedTrustBundle => {
+    if (dist.profile === SpiffeTrustBundleProfile.STATIC) {
+      return {
+        configurationType: dist.profile,
+        caBundleJwks: dist.bundle,
+        bundleEndpointUrl: null,
+        bundleEndpointCaCert: null,
+        bundleRefreshHintSeconds: undefined
+      };
+    }
+    return {
+      configurationType: dist.profile,
+      caBundleJwks: null,
+      bundleEndpointUrl: dist.endpointUrl,
+      bundleEndpointCaCert: dist.caCert || null,
+      bundleRefreshHintSeconds: dist.refreshHintSeconds
+    };
+  };
+
+  const $buildTrustBundleDistributionResponse = (
+    dbRow: Pick<
+      TIdentitySpiffeAuths,
+      "configurationType" | "bundleEndpointUrl" | "cachedBundleLastRefreshedAt" | "bundleRefreshHintSeconds"
+    >,
+    decryptedJwks: string,
+    decryptedCaCert: string
+  ): TSpiffeTrustBundleDistributionResponse => {
+    if (dbRow.configurationType === SpiffeTrustBundleProfile.STATIC) {
+      return { profile: SpiffeTrustBundleProfile.STATIC, bundle: decryptedJwks };
+    }
+    return {
+      profile: SpiffeTrustBundleProfile.HTTPS_WEB_BUNDLE,
+      endpointUrl: dbRow.bundleEndpointUrl || "",
+      caCert: decryptedCaCert,
+      refreshHintSeconds: dbRow.bundleRefreshHintSeconds,
+      cachedBundleLastRefreshedAt: dbRow.cachedBundleLastRefreshedAt
+    };
+  };
+
+  const $validateSpiffeConfig = async (dist: TSpiffeTrustBundleDistribution) => {
+    if (dist.profile === SpiffeTrustBundleProfile.STATIC) {
+      try {
+        createLocalJWKSet(JSON.parse(dist.bundle) as JSONWebKeySet);
+      } catch {
+        throw new BadRequestError({ message: "The provided CA Bundle JWKS is not valid JWKS" });
+      }
+      return;
+    }
+
+    try {
+      const bundleJwks = await fetchRemoteBundleJwks(dist.endpointUrl, dist.caCert);
+      createLocalJWKSet(JSON.parse(bundleJwks) as JSONWebKeySet);
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError({
+        message:
+          "Failed to fetch or validate the remote SPIFFE trust bundle. Verify the bundle endpoint URL and CA certificate are correct."
+      });
+    }
+  };
+
+  const $resolveJwks = async ({
     config,
     orgId,
     forceRefresh
   }: {
-    config: {
-      id: string;
-      configurationType: string;
-      encryptedCaBundleJwks: Buffer | null;
-      encryptedCachedBundleJwks: Buffer | null;
-      bundleEndpointUrl: string | null;
-      bundleEndpointProfile: string | null;
-      encryptedBundleEndpointCaCert: Buffer | null;
-      bundleRefreshHintSeconds: number | null;
-      cachedBundleLastRefreshedAt: Date | string | null;
-    };
+    config: Pick<
+      TIdentitySpiffeAuths,
+      | "id"
+      | "configurationType"
+      | "encryptedCaBundleJwks"
+      | "encryptedCachedBundleJwks"
+      | "bundleEndpointUrl"
+      | "encryptedBundleEndpointCaCert"
+      | "bundleRefreshHintSeconds"
+      | "cachedBundleLastRefreshedAt"
+    >;
     orgId: string;
     forceRefresh?: boolean;
   }): Promise<{ jwksJson: string; fromCache: boolean }> => {
@@ -158,11 +221,11 @@ export const identitySpiffeAuthServiceFactory = ({
         orgId
       });
 
-    if (config.configurationType === SpiffeConfigurationType.STATIC) {
+    if (config.configurationType === SpiffeTrustBundleProfile.STATIC) {
       if (!config.encryptedCaBundleJwks) {
         throw new BadRequestError({ message: "Static SPIFFE auth has no CA bundle JWKS configured" });
       }
-      
+
       return {
         jwksJson: orgDataKeyDecryptor({ cipherTextBlob: config.encryptedCaBundleJwks }).toString(),
         fromCache: false
@@ -192,7 +255,7 @@ export const identitySpiffeAuthServiceFactory = ({
     await blockLocalAndPrivateIpAddresses(config.bundleEndpointUrl);
 
     let caCert: string | undefined;
-    if (config.bundleEndpointProfile === "https_spiffe" && config.encryptedBundleEndpointCaCert) {
+    if (config.encryptedBundleEndpointCaCert) {
       caCert = orgDataKeyDecryptor({ cipherTextBlob: config.encryptedBundleEndpointCaCert }).toString();
     }
 
@@ -236,20 +299,25 @@ export const identitySpiffeAuthServiceFactory = ({
 
     try {
       // Resolve JWKS (lazy fetch for remote, decrypt for static)
-      let { jwksJson, fromCache } = await resolveJwks({ config: identitySpiffeAuth, orgId: identity.orgId });
+      let { jwksJson, fromCache } = await $resolveJwks({ config: identitySpiffeAuth, orgId: identity.orgId });
+
+      const allowedAudiences = identitySpiffeAuth.allowedAudiences
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean);
 
       let tokenData: Record<string, unknown>;
       try {
-        ({ tokenData } = await verifyJwtSvid(jwtValue, jwksJson));
+        tokenData = await verifyJwtSvid(jwtValue, jwksJson, allowedAudiences);
       } catch (verifyError) {
         // Kid-miss retry: if we used a cached JWKS and the kid wasn't found, force-refresh once
         if (fromCache && verifyError instanceof Error && verifyError.message.includes("No key found in JWKS")) {
-          ({ jwksJson, fromCache } = await resolveJwks({
+          ({ jwksJson, fromCache } = await $resolveJwks({
             config: identitySpiffeAuth,
             orgId: identity.orgId,
             forceRefresh: true
           }));
-          ({ tokenData } = await verifyJwtSvid(jwtValue, jwksJson));
+          tokenData = await verifyJwtSvid(jwtValue, jwksJson, allowedAudiences);
         } else {
           throw verifyError;
         }
@@ -320,7 +388,7 @@ export const identitySpiffeAuthServiceFactory = ({
         return newToken;
       });
 
-      let expireyOptions: { expiresIn: number } | undefined = undefined;
+      let expireyOptions: { expiresIn: number } | undefined;
       const accessTokenTTL = Number(identityAccessToken.accessTokenTTL);
       if (accessTokenTTL > 0) {
         expireyOptions = { expiresIn: accessTokenTTL };
@@ -372,12 +440,7 @@ export const identitySpiffeAuthServiceFactory = ({
     trustDomain,
     allowedSpiffeIds,
     allowedAudiences,
-    configurationType,
-    caBundleJwks,
-    bundleEndpointUrl,
-    bundleEndpointProfile,
-    bundleEndpointCaCert,
-    bundleRefreshHintSeconds,
+    trustBundleDistribution,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -459,21 +522,25 @@ export const identitySpiffeAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    if (bundleEndpointUrl) {
-      await blockLocalAndPrivateIpAddresses(bundleEndpointUrl);
+    const flatBundle = $flattenTrustBundleDistribution(trustBundleDistribution);
+
+    if (flatBundle.bundleEndpointUrl) {
+      await blockLocalAndPrivateIpAddresses(flatBundle.bundleEndpointUrl);
     }
+
+    await $validateSpiffeConfig(trustBundleDistribution);
 
     const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
 
-    const encryptedCaBundleJwks = caBundleJwks
-      ? orgDataKeyEncryptor({ plainText: Buffer.from(caBundleJwks) }).cipherTextBlob
+    const encryptedCaBundleJwks = flatBundle.caBundleJwks
+      ? orgDataKeyEncryptor({ plainText: Buffer.from(flatBundle.caBundleJwks) }).cipherTextBlob
       : null;
 
-    const encryptedBundleEndpointCaCert = bundleEndpointCaCert
-      ? orgDataKeyEncryptor({ plainText: Buffer.from(bundleEndpointCaCert) }).cipherTextBlob
+    const encryptedBundleEndpointCaCert = flatBundle.bundleEndpointCaCert
+      ? orgDataKeyEncryptor({ plainText: Buffer.from(flatBundle.bundleEndpointCaCert) }).cipherTextBlob
       : null;
 
     const identitySpiffeAuth = await identitySpiffeAuthDAL.transaction(async (tx) => {
@@ -483,12 +550,11 @@ export const identitySpiffeAuthServiceFactory = ({
           trustDomain,
           allowedSpiffeIds,
           allowedAudiences,
-          configurationType,
+          configurationType: flatBundle.configurationType,
           encryptedCaBundleJwks,
-          bundleEndpointUrl: bundleEndpointUrl || null,
-          bundleEndpointProfile: bundleEndpointProfile || null,
+          bundleEndpointUrl: flatBundle.bundleEndpointUrl || null,
           encryptedBundleEndpointCaCert,
-          bundleRefreshHintSeconds: bundleRefreshHintSeconds || 300,
+          bundleRefreshHintSeconds: flatBundle.bundleRefreshHintSeconds || 300,
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
@@ -503,8 +569,11 @@ export const identitySpiffeAuthServiceFactory = ({
     return {
       ...identitySpiffeAuth,
       orgId: identityMembershipOrg.scopeOrgId,
-      caBundleJwks: caBundleJwks || "",
-      bundleEndpointCaCert: bundleEndpointCaCert || ""
+      trustBundleDistribution: $buildTrustBundleDistributionResponse(
+        identitySpiffeAuth,
+        flatBundle.caBundleJwks || "",
+        flatBundle.bundleEndpointCaCert || ""
+      )
     };
   };
 
@@ -513,12 +582,7 @@ export const identitySpiffeAuthServiceFactory = ({
     trustDomain,
     allowedSpiffeIds,
     allowedAudiences,
-    configurationType,
-    caBundleJwks,
-    bundleEndpointUrl,
-    bundleEndpointProfile,
-    bundleEndpointCaCert,
-    bundleRefreshHintSeconds,
+    trustBundleDistribution,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -599,18 +663,10 @@ export const identitySpiffeAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    if (bundleEndpointUrl) {
-      await blockLocalAndPrivateIpAddresses(bundleEndpointUrl);
-    }
-
     const updateQuery: TIdentitySpiffeAuthsUpdate = {
       trustDomain,
       allowedSpiffeIds,
       allowedAudiences,
-      configurationType,
-      bundleEndpointUrl,
-      bundleEndpointProfile,
-      bundleRefreshHintSeconds,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,
@@ -625,15 +681,23 @@ export const identitySpiffeAuthServiceFactory = ({
         orgId: actorOrgId
       });
 
-    if (caBundleJwks !== undefined) {
-      updateQuery.encryptedCaBundleJwks = caBundleJwks
-        ? orgDataKeyEncryptor({ plainText: Buffer.from(caBundleJwks) }).cipherTextBlob
-        : null;
-    }
+    if (trustBundleDistribution) {
+      const flatBundle = $flattenTrustBundleDistribution(trustBundleDistribution);
 
-    if (bundleEndpointCaCert !== undefined) {
-      updateQuery.encryptedBundleEndpointCaCert = bundleEndpointCaCert
-        ? orgDataKeyEncryptor({ plainText: Buffer.from(bundleEndpointCaCert) }).cipherTextBlob
+      if (flatBundle.bundleEndpointUrl) {
+        await blockLocalAndPrivateIpAddresses(flatBundle.bundleEndpointUrl);
+      }
+
+      await $validateSpiffeConfig(trustBundleDistribution);
+
+      updateQuery.configurationType = flatBundle.configurationType;
+      updateQuery.bundleEndpointUrl = flatBundle.bundleEndpointUrl;
+      updateQuery.bundleRefreshHintSeconds = flatBundle.bundleRefreshHintSeconds;
+      updateQuery.encryptedCaBundleJwks = flatBundle.caBundleJwks
+        ? orgDataKeyEncryptor({ plainText: Buffer.from(flatBundle.caBundleJwks) }).cipherTextBlob
+        : null;
+      updateQuery.encryptedBundleEndpointCaCert = flatBundle.bundleEndpointCaCert
+        ? orgDataKeyEncryptor({ plainText: Buffer.from(flatBundle.bundleEndpointCaCert) }).cipherTextBlob
         : null;
     }
 
@@ -649,8 +713,11 @@ export const identitySpiffeAuthServiceFactory = ({
     return {
       ...updatedSpiffeAuth,
       orgId: identityMembershipOrg.scopeOrgId,
-      caBundleJwks: decryptedCaBundleJwks,
-      bundleEndpointCaCert: decryptedBundleEndpointCaCert
+      trustBundleDistribution: $buildTrustBundleDistributionResponse(
+        updatedSpiffeAuth,
+        decryptedCaBundleJwks,
+        decryptedBundleEndpointCaCert
+      )
     };
   };
 
@@ -715,8 +782,11 @@ export const identitySpiffeAuthServiceFactory = ({
     return {
       ...identitySpiffeAuth,
       orgId: identityMembershipOrg.scopeOrgId,
-      caBundleJwks: decryptedCaBundleJwks,
-      bundleEndpointCaCert: decryptedBundleEndpointCaCert
+      trustBundleDistribution: $buildTrustBundleDistributionResponse(
+        identitySpiffeAuth,
+        decryptedCaBundleJwks,
+        decryptedBundleEndpointCaCert
+      )
     };
   };
 
@@ -804,13 +874,39 @@ export const identitySpiffeAuthServiceFactory = ({
       const deletedSpiffeAuth = await identitySpiffeAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.SPIFFE_AUTH }, tx);
 
-      return { ...deletedSpiffeAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
+      return deletedSpiffeAuth?.[0];
     });
 
-    return revokedIdentitySpiffeAuth;
+    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
+
+    const decryptedCaBundleJwks = revokedIdentitySpiffeAuth.encryptedCaBundleJwks
+      ? orgDataKeyDecryptor({ cipherTextBlob: revokedIdentitySpiffeAuth.encryptedCaBundleJwks }).toString()
+      : "";
+    const decryptedBundleEndpointCaCert = revokedIdentitySpiffeAuth.encryptedBundleEndpointCaCert
+      ? orgDataKeyDecryptor({ cipherTextBlob: revokedIdentitySpiffeAuth.encryptedBundleEndpointCaCert }).toString()
+      : "";
+
+    return {
+      ...revokedIdentitySpiffeAuth,
+      orgId: identityMembershipOrg.scopeOrgId,
+      trustBundleDistribution: $buildTrustBundleDistributionResponse(
+        revokedIdentitySpiffeAuth,
+        decryptedCaBundleJwks,
+        decryptedBundleEndpointCaCert
+      )
+    };
   };
 
-  const refreshSpiffeBundle = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetSpiffeAuthDTO) => {
+  const refreshSpiffeBundle = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetSpiffeAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -856,33 +952,41 @@ export const identitySpiffeAuthServiceFactory = ({
 
     const identitySpiffeAuth = await identitySpiffeAuthDAL.findOne({ identityId });
 
-    if (identitySpiffeAuth.configurationType !== SpiffeConfigurationType.REMOTE) {
+    if (identitySpiffeAuth.configurationType === SpiffeTrustBundleProfile.STATIC) {
       throw new BadRequestError({
         message: "Bundle refresh is only applicable to identities with remote SPIFFE Auth configuration"
       });
     }
 
-    await resolveJwks({ config: identitySpiffeAuth, orgId: identityMembershipOrg.scopeOrgId, forceRefresh: true });
-
-    const refreshed = await identitySpiffeAuthDAL.findOne({ identityId });
+    const { jwksJson } = await $resolveJwks({
+      config: identitySpiffeAuth,
+      orgId: identityMembershipOrg.scopeOrgId,
+      forceRefresh: true
+    });
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
 
-    const decryptedCaBundleJwks = refreshed.encryptedCaBundleJwks
-      ? orgDataKeyDecryptor({ cipherTextBlob: refreshed.encryptedCaBundleJwks }).toString()
-      : "";
-    const decryptedBundleEndpointCaCert = refreshed.encryptedBundleEndpointCaCert
-      ? orgDataKeyDecryptor({ cipherTextBlob: refreshed.encryptedBundleEndpointCaCert }).toString()
+    const decryptedBundleEndpointCaCert = identitySpiffeAuth.encryptedBundleEndpointCaCert
+      ? orgDataKeyDecryptor({ cipherTextBlob: identitySpiffeAuth.encryptedBundleEndpointCaCert }).toString()
       : "";
 
+    // Use the existing row with the refresh timestamp set to now, avoiding a redundant DB read.
+    const refreshedRow = {
+      ...identitySpiffeAuth,
+      cachedBundleLastRefreshedAt: new Date()
+    };
+
     return {
-      ...refreshed,
+      ...refreshedRow,
       orgId: identityMembershipOrg.scopeOrgId,
-      caBundleJwks: decryptedCaBundleJwks,
-      bundleEndpointCaCert: decryptedBundleEndpointCaCert
+      trustBundleDistribution: $buildTrustBundleDistributionResponse(
+        refreshedRow,
+        jwksJson,
+        decryptedBundleEndpointCaCert
+      )
     };
   };
 

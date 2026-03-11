@@ -833,18 +833,37 @@ export type DeleteIdentityJwtAuthDTO = {
   identityId: string;
 } & ({ organizationId: string } | { projectId: string });
 
+export type SpiffeTrustBundleDistributionInput =
+  | {
+      profile: "static";
+      bundle: string;
+    }
+  | {
+      profile: "https_web_bundle";
+      endpointUrl: string;
+      caCert?: string;
+      refreshHintSeconds?: number;
+    };
+
+export type SpiffeTrustBundleDistribution =
+  | {
+      profile: "static";
+      bundle: string;
+    }
+  | {
+      profile: "https_web_bundle";
+      endpointUrl: string;
+      caCert: string;
+      refreshHintSeconds: number;
+      cachedBundleLastRefreshedAt: string | null;
+    };
+
 export type IdentitySpiffeAuth = {
   identityId: string;
   trustDomain: string;
   allowedSpiffeIds: string;
   allowedAudiences: string;
-  configurationType: string;
-  caBundleJwks: string;
-  bundleEndpointUrl: string | null;
-  bundleEndpointProfile: string | null;
-  bundleEndpointCaCert: string;
-  cachedBundleLastRefreshedAt: string | null;
-  bundleRefreshHintSeconds: number;
+  trustBundleDistribution: SpiffeTrustBundleDistribution;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -858,12 +877,7 @@ export type AddIdentitySpiffeAuthDTO = {
   trustDomain: string;
   allowedSpiffeIds: string;
   allowedAudiences: string;
-  configurationType: string;
-  caBundleJwks?: string;
-  bundleEndpointUrl?: string;
-  bundleEndpointProfile?: string;
-  bundleEndpointCaCert?: string;
-  bundleRefreshHintSeconds?: number;
+  trustBundleDistribution: SpiffeTrustBundleDistributionInput;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -879,12 +893,7 @@ export type UpdateIdentitySpiffeAuthDTO = {
   trustDomain?: string;
   allowedSpiffeIds?: string;
   allowedAudiences?: string;
-  configurationType?: string;
-  caBundleJwks?: string;
-  bundleEndpointUrl?: string;
-  bundleEndpointProfile?: string;
-  bundleEndpointCaCert?: string;
-  bundleRefreshHintSeconds?: number;
+  trustBundleDistribution?: SpiffeTrustBundleDistributionInput;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
