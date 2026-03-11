@@ -44,7 +44,7 @@ export const SelectOrganizationSection = () => {
   const [selectedRootOrg, setSelectedRootOrg] = useState<TOrgWithSubOrgs | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => { });
 
   const router = useRouter();
   const queryParams = new URLSearchParams(window.location.search);
@@ -60,7 +60,8 @@ export const SelectOrganizationSection = () => {
     return (orgEntry?.subOrganizations.length ?? 0) === 0;
   }, [defaultSelectedOrg, callbackPort, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
 
-  const isLoadingSubOrgCheck = Boolean(defaultSelectedOrg) && !callbackPort && orgsWithSubOrgs.isPending;
+  const isLoadingSubOrgCheck =
+    Boolean(defaultSelectedOrg) && !callbackPort && orgsWithSubOrgs.isPending;
 
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
@@ -137,9 +138,8 @@ export const SelectOrganizationSection = () => {
             }
           }
         } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
-          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
-            callbackPort ? `&callbackPort=${callbackPort}` : ""
-          }`;
+          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${callbackPort ? `&callbackPort=${callbackPort}` : ""
+            }`;
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
           url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
           if (callbackPort) {
