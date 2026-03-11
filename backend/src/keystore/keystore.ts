@@ -150,6 +150,15 @@ export type TKeyStoreFactory = {
   listRange: (key: string, start: number, stop: number) => Promise<string[]>;
   listRemove: (key: string, count: number, value: string) => Promise<number>;
   listLength: (key: string) => Promise<number>;
+  // stream operations
+  streamAdd: (key: string, id: string, fieldValue: Record<string, string>, maxLen?: number) => Promise<string | null>;
+  streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
+  streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
+  streamCollect: (
+    key: string,
+    batchSize: number,
+    maxEntries: number
+  ) => Promise<{ entries: [string, string[]][]; lastId: string | null }>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -293,6 +302,52 @@ export const keyStoreFactory = (
 
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
+  // Stream operations
+  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1000000) => {
+    const args: string[] = [];
+    for (const [field, value] of Object.entries(fieldValue)) {
+      args.push(field, value);
+    }
+    return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+  };
+
+  const streamRange = async (key: string, start: string, end: string, count?: number) => {
+    if (count) {
+      return primaryRedis.xrange(key, start, end, "COUNT", count);
+    }
+    return primaryRedis.xrange(key, start, end);
+  };
+
+  const streamTrim = async (key: string, minId: string, inclusive = false) => {
+    let id = minId;
+    if (inclusive) {
+      const [ts, seq] = minId.split("-");
+      id = `${ts}-${Number(seq) + 1}`;
+    }
+    return primaryRedis.xtrim(key, "MINID", id);
+  };
+
+  const streamCollect = async (key: string, batchSize: number, maxEntries: number) => {
+    let lastId: string | null = null;
+    const allEntries: [string, string[]][] = [];
+
+    for (let i = 0; i < Math.ceil(maxEntries / batchSize); i += 1) {
+      const start: string = lastId ? `(${lastId}` : "-";
+      // eslint-disable-next-line no-await-in-loop
+      const batch: [string, string[]][] = await primaryRedis.xrange(key, start, "+", "COUNT", batchSize);
+
+      if (batch.length === 0) break;
+
+      allEntries.push(...batch);
+      // eslint-disable-next-line prefer-destructuring
+      lastId = batch[batch.length - 1][0];
+
+      if (allEntries.length >= maxEntries || batch.length < batchSize) break;
+    }
+
+    return { entries: allEntries, lastId };
+  };
+
   const waitTillReady = async ({
     key,
     waitingCb,
@@ -336,6 +391,10 @@ export const keyStoreFactory = (
     listPush,
     listRange,
     listRemove,
-    listLength
+    listLength,
+    streamAdd,
+    streamRange,
+    streamTrim,
+    streamCollect
   };
 };
