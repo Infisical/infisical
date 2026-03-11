@@ -294,8 +294,9 @@ export const SelectOrganizationSection = () => {
 
     if (onlyOneRootOrgWithNoSubOrgs) {
       if (callbackPort) {
-        handleCliRedirect();
-        setIsInitialOrgCheckLoading(false);
+        // CLI flow: auto-select the only org so the token is sent to the CLI
+        // without requiring the user to interact with the selector.
+        handleSelectOrganization(organizations.data[0]);
       } else if (!defaultSelectedOrg) {
         // No org_id in URL — auto-select the only org directly.
         // When defaultSelectedOrg is set, willAutoSelectDefaultOrg handles selection via the second useEffect.
