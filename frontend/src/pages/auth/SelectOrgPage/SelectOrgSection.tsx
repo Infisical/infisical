@@ -54,6 +54,15 @@ export const SelectOrganizationSection = () => {
   const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
+  const willAutoSelectDefaultOrg = useMemo(() => {
+    if (!defaultSelectedOrg || callbackPort || orgsWithSubOrgs.isPending) return false;
+    const orgEntry = orgsWithSubOrgs.data?.find((o) => o.id === defaultSelectedOrg.id);
+    return (orgEntry?.subOrganizations.length ?? 0) === 0;
+  }, [defaultSelectedOrg, callbackPort, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
+
+  const isLoadingSubOrgCheck =
+    Boolean(defaultSelectedOrg) && !callbackPort && orgsWithSubOrgs.isPending;
+
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
     try {
@@ -129,9 +138,7 @@ export const SelectOrganizationSection = () => {
             }
           }
         } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
-          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
-            callbackPort ? `&callbackPort=${callbackPort}` : ""
-          }`;
+          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${callbackPort ? `&callbackPort=${callbackPort}` : ""}`;
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
           url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
           if (callbackPort) {
@@ -165,8 +172,6 @@ export const SelectOrganizationSection = () => {
           return;
         }
         throw error;
-      } finally {
-        setIsInitialOrgCheckLoading(false);
       }
 
       await router.invalidate();
@@ -176,6 +181,11 @@ export const SelectOrganizationSection = () => {
         if (mfaMethod) {
           setRequiredMfaMethod(mfaMethod);
         }
+        // Set loading to false only here so the MFA prompt can render.
+        // For navigation paths below we intentionally leave it true — the
+        // component unmounts on navigation and setting it false would cause
+        // a one-frame flash of the org selector before the route change lands.
+        setIsInitialOrgCheckLoading(false);
         toggleShowMfa.on();
         setMfaSuccessCallback(() => () => handleSelectOrganization(organization));
         return;
@@ -282,10 +292,9 @@ export const SelectOrganizationSection = () => {
       orgsWithSubOrgs.data.length === 1 && orgsWithSubOrgs.data[0].subOrganizations.length === 0;
 
     if (onlyOneRootOrgWithNoSubOrgs) {
-      if (callbackPort) {
-        handleCliRedirect();
-        setIsInitialOrgCheckLoading(false);
-      } else {
+      // CLI flow (callbackPort) or no org_id in URL: auto-select the only org.
+      // When defaultSelectedOrg is set without callbackPort, willAutoSelectDefaultOrg handles selection via the second useEffect.
+      if (callbackPort || !defaultSelectedOrg) {
         handleSelectOrganization(organizations.data[0]);
       }
     } else {
@@ -295,7 +304,8 @@ export const SelectOrganizationSection = () => {
     organizations.isPending,
     organizations.data,
     orgsWithSubOrgs.isPending,
-    orgsWithSubOrgs.data
+    orgsWithSubOrgs.data,
+    defaultSelectedOrg
   ]);
 
   useEffect(() => {
@@ -311,10 +321,10 @@ export const SelectOrganizationSection = () => {
       }
     }
 
-    if (defaultSelectedOrg) {
+    if (willAutoSelectDefaultOrg && defaultSelectedOrg) {
       handleSelectOrganization(defaultSelectedOrg);
     }
-  }, [defaultSelectedOrg, mfaPending]);
+  }, [defaultSelectedOrg, mfaPending, willAutoSelectDefaultOrg]);
 
   const renderListContent = () => {
     if (orgsWithSubOrgs.isPending) {
@@ -492,7 +502,8 @@ export const SelectOrganizationSection = () => {
   if (
     userLoading ||
     !user ||
-    ((isInitialOrgCheckLoading || defaultSelectedOrg) && !shouldShowMfa)
+    ((isInitialOrgCheckLoading || willAutoSelectDefaultOrg || isLoadingSubOrgCheck) &&
+      !shouldShowMfa)
   ) {
     return (
       <div className="h-screen w-screen bg-bunker-800">
