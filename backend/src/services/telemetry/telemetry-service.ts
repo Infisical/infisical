@@ -124,10 +124,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
     try {
       const plan = await licenseService.getPlan(orgId);
-      if (plan) {
-        properties.plan = plan.slug ?? "free";
-        properties.seat_count = plan.membersUsed;
-      }
+      properties.plan = plan.slug ?? "free";
+      properties.seat_count = plan.membersUsed;
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }
