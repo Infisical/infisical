@@ -127,7 +127,13 @@ export const FolderTableRow = ({
             : "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover group-hover:pr-16"
         }
       >
-        {folderName}
+        <span
+          className={twMerge(
+            pendingAction === PendingAction.Delete && "text-danger/75 line-through"
+          )}
+        >
+          {folderName}
+        </span>
         {description && (
           <Tooltip>
             <TooltipTrigger asChild>

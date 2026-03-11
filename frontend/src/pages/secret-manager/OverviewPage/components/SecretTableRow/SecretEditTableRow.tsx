@@ -756,7 +756,10 @@ export const SecretEditTableRow = ({
           isError={Boolean(error)}
           {...field}
           value={field.value ?? ""}
-          className="w-full px-0 text-foreground placeholder:text-red-500 focus:ring-transparent"
+          className={twMerge(
+            "w-full px-0 text-foreground placeholder:text-red-500 focus:ring-transparent",
+            isPendingDelete && "text-danger/75 line-through"
+          )}
           onBlur={(e) => {
             field.onBlur();
             if (!isBatchMode && field.onChange) field.onChange(e);

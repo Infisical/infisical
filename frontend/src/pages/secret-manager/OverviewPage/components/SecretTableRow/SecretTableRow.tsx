@@ -340,7 +340,13 @@ export const SecretTableRow = ({
               isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
             )}
           >
-            {secretKey}
+            <span
+              className={twMerge(
+                singleEnvPendingAction === PendingAction.Delete && "text-danger/75 line-through"
+              )}
+            >
+              {secretKey}
+            </span>
             <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center transition-all duration-500 group-hover:space-x-1.5">
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
