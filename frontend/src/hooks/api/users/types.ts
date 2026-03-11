@@ -10,6 +10,7 @@ export enum AuthMethod {
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
+  GOOGLE_SAML = "google-saml",
   LDAP = "ldap",
   OIDC = "oidc",
   SAML = "saml"

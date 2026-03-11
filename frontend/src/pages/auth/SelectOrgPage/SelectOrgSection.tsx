@@ -147,7 +147,8 @@ export const SelectOrganizationSection = () => {
             AuthMethod.OKTA_SAML,
             AuthMethod.AZURE_SAML,
             AuthMethod.JUMPCLOUD_SAML,
-            AuthMethod.KEYCLOAK_SAML
+            AuthMethod.KEYCLOAK_SAML,
+            AuthMethod.GOOGLE_SAML
           ];
           if (!samlAuthMethods.includes(authToken.authMethod)) {
             url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
