@@ -6,8 +6,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ALICLOUD_AUTH, ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateArns } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -91,6 +93,17 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityLogin,
+        distinctId: `identity-${identityAliCloudAuth.identityId}`,
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identityAliCloudAuth.identityId,
+          orgId: identity.orgId,
+          authMethod: "alicloud"
+        }
+      }).catch(() => {});
 
       return {
         accessToken,
@@ -190,6 +203,17 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityAliCloudAuth.orgId,
+        properties: {
+          identityId: identityAliCloudAuth.identityId,
+          orgId: identityAliCloudAuth.orgId,
+          authMethod: "alicloud"
+        }
+      }).catch(() => {});
+
       return { identityAliCloudAuth };
     }
   });
@@ -282,6 +306,17 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityAliCloudAuth.orgId,
+        properties: {
+          identityId: identityAliCloudAuth.identityId,
+          orgId: identityAliCloudAuth.orgId,
+          authMethod: "alicloud"
+        }
+      }).catch(() => {});
 
       return { identityAliCloudAuth };
     }
@@ -381,6 +416,17 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityAliCloudAuth.orgId,
+        properties: {
+          identityId: identityAliCloudAuth.identityId,
+          orgId: identityAliCloudAuth.orgId,
+          authMethod: "alicloud"
+        }
+      }).catch(() => {});
 
       return { identityAliCloudAuth };
     }

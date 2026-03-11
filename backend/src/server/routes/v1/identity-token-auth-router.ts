@@ -5,8 +5,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TOKEN_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
@@ -98,6 +100,17 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityTokenAuth.orgId,
+        properties: {
+          identityId: identityTokenAuth.identityId,
+          orgId: identityTokenAuth.orgId,
+          authMethod: "token"
+        }
+      }).catch(() => {});
+
       return {
         identityTokenAuth
       };
@@ -184,6 +197,17 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityTokenAuth.orgId,
+        properties: {
+          identityId: identityTokenAuth.identityId,
+          orgId: identityTokenAuth.orgId,
+          authMethod: "token"
+        }
+      }).catch(() => {});
 
       return {
         identityTokenAuth
@@ -288,6 +312,17 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityTokenAuth.orgId,
+        properties: {
+          identityId: identityTokenAuth.identityId,
+          orgId: identityTokenAuth.orgId,
+          authMethod: "token"
+        }
+      }).catch(() => {});
+
       return { identityTokenAuth };
     }
   });
@@ -349,6 +384,16 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityTokenCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identityTokenAuth.identityId,
+          orgId: identity.orgId
+        }
+      }).catch(() => {});
 
       return {
         accessToken,
@@ -614,6 +659,16 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         tokenId: req.params.tokenId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityTokenRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          identityId: req.permission.id,
+          orgId: req.permission.orgId
+        }
+      }).catch(() => {});
 
       return {
         message: "Successfully revoked access token"

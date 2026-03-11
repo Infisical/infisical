@@ -5,8 +5,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, JWT_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { JwtConfigurationType } from "@app/services/identity-jwt-auth/identity-jwt-auth-types";
 import {
@@ -129,6 +131,18 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityLogin,
+        distinctId: `identity-${identityJwtAuth.identityId}`,
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identityJwtAuth.identityId,
+          orgId: identity.orgId,
+          authMethod: "jwt"
+        }
+      }).catch(() => {});
+
       return {
         accessToken,
         tokenType: "Bearer" as const,
@@ -202,6 +216,17 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityJwtAuth.orgId,
+        properties: {
+          identityId: identityJwtAuth.identityId,
+          orgId: identityJwtAuth.orgId,
+          authMethod: "jwt"
+        }
+      }).catch(() => {});
+
       return {
         identityJwtAuth
       };
@@ -270,6 +295,17 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityJwtAuth.orgId,
+        properties: {
+          identityId: identityJwtAuth.identityId,
+          orgId: identityJwtAuth.orgId,
+          authMethod: "jwt"
+        }
+      }).catch(() => {});
 
       return { identityJwtAuth };
     }
@@ -373,6 +409,17 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityJwtAuth.orgId,
+        properties: {
+          identityId: identityJwtAuth.identityId,
+          orgId: identityJwtAuth.orgId,
+          authMethod: "jwt"
+        }
+      }).catch(() => {});
 
       return { identityJwtAuth };
     }

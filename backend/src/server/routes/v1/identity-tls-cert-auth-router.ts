@@ -8,8 +8,10 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
@@ -85,6 +87,17 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityLogin,
+        distinctId: `identity-${identityTlsCertAuth.identityId}`,
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identityTlsCertAuth.identityId,
+          orgId: identity.orgId,
+          authMethod: "tls"
+        }
+      }).catch(() => {});
 
       return {
         accessToken,
@@ -193,6 +206,17 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          identityId: identityTlsCertAuth.identityId,
+          orgId: req.permission.orgId,
+          authMethod: "tls"
+        }
+      }).catch(() => {});
+
       return { identityTlsCertAuth };
     }
   });
@@ -295,6 +319,17 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          identityId: identityTlsCertAuth.identityId,
+          orgId: req.permission.orgId,
+          authMethod: "tls"
+        }
+      }).catch(() => {});
+
       return { identityTlsCertAuth };
     }
   });
@@ -395,6 +430,17 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          identityId: identityTlsCertAuth.identityId,
+          orgId: req.permission.orgId,
+          authMethod: "tls"
+        }
+      }).catch(() => {});
 
       return { identityTlsCertAuth };
     }

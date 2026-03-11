@@ -5,8 +5,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OIDC_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   validateOidcAuthAudiencesField,
@@ -81,6 +83,18 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityLogin,
+        distinctId: `identity-${identityOidcAuth.identityId}`,
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identityOidcAuth.identityId,
+          orgId: identity.orgId,
+          authMethod: "oidc"
+        }
+      }).catch(() => {});
+
       return {
         accessToken,
         tokenType: "Bearer" as const,
@@ -186,6 +200,17 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityOidcAuth.orgId,
+        properties: {
+          identityId: identityOidcAuth.identityId,
+          orgId: identityOidcAuth.orgId,
+          authMethod: "oidc"
+        }
+      }).catch(() => {});
+
       return {
         identityOidcAuth
       };
@@ -288,6 +313,17 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityOidcAuth.orgId,
+        properties: {
+          identityId: identityOidcAuth.identityId,
+          orgId: identityOidcAuth.orgId,
+          authMethod: "oidc"
+        }
+      }).catch(() => {});
+
       return { identityOidcAuth };
     }
   });
@@ -389,6 +425,17 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityOidcAuth.orgId,
+        properties: {
+          identityId: identityOidcAuth.identityId,
+          orgId: identityOidcAuth.orgId,
+          authMethod: "oidc"
+        }
+      }).catch(() => {});
 
       return { identityOidcAuth };
     }

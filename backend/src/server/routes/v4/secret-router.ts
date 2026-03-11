@@ -220,6 +220,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
+            actorType: req.permission.type,
             ...req.auditLogInfo
           }
         });
@@ -373,6 +374,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
+            actorType: req.permission.type,
             ...req.auditLogInfo
           }
         });
@@ -512,6 +514,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
+          actorType: req.permission.type,
           ...req.auditLogInfo
         }
       });
@@ -661,6 +664,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
+          actorType: req.permission.type,
           ...req.auditLogInfo
         }
       });
@@ -770,6 +774,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
+          actorType: req.permission.type,
           ...req.auditLogInfo
         }
       });
@@ -960,6 +965,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
+          actorType: req.permission.type,
           ...req.auditLogInfo
         }
       });
@@ -1143,6 +1149,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
+          actorType: req.permission.type,
           ...req.auditLogInfo
         }
       });
@@ -1264,6 +1271,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
+          actorType: req.permission.type,
           ...req.auditLogInfo
         }
       });

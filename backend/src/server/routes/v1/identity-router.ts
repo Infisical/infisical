@@ -164,6 +164,19 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identity.id,
+          orgId: identity.orgId,
+          name: identity.name,
+          hasDeleteProtection: identity.hasDeleteProtection,
+          ...req.auditLogInfo
+        }
+      }).catch(() => {});
+
       return { identity };
     }
   });
@@ -214,6 +227,18 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identity.id,
+          orgId: identity.orgId,
+          ...req.auditLogInfo
+        }
+      }).catch(() => {});
+
       return { identity };
     }
   });

@@ -5,11 +5,13 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, GCP_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateGcpAuthField } from "@app/services/identity-gcp-auth/identity-gcp-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -53,6 +55,17 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityLogin,
+        distinctId: `identity-${identityGcpAuth.identityId}`,
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identityGcpAuth.identityId,
+          orgId: identity.orgId,
+          authMethod: "gcp"
+        }
+      }).catch(() => {});
 
       return {
         accessToken,
@@ -153,6 +166,17 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityGcpAuth.orgId,
+        properties: {
+          identityId: identityGcpAuth.identityId,
+          orgId: identityGcpAuth.orgId,
+          authMethod: "gcp"
+        }
+      }).catch(() => {});
+
       return { identityGcpAuth };
     }
   });
@@ -239,6 +263,17 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityGcpAuth.orgId,
+        properties: {
+          identityId: identityGcpAuth.identityId,
+          orgId: identityGcpAuth.orgId,
+          authMethod: "gcp"
+        }
+      }).catch(() => {});
 
       return { identityGcpAuth };
     }
@@ -339,6 +374,17 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityGcpAuth.orgId,
+        properties: {
+          identityId: identityGcpAuth.identityId,
+          orgId: identityGcpAuth.orgId,
+          authMethod: "gcp"
+        }
+      }).catch(() => {});
 
       return { identityGcpAuth };
     }

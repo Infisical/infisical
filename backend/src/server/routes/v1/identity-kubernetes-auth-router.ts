@@ -6,8 +6,10 @@ import { ApiDocsTags, KUBERNETES_AUTH } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -74,6 +76,18 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityLogin,
+        distinctId: `identity-${identityKubernetesAuth.identityId}`,
+        organizationId: identity.orgId,
+        properties: {
+          identityId: identityKubernetesAuth.identityId,
+          orgId: identity.orgId,
+          authMethod: "kubernetes"
+        }
+      }).catch(() => {});
+
       return {
         accessToken,
         tokenType: "Bearer" as const,
@@ -227,6 +241,17 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityKubernetesAuth.orgId,
+        properties: {
+          identityId: identityKubernetesAuth.identityId,
+          orgId: identityKubernetesAuth.orgId,
+          authMethod: "kubernetes"
+        }
+      }).catch(() => {});
+
       return { identityKubernetesAuth: IdentityKubernetesAuthResponseSchema.parse(identityKubernetesAuth) };
     }
   });
@@ -371,6 +396,17 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityKubernetesAuth.orgId,
+        properties: {
+          identityId: identityKubernetesAuth.identityId,
+          orgId: identityKubernetesAuth.orgId,
+          authMethod: "kubernetes"
+        }
+      }).catch(() => {});
+
       return { identityKubernetesAuth };
     }
   });
@@ -473,6 +509,17 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           }
         }
       });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: identityKubernetesAuth.orgId,
+        properties: {
+          identityId: identityKubernetesAuth.identityId,
+          orgId: identityKubernetesAuth.orgId,
+          authMethod: "kubernetes"
+        }
+      }).catch(() => {});
 
       return { identityKubernetesAuth };
     }
