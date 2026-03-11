@@ -39,14 +39,19 @@ type Props = {
   isCreatingOverride: boolean;
   onCreatingOverrideChange: (value: boolean) => void;
   onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
-  onSecretUpdate: (
-    env: string,
-    key: string,
-    value: string,
-    secretValueHidden: boolean,
-    type?: SecretType,
-    secretId?: string
-  ) => Promise<void>;
+  onSecretUpdate: (params: {
+    env: string;
+    key: string;
+    value: string | undefined;
+    secretValueHidden: boolean;
+    type?: SecretType;
+    secretId?: string;
+    newSecretName?: string;
+    secretComment?: string;
+    tags?: { id: string; slug: string }[];
+    secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+    skipMultilineEncoding?: boolean | null;
+  }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isSingleEnvView?: boolean;
 };
@@ -142,14 +147,14 @@ export const SecretOverrideRow = ({
         // once the query refetch confirms the override exists (hasOverride becomes true).
         // This prevents the override row from flickering on create.
       } else {
-        await onSecretUpdate(
-          environment,
-          secretName,
+        await onSecretUpdate({
+          env: environment,
+          key: secretName,
           value,
-          false,
-          SecretType.Personal,
-          idOverride
-        );
+          secretValueHidden: false,
+          type: SecretType.Personal,
+          secretId: idOverride
+        });
       }
     }
     reset({ value });

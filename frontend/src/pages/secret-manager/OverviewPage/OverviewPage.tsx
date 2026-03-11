@@ -15,7 +15,9 @@ import {
   EyeIcon,
   EyeOffIcon,
   GitCommitIcon,
+  GroupIcon,
   InfoIcon,
+  LayersIcon,
   LockIcon,
   LogInIcon,
   SettingsIcon,
@@ -127,6 +129,7 @@ import {
   useUpdateSecretV3
 } from "@app/hooks/api";
 import {
+  dashboardKeys,
   fetchDashboardProjectSecretsByKeys,
   useGetProjectSecretsOverview
 } from "@app/hooks/api/dashboard/queries";
@@ -141,12 +144,13 @@ import {
 import { VaultImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
-import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
+import { PendingAction, TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import {
   SecretRotation as SecretRotationV2,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
+import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import {
   ApiErrorTypes,
@@ -154,8 +158,10 @@ import {
   SecretType,
   SecretV3RawSanitized,
   TApiErrors,
-  TSecretFolder
+  TSecretFolder,
+  WsTag
 } from "@app/hooks/api/types";
+import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
 import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import {
   useDynamicSecretOverview,
@@ -171,6 +177,7 @@ import { CreateSecretImportForm } from "../SecretDashboardPage/components/Action
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { ReplicateFolderFromBoard } from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/ReplicateFolderFromBoard";
 import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
+import { CommitForm } from "../SecretDashboardPage/components/CommitForm";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
 import { DynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/DynamicSecretLease";
 import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
@@ -178,6 +185,12 @@ import {
   HIDDEN_SECRET_VALUE,
   HIDDEN_SECRET_VALUE_API_MASK
 } from "../SecretDashboardPage/components/SecretListView/SecretItem";
+import {
+  PendingChanges,
+  StoreProvider,
+  useBatchMode,
+  useBatchModeActions
+} from "../SecretDashboardPage/SecretMainPage.store";
 import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceButtons";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
@@ -233,7 +246,9 @@ const DEFAULT_FILTER_STATE = {
 
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
 
-export const OverviewPage = () => {
+const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
+
+const OverviewPageContent = () => {
   const { t } = useTranslation();
 
   const router = useRouter();
@@ -606,6 +621,62 @@ export const OverviewPage = () => {
   const { mutate: updateSecretImport } = useUpdateSecretImport();
   const { mutateAsync: deleteWsEnvironment } = useDeleteWsEnvironment();
 
+  // Batch mode state and hooks
+  const [isOverviewBatchMode, setIsOverviewBatchMode] = useState(
+    () => localStorage.getItem(OVERVIEW_BATCH_MODE_KEY) === "true"
+  );
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const { pendingChanges } = useBatchMode();
+  const {
+    addPendingChange,
+    loadPendingChanges,
+    clearAllPendingChanges,
+    setExistingKeys,
+    removePendingChange
+  } = useBatchModeActions();
+  const { mutateAsync: createCommit, isPending: isCommitPending } = useCreateCommit();
+
+  const isBatchModeActive = isOverviewBatchMode && isSingleEnvView;
+  const hasPendingBatchChanges =
+    isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
+
+  useEffect(() => {
+    if (hasPendingBatchChanges) {
+      resetSelectedEntries();
+    }
+  }, [hasPendingBatchChanges, resetSelectedEntries]);
+
+  useNavigationBlocker({
+    shouldBlock:
+      isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0),
+    message:
+      "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
+    context: {
+      projectId,
+      environment: singleVisibleEnv?.slug ?? "",
+      secretPath
+    }
+  });
+
+  useEffect(() => {
+    if (isBatchModeActive && singleVisibleEnv) {
+      loadPendingChanges({
+        projectId,
+        environment: singleVisibleEnv.slug,
+        secretPath
+      });
+    }
+  }, [isBatchModeActive, singleVisibleEnv?.slug, secretPath, projectId]);
+
+  useEffect(() => {
+    if (isBatchModeActive) {
+      setExistingKeys(
+        secKeys,
+        folderNamesAndDescriptions.map((f) => f.name)
+      );
+    }
+  }, [isBatchModeActive, secKeys, folderNamesAndDescriptions]);
+
   const singleEnvImports = useMemo(
     () => (isSingleEnvView ? getSecretImportsForEnv(singleEnvSlug) : []),
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
@@ -649,7 +720,8 @@ export const OverviewPage = () => {
     "addSecretImport",
     "deleteEnv",
     "requestAccess",
-    "importFromVault"
+    "importFromVault",
+    "confirmDisableBatchMode"
   ] as const);
 
   // Auto-open dynamic secret leases modal when linked via notification/email
@@ -744,6 +816,28 @@ export const OverviewPage = () => {
   };
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
+    if (isBatchModeActive && singleVisibleEnv) {
+      if (isFolderPresentInEnv(folderName, singleVisibleEnv.slug)) {
+        createNotification({ type: "info", text: "Folder already exists" });
+        handlePopUpClose("addFolder");
+        return;
+      }
+      addPendingChange(
+        {
+          id: crypto.randomUUID(),
+          resourceType: "folder",
+          type: PendingAction.Create,
+          folderName,
+          description: description ?? undefined,
+          parentPath: secretPath,
+          timestamp: Date.now()
+        },
+        { projectId, environment: singleVisibleEnv.slug, secretPath }
+      );
+      handlePopUpClose("addFolder");
+      return;
+    }
+
     const promises = visibleEnvs
       .map((env) => {
         const environment = env.slug;
@@ -1027,6 +1121,53 @@ export const OverviewPage = () => {
   };
 
   const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
+    if (isBatchModeActive && singleVisibleEnv) {
+      const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
+      const folder = getFolderByNameAndEnv(oldFolderName, singleVisibleEnv.slug);
+
+      if (!folder) {
+        // Folder might be a pending create — find it in pending changes
+        const pendingCreate = pendingChanges.folders.find(
+          (c) => c.type === PendingAction.Create && c.folderName === oldFolderName
+        );
+        if (!pendingCreate) {
+          handlePopUpClose("updateFolder");
+          return;
+        }
+        // Send as an Update so the store merges it into the existing Create
+        addPendingChange(
+          {
+            id: pendingCreate.id,
+            resourceType: "folder",
+            type: PendingAction.Update,
+            originalFolderName: oldFolderName,
+            folderName: newFolderName,
+            description: description ?? undefined,
+            timestamp: Date.now()
+          },
+          { projectId, environment: singleVisibleEnv.slug, secretPath }
+        );
+        handlePopUpClose("updateFolder");
+        return;
+      }
+
+      addPendingChange(
+        {
+          id: folder.id,
+          resourceType: "folder",
+          type: PendingAction.Update,
+          originalFolderName: oldFolderName,
+          folderName: newFolderName,
+          originalDescription: folder.description,
+          description: description ?? undefined,
+          timestamp: Date.now()
+        },
+        { projectId, environment: singleVisibleEnv.slug, secretPath }
+      );
+      handlePopUpClose("updateFolder");
+      return;
+    }
+
     const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
 
     const updatedFolders: TUpdateFolderBatchDTO["folders"] = [];
@@ -1082,6 +1223,40 @@ export const OverviewPage = () => {
   const handleFolderDelete = async () => {
     const folderName = (popUp.deleteFolder?.data as { name: string })?.name;
     if (!folderName) return;
+
+    if (isBatchModeActive && singleVisibleEnv) {
+      const folder = getFolderByNameAndEnv(folderName, singleVisibleEnv.slug);
+
+      if (!folder) {
+        // Folder might be a pending create — just remove it
+        const pendingCreate = pendingChanges.folders.find(
+          (c) => c.type === PendingAction.Create && c.folderName === folderName
+        );
+        if (pendingCreate) {
+          removePendingChange(pendingCreate.id, "folder", {
+            projectId,
+            environment: singleVisibleEnv.slug,
+            secretPath
+          });
+        }
+        handlePopUpClose("deleteFolder");
+        return;
+      }
+
+      addPendingChange(
+        {
+          id: folder.id,
+          resourceType: "folder",
+          type: PendingAction.Delete,
+          folderName,
+          folderPath: secretPath,
+          timestamp: Date.now()
+        },
+        { projectId, environment: singleVisibleEnv.slug, secretPath }
+      );
+      handlePopUpClose("deleteFolder");
+      return;
+    }
 
     const promises = userAvailableEnvs
       .filter((env) =>
@@ -1223,6 +1398,22 @@ export const OverviewPage = () => {
     value: string,
     type = SecretType.Shared
   ) => {
+    if (isBatchModeActive) {
+      addPendingChange(
+        {
+          id: crypto.randomUUID(),
+          resourceType: "secret",
+          type: PendingAction.Create,
+          secretKey: key,
+          secretValue: value,
+          secretComment: "",
+          timestamp: Date.now()
+        },
+        { projectId, environment: env, secretPath }
+      );
+      return;
+    }
+
     // create folder if not existing
     if (secretPath !== "/") {
       // /hello/world -> [hello","world"]
@@ -1268,15 +1459,108 @@ export const OverviewPage = () => {
     }
   };
 
-  const handleSecretUpdate = async (
-    env: string,
-    key: string,
-    value: string | undefined,
-    secretValueHidden: boolean,
+  const handleSecretUpdate = async ({
+    env,
+    key,
+    value,
+    secretValueHidden,
     type = SecretType.Shared,
-    _secretId?: string,
-    newSecretName?: string
-  ) => {
+    newSecretName,
+    secretComment,
+    tags: updatedTags,
+    secretMetadata: updatedMetadata,
+    skipMultilineEncoding: updatedSkipMultilineEncoding
+  }: {
+    env: string;
+    key: string;
+    value: string | undefined;
+    secretValueHidden: boolean;
+    type?: SecretType;
+    secretId?: string;
+    newSecretName?: string;
+    secretComment?: string;
+    tags?: { id: string; slug: string }[];
+    secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+    skipMultilineEncoding?: boolean | null;
+  }) => {
+    if (isBatchModeActive) {
+      const existingSecret = getSecretByKey(env, key);
+
+      let batchSecretValue: string | undefined = value;
+      if (
+        secretValueHidden &&
+        (value === HIDDEN_SECRET_VALUE_API_MASK || value === HIDDEN_SECRET_VALUE)
+      ) {
+        batchSecretValue = undefined;
+      }
+
+      if (!existingSecret) {
+        // Secret might be a pending create — find it in pending changes
+        const pendingCreate = pendingChanges.secrets.find(
+          (c) => c.type === PendingAction.Create && c.secretKey === key
+        );
+        if (!pendingCreate) return;
+
+        // Send as an Update so the store merges it into the existing Create
+        addPendingChange(
+          {
+            id: pendingCreate.id,
+            resourceType: "secret",
+            type: PendingAction.Update,
+            secretKey: key,
+            newSecretName,
+            originalValue: "",
+            secretValue: batchSecretValue,
+            originalComment: "",
+            secretComment,
+            originalSkipMultilineEncoding: false,
+            skipMultilineEncoding:
+              updatedSkipMultilineEncoding !== undefined
+                ? (updatedSkipMultilineEncoding ?? false)
+                : undefined,
+            originalTags: [],
+            tags: updatedTags,
+            originalSecretMetadata: [],
+            secretMetadata: updatedMetadata,
+            existingSecret: undefined as unknown as SecretV3RawSanitized, // scott: using "update" to update a pending create
+            timestamp: Date.now()
+          },
+          { projectId, environment: env, secretPath }
+        );
+        return;
+      }
+
+      addPendingChange(
+        {
+          id: existingSecret.id,
+          resourceType: "secret",
+          type: PendingAction.Update,
+          secretKey: key,
+          newSecretName,
+          originalValue: existingSecret.value,
+          secretValue: batchSecretValue,
+          originalComment: existingSecret.comment,
+          secretComment,
+          originalSkipMultilineEncoding: existingSecret.skipMultilineEncoding ?? false,
+          skipMultilineEncoding:
+            updatedSkipMultilineEncoding !== undefined
+              ? (updatedSkipMultilineEncoding ?? false)
+              : undefined,
+          originalTags: existingSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })),
+          tags: updatedTags,
+          originalSecretMetadata: existingSecret.secretMetadata?.map((m) => ({
+            key: m.key,
+            value: m.value
+          })),
+          secretMetadata: updatedMetadata,
+          existingSecret,
+          timestamp: Date.now()
+        },
+        { projectId, environment: env, secretPath }
+      );
+      return;
+    }
+
     let secretValue: string | undefined = value;
 
     if (
@@ -1315,6 +1599,43 @@ export const OverviewPage = () => {
     secretId?: string,
     type = SecretType.Shared
   ) => {
+    if (isBatchModeActive) {
+      const existingSecret = getSecretByKey(env, key);
+
+      if (!existingSecret) {
+        // Secret might be a pending create — just remove it
+        const pendingCreate = pendingChanges.secrets.find(
+          (c) => c.type === PendingAction.Create && c.secretKey === key
+        );
+        if (pendingCreate) {
+          removePendingChange(pendingCreate.id, "secret", {
+            projectId,
+            environment: env,
+            secretPath
+          });
+        }
+        return;
+      }
+
+      addPendingChange(
+        {
+          id: existingSecret.id,
+          resourceType: "secret",
+          type: PendingAction.Delete,
+          secretKey: key,
+          secretValue: existingSecret.value ?? "",
+          secretValueHidden: !existingSecret.value,
+          tags: existingSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) ?? [],
+          secretMetadata: existingSecret.secretMetadata ?? [],
+          skipMultilineEncoding: existingSecret.skipMultilineEncoding ?? false,
+          comment: existingSecret.comment ?? "",
+          timestamp: Date.now()
+        },
+        { projectId, environment: env, secretPath }
+      );
+      return;
+    }
+
     const result = await deleteSecretV3({
       environment: env,
       projectId,
@@ -1336,6 +1657,259 @@ export const OverviewPage = () => {
       });
     }
   };
+
+  // Batch mode: merged data for display
+  const mergedSecKeys = useMemo(() => {
+    if (!isBatchModeActive) return secKeys;
+
+    const result = [...secKeys];
+    pendingChanges.secrets.forEach((change) => {
+      if (change.type === PendingAction.Create && !result.includes(change.secretKey)) {
+        result.unshift(change.secretKey);
+      }
+    });
+    return result;
+  }, [secKeys, isBatchModeActive, pendingChanges.secrets]);
+
+  const getSecretByKeyWithPending = useCallback(
+    (env: string, key: string) => {
+      if (!isBatchModeActive) return getSecretByKey(env, key);
+
+      // Check for pending create
+      const pendingCreate = pendingChanges.secrets.find(
+        (c) => c.type === PendingAction.Create && c.secretKey === key
+      );
+      if (pendingCreate && pendingCreate.type === PendingAction.Create) {
+        return {
+          id: pendingCreate.id,
+          key: pendingCreate.secretKey,
+          value: pendingCreate.secretValue,
+          comment: pendingCreate.secretComment || "",
+          env,
+          type: SecretType.Shared,
+          tags:
+            pendingCreate.tags?.map((tag) => ({ ...tag, createdAt: "", updatedAt: "" }) as WsTag) ??
+            [],
+          secretMetadata: pendingCreate.secretMetadata ?? [],
+          skipMultilineEncoding: pendingCreate.skipMultilineEncoding ?? false,
+          version: 0,
+          createdAt: "",
+          updatedAt: "",
+          secretValueHidden: false,
+          isPending: true,
+          pendingAction: PendingAction.Create
+        } as SecretV3RawSanitized;
+      }
+
+      const existing = getSecretByKey(env, key);
+      if (!existing) return existing;
+
+      // Check for pending update
+      const pendingUpdate = pendingChanges.secrets.find(
+        (c) => c.type === PendingAction.Update && c.secretKey === key
+      );
+      if (pendingUpdate && pendingUpdate.type === PendingAction.Update) {
+        return {
+          ...existing,
+          key: pendingUpdate.newSecretName || existing.key,
+          value:
+            pendingUpdate.secretValue !== undefined ? pendingUpdate.secretValue : existing.value,
+          comment:
+            pendingUpdate.secretComment !== undefined
+              ? pendingUpdate.secretComment
+              : existing.comment,
+          tags: pendingUpdate.tags !== undefined ? pendingUpdate.tags : existing.tags,
+          secretMetadata:
+            pendingUpdate.secretMetadata !== undefined
+              ? pendingUpdate.secretMetadata
+              : existing.secretMetadata,
+          skipMultilineEncoding:
+            pendingUpdate.skipMultilineEncoding !== undefined
+              ? pendingUpdate.skipMultilineEncoding
+              : existing.skipMultilineEncoding,
+          isPending: true,
+          hasPendingValueChange: pendingUpdate.secretValue !== undefined,
+          pendingAction: PendingAction.Update
+        } as SecretV3RawSanitized;
+      }
+
+      // Check for pending delete
+      const pendingDelete = pendingChanges.secrets.find(
+        (c) => c.type === PendingAction.Delete && c.secretKey === key
+      );
+      if (pendingDelete) {
+        return {
+          ...existing,
+          isPending: true,
+          pendingAction: PendingAction.Delete
+        } as SecretV3RawSanitized;
+      }
+
+      return existing;
+    },
+    [getSecretByKey, isBatchModeActive, pendingChanges.secrets]
+  );
+
+  const mergedFolderNamesAndDescriptions = useMemo(() => {
+    if (!isBatchModeActive)
+      return folderNamesAndDescriptions.map((f) => ({ ...f, pendingAction: undefined }));
+
+    const result = folderNamesAndDescriptions.map((f) => ({
+      ...f,
+      pendingAction: undefined as PendingAction | undefined
+    }));
+
+    pendingChanges.folders.forEach((change) => {
+      if (change.type === PendingAction.Create) {
+        result.unshift({
+          name: change.folderName,
+          description: change.description,
+          pendingAction: PendingAction.Create
+        });
+      } else if (change.type === PendingAction.Update) {
+        const idx = result.findIndex((f) => f.name === change.originalFolderName);
+        if (idx >= 0) {
+          result[idx] = {
+            ...result[idx],
+            name: change.folderName,
+            description:
+              change.description !== undefined ? change.description : result[idx].description,
+            pendingAction: PendingAction.Update
+          };
+        }
+      } else if (change.type === PendingAction.Delete) {
+        const idx = result.findIndex((f) => f.name === change.folderName);
+        if (idx >= 0) {
+          result[idx] = {
+            ...result[idx],
+            pendingAction: PendingAction.Delete
+          };
+        }
+      }
+    });
+
+    return result;
+  }, [folderNamesAndDescriptions, isBatchModeActive, pendingChanges.folders]);
+
+  // Batch mode: revert a pending change (e.g. when user reverts value to original)
+  const handleBatchRevert = useCallback(
+    (env: string, key: string) => {
+      if (!isBatchModeActive) return;
+      const pendingSecret = pendingChanges.secrets.find((c) => c.secretKey === key);
+      if (pendingSecret) {
+        removePendingChange(pendingSecret.id, "secret", {
+          projectId,
+          environment: env,
+          secretPath
+        });
+      }
+    },
+    [isBatchModeActive, pendingChanges.secrets, removePendingChange, projectId, secretPath]
+  );
+
+  const handleBatchFolderRevert = useCallback(
+    (folderName: string) => {
+      if (!isBatchModeActive || !singleVisibleEnv) return;
+      const pendingFolder = pendingChanges.folders.find(
+        (c) =>
+          c.folderName === folderName ||
+          (c.type === PendingAction.Update && c.originalFolderName === folderName)
+      );
+      if (pendingFolder) {
+        removePendingChange(pendingFolder.id, "folder", {
+          projectId,
+          environment: singleVisibleEnv.slug,
+          secretPath
+        });
+      }
+    },
+    [
+      isBatchModeActive,
+      singleVisibleEnv,
+      pendingChanges.folders,
+      removePendingChange,
+      projectId,
+      secretPath
+    ]
+  );
+
+  // Batch mode: commit handler
+  const handleCreateCommit = useCallback(
+    async (changes: PendingChanges, message: string) => {
+      if (!singleVisibleEnv) return;
+
+      await createCommit({
+        projectId,
+        environment: singleVisibleEnv.slug,
+        secretPath,
+        pendingChanges: changes,
+        message
+      });
+
+      const hasOnlyFolderChanges = changes.folders.length > 0 && changes.secrets.length === 0;
+      const requiresApproval = isProtectedBranch && !hasOnlyFolderChanges;
+
+      if (!requiresApproval) {
+        changes.secrets.forEach((secret) => {
+          if (secret.type === PendingAction.Update && secret.secretValue !== undefined) {
+            queryClient.setQueryData(
+              dashboardKeys.getSecretValue({
+                projectId,
+                environment: singleVisibleEnv.slug,
+                secretPath,
+                secretKey: secret.newSecretName ?? secret.secretKey,
+                isOverride: false
+              }),
+              { value: secret.secretValue }
+            );
+          }
+        });
+      }
+
+      // Invalidate overview queries
+      await queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      });
+
+      createNotification({
+        text: requiresApproval
+          ? "Requested changes have been sent for review"
+          : "Changes saved successfully",
+        type: "success"
+      });
+    },
+    [singleVisibleEnv, projectId, secretPath, isProtectedBranch, queryClient, createCommit]
+  );
+
+  // Batch mode: toggle
+  const toggleBatchMode = useCallback(() => {
+    if (isOverviewBatchMode && singleVisibleEnv) {
+      const totalChanges = pendingChanges.secrets.length + pendingChanges.folders.length;
+      if (totalChanges > 0) {
+        handlePopUpOpen("confirmDisableBatchMode");
+        return;
+      }
+    }
+    setIsOverviewBatchMode((prev) => {
+      const next = !prev;
+      if (next) localStorage.setItem(OVERVIEW_BATCH_MODE_KEY, "true");
+      else localStorage.removeItem(OVERVIEW_BATCH_MODE_KEY);
+      return next;
+    });
+  }, [isOverviewBatchMode, singleVisibleEnv, pendingChanges, handlePopUpOpen]);
+
+  const handleConfirmDisableBatchMode = useCallback(() => {
+    if (singleVisibleEnv) {
+      clearAllPendingChanges({
+        projectId,
+        environment: singleVisibleEnv.slug,
+        secretPath
+      });
+    }
+    setIsOverviewBatchMode(false);
+    localStorage.removeItem(OVERVIEW_BATCH_MODE_KEY);
+    handlePopUpClose("confirmDisableBatchMode");
+  }, [singleVisibleEnv, clearAllPendingChanges, projectId, secretPath, handlePopUpClose]);
 
   const handleResetSearch = (path: string) => {
     const restore = filterHistory.get(path);
@@ -1653,7 +2227,7 @@ export const OverviewPage = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="relative mx-auto max-w-8xl text-mineshaft-50 dark:scheme-dark">
+      <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             scope={ProjectType.SecretManager}
@@ -1701,6 +2275,7 @@ export const OverviewPage = () => {
             }
           />
         </div>
+
         <SelectionPanel
           secretPath={secretPath}
           selectedEntries={selectedEntries}
@@ -1709,11 +2284,19 @@ export const OverviewPage = () => {
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
         />
+
         <UnstableCard>
           <UnstableCardHeader>
             <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
-                <EnvironmentSelect selectedEnvs={filteredEnvs} setSelectedEnvs={setFilteredEnvs} />
+                <EnvironmentSelect
+                  selectedEnvs={filteredEnvs}
+                  setSelectedEnvs={setFilteredEnvs}
+                  isDisabled={
+                    isBatchModeActive &&
+                    (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                  }
+                />
                 <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -1860,7 +2443,7 @@ export const OverviewPage = () => {
                           <UnstableTableHead className="sticky left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container">
                             <Checkbox
                               variant="project"
-                              isDisabled={totalCount === 0}
+                              isDisabled={totalCount === 0 || hasPendingBatchChanges}
                               id="checkbox-select-all-rows"
                               isChecked={allRowsSelectedOnPage.isChecked}
                               isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
@@ -2070,6 +2653,25 @@ export const OverviewPage = () => {
                                         : "Commit History"}
                                     </button>
                                   </Badge>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Badge
+                                        asChild
+                                        className={isOverviewBatchMode ? "" : "opacity-75"}
+                                        variant={isOverviewBatchMode ? "warning" : "neutral"}
+                                      >
+                                        <button type="button" onClick={toggleBatchMode}>
+                                          <GroupIcon />
+                                          Group Changes
+                                        </button>
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {isOverviewBatchMode
+                                        ? "Changes are grouped together into a single transaction. Click to switch to singular editing."
+                                        : "Click to enable group changes. Changes will be grouped into a single transaction."}
+                                    </TooltipContent>
+                                  </Tooltip>
                                 </div>
                               </div>
                             </UnstableTableHead>
@@ -2145,16 +2747,27 @@ export const OverviewPage = () => {
                                   />
                                 )
                               )}
-                            {folderNamesAndDescriptions.map(
-                              ({ name: folderName, description }, index) => (
+                            {mergedFolderNamesAndDescriptions.map(
+                              (
+                                {
+                                  name: folderName,
+                                  description,
+                                  pendingAction: folderPendingAction
+                                },
+                                index
+                              ) => (
                                 <FolderTableRow
                                   folderName={folderName}
                                   description={description}
                                   isFolderPresentInEnv={isFolderPresentInEnv}
-                                  isSelected={Boolean(selectedEntries.folder[folderName])}
-                                  onToggleFolderSelect={() =>
-                                    toggleSelectedEntry(EntryType.FOLDER, folderName)
+                                  isSelected={
+                                    !hasPendingBatchChanges &&
+                                    Boolean(selectedEntries.folder[folderName])
                                   }
+                                  onToggleFolderSelect={() => {
+                                    if (!hasPendingBatchChanges)
+                                      toggleSelectedEntry(EntryType.FOLDER, folderName);
+                                  }}
                                   environments={visibleEnvs}
                                   key={`overview-${folderName}-${index + 1}`}
                                   onClick={handleFolderClick}
@@ -2164,6 +2777,9 @@ export const OverviewPage = () => {
                                   onToggleFolderDelete={(name: string) =>
                                     handlePopUpOpen("deleteFolder", { name })
                                   }
+                                  pendingAction={folderPendingAction}
+                                  onBatchRevert={handleBatchFolderRevert}
+                                  isSelectionDisabled={hasPendingBatchChanges}
                                 />
                               )
                             )}
@@ -2226,12 +2842,15 @@ export const OverviewPage = () => {
                                 }
                               />
                             ))}
-                            {secKeys.map((key, index) => (
+                            {mergedSecKeys.map((key, index) => (
                               <SecretTableRow
-                                isSelected={Boolean(selectedEntries.secret[key])}
-                                onToggleSecretSelect={() =>
-                                  toggleSelectedEntry(EntryType.SECRET, key)
+                                isSelected={
+                                  !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
                                 }
+                                onToggleSecretSelect={() => {
+                                  if (!hasPendingBatchChanges)
+                                    toggleSelectedEntry(EntryType.SECRET, key);
+                                }}
                                 secretPath={secretPath}
                                 getImportedSecretByKey={getImportedSecretByKey}
                                 isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
@@ -2241,10 +2860,13 @@ export const OverviewPage = () => {
                                 key={`overview-${key}-${index + 1}`}
                                 environments={visibleEnvs}
                                 secretKey={key}
-                                getSecretByKey={getSecretByKey}
+                                getSecretByKey={getSecretByKeyWithPending}
                                 tableWidth={tableWidth}
                                 importedBy={importedBy}
                                 isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
+                                isBatchMode={isBatchModeActive}
+                                onBatchRevert={handleBatchRevert}
+                                isSelectionDisabled={hasPendingBatchChanges}
                               />
                             ))}
                             <SecretNoAccessTableRow
@@ -2322,12 +2944,34 @@ export const OverviewPage = () => {
         <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">
           <SheetHeader className="border-b">
             <SheetTitle>Create Secret</SheetTitle>
-            <SheetDescription>Create a secret across multiple environments</SheetDescription>
+            <SheetDescription>
+              {filteredEnvs.length === 1
+                ? `Create a secret in ${filteredEnvs[0].name}`
+                : "Create a secret across multiple environments"}
+            </SheetDescription>
           </SheetHeader>
           <CreateSecretForm
             secretPath={secretPath}
             defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
+            isBatchMode={isBatchModeActive}
+            onBatchSecretCreate={(params) => {
+              addPendingChange(
+                {
+                  id: crypto.randomUUID(),
+                  resourceType: "secret",
+                  type: PendingAction.Create,
+                  secretKey: params.key,
+                  secretValue: params.value,
+                  secretComment: params.comment,
+                  skipMultilineEncoding: params.skipMultilineEncoding ?? undefined,
+                  tags: params.tags,
+                  secretMetadata: params.metadata,
+                  timestamp: Date.now()
+                },
+                { projectId, environment: params.env, secretPath }
+              );
+            }}
           />
         </SheetContent>
       </Sheet>
@@ -2680,6 +3324,46 @@ export const OverviewPage = () => {
           secretPath={pathPolicies[0].secretPath}
         />
       )}
+      {isBatchModeActive && singleVisibleEnv && (
+        <CommitForm
+          onCommit={handleCreateCommit}
+          environment={singleVisibleEnv.slug}
+          projectId={projectId}
+          secretPath={secretPath}
+          isCommitting={isCommitPending}
+          isReviewOpen={isReviewOpen}
+          onReviewOpenChange={setIsReviewOpen}
+        />
+      )}
+      <AlertDialog
+        open={popUp.confirmDisableBatchMode.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("confirmDisableBatchMode", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <LayersIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Disable Batch Mode</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have pending changes that will be discarded. Are you sure you want to disable
+              batch mode?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={handleConfirmDisableBatchMode}>
+              Discard & Disable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
+
+export const OverviewPage = () => (
+  <StoreProvider>
+    <OverviewPageContent />
+  </StoreProvider>
+);

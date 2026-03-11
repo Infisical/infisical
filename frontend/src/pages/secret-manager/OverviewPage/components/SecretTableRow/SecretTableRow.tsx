@@ -37,6 +37,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
@@ -46,6 +47,32 @@ import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
 
+const pendingActionBorderClass = (action?: PendingAction) => {
+  switch (action) {
+    case PendingAction.Create:
+      return "shadow-[inset_2px_0_0_0_var(--color-success)]/50";
+    case PendingAction.Update:
+      return "shadow-[inset_2px_0_0_0_var(--color-warning)]/50";
+    case PendingAction.Delete:
+      return "shadow-[inset_2px_0_0_0_var(--color-danger)]/50";
+    default:
+      return "";
+  }
+};
+
+const pendingActionRowClass = (action?: PendingAction) => {
+  switch (action) {
+    case PendingAction.Create:
+      return "bg-success/[0.025]";
+    case PendingAction.Update:
+      return "bg-warning/[0.025]";
+    case PendingAction.Delete:
+      return "bg-danger/[0.025]";
+    default:
+      return "";
+  }
+};
+
 type Props = {
   secretKey: string;
   secretPath: string;
@@ -54,15 +81,19 @@ type Props = {
   onToggleSecretSelect: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
-  onSecretUpdate: (
-    env: string,
-    key: string,
-    value: string | undefined,
-    secretValueHidden: boolean,
-    type?: SecretType,
-    secretId?: string,
-    newSecretName?: string
-  ) => Promise<void>;
+  onSecretUpdate: (params: {
+    env: string;
+    key: string;
+    value: string | undefined;
+    secretValueHidden: boolean;
+    type?: SecretType;
+    secretId?: string;
+    newSecretName?: string;
+    secretComment?: string;
+    tags?: { id: string; slug: string }[];
+    secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+    skipMultilineEncoding?: boolean | null;
+  }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
   getImportedSecretByKey: (
@@ -86,6 +117,9 @@ type Props = {
     }[];
   }[];
   isSingleEnvSecretsVisible?: boolean;
+  isBatchMode?: boolean;
+  onBatchRevert?: (env: string, key: string) => void;
+  isSelectionDisabled?: boolean;
 };
 
 export const SecretTableRow = ({
@@ -102,7 +136,10 @@ export const SecretTableRow = ({
   onToggleSecretSelect,
   isSelected,
   importedBy,
-  isSingleEnvSecretsVisible
+  isSingleEnvSecretsVisible,
+  isBatchMode,
+  onBatchRevert,
+  isSelectionDisabled
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
@@ -125,6 +162,9 @@ export const SecretTableRow = ({
     : false;
   const singleEnvImportedSecret = isSingleEnvView
     ? getImportedSecretByKey(singleEnvSlug, secretKey)
+    : undefined;
+  const singleEnvPendingAction = isSingleEnvView
+    ? (singleEnvSecret as SecretV3RawSanitized & { pendingAction?: PendingAction })?.pendingAction
     : undefined;
   const singleEnvHasOverride = isSingleEnvView ? Boolean(singleEnvSecret?.idOverride) : false;
   const singleEnvIsCreatingOverride = isSingleEnvView
@@ -202,15 +242,17 @@ export const SecretTableRow = ({
     <>
       <UnstableTableRow
         onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
-        className="group"
+        className={twMerge("group", pendingActionRowClass(singleEnvPendingAction))}
       >
         <UnstableTableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-0 z-10",
-            "bg-container transition-colors duration-75 group-hover:bg-container-hover",
+            !singleEnvPendingAction &&
+              "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isFormExpanded && "border-b-0 bg-container-hover",
             isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
-            isSingleEnvView && "pt-3 align-top"
+            isSingleEnvView && "pt-3 align-top",
+            pendingActionBorderClass(singleEnvPendingAction)
           )}
         >
           <Checkbox
@@ -223,21 +265,44 @@ export const SecretTableRow = ({
             onClick={(e) => {
               e.stopPropagation();
             }}
-            className={twMerge("hidden group-hover:flex", isSelected && "flex")}
+            className={twMerge(
+              "hidden",
+              !isSelectionDisabled && "group-hover:flex",
+              isSelected && "flex"
+            )}
           />
           {!isSingleEnvView && isFormExpanded ? (
             <ChevronDownIcon
-              className={twMerge("block group-hover:!hidden", isSelected && "!hidden")}
+              className={twMerge(
+                "block",
+                !isSelectionDisabled && "group-hover:!hidden",
+                isSelected && "!hidden"
+              )}
             />
           ) : (
             <KeyIcon
-              className={twMerge("block text-secret group-hover:!hidden", isSelected && "!hidden")}
+              className={twMerge(
+                "block text-secret",
+                !isSelectionDisabled && "group-hover:!hidden",
+                isSelected && "!hidden"
+              )}
             />
           )}
         </UnstableTableCell>
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
+            isBatchMode={isBatchMode}
+            onBatchRevert={onBatchRevert}
+            isPendingCreate={singleEnvPendingAction === PendingAction.Create}
+            isPendingDelete={singleEnvPendingAction === PendingAction.Delete}
+            hasPendingChange={Boolean(singleEnvSecret?.isPending)}
+            hasPendingValueChange={Boolean(singleEnvSecret?.hasPendingValueChange)}
+            pendingKeyName={
+              singleEnvSecret?.isPending && singleEnvSecret.key !== secretKey
+                ? singleEnvSecret.key
+                : undefined
+            }
             onSecretRename={handleSecretRename}
             secretPath={secretPath}
             isVisible={isSecretVisible || isSingleEnvSecretsVisible}

@@ -39,9 +39,9 @@ export const InlineTextDiff = ({
   // If no common words (null), highlight the entire text
   if (!changes) {
     const text = isOldVersion ? oldText : newText;
-    const bgClass = isOldVersion ? "bg-red-600/40" : "bg-green-600/40";
+    const bgClass = isOldVersion ? "bg-danger/40" : "bg-success/40";
     return (
-      <span className={twMerge("rounded-sm px-0.5", baseClass, fontSizeClass, bgClass)}>
+      <span className={twMerge("rounded-[2px] px-0.5", baseClass, fontSizeClass, bgClass)}>
         {text}
       </span>
     );
@@ -57,14 +57,14 @@ export const InlineTextDiff = ({
 
         if (change.added && !isOldVersion) {
           return (
-            <span key={key} className="rounded-sm bg-green-600/40 px-0.5">
+            <span key={key} className="rounded-sm bg-success/40 px-0.5">
               {change.value}
             </span>
           );
         }
         if (change.removed && isOldVersion) {
           return (
-            <span key={key} className="rounded-sm bg-red-600/40 px-0.5">
+            <span key={key} className="rounded-sm bg-danger/40 px-0.5">
               {change.value}
             </span>
           );
@@ -89,7 +89,7 @@ export const TagsDiffRenderer = ({
   isOldVersion: boolean;
 }) => {
   if (!tags?.length) {
-    return <span className="text-sm text-mineshaft-300">-</span>;
+    return <span className="text-sm text-muted">&mdash;</span>;
   }
 
   const otherTagSlugs = new Set(otherTags?.map((t) => t.slug) ?? []);
@@ -104,15 +104,15 @@ export const TagsDiffRenderer = ({
         return (
           <Tag
             className={twMerge(
-              "flex w-min items-center space-x-1.5 border bg-mineshaft-800",
-              isRemoved && "border-red-500/60 bg-red-600/20",
-              isAdded && "border-green-500/60 bg-green-600/20",
-              !isRemoved && !isAdded && "border-mineshaft-500"
+              "mr-0 flex w-min items-center space-x-1.5 rounded border bg-mineshaft-900/60 py-0.5 text-xs",
+              isRemoved && "border-danger/35 bg-danger/20",
+              isAdded && "border-success/35 bg-success/20",
+              !isRemoved && !isAdded && "border-border"
             )}
             key={slug}
           >
             {color && <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />}
-            <div className="text-sm">{slug}</div>
+            <div className="text-xs text-foreground">{slug}</div>
           </Tag>
         );
       })}
@@ -131,7 +131,7 @@ export const MetadataDiffRenderer = ({
   isOldVersion: boolean;
 }) => {
   if (!metadata?.length) {
-    return <p className="text-sm text-mineshaft-300">-</p>;
+    return <p className="text-sm text-muted">&mdash;</p>;
   }
 
   const otherMetaByKey = new Map(
@@ -165,28 +165,28 @@ export const MetadataDiffRenderer = ({
         const valueHighlighted = isEntirelyNew || isEntirelyRemoved || isValueChanged;
 
         const hasAnyChange = keyHighlighted || valueHighlighted || encryptionChanged;
-        const borderColorClass = isOldVersion ? "border-red-500" : "border-green-500";
+        const borderColorClass = isOldVersion ? "border-danger/35" : "border-success/35";
         const borderClass = twMerge(
           "border",
           hasAnyChange && borderColorClass,
-          !hasAnyChange && "border-mineshaft-500"
+          !hasAnyChange && "border-border"
         );
 
         const keyBgClass = twMerge(
-          "bg-mineshaft-500",
-          keyHighlighted && (isOldVersion ? "bg-red-500/30" : "bg-green-500/30")
+          "bg-muted/40",
+          keyHighlighted && (isOldVersion ? "bg-danger/30" : "bg-success/30")
         );
 
         const valueBgClass = twMerge(
-          valueHighlighted && (isOldVersion ? "bg-red-900/30" : "bg-green-900/30"),
-          !valueHighlighted && "bg-mineshaft-900"
+          valueHighlighted && (isOldVersion ? "bg-danger/30" : "bg-success/30"),
+          !valueHighlighted && "bg-mineshaft-900/60"
         );
 
         const lockIconClass = twMerge(
           "mr-1",
-          encryptionTurnedOff && "text-red-500",
-          encryptionTurnedOn && "text-green-500",
-          !encryptionTurnedOff && !encryptionTurnedOn && "text-mineshaft-300"
+          encryptionTurnedOff && "text-danger",
+          encryptionTurnedOn && "text-sucess",
+          !encryptionTurnedOff && !encryptionTurnedOn && "text-foreground"
         );
 
         return (
@@ -201,7 +201,7 @@ export const MetadataDiffRenderer = ({
                 </Tooltip>
               )}
               <Tooltip className="max-w-lg break-words whitespace-normal" content={el.key}>
-                <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap text-foreground">
                   {el.key}
                 </div>
               </Tooltip>
@@ -209,13 +209,13 @@ export const MetadataDiffRenderer = ({
             <Tag
               size="xs"
               className={twMerge(
-                "flex items-center rounded-l-none pl-1",
+                "flex items-center !rounded-l-none border-l-0 pl-1",
                 borderClass,
                 valueBgClass
               )}
             >
               <Tooltip className="max-w-lg break-words whitespace-normal" content={el.value}>
-                <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap text-foreground">
                   {el.value}
                 </div>
               </Tooltip>
@@ -241,7 +241,7 @@ export const SingleLineTextDiffRenderer = ({
   isOldVersion: boolean;
 }) => {
   if (!text) {
-    return <span className="text-sm text-mineshaft-300">-</span>;
+    return <span className="text-sm text-muted">&mdash;</span>;
   }
 
   if (!hasChanges) {
@@ -277,7 +277,7 @@ export const MultiLineTextDiffRenderer = ({
   containerRef?: React.RefObject<HTMLDivElement>;
 }) => {
   if (!text) {
-    return <span className="text-sm text-mineshaft-300">-</span>;
+    return <span className="text-sm text-muted">&mdash;</span>;
   }
 
   if (!hasChanges) {

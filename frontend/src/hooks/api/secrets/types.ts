@@ -45,6 +45,7 @@ export type SecretV3RawSanitized = {
   secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
   isPending?: boolean;
+  hasPendingValueChange?: boolean;
   pendingAction?: PendingAction;
   reminder?: Reminder;
   isEmpty?: boolean;

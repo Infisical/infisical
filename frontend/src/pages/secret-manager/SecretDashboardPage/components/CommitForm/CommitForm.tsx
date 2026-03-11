@@ -1,20 +1,30 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  faCodeCommit,
-  faExclamationTriangle,
-  faFolder,
-  faKey,
-  faSave
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ClipboardCheckIcon } from "lucide-react";
+import {
+  CircleAlertIcon,
+  ClipboardCheckIcon,
+  EyeIcon,
+  FolderIcon,
+  KeyRoundIcon,
+  SaveIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Input, Modal, ModalContent, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Tooltip } from "@app/components/v2";
+import {
+  Badge,
+  Button,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  UnstableInput
+} from "@app/components/v3";
 import { dashboardKeys, fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchSecretReferences, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -36,6 +46,8 @@ interface CommitFormProps {
   environment: string;
   projectId: string;
   secretPath: string;
+  isReviewOpen?: boolean;
+  onReviewOpenChange?: (isOpen: boolean) => void;
 }
 
 /* eslint-disable react/no-unused-prop-types */
@@ -64,6 +76,7 @@ const RenderSecretChanges = ({
   if (change.type === PendingAction.Create) {
     return (
       <SecretVersionDiffView
+        showViewed
         onDiscard={onDiscard}
         onRevealNewValue={onRevealNewValue}
         isLoadingNewValue={isLoadingNewValue}
@@ -127,7 +140,7 @@ const RenderSecretChanges = ({
         }
       >
         <Badge variant="warning" className="ml-2">
-          References affected <FontAwesomeIcon icon={faExclamationTriangle} />
+          <TriangleAlertIcon className="size-3" /> References affected
         </Badge>
       </Tooltip>
     ) : undefined;
@@ -142,6 +155,7 @@ const RenderSecretChanges = ({
 
     return (
       <SecretVersionDiffView
+        showViewed
         onDiscard={onDiscard}
         headerExtra={referenceWarningElement}
         onRevealOldValue={onRevealOldValue}
@@ -203,6 +217,7 @@ const RenderSecretChanges = ({
 
     return (
       <SecretVersionDiffView
+        showViewed
         onDiscard={onDiscard}
         onRevealOldValue={onRevealOldValue}
         isLoadingOldValue={isLoadingOldValue}
@@ -238,6 +253,7 @@ const RenderFolderChanges = ({ onDiscard, change, referenceCount: _ }: RenderRes
   if (change.type === PendingAction.Create) {
     return (
       <SecretVersionDiffView
+        showViewed
         onDiscard={onDiscard}
         item={{
           folderName: change.folderName,
@@ -266,6 +282,7 @@ const RenderFolderChanges = ({ onDiscard, change, referenceCount: _ }: RenderRes
 
     return (
       <SecretVersionDiffView
+        showViewed
         onDiscard={onDiscard}
         item={{
           folderName: change.folderName,
@@ -292,6 +309,7 @@ const RenderFolderChanges = ({ onDiscard, change, referenceCount: _ }: RenderRes
   if (change.type === PendingAction.Delete) {
     return (
       <SecretVersionDiffView
+        showViewed
         onDiscard={onDiscard}
         item={{
           folderName: change.folderName,
@@ -448,11 +466,20 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   isCommitting = false,
   environment,
   projectId,
-  secretPath
+  secretPath,
+  isReviewOpen: externalIsReviewOpen,
+  onReviewOpenChange
 }) => {
   const { isBatchMode, pendingChanges, totalChangesCount } = useBatchMode();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [internalIsModalOpen, setInternalIsModalOpen] = useState(false);
+  const isModalOpen = externalIsReviewOpen ?? internalIsModalOpen;
+  const setIsModalOpen = (open: boolean) => {
+    if (onReviewOpenChange) {
+      onReviewOpenChange(open);
+    }
+    setInternalIsModalOpen(open);
+  };
   const [commitMessage, setCommitMessage] = useState("");
   const { clearAllPendingChanges } = useBatchModeActions();
 
@@ -521,9 +548,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
 
   return (
     <>
-      {/* Floating Panel */}
+      {/* Floating Bottom Banner */}
       {!isModalOpen && (
-        <div className="fixed bottom-4 left-1/2 z-40 w-full max-w-3xl -translate-x-1/2 self-center lg:left-auto lg:translate-x-0">
+        <div className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2">
           <AnimatePresence mode="wait">
             <motion.div
               key="commit-panel"
@@ -532,43 +559,39 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               animate={{ opacity: 1, translateY: 0 }}
               exit={{ opacity: 0, translateY: -30 }}
             >
-              <div className="rounded-lg border border-yellow/30 bg-mineshaft-800 shadow-2xl">
-                <div className="flex items-center justify-between p-4">
-                  {/* Left Content */}
-                  <div className="flex-1">
-                    {/* Header */}
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-warning" />
-                      <span className="font-medium text-mineshaft-100">Pending Changes</span>
-                      <Badge variant="warning">
-                        {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
-                      </Badge>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-sm leading-5 text-mineshaft-400">
-                      Review pending changes and commit them to apply the updates.
-                    </p>
+              <div className="rounded-md border border-project/30 bg-card shadow-2xl backdrop-blur-md">
+                <div className="flex items-center justify-between bg-project/5 px-4 py-3">
+                  <div className="flex items-center gap-3 text-sm text-foreground">
+                    <CircleAlertIcon className="size-4 shrink-0 text-project/85" />
+                    <span>
+                      <span className="font-semibold">
+                        {totalChangesCount} pending change
+                        {totalChangesCount !== 1 ? "s" : ""}
+                      </span>
+                      {" — "}
+                      Review your changes before applying them to the environment.
+                    </span>
                   </div>
-
-                  {/* Right Buttons */}
-                  <div className="mt-0.5 ml-6 flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <Button
-                      size="sm"
+                      variant="ghost"
+                      size="xs"
                       onClick={() => clearAllPendingChanges({ projectId, environment, secretPath })}
-                      isDisabled={totalChangesCount === 0}
-                      variant="outline_bg"
-                      className="px-4 hover:border-red/40 hover:bg-red/10"
                     >
                       Discard
                     </Button>
+                    <Button variant="outline" size="xs" onClick={handleSaveChanges}>
+                      <EyeIcon />
+                      Review
+                    </Button>
                     <Button
-                      variant="solid"
-                      leftIcon={<FontAwesomeIcon icon={faSave} />}
-                      onClick={handleSaveChanges}
-                      isDisabled={totalChangesCount === 0 || isCommitting}
-                      className="px-6"
+                      variant="project"
+                      size="xs"
+                      onClick={handleCommit}
+                      isDisabled={isCommitting}
+                      isPending={isCommitting}
                     >
+                      <SaveIcon />
                       Save Changes
                     </Button>
                   </div>
@@ -579,110 +602,107 @@ export const CommitForm: React.FC<CommitFormProps> = ({
         </div>
       )}
 
-      {/* Commit Modal */}
-      <Modal isOpen={isModalOpen} onOpenChange={setIsModalOpen}>
-        <ModalContent
-          title={
-            <div className="flex items-center gap-2">
+      {/* Review Sheet */}
+      <Sheet open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <SheetContent className="w-full gap-y-0 sm:max-w-8xl">
+          <SheetHeader className="border-b">
+            <SheetTitle className="flex items-center gap-2">
               Review Changes
               <Badge variant="warning">
                 <ClipboardCheckIcon />
                 {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
               </Badge>
-            </div>
-          }
-          subTitle="Write a commit message and review the changes you're about to save."
-          className="flex h-[calc(100vh-1rem)] max-w-[95%] flex-col md:max-w-8xl"
-          bodyClassName="flex flex-1 flex-col overflow-hidden !max-h-none"
-        >
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="space-y-4">
-                {/* Folder Changes */}
-                {pendingChanges.folders.length > 0 && (
-                  <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-medium text-mineshaft-200">
-                      <FontAwesomeIcon icon={faFolder} className="text-mineshaft-300" />
-                      Folders ({pendingChanges.folders.length})
-                    </h4>
-                    <div>
-                      {pendingChanges.folders.map((change) => (
-                        <ResourceChange
-                          key={change.id}
-                          change={change}
-                          environment={environment}
-                          projectId={projectId}
-                          secretPath={secretPath}
-                          referenceCountMap={referenceCountMap}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+            </SheetTitle>
+            <SheetDescription>
+              Write a commit message and review the changes you&apos;re about to save.
+            </SheetDescription>
+          </SheetHeader>
 
-                {/* Secret Changes */}
-                {pendingChanges.secrets.length > 0 && (
-                  <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-medium text-mineshaft-200">
-                      <FontAwesomeIcon icon={faKey} className="mr-1 text-mineshaft-300" />
-                      Secrets ({pendingChanges.secrets.length})
-                    </h4>
-                    <div>
-                      {pendingChanges.secrets.map((change) => (
-                        <ResourceChange
-                          key={change.id}
-                          change={change}
-                          environment={environment}
-                          projectId={projectId}
-                          secretPath={secretPath}
-                          referenceCountMap={referenceCountMap}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="shrink-0 space-y-4 border-t border-mineshaft-600 pt-4">
-              {/* Commit Message */}
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
+            {/* Folder Changes */}
+            {pendingChanges.folders.length > 0 && (
               <div>
-                <label className="mb-2 block text-sm font-medium text-mineshaft-200">
-                  Commit Message
-                </label>
-                <Input
+                <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
+                  <FolderIcon className="size-4 text-accent" />
+                  <span className="flex-1 text-xs font-semibold tracking-wider text-accent uppercase">
+                    Folders
+                  </span>
+                  <Badge variant="neutral">{pendingChanges.folders.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {pendingChanges.folders.map((change) => (
+                    <ResourceChange
+                      key={change.id}
+                      change={change}
+                      environment={environment}
+                      projectId={projectId}
+                      secretPath={secretPath}
+                      referenceCountMap={referenceCountMap}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Secret Changes */}
+            {pendingChanges.secrets.length > 0 && (
+              <div>
+                <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
+                  <KeyRoundIcon className="size-4 text-accent" />
+                  <span className="flex-1 text-xs font-semibold tracking-wider text-accent uppercase">
+                    Secrets
+                  </span>
+                  <Badge variant="neutral">{pendingChanges.secrets.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {pendingChanges.secrets.map((change) => (
+                    <ResourceChange
+                      key={change.id}
+                      change={change}
+                      environment={environment}
+                      projectId={projectId}
+                      secretPath={secretPath}
+                      referenceCountMap={referenceCountMap}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <SheetFooter className="border-t border-border">
+            <div className="flex w-full flex-col gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Commit Message</label>
+                <UnstableInput
                   value={commitMessage}
                   onChange={(e) => setCommitMessage(e.target.value)}
                   placeholder="Describe your changes..."
-                  className="w-full"
                   autoFocus
                 />
               </div>
-
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-2">
                 <Button
-                  variant="plain"
-                  colorSchema="secondary"
+                  variant="ghost"
                   onClick={() => setIsModalOpen(false)}
                   isDisabled={isCommitting}
                 >
                   Cancel
                 </Button>
                 <Button
+                  variant="project"
                   onClick={handleCommit}
-                  isLoading={isCommitting}
+                  isPending={isCommitting}
                   isDisabled={isCommitting}
-                  leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-                  colorSchema="primary"
-                  variant="outline_bg"
                 >
+                  <SaveIcon />
                   {isCommitting ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </div>
-          </div>
-        </ModalContent>
-      </Modal>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </>
   );
 };

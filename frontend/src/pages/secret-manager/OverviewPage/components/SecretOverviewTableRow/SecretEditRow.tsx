@@ -43,14 +43,19 @@ type Props = {
   secretValueHidden: boolean;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (
-    env: string,
-    key: string,
-    value: string,
-    secretValueHidden: boolean,
-    type?: SecretType,
-    secretId?: string
-  ) => Promise<void>;
+  onSecretUpdate: (params: {
+    env: string;
+    key: string;
+    value: string | undefined;
+    secretValueHidden: boolean;
+    type?: SecretType;
+    secretId?: string;
+    newSecretName?: string;
+    secretComment?: string;
+    tags?: { id: string; slug: string }[];
+    secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+    skipMultilineEncoding?: boolean | null;
+  }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
   isEmpty?: boolean;
@@ -197,14 +202,14 @@ export const SecretEditRow = ({
           handlePopUpOpen("editSecret", { secretValue: value });
           return;
         }
-        await onSecretUpdate(
-          environment,
-          secretName,
+        await onSecretUpdate({
+          env: environment,
+          key: secretName,
           value,
           secretValueHidden,
-          isOverride ? SecretType.Personal : SecretType.Shared,
+          type: isOverride ? SecretType.Personal : SecretType.Shared,
           secretId
-        );
+        });
       }
     }
     if (secretValueHidden && !isOverride) {
@@ -217,14 +222,14 @@ export const SecretEditRow = ({
   };
 
   const handleEditSecret = async ({ secretValue }: { secretValue: string }) => {
-    await onSecretUpdate(
-      environment,
-      secretName,
-      secretValue,
+    await onSecretUpdate({
+      env: environment,
+      key: secretName,
+      value: secretValue,
       secretValueHidden,
-      isOverride ? SecretType.Personal : SecretType.Shared,
+      type: isOverride ? SecretType.Personal : SecretType.Shared,
       secretId
-    );
+    });
     reset({ value: secretValue });
     handlePopUpClose("editSecret");
   };

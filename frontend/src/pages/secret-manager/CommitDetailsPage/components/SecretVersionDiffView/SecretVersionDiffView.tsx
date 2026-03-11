@@ -1,7 +1,6 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useState } from "react";
-import { faChevronDown, faChevronUp, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
+import { FolderIcon, KeyRoundIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -10,7 +9,19 @@ import {
   SecretDiffView,
   SecretVersionData
 } from "@app/components/secrets/diff";
-import { IconButton, Tooltip } from "@app/components/v2";
+import {
+  Badge,
+  Checkbox,
+  Label,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableAccordion,
+  UnstableAccordionContent,
+  UnstableAccordionItem,
+  UnstableAccordionTrigger,
+  UnstableIconButton
+} from "@app/components/v3";
 
 export interface Version {
   id?: string;
@@ -38,6 +49,7 @@ interface SecretVersionDiffViewProps {
   isCollapsed?: boolean;
   onToggleCollapse?: (id: string) => void;
   showHeader?: boolean;
+  showViewed?: boolean;
   customHeader?: JSX.Element;
   onDiscard?: VoidFunction;
   headerExtra?: JSX.Element;
@@ -52,6 +64,7 @@ export const SecretVersionDiffView = ({
   isCollapsed = false,
   onToggleCollapse,
   showHeader = true,
+  showViewed = false,
   customHeader,
   onDiscard,
   headerExtra,
@@ -60,20 +73,13 @@ export const SecretVersionDiffView = ({
   isLoadingOldValue,
   isLoadingNewValue
 }: SecretVersionDiffViewProps) => {
-  const [internalCollapsed, setInternalCollapsed] = useState(isCollapsed);
-
-  const handleToggle = useCallback(() => {
-    if (onToggleCollapse && item.id) {
-      onToggleCollapse(item.id);
-    } else {
-      setInternalCollapsed((prev) => !prev);
-    }
-  }, [onToggleCollapse, item.id]);
-
-  const collapsed = onToggleCollapse ? isCollapsed : internalCollapsed;
+  const [viewed, setViewed] = useState(false);
+  const [internalValue, setInternalValue] = useState<string | undefined>(
+    isCollapsed ? undefined : item.id
+  );
 
   if (!item.versions || item.versions.length === 0) {
-    return <div className="px-6 py-3 text-gray-400">No details available</div>;
+    return <div className="px-6 py-3 text-accent">No details available</div>;
   }
 
   const sortedVersions = [...item.versions].sort((a, b) => b.version - a.version);
@@ -145,102 +151,136 @@ export const SecretVersionDiffView = ({
   const oldFolderData = convertToFolderVersionData(oldVersion);
   const newFolderData = convertToFolderVersionData(newVersion);
 
-  const renderHeader = () => {
-    if (customHeader) {
-      return customHeader;
-    }
+  const isSecret = item.type === "secret";
+  const key = isSecret ? item.secretKey || "Unnamed Secret" : item.folderName || "Unnamed Folder";
 
-    const isSecret = item.type === "secret";
-    const key = isSecret ? item.secretKey || "Unnamed Secret" : item.folderName || "Unnamed Folder";
-    let textStyle = "text-white";
-    let changeBadge = null;
+  let changeBadgeVariant: "success" | "warning" | "danger" | undefined;
+  let changeBadgeLabel: string | undefined;
 
-    if (item.isDeleted) {
-      textStyle = "line-through text-red-300";
-      changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
-          {isSecret ? "Secret" : "Folder"} Deleted
-        </span>
-      );
-    } else if (item.isAdded) {
-      changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
-          {isSecret ? "Secret" : "Folder"} Added
-        </span>
-      );
-    } else if (item.isUpdated) {
-      changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
-          {isSecret ? "Secret" : "Folder"} Updated
-        </span>
-      );
-    }
+  if (item.isDeleted) {
+    changeBadgeVariant = "danger";
+    changeBadgeLabel = "Deleted";
+  } else if (item.isAdded) {
+    changeBadgeVariant = "success";
+    changeBadgeLabel = "Added";
+  } else if (item.isUpdated) {
+    changeBadgeVariant = "warning";
+    changeBadgeLabel = "Updated";
+  }
 
-    return (
-      <div
-        className="flex cursor-pointer items-center justify-between p-4 hover:bg-mineshaft-700"
-        onClick={handleToggle}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            handleToggle();
-            e.preventDefault();
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-expanded={!collapsed}
-      >
-        <div className="flex min-w-0 flex-1 items-center">
-          <p className={twMerge(textStyle, "truncate")}>{key}</p>
-          {changeBadge}
-          {headerExtra}
-        </div>
-        {onDiscard && (
-          <Tooltip side="left" content="Discard change">
-            <IconButton
-              ariaLabel="discard-change"
-              variant="plain"
-              colorSchema="danger"
-              size="sm"
-              className="ml-2"
-              onClick={onDiscard}
-            >
-              <FontAwesomeIcon icon={faTrash} />
-            </IconButton>
-          </Tooltip>
-        )}
-        <FontAwesomeIcon
-          icon={collapsed ? faChevronDown : faChevronUp}
-          className="ml-2 text-gray-400"
+  const diffContent = (
+    <div className="p-3">
+      {item.type === "secret" ? (
+        <SecretDiffView
+          operationType={operationType}
+          oldVersion={oldSecretData}
+          newVersion={newSecretData}
+          onRevealOldValue={onRevealOldValue}
+          onRevealNewValue={onRevealNewValue}
+          isLoadingOldValue={isLoadingOldValue}
+          isLoadingNewValue={isLoadingNewValue}
         />
-      </div>
-    );
-  };
-
-  return (
-    <div className="overflow-hidden border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t last:rounded-b last:border-b">
-      {showHeader && renderHeader()}
-      {!collapsed && (
-        <div className="border-t border-mineshaft-700 bg-mineshaft-900 p-3 text-mineshaft-100">
-          {item.type === "secret" ? (
-            <SecretDiffView
-              operationType={operationType}
-              oldVersion={oldSecretData}
-              newVersion={newSecretData}
-              onRevealOldValue={onRevealOldValue}
-              onRevealNewValue={onRevealNewValue}
-              isLoadingOldValue={isLoadingOldValue}
-              isLoadingNewValue={isLoadingNewValue}
-            />
-          ) : (
-            <FolderDiffView
-              operationType={operationType}
-              oldVersion={oldFolderData}
-              newVersion={newFolderData}
-            />
-          )}
-        </div>
+      ) : (
+        <FolderDiffView
+          operationType={operationType}
+          oldVersion={oldFolderData}
+          newVersion={newFolderData}
+        />
       )}
     </div>
+  );
+
+  const handleViewedToggle = () => {
+    const newViewed = !viewed;
+    setViewed(newViewed);
+    if (newViewed) {
+      // Collapse when marking as viewed
+      if (onToggleCollapse) {
+        if (!isCollapsed) onToggleCollapse(item.id);
+      } else {
+        setInternalValue(undefined);
+      }
+    } else if (onToggleCollapse) {
+      // Expand when unmarking as viewed
+      if (isCollapsed) onToggleCollapse(item.id);
+    } else {
+      setInternalValue(item.id);
+    }
+  };
+
+  // External controlled collapse (used by CommitDetailsTab)
+  const accordionProps = onToggleCollapse
+    ? {
+        type: "single" as const,
+        value: isCollapsed ? "" : item.id,
+        onValueChange: () => onToggleCollapse(item.id)
+      }
+    : {
+        type: "single" as const,
+        value: internalValue ?? "",
+        onValueChange: (val: string) => setInternalValue(val || undefined),
+        collapsible: true as const
+      };
+
+  const TypeIcon = isSecret ? KeyRoundIcon : FolderIcon;
+
+  return (
+    <UnstableAccordion
+      {...accordionProps}
+      className={twMerge("overflow-clip rounded-md border border-border", viewed && "opacity-60")}
+    >
+      <UnstableAccordionItem value={item.id} className="border-b-0">
+        {showHeader && (
+          <UnstableAccordionTrigger>
+            {customHeader ?? (
+              <>
+                <TypeIcon className="size-4 shrink-0 text-accent" />
+                <span
+                  className={twMerge(
+                    "flex-1 truncate text-left",
+                    item.isDeleted && "text-danger/70 line-through"
+                  )}
+                >
+                  {key}
+                </span>
+                {changeBadgeLabel && <Badge variant={changeBadgeVariant}>{changeBadgeLabel}</Badge>}
+                {headerExtra}
+                {showViewed && (
+                  <Label
+                    className="cursor-pointer gap-1.5 border-l border-border pl-3 text-xs text-accent"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") e.stopPropagation();
+                    }}
+                  >
+                    <Checkbox isChecked={viewed} onCheckedChange={handleViewedToggle} />
+                    Viewed
+                  </Label>
+                )}
+                {onDiscard && (
+                  <Tooltip delayDuration={300}>
+                    <TooltipTrigger asChild>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        className="hover:text-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDiscard();
+                        }}
+                      >
+                        <TrashIcon />
+                      </UnstableIconButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">Discard change</TooltipContent>
+                  </Tooltip>
+                )}
+              </>
+            )}
+          </UnstableAccordionTrigger>
+        )}
+        <UnstableAccordionContent className="p-0">{diffContent}</UnstableAccordionContent>
+      </UnstableAccordionItem>
+    </UnstableAccordion>
   );
 };
