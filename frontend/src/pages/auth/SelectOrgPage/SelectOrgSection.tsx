@@ -142,7 +142,14 @@ export const SelectOrganizationSection = () => {
             callbackPort ? `&callbackPort=${callbackPort}` : ""
           }`;
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
-          if (authToken.authMethod !== AuthMethod.SAML) {
+          const samlAuthMethods = [
+            AuthMethod.SAML,
+            AuthMethod.OKTA_SAML,
+            AuthMethod.AZURE_SAML,
+            AuthMethod.JUMPCLOUD_SAML,
+            AuthMethod.KEYCLOAK_SAML
+          ];
+          if (!samlAuthMethods.includes(authToken.authMethod)) {
             url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
             if (callbackPort) {
               url += `?callback_port=${callbackPort}`;
