@@ -49,7 +49,7 @@ export enum PostHogEventTypes {
   AccessApprovalPolicyCreated = "Access Approval Policy Created",
   AccessApprovalPolicyDeleted = "Access Approval Policy Deleted",
   AccessApprovalRequestCreated = "Access Approval Request Created",
-  AccessApprovalRequestReviewed = "Access Approval Request Reviewed"
+  AccessApprovalRequestReviewed = "Access Approval Request Reviewed",
   SecretSyncCreated = "Secret Sync Created",
   SecretSyncDeleted = "Secret Sync Deleted",
   DynamicSecretCreated = "Dynamic Secret Created",
@@ -402,6 +402,9 @@ export type TAccessApprovalRequestReviewedEvent = {
     requestId: string;
     projectId: string;
     reviewStatus: string;
+  };
+};
+
 export type TSecretSyncCreatedEvent = {
   event: PostHogEventTypes.SecretSyncCreated;
   properties: {
