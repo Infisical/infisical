@@ -437,10 +437,9 @@ export const permissionServiceFactory = ({
         });
         if (orgPermissionData?.length) {
           const orgPermissionFromRoles = flattenActiveRolesFromMemberships(orgPermissionData, OrgMembershipRole.Custom);
-          const orgPermission = createMongoAbility<OrgPermissionSet>(
-            buildOrgPermissionRules(orgPermissionFromRoles),
-            { conditionsMatcher }
-          );
+          const orgPermission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(orgPermissionFromRoles), {
+            conditionsMatcher
+          });
           const orgHasRole = (role: string) =>
             orgPermissionData.some((m) => m.roles.some((el) => role === (el.customRoleSlug || el.role)));
           canBypassSso =

@@ -1,6 +1,13 @@
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TUsers, UserDeviceSchema } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TUsers,
+  UserDeviceSchema
+} from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
@@ -596,7 +603,8 @@ export const authLoginServiceFactory = ({
       actorOrgId: rootOrg.id,
       scope: OrganizationActionScope.Any
     });
-    const canBypassSso = rootOrg.bypassOrgAuthEnabled &&
+    const canBypassSso =
+      rootOrg.bypassOrgAuthEnabled &&
       permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
 
     if (

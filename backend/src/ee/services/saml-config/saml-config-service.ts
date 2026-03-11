@@ -43,7 +43,7 @@ import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionActions, OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";

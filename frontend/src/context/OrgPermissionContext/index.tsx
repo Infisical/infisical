@@ -6,5 +6,6 @@ export {
   OrgPermissionBillingActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
+  OrgPermissionSsoActions,
   OrgPermissionSubjects
 } from "./types";
