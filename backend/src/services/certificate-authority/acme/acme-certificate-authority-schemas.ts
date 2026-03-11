@@ -21,12 +21,7 @@ export const AcmeCertificateAuthorityConfigurationSchema = z.object({
   accountEmail: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.accountEmail),
   eabKid: z.string().trim().max(64).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.eabKid),
   eabHmacKey: z.string().trim().max(512).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.eabHmacKey),
-  dnsResolver: z
-    .string()
-    .trim()
-    .max(255)
-    .optional()
-    .describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsResolver)
+  dnsResolver: z.string().trim().max(255).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsResolver)
 });
 
 export const AcmeCertificateAuthorityCredentialsSchema = z.object({
