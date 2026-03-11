@@ -173,8 +173,6 @@ export const SelectOrganizationSection = () => {
           return;
         }
         throw error;
-      } finally {
-        setIsInitialOrgCheckLoading(false);
       }
 
       await router.invalidate();
@@ -184,6 +182,11 @@ export const SelectOrganizationSection = () => {
         if (mfaMethod) {
           setRequiredMfaMethod(mfaMethod);
         }
+        // Set loading to false only here so the MFA prompt can render.
+        // For navigation paths below we intentionally leave it true — the
+        // component unmounts on navigation and setting it false would cause
+        // a one-frame flash of the org selector before the route change lands.
+        setIsInitialOrgCheckLoading(false);
         toggleShowMfa.on();
         setMfaSuccessCallback(() => () => handleSelectOrganization(organization));
         return;
@@ -293,7 +296,9 @@ export const SelectOrganizationSection = () => {
       if (callbackPort) {
         handleCliRedirect();
         setIsInitialOrgCheckLoading(false);
-      } else {
+      } else if (!defaultSelectedOrg) {
+        // No org_id in URL — auto-select the only org directly.
+        // When defaultSelectedOrg is set, willAutoSelectDefaultOrg handles selection via the second useEffect.
         handleSelectOrganization(organizations.data[0]);
       }
     } else {
@@ -303,7 +308,8 @@ export const SelectOrganizationSection = () => {
     organizations.isPending,
     organizations.data,
     orgsWithSubOrgs.isPending,
-    orgsWithSubOrgs.data
+    orgsWithSubOrgs.data,
+    defaultSelectedOrg
   ]);
 
   useEffect(() => {
@@ -500,7 +506,8 @@ export const SelectOrganizationSection = () => {
   if (
     userLoading ||
     !user ||
-    ((isInitialOrgCheckLoading || willAutoSelectDefaultOrg || isLoadingSubOrgCheck) && !shouldShowMfa)
+    ((isInitialOrgCheckLoading || willAutoSelectDefaultOrg || isLoadingSubOrgCheck) &&
+      !shouldShowMfa)
   ) {
     return (
       <div className="h-screen w-screen bg-bunker-800">
