@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, Input } from "@app/components/v2";
+import { LoginMethod } from "@app/hooks/api/admin/types";
+import { useLastLogin } from "@app/hooks/useLastLogin";
 
 type Props = {
   setStep: (step: number) => void;
@@ -9,8 +11,14 @@ type Props = {
 };
 
 export const SSOStep = ({ setStep, type }: Props) => {
-  const [ssoIdentifier, setSSOIdentifier] = useState("");
+  const { lastLogin, saveLastLogin } = useLastLogin();
   const { t } = useTranslation();
+
+  const matchingMethod = type === "SAML" ? LoginMethod.SAML : LoginMethod.OIDC;
+  const initialSlug =
+    lastLogin?.method === matchingMethod && lastLogin.orgSlug ? lastLogin.orgSlug : "";
+
+  const [ssoIdentifier, setSSOIdentifier] = useState(initialSlug);
 
   const queryParams = new URLSearchParams(window.location.search);
 
@@ -18,12 +26,14 @@ export const SSOStep = ({ setStep, type }: Props) => {
     e.preventDefault();
     const callbackPort = queryParams.get("callback_port");
     if (type === "SAML") {
+      saveLastLogin({ method: LoginMethod.SAML, orgSlug: ssoIdentifier });
       window.open(
         `/api/v1/sso/redirect/saml2/organizations/${ssoIdentifier}${
           callbackPort ? `?callback_port=${callbackPort}` : ""
         }`
       );
     } else {
+      saveLastLogin({ method: LoginMethod.OIDC, orgSlug: ssoIdentifier });
       window.open(
         `/api/v1/sso/oidc/login?orgSlug=${ssoIdentifier}${
           callbackPort ? `&callbackPort=${callbackPort}` : ""

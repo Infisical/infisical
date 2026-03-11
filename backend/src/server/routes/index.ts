@@ -83,6 +83,14 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamAccountDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependencies-dal";
+import { pamDiscoveryQueueFactory } from "@app/ee/services/pam-discovery/pam-discovery-queue";
+import { pamDiscoverySourceAccountsDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-accounts-dal";
+import { pamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
+import { pamDiscoverySourceDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dependencies-dal";
+import { pamDiscoverySourceResourcesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-resources-dal";
+import { pamDiscoveryRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-run-dal";
+import { pamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
@@ -730,12 +738,12 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     membershipDAL,
     orgDAL,
-    permissionService
+    permissionService,
+    userDAL
   });
 
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
-    keyStore,
     kmsDAL,
     internalKmsDAL,
     orgDAL,
@@ -2606,6 +2614,12 @@ export const registerRoutes = async (
   const pamResourceDAL = pamResourceDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const pamDiscoveryRunDAL = pamDiscoveryRunDALFactory(db);
+  const pamDiscoverySourceResourcesDAL = pamDiscoverySourceResourcesDALFactory(db);
+  const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
+  const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
+  const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
@@ -2688,6 +2702,33 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     orgDAL,
     projectDAL
+  });
+
+  const pamDiscoveryQueue = pamDiscoveryQueueFactory({
+    pamDiscoverySourceDAL,
+    pamDiscoveryRunDAL,
+    pamDiscoverySourceResourcesDAL,
+    pamDiscoverySourceAccountsDAL,
+    pamDiscoverySourceDependenciesDAL,
+    pamAccountDependenciesDAL,
+    pamResourceDAL,
+    pamAccountDAL,
+    kmsService,
+    queueService,
+    gatewayV2Service,
+    gatewayV2DAL
+  });
+
+  const pamDiscoverySourceService = pamDiscoverySourceServiceFactory({
+    pamDiscoverySourceDAL,
+    pamDiscoveryRunDAL,
+    pamDiscoverySourceResourcesDAL,
+    pamDiscoverySourceAccountsDAL,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayV2Service,
+    pamDiscoveryQueue
   });
 
   const aiMcpServerService = aiMcpServerServiceFactory({
@@ -2775,6 +2816,7 @@ export const registerRoutes = async (
   await healthAlert.init();
   await pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
+  pamDiscoveryQueue.startPamDiscoveryQueue();
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
@@ -2912,6 +2954,7 @@ export const registerRoutes = async (
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
     pamWebAccess: pamWebAccessService,
+    pamDiscoverySource: pamDiscoverySourceService,
     mfaSession: mfaSessionService,
     upgradePath: upgradePathService,
 

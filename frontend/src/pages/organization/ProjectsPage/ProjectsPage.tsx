@@ -14,18 +14,6 @@ import { AllProjectView } from "./components/AllProjectView";
 import { MyProjectView } from "./components/MyProjectView";
 import { ProjectListView } from "./components/ProjectListToggle";
 
-// const formatDescription = (type: ProjectType) => {
-//   if (type === ProjectType.SecretManager)
-//     return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
-//   if (type === ProjectType.CertificateManager)
-//     return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
-//   if (type === ProjectType.KMS)
-//     return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
-//   if (type === ProjectType.SecretScanning)
-//     return "Connect and monitor data sources to prevent secret leaks.";
-//   return "Infisical SSH lets you issue SSH credentials to users for short-lived, secure SSH access to infrastructure.";
-// };
-
 export const ProjectsPage = () => {
   const { t } = useTranslation();
   const matches = useMatches();
@@ -74,6 +62,21 @@ export const ProjectsPage = () => {
     return <Outlet />;
   }
 
+  const projectViewProps = {
+    onAddNewProject: () => handlePopUpOpen("addNewWs"),
+    onUpgradePlan: () => handlePopUpOpen("upgradePlan"),
+    isAddingProjectsAllowed,
+    projectListView,
+    onProjectListViewChange: handleSetProjectListView
+  };
+
+  const projectView =
+    projectListView === ProjectListView.MyProjects ? (
+      <MyProjectView {...projectViewProps} />
+    ) : (
+      <AllProjectView {...projectViewProps} />
+    );
+
   return (
     <div className="mx-auto flex max-w-8xl flex-col justify-start bg-bunker-800">
       <Helmet>
@@ -85,23 +88,7 @@ export const ProjectsPage = () => {
         title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}
         description="Your team's complete security toolkit - organized and ready when you need them."
       />
-      {projectListView === ProjectListView.MyProjects ? (
-        <MyProjectView
-          onAddNewProject={() => handlePopUpOpen("addNewWs")}
-          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
-          projectListView={projectListView}
-          onProjectListViewChange={handleSetProjectListView}
-        />
-      ) : (
-        <AllProjectView
-          onAddNewProject={() => handlePopUpOpen("addNewWs")}
-          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
-          projectListView={projectListView}
-          onProjectListViewChange={handleSetProjectListView}
-        />
-      )}
+      {projectView}
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}

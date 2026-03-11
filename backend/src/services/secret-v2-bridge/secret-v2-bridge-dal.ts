@@ -245,29 +245,61 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     tx?: Knex
   ) => {
     try {
-      const BATCH_SIZE = 500;
       const secs: TSecretsV2[] = [];
 
-      for (let i = 0; i < data.length; i += BATCH_SIZE) {
-        const batch = data.slice(i, i + BATCH_SIZE);
-        // eslint-disable-next-line no-await-in-loop
-        const batchResults = await Promise.all(
-          batch.map(async ({ filter, data: updateData }) => {
-            const [doc] = await (tx || db)(TableName.SecretV2)
-              .where(filter)
-              .update(updateData)
-              .increment("version", 1)
-              .returning("*");
-            if (!doc) throw new BadRequestError({ message: "Failed to update document" });
-            return doc;
-          })
-        );
-        secs.push(...batchResults);
+      for await (const { filter, data: updateData } of data) {
+        const [doc] = await (tx || db)(TableName.SecretV2)
+          .where(filter)
+          .update(updateData)
+          .increment("version", 1)
+          .returning("*");
+        if (!doc) throw new BadRequestError({ message: "Failed to update document" });
+        secs.push(doc);
       }
 
       return secs;
     } catch (error) {
       throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
+
+  const bulkUpdateById = async (
+    data: Array<{ filter: Pick<TSecretsV2, "id"> & Partial<TSecretsV2>; data: TSecretsV2Update }>,
+    tx?: Knex
+  ) => {
+    try {
+      if (data.length === 0) return [];
+
+      const ids = data.map(({ filter }) => filter.id);
+
+      const existingSecrets = await (tx || db)(TableName.SecretV2).whereIn("id", ids).select("*");
+
+      const existingById = new Map(existingSecrets.map((s) => [s.id, s]));
+
+      const rowsToUpsert = data.map(({ filter, data: updateData }) => {
+        const existing = existingById.get(filter.id);
+        if (!existing) throw new BadRequestError({ message: "Failed to update document" });
+
+        return {
+          ...existing,
+          ...updateData,
+          version: existing.version + 1
+        };
+      });
+
+      const updatedSecrets = await (tx || db)(TableName.SecretV2)
+        .insert(rowsToUpsert)
+        .onConflict("id")
+        .merge()
+        .returning("*");
+
+      if (updatedSecrets.length !== data.length) {
+        throw new BadRequestError({ message: "Failed to update some documents" });
+      }
+
+      return updatedSecrets;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret by id" });
     }
   };
 
@@ -1099,6 +1131,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     ...secretOrm,
     update,
     bulkUpdate,
+    bulkUpdateById,
     deleteMany,
     bulkUpdateNoVersionIncrement,
     getSecretTags,

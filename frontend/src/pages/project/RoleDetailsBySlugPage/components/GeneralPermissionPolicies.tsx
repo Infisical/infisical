@@ -21,7 +21,12 @@ import {
   UnstableAccordionTrigger,
   UnstableIconButton
 } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
+import {
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/context";
 
 import {
   isConditionalSubjects,
@@ -116,18 +121,60 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
     defaultValue: {}
   });
 
+  const secretsRead = Boolean(permissionRule?.read);
+  const memberGrantPrivileges = Boolean(
+    permissionRule?.[ProjectPermissionMemberActions.GrantPrivileges]
+  );
+  const identityGrantPrivileges = Boolean(
+    permissionRule?.[ProjectPermissionIdentityActions.GrantPrivileges]
+  );
+  const groupsGrantPrivileges = Boolean(
+    permissionRule?.[ProjectPermissionGroupActions.GrantPrivileges]
+  );
+
+  const legacyActionsState = useMemo(
+    () => ({
+      secretsRead,
+      memberGrantPrivileges,
+      identityGrantPrivileges,
+      groupsGrantPrivileges
+    }),
+    [secretsRead, memberGrantPrivileges, identityGrantPrivileges, groupsGrantPrivileges]
+  );
+
   const visibleActions = useMemo(
     () =>
       actions.filter(({ value }) => {
         if (typeof value !== "string") return false;
 
+        // Hide legacy "read" action for secrets unless already selected
         if (subject === ProjectPermissionSub.Secrets && value === "read") {
-          return Boolean(permissionRule?.read);
+          return legacyActionsState.secretsRead;
+        }
+
+        // Hide legacy "grant-privileges" actions unless already selected
+        if (
+          subject === ProjectPermissionSub.Member &&
+          value === ProjectPermissionMemberActions.GrantPrivileges
+        ) {
+          return legacyActionsState.memberGrantPrivileges;
+        }
+        if (
+          subject === ProjectPermissionSub.Identity &&
+          value === ProjectPermissionIdentityActions.GrantPrivileges
+        ) {
+          return legacyActionsState.identityGrantPrivileges;
+        }
+        if (
+          subject === ProjectPermissionSub.Groups &&
+          value === ProjectPermissionGroupActions.GrantPrivileges
+        ) {
+          return legacyActionsState.groupsGrantPrivileges;
         }
 
         return true;
       }),
-    [actions, subject, permissionRule?.read]
+    [actions, subject, legacyActionsState]
   );
 
   const actionOptions = useMemo(

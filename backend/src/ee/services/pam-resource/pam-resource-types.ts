@@ -46,13 +46,14 @@ import {
   TSSHAccountCredentials,
   TSSHResource,
   TSSHResourceConnectionDetails,
-  TSSHResourceMetadata
+  TSSHResourceInternalMetadata
 } from "./ssh/ssh-resource-types";
 import {
   TWindowsAccount,
   TWindowsAccountCredentials,
   TWindowsResource,
-  TWindowsResourceConnectionDetails
+  TWindowsResourceConnectionDetails,
+  TWindowsResourceInternalMetadata
 } from "./windows-server/windows-server-resource-types";
 
 // Resource types
@@ -74,7 +75,7 @@ export type TPamResourceConnectionDetails =
   | TRedisResourceConnectionDetails
   | TWindowsResourceConnectionDetails
   | TActiveDirectoryResourceConnectionDetails;
-export type TPamResourceMetadata = TSSHResourceMetadata;
+export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindowsResourceInternalMetadata;
 
 // Account types
 export type TPamAccount =
@@ -130,13 +131,17 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
   currentCredentials: C
 ) => Promise<C>;
 
-export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C extends TPamAccountCredentials> = (
+export type TPamResourceFactory<
+  T extends TPamResourceConnectionDetails,
+  C extends TPamAccountCredentials,
+  M extends TPamResourceInternalMetadata
+> = (
   resourceType: PamResource,
   connectionDetails: T,
   gatewayId: string | null | undefined,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   projectId: string | null | undefined,
-  resourceMetadata?: TPamResourceMetadata
+  resourceInternalMetadata?: M
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;

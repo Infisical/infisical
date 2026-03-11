@@ -12,6 +12,7 @@ import {
   faInfinity,
   faInfo,
   faInfoCircle,
+  faMagnifyingGlass,
   faPlus,
   faSignOut,
   faToolbox,
@@ -40,6 +41,7 @@ import {
   DropdownSubMenuContent,
   DropdownSubMenuTrigger,
   IconButton,
+  Input,
   Modal,
   ModalContent,
   Tooltip
@@ -53,6 +55,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
+import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -73,6 +76,84 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
+
+type SubOrgFilterListProps = {
+  search: string;
+  onSearchChange: (value: string) => void;
+  subOrganizations: { id: string; name: string }[];
+  currentOrgId: string | undefined;
+  onSelect: (orgId: string) => void;
+  onCreateSubOrg: () => void;
+};
+
+const SubOrgFilterList = ({
+  search,
+  onSearchChange,
+  subOrganizations,
+  currentOrgId,
+  onSelect,
+  onCreateSubOrg
+}: SubOrgFilterListProps) => {
+  const filtered = subOrganizations.filter((s) =>
+    s.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <>
+      <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
+        <Input
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          size="xs"
+          variant="plain"
+          placeholder="Filter sub-orgs..."
+          className="text-bunker-100 placeholder-mineshaft-300"
+          onKeyDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+      <div className="max-h-48 thin-scrollbar overflow-y-auto">
+        {filtered.map((subOrg) => (
+          <DropdownMenuItem
+            onClick={() => onSelect(subOrg.id)}
+            className="cursor-pointer font-normal"
+            key={subOrg.id}
+          >
+            <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
+              {currentOrgId === subOrg.id && (
+                <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
+              )}
+              <p className="truncate">{subOrg.name}</p>
+            </div>
+          </DropdownMenuItem>
+        ))}
+        {filtered.length === 0 && (
+          <p className="px-2 py-1.5 text-xs text-mineshaft-400">No sub-organizations found.</p>
+        )}
+      </div>
+      <OrgPermissionCan
+        I={OrgPermissionSubOrgActions.Create}
+        a={OrgPermissionSubjects.SubOrganization}
+      >
+        {(isAllowed) =>
+          isAllowed ? (
+            <>
+              <div className="mt-1 h-px border-t border-mineshaft-600" />
+              <DropdownMenuItem
+                className="cursor-pointer"
+                icon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={onCreateSubOrg}
+              >
+                New Sub-Organization
+              </DropdownMenuItem>
+            </>
+          ) : null
+        }
+      </OrgPermissionCan>
+    </>
+  );
+};
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -148,11 +229,14 @@ export const Navbar = () => {
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
   const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
+  const [subOrgMenuSearch, setSubOrgMenuSearch] = useState("");
+  const [subOrgBreadcrumbSearch, setSubOrgBreadcrumbSearch] = useState("");
 
-  const subOrgQuery = subOrganizationsQuery.list({ limit: 500, isAccessible: true });
+  const subOrgQuery = subOrganizationsQuery.list({ isAccessible: true });
   const { data: subOrganizations = [] } = useQuery({
     ...subOrgQuery,
-    enabled: Boolean(subscription.subOrganization)
+    enabled: Boolean(subscription.subOrganization),
+    select: (data) => data.organizations
   });
 
   const isCardDeclined = Boolean(subscription?.cardDeclined);
@@ -458,36 +542,14 @@ export const Navbar = () => {
                             className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
                             style={{ minWidth: "220px" }}
                           >
-                            <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
-                              Sub-Organizations
-                            </div>
-                            {subOrganizations.map((subOrg) => (
-                              <DropdownMenuItem
-                                onClick={() => handleOrgSelection({ organizationId: subOrg.id })}
-                                className="cursor-pointer font-normal"
-                                key={subOrg.id}
-                              >
-                                <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
-                                  {currentOrg?.id === subOrg.id && (
-                                    <FontAwesomeIcon
-                                      icon={faCheck}
-                                      className="shrink-0 text-primary"
-                                    />
-                                  )}
-                                  <p className="truncate">{subOrg.name}</p>
-                                </div>
-                              </DropdownMenuItem>
-                            ))}
-                            {Boolean(subOrganizations.length) && (
-                              <div className="mt-1 h-1 border-t border-mineshaft-600" />
-                            )}
-                            <DropdownMenuItem
-                              className="cursor-pointer"
-                              icon={<FontAwesomeIcon icon={faPlus} />}
-                              onClick={() => setShowSubOrgForm(true)}
-                            >
-                              New Sub-Organization
-                            </DropdownMenuItem>
+                            <SubOrgFilterList
+                              search={subOrgMenuSearch}
+                              onSearchChange={setSubOrgMenuSearch}
+                              subOrganizations={subOrganizations}
+                              currentOrgId={currentOrg?.id}
+                              onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
+                              onCreateSubOrg={() => setShowSubOrgForm(true)}
+                            />
                           </DropdownSubMenuContent>
                         </DropdownSubMenu>
                       );
@@ -535,7 +597,12 @@ export const Navbar = () => {
                       <div className="h-full bg-sub-org/[0.075]" />
                     </div>
                   )}
-                  <DropdownMenu modal={false}>
+                  <DropdownMenu
+                    modal={false}
+                    onOpenChange={(open) => {
+                      if (!open) setSubOrgBreadcrumbSearch("");
+                    }}
+                  >
                     <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100">
                       <button
                         className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
@@ -574,34 +641,16 @@ export const Navbar = () => {
                       side="bottom"
                       className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
                       style={{ minWidth: "220px" }}
+                      onCloseAutoFocus={(e) => e.preventDefault()}
                     >
-                      <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
-                        Sub-Organizations
-                      </div>
-                      {subOrganizations.map((subOrg) => (
-                        <DropdownMenuItem
-                          onClick={() => handleOrgSelection({ organizationId: subOrg.id })}
-                          className="cursor-pointer font-normal"
-                          key={subOrg.id}
-                        >
-                          <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
-                            {currentOrg?.id === subOrg.id && (
-                              <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
-                            )}
-                            <p className="truncate">{subOrg.name}</p>
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                      {Boolean(subOrganizations.length) && (
-                        <div className="mt-1 h-1 border-t border-mineshaft-600" />
-                      )}
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        icon={<FontAwesomeIcon icon={faPlus} />}
-                        onClick={() => setShowSubOrgForm(true)}
-                      >
-                        New Sub-Organization
-                      </DropdownMenuItem>
+                      <SubOrgFilterList
+                        search={subOrgBreadcrumbSearch}
+                        onSearchChange={setSubOrgBreadcrumbSearch}
+                        subOrganizations={subOrganizations}
+                        currentOrgId={currentOrg?.id}
+                        onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
+                        onCreateSubOrg={() => setShowSubOrgForm(true)}
+                      />
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

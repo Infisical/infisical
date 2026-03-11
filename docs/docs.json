@@ -482,6 +482,7 @@
                       "documentation/platform/dynamic-secrets/azure-entra-id",
                       "documentation/platform/dynamic-secrets/azure-sql-database",
                       "documentation/platform/dynamic-secrets/cassandra",
+                      "documentation/platform/dynamic-secrets/clickhouse",
                       "documentation/platform/dynamic-secrets/couchbase",
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
@@ -839,7 +840,8 @@
                     "group": "Web Access",
                     "pages": [
                       "documentation/platform/pam/product-reference/web-access/overview",
-                      "documentation/platform/pam/product-reference/web-access/postgresql"
+                      "documentation/platform/pam/product-reference/web-access/postgresql",
+                      "documentation/platform/pam/product-reference/web-access/ssh"
                     ]
                   }
                 ]
@@ -980,6 +982,16 @@
                 ]
               },
               {
+                "group": "Sub Organizations",
+                "pages": [
+                  "api-reference/endpoints/sub-organizations/create",
+                  "api-reference/endpoints/sub-organizations/list",
+                  "api-reference/endpoints/sub-organizations/update",
+                  "api-reference/endpoints/sub-organizations/delete",
+                  "api-reference/endpoints/sub-organizations/memberships"
+                ]
+              },
+              {
                 "group": "OIDC SSO",
                 "pages": [
                   "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
@@ -1067,11 +1079,11 @@
               {
                 "group": "Project Groups",
                 "pages": [
-                  "api-reference/endpoints/project-groups/create",
-                  "api-reference/endpoints/project-groups/delete",
-                  "api-reference/endpoints/project-groups/get-by-id",
-                  "api-reference/endpoints/project-groups/list",
-                  "api-reference/endpoints/project-groups/update",
+                  "api-reference/endpoints/project-group-memberships/create",
+                  "api-reference/endpoints/project-group-memberships/delete",
+                  "api-reference/endpoints/project-group-memberships/get-by-id",
+                  "api-reference/endpoints/project-group-memberships/list",
+                  "api-reference/endpoints/project-group-memberships/update",
                   {
                     "group": "Legacy",
                     "pages": [
