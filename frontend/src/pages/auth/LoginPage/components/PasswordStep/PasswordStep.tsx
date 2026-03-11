@@ -62,19 +62,14 @@ export const PasswordStep = ({
         providerAuthToken
       });
 
-      // unset provider auth token in case it was used
       SecurityClient.setProviderAuthToken("");
-      // set JWT token
       SecurityClient.setToken(oauthLogin.token);
 
-      // For CLI login, always navigate to the org selector so the user can pick
-      // which sub-organization to log into, regardless of organizationId in the token.
       if (callbackPort) {
         navigateToSelectOrganization(callbackPort, isAdminLogin);
         return;
       }
 
-      // Check for duplicate accounts before showing the selector
       if (organizationId) {
         const userDuplicateAccount = await fetchUserDuplicateAccounts();
         const hasDuplicate = userDuplicateAccount?.length > 1;
@@ -84,18 +79,11 @@ export const PasswordStep = ({
         }
       }
 
-      // Navigate to the org selector — do NOT call selectOrganization here.
-      // Calling selectOrganization would set an org-scoped JWT, which causes the
-      // _restrict-login-signup middleware to redirect straight to the org dashboard,
-      // bypassing the sub-org selector entirely.
       const userOrgs = await fetchOrganizations();
 
-      // case: user has orgs, so we navigate the user to select an org
       if (userOrgs.length > 0) {
         navigateToSelectOrganization(undefined, isAdminLogin);
-      }
-      // case: no orgs found, so we navigate the user to create an org
-      else {
+      } else {
         await navigateUserToOrg({ navigate });
       }
     } catch (err: any) {
@@ -134,7 +122,6 @@ export const PasswordStep = ({
       setIsLoading(true);
 
       if (callbackPort) {
-        // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLogin({
           email,
           password,

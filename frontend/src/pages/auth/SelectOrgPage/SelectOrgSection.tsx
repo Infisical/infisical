@@ -54,11 +54,9 @@ export const SelectOrganizationSection = () => {
   const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
-  // True when we should auto-select defaultSelectedOrg and bypass the selector UI:
-  // only when there's no CLI callbackPort AND the org has no sub-orgs to choose from.
   const willAutoSelectDefaultOrg = useMemo(() => {
     if (!defaultSelectedOrg || callbackPort) return false;
-    if (orgsWithSubOrgs.isPending) return true; // still loading — keep spinner
+    if (orgsWithSubOrgs.isPending) return true;
     const orgEntry = orgsWithSubOrgs.data?.find((o) => o.id === defaultSelectedOrg.id);
     return (orgEntry?.subOrganizations.length ?? 0) === 0;
   }, [defaultSelectedOrg, callbackPort, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
