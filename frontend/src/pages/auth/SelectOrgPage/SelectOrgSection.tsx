@@ -26,7 +26,7 @@ import {
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { getAuthToken, isLoggedIn } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
-import { AuthMethod } from "@app/hooks/api/users/types";
+import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
 
@@ -142,15 +142,7 @@ export const SelectOrganizationSection = () => {
             callbackPort ? `&callbackPort=${callbackPort}` : ""
           }`;
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
-          const samlAuthMethods = [
-            AuthMethod.SAML,
-            AuthMethod.OKTA_SAML,
-            AuthMethod.AZURE_SAML,
-            AuthMethod.JUMPCLOUD_SAML,
-            AuthMethod.KEYCLOAK_SAML,
-            AuthMethod.GOOGLE_SAML
-          ];
-          if (!samlAuthMethods.includes(authToken.authMethod)) {
+          if (!SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])) {
             url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
             if (callbackPort) {
               url += `?callback_port=${callbackPort}`;
