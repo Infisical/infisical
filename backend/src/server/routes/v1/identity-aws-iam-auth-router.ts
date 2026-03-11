@@ -61,16 +61,18 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityLogin,
-        distinctId: `identity-${identityAwsAuth.identityId}`,
-        organizationId: identity.orgId,
-        properties: {
-          identityId: identityAwsAuth.identityId,
-          orgId: identity.orgId,
-          authMethod: "aws_iam"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityLogin,
+          distinctId: `identity-${identityAwsAuth.identityId}`,
+          organizationId: identity.orgId,
+          properties: {
+            identityId: identityAwsAuth.identityId,
+            orgId: identity.orgId,
+            authMethod: "aws_iam"
+          }
+        })
+        .catch(() => {});
 
       return {
         accessToken,
@@ -174,16 +176,18 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityAwsAuth.orgId,
-        properties: {
-          identityId: identityAwsAuth.identityId,
-          orgId: identityAwsAuth.orgId,
-          authMethod: "aws_iam"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityAwsAuth.orgId,
+          properties: {
+            identityId: identityAwsAuth.identityId,
+            orgId: identityAwsAuth.orgId,
+            authMethod: "aws_iam"
+          }
+        })
+        .catch(() => {});
 
       return { identityAwsAuth };
     }
@@ -270,16 +274,18 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityAwsAuth.orgId,
-        properties: {
-          identityId: identityAwsAuth.identityId,
-          orgId: identityAwsAuth.orgId,
-          authMethod: "aws_iam"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityAwsAuth.orgId,
+          properties: {
+            identityId: identityAwsAuth.identityId,
+            orgId: identityAwsAuth.orgId,
+            authMethod: "aws_iam"
+          }
+        })
+        .catch(() => {});
 
       return { identityAwsAuth };
     }
@@ -380,16 +386,18 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityAwsAuth.orgId,
-        properties: {
-          identityId: identityAwsAuth.identityId,
-          orgId: identityAwsAuth.orgId,
-          authMethod: "aws_iam"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityAwsAuth.orgId,
+          properties: {
+            identityId: identityAwsAuth.identityId,
+            orgId: identityAwsAuth.orgId,
+            authMethod: "aws_iam"
+          }
+        })
+        .catch(() => {});
 
       return { identityAwsAuth };
     }

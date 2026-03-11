@@ -8,13 +8,13 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   validateOidcAuthAudiencesField,
   validateOidcBoundClaimsField
 } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
   id: true,
@@ -84,16 +84,18 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityLogin,
-        distinctId: `identity-${identityOidcAuth.identityId}`,
-        organizationId: identity.orgId,
-        properties: {
-          identityId: identityOidcAuth.identityId,
-          orgId: identity.orgId,
-          authMethod: "oidc"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityLogin,
+          distinctId: `identity-${identityOidcAuth.identityId}`,
+          organizationId: identity.orgId,
+          properties: {
+            identityId: identityOidcAuth.identityId,
+            orgId: identity.orgId,
+            authMethod: "oidc"
+          }
+        })
+        .catch(() => {});
 
       return {
         accessToken,
@@ -200,16 +202,18 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityOidcAuth.orgId,
-        properties: {
-          identityId: identityOidcAuth.identityId,
-          orgId: identityOidcAuth.orgId,
-          authMethod: "oidc"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityOidcAuth.orgId,
+          properties: {
+            identityId: identityOidcAuth.identityId,
+            orgId: identityOidcAuth.orgId,
+            authMethod: "oidc"
+          }
+        })
+        .catch(() => {});
 
       return {
         identityOidcAuth
@@ -313,16 +317,18 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityOidcAuth.orgId,
-        properties: {
-          identityId: identityOidcAuth.identityId,
-          orgId: identityOidcAuth.orgId,
-          authMethod: "oidc"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityOidcAuth.orgId,
+          properties: {
+            identityId: identityOidcAuth.identityId,
+            orgId: identityOidcAuth.orgId,
+            authMethod: "oidc"
+          }
+        })
+        .catch(() => {});
 
       return { identityOidcAuth };
     }
@@ -426,16 +432,18 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityOidcAuth.orgId,
-        properties: {
-          identityId: identityOidcAuth.identityId,
-          orgId: identityOidcAuth.orgId,
-          authMethod: "oidc"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityOidcAuth.orgId,
+          properties: {
+            identityId: identityOidcAuth.identityId,
+            orgId: identityOidcAuth.orgId,
+            authMethod: "oidc"
+          }
+        })
+        .catch(() => {});
 
       return { identityOidcAuth };
     }

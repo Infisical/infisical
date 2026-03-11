@@ -56,16 +56,18 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityLogin,
-        distinctId: `identity-${identityGcpAuth.identityId}`,
-        organizationId: identity.orgId,
-        properties: {
-          identityId: identityGcpAuth.identityId,
-          orgId: identity.orgId,
-          authMethod: "gcp"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityLogin,
+          distinctId: `identity-${identityGcpAuth.identityId}`,
+          organizationId: identity.orgId,
+          properties: {
+            identityId: identityGcpAuth.identityId,
+            orgId: identity.orgId,
+            authMethod: "gcp"
+          }
+        })
+        .catch(() => {});
 
       return {
         accessToken,
@@ -166,16 +168,18 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityGcpAuth.orgId,
-        properties: {
-          identityId: identityGcpAuth.identityId,
-          orgId: identityGcpAuth.orgId,
-          authMethod: "gcp"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityGcpAuth.orgId,
+          properties: {
+            identityId: identityGcpAuth.identityId,
+            orgId: identityGcpAuth.orgId,
+            authMethod: "gcp"
+          }
+        })
+        .catch(() => {});
 
       return { identityGcpAuth };
     }
@@ -264,16 +268,18 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityGcpAuth.orgId,
-        properties: {
-          identityId: identityGcpAuth.identityId,
-          orgId: identityGcpAuth.orgId,
-          authMethod: "gcp"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityGcpAuth.orgId,
+          properties: {
+            identityId: identityGcpAuth.identityId,
+            orgId: identityGcpAuth.orgId,
+            authMethod: "gcp"
+          }
+        })
+        .catch(() => {});
 
       return { identityGcpAuth };
     }
@@ -375,16 +381,18 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityGcpAuth.orgId,
-        properties: {
-          identityId: identityGcpAuth.identityId,
-          orgId: identityGcpAuth.orgId,
-          authMethod: "gcp"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityGcpAuth.orgId,
+          properties: {
+            identityId: identityGcpAuth.identityId,
+            orgId: identityGcpAuth.orgId,
+            authMethod: "gcp"
+          }
+        })
+        .catch(() => {});
 
       return { identityGcpAuth };
     }

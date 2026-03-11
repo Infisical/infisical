@@ -79,16 +79,18 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityLogin,
-        distinctId: `identity-${identityUa.identityId}`,
-        organizationId: identity.orgId,
-        properties: {
-          identityId: identityUa.identityId,
-          orgId: identity.orgId,
-          authMethod: "universal_auth"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityLogin,
+          distinctId: `identity-${identityUa.identityId}`,
+          organizationId: identity.orgId,
+          properties: {
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            authMethod: "universal_auth"
+          }
+        })
+        .catch(() => {});
 
       return {
         accessToken,
@@ -214,16 +216,18 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityUniversalAuth.orgId,
-        properties: {
-          identityId: identityUniversalAuth.identityId,
-          orgId: identityUniversalAuth.orgId,
-          authMethod: "universal_auth"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityUniversalAuth.orgId,
+          properties: {
+            identityId: identityUniversalAuth.identityId,
+            orgId: identityUniversalAuth.orgId,
+            authMethod: "universal_auth"
+          }
+        })
+        .catch(() => {});
 
       return { identityUniversalAuth };
     }
@@ -349,16 +353,18 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityUniversalAuth.orgId,
-        properties: {
-          identityId: identityUniversalAuth.identityId,
-          orgId: identityUniversalAuth.orgId,
-          authMethod: "universal_auth"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityUniversalAuth.orgId,
+          properties: {
+            identityId: identityUniversalAuth.identityId,
+            orgId: identityUniversalAuth.orgId,
+            authMethod: "universal_auth"
+          }
+        })
+        .catch(() => {});
 
       return { identityUniversalAuth };
     }
@@ -460,16 +466,18 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityUniversalAuth.orgId,
-        properties: {
-          identityId: identityUniversalAuth.identityId,
-          orgId: identityUniversalAuth.orgId,
-          authMethod: "universal_auth"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityUniversalAuth.orgId,
+          properties: {
+            identityId: identityUniversalAuth.identityId,
+            orgId: identityUniversalAuth.orgId,
+            authMethod: "universal_auth"
+          }
+        })
+        .catch(() => {});
 
       return { identityUniversalAuth };
     }
@@ -530,15 +538,17 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityClientSecretCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: orgId,
-        properties: {
-          identityId: req.params.identityId,
-          orgId
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityClientSecretCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: orgId,
+          properties: {
+            identityId: req.params.identityId,
+            orgId
+          }
+        })
+        .catch(() => {});
 
       return { clientSecret, clientSecretData };
     }
@@ -697,15 +707,17 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityClientSecretRevoked,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: clientSecretData.orgId,
-        properties: {
-          identityId: clientSecretData.identityId,
-          orgId: clientSecretData.orgId
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityClientSecretRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: clientSecretData.orgId,
+          properties: {
+            identityId: clientSecretData.identityId,
+            orgId: clientSecretData.orgId
+          }
+        })
+        .catch(() => {});
 
       return { clientSecretData };
     }

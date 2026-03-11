@@ -56,16 +56,18 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityLogin,
-        distinctId: `identity-${identityAzureAuth.identityId}`,
-        organizationId: identity.orgId,
-        properties: {
-          identityId: identityAzureAuth.identityId,
-          orgId: identity.orgId,
-          authMethod: "azure"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityLogin,
+          distinctId: `identity-${identityAzureAuth.identityId}`,
+          organizationId: identity.orgId,
+          properties: {
+            identityId: identityAzureAuth.identityId,
+            orgId: identity.orgId,
+            authMethod: "azure"
+          }
+        })
+        .catch(() => {});
 
       return {
         accessToken,
@@ -168,16 +170,18 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityAzureAuth.orgId,
-        properties: {
-          identityId: identityAzureAuth.identityId,
-          orgId: identityAzureAuth.orgId,
-          authMethod: "azure"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityAzureAuth.orgId,
+          properties: {
+            identityId: identityAzureAuth.identityId,
+            orgId: identityAzureAuth.orgId,
+            authMethod: "azure"
+          }
+        })
+        .catch(() => {});
 
       return { identityAzureAuth };
     }
@@ -270,16 +274,18 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityAzureAuth.orgId,
-        properties: {
-          identityId: identityAzureAuth.identityId,
-          orgId: identityAzureAuth.orgId,
-          authMethod: "azure"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityAzureAuth.orgId,
+          properties: {
+            identityId: identityAzureAuth.identityId,
+            orgId: identityAzureAuth.orgId,
+            authMethod: "azure"
+          }
+        })
+        .catch(() => {});
 
       return { identityAzureAuth };
     }
@@ -381,16 +387,18 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: identityAzureAuth.orgId,
-        properties: {
-          identityId: identityAzureAuth.identityId,
-          orgId: identityAzureAuth.orgId,
-          authMethod: "azure"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityAzureAuth.orgId,
+          properties: {
+            identityId: identityAzureAuth.identityId,
+            orgId: identityAzureAuth.orgId,
+            authMethod: "azure"
+          }
+        })
+        .catch(() => {});
 
       return { identityAzureAuth };
     }

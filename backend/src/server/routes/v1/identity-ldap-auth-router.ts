@@ -25,10 +25,10 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { AllowedFieldsSchema } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -204,16 +204,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityLogin,
-        distinctId: `identity-${authIdentityId}`,
-        organizationId: identity.orgId,
-        properties: {
-          identityId: authIdentityId,
-          orgId: identity.orgId,
-          authMethod: "ldap"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityLogin,
+          distinctId: `identity-${authIdentityId}`,
+          organizationId: identity.orgId,
+          properties: {
+            identityId: authIdentityId,
+            orgId: identity.orgId,
+            authMethod: "ldap"
+          }
+        })
+        .catch(() => {});
 
       return {
         accessToken,
@@ -412,16 +414,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          identityId: req.params.identityId,
-          orgId: req.permission.orgId,
-          authMethod: "ldap"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: req.params.identityId,
+            orgId: req.permission.orgId,
+            authMethod: "ldap"
+          }
+        })
+        .catch(() => {});
 
       return { identityLdapAuth };
     }
@@ -545,16 +549,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          identityId: req.params.identityId,
-          orgId: req.permission.orgId,
-          authMethod: "ldap"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: req.params.identityId,
+            orgId: req.permission.orgId,
+            authMethod: "ldap"
+          }
+        })
+        .catch(() => {});
 
       return { identityLdapAuth };
     }
@@ -669,16 +675,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          identityId: identityLdapAuth.identityId,
-          orgId: req.permission.orgId,
-          authMethod: "ldap"
-        }
-      }).catch(() => {});
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: identityLdapAuth.identityId,
+            orgId: req.permission.orgId,
+            authMethod: "ldap"
+          }
+        })
+        .catch(() => {});
 
       return { identityLdapAuth };
     }
