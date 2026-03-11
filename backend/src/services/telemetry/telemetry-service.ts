@@ -159,16 +159,19 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           );
         } else {
           if (event.organizationId) {
-            try {
-              const groupProperties = await getOrgGroupProperties(event.organizationId, resolvedOrgName);
-              postHog.groupIdentify({
-                groupType: "organization",
-                groupKey: event.organizationId,
-                properties: groupProperties
+            // Fire-and-forget: enrich groupIdentify without blocking the HTTP response
+            const orgId = event.organizationId;
+            void getOrgGroupProperties(orgId, resolvedOrgName)
+              .then((groupProperties) => {
+                postHog.groupIdentify({
+                  groupType: "organization",
+                  groupKey: orgId,
+                  properties: groupProperties
+                });
+              })
+              .catch((error) => {
+                logger.error(error, "Failed to identify PostHog organization");
               });
-            } catch (error) {
-              logger.error(error, "Failed to identify PostHog organization");
-            }
           }
           postHog.capture({
             event: event.event,
