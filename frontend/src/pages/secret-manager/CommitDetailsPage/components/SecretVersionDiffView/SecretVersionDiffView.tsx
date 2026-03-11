@@ -231,14 +231,14 @@ export const SecretVersionDiffView = ({
     >
       <UnstableAccordionItem value={item.id} className="border-b-0">
         {showHeader && (
-          <UnstableAccordionTrigger>
+          <UnstableAccordionTrigger className="min-h-10 py-0">
             {customHeader ?? (
               <>
                 <TypeIcon className="size-4 shrink-0 text-accent" />
                 <span
                   className={twMerge(
                     "flex-1 truncate text-left",
-                    item.isDeleted && "text-danger/70 line-through"
+                    item.isDeleted && "text-danger/85 line-through"
                   )}
                 >
                   {key}
