@@ -62,34 +62,77 @@ export const PasswordStep = ({
         providerAuthToken
       });
 
+      // attemptCliLogin
+      const cliUrl = `http://127.0.0.1:${callbackPort}/`;
+
       // unset provider auth token in case it was used
       SecurityClient.setProviderAuthToken("");
       // set JWT token
       SecurityClient.setToken(oauthLogin.token);
 
-      if (callbackPort) {
-        navigateToSelectOrganization(callbackPort, isAdminLogin);
-        return;
-      }
-
+      // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
       if (organizationId) {
-        const userDuplicateAccount = await fetchUserDuplicateAccounts();
-        const hasDuplicate = userDuplicateAccount?.length > 1;
-        if (hasDuplicate) {
-          setRemoveDuplicateLater(false);
-          return;
-        }
-      }
+        const finishWithOrgWorkflow = async () => {
+          const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
 
-      // case: user has orgs, so we navigate the user to select an org
-      const userOrgs = await fetchOrganizations();
+          if (isMfaEnabled) {
+            SecurityClient.setMfaToken(token);
+            setMfaSuccessCallback(() => finishWithOrgWorkflow);
+            if (mfaMethod) {
+              setRequiredMfaMethod(mfaMethod);
+            }
+            toggleShowMfa.on();
+            return;
+          }
 
-      if (userOrgs.length > 0) {
-        navigateToSelectOrganization(undefined, isAdminLogin);
+          if (callbackPort) {
+            console.log("organization id was present. new JWT token to be used in CLI:", token);
+            const instance = axios.create();
+            const payload = {
+              privateKey: "", // note(daniel): no longer needed by the CLI, because the CLI only uses the private key to create service tokens, and the private key isn't used anymore when creating service tokens.
+              email,
+              JTWToken: token
+            };
+            await instance.post(cliUrl, payload).catch(() => {
+              // if error happens to communicate we set the token with an expiry in sessino storage
+              // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+              sessionStorage.setItem(
+                SessionStorageKeys.CLI_TERMINAL_TOKEN,
+                JSON.stringify({
+                  expiry: formatISO(addSeconds(new Date(), 30)),
+                  data: window.btoa(JSON.stringify(payload))
+                })
+              );
+            });
+            navigate({ to: "/cli-redirect" });
+            return;
+          }
+
+          const userDuplicateAccount = await fetchUserDuplicateAccounts();
+          const hasDuplicate = userDuplicateAccount?.length > 1;
+          if (hasDuplicate) {
+            setRemoveDuplicateLater(false);
+            return;
+          }
+
+          await navigateUserToOrg({ navigate, organizationId });
+        };
+
+        await finishWithOrgWorkflow();
       }
-      // case: no orgs found, so we navigate the user to create an org
+      // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
+      // if the user has no orgs, navigate to the create org page
       else {
-        await navigateUserToOrg({ navigate });
+        const userOrgs = await fetchOrganizations();
+
+        // case: user has orgs, so we navigate the user to select an org
+        if (userOrgs.length > 0) {
+          navigateToSelectOrganization(callbackPort, isAdminLogin);
+        }
+        // case: no orgs found, so we navigate the user to create an org
+        else {
+          await navigateUserToOrg({ navigate });
+        }
       }
     } catch (err: any) {
       setIsLoading(false);
@@ -163,7 +206,7 @@ export const PasswordStep = ({
                 JTWToken: token
               };
               await instance.post(cliUrl, payload).catch(() => {
-                // if error happens to communicate we set the token with an expiry in session storage
+                // if error happens to communicate we set the token with an expiry in sessino storage
                 // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
                 sessionStorage.setItem(
                   SessionStorageKeys.CLI_TERMINAL_TOKEN,
@@ -184,9 +227,12 @@ export const PasswordStep = ({
           // if the user has no orgs, navigate to the create org page
           const userOrgs = await fetchOrganizations();
 
+          // case: user has orgs, so we navigate the user to select an org
           if (userOrgs.length > 0) {
             navigateToSelectOrganization(callbackPort, isAdminLogin);
-          } else {
+          }
+          // case: no orgs found, so we navigate the user to create an org
+          else {
             await navigateUserToOrg({ navigate });
           }
         }
