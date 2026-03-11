@@ -173,8 +173,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
             identityId: identity.id,
             orgId: identity.orgId,
             name: identity.name,
-            hasDeleteProtection: identity.hasDeleteProtection,
-            ...req.auditLogInfo
+            hasDeleteProtection: identity.hasDeleteProtection
           }
         })
         .catch(() => {});
@@ -237,8 +236,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
           organizationId: identity.orgId,
           properties: {
             identityId: identity.id,
-            orgId: identity.orgId,
-            ...req.auditLogInfo
+            orgId: identity.orgId
           }
         })
         .catch(() => {});
