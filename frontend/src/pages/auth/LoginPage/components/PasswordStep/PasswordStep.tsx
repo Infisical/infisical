@@ -62,77 +62,41 @@ export const PasswordStep = ({
         providerAuthToken
       });
 
-      // attemptCliLogin
-      const cliUrl = `http://127.0.0.1:${callbackPort}/`;
-
       // unset provider auth token in case it was used
       SecurityClient.setProviderAuthToken("");
       // set JWT token
       SecurityClient.setToken(oauthLogin.token);
 
-      // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
-      if (organizationId) {
-        const finishWithOrgWorkflow = async () => {
-          const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
-
-          if (isMfaEnabled) {
-            SecurityClient.setMfaToken(token);
-            setMfaSuccessCallback(() => finishWithOrgWorkflow);
-            if (mfaMethod) {
-              setRequiredMfaMethod(mfaMethod);
-            }
-            toggleShowMfa.on();
-            return;
-          }
-
-          if (callbackPort) {
-            console.log("organization id was present. new JWT token to be used in CLI:", token);
-            const instance = axios.create();
-            const payload = {
-              privateKey: "", // note(daniel): no longer needed by the CLI, because the CLI only uses the private key to create service tokens, and the private key isn't used anymore when creating service tokens.
-              email,
-              JTWToken: token
-            };
-            await instance.post(cliUrl, payload).catch(() => {
-              // if error happens to communicate we set the token with an expiry in sessino storage
-              // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
-              sessionStorage.setItem(
-                SessionStorageKeys.CLI_TERMINAL_TOKEN,
-                JSON.stringify({
-                  expiry: formatISO(addSeconds(new Date(), 30)),
-                  data: window.btoa(JSON.stringify(payload))
-                })
-              );
-            });
-            navigate({ to: "/cli-redirect" });
-            return;
-          }
-
-          const userDuplicateAccount = await fetchUserDuplicateAccounts();
-          const hasDuplicate = userDuplicateAccount?.length > 1;
-          if (hasDuplicate) {
-            setRemoveDuplicateLater(false);
-            return;
-          }
-
-          await navigateUserToOrg({ navigate, organizationId });
-        };
-
-        await finishWithOrgWorkflow();
+      // For CLI login, always navigate to the org selector so the user can pick
+      // which sub-organization to log into, regardless of organizationId in the token.
+      if (callbackPort) {
+        navigateToSelectOrganization(callbackPort, isAdminLogin);
+        return;
       }
-      // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
-      // if the user has no orgs, navigate to the create org page
-      else {
-        const userOrgs = await fetchOrganizations();
 
-        // case: user has orgs, so we navigate the user to select an org
-        if (userOrgs.length > 0) {
-          navigateToSelectOrganization(callbackPort, isAdminLogin);
+      // Check for duplicate accounts before showing the selector
+      if (organizationId) {
+        const userDuplicateAccount = await fetchUserDuplicateAccounts();
+        const hasDuplicate = userDuplicateAccount?.length > 1;
+        if (hasDuplicate) {
+          setRemoveDuplicateLater(false);
+          return;
         }
-        // case: no orgs found, so we navigate the user to create an org
-        else {
-          await navigateUserToOrg({ navigate });
-        }
+      }
+
+      // Navigate to the org selector — do NOT call selectOrganization here.
+      // Calling selectOrganization would set an org-scoped JWT, which causes the
+      // _restrict-login-signup middleware to redirect straight to the org dashboard,
+      // bypassing the sub-org selector entirely.
+      const userOrgs = await fetchOrganizations();
+
+      // case: user has orgs, so we navigate the user to select an org
+      if (userOrgs.length > 0) {
+        navigateToSelectOrganization(undefined, isAdminLogin);
+      }
+      // case: no orgs found, so we navigate the user to create an org
+      else {
+        await navigateUserToOrg({ navigate });
       }
     } catch (err: any) {
       setIsLoading(false);
@@ -206,8 +170,6 @@ export const PasswordStep = ({
                 JTWToken: token
               };
               await instance.post(cliUrl, payload).catch(() => {
-                // if error happens to communicate we set the token with an expiry in sessino storage
-                // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
                 sessionStorage.setItem(
                   SessionStorageKeys.CLI_TERMINAL_TOKEN,
                   JSON.stringify({
@@ -227,12 +189,9 @@ export const PasswordStep = ({
           // if the user has no orgs, navigate to the create org page
           const userOrgs = await fetchOrganizations();
 
-          // case: user has orgs, so we navigate the user to select an org
           if (userOrgs.length > 0) {
             navigateToSelectOrganization(callbackPort, isAdminLogin);
-          }
-          // case: no orgs found, so we navigate the user to create an org
-          else {
+          } else {
             await navigateUserToOrg({ navigate });
           }
         }
