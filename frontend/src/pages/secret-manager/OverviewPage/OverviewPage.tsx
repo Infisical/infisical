@@ -666,7 +666,7 @@ const OverviewPageContent = () => {
         secretPath
       });
     }
-  }, [isBatchModeActive, singleVisibleEnv?.slug, secretPath, projectId]);
+  }, [isBatchModeActive, singleVisibleEnv?.slug, secretPath, projectId, loadPendingChanges]);
 
   useEffect(() => {
     if (isBatchModeActive) {
@@ -675,7 +675,7 @@ const OverviewPageContent = () => {
         folderNamesAndDescriptions.map((f) => f.name)
       );
     }
-  }, [isBatchModeActive, secKeys, folderNamesAndDescriptions]);
+  }, [isBatchModeActive, secKeys, folderNamesAndDescriptions, setExistingKeys]);
 
   const singleEnvImports = useMemo(
     () => (isSingleEnvView ? getSecretImportsForEnv(singleEnvSlug) : []),

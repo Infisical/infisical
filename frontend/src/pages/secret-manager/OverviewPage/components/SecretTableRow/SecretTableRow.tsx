@@ -42,36 +42,11 @@ import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
+import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
-
-const pendingActionBorderClass = (action?: PendingAction) => {
-  switch (action) {
-    case PendingAction.Create:
-      return "shadow-[inset_2px_0_0_0_var(--color-success)]/50";
-    case PendingAction.Update:
-      return "shadow-[inset_2px_0_0_0_var(--color-warning)]/50";
-    case PendingAction.Delete:
-      return "shadow-[inset_2px_0_0_0_var(--color-danger)]/50";
-    default:
-      return "";
-  }
-};
-
-const pendingActionRowClass = (action?: PendingAction) => {
-  switch (action) {
-    case PendingAction.Create:
-      return "bg-success/[0.025]";
-    case PendingAction.Update:
-      return "bg-warning/[0.025]";
-    case PendingAction.Delete:
-      return "bg-danger/[0.025]";
-    default:
-      return "";
-  }
-};
 
 type Props = {
   secretKey: string;
