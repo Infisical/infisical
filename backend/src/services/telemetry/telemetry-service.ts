@@ -298,14 +298,22 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       if (eventsGrouped.size === 0) return 0;
 
+      // Cache org group properties per orgId to avoid redundant DB/API calls
+      // when multiple users share the same org within a bucket
+      const orgPropertiesCache = new Map<string, Record<string, unknown>>();
+
       for (const [eventsKey, events] of eventsGrouped) {
         const key = JSON.parse(eventsKey) as { id: string; org?: string };
         if (key.org) {
           try {
-            // Use the organizationName from the first event in the group (all events in a group share the same org)
-            const orgName = events[0]?.organizationName;
-            // eslint-disable-next-line no-await-in-loop
-            const groupProperties = await getOrgGroupProperties(key.org, orgName);
+            let groupProperties = orgPropertiesCache.get(key.org);
+            if (!groupProperties) {
+              // Use the organizationName from the first event in the group (all events in a group share the same org)
+              const orgName = events[0]?.organizationName;
+              // eslint-disable-next-line no-await-in-loop
+              groupProperties = await getOrgGroupProperties(key.org, orgName);
+              orgPropertiesCache.set(key.org, groupProperties);
+            }
             postHog.groupIdentify({
               groupType: "organization",
               groupKey: key.org,
