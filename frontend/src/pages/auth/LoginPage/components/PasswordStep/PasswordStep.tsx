@@ -62,7 +62,9 @@ export const PasswordStep = ({
         providerAuthToken
       });
 
+      // unset provider auth token in case it was used
       SecurityClient.setProviderAuthToken("");
+      // set JWT token
       SecurityClient.setToken(oauthLogin.token);
 
       if (callbackPort) {
@@ -79,11 +81,14 @@ export const PasswordStep = ({
         }
       }
 
+      // case: user has orgs, so we navigate the user to select an org
       const userOrgs = await fetchOrganizations();
 
       if (userOrgs.length > 0) {
         navigateToSelectOrganization(undefined, isAdminLogin);
-      } else {
+      }
+      // case: no orgs found, so we navigate the user to create an org
+      else {
         await navigateUserToOrg({ navigate });
       }
     } catch (err: any) {
@@ -122,6 +127,7 @@ export const PasswordStep = ({
       setIsLoading(true);
 
       if (callbackPort) {
+        // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLogin({
           email,
           password,
@@ -157,6 +163,8 @@ export const PasswordStep = ({
                 JTWToken: token
               };
               await instance.post(cliUrl, payload).catch(() => {
+                // if error happens to communicate we set the token with an expiry in session storage
+                // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
                 sessionStorage.setItem(
                   SessionStorageKeys.CLI_TERMINAL_TOKEN,
                   JSON.stringify({
