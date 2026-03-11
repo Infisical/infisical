@@ -6,9 +6,11 @@ import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { delay } from "@app/lib/delay";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
+import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -55,8 +57,14 @@ import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-pr
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
 const validateDnsResolver = async (resolver: string): Promise<void> => {
+  const appCfg = getConfig();
+
+  if (appCfg.isDevelopmentMode) return;
+
   if (net.isIP(resolver)) {
-    await blockLocalAndPrivateIpAddresses(resolver);
+    if (isPrivateIp(resolver) && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
+      throw new BadRequestError({ message: "Private/internal IP addresses are not allowed as DNS resolvers" });
+    }
     return;
   }
 
@@ -67,7 +75,10 @@ const validateDnsResolver = async (resolver: string): Promise<void> => {
   }
 
   try {
-    await blockLocalAndPrivateIpAddresses(resolver);
+    const resolvedIps = await dns.promises.resolve4(resolver);
+    if (resolvedIps.some((ip) => isPrivateIp(ip)) && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
+      throw new BadRequestError({ message: "DNS resolver resolves to a private/internal IP address" });
+    }
   } catch (e) {
     if (e instanceof BadRequestError) throw e;
     throw new BadRequestError({
