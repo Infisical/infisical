@@ -3,6 +3,7 @@ import { PostHog } from "posthog-node";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { InstanceType } from "@app/ee/services/license/license-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -39,7 +40,8 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "getKeysByPattern" | "getItems"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getInstanceType">;
+  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 const getBucketForDistinctId = (distinctId: string): string => {
@@ -58,7 +60,7 @@ export const createTelemetryEventKey = (event: string, distinctId: string): stri
   return `telemetry-event-${event}-${bucketId}-${distinctId}-${crypto.nativeCrypto.randomUUID()}`;
 };
 
-export const telemetryServiceFactory = ({ keyStore, licenseService }: TTelemetryServiceFactoryDep) => {
+export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
@@ -99,6 +101,40 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const getOrgGroupProperties = async (orgId: string, orgName?: string): Promise<Record<string, unknown>> => {
+    const properties: Record<string, unknown> = {};
+    if (orgName) {
+      properties.name = orgName;
+    }
+
+    const instanceType = licenseService.getInstanceType();
+    properties.is_cloud = instanceType === InstanceType.Cloud;
+
+    try {
+      const org = await orgDAL.findOrgById(orgId);
+      if (org) {
+        if (!properties.name) {
+          properties.name = org.name;
+        }
+        properties.created_at = org.createdAt.toISOString();
+      }
+    } catch (error) {
+      logger.error(error, "Failed to fetch org details for PostHog group properties");
+    }
+
+    try {
+      const plan = await licenseService.getPlan(orgId);
+      if (plan) {
+        properties.plan = plan.slug ?? "free";
+        properties.seat_count = plan.membersUsed;
+      }
+    } catch (error) {
+      logger.error(error, "Failed to fetch org plan for PostHog group properties");
+    }
+
+    return properties;
+  };
+
   const sendPostHogEvents = async (event: TPostHogEvent) => {
     if (postHog) {
       const instanceType = licenseService.getInstanceType();
@@ -124,10 +160,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         } else {
           if (event.organizationId) {
             try {
+              const groupProperties = await getOrgGroupProperties(event.organizationId, resolvedOrgName);
               postHog.groupIdentify({
                 groupType: "organization",
                 groupKey: event.organizationId,
-                ...(resolvedOrgName ? { properties: { name: resolvedOrgName } } : {})
+                properties: groupProperties
               });
             } catch (error) {
               logger.error(error, "Failed to identify PostHog organization");
@@ -267,10 +304,12 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           try {
             // Use the organizationName from the first event in the group (all events in a group share the same org)
             const orgName = events[0]?.organizationName;
+            // eslint-disable-next-line no-await-in-loop
+            const groupProperties = await getOrgGroupProperties(key.org, orgName);
             postHog.groupIdentify({
               groupType: "organization",
               groupKey: key.org,
-              ...(orgName ? { properties: { name: orgName } } : {})
+              properties: groupProperties
             });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
