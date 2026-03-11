@@ -97,7 +97,9 @@ export const KeyStorePrefixes = {
   ProjectSSEConnectionsSet: (projectId: string) => `project-sse-connections:${projectId}` as const,
   ProjectSSEConnectionsLockoutKey: (projectId: string) => `project-sse-connections:lockout:${projectId}` as const,
   ProjectSSEConnection: (projectId: string, connectionId: string) =>
-    `project-sse-conn:${projectId}:${connectionId}` as const
+    `project-sse-conn:${projectId}:${connectionId}` as const,
+
+  ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const
 };
 
 export const KeyStoreTtls = {
