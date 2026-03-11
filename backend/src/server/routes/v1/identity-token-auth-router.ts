@@ -651,7 +651,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      await server.services.identityTokenAuth.revokeTokenAuthToken({
+      const { revokedToken } = await server.services.identityTokenAuth.revokeTokenAuthToken({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -665,7 +665,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          identityId: req.permission.id,
+          identityId: revokedToken.identityId,
           orgId: req.permission.orgId
         }
       }).catch(() => {});
