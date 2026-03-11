@@ -307,9 +307,7 @@ export const membershipIdentityServiceFactory = ({
       }
 
       // Delete only the roles that are no longer needed
-      const roleIdsToDelete = existingRoles
-        .filter((er) => !keptRoleIds.includes(er.id))
-        .map((er) => er.id);
+      const roleIdsToDelete = existingRoles.filter((er) => !keptRoleIds.includes(er.id)).map((er) => er.id);
 
       if (roleIdsToDelete.length > 0) {
         await membershipRoleDAL.delete(
@@ -321,9 +319,8 @@ export const membershipIdentityServiceFactory = ({
         );
       }
 
-      const insertedRoleDocs = rolesToInsert.length > 0
-        ? await membershipRoleDAL.insertMany(rolesToInsert, tx)
-        : [];
+      const insertedRoleDocs =
+        rolesToInsert.length > 0 ? await membershipRoleDAL.insertMany(rolesToInsert, tx) : [];
 
       // Return all roles: kept existing ones + newly inserted ones
       const keptRoles = existingRoles.filter((er) => keptRoleIds.includes(er.id));
