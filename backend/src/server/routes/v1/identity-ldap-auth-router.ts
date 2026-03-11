@@ -420,7 +420,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            identityId: req.params.identityId,
+            identityId: identityLdapAuth.identityId,
             orgId: req.permission.orgId,
             authMethod: "ldap"
           }
@@ -555,7 +555,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            identityId: req.params.identityId,
+            identityId: identityLdapAuth.identityId,
             orgId: req.permission.orgId,
             authMethod: "ldap"
           }
