@@ -20,6 +20,7 @@ import {
 } from "./AwsSecretsManagerSyncReviewFields";
 import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
 import { AzureDevOpsSyncReviewFields } from "./AzureDevOpsSyncReviewFields";
+import { AzureEntraIdScimSyncReviewFields } from "./AzureEntraIdScimSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { BitbucketSyncReviewFields } from "./BitbucketSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
@@ -189,6 +190,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CircleCI:
       DestinationFieldsComponent = <CircleCISyncReviewFields />;
+      break;
+    case SecretSync.AzureEntraIdScim:
+      DestinationFieldsComponent = <AzureEntraIdScimSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

@@ -67,6 +67,11 @@ import {
   validateAzureDnsConnectionCredentials
 } from "./azure-dns/azure-dns-connection-fns";
 import {
+  AzureEntraIdConnectionMethod,
+  getAzureEntraIdConnectionListItem,
+  validateAzureEntraIdConnectionCredentials
+} from "./azure-entra-id";
+import {
   AzureKeyVaultConnectionMethod,
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
@@ -257,7 +262,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDbtConnectionListItem(),
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
-    getCircleCIConnectionListItem()
+    getCircleCIConnectionListItem(),
+    getAzureEntraIdConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -398,7 +404,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Dbt]: validateDbtConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -449,6 +456,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
     case AzureDnsConnectionMethod.ClientSecret:
+    case AzureEntraIdConnectionMethod.ClientSecret:
       return "Client Secret";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -567,7 +575,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Dbt]: platformManagedCredentialsNotSupported,
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
-  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported
+  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

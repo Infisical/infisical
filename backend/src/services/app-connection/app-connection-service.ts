@@ -64,6 +64,8 @@ import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/a
 import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-service";
 import { ValidateAzureDnsConnectionCredentialsSchema } from "./azure-dns/azure-dns-connection-schema";
 import { azureDnsConnectionService } from "./azure-dns/azure-dns-connection-service";
+import { ValidateAzureEntraIdConnectionCredentialsSchema } from "./azure-entra-id";
+import { azureEntraIdConnectionService } from "./azure-entra-id/azure-entra-id-connection-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
 import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
@@ -200,7 +202,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
   [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema,
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
-  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema
+  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
+  [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -921,6 +924,7 @@ export const appConnectionServiceFactory = ({
     chef: chefConnectionService(connectAppConnectionById, licenseService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
-    circleci: circleciConnectionService(connectAppConnectionById)
+    circleci: circleciConnectionService(connectAppConnectionById),
+    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };

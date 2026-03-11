@@ -31,6 +31,7 @@ import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
+import { AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION, AzureEntraIdScimSyncFns } from "./azure-entra-id-scim";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { BITBUCKET_SYNC_LIST_OPTION, BitbucketSyncFns } from "./bitbucket";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
@@ -102,7 +103,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.LaravelForge]: LARAVEL_FORGE_SYNC_LIST_OPTION,
   [SecretSync.Chef]: CHEF_SYNC_LIST_OPTION,
   [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
-  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION
+  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
+  [SecretSync.AzureEntraIdScim]: AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -329,6 +331,8 @@ export const SecretSyncFns = {
         return OctopusDeploySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:
         return CircleCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.AzureEntraIdScim:
+        return AzureEntraIdScimSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -463,6 +467,9 @@ export const SecretSyncFns = {
       case SecretSync.CircleCI:
         secretMap = await CircleCISyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.AzureEntraIdScim:
+        secretMap = await AzureEntraIdScimSyncFns.getSecrets();
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -566,6 +573,8 @@ export const SecretSyncFns = {
         return OctopusDeploySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:
         return CircleCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.AzureEntraIdScim:
+        return AzureEntraIdScimSyncFns.removeSecrets();
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

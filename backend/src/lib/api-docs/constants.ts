@@ -2779,6 +2779,11 @@ export const SecretSyncs = {
       repo: "The name of the GitHub repository.",
       env: "The name of the GitHub environment."
     },
+    AZURE_ENTRA_ID_SCIM: {
+      servicePrincipalId:
+        "The Object ID of the Azure Entra ID Enterprise Application service principal to sync the SCIM token to.",
+      secretKey: "The key of the Infisical secret whose value will be used as the SCIM provisioning token."
+    },
     AZURE_KEY_VAULT: {
       vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
