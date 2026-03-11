@@ -1,4 +1,4 @@
-import { Client } from "ssh2";
+import { Client, ClientChannel } from "ssh2";
 
 import {
   TRotationFactory,
@@ -24,137 +24,242 @@ import {
   TUnixLinuxLocalAccountRotationWithConnection
 } from "./unix-linux-local-account-rotation-types";
 
-// Execute command over SSH and return stdout
-const executeCommand = (client: Client, command: string): Promise<string> => {
+const SHELL_TIMEOUT = 15_000;
+
+// Execute a command via SSH exec with a PTY (no login shell, no MOTD)
+// Returns a stream that can be used for interactive I/O
+const execCommandWithPty = (client: Client, command: string): Promise<ClientChannel> => {
   return new Promise((resolve, reject) => {
-    client.exec(command, (err, stream) => {
+    client.exec(command, { pty: true }, (err, stream) => {
       if (err) {
         reject(new Error(`SSH exec error: ${err.message}`));
         return;
       }
-
-      let stdout = "";
-      let stderr = "";
-
-      stream.on("close", (code: number) => {
-        if (code !== 0) {
-          reject(new Error(`Command failed with exit code ${code}: ${stderr || "Unknown error"}`));
-        } else {
-          resolve(stdout);
-        }
-      });
-
-      stream.on("data", (data: Buffer) => {
-        stdout += data.toString();
-      });
-
-      stream.stderr.on("data", (data: Buffer) => {
-        stderr += data.toString();
-      });
+      resolve(stream);
     });
   });
 };
 
 // Change password for managed rotation (admin changing another user's password)
+// Uses `sudo passwd <username>` (or `passwd <username>`) executed via PTY
 const changeManagedPassword = async (
   client: Client,
-  username: string,
+  targetUsername: string,
   newPassword: string,
-  useSudo: boolean = false
+  useSudo: boolean = false,
+  appConnectionPassword?: string
 ): Promise<void> => {
-  // Using base64 encoding to avoid any shell escaping issues
-  const encodedPassword = Buffer.from(`${username}:${newPassword}`).toString("base64");
-  const command = useSudo
-    ? `echo '${encodedPassword}' | base64 -d | sudo chpasswd`
-    : `echo '${encodedPassword}' | base64 -d | chpasswd`;
+  const command = useSudo ? `sudo passwd ${targetUsername}` : `passwd ${targetUsername}`;
+  const stream = await execCommandWithPty(client, command);
 
-  try {
-    await executeCommand(client, command);
-  } catch (error) {
-    logger.error(error, "Unix/Linux Local Account Rotation: Failed to change password (managed)");
-    throw new Error(`Failed to change password: ${(error as Error).message}`);
-  }
+  return new Promise((resolve, reject) => {
+    let output = "";
+    let step = 0;
+    let completed = false;
+    let errorMessage = "";
+
+    const timeout = setTimeout(() => {
+      if (!completed) {
+        stream.end();
+        reject(new Error(`Password change timed out. Output: ${output}`));
+      }
+    }, SHELL_TIMEOUT);
+
+    stream.on("data", (data: Buffer) => {
+      const text = data.toString();
+      output += text;
+      const lower = text.toLowerCase();
+
+      if (step === 0 && (lower.includes("[sudo]") || lower.includes("password for"))) {
+        // sudo is asking for the logged-in user's password
+        if (!appConnectionPassword) {
+          clearTimeout(timeout);
+          stream.end();
+          reject(
+            new Error(
+              "sudo is requesting a password but the app connection uses SSH key authentication. Configure the app connection with password authentication, or configure NOPASSWD in sudoers for this user."
+            )
+          );
+          return;
+        }
+        stream.write(`${appConnectionPassword}\n`);
+        // stay at step 0 to catch "New password" next
+      } else if (step === 0 && lower.includes("new password")) {
+        stream.write(`${newPassword}\n`);
+        step = 1;
+      } else if (
+        step === 1 &&
+        (lower.includes("retype") || lower.includes("again") || lower.includes("new password"))
+      ) {
+        stream.write(`${newPassword}\n`);
+        step = 2;
+      } else if (step >= 2 && (lower.includes("success") || lower.includes("updated") || lower.includes("changed"))) {
+        completed = true;
+        clearTimeout(timeout);
+        stream.end();
+      } else if (
+        step >= 0 &&
+        (lower.includes("authentication failure") ||
+          lower.includes("sorry") ||
+          lower.includes("unknown user") ||
+          lower.includes("user not known") ||
+          lower.includes("does not exist"))
+      ) {
+        errorMessage = text.trim();
+        clearTimeout(timeout);
+        stream.end();
+      }
+    });
+
+    stream.on("close", () => {
+      clearTimeout(timeout);
+      if (completed || step >= 2) {
+        if (errorMessage && !completed) {
+          reject(new Error(`Password change failed: ${errorMessage}`));
+        } else {
+          resolve();
+        }
+      } else {
+        reject(new Error(`Password change incomplete (step ${step}). Output: ${output}`));
+      }
+    });
+
+    stream.on("error", (streamErr: Error) => {
+      clearTimeout(timeout);
+      reject(new Error(`Stream error: ${streamErr.message}`));
+    });
+  });
 };
 
 // Change password for self rotation (user changing their own password)
-// Uses interactive shell to handle passwd command prompts
+// Uses `passwd` executed via PTY to handle interactive prompts
 const changeSelfPassword = async (client: Client, oldPassword: string, newPassword: string): Promise<void> => {
+  const stream = await execCommandWithPty(client, "passwd");
+
   return new Promise((resolve, reject) => {
-    client.shell((err, stream) => {
-      if (err) {
-        reject(new Error(`Failed to start shell: ${err.message}`));
-        return;
+    let output = "";
+    let step = 0;
+    let completed = false;
+    let errorMessage = "";
+
+    const timeout = setTimeout(() => {
+      if (!completed) {
+        stream.end();
+        reject(new Error(`Password change timed out. Output: ${output}`));
       }
+    }, SHELL_TIMEOUT);
 
-      let output = "";
-      let step = 0;
-      let completed = false;
-      let errorMessage = "";
+    stream.on("data", (data: Buffer) => {
+      const text = data.toString();
+      output += text;
+      const lower = text.toLowerCase();
 
-      const timeout = setTimeout(() => {
-        if (!completed) {
-          stream.end("exit\n");
-          reject(new Error(`Password change timed out. Output: ${output}`));
-        }
-      }, 15000); // 15 second timeout
-
-      stream.on("data", (data: Buffer) => {
-        const text = data.toString();
-        output += text;
-        const lower = text.toLowerCase();
-
-        // Handle passwd prompts step by step
-        if (step === 0 && lower.includes("password")) {
-          // Current/old password prompt (could be "Current password:", "Old password:", etc.)
-          stream.write(`${oldPassword}\n`);
-          step = 1;
-        } else if (step === 1 && lower.includes("new password")) {
-          // New password prompt
-          stream.write(`${newPassword}\n`);
-          step = 2;
-        } else if (
-          step === 2 &&
-          (lower.includes("retype") || lower.includes("again") || lower.includes("new password"))
-        ) {
-          // Confirm new password prompt
-          stream.write(`${newPassword}\n`);
-          step = 3;
-        } else if (
-          step === 3 &&
-          (lower.includes("success") || lower.includes("updated") || lower.includes("changed"))
-        ) {
-          // Password changed successfully
-          completed = true;
-          clearTimeout(timeout);
-          stream.end("exit\n");
-        } else if (step >= 1 && (lower.includes("error") || lower.includes("fail") || lower.includes("unchanged"))) {
-          // Password change failed
-          errorMessage = text.trim();
-          stream.end("exit\n");
-        }
-      });
-
-      stream.on("close", () => {
+      // Handle passwd prompts step by step
+      if (step === 0 && lower.includes("password")) {
+        // Current/old password prompt (could be "Current password:", "Old password:", etc.)
+        stream.write(`${oldPassword}\n`);
+        step = 1;
+      } else if (step === 1 && lower.includes("new password")) {
+        // New password prompt
+        stream.write(`${newPassword}\n`);
+        step = 2;
+      } else if (
+        step === 2 &&
+        (lower.includes("retype") || lower.includes("again") || lower.includes("new password"))
+      ) {
+        // Confirm new password prompt
+        stream.write(`${newPassword}\n`);
+        step = 3;
+      } else if (step === 3 && (lower.includes("success") || lower.includes("updated") || lower.includes("changed"))) {
+        // Password changed successfully
+        completed = true;
         clearTimeout(timeout);
-        if (completed || step >= 3) {
-          // If we got to step 3 without explicit error, consider it success
-          if (errorMessage && !completed) {
-            reject(new Error(`Password change failed: ${errorMessage}`));
-          } else {
-            resolve();
-          }
+        stream.end();
+      } else if (step >= 1 && (lower.includes("error") || lower.includes("fail") || lower.includes("unchanged"))) {
+        // Password change failed
+        errorMessage = text.trim();
+        stream.end();
+      }
+    });
+
+    stream.on("close", () => {
+      clearTimeout(timeout);
+      if (completed || step >= 3) {
+        // If we got to step 3 without explicit error, consider it success
+        if (errorMessage && !completed) {
+          reject(new Error(`Password change failed: ${errorMessage}`));
         } else {
-          reject(new Error(`Password change incomplete (step ${step}). Output: ${output}`));
+          resolve();
         }
-      });
+      } else {
+        reject(new Error(`Password change incomplete (step ${step}). Output: ${output}`));
+      }
+    });
 
-      stream.on("error", (streamErr: Error) => {
+    stream.on("error", (streamErr: Error) => {
+      clearTimeout(timeout);
+      reject(new Error(`Stream error: ${streamErr.message}`));
+    });
+  });
+};
+
+// Verify credentials by using `su - <username>` via an existing SSH connection
+// Used as fallback when direct SSH login is not allowed for the target account
+const verifySuLogin = async (client: Client, targetUsername: string, targetPassword: string): Promise<void> => {
+  const stream = await execCommandWithPty(client, `su - ${targetUsername}`);
+
+  return new Promise((resolve, reject) => {
+    let output = "";
+    let step = 0;
+    let completed = false;
+
+    const timeout = setTimeout(() => {
+      if (!completed) {
+        stream.end();
+        reject(new Error(`su verification timed out. Output: ${output}`));
+      }
+    }, SHELL_TIMEOUT);
+
+    stream.on("data", (data: Buffer) => {
+      const text = data.toString();
+      output += text;
+      const lower = text.toLowerCase();
+
+      if (step === 0 && lower.includes("password")) {
+        // su is asking for the target user's password
+        stream.write(`${targetPassword}\n`);
+        step = 1;
+      } else if (step === 1) {
+        if (lower.includes("authentication failure") || lower.includes("incorrect password") || lower.includes("su:")) {
+          clearTimeout(timeout);
+          stream.end();
+          reject(new Error(`su authentication failed for user ${targetUsername}. Output: ${text.trim()}`));
+          return;
+        }
+        // After successful su, run whoami
+        stream.write("whoami\n");
+        step = 2;
+      } else if (step === 2 && lower.includes(targetUsername.toLowerCase())) {
+        // whoami confirmed we are the target user
+        completed = true;
         clearTimeout(timeout);
-        reject(new Error(`Stream error: ${streamErr.message}`));
-      });
+        stream.write("exit\n");
+        stream.end();
+      }
+    });
 
-      // Initiate passwd command
-      stream.write("passwd\n");
+    stream.on("close", () => {
+      clearTimeout(timeout);
+      if (completed) {
+        resolve();
+      } else {
+        reject(new Error(`su verification failed for user ${targetUsername}. Output: ${output}`));
+      }
+    });
+
+    stream.on("error", (streamErr: Error) => {
+      clearTimeout(timeout);
+      reject(new Error(`Stream error: ${streamErr.message}`));
     });
   });
 };
@@ -174,6 +279,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   const shouldUseSudo = Boolean(useSudo);
 
   // Helper to verify SSH credentials work
+  // Tries direct SSH first, then falls back to su via app connection
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
     const verifyConfig: TSshConnectionConfig = {
       method: SshConnectionMethod.Password,
@@ -188,13 +294,45 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       }
     };
 
+    // Attempt 1: Direct SSH login with target credentials
+    let directSshError: string | undefined;
     try {
       await executeWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
         const client = await getSshConnectionClient(verifyConfig, targetHost, targetPort);
         client.destroy();
       });
+      return; // Direct SSH worked
     } catch (error) {
-      throw new Error(`Failed to verify credentials - ${(error as Error).message}`);
+      directSshError = (error as Error).message;
+      logger.info(
+        "Unix/Linux Local Account Rotation: Direct SSH verification failed for user %s, falling back to su verification. Error: %s",
+        targetUsername,
+        directSshError
+      );
+    }
+
+    // Attempt 2: SSH with app connection, then su to target user
+    const appConnConfig: TSshConnectionConfig = {
+      method: connection.method,
+      app: connection.app,
+      orgId: connection.orgId,
+      gatewayId: connection.gatewayId,
+      credentials: connection.credentials
+    } as TSshConnectionConfig;
+
+    try {
+      await executeWithPotentialGateway(appConnConfig, gatewayV2Service, async (targetHost, targetPort) => {
+        const client = await getSshConnectionClient(appConnConfig, targetHost, targetPort);
+        try {
+          await verifySuLogin(client, targetUsername, targetPassword);
+        } finally {
+          client.destroy();
+        }
+      });
+    } catch (suError) {
+      throw new Error(
+        `Failed to verify credentials. Direct SSH login failed: ${directSshError}. Fallback su verification also failed: ${(suError as Error).message}`
+      );
     }
   };
 
@@ -243,8 +381,12 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
           // Self rotation: user changes their own password using passwd command
           await changeSelfPassword(client, currentPassword, newPassword);
         } else {
-          // Managed rotation: admin changes user's password using chpasswd (with sudo if specified)
-          await changeManagedPassword(client, username, newPassword, shouldUseSudo);
+          // Managed rotation: admin changes user's password using passwd (with sudo if specified)
+          const appConnectionPassword =
+            connection.method === SshConnectionMethod.Password
+              ? (connection.credentials as { password: string }).password
+              : undefined;
+          await changeManagedPassword(client, username, newPassword, shouldUseSudo, appConnectionPassword);
         }
       } finally {
         client.destroy();
