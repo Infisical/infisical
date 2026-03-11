@@ -56,6 +56,7 @@ import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/
 
 const validateDnsResolver = async (resolver: string): Promise<void> => {
   if (net.isIP(resolver)) {
+    await blockLocalAndPrivateIpAddresses(resolver);
     return;
   }
 
@@ -66,8 +67,9 @@ const validateDnsResolver = async (resolver: string): Promise<void> => {
   }
 
   try {
-    await dns.promises.resolve(resolver);
-  } catch {
+    await blockLocalAndPrivateIpAddresses(resolver);
+  } catch (e) {
+    if (e instanceof BadRequestError) throw e;
     throw new BadRequestError({
       message: `DNS resolver "${resolver}" could not be resolved. Please provide a valid IP address or resolvable hostname.`
     });
@@ -244,7 +246,8 @@ const waitForDnsPropagation = async (
 
   const resolver = new dns.promises.Resolver();
   if (dnsResolver) {
-    resolver.setServers([dnsResolver]);
+    const resolverIp = net.isIP(dnsResolver) ? dnsResolver : (await dns.promises.resolve4(dnsResolver))[0];
+    resolver.setServers([resolverIp]);
   }
 
   while (attempts < DNS_PROPAGATION_MAX_RETRIES) {
