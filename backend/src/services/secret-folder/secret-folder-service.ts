@@ -1414,6 +1414,8 @@ export const secretFolderServiceFactory = ({
     const uniqueParentIds = [...new Set(result.map((folder) => folder.parentId).filter(Boolean))];
     await Promise.all(uniqueParentIds.map((parentId) => snapshotService.performSnapshot(parentId as string)));
 
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+
     return {
       folders: result,
       count: result.length

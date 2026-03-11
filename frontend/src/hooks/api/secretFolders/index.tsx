@@ -1,6 +1,7 @@
 export {
   useCreateFolder,
   useDeleteFolder,
+  useDeleteFolderBatch,
   useGetFoldersByEnv,
   useGetOrCreateFolder,
   useGetProjectFolders,

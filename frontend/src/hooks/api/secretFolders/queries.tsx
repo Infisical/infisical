@@ -14,6 +14,7 @@ import { commitKeys } from "../folderCommits/queries";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
   TCreateFolderDTO,
+  TDeleteFolderBatchDTO,
   TDeleteFolderDTO,
   TGetFoldersByEnvDTO,
   TGetProjectFoldersDTO,
@@ -306,6 +307,71 @@ export const useDeleteFolder = () => {
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ projectId, environment, directory: path })
+      });
+    }
+  });
+};
+
+export const useDeleteFolderBatch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ folders: TSecretFolder[] }, object, TDeleteFolderBatchDTO>({
+    mutationFn: async ({ projectId, folders }) => {
+      const { data } = await apiRequest.delete<{ folders: TSecretFolder[] }>(
+        "/api/v2/folders/batch",
+        {
+          data: {
+            projectId,
+            folders
+          }
+        }
+      );
+
+      return data;
+    },
+    onSuccess: (_, { projectId, folders }) => {
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
+          projectId,
+          secretPath: folders[0]?.path ?? "/"
+        })
+      });
+      folders.forEach((folder) => {
+        queryClient.invalidateQueries({
+          queryKey: folderQueryKeys.getSecretFolders({
+            projectId,
+            environment: folder.environment,
+            path: folder.path
+          })
+        });
+        queryClient.invalidateQueries({
+          queryKey: secretSnapshotKeys.list({
+            projectId,
+            environment: folder.environment,
+            directory: folder.path
+          })
+        });
+        queryClient.invalidateQueries({
+          queryKey: secretSnapshotKeys.count({
+            projectId,
+            environment: folder.environment,
+            directory: folder.path
+          })
+        });
+        queryClient.invalidateQueries({
+          queryKey: commitKeys.count({
+            projectId,
+            environment: folder.environment,
+            directory: folder.path
+          })
+        });
+        queryClient.invalidateQueries({
+          queryKey: commitKeys.history({
+            projectId,
+            environment: folder.environment,
+            directory: folder.path
+          })
+        });
       });
     }
   });
