@@ -56,30 +56,40 @@ const changeManagedPassword = async (
     let output = "";
     let step = 0;
     let completed = false;
+    let settled = false;
     let errorMessage = "";
 
+    const safeReject = (error: Error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+
     const timeout = setTimeout(() => {
-      if (!completed) {
+      if (!settled) {
         stream.end();
-        reject(new Error(`Password change timed out. Output: ${output}`));
+        safeReject(new Error(`Password change timed out. Output: ${output}`));
       }
     }, SHELL_TIMEOUT);
 
     stream.on("data", (data: Buffer) => {
+      if (settled) return;
+
       const text = data.toString();
       output += text;
       const lower = text.toLowerCase();
 
-      if (step === 0 && (lower.includes("[sudo]") || lower.includes("password for"))) {
+      if (step === 0 && lower.includes("[sudo]")) {
         // sudo is asking for the logged-in user's password
         if (!appConnectionPassword) {
           clearTimeout(timeout);
-          stream.end();
-          reject(
+          safeReject(
             new Error(
               "sudo is requesting a password but the app connection uses SSH key authentication. Configure the app connection with password authentication, or configure NOPASSWD in sudoers for this user."
             )
           );
+          stream.end();
           return;
         }
         stream.write(`${appConnectionPassword}\n`);
@@ -113,12 +123,13 @@ const changeManagedPassword = async (
 
     stream.on("close", () => {
       clearTimeout(timeout);
-      if (completed || step >= 2) {
-        if (errorMessage && !completed) {
-          reject(new Error(`Password change failed: ${errorMessage}`));
-        } else {
-          resolve();
-        }
+      if (settled) return;
+      settled = true;
+
+      if (errorMessage && !completed) {
+        reject(new Error(`Password change failed: ${errorMessage}`));
+      } else if (completed || step >= 2) {
+        resolve();
       } else {
         reject(new Error(`Password change incomplete (step ${step}). Output: ${output}`));
       }
@@ -126,7 +137,7 @@ const changeManagedPassword = async (
 
     stream.on("error", (streamErr: Error) => {
       clearTimeout(timeout);
-      reject(new Error(`Stream error: ${streamErr.message}`));
+      safeReject(new Error(`Stream error: ${streamErr.message}`));
     });
   });
 };
@@ -140,16 +151,26 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
     let output = "";
     let step = 0;
     let completed = false;
+    let settled = false;
     let errorMessage = "";
 
+    const safeReject = (error: Error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+
     const timeout = setTimeout(() => {
-      if (!completed) {
+      if (!settled) {
         stream.end();
-        reject(new Error(`Password change timed out. Output: ${output}`));
+        safeReject(new Error(`Password change timed out. Output: ${output}`));
       }
     }, SHELL_TIMEOUT);
 
     stream.on("data", (data: Buffer) => {
+      if (settled) return;
+
       const text = data.toString();
       output += text;
       const lower = text.toLowerCase();
@@ -184,6 +205,9 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
 
     stream.on("close", () => {
       clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
+
       if (completed || step >= 3) {
         // If we got to step 3 without explicit error, consider it success
         if (errorMessage && !completed) {
@@ -198,7 +222,7 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
 
     stream.on("error", (streamErr: Error) => {
       clearTimeout(timeout);
-      reject(new Error(`Stream error: ${streamErr.message}`));
+      safeReject(new Error(`Stream error: ${streamErr.message}`));
     });
   });
 };
@@ -212,15 +236,25 @@ const verifySuLogin = async (client: Client, targetUsername: string, targetPassw
     let output = "";
     let step = 0;
     let completed = false;
+    let settled = false;
+
+    const safeReject = (error: Error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
 
     const timeout = setTimeout(() => {
-      if (!completed) {
+      if (!settled) {
         stream.end();
-        reject(new Error(`su verification timed out. Output: ${output}`));
+        safeReject(new Error(`su verification timed out. Output: ${output}`));
       }
     }, SHELL_TIMEOUT);
 
     stream.on("data", (data: Buffer) => {
+      if (settled) return;
+
       const text = data.toString();
       output += text;
       const lower = text.toLowerCase();
@@ -232,8 +266,8 @@ const verifySuLogin = async (client: Client, targetUsername: string, targetPassw
       } else if (step === 1) {
         if (lower.includes("authentication failure") || lower.includes("incorrect password") || lower.includes("su:")) {
           clearTimeout(timeout);
+          safeReject(new Error(`su authentication failed for user ${targetUsername}. Output: ${text.trim()}`));
           stream.end();
-          reject(new Error(`su authentication failed for user ${targetUsername}. Output: ${text.trim()}`));
           return;
         }
         // After successful su, run whoami
@@ -250,6 +284,9 @@ const verifySuLogin = async (client: Client, targetUsername: string, targetPassw
 
     stream.on("close", () => {
       clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
+
       if (completed) {
         resolve();
       } else {
@@ -259,7 +296,7 @@ const verifySuLogin = async (client: Client, targetUsername: string, targetPassw
 
     stream.on("error", (streamErr: Error) => {
       clearTimeout(timeout);
-      reject(new Error(`Stream error: ${streamErr.message}`));
+      safeReject(new Error(`Stream error: ${streamErr.message}`));
     });
   });
 };
@@ -305,7 +342,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     } catch (error) {
       directSshError = (error as Error).message;
       logger.info(
-        "Unix/Linux Local Account Rotation: Direct SSH verification failed for user %s, falling back to su verification. Error: %s",
+        "Unix/Linux Local Account Rotation: Direct SSH verification failed [username=%s], falling back to su verification. Error: %s",
         targetUsername,
         directSshError
       );
