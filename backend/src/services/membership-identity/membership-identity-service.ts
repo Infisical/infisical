@@ -34,6 +34,26 @@ type TMembershipIdentityServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
+// Builds a composite key for role matching to preserve IDs during updates
+const buildRoleKey = (r: {
+  role: string;
+  customRoleId?: string | null;
+  isTemporary?: boolean;
+  temporaryMode?: string | null;
+  temporaryRange?: string | null;
+  temporaryAccessStartTime?: Date | string | null;
+}) => {
+  const parts = [
+    r.role,
+    r.customRoleId ?? "",
+    String(r.isTemporary ?? false),
+    r.temporaryMode ?? "",
+    r.temporaryRange ?? "",
+    r.temporaryAccessStartTime ? new Date(r.temporaryAccessStartTime).toISOString() : ""
+  ];
+  return parts.join("|");
+};
+
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
 
 export const membershipIdentityServiceFactory = ({
@@ -260,26 +280,6 @@ export const membershipIdentityServiceFactory = ({
       // Fetch existing roles to do a smart diff and preserve IDs for unchanged roles
       const existingRoles = await membershipRoleDAL.find({ membershipId: doc.id }, { tx });
 
-      // Build a key for matching: role + customRoleId + isTemporary + temporary fields
-      const buildRoleKey = (r: {
-        role: string;
-        customRoleId?: string | null;
-        isTemporary?: boolean;
-        temporaryMode?: string | null;
-        temporaryRange?: string | null;
-        temporaryAccessStartTime?: Date | string | null;
-      }) => {
-        const parts = [
-          r.role,
-          r.customRoleId || "",
-          String(r.isTemporary || false),
-          r.temporaryMode || "",
-          r.temporaryRange || "",
-          r.temporaryAccessStartTime ? new Date(r.temporaryAccessStartTime).toISOString() : ""
-        ];
-        return parts.join("|");
-      };
-
       // Track which existing roles are matched so we can delete unmatched ones
       const existingRolesByKey = new Map<string, { id: string; matched: boolean }>();
       for (const er of existingRoles) {
@@ -291,7 +291,7 @@ export const membershipIdentityServiceFactory = ({
       }
 
       const rolesToInsert: TMembershipRolesInsert[] = [];
-      const keptRoleIds: string[] = [];
+      const keptRoleIds: Set<string> = new Set();
 
       for (const desired of desiredRoles) {
         const key = buildRoleKey(desired);
@@ -299,7 +299,7 @@ export const membershipIdentityServiceFactory = ({
         if (existing && !existing.matched) {
           // This role already exists with the same configuration - keep it
           existing.matched = true;
-          keptRoleIds.push(existing.id);
+          keptRoleIds.add(existing.id);
         } else {
           // New role that needs to be inserted
           rolesToInsert.push(desired);
@@ -307,7 +307,7 @@ export const membershipIdentityServiceFactory = ({
       }
 
       // Delete only the roles that are no longer needed
-      const roleIdsToDelete = existingRoles.filter((er) => !keptRoleIds.includes(er.id)).map((er) => er.id);
+      const roleIdsToDelete = existingRoles.filter((er) => !keptRoleIds.has(er.id)).map((er) => er.id);
 
       if (roleIdsToDelete.length > 0) {
         await membershipRoleDAL.delete(
@@ -322,7 +322,7 @@ export const membershipIdentityServiceFactory = ({
       const insertedRoleDocs = rolesToInsert.length > 0 ? await membershipRoleDAL.insertMany(rolesToInsert, tx) : [];
 
       // Return all roles: kept existing ones + newly inserted ones
-      const keptRoles = existingRoles.filter((er) => keptRoleIds.includes(er.id));
+      const keptRoles = existingRoles.filter((er) => keptRoleIds.has(er.id));
       return { ...doc, roles: [...keptRoles, ...insertedRoleDocs] };
     });
 
