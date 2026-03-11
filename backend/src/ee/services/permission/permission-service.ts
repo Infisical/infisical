@@ -428,7 +428,10 @@ export const permissionServiceFactory = ({
     // When project is in sub-org, use root org for bypass check (SSO enforced at root; user's bypass permission is in root org)
     if (actor === ActorType.USER) {
       let canBypassSso = false;
-      if (permissionData?.[0].bypassOrgAuthEnabled) {
+      if (
+        permissionData?.[0].bypassOrgAuthEnabled &&
+        (permissionData?.[0].orgAuthEnforced || permissionData?.[0].orgGoogleSsoAuthEnforced)
+      ) {
         const orgIdForBypass = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
         const orgPermissionData = await permissionDAL.getPermission({
           scopeData: { scope: AccessScope.Organization, orgId: orgIdForBypass },
