@@ -185,7 +185,7 @@ export const MetadataDiffRenderer = ({
         const lockIconClass = twMerge(
           "mr-1",
           encryptionTurnedOff && "text-danger",
-          encryptionTurnedOn && "text-sucess",
+          encryptionTurnedOn && "text-success",
           !encryptionTurnedOff && !encryptionTurnedOn && "text-foreground"
         );
 
