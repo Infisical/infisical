@@ -15,7 +15,9 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
-import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
+import { useDeleteSecretBatch } from "@app/hooks/api";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import {
   SecretType,
@@ -69,7 +71,7 @@ export const SelectionPanel = ({
   const { currentProject, projectId } = useProject();
   const userAvailableEnvs = currentProject?.environments || [];
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
-  const { mutateAsync: deleteFolder } = useDeleteFolder();
+  const { mutateAsync: createCommit } = useCreateCommit();
 
   const isMultiSelectActive = selectedCount > 0;
 
@@ -124,20 +126,31 @@ export const SelectionPanel = ({
           subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
         )
       ) {
-        await Promise.all(
-          Object.values(selectedEntries.folder).map(async (folderRecord) => {
-            const folder = folderRecord[env.slug];
-            if (folder) {
-              processedEntries += 1;
-              await deleteFolder({
-                folderId: folder?.id,
-                path: secretPath,
-                environment: env.slug,
-                projectId
-              });
-            }
-          })
-        );
+        const folderDeletes = Object.values(selectedEntries.folder)
+          .map((folderRecord) => folderRecord[env.slug])
+          .filter((folder): folder is TSecretFolder => Boolean(folder))
+          .map((folder) => ({
+            id: folder.id,
+            timestamp: Date.now(),
+            resourceType: "folder" as const,
+            type: PendingAction.Delete as const,
+            folderName: folder.name,
+            folderPath: secretPath
+          }));
+
+        if (folderDeletes.length > 0) {
+          processedEntries += folderDeletes.length;
+          await createCommit({
+            projectId,
+            environment: env.slug,
+            secretPath,
+            pendingChanges: {
+              secrets: [],
+              folders: folderDeletes
+            },
+            message: ""
+          });
+        }
       }
 
       const secretsToDelete = Object.values(selectedEntries.secret).reduce(
