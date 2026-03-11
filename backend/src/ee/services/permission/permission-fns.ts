@@ -219,7 +219,9 @@ function validateOrgSSO(
 
   // case: google sso is enforced, but the actor is not using google sso
   if (isOrgGoogleSsoEnforced && actorAuthMethod !== null && actorAuthMethod !== AuthMethod.GOOGLE) {
-    throw new ForbiddenRequestError({ name: "Org auth enforced. Cannot access org-scoped resource" });
+    throw new ForbiddenRequestError({
+      name: "Org auth enforced. Cannot access org-scoped resource. Login with Google SSO to access this resource."
+    });
   }
 
   // case: SAML SSO is enforced, but the actor is not using SAML SSO
@@ -229,7 +231,9 @@ function validateOrgSSO(
     !isAuthMethodSaml(actorAuthMethod) &&
     actorAuthMethod !== AuthMethod.OIDC
   ) {
-    throw new ForbiddenRequestError({ name: "Org auth enforced. Cannot access org-scoped resource" });
+    throw new ForbiddenRequestError({
+      name: "Org auth enforced. Cannot access org-scoped resource. Login with SAML SSO to access this resource."
+    });
   }
 }
 
