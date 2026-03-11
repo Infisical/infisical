@@ -3,12 +3,12 @@ import { PostHog } from "posthog-node";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { InstanceType } from "@app/ee/services/license/license-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
