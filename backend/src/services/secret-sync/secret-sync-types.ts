@@ -335,6 +335,8 @@ export type TSecretSyncListItem =
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
+  supportsKeySchema?: boolean;
+  supportsDisableSecretDeletion?: boolean;
 };
 
 export type TListSecretSyncsByProjectId = {

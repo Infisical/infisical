@@ -25,7 +25,11 @@ const AzureEntraIdScimSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_ENTRA_ID_SCIM.secretKey)
 });
 
-const AzureEntraIdScimSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
+const AzureEntraIdScimSyncOptionsConfig: TSyncOptionsConfig = {
+  canImportSecrets: false,
+  supportsKeySchema: false,
+  supportsDisableSecretDeletion: false
+};
 
 export const AzureEntraIdScimSyncSchema = BaseSecretSyncSchema(
   SecretSync.AzureEntraIdScim,
@@ -56,6 +60,8 @@ export const AzureEntraIdScimSyncListItemSchema = z
     name: z.literal("Azure Entra ID SCIM"),
     connection: z.literal(AppConnection.AzureEntraId),
     destination: z.literal(SecretSync.AzureEntraIdScim),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    supportsKeySchema: z.literal(false),
+    supportsDisableSecretDeletion: z.literal(false)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureEntraIdScim] }));

@@ -154,6 +154,8 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
               <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
               {destinationName} only supports overwriting destination secrets.{" "}
               {!currentSyncOption.disableSecretDeletion &&
+                (syncOption?.supportsKeySchema !== false ||
+                  syncOption?.supportsDisableSecretDeletion !== false) &&
                 `Secrets not present in Infisical will be removed from the destination. Consider adding a key schema or disabling secret deletion if you do not want existing secrets to be removed from ${destinationName}.`}
             </p>
           ) : (
@@ -171,109 +173,114 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
           )}
         </>
       )}
-      <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipClassName="max-w-md"
-            tooltipText={
-              <div className="flex flex-col gap-3">
-                <span>
-                  When a secret is synced, values will be injected into the key schema before it
-                  reaches the destination. This is useful for organization.
-                </span>
-
-                <div className="flex flex-col">
-                  <span>Available keys:</span>
-                  <ul className="list-disc pl-4 text-sm">
-                    <li>
-                      <code>{"{{secretKey}}"}</code> - The key of the secret
-                    </li>
-                    <li>
-                      <code>{"{{environment}}"}</code> - The environment which the secret is in
-                      (e.g. dev, staging, prod)
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            }
-            isError={Boolean(error)}
-            isOptional
-            errorText={error?.message}
-            label="Key Schema"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content={
+      {syncOption?.supportsKeySchema !== false && (
+        <Controller
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              tooltipClassName="max-w-md"
+              tooltipText={
+                <div className="flex flex-col gap-3">
                   <span>
-                    We highly recommend configuring a{" "}
-                    <a
-                      href="https://infisical.com/docs/integrations/secret-syncs/overview#key-schemas"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      key schema
-                    </a>{" "}
-                    to ensure that Infisical only manages secrets in {destinationName} that match
-                    the key pattern.
-                    <br />
-                    <br />
-                    Destination secrets that do not match the schema will not be deleted or updated.
+                    When a secret is synced, values will be injected into the key schema before it
+                    reaches the destination. This is useful for organization.
                   </span>
-                }
-              >
-                <div className="text-info">
-                  <span>Infisical strongly advises configuring a key schema</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} />
+
+                  <div className="flex flex-col">
+                    <span>Available keys:</span>
+                    <ul className="list-disc pl-4 text-sm">
+                      <li>
+                        <code>{"{{secretKey}}"}</code> - The key of the secret
+                      </li>
+                      <li>
+                        <code>{"{{environment}}"}</code> - The environment which the secret is in
+                        (e.g. dev, staging, prod)
+                      </li>
+                    </ul>
+                  </div>
                 </div>
-              </Tooltip>
-            }
-          >
-            <Input value={value} onChange={onChange} placeholder="INFISICAL_{{secretKey}}" />
-          </FormControl>
-        )}
-        control={control}
-        name="syncOptions.keySchema"
-      />
-      {AdditionalSyncOptionsFieldsComponent}
-      <Controller
-        control={control}
-        name="syncOptions.disableSecretDeletion"
-        render={({ field: { value, onChange }, fieldState: { error } }) => {
-          return (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="auto-sync-enabled"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p className="w-44">
-                  Disable Secret Deletion{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          When enabled, Infisical will <span className="font-medium">not</span>{" "}
-                          remove secrets from the destination during a sync.
-                        </p>
-                        <p className="mt-4">
-                          Enable this option if you intend to manage some secrets manually outside
-                          of Infisical.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
+              }
+              isError={Boolean(error)}
+              isOptional
+              errorText={error?.message}
+              label="Key Schema"
+              helperText={
+                <Tooltip
+                  className="max-w-md"
+                  content={
+                    <span>
+                      We highly recommend configuring a{" "}
+                      <a
+                        href="https://infisical.com/docs/integrations/secret-syncs/overview#key-schemas"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        key schema
+                      </a>{" "}
+                      to ensure that Infisical only manages secrets in {destinationName} that match
+                      the key pattern.
+                      <br />
+                      <br />
+                      Destination secrets that do not match the schema will not be deleted or
+                      updated.
+                    </span>
+                  }
+                >
+                  <div className="text-info">
+                    <span>Infisical strongly advises configuring a key schema</span>{" "}
+                    <FontAwesomeIcon icon={faCircleInfo} />
+                  </div>
+                </Tooltip>
+              }
+            >
+              <Input value={value} onChange={onChange} placeholder="INFISICAL_{{secretKey}}" />
             </FormControl>
-          );
-        }}
-      />
+          )}
+          control={control}
+          name="syncOptions.keySchema"
+        />
+      )}
+      {AdditionalSyncOptionsFieldsComponent}
+      {syncOption?.supportsDisableSecretDeletion !== false && (
+        <Controller
+          control={control}
+          name="syncOptions.disableSecretDeletion"
+          render={({ field: { value, onChange }, fieldState: { error } }) => {
+            return (
+              <FormControl isError={Boolean(error)} errorText={error?.message}>
+                <Switch
+                  className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                  id="auto-sync-enabled"
+                  thumbClassName="bg-mineshaft-800"
+                  onCheckedChange={onChange}
+                  isChecked={value}
+                >
+                  <p className="w-44">
+                    Disable Secret Deletion{" "}
+                    <Tooltip
+                      className="max-w-md"
+                      content={
+                        <>
+                          <p>
+                            When enabled, Infisical will <span className="font-medium">not</span>{" "}
+                            remove secrets from the destination during a sync.
+                          </p>
+                          <p className="mt-4">
+                            Enable this option if you intend to manage some secrets manually outside
+                            of Infisical.
+                          </p>
+                        </>
+                      }
+                    >
+                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                    </Tooltip>
+                  </p>
+                </Switch>
+              </FormControl>
+            );
+          }}
+        />
+      )}
     </>
   );
 };

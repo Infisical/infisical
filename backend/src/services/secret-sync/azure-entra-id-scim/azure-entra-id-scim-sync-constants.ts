@@ -6,5 +6,7 @@ export const AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Azure Entra ID SCIM",
   destination: SecretSync.AzureEntraIdScim,
   connection: AppConnection.AzureEntraId,
-  canImportSecrets: false
+  canImportSecrets: false,
+  supportsKeySchema: false,
+  supportsDisableSecretDeletion: false
 };
