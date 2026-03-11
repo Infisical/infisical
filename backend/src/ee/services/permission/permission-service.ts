@@ -125,22 +125,25 @@ type MembershipWithRoles = {
 const flattenActiveRolesFromMemberships = <T extends string>(
   memberships: MembershipWithRoles[],
   customRoleValue: T
-): { role: string; permissions?: unknown }[] =>
-  memberships.flatMap((membership) => {
-    const activeRoles = (membership?.roles ?? [])
-      .filter(
-        ({ isTemporary, temporaryAccessEndTime }) =>
-          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-      )
-      .map(({ role, permissions }) => ({ role, permissions }));
-    const activeAdditionalPrivileges = (membership?.additionalPrivileges ?? [])
-      .filter(
-        ({ isTemporary, temporaryAccessEndTime }) =>
-          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-      )
-      .map(({ permissions }) => ({ role: customRoleValue, permissions }));
+): { role: string; permissions?: unknown }[] => {
+  const filterTemporary = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
+    items: U[]
+  ): U[] =>
+    items.filter(
+      ({ isTemporary, temporaryAccessEndTime }) =>
+        !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+    );
+  return memberships.flatMap((membership) => {
+    const activeRoles = filterTemporary(membership?.roles ?? []).map(({ role, permissions }) => ({
+      role,
+      permissions
+    }));
+    const activeAdditionalPrivileges = filterTemporary(membership?.additionalPrivileges ?? []).map(
+      ({ permissions }) => ({ role: customRoleValue, permissions })
+    );
     return activeRoles.concat(activeAdditionalPrivileges);
   });
+};
 
 type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
@@ -275,9 +278,7 @@ export const permissionServiceFactory = ({
       conditionsMatcher
     });
 
-    const canBypassSso =
-      hasRole(OrgMembershipRole.Admin) ||
-      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+    const canBypassSso = permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
 
     // SSO enforcement applies only to users
     if (actor === ActorType.USER) {
@@ -428,10 +429,11 @@ export const permissionServiceFactory = ({
     // When project is in sub-org, use root org for bypass check (SSO enforced at root; user's bypass permission is in root org)
     if (actor === ActorType.USER) {
       let canBypassSso = false;
-      if (
-        permissionData?.[0].bypassOrgAuthEnabled &&
-        (permissionData?.[0].orgAuthEnforced || permissionData?.[0].orgGoogleSsoAuthEnforced)
-      ) {
+      const enforceSsoAndBypassEnabled =
+        permissionData?.[0].orgAuthEnforced ||
+        (permissionData?.[0].orgGoogleSsoAuthEnforced && permissionData?.[0].bypassOrgAuthEnabled);
+
+      if (enforceSsoAndBypassEnabled) {
         const orgIdForBypass = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
         const orgPermissionData = await permissionDAL.getPermission({
           scopeData: { scope: AccessScope.Organization, orgId: orgIdForBypass },
@@ -443,11 +445,7 @@ export const permissionServiceFactory = ({
           const orgPermission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(orgPermissionFromRoles), {
             conditionsMatcher
           });
-          const orgHasRole = (role: string) =>
-            orgPermissionData.some((m) => m.roles.some((el) => role === (el.customRoleSlug || el.role)));
-          canBypassSso =
-            orgHasRole(OrgMembershipRole.Admin) ||
-            orgPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+          canBypassSso = orgPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
         }
       }
       validateOrgSSO(

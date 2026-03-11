@@ -49,7 +49,7 @@ export const SelectOrganizationSection = () => {
   const queryParams = new URLSearchParams(window.location.search);
   const orgId = queryParams.get("org_id");
   const callbackPort = queryParams.get("callback_port");
-  const isAdminLogin = queryParams.get("is_admin_login") === "true";
+  const isBreakglassRoute = queryParams.get("is_admin_login") === "true";
   const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
@@ -96,9 +96,9 @@ export const SelectOrganizationSection = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isAdminLogin;
+      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isBreakglassRoute;
 
-      if (isAdminLogin && !organization.bypassOrgAuthEnabled) {
+      if (isBreakglassRoute && !organization.bypassOrgAuthEnabled) {
         createNotification({
           text: "This organization does not have bypass org auth enabled",
           type: "error"

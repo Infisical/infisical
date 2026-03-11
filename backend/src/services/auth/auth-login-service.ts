@@ -674,14 +674,16 @@ export const authLoginServiceFactory = ({
       mfaMethod: decodedToken.mfaMethod
     });
 
-    // In the event of this being a break-glass request (non-saml / non-oidc, when either is enforced)
-    if (
+    // In the event of this being a break-glass request (non-saml / non-oidc / non-google, when any is enforced)
+    const isAuthEnforcedBypass =
       rootOrg.authEnforced &&
       rootOrg.bypassOrgAuthEnabled &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
       decodedToken.authMethod !== AuthMethod.OIDC &&
-      decodedToken.authMethod !== AuthMethod.GOOGLE
-    ) {
+      decodedToken.authMethod !== AuthMethod.GOOGLE;
+    const isGoogleSsoEnforcedBypass =
+      rootOrg.googleSsoAuthEnforced && rootOrg.bypassOrgAuthEnabled && decodedToken.authMethod !== AuthMethod.GOOGLE;
+    if (isAuthEnforcedBypass || isGoogleSsoEnforcedBypass) {
       await auditLogService.createAuditLog({
         orgId: organizationId,
         ipAddress,
@@ -716,14 +718,14 @@ export const authLoginServiceFactory = ({
               userId: admin.user.id,
               orgId: organizationId,
               type: NotificationType.ADMIN_SSO_BYPASS,
-              title: "Security Alert: Admin SSO Bypass",
-              body: `The org admin **${user.email}** has bypassed enforced SSO login.`
+              title: "Security Alert: SSO Bypass",
+              body: `The organization member **${user.email}** has bypassed enforced SSO login.`
             }))
         );
 
         await smtpService.sendMail({
           recipients: adminEmails,
-          subjectLine: "Security Alert: Admin SSO Bypass",
+          subjectLine: "Security Alert: SSO Bypass",
           substitutions: {
             email: user.email,
             timestamp: new Date().toISOString(),
