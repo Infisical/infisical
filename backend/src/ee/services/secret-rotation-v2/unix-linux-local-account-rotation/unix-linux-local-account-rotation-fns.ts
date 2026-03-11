@@ -42,6 +42,7 @@ const execCommandWithPty = (client: Client, command: string): Promise<ClientChan
 
 // Change password for managed rotation (admin changing another user's password)
 // Uses `sudo passwd <username>` (or `passwd <username>`) executed via PTY
+// LC_ALL=C forces English prompts regardless of system locale
 const changeManagedPassword = async (
   client: Client,
   targetUsername: string,
@@ -49,7 +50,7 @@ const changeManagedPassword = async (
   useSudo: boolean = false,
   appConnectionPassword?: string
 ): Promise<void> => {
-  const command = useSudo ? `sudo passwd ${targetUsername}` : `passwd ${targetUsername}`;
+  const command = useSudo ? `LC_ALL=C sudo passwd ${targetUsername}` : `LC_ALL=C passwd ${targetUsername}`;
   const stream = await execCommandWithPty(client, command);
 
   return new Promise((resolve, reject) => {
@@ -144,8 +145,9 @@ const changeManagedPassword = async (
 
 // Change password for self rotation (user changing their own password)
 // Uses `passwd` executed via PTY to handle interactive prompts
+// LC_ALL=C forces English prompts regardless of system locale
 const changeSelfPassword = async (client: Client, oldPassword: string, newPassword: string): Promise<void> => {
-  const stream = await execCommandWithPty(client, "passwd");
+  const stream = await execCommandWithPty(client, "LC_ALL=C passwd");
 
   return new Promise((resolve, reject) => {
     let output = "";
@@ -227,8 +229,9 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
 
 // Verify credentials by using `su - <username>` via an existing SSH connection
 // Used as fallback when direct SSH login is not allowed for the target account
+// LC_ALL=C forces English prompts regardless of system locale
 const verifySuLogin = async (client: Client, targetUsername: string, targetPassword: string): Promise<void> => {
-  const stream = await execCommandWithPty(client, `su - ${targetUsername}`);
+  const stream = await execCommandWithPty(client, `LC_ALL=C su - ${targetUsername}`);
 
   return new Promise((resolve, reject) => {
     let output = "";
