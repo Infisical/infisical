@@ -39,6 +39,8 @@ export enum PostHogEventTypes {
   IssueCert = "Issue PKI Certificate",
   InvalidateCache = "Invalidate Cache",
   NotificationUpdated = "Notification Updated",
+  SecretSyncCreated = "Secret Sync Created",
+  SecretSyncDeleted = "Secret Sync Deleted",
   DynamicSecretCreated = "Dynamic Secret Created",
   DynamicSecretDeleted = "Dynamic Secret Deleted",
   DynamicSecretLeaseCreated = "Dynamic Secret Lease Created",
@@ -294,6 +296,30 @@ export type TNotificationUpdatedEvent = {
   };
 };
 
+export type TSecretSyncCreatedEvent = {
+  event: PostHogEventTypes.SecretSyncCreated;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isAutoSyncEnabled: boolean;
+  };
+};
+
+export type TSecretSyncDeletedEvent = {
+  event: PostHogEventTypes.SecretSyncDeleted;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    removeSecrets: boolean;
+  };
+};
+
 export type TDynamicSecretCreatedEvent = {
   event: PostHogEventTypes.DynamicSecretCreated;
   properties: {
@@ -364,6 +390,8 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TIssueCertificateEvent
   | TInvalidateCacheEvent
   | TNotificationUpdatedEvent
+  | TSecretSyncCreatedEvent
+  | TSecretSyncDeletedEvent
   | TDynamicSecretCreatedEvent
   | TDynamicSecretDeletedEvent
   | TDynamicSecretLeaseCreatedEvent
