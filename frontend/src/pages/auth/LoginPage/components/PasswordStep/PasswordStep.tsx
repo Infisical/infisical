@@ -270,10 +270,9 @@ export const PasswordStep = ({
     return (
       <EmailDuplicationConfirmation
         onRemoveDuplicateLater={() =>
-          navigate({
-            to: "/login/select-organization",
-            search: { org_id: organizationId }
-          })
+          navigateUserToOrg({ navigate, organizationId }).catch(() =>
+            createNotification({ text: "Failed to navigate user", type: "error" })
+          )
         }
       />
     );
