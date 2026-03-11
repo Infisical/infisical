@@ -108,7 +108,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityTokenAuth.identityId,
             orgId: identityTokenAuth.orgId,
-            authMethod: "token"
+            authMethod: "token_auth"
           }
         })
         .catch(() => {});
@@ -208,7 +208,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityTokenAuth.identityId,
             orgId: identityTokenAuth.orgId,
-            authMethod: "token"
+            authMethod: "token_auth"
           }
         })
         .catch(() => {});
@@ -324,7 +324,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityTokenAuth.identityId,
             orgId: identityTokenAuth.orgId,
-            authMethod: "token"
+            authMethod: "token_auth"
           }
         })
         .catch(() => {});
