@@ -136,13 +136,14 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           // For UserSignedUp events, use $set to persist person properties (email, username)
           // across all instance types (Cloud, dedicated, self-hosted) since UserSignedUp
           // bypasses the Cloud-only gate. This avoids relying on identify() which is Cloud-only.
+          type TUserSignedUpProperties = Extract<TPostHogEvent, { event: PostHogEventTypes.UserSignedUp }>;
           const captureProperties =
             event.event === PostHogEventTypes.UserSignedUp
               ? {
                   ...event.properties,
                   $set: {
-                    email: (event.properties as { email?: string }).email,
-                    username: (event.properties as { username?: string }).username
+                    email: (event as TUserSignedUpProperties).properties.email,
+                    username: (event as TUserSignedUpProperties).properties.username
                   }
                 }
               : event.properties;
