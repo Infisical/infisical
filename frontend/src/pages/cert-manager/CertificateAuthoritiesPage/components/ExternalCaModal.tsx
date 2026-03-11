@@ -84,7 +84,11 @@ const acmeConfigurationSchema = z
     accountEmail: z.string(),
     eabKid: z.string().optional(),
     eabHmacKey: z.string().optional(),
-    dnsResolver: z.string().optional()
+    dnsResolver: z
+      .string()
+      .ip({ message: "Must be a valid IP address" })
+      .or(z.literal(""))
+      .optional()
   })
   .superRefine((data, ctx) => {
     if (REQUIRED_EAB_DIRECTORIES.includes(data.directoryUrl)) {
@@ -728,11 +732,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 name="configuration.dnsResolver"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="DNS Resolver"
+                    label="DNS Resolver IP"
                     isError={Boolean(error)}
                     errorText={error?.message}
                     isOptional
-                    tooltipText="A custom DNS resolver IP or hostname used to verify DNS propagation during ACME challenges. Leave empty to use the system default."
+                    tooltipText="A custom DNS resolver IP address used to verify DNS propagation during ACME challenges. Must be a valid IP (e.g. 8.8.8.8). Leave empty to use the system default."
                   >
                     <Input {...field} placeholder="8.8.8.8" />
                   </FormControl>

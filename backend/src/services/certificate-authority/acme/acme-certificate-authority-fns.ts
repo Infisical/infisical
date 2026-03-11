@@ -56,34 +56,17 @@ import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-prov
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
-const validateDnsResolver = async (resolver: string): Promise<void> => {
+const validateDnsResolver = (resolver: string): void => {
   const appCfg = getConfig();
 
   if (appCfg.isDevelopmentMode) return;
 
-  if (net.isIP(resolver)) {
-    if (isPrivateIp(resolver) && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
-      throw new BadRequestError({ message: "Private/internal IP addresses are not allowed as DNS resolvers" });
-    }
-    return;
+  if (!net.isIP(resolver)) {
+    throw new BadRequestError({ message: "DNS resolver must be a valid IP address, not a hostname" });
   }
 
-  // Must be a valid hostname format
-  const HOSTNAME_REGEX = new RE2("^[a-zA-Z0-9.-]+$");
-  if (!HOSTNAME_REGEX.test(resolver)) {
-    throw new BadRequestError({ message: `Invalid DNS resolver address: ${resolver}` });
-  }
-
-  try {
-    const resolvedIps = await dns.promises.resolve4(resolver);
-    if (resolvedIps.some((ip) => isPrivateIp(ip)) && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
-      throw new BadRequestError({ message: "DNS resolver resolves to a private/internal IP address" });
-    }
-  } catch (e) {
-    if (e instanceof BadRequestError) throw e;
-    throw new BadRequestError({
-      message: `DNS resolver "${resolver}" could not be resolved. Please provide a valid IP address or resolvable hostname.`
-    });
+  if (isPrivateIp(resolver) && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
+    throw new BadRequestError({ message: "Private/internal IP addresses are not allowed as DNS resolvers" });
   }
 };
 
@@ -257,8 +240,7 @@ const waitForDnsPropagation = async (
 
   const resolver = new dns.promises.Resolver();
   if (dnsResolver) {
-    const resolverIp = net.isIP(dnsResolver) ? dnsResolver : (await dns.promises.resolve4(dnsResolver))[0];
-    resolver.setServers([resolverIp]);
+    resolver.setServers([dnsResolver]);
   }
 
   while (attempts < DNS_PROPAGATION_MAX_RETRIES) {
@@ -694,7 +676,7 @@ export const AcmeCertificateAuthorityFns = ({
     }
 
     if (dnsResolver) {
-      await validateDnsResolver(dnsResolver);
+      validateDnsResolver(dnsResolver);
     }
 
     // validates permission to connect
@@ -808,7 +790,7 @@ export const AcmeCertificateAuthorityFns = ({
         }
 
         if (dnsResolver) {
-          await validateDnsResolver(dnsResolver);
+          validateDnsResolver(dnsResolver);
         }
 
         const ca = await certificateAuthorityDAL.findById(id);
