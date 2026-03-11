@@ -221,7 +221,7 @@ export const fnSecretBulkUpdate = async ({
     })
   );
 
-  const allHaveIds = sanitizedInputSecrets.every((s): s is typeof s & { filter: { id: string } } => !!s.filter.id);
+  // const allHaveIds = sanitizedInputSecrets.every((s): s is typeof s & { filter: { id: string } } => !!s.filter.id);
   const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
   const versionData = newSecrets.map(
     ({ skipMultilineEncoding, type, key, userId, encryptedComment, version, encryptedValue, id: secretId }, index) => ({
