@@ -319,8 +319,7 @@ export const membershipIdentityServiceFactory = ({
         );
       }
 
-      const insertedRoleDocs =
-        rolesToInsert.length > 0 ? await membershipRoleDAL.insertMany(rolesToInsert, tx) : [];
+      const insertedRoleDocs = rolesToInsert.length > 0 ? await membershipRoleDAL.insertMany(rolesToInsert, tx) : [];
 
       // Return all roles: kept existing ones + newly inserted ones
       const keptRoles = existingRoles.filter((er) => keptRoleIds.includes(er.id));
