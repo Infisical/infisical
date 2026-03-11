@@ -55,11 +55,12 @@ export const SelectOrganizationSection = () => {
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
   const willAutoSelectDefaultOrg = useMemo(() => {
-    if (!defaultSelectedOrg || callbackPort) return false;
-    if (orgsWithSubOrgs.isPending) return true;
+    if (!defaultSelectedOrg || callbackPort || orgsWithSubOrgs.isPending) return false;
     const orgEntry = orgsWithSubOrgs.data?.find((o) => o.id === defaultSelectedOrg.id);
     return (orgEntry?.subOrganizations.length ?? 0) === 0;
   }, [defaultSelectedOrg, callbackPort, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
+
+  const isLoadingSubOrgCheck = !!defaultSelectedOrg && !callbackPort && orgsWithSubOrgs.isPending;
 
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
@@ -499,7 +500,7 @@ export const SelectOrganizationSection = () => {
   if (
     userLoading ||
     !user ||
-    ((isInitialOrgCheckLoading || willAutoSelectDefaultOrg) && !shouldShowMfa)
+    ((isInitialOrgCheckLoading || willAutoSelectDefaultOrg || isLoadingSubOrgCheck) && !shouldShowMfa)
   ) {
     return (
       <div className="h-screen w-screen bg-bunker-800">
