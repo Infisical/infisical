@@ -148,7 +148,7 @@ export const SelectionPanel = ({
               secrets: [],
               folders: folderDeletes
             },
-            message: ""
+            message: `Deleted ${folderDeletes.length} folder${folderDeletes.length === 1 ? "" : "s"}`
           });
         }
       }
