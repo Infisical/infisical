@@ -364,9 +364,10 @@ export const secretApprovalRequestServiceFactory = ({
         secretKey: el.key,
         id: el.id,
         version: el.version,
-        secretMetadata: (
-          el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[] | null
-        )?.map((meta) => ({
+        secretMetadata: (Array.isArray(el.secretMetadata)
+          ? (el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[])
+          : []
+        ).map((meta) => ({
           key: meta.key,
           isEncrypted: Boolean(meta.encryptedValue),
           value: meta.encryptedValue
@@ -743,9 +744,10 @@ export const secretApprovalRequestServiceFactory = ({
                   encryptedValue: el.encryptedValue,
                   skipMultilineEncoding: el.skipMultilineEncoding,
                   key: el.key,
-                  secretMetadata: (
-                    el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
-                  )?.map((meta) => ({
+                  secretMetadata: (Array.isArray(el.secretMetadata)
+                    ? (el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[])
+                    : []
+                  ).map((meta) => ({
                     key: meta.key,
                     [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
                       ? Buffer.from(meta.encryptedValue, "base64")
@@ -854,9 +856,10 @@ export const secretApprovalRequestServiceFactory = ({
                     skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                     key: el.key,
                     tags: el?.tags.map(({ id }) => id),
-                    secretMetadata: (
-                      el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
-                    )?.map((meta) => ({
+                    secretMetadata: (Array.isArray(el.secretMetadata)
+                      ? (el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[])
+                      : []
+                    ).map((meta) => ({
                       key: meta.key,
                       [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
                         ? Buffer.from(meta.encryptedValue, "base64")
@@ -1937,12 +1940,19 @@ export const secretApprovalRequestServiceFactory = ({
       const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, deletedSecretIds);
       commits.push(
         ...deletedSecrets.map(({ secretKey }) => {
-          const secretId = secretsGroupedByKey[secretKey][0].id;
+          const secret = secretsGroupedByKey[secretKey][0];
+          const secretId = secret.id;
           const { metadata, ...el } = latestSecretVersions[secretId];
           return {
             op: SecretOperations.Delete as const,
             ...el,
-            secretMetadata: JSON.stringify(metadata || []),
+            secretMetadata: JSON.stringify(
+              (secret.secretMetadata || []).map((meta) => ({
+                key: meta.key,
+                value: meta.value || undefined,
+                encryptedValue: meta.encryptedValue?.toString("base64") || undefined
+              }))
+            ),
             key: secretKey,
             secret: secretId,
             secretVersion: latestSecretVersions[secretId].id

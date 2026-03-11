@@ -3623,7 +3623,10 @@ export const secretV2BridgeServiceFactory = ({
           secretPath,
           {
             ...el,
-            secretMetadata: (el.metadata as { key: string; value?: string; encryptedValue: string }[])?.map((meta) => ({
+            secretMetadata: (Array.isArray(el.metadata)
+              ? (el.metadata as { key: string; value?: string; encryptedValue: string }[])
+              : []
+            ).map((meta) => ({
               isEncrypted: Boolean(meta.encryptedValue),
               key: meta.key,
               value: meta.encryptedValue

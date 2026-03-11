@@ -50,6 +50,12 @@ export enum PostHogEventTypes {
   AccessApprovalPolicyDeleted = "Access Approval Policy Deleted",
   AccessApprovalRequestCreated = "Access Approval Request Created",
   AccessApprovalRequestReviewed = "Access Approval Request Reviewed"
+  SecretSyncCreated = "Secret Sync Created",
+  SecretSyncDeleted = "Secret Sync Deleted",
+  DynamicSecretCreated = "Dynamic Secret Created",
+  DynamicSecretDeleted = "Dynamic Secret Deleted",
+  DynamicSecretLeaseCreated = "Dynamic Secret Lease Created",
+  DynamicSecretLeaseRenewed = "Dynamic Secret Lease Renewed"
 }
 
 export type TSecretModifiedEvent = {
@@ -396,6 +402,75 @@ export type TAccessApprovalRequestReviewedEvent = {
     requestId: string;
     projectId: string;
     reviewStatus: string;
+export type TSecretSyncCreatedEvent = {
+  event: PostHogEventTypes.SecretSyncCreated;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isAutoSyncEnabled: boolean;
+  };
+};
+
+export type TSecretSyncDeletedEvent = {
+  event: PostHogEventTypes.SecretSyncDeleted;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    removeSecrets: boolean;
+  };
+};
+
+export type TDynamicSecretCreatedEvent = {
+  event: PostHogEventTypes.DynamicSecretCreated;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    defaultTTL: string;
+    maxTTL?: string | null;
+    hasGateway: boolean;
+  };
+};
+
+export type TDynamicSecretDeletedEvent = {
+  event: PostHogEventTypes.DynamicSecretDeleted;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isForced: boolean;
+  };
+};
+
+export type TDynamicSecretLeaseCreatedEvent = {
+  event: PostHogEventTypes.DynamicSecretLeaseCreated;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    dynamicSecretId: string;
+    ttl: string;
+  };
+};
+
+export type TDynamicSecretLeaseRenewedEvent = {
+  event: PostHogEventTypes.DynamicSecretLeaseRenewed;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    dynamicSecretId: string;
+    ttl: string;
   };
 };
 
@@ -431,4 +506,10 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TAccessApprovalPolicyDeletedEvent
   | TAccessApprovalRequestCreatedEvent
   | TAccessApprovalRequestReviewedEvent
+  | TSecretSyncCreatedEvent
+  | TSecretSyncDeletedEvent
+  | TDynamicSecretCreatedEvent
+  | TDynamicSecretDeletedEvent
+  | TDynamicSecretLeaseCreatedEvent
+  | TDynamicSecretLeaseRenewedEvent
 );
