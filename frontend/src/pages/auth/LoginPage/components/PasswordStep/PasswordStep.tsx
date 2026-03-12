@@ -163,7 +163,7 @@ export const PasswordStep = ({
                 JTWToken: token
               };
               await instance.post(cliUrl, payload).catch(() => {
-                // if error happens to communicate we set the token with an expiry in session storage
+                // if error happens to communicate we set the token with an expiry in sessino storage
                 // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
                 sessionStorage.setItem(
                   SessionStorageKeys.CLI_TERMINAL_TOKEN,
@@ -184,9 +184,12 @@ export const PasswordStep = ({
           // if the user has no orgs, navigate to the create org page
           const userOrgs = await fetchOrganizations();
 
+          // case: user has orgs, so we navigate the user to select an org
           if (userOrgs.length > 0) {
             navigateToSelectOrganization(callbackPort, isAdminLogin);
-          } else {
+          }
+          // case: no orgs found, so we navigate the user to create an org
+          else {
             await navigateUserToOrg({ navigate });
           }
         }
