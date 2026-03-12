@@ -109,7 +109,6 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
 
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
-    keyStore,
     kmsDAL,
     internalKmsDAL,
     orgDAL,

@@ -26,7 +26,7 @@ import {
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { getAuthToken, isLoggedIn } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
-import { AuthMethod } from "@app/hooks/api/users/types";
+import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
 
@@ -53,6 +53,15 @@ export const SelectOrganizationSection = () => {
   const isAdminLogin = queryParams.get("is_admin_login") === "true";
   const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
+
+  const willAutoSelectDefaultOrg = useMemo(() => {
+    if (!defaultSelectedOrg || callbackPort || orgsWithSubOrgs.isPending) return false;
+    const orgEntry = orgsWithSubOrgs.data?.find((o) => o.id === defaultSelectedOrg.id);
+    return (orgEntry?.subOrganizations.length ?? 0) === 0;
+  }, [defaultSelectedOrg, callbackPort, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
+
+  const isLoadingSubOrgCheck =
+    Boolean(defaultSelectedOrg) && !callbackPort && orgsWithSubOrgs.isPending;
 
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
@@ -133,9 +142,13 @@ export const SelectOrganizationSection = () => {
             callbackPort ? `&callbackPort=${callbackPort}` : ""
           }`;
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
-          url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
-          if (callbackPort) {
-            url += `?callback_port=${callbackPort}`;
+          if (
+            !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
+          ) {
+            url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
+            if (callbackPort) {
+              url += `?callback_port=${callbackPort}`;
+            }
           }
         }
 
@@ -282,10 +295,9 @@ export const SelectOrganizationSection = () => {
       orgsWithSubOrgs.data.length === 1 && orgsWithSubOrgs.data[0].subOrganizations.length === 0;
 
     if (onlyOneRootOrgWithNoSubOrgs) {
-      if (callbackPort) {
-        handleCliRedirect();
-        setIsInitialOrgCheckLoading(false);
-      } else {
+      // CLI flow (callbackPort) or no org_id in URL: auto-select the only org.
+      // When defaultSelectedOrg is set without callbackPort, willAutoSelectDefaultOrg handles selection via the second useEffect.
+      if (callbackPort || !defaultSelectedOrg) {
         handleSelectOrganization(organizations.data[0]);
       }
     } else {
@@ -295,7 +307,8 @@ export const SelectOrganizationSection = () => {
     organizations.isPending,
     organizations.data,
     orgsWithSubOrgs.isPending,
-    orgsWithSubOrgs.data
+    orgsWithSubOrgs.data,
+    defaultSelectedOrg
   ]);
 
   useEffect(() => {
@@ -311,10 +324,10 @@ export const SelectOrganizationSection = () => {
       }
     }
 
-    if (defaultSelectedOrg) {
+    if (willAutoSelectDefaultOrg && defaultSelectedOrg) {
       handleSelectOrganization(defaultSelectedOrg);
     }
-  }, [defaultSelectedOrg, mfaPending]);
+  }, [defaultSelectedOrg, mfaPending, willAutoSelectDefaultOrg]);
 
   const renderListContent = () => {
     if (orgsWithSubOrgs.isPending) {
@@ -492,7 +505,8 @@ export const SelectOrganizationSection = () => {
   if (
     userLoading ||
     !user ||
-    ((isInitialOrgCheckLoading || defaultSelectedOrg) && !shouldShowMfa)
+    ((isInitialOrgCheckLoading || willAutoSelectDefaultOrg || isLoadingSubOrgCheck) &&
+      !shouldShowMfa)
   ) {
     return (
       <div className="h-screen w-screen bg-bunker-800">

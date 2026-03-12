@@ -9,12 +9,16 @@ import {
   TIdentityAwsAuths,
   TIdentityAzureAuths,
   TIdentityGcpAuths,
+  TIdentityJwtAuths,
   TIdentityKubernetesAuths,
   TIdentityOciAuths,
   TIdentityOidcAuths,
+  TIdentitySpiffeAuths,
+  TIdentityTlsCertAuths,
   TIdentityTokenAuths,
   TIdentityUniversalAuths
 } from "@app/db/schemas";
+import { TIdentityLdapAuths } from "@app/db/schemas/identity-ldap-auths";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
@@ -81,6 +85,26 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityTokenAuth}.identityId`
         )
+        .leftJoin(
+          TableName.IdentityJwtAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityJwtAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityLdapAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityLdapAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityTlsCertAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentityTlsCertAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentitySpiffeAuth,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.IdentitySpiffeAuth}.identityId`
+        )
 
         .select(
           db.ref("id").withSchema(TableName.Membership),
@@ -112,7 +136,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
-          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth)
+          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
+          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
+          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
+          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
+          db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
         );
 
       const members = sqlNestRelationships({
@@ -127,6 +155,10 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           oidcId,
           azureId,
           tokenId,
+          jwtId,
+          ldapId,
+          tlsCertId,
+          spiffeId,
           id,
           createdAt,
           updatedAt,
@@ -149,7 +181,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
               kubernetesId,
               oidcId,
               azureId,
-              tokenId
+              tokenId,
+              jwtId,
+              ldapId,
+              tlsCertId,
+              spiffeId
             })
           },
           project: {
@@ -285,6 +321,26 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           `${TableName.Identity}.id`,
           `${TableName.IdentityTokenAuth}.identityId`
         )
+        .leftJoin<TIdentityJwtAuths>(
+          TableName.IdentityJwtAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityJwtAuth}.identityId`
+        )
+        .leftJoin<TIdentityLdapAuths>(
+          TableName.IdentityLdapAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityLdapAuth}.identityId`
+        )
+        .leftJoin<TIdentityTlsCertAuths>(
+          TableName.IdentityTlsCertAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityTlsCertAuth}.identityId`
+        )
+        .leftJoin<TIdentitySpiffeAuths>(
+          TableName.IdentitySpiffeAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentitySpiffeAuth}.identityId`
+        )
 
         .select(
           db.ref("id").withSchema(TableName.Membership),
@@ -317,7 +373,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
           db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
-          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth)
+          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
+          db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
+          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
+          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
+          db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
         );
 
       // TODO: scott - joins seem to reorder identities so need to order again, for the sake of urgency will optimize at a later point
@@ -349,6 +409,10 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           oidcId,
           azureId,
           tokenId,
+          jwtId,
+          ldapId,
+          tlsCertId,
+          spiffeId,
           id,
           createdAt,
           updatedAt,
@@ -374,7 +438,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
               ociId,
               oidcId,
               azureId,
-              tokenId
+              tokenId,
+              jwtId,
+              ldapId,
+              tlsCertId,
+              spiffeId
             })
           },
           // TODO: scott - not sure why these aren't properly typed?
