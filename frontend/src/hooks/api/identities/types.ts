@@ -833,6 +833,81 @@ export type DeleteIdentityJwtAuthDTO = {
   identityId: string;
 } & ({ organizationId: string } | { projectId: string });
 
+export type SpiffeTrustBundleDistributionInput =
+  | {
+      profile: "static";
+      bundle: string;
+    }
+  | {
+      profile: "https_web_bundle";
+      endpointUrl: string;
+      caCert?: string;
+      refreshHintSeconds?: number;
+    };
+
+export type SpiffeTrustBundleDistribution =
+  | {
+      profile: "static";
+      bundle: string;
+    }
+  | {
+      profile: "https_web_bundle";
+      endpointUrl: string;
+      caCert: string;
+      refreshHintSeconds: number;
+      cachedBundleLastRefreshedAt: string | null;
+    };
+
+export type IdentitySpiffeAuth = {
+  identityId: string;
+  trustDomain: string;
+  allowedSpiffeIds: string;
+  allowedAudiences: string;
+  trustBundleDistribution: SpiffeTrustBundleDistribution;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentitySpiffeAuthDTO = {
+  organizationId?: string;
+  projectId?: string;
+  identityId: string;
+  trustDomain: string;
+  allowedSpiffeIds: string;
+  allowedAudiences: string;
+  trustBundleDistribution: SpiffeTrustBundleDistributionInput;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+} & ({ organizationId: string } | { projectId: string });
+
+export type UpdateIdentitySpiffeAuthDTO = {
+  organizationId?: string;
+  projectId?: string;
+  identityId: string;
+  trustDomain?: string;
+  allowedSpiffeIds?: string;
+  allowedAudiences?: string;
+  trustBundleDistribution?: SpiffeTrustBundleDistributionInput;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+} & ({ organizationId: string } | { projectId: string });
+
+export type DeleteIdentitySpiffeAuthDTO = {
+  organizationId?: string;
+  projectId?: string;
+  identityId: string;
+} & ({ organizationId: string } | { projectId: string });
+
 export type CreateTokenIdentityTokenAuthDTO = {
   identityId: string;
   name: string;

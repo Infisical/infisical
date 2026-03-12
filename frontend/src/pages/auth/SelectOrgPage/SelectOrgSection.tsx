@@ -26,7 +26,7 @@ import {
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { getAuthToken, isLoggedIn } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
-import { AuthMethod } from "@app/hooks/api/users/types";
+import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
 
@@ -138,11 +138,17 @@ export const SelectOrganizationSection = () => {
             }
           }
         } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
-          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${callbackPort ? `&callbackPort=${callbackPort}` : ""}`;
+          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
+            callbackPort ? `&callbackPort=${callbackPort}` : ""
+          }`;
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
-          url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
-          if (callbackPort) {
-            url += `?callback_port=${callbackPort}`;
+          if (
+            !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
+          ) {
+            url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
+            if (callbackPort) {
+              url += `?callback_port=${callbackPort}`;
+            }
           }
         }
 
@@ -172,6 +178,8 @@ export const SelectOrganizationSection = () => {
           return;
         }
         throw error;
+      } finally {
+        setIsInitialOrgCheckLoading(false);
       }
 
       await router.invalidate();
@@ -181,11 +189,6 @@ export const SelectOrganizationSection = () => {
         if (mfaMethod) {
           setRequiredMfaMethod(mfaMethod);
         }
-        // Set loading to false only here so the MFA prompt can render.
-        // For navigation paths below we intentionally leave it true — the
-        // component unmounts on navigation and setting it false would cause
-        // a one-frame flash of the org selector before the route change lands.
-        setIsInitialOrgCheckLoading(false);
         toggleShowMfa.on();
         setMfaSuccessCallback(() => () => handleSelectOrganization(organization));
         return;

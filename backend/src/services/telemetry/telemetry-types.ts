@@ -10,6 +10,7 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { EnforcementLevel } from "@app/lib/types";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
@@ -49,6 +50,16 @@ export enum PostHogEventTypes {
   IssueCert = "Issue PKI Certificate",
   InvalidateCache = "Invalidate Cache",
   NotificationUpdated = "Notification Updated",
+  SecretApprovalPolicyCreated = "Secret Approval Policy Created",
+  SecretApprovalPolicyDeleted = "Secret Approval Policy Deleted",
+  SecretApprovalRequestSubmitted = "Secret Approval Request Submitted",
+  SecretApprovalRequestReviewed = "Secret Approval Request Reviewed",
+  SecretApprovalRequestStatusChanged = "Secret Approval Request Status Changed",
+  SecretApprovalRequestMerged = "Secret Approval Request Merged",
+  AccessApprovalPolicyCreated = "Access Approval Policy Created",
+  AccessApprovalPolicyDeleted = "Access Approval Policy Deleted",
+  AccessApprovalRequestCreated = "Access Approval Request Created",
+  AccessApprovalRequestReviewed = "Access Approval Request Reviewed",
   SecretSyncCreated = "Secret Sync Created",
   SecretSyncDeleted = "Secret Sync Deleted",
   DynamicSecretCreated = "Dynamic Secret Created",
@@ -362,6 +373,104 @@ export type TNotificationUpdatedEvent = {
   };
 };
 
+export type TSecretApprovalPolicyCreatedEvent = {
+  event: PostHogEventTypes.SecretApprovalPolicyCreated;
+  properties: {
+    policyId: string;
+    projectId: string;
+    environments: string[];
+    secretPath: string;
+    approvals: number;
+    enforcementLevel: EnforcementLevel;
+  };
+};
+
+export type TSecretApprovalPolicyDeletedEvent = {
+  event: PostHogEventTypes.SecretApprovalPolicyDeleted;
+  properties: {
+    policyId: string;
+    projectId: string;
+  };
+};
+
+export type TSecretApprovalRequestSubmittedEvent = {
+  event: PostHogEventTypes.SecretApprovalRequestSubmitted;
+  properties: {
+    requestId: string;
+    policyId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    numberOfCommits: number;
+  };
+};
+
+export type TSecretApprovalRequestReviewedEvent = {
+  event: PostHogEventTypes.SecretApprovalRequestReviewed;
+  properties: {
+    requestId: string;
+    projectId: string;
+    reviewStatus: string;
+  };
+};
+
+export type TSecretApprovalRequestStatusChangedEvent = {
+  event: PostHogEventTypes.SecretApprovalRequestStatusChanged;
+  properties: {
+    requestId: string;
+    projectId: string;
+    status: string;
+  };
+};
+
+export type TSecretApprovalRequestMergedEvent = {
+  event: PostHogEventTypes.SecretApprovalRequestMerged;
+  properties: {
+    requestId: string;
+    projectId: string;
+    requestSlug: string;
+  };
+};
+
+export type TAccessApprovalPolicyCreatedEvent = {
+  event: PostHogEventTypes.AccessApprovalPolicyCreated;
+  properties: {
+    policyId: string;
+    projectId: string;
+    environments: string[];
+    secretPath: string;
+    approvals: number;
+    enforcementLevel: EnforcementLevel;
+  };
+};
+
+export type TAccessApprovalPolicyDeletedEvent = {
+  event: PostHogEventTypes.AccessApprovalPolicyDeleted;
+  properties: {
+    policyId: string;
+    projectId: string;
+  };
+};
+
+export type TAccessApprovalRequestCreatedEvent = {
+  event: PostHogEventTypes.AccessApprovalRequestCreated;
+  properties: {
+    requestId: string;
+    projectId: string;
+    isTemporary: boolean;
+    temporaryRange?: string;
+  };
+};
+
+export type TAccessApprovalRequestReviewedEvent = {
+  event: PostHogEventTypes.AccessApprovalRequestReviewed;
+  properties: {
+    requestId: string;
+    projectId: string;
+    reviewStatus: string;
+  };
+};
+
 export type TSecretSyncCreatedEvent = {
   event: PostHogEventTypes.SecretSyncCreated;
   properties: {
@@ -462,6 +571,16 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TIssueCertificateEvent
   | TInvalidateCacheEvent
   | TNotificationUpdatedEvent
+  | TSecretApprovalPolicyCreatedEvent
+  | TSecretApprovalPolicyDeletedEvent
+  | TSecretApprovalRequestSubmittedEvent
+  | TSecretApprovalRequestReviewedEvent
+  | TSecretApprovalRequestStatusChangedEvent
+  | TSecretApprovalRequestMergedEvent
+  | TAccessApprovalPolicyCreatedEvent
+  | TAccessApprovalPolicyDeletedEvent
+  | TAccessApprovalRequestCreatedEvent
+  | TAccessApprovalRequestReviewedEvent
   | TSecretSyncCreatedEvent
   | TSecretSyncDeletedEvent
   | TDynamicSecretCreatedEvent
