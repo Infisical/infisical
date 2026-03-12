@@ -112,7 +112,9 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
             authMethod: IdentityAuthMethod.TOKEN_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTokenAuth.identityId}]`);
+        });
 
       return {
         identityTokenAuth
@@ -212,7 +214,9 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
             authMethod: IdentityAuthMethod.TOKEN_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTokenAuth.identityId}]`);
+        });
 
       return {
         identityTokenAuth
@@ -328,7 +332,9 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
             authMethod: IdentityAuthMethod.TOKEN_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTokenAuth.identityId}]`);
+        });
 
       return { identityTokenAuth };
     }
@@ -402,7 +408,9 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
             orgId: identity.orgId
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTokenAuth.identityId}]`);
+        });
 
       return {
         accessToken,
@@ -679,7 +687,9 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
             orgId: req.permission.orgId
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${revokedToken.identityId}]`);
+        });
 
       return {
         message: "Successfully revoked access token"

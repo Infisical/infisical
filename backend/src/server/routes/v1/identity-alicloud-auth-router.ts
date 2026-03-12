@@ -106,7 +106,9 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
             authMethod: IdentityAuthMethod.ALICLOUD_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityAliCloudAuth.identityId}]`);
+        });
 
       return {
         accessToken,
@@ -217,7 +219,9 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
             authMethod: IdentityAuthMethod.ALICLOUD_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityAliCloudAuth.identityId}]`);
+        });
 
       return { identityAliCloudAuth };
     }
@@ -323,7 +327,9 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
             authMethod: IdentityAuthMethod.ALICLOUD_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityAliCloudAuth.identityId}]`);
+        });
 
       return { identityAliCloudAuth };
     }
@@ -435,7 +441,9 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
             authMethod: IdentityAuthMethod.ALICLOUD_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityAliCloudAuth.identityId}]`);
+        });
 
       return { identityAliCloudAuth };
     }

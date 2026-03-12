@@ -177,7 +177,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
             hasDeleteProtection: identity.hasDeleteProtection
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identity.id}]`);
+        });
 
       return { identity };
     }
@@ -240,7 +242,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
             orgId: identity.orgId
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identity.id}]`);
+        });
 
       return { identity };
     }

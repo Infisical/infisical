@@ -216,7 +216,9 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${authIdentityId}]`);
+        });
 
       return {
         accessToken,
@@ -426,7 +428,9 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityLdapAuth.identityId}]`);
+        });
 
       return { identityLdapAuth };
     }
@@ -561,7 +565,9 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityLdapAuth.identityId}]`);
+        });
 
       return { identityLdapAuth };
     }
@@ -687,7 +693,9 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityLdapAuth.identityId}]`);
+        });
 
       return { identityLdapAuth };
     }

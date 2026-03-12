@@ -89,7 +89,9 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             authMethod: IdentityAuthMethod.KUBERNETES_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityKubernetesAuth.identityId}]`);
+        });
 
       return {
         accessToken,
@@ -255,7 +257,9 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             authMethod: IdentityAuthMethod.KUBERNETES_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityKubernetesAuth.identityId}]`);
+        });
 
       return { identityKubernetesAuth: IdentityKubernetesAuthResponseSchema.parse(identityKubernetesAuth) };
     }
@@ -412,7 +416,9 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             authMethod: IdentityAuthMethod.KUBERNETES_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityKubernetesAuth.identityId}]`);
+        });
 
       return { identityKubernetesAuth };
     }
@@ -528,7 +534,9 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             authMethod: IdentityAuthMethod.KUBERNETES_AUTH
           }
         })
-        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityKubernetesAuth.identityId}]`);
+        });
 
       return { identityKubernetesAuth };
     }
