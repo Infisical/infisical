@@ -15,6 +15,7 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 const AzureEntraIdScimSyncDestinationConfigSchema = z.object({
   servicePrincipalId: z
     .string()
+    .uuid()
     .trim()
     .min(1, "Service Principal ID required")
     .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_ENTRA_ID_SCIM.servicePrincipalId),

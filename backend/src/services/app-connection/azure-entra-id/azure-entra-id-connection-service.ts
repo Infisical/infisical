@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { request } from "@app/lib/config/request";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -39,7 +41,7 @@ const SCIM_SERVICE_PRINCIPALS_LIMIT = 5;
 
 export const azureEntraIdConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
   const listScimServicePrincipals = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
@@ -55,7 +57,10 @@ export const azureEntraIdConnectionService = (
     let url = `https://graph.microsoft.com/v1.0/servicePrincipals?$top=${SCIM_SERVICE_PRINCIPALS_LIMIT}&$select=id,displayName,appId`;
 
     if (search) {
-      url += `&$filter=startswith(displayName,'${encodeURIComponent(search)}')`;
+      const sanitizedSearch = search.replace(new RE2(/[^a-zA-Z0-9 -]/g), "");
+      if (sanitizedSearch) {
+        url += `&$filter=startswith(displayName,'${sanitizedSearch}')`;
+      }
     }
 
     const { data }: { data: TAzureServicePrincipalsResponse } = await request.get(url, { headers });
