@@ -82,11 +82,13 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         ...req.auditLogInfo,
         event: {
           type: EventType.ADD_BATCH_PROJECT_MEMBER,
-          metadata: memberships.map(({ actorUserId, id }) => ({
-            userId: actorUserId || "",
-            membershipId: id,
-            email: ""
-          }))
+          metadata: {
+            members: memberships.map(({ actorUserId, id }) => ({
+              userId: actorUserId || "",
+              membershipId: id,
+              email: ""
+            }))
+          }
         }
       });
 

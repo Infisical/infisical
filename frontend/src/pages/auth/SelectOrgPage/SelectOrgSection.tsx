@@ -13,7 +13,6 @@ import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin"
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -26,7 +25,7 @@ import {
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { getAuthToken, isLoggedIn } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
-import { AuthMethod } from "@app/hooks/api/users/types";
+import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
 
@@ -50,7 +49,7 @@ export const SelectOrganizationSection = () => {
   const queryParams = new URLSearchParams(window.location.search);
   const orgId = queryParams.get("org_id");
   const callbackPort = queryParams.get("callback_port");
-  const isAdminLogin = queryParams.get("is_admin_login") === "true";
+  const isBreakglassRoute = queryParams.get("is_admin_login") === "true";
   const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
@@ -106,24 +105,14 @@ export const SelectOrganizationSection = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      const isUserOrgAdmin = organization.userRole === OrgMembershipRole.Admin;
-      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isUserOrgAdmin && isAdminLogin;
+      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isBreakglassRoute;
 
-      if (isAdminLogin) {
-        if (!organization.bypassOrgAuthEnabled) {
-          createNotification({
-            text: "This organization does not have bypass org auth enabled",
-            type: "error"
-          });
-          return;
-        }
-        if (!isUserOrgAdmin) {
-          createNotification({
-            text: "Only organization admins can bypass org auth",
-            type: "error"
-          });
-          return;
-        }
+      if (isBreakglassRoute && !organization.bypassOrgAuthEnabled) {
+        createNotification({
+          text: "This organization does not have bypass org auth enabled",
+          type: "error"
+        });
+        return;
       }
 
       if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
@@ -138,11 +127,17 @@ export const SelectOrganizationSection = () => {
             }
           }
         } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
-          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${callbackPort ? `&callbackPort=${callbackPort}` : ""}`;
+          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
+            callbackPort ? `&callbackPort=${callbackPort}` : ""
+          }`;
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
-          url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
-          if (callbackPort) {
-            url += `?callback_port=${callbackPort}`;
+          if (
+            !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
+          ) {
+            url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
+            if (callbackPort) {
+              url += `?callback_port=${callbackPort}`;
+            }
           }
         }
 
@@ -172,6 +167,8 @@ export const SelectOrganizationSection = () => {
           return;
         }
         throw error;
+      } finally {
+        setIsInitialOrgCheckLoading(false);
       }
 
       await router.invalidate();
@@ -181,11 +178,6 @@ export const SelectOrganizationSection = () => {
         if (mfaMethod) {
           setRequiredMfaMethod(mfaMethod);
         }
-        // Set loading to false only here so the MFA prompt can render.
-        // For navigation paths below we intentionally leave it true — the
-        // component unmounts on navigation and setting it false would cause
-        // a one-frame flash of the org selector before the route change lands.
-        setIsInitialOrgCheckLoading(false);
         toggleShowMfa.on();
         setMfaSuccessCallback(() => () => handleSelectOrganization(organization));
         return;

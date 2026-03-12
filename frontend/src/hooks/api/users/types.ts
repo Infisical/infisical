@@ -1,6 +1,15 @@
 import { MfaMethod } from "../auth/types";
 import { ProjectType, ProjectUserMembershipTemporaryMode } from "../projects/types";
 
+export const SAML_AUTH_METHODS = [
+  "okta-saml",
+  "azure-saml",
+  "jumpcloud-saml",
+  "keycloak-saml",
+  "google-saml",
+  "saml"
+] as const;
+
 export enum AuthMethod {
   EMAIL = "email",
   GOOGLE = "google",
@@ -10,6 +19,7 @@ export enum AuthMethod {
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
+  GOOGLE_SAML = "google-saml",
   LDAP = "ldap",
   OIDC = "oidc",
   SAML = "saml"

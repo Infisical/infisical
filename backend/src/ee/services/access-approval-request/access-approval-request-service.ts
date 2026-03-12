@@ -310,7 +310,7 @@ export const accessApprovalRequestServiceFactory = ({
       return approvalRequest;
     });
 
-    return { request: approval };
+    return { request: approval, projectId: project.id };
   };
 
   const updateAccessApprovalRequest: TAccessApprovalRequestServiceFactory["updateAccessApprovalRequest"] = async ({
@@ -803,7 +803,7 @@ export const accessApprovalRequestServiceFactory = ({
       return reviewForThisActorProcessing;
     });
 
-    return reviewStatus;
+    return { ...reviewStatus, projectId: accessApprovalRequest.projectId };
   };
 
   const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({

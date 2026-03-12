@@ -66,6 +66,8 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -157,6 +159,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -190,7 +193,8 @@ export const secretApprovalRequestServiceFactory = ({
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
   folderCommitService,
-  notificationService
+  notificationService,
+  telemetryService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({
     projectId,
@@ -1660,6 +1664,22 @@ export const secretApprovalRequestServiceFactory = ({
       notificationService
     });
 
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestSubmitted,
+        distinctId: user.username ?? user.email ?? actorId,
+        organizationId: actorOrgId,
+        properties: {
+          requestId: secretApprovalRequest.id,
+          policyId: policy.id,
+          projectId,
+          environment,
+          secretPath,
+          numberOfCommits: commits.length
+        }
+      })
+      .catch(() => {});
+
     return secretApprovalRequest;
   };
 
@@ -2073,6 +2093,23 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       notificationService
     });
+
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestSubmitted,
+        distinctId: user.username ?? user.email ?? actorId,
+        organizationId: actorOrgId,
+        properties: {
+          requestId: secretApprovalRequest.id,
+          policyId: policy.id,
+          projectId,
+          environment,
+          secretPath,
+          numberOfCommits: commits.length
+        }
+      })
+      .catch(() => {});
+
     return secretApprovalRequest;
   };
 

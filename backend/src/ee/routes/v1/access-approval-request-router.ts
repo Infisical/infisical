@@ -4,8 +4,10 @@ import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema, Us
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const approvalRequestUser = z.object({ userId: z.string() }).merge(
   UsersSchema.pick({
@@ -57,7 +59,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { request } = await server.services.accessApprovalRequest.createAccessApprovalRequest({
+      const { request, projectId } = await server.services.accessApprovalRequest.createAccessApprovalRequest({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -68,6 +70,22 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         isTemporary: req.body.isTemporary,
         note: req.body.note
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalRequestCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            requestId: request.id,
+            projectId,
+            isTemporary: req.body.isTemporary,
+            ...(req.body.temporaryRange ? { temporaryRange: req.body.temporaryRange } : {}),
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
       return { approval: request };
     }
   });
@@ -196,7 +214,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const review = await server.services.accessApprovalRequest.reviewAccessRequest({
+      const { projectId, ...review } = await server.services.accessApprovalRequest.reviewAccessRequest({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -205,6 +223,20 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         status: req.body.status,
         bypassReason: req.body.bypassReason
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalRequestReviewed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            requestId: review.requestId,
+            projectId,
+            reviewStatus: req.body.status,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
 
       return { review };
     }

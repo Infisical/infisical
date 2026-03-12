@@ -25,7 +25,8 @@ export const MachineAuthenticationBrowser = () => {
     {"name": "OIDC Auth for SPIRE", "slug": "oidc-auth-spire", "path": "/documentation/platform/identities/oidc-auth/spire", "description": "Learn how to authenticate workloads using SPIFFE/SPIRE OIDC.", "category": "Token-based"},
     {"name": "TLS Certificate Auth", "slug": "tls-cert-auth", "path": "/documentation/platform/identities/tls-cert-auth", "description": "Learn how to authenticate machines using TLS client certificates.", "category": "Certificate-based"},
     {"name": "LDAP Auth", "slug": "ldap-auth-general", "path": "/documentation/platform/identities/ldap-auth/general", "description": "Learn how to authenticate machines using LDAP credentials.", "category": "Directory-based"},
-    {"name": "LDAP Auth for JumpCloud", "slug": "ldap-auth-jumpcloud", "path": "/documentation/platform/identities/ldap-auth/jumpcloud", "description": "Learn how to authenticate machines using JumpCloud LDAP.", "category": "Directory-based"}
+    {"name": "LDAP Auth for JumpCloud", "slug": "ldap-auth-jumpcloud", "path": "/documentation/platform/identities/ldap-auth/jumpcloud", "description": "Learn how to authenticate machines using JumpCloud LDAP.", "category": "Directory-based"},
+    {"name": "SPIFFE Auth", "slug": "spiffe-auth", "path": "/documentation/platform/identities/spiffe-auth", "description": "Learn how to authenticate workloads using SPIFFE JWT-SVIDs issued by SPIRE.", "category": "Certificate-based"}
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

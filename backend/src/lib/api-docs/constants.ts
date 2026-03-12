@@ -32,6 +32,7 @@ export enum ApiDocsTags {
   AzureAuth = "Azure Auth",
   KubernetesAuth = "Kubernetes Auth",
   JwtAuth = "JWT Auth",
+  SpiffeAuth = "SPIFFE Auth",
   OidcAuth = "OIDC Auth",
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
@@ -742,6 +743,61 @@ export const JWT_AUTH = {
   },
   REVOKE: {
     identityId: "The ID of the machine identity to revoke the auth method for."
+  }
+} as const;
+
+export const SPIFFE_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the machine identity to login.",
+    jwt: "The JWT-SVID token to authenticate with.",
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+  },
+  ATTACH: {
+    identityId: "The ID of the machine identity to attach the configuration onto.",
+    trustDomain: "The SPIFFE trust domain (e.g. prod.example.com).",
+    allowedSpiffeIds:
+      "Comma-separated list of allowed SPIFFE ID patterns. Supports picomatch glob patterns (e.g. spiffe://prod.example.com/**).",
+    allowedAudiences: "Comma-separated list of allowed audiences for JWT-SVID validation.",
+    trustBundleDistribution: {
+      profile:
+        "The trust bundle distribution profile. Must be one of: 'static' (admin uploads JWKS), 'https_web_bundle' (auto-refresh from HTTPS endpoint).",
+      bundle: "The JWKS JSON containing public keys for JWT-SVID verification. Required when profile is 'static'.",
+      endpointUrl:
+        "The SPIRE bundle endpoint URL for automatic trust bundle retrieval. Required when profile is 'https_web_bundle'.",
+      caCert:
+        "Optional PEM-encoded root CA certificate for verifying the bundle endpoint TLS connection. Defaults to system root CAs when not provided.",
+      refreshHintSeconds: "The interval in seconds between bundle refresh attempts. Defaults to 3600."
+    },
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the machine identity to update the auth method for.",
+    trustDomain: "The new SPIFFE trust domain.",
+    allowedSpiffeIds: "The new comma-separated list of allowed SPIFFE ID patterns.",
+    allowedAudiences: "The new comma-separated list of allowed audiences.",
+    trustBundleDistribution: {
+      profile: "The new trust bundle distribution profile.",
+      bundle: "The new JWKS JSON containing public keys.",
+      endpointUrl: "The new SPIRE bundle endpoint URL.",
+      caCert: "The new PEM-encoded CA certificate for the bundle endpoint.",
+      refreshHintSeconds: "The new interval in seconds between bundle refresh attempts."
+    },
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the machine identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the machine identity to revoke the auth method for."
+  },
+  REFRESH: {
+    identityId: "The ID of the machine identity to force-refresh the cached SPIFFE trust bundle for."
   }
 } as const;
 
