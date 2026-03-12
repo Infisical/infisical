@@ -11,6 +11,7 @@ import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { ChecklySyncDestinationCol } from "./ChecklySyncDestinationCol";
 import { ChefSyncDestinationCol } from "./ChefSyncDestinationCol";
 import { CircleCISyncDestinationCol } from "./CircleCISyncDestinationCol";
+import { KoyebSyncDestinationCol } from "./KoyebSyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
@@ -112,6 +113,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <OctopusDeploySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.CircleCI:
       return <CircleCISyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Koyeb:
+      return <KoyebSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

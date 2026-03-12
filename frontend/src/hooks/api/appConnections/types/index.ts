@@ -14,6 +14,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
+import { TKoyebConnection } from "./koyeb-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDbtConnection } from "./dbt-connection";
@@ -67,6 +68,7 @@ export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloudflare-connection";
+export * from "./koyeb-connection";
 export * from "./databricks-connection";
 export * from "./dbt-connection";
 export * from "./dns-made-easy-connection";
@@ -154,7 +156,8 @@ export type TAppConnection =
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
-  | TCircleCIConnection;
+  | TCircleCIConnection
+  | TKoyebConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

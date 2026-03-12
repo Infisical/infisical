@@ -1,0 +1,85 @@
+---
+title: "Koyeb Connection"
+description: "Learn how to configure a Koyeb Connection for Infisical."
+---
+
+Infisical supports the use of [API Keys](https://app.koyeb.com/settings/api) to connect with Koyeb.
+
+## Create a Koyeb API Key
+
+<Steps>
+    <Step title="Navigate to your Koyeb API settings">
+        In the Koyeb control panel, go to **Settings > API**.
+    </Step>
+    <Step title="Create a new API key">
+        Click **Create API key**, give it a name (e.g. `infisical-sync`), and click **Create**.
+    </Step>
+    <Step title="Save the API key">
+        Copy and store the generated API key — it will not be shown again.
+    </Step>
+</Steps>
+
+## Create a Koyeb Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, navigate to the **Organization Settings** page and select the **App Connections** tab.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select Koyeb Connection">
+                Click the **+ Add Connection** button and select the **Koyeb Connection** option from the available integrations.
+            </Step>
+            <Step title="Fill out the Koyeb Connection form">
+                Complete the Koyeb Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - The API Key from the earlier steps
+
+            </Step>
+            <Step title="Connection created">
+                After clicking **Connect to Koyeb**, your **Koyeb Connection** is established and ready to use with your Infisical project.
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Koyeb Connection, make an API request to the [Create Koyeb Connection](/api-reference/endpoints/app-connections/koyeb/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/koyeb \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-koyeb-connection",
+                    "method": "api-key",
+                    "credentials": {
+                        "apiKey": "[YOUR KOYEB API KEY]"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-koyeb-connection",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "app": "koyeb",
+              "method": "api-key",
+              "credentials": {}
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

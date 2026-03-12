@@ -21,6 +21,7 @@ import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
 import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
+import { KoyebSyncDestinationSection } from "./KoyebSyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
@@ -166,6 +167,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.CircleCI:
       DestinationComponents = <CircleCISyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Koyeb:
+      DestinationComponents = <KoyebSyncDestinationSection />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

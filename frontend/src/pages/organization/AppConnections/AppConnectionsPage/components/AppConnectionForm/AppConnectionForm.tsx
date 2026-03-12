@@ -23,6 +23,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
+import { KoyebConnectionForm } from "./KoyebConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
@@ -197,6 +198,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OpenRouterConnectionForm onSubmit={onSubmit} />;
     case AppConnection.CircleCI:
       return <CircleCIConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Koyeb:
+      return <KoyebConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -371,6 +374,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.CircleCI:
       return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Koyeb:
+      return <KoyebConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

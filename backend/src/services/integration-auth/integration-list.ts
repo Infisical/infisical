@@ -74,6 +74,7 @@ export enum IntegrationUrls {
   VERCEL_API_URL = "https://api.vercel.com",
   NETLIFY_API_URL = "https://api.netlify.com",
   RENDER_API_URL = "https://api.render.com",
+  KOYEB_API_URL = "https://app.koyeb.com/v1",
   RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2",
   FLYIO_API_URL = "https://api.fly.io/graphql",
   FLYIO_MACHINES_API_URL = "https://api.machines.dev/v1",

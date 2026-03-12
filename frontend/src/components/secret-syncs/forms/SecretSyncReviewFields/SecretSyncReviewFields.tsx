@@ -26,6 +26,7 @@ import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
+import { KoyebSyncReviewFields } from "./KoyebSyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
@@ -189,6 +190,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CircleCI:
       DestinationFieldsComponent = <CircleCISyncReviewFields />;
+      break;
+    case SecretSync.Koyeb:
+      DestinationFieldsComponent = <KoyebSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

@@ -65,6 +65,7 @@ import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/rai
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
+import { KoyebConnectionMethod } from "@app/hooks/api/appConnections/types/koyeb-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 
 export const APP_CONNECTION_MAP: Record<
@@ -150,7 +151,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Dbt]: { name: "DBT", image: "DBT.png" },
   [AppConnection.SMB]: { name: "SMB", image: "SMB.png", size: 50 },
   [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
-  [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" }
+  [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" },
+  [AppConnection.Koyeb]: { name: "Koyeb", image: "Koyeb.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -226,6 +228,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
+    case KoyebConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };
