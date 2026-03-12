@@ -1,8 +1,17 @@
 import { Knex } from "knex";
 
-import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TUsers, UserDeviceSchema } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TUsers,
+  UserDeviceSchema
+} from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
@@ -61,6 +70,7 @@ type TAuthLoginServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -74,7 +84,8 @@ export const authLoginServiceFactory = ({
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  keyStore
+  keyStore,
+  permissionService
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -553,8 +564,6 @@ export const authLoginServiceFactory = ({
 
     const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
 
-    const membershipRole = (await membershipRoleDAL.findOne({ membershipId: orgMembership.id })).role;
-
     let rootOrg = selectedOrg;
 
     if (isSubOrganization) {
@@ -586,11 +595,23 @@ export const authLoginServiceFactory = ({
       }
     }
 
+    const { permission } = await permissionService.getOrgPermission({
+      actor: ActorType.USER,
+      actorId: user.id,
+      orgId: rootOrg.id,
+      actorAuthMethod: decodedToken.authMethod,
+      actorOrgId: rootOrg.id,
+      scope: OrganizationActionScope.Any
+    });
+    const canBypassSso =
+      rootOrg.bypassOrgAuthEnabled &&
+      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+
     if (
       rootOrg.authEnforced &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
       decodedToken.authMethod !== AuthMethod.OIDC &&
-      !(rootOrg.bypassOrgAuthEnabled && membershipRole === OrgMembershipRole.Admin)
+      !canBypassSso
     ) {
       throw new BadRequestError({
         message: "Login with the auth method required by your organization."
@@ -598,9 +619,7 @@ export const authLoginServiceFactory = ({
     }
 
     if (rootOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
-      const canBypass = rootOrg.bypassOrgAuthEnabled && membershipRole === OrgMembershipRole.Admin;
-
-      if (!canBypass) {
+      if (!canBypassSso) {
         throw new ForbiddenRequestError({
           message: "Google SSO is enforced for this organization. Please use Google SSO to login.",
           error: "GoogleSsoEnforced"
@@ -655,14 +674,16 @@ export const authLoginServiceFactory = ({
       mfaMethod: decodedToken.mfaMethod
     });
 
-    // In the event of this being a break-glass request (non-saml / non-oidc, when either is enforced)
-    if (
+    // In the event of this being a break-glass request (non-saml / non-oidc / non-google, when any is enforced)
+    const isAuthEnforcedBypass =
       rootOrg.authEnforced &&
       rootOrg.bypassOrgAuthEnabled &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
       decodedToken.authMethod !== AuthMethod.OIDC &&
-      decodedToken.authMethod !== AuthMethod.GOOGLE
-    ) {
+      decodedToken.authMethod !== AuthMethod.GOOGLE;
+    const isGoogleSsoEnforcedBypass =
+      rootOrg.googleSsoAuthEnforced && rootOrg.bypassOrgAuthEnabled && decodedToken.authMethod !== AuthMethod.GOOGLE;
+    if (isAuthEnforcedBypass || isGoogleSsoEnforcedBypass) {
       await auditLogService.createAuditLog({
         orgId: organizationId,
         ipAddress,
@@ -697,14 +718,14 @@ export const authLoginServiceFactory = ({
               userId: admin.user.id,
               orgId: organizationId,
               type: NotificationType.ADMIN_SSO_BYPASS,
-              title: "Security Alert: Admin SSO Bypass",
-              body: `The org admin **${user.email}** has bypassed enforced SSO login.`
+              title: "Security Alert: SSO Bypass",
+              body: `The organization member **${user.email}** has bypassed enforced SSO login.`
             }))
         );
 
         await smtpService.sendMail({
           recipients: adminEmails,
-          subjectLine: "Security Alert: Admin SSO Bypass",
+          subjectLine: "Security Alert: SSO Bypass",
           substitutions: {
             email: user.email,
             timestamp: new Date().toISOString(),
