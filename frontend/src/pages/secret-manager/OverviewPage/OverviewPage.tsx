@@ -2662,14 +2662,14 @@ const OverviewPageContent = () => {
                                       >
                                         <button type="button" onClick={toggleBatchMode}>
                                           <GroupIcon />
-                                          Group Changes
+                                          Batch Edit Mode
                                         </button>
                                       </Badge>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                       {isOverviewBatchMode
-                                        ? "Changes are grouped together into a single transaction. Click to switch to singular editing."
-                                        : "Click to enable group changes. Changes will be grouped into a single transaction."}
+                                        ? "Changes are batched together into a single commit. Click to switch to single edit mode."
+                                        : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
