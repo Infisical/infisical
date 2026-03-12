@@ -639,6 +639,12 @@ export const SecretEditTableRow = ({
         });
       }
     }
+    // Update originalValueRef so batch mode auto-apply doesn't see stale data
+    // after an atomic save. Only for non-hidden secrets since hidden secrets
+    // never fetch sharedValueData.
+    if (isValueDirty && !secretValueHidden) {
+      originalValueRef.current = value ?? null;
+    }
     if (secretValueHidden) {
       setTimeout(() => {
         reset({
@@ -670,6 +676,9 @@ export const SecretEditTableRow = ({
       secretId,
       newSecretName: newKey
     });
+    if (!secretValueHidden) {
+      originalValueRef.current = secretValue;
+    }
     reset({
       value: secretValue,
       ...(isSingleEnvView ? { key: newKey || secretName } : {})
