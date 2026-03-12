@@ -82,7 +82,7 @@ export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncO
     return { ...rest, secretId: secret.id };
   }
 
-  // If no new secretKey provided but there's an existing secretId, validate it still exists in the (possibly new) folder
+  // If no new secretKey provided, preserve the existing secretId and validate it still exists in the (possibly new) folder
   const existingSecretId = existingSyncOptions?.secretId as string | undefined;
   if (existingSecretId) {
     const secret = await secretV2BridgeDAL.findOne({ id: existingSecretId, folderId });
@@ -92,6 +92,7 @@ export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncO
           "The previously configured secret no longer exists in the source folder. Please re-specify syncOptions.secretKey."
       });
     }
+    return { ...syncOptions, secretId: existingSecretId };
   }
 
   return syncOptions;

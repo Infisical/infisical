@@ -35,6 +35,7 @@ const AzureEntraIdScimSyncOptionsReadSchema = z.object({
   secretId: z
     .string()
     .uuid()
+    .optional()
     .describe("The ID of the Infisical secret whose value will be used as the SCIM provisioning token.")
 });
 
@@ -68,7 +69,7 @@ export const CreateAzureEntraIdScimSyncSchema = GenericCreateSecretSyncFieldsSch
 export const UpdateAzureEntraIdScimSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.AzureEntraIdScim,
   AzureEntraIdScimSyncOptionsConfig,
-  AzureEntraIdScimSyncOptionsInputSchema
+  AzureEntraIdScimSyncOptionsInputSchema.partial()
 ).extend({
   destinationConfig: AzureEntraIdScimSyncDestinationConfigSchema.optional()
 });
