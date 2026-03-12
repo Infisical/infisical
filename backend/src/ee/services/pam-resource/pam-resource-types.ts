@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-duplicate-type-constituents */
 import { z } from "zod";
 
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
@@ -99,9 +100,7 @@ export type TPamAccount =
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | TMySQLAccountCredentials
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | TMsSQLAccountCredentials
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials
