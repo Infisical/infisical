@@ -64,21 +64,37 @@ export const AzureEntraIdScimSyncFns = {
   }
 };
 
-// Resolves secretKey (name) to secretId (UUID) before saving
+// Resolves secret key to secret ID before saving.
+// On update, if the source folder changed but no new secretKey was provided, will validate that the existing secret still exists in the new folder.
 export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncOptionsFn = async (
-  { syncOptions, folderId },
+  { syncOptions, existingSyncOptions, folderId },
   { secretV2BridgeDAL }
 ) => {
-  if (!syncOptions || !("secretKey" in syncOptions)) return syncOptions;
-
-  const { secretKey, ...rest } = syncOptions;
-  const secret = await secretV2BridgeDAL.findOne({ key: secretKey as string, folderId });
-  if (!secret) {
-    throw new BadRequestError({
-      message: `Secret with key "${secretKey as string}" not found in the specified source folder`
-    });
+  // If a new secretKey is provided, resolve it to a secretId
+  if (syncOptions && "secretKey" in syncOptions) {
+    const { secretKey, ...rest } = syncOptions;
+    const secret = await secretV2BridgeDAL.findOne({ key: secretKey as string, folderId });
+    if (!secret) {
+      throw new BadRequestError({
+        message: `Secret with key "${secretKey as string}" not found in the specified source folder`
+      });
+    }
+    return { ...rest, secretId: secret.id };
   }
-  return { ...rest, secretId: secret.id };
+
+  // If no new secretKey provided but there's an existing secretId, validate it still exists in the (possibly new) folder
+  const existingSecretId = existingSyncOptions?.secretId as string | undefined;
+  if (existingSecretId) {
+    const secret = await secretV2BridgeDAL.findOne({ id: existingSecretId, folderId });
+    if (!secret) {
+      throw new BadRequestError({
+        message:
+          "The previously configured secret no longer exists in the source folder. Please re-specify syncOptions.secretKey."
+      });
+    }
+  }
+
+  return syncOptions;
 };
 
 // Fetches service principal display name from Azure Graph API and stores it in destinationConfig

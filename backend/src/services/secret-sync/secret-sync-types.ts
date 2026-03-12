@@ -490,6 +490,7 @@ export type TPreSaveTransformDeps = {
 
 export type TPreSaveTransformSyncOptionsParams = {
   syncOptions: Record<string, unknown> | undefined;
+  existingSyncOptions?: Record<string, unknown>;
   folderId: string;
 };
 

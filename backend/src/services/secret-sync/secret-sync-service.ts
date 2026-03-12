@@ -566,7 +566,11 @@ export const secretSyncServiceFactory = ({
     const resolvedSyncOptions = folderId
       ? await preSaveTransformSyncOptions(
           destination,
-          { syncOptions: params.syncOptions as Record<string, unknown> | undefined, folderId },
+          {
+            syncOptions: params.syncOptions as Record<string, unknown> | undefined,
+            existingSyncOptions: secretSync.syncOptions as Record<string, unknown> | undefined,
+            folderId
+          },
           preSaveTransformDeps
         )
       : (params.syncOptions as Record<string, unknown> | undefined);
