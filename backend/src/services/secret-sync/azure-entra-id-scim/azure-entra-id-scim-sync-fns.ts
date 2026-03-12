@@ -1,6 +1,11 @@
 import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import {
+  TPreSaveTransformDestinationConfigFn,
+  TPreSaveTransformSyncOptionsFn,
+  TSecretMap
+} from "@app/services/secret-sync/secret-sync-types";
 
 import { TAppConnectionDALFactory } from "../../app-connection/app-connection-dal";
 import { getAzureEntraIdConnectionAccessToken } from "../../app-connection/azure-entra-id/azure-entra-id-connection-fns";
@@ -56,5 +61,57 @@ export const AzureEntraIdScimSyncFns = {
 
   removeSecrets: async (): Promise<void> => {
     // No-op: removing SCIM token is not supported
+  }
+};
+
+// Resolves secretKey (name) to secretId (UUID) before saving
+export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncOptionsFn = async (
+  { syncOptions, folderId },
+  { secretV2BridgeDAL }
+) => {
+  if (!syncOptions || !("secretKey" in syncOptions)) return syncOptions;
+
+  const { secretKey, ...rest } = syncOptions;
+  const secret = await secretV2BridgeDAL.findOne({ key: secretKey as string, folderId });
+  if (!secret) {
+    throw new BadRequestError({
+      message: `Secret with key "${secretKey as string}" not found in the specified source folder`
+    });
+  }
+  return { ...rest, secretId: secret.id };
+};
+
+// Fetches service principal display name from Azure Graph API and stores it in destinationConfig
+export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
+  { destinationConfig, connectionId },
+  { appConnectionDAL, kmsService }
+) => {
+  if (!destinationConfig) return destinationConfig;
+
+  const { servicePrincipalId } = destinationConfig;
+  if (!servicePrincipalId) return destinationConfig;
+
+  try {
+    const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, kmsService);
+
+    const { data } = await request.get<{ displayName?: string }>(
+      `https://graph.microsoft.com/v1.0/servicePrincipals/${servicePrincipalId as string}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
+        params: {
+          $select: "displayName"
+        }
+      }
+    );
+
+    return {
+      ...destinationConfig,
+      ...(data.displayName && { servicePrincipalDisplayName: data.displayName })
+    };
+  } catch {
+    // If we can't fetch the name, proceed without it
+    return destinationConfig;
   }
 };

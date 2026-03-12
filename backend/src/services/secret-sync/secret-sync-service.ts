@@ -10,7 +10,6 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { request } from "@app/lib/config/request";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { deepEqualSkipFields } from "@app/lib/fn/object";
@@ -21,7 +20,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
-import { enterpriseSyncCheck, listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
+import {
+  enterpriseSyncCheck,
+  listSecretSyncOptions,
+  preSaveTransformDestinationConfig,
+  preSaveTransformSyncOptions
+} from "@app/services/secret-sync/secret-sync-fns";
 import {
   SecretSyncStatus,
   TCheckDuplicateDestinationDTO,
@@ -39,7 +43,6 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
-import { getAzureEntraIdConnectionAccessToken } from "../app-connection/azure-entra-id/azure-entra-id-connection-fns";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -114,68 +117,7 @@ export const secretSyncServiceFactory = ({
     });
   };
 
-  const resolveSecretKeyToId = async (folderId: string, secretKey: string): Promise<string> => {
-    const secret = await secretV2BridgeDAL.findOne({ key: secretKey, folderId });
-    if (!secret) {
-      throw new BadRequestError({
-        message: `Secret with key "${secretKey}" not found in the specified source folder`
-      });
-    }
-    return secret.id;
-  };
-
-  // For Azure Entra ID SCIM syncs, resolve secretKey (name) in syncOptions to secretId (UUID) before saving
-  const resolveAzureEntraIdScimSyncOptions = async (
-    destination: SecretSync,
-    syncOptions: Record<string, unknown> | undefined,
-    folderId: string
-  ) => {
-    if (destination !== SecretSync.AzureEntraIdScim || !syncOptions || !("secretKey" in syncOptions)) {
-      return syncOptions;
-    }
-
-    const { secretKey, ...rest } = syncOptions;
-    const secretId = await resolveSecretKeyToId(folderId, secretKey as string);
-    return { ...rest, secretId };
-  };
-
-  // For Azure Entra ID SCIM syncs, fetch the service principal display name from Azure and store it
-  const enrichAzureEntraIdScimDestinationConfig = async (
-    destination: SecretSync,
-    destinationConfig: Record<string, unknown> | undefined,
-    connectionId: string
-  ) => {
-    if (destination !== SecretSync.AzureEntraIdScim || !destinationConfig) {
-      return destinationConfig;
-    }
-
-    const { servicePrincipalId } = destinationConfig;
-    if (!servicePrincipalId) return destinationConfig;
-
-    try {
-      const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, kmsService);
-
-      const { data } = await request.get<{ displayName?: string }>(
-        `https://graph.microsoft.com/v1.0/servicePrincipals/${servicePrincipalId as string}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          },
-          params: {
-            $select: "displayName"
-          }
-        }
-      );
-
-      return {
-        ...destinationConfig,
-        ...(data.displayName && { servicePrincipalDisplayName: data.displayName })
-      };
-    } catch {
-      // If we can't fetch the name, proceed without it
-      return destinationConfig;
-    }
-  };
+  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsService };
 
   const listSecretSyncsByProjectId = async (
     { projectId, destination }: TListSecretSyncsByProjectId,
@@ -451,16 +393,19 @@ export const secretSyncServiceFactory = ({
       actor
     );
 
-    const resolvedSyncOptions = await resolveAzureEntraIdScimSyncOptions(
+    const resolvedSyncOptions = await preSaveTransformSyncOptions(
       params.destination,
-      params.syncOptions as Record<string, unknown> | undefined,
-      folder.id
+      { syncOptions: params.syncOptions as Record<string, unknown> | undefined, folderId: folder.id },
+      preSaveTransformDeps
     );
 
-    const enrichedDestinationConfig = await enrichAzureEntraIdScimDestinationConfig(
+    const enrichedDestinationConfig = await preSaveTransformDestinationConfig(
       params.destination,
-      params.destinationConfig as Record<string, unknown> | undefined,
-      params.connectionId
+      {
+        destinationConfig: params.destinationConfig as Record<string, unknown> | undefined,
+        connectionId: params.connectionId
+      },
+      preSaveTransformDeps
     );
 
     try {
@@ -618,19 +563,24 @@ export const secretSyncServiceFactory = ({
 
     const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
 
-    const resolvedSyncOptions = await resolveAzureEntraIdScimSyncOptions(
-      destination,
-      params.syncOptions as Record<string, unknown> | undefined,
-      folderId
-    );
+    const resolvedSyncOptions = folderId
+      ? await preSaveTransformSyncOptions(
+          destination,
+          { syncOptions: params.syncOptions as Record<string, unknown> | undefined, folderId },
+          preSaveTransformDeps
+        )
+      : (params.syncOptions as Record<string, unknown> | undefined);
 
-    const connectionIdForEnrich = params.connectionId ?? secretSync.connectionId ?? secretSync.connection?.id;
+    const connectionIdForEnrich = params.connectionId ?? secretSync.connectionId;
 
     const enrichedDestinationConfig = connectionIdForEnrich
-      ? await enrichAzureEntraIdScimDestinationConfig(
+      ? await preSaveTransformDestinationConfig(
           destination,
-          params.destinationConfig as Record<string, unknown> | undefined,
-          connectionIdForEnrich
+          {
+            destinationConfig: params.destinationConfig as Record<string, unknown> | undefined,
+            connectionId: connectionIdForEnrich
+          },
+          preSaveTransformDeps
         )
       : params.destinationConfig;
 

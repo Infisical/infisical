@@ -21,7 +21,7 @@ const AzureEntraIdScimSyncDestinationConfigSchema = z.object({
   servicePrincipalDisplayName: z
     .string()
     .optional()
-    .describe("The display name of the Azure Entra ID Enterprise Application service principal.")
+    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_ENTRA_ID_SCIM.servicePrincipalDisplayName)
 });
 
 const AzureEntraIdScimSyncOptionsConfig: TSyncOptionsConfig = {

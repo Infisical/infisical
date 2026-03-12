@@ -48,6 +48,9 @@ import {
   TWindmillSyncWithCredentials
 } from "@app/services/secret-sync/windmill";
 
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import {
   TOnePassSync,
   TOnePassSyncInput,
@@ -478,3 +481,29 @@ export type DestinationDuplicateCheckFn = (
   existingConfig: Record<string, unknown>,
   newConfig: Record<string, unknown>
 ) => boolean;
+
+export type TPreSaveTransformDeps = {
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+export type TPreSaveTransformSyncOptionsParams = {
+  syncOptions: Record<string, unknown> | undefined;
+  folderId: string;
+};
+
+export type TPreSaveTransformDestinationConfigParams = {
+  destinationConfig: Record<string, unknown> | undefined;
+  connectionId: string;
+};
+
+export type TPreSaveTransformSyncOptionsFn = (
+  params: TPreSaveTransformSyncOptionsParams,
+  deps: TPreSaveTransformDeps
+) => Promise<Record<string, unknown> | undefined>;
+
+export type TPreSaveTransformDestinationConfigFn = (
+  params: TPreSaveTransformDestinationConfigParams,
+  deps: TPreSaveTransformDeps
+) => Promise<Record<string, unknown> | undefined>;

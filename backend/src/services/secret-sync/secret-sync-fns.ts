@@ -20,6 +20,11 @@ import { GITHUB_SYNC_LIST_OPTION, GithubSyncFns } from "@app/services/secret-syn
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
+  TPreSaveTransformDeps,
+  TPreSaveTransformDestinationConfigFn,
+  TPreSaveTransformDestinationConfigParams,
+  TPreSaveTransformSyncOptionsFn,
+  TPreSaveTransformSyncOptionsParams,
   TSecretMap,
   TSecretSyncListItem,
   TSecretSyncWithCredentials
@@ -31,7 +36,12 @@ import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
-import { AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION, AzureEntraIdScimSyncFns } from "./azure-entra-id-scim";
+import {
+  AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION,
+  azureEntraIdScimPreSaveTransformDestinationConfig,
+  azureEntraIdScimPreSaveTransformSyncOptions,
+  AzureEntraIdScimSyncFns
+} from "./azure-entra-id-scim";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { BITBUCKET_SYNC_LIST_OPTION, BitbucketSyncFns } from "./bitbucket";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
@@ -109,6 +119,34 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
 
 export const listSecretSyncOptions = () => {
   return Object.values(SECRET_SYNC_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
+};
+
+const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTransformSyncOptionsFn>> = {
+  [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformSyncOptions
+};
+
+const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
+  [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig
+};
+
+export const preSaveTransformSyncOptions = async (
+  destination: SecretSync,
+  params: TPreSaveTransformSyncOptionsParams,
+  deps: TPreSaveTransformDeps
+) => {
+  const transform = PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP[destination];
+  if (!transform) return params.syncOptions;
+  return transform(params, deps);
+};
+
+export const preSaveTransformDestinationConfig = async (
+  destination: SecretSync,
+  params: TPreSaveTransformDestinationConfigParams,
+  deps: TPreSaveTransformDeps
+) => {
+  const transform = PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP[destination];
+  if (!transform) return params.destinationConfig;
+  return transform(params, deps);
 };
 
 type TSyncSecretDeps = {
