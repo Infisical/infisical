@@ -2,6 +2,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
+import { SSHAuthMethod } from "../pam-resource/ssh/ssh-resource-enums";
 
 export const encryptAccountCredentials = async ({
   projectId,
@@ -66,6 +67,15 @@ export const decryptAccountMessage = async ({
   return decryptedPlainTextBlob.toString();
 };
 
+const hasConfiguredCredentials = (credentials: TPamAccountCredentials): boolean => {
+  if ("password" in credentials && credentials.password) return true;
+  if ("privateKey" in credentials && credentials.privateKey) return true;
+  if ("serviceAccountToken" in credentials && credentials.serviceAccountToken) return true;
+  if ("targetRoleArn" in credentials && credentials.targetRoleArn) return true;
+  if ("authMethod" in credentials && credentials.authMethod === SSHAuthMethod.Certificate) return true;
+  return false;
+};
+
 export const decryptAccount = async <
   T extends { encryptedCredentials: Buffer; encryptedLastRotationMessage?: Buffer | null }
 >(
@@ -75,18 +85,22 @@ export const decryptAccount = async <
 ): Promise<
   Omit<T, "encryptedCredentials" | "encryptedLastRotationMessage"> & {
     credentials: TPamAccountCredentials;
+    credentialsConfigured: boolean;
     lastRotationMessage: string | null;
   }
 > => {
   const { encryptedCredentials, encryptedLastRotationMessage, ...rest } = account;
 
+  const credentials = await decryptAccountCredentials({
+    encryptedCredentials,
+    projectId,
+    kmsService
+  });
+
   return {
     ...rest,
-    credentials: await decryptAccountCredentials({
-      encryptedCredentials,
-      projectId,
-      kmsService
-    }),
+    credentials,
+    credentialsConfigured: hasConfiguredCredentials(credentials),
     lastRotationMessage: encryptedLastRotationMessage
       ? await decryptAccountMessage({
           encryptedMessage: encryptedLastRotationMessage,

@@ -54,7 +54,15 @@ export const useGetProjectTemplateById = (
         `/api/v1/project-templates/${templateId}`
       );
 
-      return data.projectTemplate;
+      // This is because we removed secret-events to another permission subject. This was breaking template
+      const formattedTemplate = {
+        ...data.projectTemplate,
+        roles: data.projectTemplate.roles.map((role) => ({
+          ...role,
+          permissions: role.permissions.filter((perm) => perm.subject !== "secret-events")
+        }))
+      };
+      return formattedTemplate;
     },
     ...options
   });

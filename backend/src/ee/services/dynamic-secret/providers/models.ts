@@ -178,6 +178,41 @@ export const DynamicSecretSqlDBSchema = z.object({
   gatewayId: z.string().nullable().optional()
 });
 
+export const DynamicSecretClickhouseSchema = z.object({
+  host: z.string().trim(),
+  port: z.number(),
+  database: z.string().trim(),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements"),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  renewStatement: z.string().trim().optional(),
+  ca: z.string().optional(),
+  gatewayId: z.string().nullable().optional()
+});
+
 export const DynamicSecretCassandraSchema = z.object({
   host: z.string().trim().toLowerCase(),
   port: z.number(),
@@ -643,6 +678,7 @@ export const DynamicSecretCouchbaseSchema = z.object({
 
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
+  Clickhouse = "clickhouse",
   Cassandra = "cassandra",
   AwsIam = "aws-iam",
   Redis = "redis",
@@ -667,6 +703,7 @@ export enum DynamicSecretProviders {
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Clickhouse), inputs: DynamicSecretClickhouseSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Cassandra), inputs: DynamicSecretCassandraSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.SapAse), inputs: DynamicSecretSapAseSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AwsIam), inputs: DynamicSecretAwsIamSchema }),

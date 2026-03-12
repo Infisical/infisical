@@ -167,6 +167,8 @@ export enum EventType {
 
   CREATE_SUB_ORGANIZATION = "create-sub-organization",
   UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+  DELETE_SUB_ORGANIZATION = "delete-sub-organization",
+  JOIN_SUB_ORGANIZATION = "join-sub-organization",
 
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
@@ -215,6 +217,13 @@ export enum EventType {
   UPDATE_IDENTITY_JWT_AUTH = "update-identity-jwt-auth",
   GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
   REVOKE_IDENTITY_JWT_AUTH = "revoke-identity-jwt-auth",
+
+  LOGIN_IDENTITY_SPIFFE_AUTH = "login-identity-spiffe-auth",
+  ADD_IDENTITY_SPIFFE_AUTH = "add-identity-spiffe-auth",
+  UPDATE_IDENTITY_SPIFFE_AUTH = "update-identity-spiffe-auth",
+  GET_IDENTITY_SPIFFE_AUTH = "get-identity-spiffe-auth",
+  REVOKE_IDENTITY_SPIFFE_AUTH = "revoke-identity-spiffe-auth",
+  REFRESH_IDENTITY_SPIFFE_AUTH_BUNDLE = "refresh-identity-spiffe-auth-bundle",
 
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
@@ -575,6 +584,16 @@ export enum EventType {
   PAM_RESOURCE_CREATE = "pam-resource-create",
   PAM_RESOURCE_UPDATE = "pam-resource-update",
   PAM_RESOURCE_DELETE = "pam-resource-delete",
+  PAM_DISCOVERY_SOURCE_LIST = "pam-discovery-source-list",
+  PAM_DISCOVERY_SOURCE_GET = "pam-discovery-source-get",
+  PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
+  PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
+  PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
+  PAM_DISCOVERY_SCAN = "pam-discovery-scan",
+  PAM_DISCOVERY_SOURCE_RUN_LIST = "pam-discovery-source-run-list",
+  PAM_DISCOVERY_SOURCE_RUN_GET = "pam-discovery-source-run-get",
+  PAM_DISCOVERY_SOURCE_RESOURCE_LIST = "pam-discovery-source-resource-list",
+  PAM_DISCOVERY_SOURCE_ACCOUNT_LIST = "pam-discovery-source-account-list",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -788,6 +807,24 @@ interface CreateSubOrganizationEvent {
 
 interface UpdateSubOrganizationEvent {
   type: EventType.UPDATE_SUB_ORGANIZATION;
+  metadata: {
+    name: string;
+    slug: string;
+    organizationId: string;
+  };
+}
+
+interface DeleteSubOrganizationEvent {
+  type: EventType.DELETE_SUB_ORGANIZATION;
+  metadata: {
+    name: string;
+    slug: string;
+    organizationId: string;
+  };
+}
+
+interface JoinSubOrganizationEvent {
+  type: EventType.JOIN_SUB_ORGANIZATION;
   metadata: {
     name: string;
     slug: string;
@@ -1840,6 +1877,66 @@ interface GetIdentityJwtAuthEvent {
   };
 }
 
+interface LoginIdentitySpiffeAuthEvent {
+  type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    identitySpiffeAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentitySpiffeAuthEvent {
+  type: EventType.ADD_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    trustDomain: string;
+    allowedSpiffeIds: string;
+    allowedAudiences: string;
+    configurationType: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentitySpiffeAuthEvent {
+  type: EventType.UPDATE_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    trustDomain?: string;
+    allowedSpiffeIds?: string;
+    allowedAudiences?: string;
+    configurationType?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentitySpiffeAuthEvent {
+  type: EventType.REVOKE_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface GetIdentitySpiffeAuthEvent {
+  type: EventType.GET_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface RefreshIdentitySpiffeAuthBundleEvent {
+  type: EventType.REFRESH_IDENTITY_SPIFFE_AUTH_BUNDLE;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -1885,10 +1982,12 @@ interface AddProjectMemberEvent {
 
 interface AddBatchProjectMemberEvent {
   type: EventType.ADD_BATCH_PROJECT_MEMBER;
-  metadata: Array<{
-    userId: string;
-    email: string;
-  }>;
+  metadata: {
+    members: Array<{
+      userId: string;
+      email: string;
+    }>;
+  };
 }
 
 interface RemoveProjectMemberEvent {
@@ -4476,6 +4575,102 @@ interface PamResourceDeleteEvent {
   };
 }
 
+interface PamDiscoverySourceListEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface PamDiscoverySourceGetEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_GET;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    discoveryType: string;
+    name: string;
+  };
+}
+
+interface PamDiscoverySourceCreateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
+  metadata: {
+    sourceName: string;
+    discoveryType: string;
+    gatewayId?: string | null;
+    name: string;
+  };
+}
+
+interface PamDiscoverySourceUpdateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_UPDATE;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    discoveryType: string;
+    gatewayId?: string | null;
+    newSourceName?: string;
+  };
+}
+
+interface PamDiscoverySourceDeleteEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_DELETE;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    discoveryType: string;
+  };
+}
+
+interface PamDiscoveryScanEvent {
+  type: EventType.PAM_DISCOVERY_SCAN;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    discoveryType: string;
+  };
+}
+
+interface PamDiscoverySourceRunListEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_RUN_LIST;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    discoveryType: string;
+    count: number;
+  };
+}
+
+interface PamDiscoverySourceRunGetEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_RUN_GET;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    discoveryType: string;
+    runId: string;
+  };
+}
+
+interface PamDiscoverySourceResourceListEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    discoveryType: string;
+    count: number;
+  };
+}
+
+interface PamDiscoverySourceAccountListEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST;
+  metadata: {
+    sourceId: string;
+    sourceName: string;
+    discoveryType: string;
+    count: number;
+  };
+}
+
 interface UpdateCertificateRenewalConfigEvent {
   type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -5080,6 +5275,8 @@ interface ListDynamicSecretLeasesEvent {
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
+  | DeleteSubOrganizationEvent
+  | JoinSubOrganizationEvent
   | GetSecretsEvent
   | GetSecretEvent
   | CreateSecretEvent
@@ -5171,6 +5368,12 @@ export type Event =
   | UpdateIdentityJwtAuthEvent
   | GetIdentityJwtAuthEvent
   | DeleteIdentityJwtAuthEvent
+  | LoginIdentitySpiffeAuthEvent
+  | AddIdentitySpiffeAuthEvent
+  | UpdateIdentitySpiffeAuthEvent
+  | GetIdentitySpiffeAuthEvent
+  | RefreshIdentitySpiffeAuthBundleEvent
+  | DeleteIdentitySpiffeAuthEvent
   | LoginIdentityLdapAuthEvent
   | AddIdentityLdapAuthEvent
   | UpdateIdentityLdapAuthEvent
@@ -5472,6 +5675,16 @@ export type Event =
   | PamResourceCreateEvent
   | PamResourceUpdateEvent
   | PamResourceDeleteEvent
+  | PamDiscoverySourceListEvent
+  | PamDiscoverySourceGetEvent
+  | PamDiscoverySourceCreateEvent
+  | PamDiscoverySourceUpdateEvent
+  | PamDiscoverySourceDeleteEvent
+  | PamDiscoveryScanEvent
+  | PamDiscoverySourceRunListEvent
+  | PamDiscoverySourceRunGetEvent
+  | PamDiscoverySourceResourceListEvent
+  | PamDiscoverySourceAccountListEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

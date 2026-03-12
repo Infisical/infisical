@@ -1,7 +1,7 @@
 import Select, { GroupBase, Props } from "react-select";
 
 import { ClearIndicator, DropdownIndicator, Group, MultiValueRemove, Option } from "./components";
-import { selectClassNames, selectStyles } from "./styles";
+import { getSelectClassNames, selectClassNames, selectStyles } from "./styles";
 
 export const FilterableSelect = <T,>({
   isMulti,
@@ -10,10 +10,12 @@ export const FilterableSelect = <T,>({
   groupBy = null,
   getGroupHeaderLabel = null,
   options = [],
+  isError,
   ...props
 }: Props<T, boolean, GroupBase<T>> & {
   groupBy?: string | null;
   getGroupHeaderLabel?: ((groupValue: any) => string) | null;
+  isError?: boolean;
 }) => {
   let processedOptions: Props<T, boolean, GroupBase<T>>["options"] = options;
 
@@ -56,7 +58,7 @@ export const FilterableSelect = <T,>({
         Group,
         ...props.components
       }}
-      classNames={selectClassNames as any}
+      classNames={(isError ? getSelectClassNames(isError) : selectClassNames) as any}
       {...props}
     />
   );

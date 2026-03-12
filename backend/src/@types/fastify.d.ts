@@ -29,6 +29,7 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
@@ -98,6 +99,7 @@ import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-a
 import { TIdentityOciAuthServiceFactory } from "@app/services/identity-oci-auth/identity-oci-auth-service";
 import { TIdentityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { TIdentitySpiffeAuthServiceFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-service";
 import { TIdentityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-types";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
@@ -287,6 +289,7 @@ declare module "fastify" {
       identityOciAuth: TIdentityOciAuthServiceFactory;
       identityOidcAuth: TIdentityOidcAuthServiceFactory;
       identityJwtAuth: TIdentityJwtAuthServiceFactory;
+      identitySpiffeAuth: TIdentitySpiffeAuthServiceFactory;
       identityLdapAuth: TIdentityLdapAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
@@ -368,6 +371,7 @@ declare module "fastify" {
       pamAccount: TPamAccountServiceFactory;
       pamSession: TPamSessionServiceFactory;
       pamWebAccess: TPamWebAccessServiceFactory;
+      pamDiscoverySource: TPamDiscoverySourceServiceFactory;
       mfaSession: TMfaSessionServiceFactory;
       upgradePath: TUpgradePathService;
 

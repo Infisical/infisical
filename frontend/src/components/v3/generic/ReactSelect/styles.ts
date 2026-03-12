@@ -50,3 +50,21 @@ export const selectStyles: StylesConfig<unknown, boolean, GroupBase<unknown>> = 
     zIndex: 99999
   })
 };
+
+export const getSelectClassNames = (
+  isError?: boolean
+): ClassNamesConfig<unknown, boolean, GroupBase<unknown>> => ({
+  ...selectClassNames,
+  control: ({ isFocused }) =>
+    cn(
+      "!min-h-9 w-full cursor-pointer rounded-md border bg-transparent py-1 pr-1 pl-2 text-sm",
+      // eslint-disable-next-line no-nested-ternary
+      isError
+        ? isFocused
+          ? "border-danger ring-[3px] ring-danger/40"
+          : "border-danger"
+        : isFocused
+          ? "border-ring ring-[3px] ring-ring/50"
+          : "border-border hover:border-foreground/20"
+    )
+});

@@ -83,6 +83,14 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamAccountDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependencies-dal";
+import { pamDiscoveryQueueFactory } from "@app/ee/services/pam-discovery/pam-discovery-queue";
+import { pamDiscoverySourceAccountsDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-accounts-dal";
+import { pamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
+import { pamDiscoverySourceDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dependencies-dal";
+import { pamDiscoverySourceResourcesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-resources-dal";
+import { pamDiscoveryRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-run-dal";
+import { pamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
@@ -287,6 +295,8 @@ import { identityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/ide
 import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identitySpiffeAuthDALFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-dal";
+import { identitySpiffeAuthServiceFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-service";
 import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
 import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
@@ -527,6 +537,7 @@ export const registerRoutes = async (
   const identityOciAuthDAL = identityOciAuthDALFactory(db);
   const identityOidcAuthDAL = identityOidcAuthDALFactory(db);
   const identityJwtAuthDAL = identityJwtAuthDALFactory(db);
+  const identitySpiffeAuthDAL = identitySpiffeAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
   const identityLdapAuthDAL = identityLdapAuthDALFactory(db);
 
@@ -730,12 +741,12 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     membershipDAL,
     orgDAL,
-    permissionService
+    permissionService,
+    userDAL
   });
 
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
-    keyStore,
     kmsDAL,
     internalKmsDAL,
     orgDAL,
@@ -772,7 +783,8 @@ export const registerRoutes = async (
     projectDAL,
     licenseService,
     auditLogStreamService,
-    clickhouseClient: clickhouse
+    clickhouseClient: clickhouse,
+    keyStore
   });
 
   const notificationQueue = notificationQueueServiceFactory({
@@ -937,7 +949,8 @@ export const registerRoutes = async (
 
   const telemetryService = telemetryServiceFactory({
     keyStore,
-    licenseService
+    licenseService,
+    orgDAL
   });
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
@@ -987,7 +1000,8 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    keyStore
+    keyStore,
+    permissionService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1616,7 +1630,8 @@ export const registerRoutes = async (
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
     folderCommitService,
-    notificationService
+    notificationService,
+    telemetryService
   });
 
   const secretService = secretServiceFactory({
@@ -1942,6 +1957,17 @@ export const registerRoutes = async (
   const identityJwtAuthService = identityJwtAuthServiceFactory({
     identityDAL,
     identityJwtAuthDAL,
+    orgDAL,
+    permissionService,
+    identityAccessTokenDAL,
+    licenseService,
+    kmsService,
+    membershipIdentityDAL
+  });
+
+  const identitySpiffeAuthService = identitySpiffeAuthServiceFactory({
+    identityDAL,
+    identitySpiffeAuthDAL,
     orgDAL,
     permissionService,
     identityAccessTokenDAL,
@@ -2605,6 +2631,12 @@ export const registerRoutes = async (
   const pamResourceDAL = pamResourceDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const pamDiscoveryRunDAL = pamDiscoveryRunDALFactory(db);
+  const pamDiscoverySourceResourcesDAL = pamDiscoverySourceResourcesDALFactory(db);
+  const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
+  const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
+  const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
@@ -2687,6 +2719,33 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     orgDAL,
     projectDAL
+  });
+
+  const pamDiscoveryQueue = pamDiscoveryQueueFactory({
+    pamDiscoverySourceDAL,
+    pamDiscoveryRunDAL,
+    pamDiscoverySourceResourcesDAL,
+    pamDiscoverySourceAccountsDAL,
+    pamDiscoverySourceDependenciesDAL,
+    pamAccountDependenciesDAL,
+    pamResourceDAL,
+    pamAccountDAL,
+    kmsService,
+    queueService,
+    gatewayV2Service,
+    gatewayV2DAL
+  });
+
+  const pamDiscoverySourceService = pamDiscoverySourceServiceFactory({
+    pamDiscoverySourceDAL,
+    pamDiscoveryRunDAL,
+    pamDiscoverySourceResourcesDAL,
+    pamDiscoverySourceAccountsDAL,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayV2Service,
+    pamDiscoveryQueue
   });
 
   const aiMcpServerService = aiMcpServerServiceFactory({
@@ -2774,6 +2833,7 @@ export const registerRoutes = async (
   await healthAlert.init();
   await pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
+  pamDiscoveryQueue.startPamDiscoveryQueue();
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
@@ -2832,6 +2892,7 @@ export const registerRoutes = async (
     identityTlsCertAuth: identityTlsCertAuthService,
     identityOidcAuth: identityOidcAuthService,
     identityJwtAuth: identityJwtAuthService,
+    identitySpiffeAuth: identitySpiffeAuthService,
     identityLdapAuth: identityLdapAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
@@ -2911,6 +2972,7 @@ export const registerRoutes = async (
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
     pamWebAccess: pamWebAccessService,
+    pamDiscoverySource: pamDiscoverySourceService,
     mfaSession: mfaSessionService,
     upgradePath: upgradePathService,
 

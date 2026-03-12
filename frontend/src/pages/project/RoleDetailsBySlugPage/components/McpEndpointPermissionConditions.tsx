@@ -13,7 +13,13 @@ export const McpEndpointPermissionConditions = ({ position = 0, isDisabled }: Pr
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.McpEndpoints}
       position={position}
-      selectOptions={[{ value: "name", label: "Endpoint Name" }]}
+      selectOptions={[
+        {
+          value: "name",
+          label: "Endpoint Name",
+          description: "The name of the MCP endpoint"
+        }
+      ]}
     />
   );
 };

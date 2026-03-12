@@ -7,7 +7,7 @@ description: "Access PAM-managed resources directly from your browser with an in
 Infisical PAM Web Access provides a browser-based portal for interacting with your infrastructure directly from your browser via the Infisical dashboard — no client tools or CLI required.
 
 <Info>
-  Web Access currently supports **PostgreSQL** databases.
+  Web Access currently supports **PostgreSQL** databases and **SSH** servers.
 </Info>
 
 ## How It Works
@@ -47,5 +47,8 @@ Sessions that exceed the idle timeout or max duration are automatically terminat
 <CardGroup cols={2}>
   <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/product-reference/web-access/postgresql">
     Interactive SQL terminal with psql-style output formatting.
+  </Card>
+  <Card title="SSH" icon="terminal" href="/documentation/platform/pam/product-reference/web-access/ssh">
+    Full interactive shell session via browser-based terminal.
   </Card>
 </CardGroup>
