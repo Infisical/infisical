@@ -2,6 +2,7 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 import { useRef, useState } from "react";
 import { CircleCheckIcon, CircleXIcon, EyeIcon, EyeOffIcon, TriangleAlertIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { isSingleLine, scrollToFirstChange } from "@app/components/utilities/diff";
 import { Tooltip } from "@app/components/v2";
@@ -118,7 +119,10 @@ const SecretValueRenderer = ({
             <UnstableIconButton
               variant="ghost"
               size="xs"
-              className={isLoading ? "animate-pulse" : ""}
+              className={twMerge(
+                isLoading ? "animate-pulse" : "",
+                isOldVersion ? "bg-[#161518]/80" : "bg-[#121819]/80"
+              )}
               onClick={handleToggleVisibility}
             >
               {isVisible ? <EyeOffIcon /> : <EyeIcon />}
