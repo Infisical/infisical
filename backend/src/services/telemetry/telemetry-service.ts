@@ -133,24 +133,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
               logger.error(error, "Failed to identify PostHog organization");
             }
           }
-          // For UserSignedUp events on Cloud/dedicated instances, use $set to persist
-          // person properties (email, username). This avoids relying on identify() which
-          // is Cloud-only, and ensures dedicated instances also get person properties set.
-          let captureProperties: Record<string, unknown> = event.properties;
-          if (event.event === PostHogEventTypes.UserSignedUp) {
-            captureProperties = {
-              ...event.properties,
-              $set: {
-                email: event.properties.email,
-                username: event.properties.username
-              }
-            };
-          }
-
           postHog.capture({
             event: event.event,
             distinctId: event.distinctId,
-            properties: captureProperties,
+            properties: event.properties,
             ...(event.organizationId ? { groups: { organization: event.organizationId } } : {})
           });
         }
