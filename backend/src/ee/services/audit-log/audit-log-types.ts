@@ -1982,10 +1982,12 @@ interface AddProjectMemberEvent {
 
 interface AddBatchProjectMemberEvent {
   type: EventType.ADD_BATCH_PROJECT_MEMBER;
-  metadata: Array<{
-    userId: string;
-    email: string;
-  }>;
+  metadata: {
+    members: Array<{
+      userId: string;
+      email: string;
+    }>;
+  };
 }
 
 interface RemoveProjectMemberEvent {
