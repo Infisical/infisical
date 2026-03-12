@@ -180,6 +180,14 @@ const makeSqlConnection = (
       };
     }
     case PamResource.MsSQL: {
+      const mssqlOptions = sslEnabled
+        ? {
+            encrypt: true,
+            trustServerCertificate: !sslRejectUnauthorized,
+            cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
+          }
+        : { encrypt: false };
+
       const client = knex({
         client: "mssql",
         connection: {
@@ -187,12 +195,11 @@ const makeSqlConnection = (
           port: proxyPort,
           user: actualUsername,
           password: actualPassword,
-          database: connectionDetails.database || "master",
+          database: connectionDetails.database,
           requestTimeout: EXTERNAL_REQUEST_TIMEOUT,
-          options: {
-            encrypt: sslEnabled,
-            trustServerCertificate: !sslRejectUnauthorized
-          }
+          // mssqlOptions includes cryptoCredentialsDetails which is passed to tedious driver
+          // ref: https://github.com/knex/knex/blob/b6507a7129d2b9fafebf5f831494431e64c6a8a0/lib/dialects/mssql/index.js#L66
+          options: mssqlOptions
         }
       });
       return {

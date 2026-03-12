@@ -16,10 +16,7 @@ import {
 } from "../shared/sql/sql-resource-schemas";
 
 // Resources
-export const MsSQLResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema.extend({
-  // MSSQL database can be optional (defaults to master)
-  database: z.string().trim().default("master")
-});
+export const MsSQLResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
 export const MsSQLAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
 
 const BaseMsSQLResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.MsSQL) });
