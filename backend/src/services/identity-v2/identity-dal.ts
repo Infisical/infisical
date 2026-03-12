@@ -43,6 +43,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
       )
       .leftJoin(TableName.IdentityLdapAuth, `${TableName.Identity}.id`, `${TableName.IdentityLdapAuth}.identityId`)
       .leftJoin(TableName.IdentityJwtAuth, `${TableName.Identity}.id`, `${TableName.IdentityJwtAuth}.identityId`)
+      .leftJoin(TableName.IdentitySpiffeAuth, `${TableName.Identity}.id`, `${TableName.IdentitySpiffeAuth}.identityId`)
       .where(`${TableName.Identity}.id`, identityId)
       .where(`${TableName.Identity}.orgId`, scopeData.orgId)
       .where((qb) => {
@@ -68,7 +69,8 @@ export const identityV2DALFactory = (db: TDbClient) => {
         db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
         db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
         db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
-        db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth)
+        db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
+        db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
       );
 
     if (!doc) return doc;
@@ -89,7 +91,8 @@ export const identityV2DALFactory = (db: TDbClient) => {
           jwtId,
           ociId,
           ldapId,
-          tlsCertId
+          tlsCertId,
+          spiffeId
         } = el;
         return {
           ...IdentitiesSchema.parse(el),
@@ -105,7 +108,8 @@ export const identityV2DALFactory = (db: TDbClient) => {
             jwtId,
             ldapId,
             ociId,
-            tlsCertId
+            tlsCertId,
+            spiffeId
           })
         };
       },
