@@ -6,19 +6,36 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
+import { TSecretSync } from "@app/hooks/api/secretSyncs";
+import { TAzureEntraIdScimSync } from "@app/hooks/api/secretSyncs/types/azure-entra-id-scim-sync";
 import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
-
-import { AzureEntraIdScimSyncSourceSection } from "./AzureEntraIdScimSyncSourceSection";
 
 type Props = {
   secretSync: TSecretSync;
   onEditSource: VoidFunction;
 };
 
-const DefaultSecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => {
+export const AzureEntraIdScimSyncSourceSection = ({ secretSync, onEditSource }: Props) => {
   const { folder, environment } = secretSync;
+  const { currentProject } = useProject();
+
+  const scimSync = secretSync as TAzureEntraIdScimSync;
+  const secretId = scimSync.syncOptions?.secretId;
+
+  const { data: secrets } = useGetProjectSecrets({
+    projectId: currentProject.id,
+    environment: environment?.slug ?? "",
+    secretPath: folder?.path ?? "/",
+    viewSecretValue: false,
+    options: {
+      enabled: Boolean(secretId && environment?.slug && folder?.path)
+    }
+  });
+
+  const secretName = secretId ? secrets?.find((s) => s.id === secretId)?.key : undefined;
 
   const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
@@ -57,20 +74,10 @@ const DefaultSecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => 
           <div className="space-y-3">
             <GenericFieldLabel label="Environment">{environment?.name}</GenericFieldLabel>
             <GenericFieldLabel label="Path">{folder?.path}</GenericFieldLabel>
+            {secretName && <GenericFieldLabel label="Secret">{secretName}</GenericFieldLabel>}
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => {
-  switch (secretSync.destination) {
-    case SecretSync.AzureEntraIdScim:
-      return (
-        <AzureEntraIdScimSyncSourceSection secretSync={secretSync} onEditSource={onEditSource} />
-      );
-    default:
-      return <DefaultSecretSyncSourceSection secretSync={secretSync} onEditSource={onEditSource} />;
-  }
 };

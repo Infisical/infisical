@@ -9,19 +9,46 @@ import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
-import { AzureEntraIdScimSyncSourceFields } from "./AzureEntraIdScimSyncSourceFields";
 import { TSecretSyncForm } from "./schemas";
 
-const DefaultSecretSyncSourceFields = () => {
-  const { control, watch, setError, clearErrors } = useFormContext<TSecretSyncForm>();
+export const AzureEntraIdScimSyncSourceFields = () => {
+  const { control, watch, setError, clearErrors, setValue } = useFormContext<
+    TSecretSyncForm & { destination: SecretSync.AzureEntraIdScim }
+  >();
 
   const { permission } = useProjectPermission();
   const { currentProject } = useProject();
 
   const selectedEnvironment = watch("environment");
   const selectedSecretPath = watch("secretPath");
+  const currentSecretKey = useWatch({ control, name: "syncOptions.secretKey" });
+
+  const existingSecretId = useWatch({
+    control,
+    name: "syncOptions.secretId" as "syncOptions.secretKey"
+  });
+
+  const { data: secrets, isLoading } = useGetProjectSecrets({
+    projectId: currentProject.id,
+    environment: selectedEnvironment?.slug ?? "",
+    secretPath: selectedSecretPath ?? "/",
+    viewSecretValue: false,
+    options: {
+      enabled: Boolean(selectedEnvironment?.slug && selectedSecretPath)
+    }
+  });
+
+  useEffect(() => {
+    if (existingSecretId && !currentSecretKey && secrets?.length) {
+      const match = secrets.find((s) => s.id === existingSecretId);
+      if (match) {
+        setValue("syncOptions.secretKey", match.key);
+      }
+    }
+  }, [existingSecretId, currentSecretKey, secrets, setValue]);
 
   useEffect(() => {
     const hasAccessToSource =
@@ -80,18 +107,32 @@ const DefaultSecretSyncSourceFields = () => {
         control={control}
         name="secretPath"
       />
+      <Controller
+        name="syncOptions.secretKey"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            isError={Boolean(error)}
+            errorText={error?.message}
+            label="Secret"
+            tooltipText="The secret whose value will be used as the SCIM provisioning token."
+          >
+            <FilterableSelect
+              value={secrets?.find((s) => s.key === value) ?? null}
+              onChange={(option) => {
+                const selected = option as { id: string; key: string } | null;
+                onChange(selected?.key ?? "");
+              }}
+              isLoading={isLoading}
+              options={secrets ?? []}
+              placeholder="Select a secret..."
+              getOptionLabel={(option) => option.key}
+              getOptionValue={(option) => option.id}
+              isDisabled={!selectedEnvironment?.slug || !selectedSecretPath}
+            />
+          </FormControl>
+        )}
+      />
     </>
   );
-};
-
-export const SecretSyncSourceFields = () => {
-  const { control } = useFormContext<TSecretSyncForm>();
-  const destination = useWatch({ control, name: "destination" });
-
-  switch (destination) {
-    case SecretSync.AzureEntraIdScim:
-      return <AzureEntraIdScimSyncSourceFields />;
-    default:
-      return <DefaultSecretSyncSourceFields />;
-  }
 };
