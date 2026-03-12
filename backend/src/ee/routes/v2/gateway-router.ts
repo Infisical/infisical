@@ -70,17 +70,26 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       operationId: "gatewayHeartbeat",
       response: {
         200: z.object({
-          message: z.string()
+          pki: z.object({
+            serverCertificate: z.string(),
+            serverPrivateKey: z.string(),
+            clientCertificateChain: z.string()
+          }),
+          ssh: z.object({
+            clientCertificate: z.string(),
+            clientPrivateKey: z.string(),
+            serverCAPublicKey: z.string()
+          })
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.gatewayV2.heartbeat({
+      const renewedCredentials = await server.services.gatewayV2.heartbeat({
         orgPermission: req.permission
       });
 
-      return { message: "Successfully triggered heartbeat" };
+      return renewedCredentials;
     }
   });
 
