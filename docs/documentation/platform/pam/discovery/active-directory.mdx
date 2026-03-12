@@ -1,0 +1,160 @@
+---
+title: "Active Directory Discovery"
+sidebarTitle: "Active Directory"
+description: "Automatically discover Windows servers, domain accounts, local accounts, and service dependencies across your Active Directory environment."
+---
+
+Active Directory Discovery connects to your domain controller via LDAP, enumerates all computers and user accounts in the domain, and then scans each machine for service dependencies via WinRM.
+
+## What Gets Discovered
+
+### Resources
+
+Every computer object in Active Directory is imported as a **Windows Server** PAM Resource. For each machine, Discovery resolves the DNS hostname to an IP address and captures:
+
+- Computer name and DNS hostname
+- Operating system and version
+- Object GUID
+
+### Accounts
+
+Discovery imports two categories of accounts:
+
+**Domain Accounts** — User objects from Active Directory, associated with the AD Server resource. Each account includes:
+- Username and User Principal Name (UPN)
+- Account type (User or Service) — detected by the presence of Service Principal Names (SPNs) or naming conventions like `svc-*`
+- AD GUID, last logon time, and password last set date
+
+**Local Accounts** — User accounts local to each Windows machine, discovered via WinRM. Each account includes:
+- Username and SID
+- Enabled/disabled status
+- Last logon time and password last set date
+
+### Dependencies
+
+For each Windows machine reachable via WinRM, Discovery enumerates:
+
+| Dependency Type | What's Captured |
+|-----------------|-----------------|
+| **Windows Services** | Service name, display name, state, start mode, path, and the account it runs as |
+| **Scheduled Tasks** | Task name, path, logon type, run level, triggers, actions, last/next run time, and the account it runs as |
+| **IIS App Pools** | Pool name, runtime version, pipeline mode, auto-start setting, identity type, and the account it runs as |
+
+Each dependency is automatically linked to the PAM Account whose credentials it uses. Discovery resolves account references in multiple formats including `DOMAIN\user`, `user@domain.com`, UPN, and local account names.
+
+## Prerequisites
+
+1. **Infisical Gateway** — Deployed in your network with access to the domain controller and Windows machines
+2. **LDAP access** — The domain controller must be reachable on the LDAP port (default: 389)
+3. **AD credentials** — A domain account with read access to query computer and user objects via LDAP
+4. **WinRM access** (optional, for dependency scanning) — Target Windows machines should have WinRM enabled on port 5985
+
+<Warning>
+  Machines without WinRM enabled will be skipped during the dependency scan phase. This is expected for domain controllers and machines not configured for remote management. These are reported as machine-level errors in the run details.
+</Warning>
+
+## Setup
+
+<Steps>
+  <Step title="Ensure Gateway is Running">
+    Deploy an [Infisical Gateway](/documentation/platform/gateways/overview) in your network with connectivity to your domain controller (LDAP port) and Windows machines (WinRM port 5985).
+  </Step>
+
+  <Step title="Create a Discovery Source">
+    1. Navigate to your PAM project and go to the **Discovery** tab
+    2. Click **Add Discovery Source** and select **Active Directory**
+    3. Fill in the configuration:
+
+    <ParamField path="Name" type="string" required>
+      A friendly name for this discovery source (e.g., `corp-ad-discovery`)
+    </ParamField>
+
+    <ParamField path="Gateway" type="string" required>
+      Select the Gateway that has network access to your domain controller and Windows machines
+    </ParamField>
+
+    <ParamField path="Domain FQDN" type="string" required>
+      The fully-qualified domain name (e.g., `corp.example.com`)
+    </ParamField>
+
+    <ParamField path="DC Address" type="string" required>
+      The hostname or IP address of the domain controller (e.g., `10.0.1.10`)
+    </ParamField>
+
+    <ParamField path="Port" type="number" required>
+      The LDAP port (default: `389`)
+    </ParamField>
+
+    <ParamField path="Username" type="string" required>
+      An Active Directory account with read access to query the directory
+    </ParamField>
+
+    <ParamField path="Password" type="string" required>
+      The password for the AD account
+    </ParamField>
+
+    <ParamField path="Schedule" type="string">
+      How often to run discovery automatically:
+      - **Manual** — Only runs when triggered
+      - **Daily** — Runs once per day
+      - **Weekly** — Runs once per week
+    </ParamField>
+
+    Clicking **Create** will validate the LDAP connection through the Gateway before saving.
+  </Step>
+
+  <Step title="Run a Discovery Scan">
+    After creating the source, click **Trigger Scan** to start the first discovery run. You can monitor progress in real-time from the **Runs** tab.
+  </Step>
+</Steps>
+
+## Scan Phases
+
+Each discovery scan executes two phases sequentially:
+
+### Phase 1: AD Enumeration
+
+Connects to the domain controller via LDAP through the Gateway and:
+
+1. Queries all **computer objects** — creates or updates a Windows Server PAM Resource for each
+2. Queries all **user objects** — creates or updates PAM Accounts, classifying each as a User or Service account
+3. Marks resources and accounts not found in this scan as **Stale**
+
+### Phase 2: Dependency Scan
+
+For each discovered Windows machine, connects via WinRM through the Gateway and:
+
+1. Runs PowerShell commands to enumerate Windows Services, Scheduled Tasks, and IIS App Pools
+2. Discovers **local user accounts** on each machine
+3. Resolves each dependency's run-as account to link it to the correct PAM Account
+4. Reports per-machine errors for machines that are unreachable or don't have WinRM enabled
+
+## Reviewing Results
+
+After a scan completes, review the results from the discovery source detail page:
+
+- **Runs tab** — Shows scan history with status, duration, and counts of discovered/new/stale items. Expand a run to see per-phase progress and any machine-level errors.
+- **Resources tab** — Lists all discovered Windows servers with OS version, dependency count, and stale/active status. Click a resource to navigate to its detail page.
+- **Accounts tab** — Lists all discovered accounts with their resource, account type, dependency count, last logon, and stale/active status. Click an account to navigate to its detail page.
+
+### Viewing Dependencies
+
+From an account's detail page, select the **Dependencies** tab to see all services, tasks, and app pools that run under that account's credentials. Each dependency shows:
+
+- Name and type (Service, Task, or App Pool)
+- The resource (machine) it runs on
+- Current state (e.g., Running, Stopped)
+- Whether it's enabled for credential rotation
+
+### Enabling Dependencies for Rotation
+
+Dependencies are discovered with rotation **disabled** by default. To include a dependency in credential rotation:
+
+1. Navigate to the account's **Dependencies** tab
+2. Click the menu on a dependency and select **Enable**
+
+When the account's password is rotated, Infisical will automatically update the credentials for all enabled dependencies.
+
+<Info>
+  The enabled/disabled state of a dependency is never overwritten by subsequent discovery scans. Your configuration is always preserved.
+</Info>
