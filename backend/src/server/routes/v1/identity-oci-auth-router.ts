@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { IdentityAuthMethod, IdentityOciAuthsSchema } from "@app/db/schemas";
-import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OCI_AUTH } from "@app/lib/api-docs";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";

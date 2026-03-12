@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { IdentityAuthMethod, IdentityTlsCertAuthsSchema } from "@app/db/schemas";
-import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
+import { logger } from "@app/lib/logger";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";

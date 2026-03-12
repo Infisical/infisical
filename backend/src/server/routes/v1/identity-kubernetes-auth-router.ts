@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { IdentityAuthMethod, IdentityKubernetesAuthsSchema } from "@app/db/schemas";
-import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KUBERNETES_AUTH } from "@app/lib/api-docs";
+import { logger } from "@app/lib/logger";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";

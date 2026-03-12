@@ -13,8 +13,8 @@ import { IncomingMessage } from "http";
 import LdapStrategy from "passport-ldapauth";
 import { z } from "zod";
 
-import { IdentityLdapAuthsSchema } from "@app/db/schemas/identity-ldap-auths";
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { IdentityLdapAuthsSchema } from "@app/db/schemas/identity-ldap-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isValidLdapFilter } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LDAP_AUTH } from "@app/lib/api-docs";
