@@ -5,7 +5,6 @@ import { CircleCheckIcon, CircleXIcon, EyeIcon, EyeOffIcon, TriangleAlertIcon } 
 import { twMerge } from "tailwind-merge";
 
 import { isSingleLine, scrollToFirstChange } from "@app/components/utilities/diff";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   Tooltip as V3Tooltip,
@@ -81,13 +80,15 @@ const SecretValueRenderer = ({
   const renderVisibilityIcon = () => {
     if (isValueHidden) {
       return (
-        <div className="absolute top-1/2 left-2 z-10 -translate-y-1/2">
-          <Tooltip
-            position="right"
-            content={`You do not have access to view the ${isOldVersion ? "old" : "new"} secret value.`}
-          >
-            <EyeOffIcon className="size-3.5 text-mineshaft-300" />
-          </Tooltip>
+        <div className="absolute top-3 right-3 z-10">
+          <V3Tooltip>
+            <TooltipTrigger asChild>
+              <EyeOffIcon className="size-3.5 text-muted" />
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              You do not have access to view the {isOldVersion ? "old" : "new"} secret value.
+            </TooltipContent>
+          </V3Tooltip>
         </div>
       );
     }
@@ -295,14 +296,17 @@ export const SecretDiffView = ({
 
             <div className="flex items-center gap-2">
               {isRollingToRedactedVersion && (
-                <Tooltip
-                  side="top"
-                  content="This secret version has been redacted. Rolling back to this version will result in an empty secret value."
-                >
-                  <Badge variant="danger">
-                    <TriangleAlertIcon /> Redacted Version
-                  </Badge>
-                </Tooltip>
+                <V3Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="danger">
+                      <TriangleAlertIcon /> Redacted Version
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    This secret version has been redacted. Rolling back to this version will result
+                    in an empty secret value.
+                  </TooltipContent>
+                </V3Tooltip>
               )}
 
               <Badge variant="success">
