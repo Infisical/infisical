@@ -159,35 +159,35 @@ export const secretRotationHttpSetFn = async (func: THttpProviderFunction, varia
 export const getDbSetQuery = (db: TDbProviderClients, variables: { username: string; password: string }) => {
   if (db === TDbProviderClients.Pg) {
     return {
-      query: `ALTER USER ?? WITH PASSWORD '${variables.password}'`,
-      variables: [variables.username]
+      query: `ALTER USER ?? WITH PASSWORD ?`,
+      variables: [variables.username, variables.password]
     };
   }
 
   if (db === TDbProviderClients.MsSqlServer) {
     return {
-      query: `ALTER LOGIN ?? WITH PASSWORD = '${variables.password}'`,
-      variables: [variables.username]
+      query: `ALTER LOGIN ?? WITH PASSWORD = ?`,
+      variables: [variables.username, variables.password]
     };
   }
 
   if (db === TDbProviderClients.MySql) {
     return {
-      query: `ALTER USER ??@'%' IDENTIFIED BY '${variables.password}'`,
-      variables: [variables.username]
+      query: `ALTER USER ??@'%' IDENTIFIED BY ?`,
+      variables: [variables.username, variables.password]
     };
   }
 
   if (db === TDbProviderClients.OracleDB) {
     return {
-      query: `ALTER USER ?? IDENTIFIED BY "${variables.password}"`,
-      variables: [variables.username]
+      query: `ALTER USER ?? IDENTIFIED BY ?`,
+      variables: [variables.username, variables.password]
     };
   }
 
   // add more based on client
   return {
-    query: `ALTER USER ?? IDENTIFIED BY '${variables.password}'`,
-    variables: [variables.username]
+    query: `ALTER USER ?? IDENTIFIED BY ?`,
+    variables: [variables.username, variables.password]
   };
 };
