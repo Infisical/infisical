@@ -4,8 +4,24 @@ image:
   pullPolicy: IfNotPresent
 
 secret:
-  # The secret that contains the environment variables to be used by the gateway, such as INFISICAL_API_URL and TOKEN
+  # Set create=true to create the secret from data below
+  # Set create=false (default) to use an existing secret
+  create: false
+
+  # The name of the secret to use/create
   name: "infisical-gateway-environment"
+
+  # Key-value pairs for the secret (only used when create=true)
+  # Define any environment variables you need here
+  # Example:
+  #data:
+  #  INFISICAL_AUTH_METHOD: "universal-auth"
+  #  INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: "your-client-id"
+  #  INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: "your-secret"
+  #  INFISICAL_GATEWAY_NAME: "your-gateway"
+  #  INFISICAL_RELAY_NAME: "your-relay"
+  #  INFISICAL_API_URL: "https://eu.infisical.com"
+  data: {}
 
 gateway:
   # Specify where to save PAM session recordings. This directory will always be created when the gateway starts.
