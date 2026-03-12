@@ -28,7 +28,6 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
@@ -85,20 +84,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 userId: user.id,
                 firstName: user.firstName ?? undefined,
                 lastName: user.lastName ?? undefined
-              });
-            }
-
-            if (!isUserCompleted && googleDistinctId) {
-              void server.services.telemetry.sendPostHogEvents({
-                event: PostHogEventTypes.UserSignedUp,
-                distinctId: googleDistinctId,
-                ...(orgId ? { organizationId: orgId } : {}),
-                ...(orgName ? { organizationName: orgName } : {}),
-                properties: {
-                  username: user.username,
-                  email: user.email ?? "",
-                  attributionSource: "Google OAuth"
-                }
               });
             }
 
@@ -184,20 +169,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            if (!isUserCompleted && githubDistinctId) {
-              void server.services.telemetry.sendPostHogEvents({
-                event: PostHogEventTypes.UserSignedUp,
-                distinctId: githubDistinctId,
-                ...(orgId ? { organizationId: orgId } : {}),
-                ...(orgName ? { organizationName: orgName } : {}),
-                properties: {
-                  username: user.username,
-                  email: user.email ?? "",
-                  attributionSource: "GitHub OAuth"
-                }
-              });
-            }
-
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
@@ -269,20 +240,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 userId: user.id,
                 firstName: user.firstName ?? undefined,
                 lastName: user.lastName ?? undefined
-              });
-            }
-
-            if (!isUserCompleted && gitlabDistinctId) {
-              void server.services.telemetry.sendPostHogEvents({
-                event: PostHogEventTypes.UserSignedUp,
-                distinctId: gitlabDistinctId,
-                ...(orgId ? { organizationId: orgId } : {}),
-                ...(orgName ? { organizationName: orgName } : {}),
-                properties: {
-                  username: user.username,
-                  email: user.email ?? "",
-                  attributionSource: "GitLab OAuth"
-                }
               });
             }
 

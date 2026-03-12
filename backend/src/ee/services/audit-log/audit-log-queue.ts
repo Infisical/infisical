@@ -27,6 +27,17 @@ export type TAuditLogQueueServiceFactory = {
   pushToLog: (data: TCreateAuditLogDTO) => Promise<void>;
 };
 
+const normalizeJsonPayload = (payload: unknown) => {
+  if (Array.isArray(payload)) {
+    return { data: payload };
+  }
+  if (typeof payload === "object" && payload !== null) {
+    return payload;
+  }
+  logger.error({ payload }, "Unexpected audit log payload type, expected object or array");
+  return {};
+};
+
 // keep this timeout 5s it must be fast because else the queue will take time to finish
 // audit log is a crowded queue thus needs to be fast
 export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
@@ -85,11 +96,13 @@ export const auditLogQueueServiceFactory = async ({
       const ttl = ttlInDays * MS_IN_DAY;
 
       const id = randomUUID();
+      const eventMetadata = normalizeJsonPayload(event.metadata);
+      const actorMetadata = normalizeJsonPayload(actor.metadata);
       const auditLog = await auditLogDAL.create({
         // @ts-expect-error: id is added from our side to make it easier for us to correlate between the database and the stream
         id,
         actor: actor.type,
-        actorMetadata: actor.metadata,
+        actorMetadata,
         userAgent,
         projectId,
         projectName: project?.name,
@@ -97,7 +110,7 @@ export const auditLogQueueServiceFactory = async ({
         orgId,
         eventType: event.type,
         expiresAt: new Date(Date.now() + ttl),
-        eventMetadata: event.metadata,
+        eventMetadata,
         userAgentType
       });
       await auditLogStreamService.streamLog(orgId, auditLog);
@@ -110,10 +123,10 @@ export const auditLogQueueServiceFactory = async ({
             data: JSON.stringify({
               id,
               actor: actor.type,
-              actorMetadata: actor.metadata ?? {},
+              actorMetadata,
               ipAddress: ipAddress ?? "",
               eventType: event.type,
-              eventMetadata: event.metadata ?? {},
+              eventMetadata,
               userAgent: userAgent ?? "",
               userAgentType: userAgentType ?? "",
               projectId: projectId ?? "",
