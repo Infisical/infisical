@@ -57,7 +57,8 @@ export const azureEntraIdConnectionService = (
     let url = `https://graph.microsoft.com/v1.0/servicePrincipals?$top=${SCIM_SERVICE_PRINCIPALS_LIMIT}&$select=id,displayName,appId`;
 
     if (search) {
-      const sanitizedSearch = search.replace(new RE2(/[^a-zA-Z0-9 -]/g), "");
+      const re2Pattern = new RE2(/[^a-zA-Z0-9 -]/g);
+      const sanitizedSearch = re2Pattern.replace(search, "");
       if (sanitizedSearch) {
         url += `&$filter=startswith(displayName,'${sanitizedSearch}')`;
       }

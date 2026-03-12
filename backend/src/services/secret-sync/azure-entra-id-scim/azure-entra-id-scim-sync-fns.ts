@@ -26,10 +26,18 @@ export const AzureEntraIdScimSyncFns = {
     const { servicePrincipalId } = secretSync.destinationConfig;
     const { secretId } = secretSync.syncOptions;
 
+    if (!secretId) {
+      throw new SecretSyncError({
+        error: new Error("No secret is configured for this SCIM token sync. Please reconfigure syncOptions.secretKey."),
+        shouldRetry: false
+      });
+    }
+
     const secretEntry = Object.entries(secretMap).find(([, s]) => s.id === secretId);
     if (!secretEntry) {
       throw new SecretSyncError({
-        error: new Error(`Secret with ID "${secretId}" not found in source`)
+        error: new Error(`Secret with ID "${secretId}" not found in source`),
+        shouldRetry: false
       });
     }
     const [, secret] = secretEntry;
@@ -79,7 +87,7 @@ export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncO
         message: `Secret with key "${secretKey as string}" not found in the specified source folder`
       });
     }
-    return { ...rest, secretId: secret.id };
+    return { ...existingSyncOptions, ...rest, secretId: secret.id };
   }
 
   // If no new secretKey provided, preserve the existing secretId and validate it still exists in the (possibly new) folder
@@ -92,7 +100,7 @@ export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncO
           "The previously configured secret no longer exists in the source folder. Please re-specify syncOptions.secretKey."
       });
     }
-    return { ...syncOptions, secretId: existingSecretId };
+    return { ...existingSyncOptions, ...syncOptions, secretId: existingSecretId };
   }
 
   return syncOptions;
