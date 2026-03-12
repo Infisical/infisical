@@ -10,6 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { request } from "@app/lib/config/request";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { deepEqualSkipFields } from "@app/lib/fn/object";
@@ -37,7 +38,11 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { getAzureEntraIdConnectionAccessToken } from "../app-connection/azure-entra-id/azure-entra-id-connection-fns";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
 import {
   DESTINATION_DUPLICATE_CHECK_MAP,
@@ -50,7 +55,10 @@ import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
   secretImportDAL: TSecretImportDALFactory;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -70,8 +78,11 @@ export const secretSyncServiceFactory = ({
   secretSyncDAL,
   folderDAL,
   secretImportDAL,
-  permissionService,
+  secretV2BridgeDAL,
+  appConnectionDAL,
   appConnectionService,
+  kmsService,
+  permissionService,
   projectDAL,
   orgDAL,
   projectBotService,
@@ -101,6 +112,69 @@ export const secretSyncServiceFactory = ({
       ...(secretPath && { secretPath }),
       ...(connectionId && { connectionId })
     });
+  };
+
+  const resolveSecretKeyToId = async (folderId: string, secretKey: string): Promise<string> => {
+    const secret = await secretV2BridgeDAL.findOne({ key: secretKey, folderId });
+    if (!secret) {
+      throw new BadRequestError({
+        message: `Secret with key "${secretKey}" not found in the specified source folder`
+      });
+    }
+    return secret.id;
+  };
+
+  // For Azure Entra ID SCIM syncs, resolve secretKey (name) in syncOptions to secretId (UUID) before saving
+  const resolveAzureEntraIdScimSyncOptions = async (
+    destination: SecretSync,
+    syncOptions: Record<string, unknown> | undefined,
+    folderId: string
+  ) => {
+    if (destination !== SecretSync.AzureEntraIdScim || !syncOptions || !("secretKey" in syncOptions)) {
+      return syncOptions;
+    }
+
+    const { secretKey, ...rest } = syncOptions;
+    const secretId = await resolveSecretKeyToId(folderId, secretKey as string);
+    return { ...rest, secretId };
+  };
+
+  // For Azure Entra ID SCIM syncs, fetch the service principal display name from Azure and store it
+  const enrichAzureEntraIdScimDestinationConfig = async (
+    destination: SecretSync,
+    destinationConfig: Record<string, unknown> | undefined,
+    connectionId: string
+  ) => {
+    if (destination !== SecretSync.AzureEntraIdScim || !destinationConfig) {
+      return destinationConfig;
+    }
+
+    const { servicePrincipalId } = destinationConfig;
+    if (!servicePrincipalId) return destinationConfig;
+
+    try {
+      const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, kmsService);
+
+      const { data } = await request.get<{ displayName?: string }>(
+        `https://graph.microsoft.com/v1.0/servicePrincipals/${servicePrincipalId as string}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          },
+          params: {
+            $select: "displayName"
+          }
+        }
+      );
+
+      return {
+        ...destinationConfig,
+        ...(data.displayName && { servicePrincipalDisplayName: data.displayName })
+      };
+    } catch {
+      // If we can't fetch the name, proceed without it
+      return destinationConfig;
+    }
   };
 
   const listSecretSyncsByProjectId = async (
@@ -377,10 +451,24 @@ export const secretSyncServiceFactory = ({
       actor
     );
 
+    const resolvedSyncOptions = await resolveAzureEntraIdScimSyncOptions(
+      params.destination,
+      params.syncOptions as Record<string, unknown> | undefined,
+      folder.id
+    );
+
+    const enrichedDestinationConfig = await enrichAzureEntraIdScimDestinationConfig(
+      params.destination,
+      params.destinationConfig as Record<string, unknown> | undefined,
+      params.connectionId
+    );
+
     try {
       const secretSync = await secretSyncDAL.create({
         folderId: folder.id,
         ...params,
+        ...(resolvedSyncOptions && { syncOptions: resolvedSyncOptions }),
+        ...(enrichedDestinationConfig && { destinationConfig: enrichedDestinationConfig }),
         ...(params.isAutoSyncEnabled && { syncStatus: SecretSyncStatus.Pending }),
         projectId
       });
@@ -530,9 +618,27 @@ export const secretSyncServiceFactory = ({
 
     const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
 
+    const resolvedSyncOptions = await resolveAzureEntraIdScimSyncOptions(
+      destination,
+      params.syncOptions as Record<string, unknown> | undefined,
+      folderId
+    );
+
+    const connectionIdForEnrich = params.connectionId ?? secretSync.connectionId ?? secretSync.connection?.id;
+
+    const enrichedDestinationConfig = connectionIdForEnrich
+      ? await enrichAzureEntraIdScimDestinationConfig(
+          destination,
+          params.destinationConfig as Record<string, unknown> | undefined,
+          connectionIdForEnrich
+        )
+      : params.destinationConfig;
+
     try {
       const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
         ...params,
+        ...(resolvedSyncOptions && { syncOptions: resolvedSyncOptions }),
+        ...(enrichedDestinationConfig && { destinationConfig: enrichedDestinationConfig }),
         ...(isAutoSyncEnabled && folderId && { syncStatus: SecretSyncStatus.Pending }),
         folderId
       });

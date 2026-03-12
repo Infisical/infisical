@@ -6,7 +6,12 @@ export type TAzureEntraIdScimSync = TRootSecretSync & {
   destination: SecretSync.AzureEntraIdScim;
   destinationConfig: {
     servicePrincipalId: string;
-    secretKey: string;
+    servicePrincipalDisplayName?: string;
+  };
+  syncOptions: {
+    initialSyncBehavior: string;
+    secretId?: string;
+    secretKey?: string;
   };
   connection: {
     app: AppConnection.AzureEntraId;

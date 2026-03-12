@@ -467,6 +467,7 @@ export type TSecretMap = Record<
   string,
   {
     value: string;
+    id?: string;
     comment?: string;
     skipMultilineEncoding?: boolean | null | undefined;
     secretMetadata?: ResourceMetadataDTO;

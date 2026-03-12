@@ -61,9 +61,7 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
           .describe(`Not supported for ${syncName} syncs.`),
     disableSecretDeletion: supportsDisableSecretDeletion
       ? z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
-      : z
-          .undefined({ message: `Disable secret deletion is not supported for ${syncName} syncs` })
-          .describe(`Not supported for ${syncName} syncs.`)
+      : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`)
   });
 
   const schema = merge ? baseSchema.merge(merge) : baseSchema;

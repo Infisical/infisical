@@ -18,6 +18,7 @@ import {
 import { TSecretSyncForm } from "../schemas";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
 import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptionsFields";
+import { AzureEntraIdScimSyncOptionsFields } from "./AzureEntraIdScimSyncOptionsFields";
 import { FlyioSyncOptionsFields } from "./FlyioSyncOptionsFields";
 import { RenderSyncOptionsFields } from "./RenderSyncOptionsFields";
 
@@ -81,8 +82,10 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
     case SecretSync.CircleCI:
-    case SecretSync.AzureEntraIdScim:
       AdditionalSyncOptionsFieldsComponent = null;
+      break;
+    case SecretSync.AzureEntraIdScim:
+      AdditionalSyncOptionsFieldsComponent = <AzureEntraIdScimSyncOptionsFields />;
       break;
     default:
       throw new Error(`Unhandled Additional Sync Options Fields: ${destination}`);

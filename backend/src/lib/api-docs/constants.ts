@@ -2782,7 +2782,7 @@ export const SecretSyncs = {
     AZURE_ENTRA_ID_SCIM: {
       servicePrincipalId:
         "The Object ID of the Azure Entra ID Enterprise Application service principal to sync the SCIM token to.",
-      secretKey: "The key of the Infisical secret whose value will be used as the SCIM provisioning token."
+      servicePrincipalDisplayName: "The display name of the Azure Entra ID Enterprise Application service principal."
     },
     AZURE_KEY_VAULT: {
       vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Input } from "@app/components/v2";
+import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
   TAzureScimServicePrincipal,
   useAzureEntraIdConnectionListScimServicePrincipals
@@ -42,7 +42,6 @@ export const AzureEntraIdScimSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.servicePrincipalId", "");
-          setValue("destinationConfig.secretKey", "");
           setSelectedSp(null);
         }}
       />
@@ -79,21 +78,6 @@ export const AzureEntraIdScimSyncFields = () => {
                   : "Type to search for service principals"
               }
             />
-          </FormControl>
-        )}
-      />
-
-      <Controller
-        name="destinationConfig.secretKey"
-        control={control}
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Secret Key"
-            tooltipText="The key of the secret whose value will be used as the SCIM provisioning token."
-          >
-            <Input {...field} placeholder="SCIM_TOKEN" />
           </FormControl>
         )}
       />

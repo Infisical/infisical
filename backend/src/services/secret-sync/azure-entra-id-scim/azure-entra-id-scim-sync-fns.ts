@@ -18,15 +18,16 @@ export const AzureEntraIdScimSyncFns = {
     secretMap: TSecretMap,
     { appConnectionDAL, kmsService }: TAzureEntraIdScimSyncFactoryDeps
   ): Promise<void> => {
-    const { servicePrincipalId, secretKey } = secretSync.destinationConfig;
+    const { servicePrincipalId } = secretSync.destinationConfig;
+    const { secretId } = secretSync.syncOptions;
 
-    const secret = secretMap[secretKey];
-    if (!secret) {
+    const secretEntry = Object.entries(secretMap).find(([, s]) => s.id === secretId);
+    if (!secretEntry) {
       throw new SecretSyncError({
-        error: new Error(`Secret "${secretKey}" not found in source`),
-        secretKey
+        error: new Error(`Secret with ID "${secretId}" not found in source`)
       });
     }
+    const [, secret] = secretEntry;
 
     const accessToken = await getAzureEntraIdConnectionAccessToken(
       secretSync.connection.id,

@@ -9,13 +9,18 @@ export const AzureEntraIdScimSyncReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.AzureEntraIdScim }
   >();
 
+  const servicePrincipalDisplayName = watch(
+    "destinationConfig.servicePrincipalDisplayName" as "destinationConfig.servicePrincipalId"
+  );
   const servicePrincipalId = watch("destinationConfig.servicePrincipalId");
-  const secretKey = watch("destinationConfig.secretKey");
+  const secretKey = watch("syncOptions.secretKey");
 
   return (
     <>
-      <GenericFieldLabel label="Service Principal ID">{servicePrincipalId}</GenericFieldLabel>
-      <GenericFieldLabel label="Secret Key">{secretKey}</GenericFieldLabel>
+      <GenericFieldLabel label="Service Principal">
+        {servicePrincipalDisplayName || servicePrincipalId}
+      </GenericFieldLabel>
+      <GenericFieldLabel label="Secret">{secretKey || "-"}</GenericFieldLabel>
     </>
   );
 };

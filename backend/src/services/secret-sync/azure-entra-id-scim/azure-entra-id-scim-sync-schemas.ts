@@ -18,11 +18,10 @@ const AzureEntraIdScimSyncDestinationConfigSchema = z.object({
     .trim()
     .min(1, "Service Principal ID required")
     .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_ENTRA_ID_SCIM.servicePrincipalId),
-  secretKey: z
+  servicePrincipalDisplayName: z
     .string()
-    .trim()
-    .min(1, "Secret key required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_ENTRA_ID_SCIM.secretKey)
+    .optional()
+    .describe("The display name of the Azure Entra ID Enterprise Application service principal.")
 });
 
 const AzureEntraIdScimSyncOptionsConfig: TSyncOptionsConfig = {
@@ -31,9 +30,25 @@ const AzureEntraIdScimSyncOptionsConfig: TSyncOptionsConfig = {
   supportsDisableSecretDeletion: false
 };
 
+const AzureEntraIdScimSyncOptionsReadSchema = z.object({
+  secretId: z
+    .string()
+    .uuid()
+    .describe("The ID of the Infisical secret whose value will be used as the SCIM provisioning token.")
+});
+
+const AzureEntraIdScimSyncOptionsInputSchema = z.object({
+  secretKey: z
+    .string()
+    .trim()
+    .min(1, "Secret key is required")
+    .describe("The key of the Infisical secret whose value will be used as the SCIM provisioning token.")
+});
+
 export const AzureEntraIdScimSyncSchema = BaseSecretSyncSchema(
   SecretSync.AzureEntraIdScim,
-  AzureEntraIdScimSyncOptionsConfig
+  AzureEntraIdScimSyncOptionsConfig,
+  AzureEntraIdScimSyncOptionsReadSchema
 )
   .extend({
     destination: z.literal(SecretSync.AzureEntraIdScim),
@@ -43,14 +58,16 @@ export const AzureEntraIdScimSyncSchema = BaseSecretSyncSchema(
 
 export const CreateAzureEntraIdScimSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.AzureEntraIdScim,
-  AzureEntraIdScimSyncOptionsConfig
+  AzureEntraIdScimSyncOptionsConfig,
+  AzureEntraIdScimSyncOptionsInputSchema
 ).extend({
   destinationConfig: AzureEntraIdScimSyncDestinationConfigSchema
 });
 
 export const UpdateAzureEntraIdScimSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.AzureEntraIdScim,
-  AzureEntraIdScimSyncOptionsConfig
+  AzureEntraIdScimSyncOptionsConfig,
+  AzureEntraIdScimSyncOptionsInputSchema
 ).extend({
   destinationConfig: AzureEntraIdScimSyncDestinationConfigSchema.optional()
 });
