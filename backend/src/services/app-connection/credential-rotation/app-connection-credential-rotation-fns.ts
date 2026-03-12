@@ -102,17 +102,26 @@ export const calculateNextRotationAt = ({
 
 export const encryptCredentialRotationGeneratedCredentials = async ({
   orgId,
+  projectId,
   generatedCredentials,
   kmsService
 }: {
   orgId: string;
+  projectId: string | null | undefined;
   generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
+  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
 
   const { cipherTextBlob } = encryptor({
     plainText: Buffer.from(JSON.stringify(generatedCredentials))
@@ -123,17 +132,26 @@ export const encryptCredentialRotationGeneratedCredentials = async ({
 
 export const decryptCredentialRotationGeneratedCredentials = async ({
   orgId,
+  projectId,
   encryptedGeneratedCredentials,
   kmsService
 }: {
   orgId: string;
+  projectId: string | null | undefined;
   encryptedGeneratedCredentials: Buffer;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
+  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
 
   const decryptedPlainTextBlob = decryptor({
     cipherTextBlob: encryptedGeneratedCredentials
@@ -144,17 +162,26 @@ export const decryptCredentialRotationGeneratedCredentials = async ({
 
 export const encryptStrategyConfig = async ({
   orgId,
+  projectId,
   config,
   kmsService
 }: {
   orgId: string;
+  projectId: string | null | undefined;
   config: Record<string, unknown>;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
+  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
 
   const { cipherTextBlob } = encryptor({
     plainText: Buffer.from(JSON.stringify(config))
@@ -165,17 +192,26 @@ export const encryptStrategyConfig = async ({
 
 export const decryptStrategyConfig = async <T>({
   orgId,
+  projectId,
   encryptedStrategyConfig,
   kmsService
 }: {
   orgId: string;
+  projectId: string | null | undefined;
   encryptedStrategyConfig: Buffer;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
+  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
 
   const decryptedPlainTextBlob = decryptor({
     cipherTextBlob: encryptedStrategyConfig
@@ -186,17 +222,26 @@ export const decryptStrategyConfig = async <T>({
 
 export const encryptRotationMessage = async ({
   orgId,
+  projectId,
   message,
   kmsService
 }: {
   orgId: string;
+  projectId: string | null | undefined;
   message: string;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
+  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
 
   const { cipherTextBlob } = encryptor({
     plainText: Buffer.from(message)
@@ -207,17 +252,26 @@ export const encryptRotationMessage = async ({
 
 export const decryptRotationMessage = async ({
   orgId,
+  projectId,
   encryptedLastRotationMessage,
   kmsService
 }: {
   orgId: string;
+  projectId: string | null | undefined;
   encryptedLastRotationMessage: Buffer;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
+  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
 
   const decryptedPlainTextBlob = decryptor({
     cipherTextBlob: encryptedLastRotationMessage
@@ -229,15 +283,23 @@ export const decryptRotationMessage = async ({
 export const expandCredentialRotation = async (
   { encryptedLastRotationMessage, ...rotation }: TAppConnectionCredentialRotationRaw,
   orgId: string,
+  projectId: string | null | undefined,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ): Promise<TAppConnectionCredentialRotation> => {
   let lastRotationMessage: string | null = null;
 
   if (encryptedLastRotationMessage) {
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    const { decryptor } = await kmsService.createCipherPairWithDataKey(
+      projectId
+        ? {
+            type: KmsDataKey.SecretManager,
+            projectId
+          }
+        : {
+            type: KmsDataKey.Organization,
+            orgId
+          }
+    );
 
     lastRotationMessage = decryptor({
       cipherTextBlob: encryptedLastRotationMessage

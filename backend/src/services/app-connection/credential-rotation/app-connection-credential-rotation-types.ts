@@ -45,6 +45,7 @@ export type TCredentialRotationIssueInitialCredentials<
   strategyConfig: S;
   generatedCredentials: (C | null)[];
   updatedCredentials: Record<string, unknown>;
+  postCommitCallback?: () => Promise<void>;
 }>;
 
 export type TCredentialRotationCreateCredential<

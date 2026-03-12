@@ -7,10 +7,10 @@ import { FormControl, Input, Switch } from "@app/components/v2";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
 
 type Props = {
-  renderExtraFields?: ReactNode;
+  children?: ReactNode;
 };
 
-export const CredentialRotationForm = ({ renderExtraFields }: Props) => {
+export const CredentialRotationForm = ({ children }: Props) => {
   const { control, watch } = useFormContext();
 
   const isAutoRotationEnabled = watch("isAutoRotationEnabled");
@@ -37,7 +37,7 @@ export const CredentialRotationForm = ({ renderExtraFields }: Props) => {
                 isChecked={value}
                 onCheckedChange={onChange}
               >
-                <p className="w-[13.6rem]">Automatic Credential Rotation</p>
+                <p>Automatic Credential Rotation</p>
               </Switch>
             </FormControl>
           )}
@@ -46,7 +46,7 @@ export const CredentialRotationForm = ({ renderExtraFields }: Props) => {
 
       {isAutoRotationEnabled && (
         <>
-          {renderExtraFields}
+          {children}
           <div className="flex w-full items-center gap-2">
             <Controller
               render={({ field: { value, onChange }, fieldState: { error } }) => (

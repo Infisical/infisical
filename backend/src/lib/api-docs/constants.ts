@@ -2551,7 +2551,9 @@ export const AppConnections = {
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
-      projectId: `The ID of the project to create the ${appName} Connection in.`
+      projectId: `The ID of the project to create the ${appName} Connection in.`,
+      isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
+      rotation: `The credential rotation configuration for the ${appName} Connection.`
     };
   },
   UPDATE: (app: AppConnection) => {
@@ -2562,7 +2564,9 @@ export const AppConnections = {
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
-      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`
+      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
+      isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
+      rotation: `The updated credential rotation configuration for the ${appName} Connection.`
     };
   },
   DELETE: (app: AppConnection) => ({
@@ -2630,7 +2634,9 @@ export const AppConnections = {
       clientSecret: "The Client Secret to use to connect with Azure Client Secrets.",
       certificateBody: "The certificate body in PEM format to use to connect with Azure Client Secrets.",
       privateKey:
-        "The private key to use to connect with Azure Client Secrets. This is never transmitted to Azure and is only used to sign the Azure client assertion with."
+        "The private key to use to connect with Azure Client Secrets. This is never transmitted to Azure and is only used to sign the Azure client assertion with.",
+      clientSecretKeyId:
+        "The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked."
     },
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",

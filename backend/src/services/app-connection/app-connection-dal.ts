@@ -57,7 +57,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
         | undefined
         | null;
 
-      if (connection.isAutoRotationEnabled && connection.rotateAtUtc) {
+      if (connection.rotateAtUtc) {
         const parsedRotationAtUtc = AppConnectionCredentialRotationRotateAtUtcSchema.safeParse(connection.rotateAtUtc);
 
         if (parsedRotationAtUtc.success) {

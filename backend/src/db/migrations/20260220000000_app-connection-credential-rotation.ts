@@ -2,6 +2,8 @@ import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
 
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+
 export async function up(knex: Knex): Promise<void> {
   // Add isAutoRotationEnabled to app_connections
   if (!(await knex.schema.hasColumn(TableName.AppConnection, "isAutoRotationEnabled"))) {
@@ -29,11 +31,14 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("encryptedGeneratedCredentials").notNullable();
       t.timestamps(true, true, true);
     });
+
+    await createOnUpdateTrigger(knex, TableName.AppConnectionCredentialRotation);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.AppConnectionCredentialRotation);
+  await dropOnUpdateTrigger(knex, TableName.AppConnectionCredentialRotation);
 
   if (await knex.schema.hasColumn(TableName.AppConnection, "isAutoRotationEnabled")) {
     await knex.schema.alterTable(TableName.AppConnection, (t) => {

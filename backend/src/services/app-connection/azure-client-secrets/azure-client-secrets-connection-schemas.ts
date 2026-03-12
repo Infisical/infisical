@@ -47,7 +47,12 @@ export const AzureClientSecretsConnectionClientSecretInputCredentialsSchema = z.
     .trim()
     .min(1, "Tenant ID required")
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.tenantId),
-  clientSecretKeyId: z.string().uuid().trim().optional()
+  clientSecretKeyId: z
+    .string()
+    .uuid()
+    .trim()
+    .optional()
+    .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.clientSecretKeyId)
 });
 
 export const AzureClientSecretsConnectionCertificateInputCredentialsSchema = z.object({

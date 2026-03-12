@@ -14,7 +14,7 @@ import {
 } from "@app/services/app-connection/app-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { TAppConnection } from "../app-connection-types";
+import { TAppConnection, TAppConnectionRaw } from "../app-connection-types";
 import { AzureClientSecretsConnectionMethod } from "../azure-client-secrets";
 import { AzureKeyVaultConnectionMethod } from "../azure-key-vault";
 import { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
@@ -50,8 +50,8 @@ const MAX_GENERATED_CREDENTIALS_LENGTH = 2;
 const STRATEGY_MAP: Record<
   AppConnectionCredentialRotationStrategy,
   {
-    app: TAppConnection["app"]; // azure-key-vault
-    method: TAppConnection["method"]; // client-secret
+    app: TAppConnection["app"];
+    method: TAppConnection["method"];
   }[]
 > = {
   [AppConnectionCredentialRotationStrategy.AzureClientSecret]: [
@@ -168,24 +168,21 @@ export const appConnectionCredentialRotationServiceFactory = ({
 
     const credentials = await getConnectionClientCredentials(connection);
 
-    const { strategyConfig, generatedCredentials, updatedCredentials } = await provider.issueInitialCredentials(
-      credentials,
-      rotationInterval
-    );
-
-    // Update the connection to use the new credential
-    await updateConnectionCredentials(connectionId, updatedCredentials as TAppConnection["credentials"], tx);
+    const { strategyConfig, generatedCredentials, updatedCredentials, postCommitCallback } =
+      await provider.issueInitialCredentials(credentials, rotationInterval);
 
     const now = new Date();
 
     const encryptedGeneratedCreds = await encryptCredentialRotationGeneratedCredentials({
       orgId: connection.orgId,
+      projectId: connection.projectId,
       generatedCredentials,
       kmsService
     });
 
     const encryptedConfig = await encryptStrategyConfig({
       orgId: connection.orgId,
+      projectId: connection.projectId,
       config: strategyConfig,
       kmsService
     });
@@ -200,6 +197,8 @@ export const appConnectionCredentialRotationServiceFactory = ({
     });
 
     const create = async (trx: Knex) => {
+      await updateConnectionCredentials(connectionId, updatedCredentials as TAppConnection["credentials"], trx);
+
       return appConnectionCredentialRotationDAL.create(
         {
           connectionId,
@@ -220,7 +219,13 @@ export const appConnectionCredentialRotationServiceFactory = ({
 
     const rotation = tx ? await create(tx) : await appConnectionDAL.transaction(create);
 
-    return expandCredentialRotation(rotation, connection.orgId, kmsService);
+    // Revoke old credentials only after the transaction has committed successfully,
+    // so we don't end up with a dead connection if the DB write fails.
+    if (postCommitCallback) {
+      await postCommitCallback();
+    }
+
+    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
   };
 
   /**
@@ -238,22 +243,44 @@ export const appConnectionCredentialRotationServiceFactory = ({
       throw new NotFoundError({ message: "Credential rotation is not configured for this connection" });
     }
 
-    const update = async (trx: Knex) => {
-      await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: false }, trx);
-      await appConnectionCredentialRotationDAL.deleteById(existingRotation.id, trx);
-
-      return null;
-    };
-
-    // If disabling auto rotation, delete the rotation config
+    // If disabling auto rotation, preserve the rotation record but null out nextRotationAt so cron won't pick it up
     if (isAutoRotationEnabled === false) {
+      const disable = async (trx: Knex) => {
+        await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: false }, trx);
+        await appConnectionCredentialRotationDAL.updateById(existingRotation.id, { nextRotationAt: null }, trx);
+      };
+
       if (tx) {
-        await update(tx);
+        await disable(tx);
       } else {
-        await appConnectionDAL.transaction(update);
+        await appConnectionDAL.transaction(disable);
       }
 
       return null;
+    }
+
+    // If re-enabling auto rotation, recalculate nextRotationAt
+    if (isAutoRotationEnabled === true && !existingRotation.nextRotationAt) {
+      const resolvedRotateAtUtc = rotateAtUtc || (existingRotation.rotateAtUtc as { hours: number; minutes: number });
+      const resolvedInterval = rotationInterval ?? existingRotation.rotationInterval;
+
+      const nextRotationAt = calculateNextRotationAt({
+        rotateAtUtc: resolvedRotateAtUtc,
+        isAutoRotationEnabled: true,
+        rotationInterval: resolvedInterval,
+        rotationStatus: existingRotation.rotationStatus,
+        isManualRotation: false,
+        lastRotatedAt: existingRotation.lastRotatedAt ?? new Date()
+      });
+
+      await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true }, tx);
+
+      const updateData: Record<string, unknown> = { nextRotationAt };
+      if (rotationInterval !== undefined) updateData.rotationInterval = rotationInterval;
+      if (rotateAtUtc !== undefined) updateData.rotateAtUtc = JSON.stringify(rotateAtUtc);
+
+      const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
+      return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsService);
     }
 
     // Build update payload
@@ -289,7 +316,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
     }
 
     const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
-    return expandCredentialRotation(updated, connection.orgId, kmsService);
+    return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsService);
   };
 
   /**
@@ -303,7 +330,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const rotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
     if (!rotation) return null;
 
-    return expandCredentialRotation(rotation, connection.orgId, kmsService);
+    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
   };
 
   /**
@@ -337,7 +364,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       }
     );
 
-    return expandCredentialRotation(rotation, connection.orgId, kmsService);
+    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
   };
 
   /**
@@ -371,6 +398,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const now = new Date();
     const rotateAtUtc = rotationWithConnection.rotateAtUtc as { hours: number; minutes: number };
 
+    let connection: TAppConnectionRaw | undefined;
     try {
       // Acquire lock to prevent concurrent rotations
       const lockKey = `credential-rotation-lock-${rotationId}`;
@@ -378,7 +406,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
 
       try {
         // Decrypt connection credentials (for Graph API self-rotation)
-        const connection = await appConnectionDAL.findById(connectionId);
+        connection = await appConnectionDAL.findById(connectionId);
         if (!connection) throw new Error(`Connection ${connectionId} not found`);
 
         const credentials = await getConnectionClientCredentials(connection);
@@ -386,12 +414,14 @@ export const appConnectionCredentialRotationServiceFactory = ({
         // Decrypt strategy config and generated credentials
         const config = await decryptStrategyConfig<TAppConnectionCredentialRotationStrategyConfig>({
           orgId,
+          projectId: connection.projectId,
           encryptedStrategyConfig: encryptedConfig,
           kmsService
         });
 
         const generatedCredentials = await decryptCredentialRotationGeneratedCredentials({
           orgId,
+          projectId: connection.projectId,
           encryptedGeneratedCredentials: encryptedGenCreds,
           kmsService
         });
@@ -422,15 +452,50 @@ export const appConnectionCredentialRotationServiceFactory = ({
           inactiveIndex
         );
 
-        // Step 2: Update connection credentials with new secret
+        // Step 2: Update connection credentials and rotation metadata atomically
         const updatedCredentials = provider.mergeCredentials(
           credentials,
           newCredential
         ) as TAppConnection["credentials"];
-        await updateConnectionCredentials(connectionId, updatedCredentials);
 
-        // Step 3: Revoke old credential at inactive index (best-effort, non-fatal)
-        // If this fails, we have 3 secrets temporarily — they'll be cleaned up on the next cycle.
+        const updatedGeneratedCredentials = [...generatedCredentials];
+        updatedGeneratedCredentials[inactiveIndex] = newCredential;
+
+        const encryptedUpdatedGenCreds = await encryptCredentialRotationGeneratedCredentials({
+          orgId,
+          projectId: connection.projectId,
+          generatedCredentials: updatedGeneratedCredentials,
+          kmsService
+        });
+
+        const nextRotationAt = calculateNextRotationAt({
+          rotateAtUtc,
+          isAutoRotationEnabled,
+          rotationInterval,
+          rotationStatus: AppConnectionCredentialRotationStatus.Success,
+          isManualRotation: options.isManualRotation ?? false,
+          lastRotatedAt: now
+        });
+
+        await appConnectionDAL.transaction(async (tx) => {
+          await updateConnectionCredentials(connectionId, updatedCredentials, tx);
+          await appConnectionCredentialRotationDAL.updateById(
+            rotationId,
+            {
+              activeIndex: inactiveIndex,
+              encryptedGeneratedCredentials: encryptedUpdatedGenCreds,
+              rotationStatus: AppConnectionCredentialRotationStatus.Success,
+              lastRotatedAt: now,
+              lastRotationAttemptedAt: now,
+              lastRotationJobId: options.jobId,
+              nextRotationAt,
+              encryptedLastRotationMessage: null
+            },
+            tx
+          );
+        });
+
+        // revoke old credential at inactive index after the transaction commits (best-effort)
         if (inactiveCredential) {
           try {
             logger.info(
@@ -445,36 +510,6 @@ export const appConnectionCredentialRotationServiceFactory = ({
           }
         }
 
-        // Step 4: Store new credential and swap active index
-        const updatedGeneratedCredentials = [...generatedCredentials];
-        updatedGeneratedCredentials[inactiveIndex] = newCredential;
-
-        const encryptedUpdatedGenCreds = await encryptCredentialRotationGeneratedCredentials({
-          orgId,
-          generatedCredentials: updatedGeneratedCredentials,
-          kmsService
-        });
-
-        const nextRotationAt = calculateNextRotationAt({
-          rotateAtUtc,
-          isAutoRotationEnabled,
-          rotationInterval,
-          rotationStatus: AppConnectionCredentialRotationStatus.Success,
-          isManualRotation: options.isManualRotation ?? false,
-          lastRotatedAt: now
-        });
-
-        await appConnectionCredentialRotationDAL.updateById(rotationId, {
-          activeIndex: inactiveIndex,
-          encryptedGeneratedCredentials: encryptedUpdatedGenCreds,
-          rotationStatus: AppConnectionCredentialRotationStatus.Success,
-          lastRotatedAt: now,
-          lastRotationAttemptedAt: now,
-          lastRotationJobId: options.jobId,
-          nextRotationAt,
-          encryptedLastRotationMessage: null
-        });
-
         logger.info(
           `credentialRotation: Successfully rotated [rotationId=${rotationId}] [connectionId=${connectionId}]`
         );
@@ -485,11 +520,15 @@ export const appConnectionCredentialRotationServiceFactory = ({
       logger.error(error, `credentialRotation: Failed to rotate [rotationId=${rotationId}]`);
 
       const errorMessage = parseRotationErrorMessage(error);
-      const encryptedMessage = await encryptRotationMessage({
-        orgId,
-        message: errorMessage,
-        kmsService
-      });
+      let encryptedMessage: Buffer | undefined;
+      if (connection) {
+        encryptedMessage = await encryptRotationMessage({
+          orgId,
+          projectId: connection.projectId,
+          message: errorMessage,
+          kmsService
+        });
+      }
 
       const nextRotationAt = calculateNextRotationAt({
         rotateAtUtc,
@@ -504,7 +543,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
         rotationStatus: AppConnectionCredentialRotationStatus.Failed,
         lastRotationAttemptedAt: now,
         lastRotationJobId: options.jobId,
-        encryptedLastRotationMessage: encryptedMessage,
+        ...(encryptedMessage ? { encryptedLastRotationMessage: encryptedMessage } : {}),
         nextRotationAt
       });
 

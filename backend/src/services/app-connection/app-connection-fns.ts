@@ -517,6 +517,7 @@ export const decryptAppConnection = async (
           lastRotationMessage: appConnection.rotation.encryptedLastRotationMessage
             ? await decryptRotationMessage({
                 orgId: appConnection.orgId,
+                projectId: appConnection.projectId,
                 encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
                 kmsService
               })

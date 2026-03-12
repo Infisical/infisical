@@ -322,24 +322,22 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
               )}
             />
 
-            <CredentialRotationForm
-              renderExtraFields={
-                <Controller
-                  name="credentials.clientSecretKeyId"
-                  control={control}
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isError={Boolean(error?.message)}
-                      label="Client Secret Key ID"
-                      errorText={error?.message}
-                      tooltipText="The Key ID of the client secret provided above. Found in Azure Portal under App Registrations > Certificates & Secrets. Required so Infisical can revoke the original secret after rotation."
-                    >
-                      <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-                    </FormControl>
-                  )}
-                />
-              }
-            />
+            <CredentialRotationForm>
+              <Controller
+                name="credentials.clientSecretKeyId"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error?.message)}
+                    label="Client Secret Key ID"
+                    errorText={error?.message}
+                    tooltipText="The Key ID of the client secret provided above. Found in Azure Portal under App Registrations > Certificates & Secrets. Required so Infisical can revoke the original secret after rotation."
+                  >
+                    <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
+                  </FormControl>
+                )}
+              />
+            </CredentialRotationForm>
           </>
         )}
 

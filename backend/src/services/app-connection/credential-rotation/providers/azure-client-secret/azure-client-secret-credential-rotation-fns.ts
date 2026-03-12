@@ -394,25 +394,29 @@ export const azureClientSecretRotationProviderFactory: TCredentialRotationProvid
     // getGraphApiToken has built-in retry logic for propagation delays (AADSTS7000215).
     const freshAccessToken = await getGraphApiToken(updatedCredentials);
 
-    // Revoke the original user-provided secret using its Key ID.
-    try {
-      await revokeAzureClientSecret(originalKeyId, strategyConfig, updatedCredentials, freshAccessToken);
-      logger.info(
-        `credentialRotation: Revoked original client secret keyId=${originalKeyId} [connection=${connection.name}]`
-      );
-    } catch (e) {
-      logger.warn(
-        e,
-        `credentialRotation: Failed to revoke original client secret keyId=${originalKeyId} [connection=${connection.name}] — it will need to be removed manually or will expire naturally`
-      );
-    }
-
     const generatedCredentials: (TAzureClientSecretGeneratedCredential | null)[] = [newCredential, null];
+
+    // Revoke the original user-provided secret AFTER the DB transaction commits,
+    // so we don't end up with a dead connection if the transaction fails.
+    const postCommitCallback = async () => {
+      try {
+        await revokeAzureClientSecret(originalKeyId, strategyConfig, updatedCredentials, freshAccessToken);
+        logger.info(
+          `credentialRotation: Revoked original client secret keyId=${originalKeyId} [connection=${connection.name}]`
+        );
+      } catch (e) {
+        logger.warn(
+          e,
+          `credentialRotation: Failed to revoke original client secret keyId=${originalKeyId} [connection=${connection.name}] — it will need to be removed manually or will expire naturally`
+        );
+      }
+    };
 
     return {
       strategyConfig,
       generatedCredentials,
-      updatedCredentials
+      updatedCredentials,
+      postCommitCallback
     };
   };
 

@@ -20,16 +20,21 @@ export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
 }).extend({
   rotation: z
     .object({
-      lastRotationMessage: z.string().optional().nullable(),
-      rotationInterval: z.number(),
-      nextRotationAt: z.date().nullable().optional(),
-      rotationStatus: z.nativeEnum(AppConnectionCredentialRotationStatus),
-      rotateAtUtc: z.object({
-        hours: z.number(),
-        minutes: z.number()
-      })
+      lastRotationMessage: z.string().optional().nullable().describe("The message from the last rotation attempt."),
+      rotationInterval: z.number().describe("The interval in days between credential rotations."),
+      nextRotationAt: z.date().nullable().optional().describe("The next scheduled rotation time."),
+      rotationStatus: z
+        .nativeEnum(AppConnectionCredentialRotationStatus)
+        .describe("The status of the last rotation attempt."),
+      rotateAtUtc: z
+        .object({
+          hours: z.number().describe("The hour (0-23) at which to rotate."),
+          minutes: z.number().describe("The minute (0-59) at which to rotate.")
+        })
+        .describe("The UTC time of day at which rotation should occur.")
     })
-    .optional(),
+    .optional()
+    .describe("The credential rotation configuration, if configured."),
 
   credentialsHash: z.string().optional(),
   project: z
@@ -76,7 +81,7 @@ export const GenericCreateAppConnectionFieldsSchema = (
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
       isAutoRotationEnabled: supportsCredentialRotation
-        ? z.boolean().optional()
+        ? z.boolean().optional().describe(AppConnections.CREATE(app).isAutoRotationEnabled)
         : z
             .literal(false, {
               errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
@@ -85,7 +90,7 @@ export const GenericCreateAppConnectionFieldsSchema = (
             .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
       rotation: supportsCredentialRotation
-        ? CreateAppConnectionCredentialRotationSchema.optional()
+        ? CreateAppConnectionCredentialRotationSchema.optional().describe(AppConnections.CREATE(app).rotation)
         : z
             .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
             .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
@@ -133,7 +138,7 @@ export const GenericUpdateAppConnectionFieldsSchema = (
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
     isAutoRotationEnabled: supportsCredentialRotation
-      ? z.boolean().optional()
+      ? z.boolean().optional().describe(AppConnections.UPDATE(app).isAutoRotationEnabled)
       : z
           .literal(false, {
             errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
@@ -142,7 +147,7 @@ export const GenericUpdateAppConnectionFieldsSchema = (
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
 
     rotation: supportsCredentialRotation
-      ? UpdateAppConnectionCredentialRotationSchema.omit({ isAutoRotationEnabled: true }).optional()
+      ? UpdateAppConnectionCredentialRotationSchema.optional().describe(AppConnections.UPDATE(app).rotation)
       : z
           .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
           .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
