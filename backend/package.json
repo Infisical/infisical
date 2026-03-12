@@ -46,6 +46,7 @@
     "migration:unlock-dev": "knex --knexfile ./src/db/knexfile.ts migrate:unlock",
     "migrate:org": "tsx ./scripts/migrate-organization.ts",
     "seed:new": "tsx ./scripts/create-seed-file.ts",
+    "seed:observability-demo": "tsx ./scripts/seed-observability-demo.ts",
     "seed": "knex --knexfile ./dist/db/knexfile.ts --client pg seed:run",
     "seed-dev": "knex --knexfile ./src/db/knexfile.ts --client pg seed:run",
     "db:reset": "npm run migration:rollback -- --all && npm run migration:latest",
