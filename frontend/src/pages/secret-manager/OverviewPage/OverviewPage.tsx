@@ -2428,7 +2428,7 @@ const OverviewPageContent = () => {
                 ) : (
                   <div className="relative">
                     {isSingleEnvView && (
-                      <div className="absolute top-2 right-2 z-50 mb-4 flex items-center justify-end gap-2">
+                      <div className="absolute top-2 right-3 z-50 mb-4 flex items-center justify-end gap-2">
                         {isProtectedBranch && (
                           <Tooltip>
                             <TooltipTrigger>
