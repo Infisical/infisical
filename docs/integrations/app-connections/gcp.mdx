@@ -41,6 +41,11 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
         <Step title="Configure Your Instance">
             1. Copy the entire contents of the downloaded JSON key file.
             2. Set it as a string value for the `INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL` environment variable.
+
+            <Note>
+                If you can't directly access and modify environment variables, you can update them using the [Server Admin Console](/documentation/platform/admin-panel/server-admin#environment-variables-tab).
+            </Note>
+
             3. Restart your Infisical instance to apply the changes.
             4. You can now use GCP integration with service account impersonation.
         </Step>
