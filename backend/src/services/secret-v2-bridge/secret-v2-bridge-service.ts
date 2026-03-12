@@ -2880,7 +2880,8 @@ export const secretV2BridgeServiceFactory = ({
           tx
         );
 
-        const commits = locallyCreatedSecrets.concat(locallyUpdatedSecrets).map((doc) => {
+        const secretsForApproval = locallyCreatedSecrets.concat(locallyUpdatedSecrets);
+        const commits = secretsForApproval.map((doc) => {
           const { operation } = doc;
           const localSecret = destinationSecretsGroupedByKey[doc.key]?.[0];
 
@@ -2911,7 +2912,18 @@ export const secretV2BridgeServiceFactory = ({
               : {})
           };
         });
-        await secretApprovalRequestSecretDAL.insertV2Bridge(commits, tx);
+        const approvalCommits = await secretApprovalRequestSecretDAL.insertV2Bridge(commits, tx);
+
+        const approvalCommitsGroupedByKey = groupBy(approvalCommits, (i) => i.key);
+        const approvalSecretTags = secretsForApproval.flatMap((doc) =>
+          doc.tags.map((tag) => ({
+            secretId: approvalCommitsGroupedByKey[doc.key][0].id,
+            tagId: tag.id
+          }))
+        );
+        if (approvalSecretTags.length) {
+          await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(approvalSecretTags, tx);
+        }
       } else {
         // apply changes directly
         let createdSecrets: { id: string; key: string }[] = [];
@@ -2946,7 +2958,8 @@ export const secretV2BridgeServiceFactory = ({
                   value: value || undefined,
                   encryptedValue: encryptedValue || undefined
                 })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
-                references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
+                references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : [],
+                tagIds: doc.tags.map((tag) => tag.id)
               };
             })
           });
@@ -2982,6 +2995,7 @@ export const secretV2BridgeServiceFactory = ({
                     value,
                     encryptedValue
                   })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
+                  tags: doc.tags.map((tag) => tag.id),
                   ...(doc.encryptedValue
                     ? {
                         encryptedValue: doc.encryptedValue,
@@ -3623,7 +3637,10 @@ export const secretV2BridgeServiceFactory = ({
           secretPath,
           {
             ...el,
-            secretMetadata: (el.metadata as { key: string; value?: string; encryptedValue: string }[])?.map((meta) => ({
+            secretMetadata: (Array.isArray(el.metadata)
+              ? (el.metadata as { key: string; value?: string; encryptedValue: string }[])
+              : []
+            ).map((meta) => ({
               isEncrypted: Boolean(meta.encryptedValue),
               key: meta.key,
               value: meta.encryptedValue

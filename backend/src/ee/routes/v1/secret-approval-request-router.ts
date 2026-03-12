@@ -4,10 +4,12 @@ import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema, Us
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedTagSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const approvalRequestUser = z.object({ userId: z.string().nullable().optional() }).merge(
   UsersSchema.pick({
@@ -174,6 +176,20 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         });
       }
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretApprovalRequestMerged,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            requestId: approval.id,
+            projectId,
+            requestSlug: approval.slug,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
       return { approval };
     }
   });
@@ -225,6 +241,20 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretApprovalRequestReviewed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            requestId: review.requestId,
+            projectId: review.projectId,
+            reviewStatus: req.body.status,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
       return { review };
     }
   });
@@ -275,6 +305,20 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           // akhilmhdh: had to apply any to avoid ts issue with this
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretApprovalRequestStatusChanged,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            requestId: approval.id,
+            projectId: approval.projectId,
+            status: req.body.status,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
 
       return { approval };
     }
