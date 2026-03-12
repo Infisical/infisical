@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, UNIVERSAL_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -87,10 +88,10 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           properties: {
             identityId: identityUa.identityId,
             orgId: identity.orgId,
-            authMethod: "universal_auth"
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -224,10 +225,10 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           properties: {
             identityId: identityUniversalAuth.identityId,
             orgId: identityUniversalAuth.orgId,
-            authMethod: "universal_auth"
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityUniversalAuth };
     }
@@ -361,10 +362,10 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           properties: {
             identityId: identityUniversalAuth.identityId,
             orgId: identityUniversalAuth.orgId,
-            authMethod: "universal_auth"
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityUniversalAuth };
     }
@@ -474,10 +475,10 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           properties: {
             identityId: identityUniversalAuth.identityId,
             orgId: identityUniversalAuth.orgId,
-            authMethod: "universal_auth"
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityUniversalAuth };
     }
@@ -548,7 +549,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             orgId
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { clientSecret, clientSecretData };
     }
@@ -717,7 +718,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             orgId: clientSecretData.orgId
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { clientSecretData };
     }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityOciAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityOciAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OCI_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -81,10 +82,10 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityOciAuth.identityId,
             orgId: identity.orgId,
-            authMethod: "oci"
+            authMethod: IdentityAuthMethod.OCI_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -189,10 +190,10 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityOciAuth.identityId,
             orgId: identityOciAuth.orgId,
-            authMethod: "oci"
+            authMethod: IdentityAuthMethod.OCI_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityOciAuth };
     }
@@ -286,10 +287,10 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityOciAuth.identityId,
             orgId: identityOciAuth.orgId,
-            authMethod: "oci"
+            authMethod: IdentityAuthMethod.OCI_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityOciAuth };
     }
@@ -398,10 +399,10 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityOciAuth.identityId,
             orgId: identityOciAuth.orgId,
-            authMethod: "oci"
+            authMethod: IdentityAuthMethod.OCI_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityOciAuth };
     }

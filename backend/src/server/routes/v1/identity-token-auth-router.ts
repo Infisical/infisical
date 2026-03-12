@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityAccessTokensSchema, IdentityTokenAuthsSchema } from "@app/db/schemas";
+import { IdentityAccessTokensSchema, IdentityAuthMethod, IdentityTokenAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TOKEN_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -108,10 +109,10 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityTokenAuth.identityId,
             orgId: identityTokenAuth.orgId,
-            authMethod: "token_auth"
+            authMethod: IdentityAuthMethod.TOKEN_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         identityTokenAuth
@@ -208,10 +209,10 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityTokenAuth.identityId,
             orgId: identityTokenAuth.orgId,
-            authMethod: "token_auth"
+            authMethod: IdentityAuthMethod.TOKEN_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         identityTokenAuth
@@ -324,10 +325,10 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityTokenAuth.identityId,
             orgId: identityTokenAuth.orgId,
-            authMethod: "token_auth"
+            authMethod: IdentityAuthMethod.TOKEN_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityTokenAuth };
     }
@@ -401,7 +402,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
             orgId: identity.orgId
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -678,7 +679,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
             orgId: req.permission.orgId
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         message: "Successfully revoked access token"

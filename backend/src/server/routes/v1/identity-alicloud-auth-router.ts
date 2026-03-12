@@ -1,7 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { IdentityAlicloudAuthsSchema } from "@app/db/schemas";
+import { IdentityAlicloudAuthsSchema, IdentityAuthMethod } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ALICLOUD_AUTH, ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -102,10 +103,10 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           properties: {
             identityId: identityAliCloudAuth.identityId,
             orgId: identity.orgId,
-            authMethod: "alicloud"
+            authMethod: IdentityAuthMethod.ALICLOUD_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -213,10 +214,10 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           properties: {
             identityId: identityAliCloudAuth.identityId,
             orgId: identityAliCloudAuth.orgId,
-            authMethod: "alicloud"
+            authMethod: IdentityAuthMethod.ALICLOUD_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAliCloudAuth };
     }
@@ -319,10 +320,10 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           properties: {
             identityId: identityAliCloudAuth.identityId,
             orgId: identityAliCloudAuth.orgId,
-            authMethod: "alicloud"
+            authMethod: IdentityAuthMethod.ALICLOUD_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAliCloudAuth };
     }
@@ -431,10 +432,10 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           properties: {
             identityId: identityAliCloudAuth.identityId,
             orgId: identityAliCloudAuth.orgId,
-            authMethod: "alicloud"
+            authMethod: IdentityAuthMethod.ALICLOUD_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAliCloudAuth };
     }

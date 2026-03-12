@@ -3,6 +3,7 @@ import { z } from "zod";
 import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
+import { logger } from "@app/lib/logger";
 import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-resource/search";
 import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
@@ -176,7 +177,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
             hasDeleteProtection: identity.hasDeleteProtection
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identity };
     }
@@ -239,7 +240,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
             orgId: identity.orgId
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identity };
     }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityGcpAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityGcpAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, GCP_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -64,10 +65,10 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityGcpAuth.identityId,
             orgId: identity.orgId,
-            authMethod: "gcp"
+            authMethod: IdentityAuthMethod.GCP_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -176,10 +177,10 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityGcpAuth.identityId,
             orgId: identityGcpAuth.orgId,
-            authMethod: "gcp"
+            authMethod: IdentityAuthMethod.GCP_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityGcpAuth };
     }
@@ -276,10 +277,10 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityGcpAuth.identityId,
             orgId: identityGcpAuth.orgId,
-            authMethod: "gcp"
+            authMethod: IdentityAuthMethod.GCP_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityGcpAuth };
     }
@@ -389,10 +390,10 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityGcpAuth.identityId,
             orgId: identityGcpAuth.orgId,
-            authMethod: "gcp"
+            authMethod: IdentityAuthMethod.GCP_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityGcpAuth };
     }

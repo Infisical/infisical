@@ -1,3 +1,4 @@
+import { IdentityAuthMethod } from "@app/db/schemas";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -154,7 +155,7 @@ export type TMachineIdentityLoginEvent = {
   properties: {
     identityId: string;
     orgId: string;
-    authMethod: string;
+    authMethod: IdentityAuthMethod;
   };
 };
 
@@ -166,7 +167,7 @@ export type TMachineIdentityAuthMethodEvent = {
   properties: {
     identityId: string;
     orgId: string;
-    authMethod: string;
+    authMethod: IdentityAuthMethod;
   };
 };
 

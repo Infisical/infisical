@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityTlsCertAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityTlsCertAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
@@ -96,10 +97,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           properties: {
             identityId: identityTlsCertAuth.identityId,
             orgId: identity.orgId,
-            authMethod: "tls"
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -216,10 +217,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           properties: {
             identityId: identityTlsCertAuth.identityId,
             orgId: req.permission.orgId,
-            authMethod: "tls"
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityTlsCertAuth };
     }
@@ -331,10 +332,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           properties: {
             identityId: identityTlsCertAuth.identityId,
             orgId: req.permission.orgId,
-            authMethod: "tls"
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityTlsCertAuth };
     }
@@ -445,10 +446,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           properties: {
             identityId: identityTlsCertAuth.identityId,
             orgId: req.permission.orgId,
-            authMethod: "tls"
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityTlsCertAuth };
     }

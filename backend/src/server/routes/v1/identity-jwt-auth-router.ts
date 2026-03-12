@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityJwtAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityJwtAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, JWT_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -140,10 +141,10 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityJwtAuth.identityId,
             orgId: identity.orgId,
-            authMethod: "jwt"
+            authMethod: IdentityAuthMethod.JWT_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -226,10 +227,10 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityJwtAuth.identityId,
             orgId: identityJwtAuth.orgId,
-            authMethod: "jwt"
+            authMethod: IdentityAuthMethod.JWT_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         identityJwtAuth
@@ -308,10 +309,10 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityJwtAuth.identityId,
             orgId: identityJwtAuth.orgId,
-            authMethod: "jwt"
+            authMethod: IdentityAuthMethod.JWT_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityJwtAuth };
     }
@@ -424,10 +425,10 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityJwtAuth.identityId,
             orgId: identityJwtAuth.orgId,
-            authMethod: "jwt"
+            authMethod: IdentityAuthMethod.JWT_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityJwtAuth };
     }

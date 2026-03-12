@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityAzureAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityAzureAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AZURE_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -64,10 +65,10 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityAzureAuth.identityId,
             orgId: identity.orgId,
-            authMethod: "azure"
+            authMethod: IdentityAuthMethod.AZURE_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -178,10 +179,10 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityAzureAuth.identityId,
             orgId: identityAzureAuth.orgId,
-            authMethod: "azure"
+            authMethod: IdentityAuthMethod.AZURE_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAzureAuth };
     }
@@ -282,10 +283,10 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityAzureAuth.identityId,
             orgId: identityAzureAuth.orgId,
-            authMethod: "azure"
+            authMethod: IdentityAuthMethod.AZURE_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAzureAuth };
     }
@@ -395,10 +396,10 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
           properties: {
             identityId: identityAzureAuth.identityId,
             orgId: identityAzureAuth.orgId,
-            authMethod: "azure"
+            authMethod: IdentityAuthMethod.AZURE_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAzureAuth };
     }

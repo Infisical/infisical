@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityAwsAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityAwsAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AWS_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -69,10 +70,10 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityAwsAuth.identityId,
             orgId: identity.orgId,
-            authMethod: "aws_iam"
+            authMethod: IdentityAuthMethod.AWS_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -184,10 +185,10 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityAwsAuth.identityId,
             orgId: identityAwsAuth.orgId,
-            authMethod: "aws_iam"
+            authMethod: IdentityAuthMethod.AWS_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAwsAuth };
     }
@@ -282,10 +283,10 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityAwsAuth.identityId,
             orgId: identityAwsAuth.orgId,
-            authMethod: "aws_iam"
+            authMethod: IdentityAuthMethod.AWS_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAwsAuth };
     }
@@ -394,10 +395,10 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
           properties: {
             identityId: identityAwsAuth.identityId,
             orgId: identityAwsAuth.orgId,
-            authMethod: "aws_iam"
+            authMethod: IdentityAuthMethod.AWS_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityAwsAuth };
     }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityOidcAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityOidcAuthsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OIDC_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -92,10 +93,10 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           properties: {
             identityId: identityOidcAuth.identityId,
             orgId: identity.orgId,
-            authMethod: "oidc"
+            authMethod: IdentityAuthMethod.OIDC_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         accessToken,
@@ -210,10 +211,10 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           properties: {
             identityId: identityOidcAuth.identityId,
             orgId: identityOidcAuth.orgId,
-            authMethod: "oidc"
+            authMethod: IdentityAuthMethod.OIDC_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return {
         identityOidcAuth
@@ -325,10 +326,10 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           properties: {
             identityId: identityOidcAuth.identityId,
             orgId: identityOidcAuth.orgId,
-            authMethod: "oidc"
+            authMethod: IdentityAuthMethod.OIDC_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityOidcAuth };
     }
@@ -440,10 +441,10 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           properties: {
             identityId: identityOidcAuth.identityId,
             orgId: identityOidcAuth.orgId,
-            authMethod: "oidc"
+            authMethod: IdentityAuthMethod.OIDC_AUTH
           }
         })
-        .catch(() => {});
+        .catch((error) => { logger.error(error, "Failed to send telemetry event"); });
 
       return { identityOidcAuth };
     }
