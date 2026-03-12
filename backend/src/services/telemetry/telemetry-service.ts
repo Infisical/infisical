@@ -106,8 +106,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // Resolve org name: prefer explicit value, fall back to request context
       const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
 
-      // capture posthog only when its cloud or signup event happens in self-hosted
-      if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
+      const appCfg = getConfig();
+      // capture posthog when its cloud, dedicated cloud (INFISICAL_CLOUD), or signup event in self-hosted
+      if (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD || event.event === PostHogEventTypes.UserSignedUp) {
         if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
           const eventKey = createTelemetryEventKey(event.event, event.distinctId);
           await keyStore.setItemWithExpiry(
@@ -133,11 +134,14 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
               logger.error(error, "Failed to identify PostHog organization");
             }
           }
-          // For UserSignedUp events, use $set to persist person properties (email, username)
-          // across all instance types (Cloud, dedicated, self-hosted) since UserSignedUp
-          // bypasses the Cloud-only gate. This avoids relying on identify() which is Cloud-only.
+          // For UserSignedUp events on Cloud/dedicated instances, use $set to persist
+          // person properties (email, username). This avoids relying on identify() which
+          // is Cloud-only, and ensures dedicated instances also get person properties set.
           let captureProperties: Record<string, unknown> = event.properties;
-          if (event.event === PostHogEventTypes.UserSignedUp) {
+          if (
+            event.event === PostHogEventTypes.UserSignedUp &&
+            (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD)
+          ) {
             captureProperties = {
               ...event.properties,
               $set: {
@@ -349,7 +353,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   ) => {
     if (postHog && distinctId) {
       const instanceType = licenseService.getInstanceType();
-      if (instanceType === InstanceType.Cloud) {
+      const appCfg = getConfig();
+      if (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD) {
         postHog.identify({ distinctId, properties });
       }
     }
