@@ -527,19 +527,28 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     return map;
   }, [secretsBeingRenamed, referenceQueries]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isBusy = isCommitting || isSubmitting;
+
   if (!isBatchMode || totalChangesCount === 0) {
     return null;
   }
 
   const handleCommit = async () => {
-    await onCommit(pendingChanges, commitMessage);
-    clearAllPendingChanges({
-      projectId,
-      environment,
-      secretPath
-    });
-    setIsModalOpen(false);
-    setCommitMessage("");
+    if (isBusy) return;
+    setIsSubmitting(true);
+    try {
+      await onCommit(pendingChanges, commitMessage);
+      clearAllPendingChanges({
+        projectId,
+        environment,
+        secretPath
+      });
+      setIsModalOpen(false);
+      setCommitMessage("");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSaveChanges = () => {
@@ -588,8 +597,8 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                       variant="project"
                       size="xs"
                       onClick={handleCommit}
-                      isDisabled={isCommitting}
-                      isPending={isCommitting}
+                      isDisabled={isBusy}
+                      isPending={isBusy}
                     >
                       <SaveIcon />
                       Save Changes
@@ -685,18 +694,18 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 <Button
                   variant="ghost"
                   onClick={() => setIsModalOpen(false)}
-                  isDisabled={isCommitting}
+                  isDisabled={isBusy}
                 >
                   Cancel
                 </Button>
                 <Button
                   variant="project"
                   onClick={handleCommit}
-                  isPending={isCommitting}
-                  isDisabled={isCommitting}
+                  isPending={isBusy}
+                  isDisabled={isBusy}
                 >
                   <SaveIcon />
-                  {isCommitting ? "Saving..." : "Save Changes"}
+                  {isBusy ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </div>
