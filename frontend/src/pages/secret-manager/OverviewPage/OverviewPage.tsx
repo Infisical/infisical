@@ -2426,13 +2426,70 @@ const OverviewPageContent = () => {
                     isFiltered={isTableFiltered || Boolean(debouncedSearchFilter)}
                   />
                 ) : (
-                  <SecretDropzone
-                    onParsedSecrets={(env) => {
-                      setImportParsedSecrets(env);
-                      handlePopUpOpen("importSecrets");
-                    }}
-                    onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
-                  />
+                  <div className="relative">
+                    {isSingleEnvView && (
+                      <div className="absolute top-2 right-2 z-50 mb-4 flex items-center justify-end gap-2">
+                        {isProtectedBranch && (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Badge variant="info">
+                                <LockIcon />
+                                Protected
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Protected
+                              {boardPolicy?.name ? ` by policy ${boardPolicy.name}` : ""}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        <Badge asChild className="float-right cursor-pointer" variant="neutral">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (singleVisibleEnv) {
+                                handleViewCommitHistory(singleVisibleEnv.slug, singleEnvFolderId);
+                              }
+                            }}
+                          >
+                            <GitCommitIcon />
+                            {/* eslint-disable-next-line no-nested-ternary */}
+                            {subscription.pitRecovery
+                              ? isSingleEnvChangesCountLoading
+                                ? "Loading..."
+                                : `${singleEnvChangesCount} Commit${singleEnvChangesCount === 1 ? "" : "s"}`
+                              : "Commit History"}
+                          </button>
+                        </Badge>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge
+                              asChild
+                              className={isOverviewBatchMode ? "" : "opacity-75"}
+                              variant={isOverviewBatchMode ? "warning" : "neutral"}
+                            >
+                              <button type="button" onClick={toggleBatchMode}>
+                                <GroupIcon />
+                                Batch Edit Mode
+                              </button>
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isOverviewBatchMode
+                              ? "Changes are batched together into a single commit. Click to switch to single edit mode."
+                              : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
+                    <SecretDropzone
+                      onParsedSecrets={(env) => {
+                        setImportParsedSecrets(env);
+                        handlePopUpOpen("importSecrets");
+                      }}
+                      onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                    />
+                  </div>
                 )
               ) : (
                 <>
