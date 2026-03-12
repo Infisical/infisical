@@ -6,11 +6,21 @@ import { slugSchema } from "@app/lib/schemas";
 
 export const genericAccountFieldsSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
-  description: z.string().max(512).nullable().optional()
+  description: z.string().max(512).nullable().optional(),
+  metadata: z
+    .object({
+      key: z.string().trim().min(1),
+      value: z.string().trim().default("")
+    })
+    .array()
+    .optional()
 });
 
 export const GenericAccountFields = () => {
-  const { control } = useFormContext<{ name: string; description: string }>();
+  const { control } = useFormContext<{
+    name: string;
+    description: string;
+  }>();
 
   return (
     <>

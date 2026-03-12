@@ -1,4 +1,7 @@
+import { z } from "zod";
+
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
@@ -43,13 +46,14 @@ import {
   TSSHAccountCredentials,
   TSSHResource,
   TSSHResourceConnectionDetails,
-  TSSHResourceMetadata
+  TSSHResourceInternalMetadata
 } from "./ssh/ssh-resource-types";
 import {
   TWindowsAccount,
   TWindowsAccountCredentials,
   TWindowsResource,
-  TWindowsResourceConnectionDetails
+  TWindowsResourceConnectionDetails,
+  TWindowsResourceInternalMetadata
 } from "./windows-server/windows-server-resource-types";
 
 // Resource types
@@ -71,7 +75,7 @@ export type TPamResourceConnectionDetails =
   | TRedisResourceConnectionDetails
   | TWindowsResourceConnectionDetails
   | TActiveDirectoryResourceConnectionDetails;
-export type TPamResourceMetadata = TSSHResourceMetadata;
+export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindowsResourceInternalMetadata;
 
 // Account types
 export type TPamAccount =
@@ -100,6 +104,7 @@ export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails"
   gatewayId?: string | null;
   rotationAccountCredentials?: TPamAccountCredentials | null;
   adServerResourceId?: string | null;
+  metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
 
 export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType" | "projectId">> & {
@@ -113,6 +118,7 @@ export type TListResourcesDTO = {
   limit?: number;
   offset?: number;
   filterResourceTypes?: string[];
+  metadataFilter?: Array<{ key: string; value?: string }>;
 } & TProjectPermission;
 
 // Resource factory
@@ -125,13 +131,17 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
   currentCredentials: C
 ) => Promise<C>;
 
-export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C extends TPamAccountCredentials> = (
+export type TPamResourceFactory<
+  T extends TPamResourceConnectionDetails,
+  C extends TPamAccountCredentials,
+  M extends TPamResourceInternalMetadata
+> = (
   resourceType: PamResource,
   connectionDetails: T,
   gatewayId: string | null | undefined,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   projectId: string | null | undefined,
-  resourceMetadata?: TPamResourceMetadata
+  resourceInternalMetadata?: M
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;

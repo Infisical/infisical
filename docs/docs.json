@@ -280,6 +280,7 @@
                   "documentation/platform/identities/kubernetes-auth",
                   "documentation/platform/identities/oci-auth",
                   "documentation/platform/identities/token-auth",
+                  "documentation/platform/identities/spiffe-auth",
                   "documentation/platform/identities/tls-cert-auth",
                   "documentation/platform/identities/universal-auth",
                   {
@@ -482,6 +483,7 @@
                       "documentation/platform/dynamic-secrets/azure-entra-id",
                       "documentation/platform/dynamic-secrets/azure-sql-database",
                       "documentation/platform/dynamic-secrets/cassandra",
+                      "documentation/platform/dynamic-secrets/clickhouse",
                       "documentation/platform/dynamic-secrets/couchbase",
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
@@ -778,6 +780,7 @@
                   "documentation/platform/pki/ca/acme-ca",
                   "documentation/platform/pki/ca/lets-encrypt",
                   "documentation/platform/pki/ca/digicert",
+                  "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
                   "documentation/platform/pki/ca/aws-pca"
                 ]
@@ -838,7 +841,8 @@
                     "group": "Web Access",
                     "pages": [
                       "documentation/platform/pam/product-reference/web-access/overview",
-                      "documentation/platform/pam/product-reference/web-access/postgresql"
+                      "documentation/platform/pam/product-reference/web-access/postgresql",
+                      "documentation/platform/pam/product-reference/web-access/ssh"
                     ]
                   }
                 ]
@@ -979,6 +983,16 @@
                 ]
               },
               {
+                "group": "Sub Organizations",
+                "pages": [
+                  "api-reference/endpoints/sub-organizations/create",
+                  "api-reference/endpoints/sub-organizations/list",
+                  "api-reference/endpoints/sub-organizations/update",
+                  "api-reference/endpoints/sub-organizations/delete",
+                  "api-reference/endpoints/sub-organizations/memberships"
+                ]
+              },
+              {
                 "group": "OIDC SSO",
                 "pages": [
                   "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
@@ -1066,11 +1080,11 @@
               {
                 "group": "Project Groups",
                 "pages": [
-                  "api-reference/endpoints/project-groups/create",
-                  "api-reference/endpoints/project-groups/delete",
-                  "api-reference/endpoints/project-groups/get-by-id",
-                  "api-reference/endpoints/project-groups/list",
-                  "api-reference/endpoints/project-groups/update",
+                  "api-reference/endpoints/project-group-memberships/create",
+                  "api-reference/endpoints/project-group-memberships/delete",
+                  "api-reference/endpoints/project-group-memberships/get-by-id",
+                  "api-reference/endpoints/project-group-memberships/list",
+                  "api-reference/endpoints/project-group-memberships/update",
                   {
                     "group": "Legacy",
                     "pages": [
@@ -2779,9 +2793,10 @@
               {
                 "group": "Certificates",
                 "pages": [
-                  "api-reference/endpoints/certificates/list",
+                  "api-reference/endpoints/certificates/search",
                   "api-reference/endpoints/certificates/read",
                   "api-reference/endpoints/certificates/certificate-request",
+                  "api-reference/endpoints/certificates/search-certificate-requests",
                   "api-reference/endpoints/certificates/create-certificate",
                   "api-reference/endpoints/certificates/renew",
                   "api-reference/endpoints/certificates/update-config",

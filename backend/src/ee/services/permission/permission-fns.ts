@@ -9,6 +9,10 @@ import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
 import {
+  ActionAllowedConditions,
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub,
@@ -83,22 +87,102 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
         const hasReadValue = permission.action.includes(ProjectPermissionSecretActions.ReadValue);
         const hasDescribeSecret = permission.action.includes(ProjectPermissionSecretActions.DescribeSecret);
 
-        // eslint-disable-next-line no-continue
-        if (!hasReadValue && !hasDescribeSecret) continue;
+        if (hasReadValue || hasDescribeSecret) {
+          const hasBothDescribeAndReadValue = hasReadValue && hasDescribeSecret;
 
-        const hasBothDescribeAndReadValue = hasReadValue && hasDescribeSecret;
+          throw new BadRequestError({
+            message: `You have selected Read, and ${
+              hasBothDescribeAndReadValue
+                ? "both Read Value and Describe Secret"
+                : hasReadValue
+                  ? "Read Value"
+                  : hasDescribeSecret
+                    ? "Describe Secret"
+                    : ""
+            }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
+          });
+        }
+      }
+    }
 
-        throw new BadRequestError({
-          message: `You have selected Read, and ${
-            hasBothDescribeAndReadValue
-              ? "both Read Value and Describe Secret"
-              : hasReadValue
-                ? "Read Value"
-                : hasDescribeSecret
-                  ? "Describe Secret"
-                  : ""
-          }. You cannot select Read Value or Describe Secret if you have selected Read. The Read permission is a legacy action which has been replaced by Describe Secret and Read Value.`
-        });
+    if (permission.subject === ProjectPermissionSub.Member) {
+      if (permission.action.includes(ProjectPermissionMemberActions.GrantPrivileges)) {
+        const hasAssignRole = permission.action.includes(ProjectPermissionMemberActions.AssignRole);
+        const hasAssignAdditionalPrivileges = permission.action.includes(
+          ProjectPermissionMemberActions.AssignAdditionalPrivileges
+        );
+
+        if (hasAssignRole || hasAssignAdditionalPrivileges) {
+          const hasBothNewActions = hasAssignRole && hasAssignAdditionalPrivileges;
+
+          throw new BadRequestError({
+            message: `You have selected Grant Privileges, and ${
+              hasBothNewActions
+                ? "both Assign Role and Assign Additional Privileges"
+                : hasAssignRole
+                  ? "Assign Role"
+                  : hasAssignAdditionalPrivileges
+                    ? "Assign Additional Privileges"
+                    : ""
+            }. You cannot select Assign Role or Assign Additional Privileges if you have selected Grant Privileges. The Grant Privileges permission is a legacy action which has been replaced by Assign Role and Assign Additional Privileges.`
+          });
+        }
+      }
+    }
+
+    if (permission.subject === ProjectPermissionSub.Identity) {
+      if (permission.action.includes(ProjectPermissionIdentityActions.GrantPrivileges)) {
+        const hasAssignRole = permission.action.includes(ProjectPermissionIdentityActions.AssignRole);
+        const hasAssignAdditionalPrivileges = permission.action.includes(
+          ProjectPermissionIdentityActions.AssignAdditionalPrivileges
+        );
+
+        if (hasAssignRole || hasAssignAdditionalPrivileges) {
+          const hasBothNewActions = hasAssignRole && hasAssignAdditionalPrivileges;
+
+          throw new BadRequestError({
+            message: `You have selected Grant Privileges, and ${
+              hasBothNewActions
+                ? "both Assign Role and Assign Additional Privileges"
+                : hasAssignRole
+                  ? "Assign Role"
+                  : hasAssignAdditionalPrivileges
+                    ? "Assign Additional Privileges"
+                    : ""
+            }. You cannot select Assign Role or Assign Additional Privileges if you have selected Grant Privileges. The Grant Privileges permission is a legacy action which has been replaced by Assign Role and Assign Additional Privileges.`
+          });
+        }
+      }
+    }
+
+    if (permission.subject === ProjectPermissionSub.Groups) {
+      if (permission.action.includes(ProjectPermissionGroupActions.GrantPrivileges)) {
+        const hasAssignRole = permission.action.includes(ProjectPermissionGroupActions.AssignRole);
+
+        if (hasAssignRole) {
+          throw new BadRequestError({
+            message:
+              "You have selected Grant Privileges and Assign Role. You cannot select Assign Role if you have selected Grant Privileges. The Grant Privileges permission is a legacy action which has been replaced by Assign Role."
+          });
+        }
+      }
+    }
+
+    const subjectConditions = ActionAllowedConditions[permission.subject as ProjectPermissionSub];
+    const permissionConditions = "conditions" in permission ? permission.conditions : undefined;
+    if (permissionConditions && subjectConditions) {
+      const conditionKeys = Object.keys(permissionConditions);
+      for (const action of permission.action) {
+        const allowedConditions = subjectConditions[action];
+        if (allowedConditions) {
+          for (const condKey of conditionKeys) {
+            if (!allowedConditions.includes(condKey)) {
+              throw new BadRequestError({
+                message: `Condition "${condKey}" is not allowed for action "${action}" on subject "${permission.subject}"`
+              });
+            }
+          }
+        }
       }
     }
   }
@@ -135,7 +219,10 @@ function validateOrgSSO(
 
   // case: google sso is enforced, but the actor is not using google sso
   if (isOrgGoogleSsoEnforced && actorAuthMethod !== null && actorAuthMethod !== AuthMethod.GOOGLE) {
-    throw new ForbiddenRequestError({ name: "Org auth enforced. Cannot access org-scoped resource" });
+    throw new ForbiddenRequestError({
+      message:
+        "Organization authentication is enforced. Cannot access org-scoped resource. Login with Google SSO to access this resource."
+    });
   }
 
   // case: SAML SSO is enforced, but the actor is not using SAML SSO
@@ -145,7 +232,10 @@ function validateOrgSSO(
     !isAuthMethodSaml(actorAuthMethod) &&
     actorAuthMethod !== AuthMethod.OIDC
   ) {
-    throw new ForbiddenRequestError({ name: "Org auth enforced. Cannot access org-scoped resource" });
+    throw new ForbiddenRequestError({
+      message:
+        "Organization authentication is enforced. Cannot access org-scoped resource. Login with SAML SSO to access this resource."
+    });
   }
 }
 
@@ -169,24 +259,33 @@ const escapeHandlebarsMissingDict = (obj: Record<string, string>, key: string) =
 // regardless of the actor's privilege level.
 const validatePrivilegeChangeOperation = (
   shouldUseNewPrivilegeSystem: boolean,
-  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
+  opActions: (OrgPermissionSet[0] | ProjectPermissionSet[0]) | (OrgPermissionSet[0] | ProjectPermissionSet[0])[],
   opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1],
   actorPermission: MongoAbility,
-  managedPermission: MongoAbility
+  managedPermission: MongoAbility,
+  subjectFields?: Record<string, string | undefined>
 ) => {
+  const actions = Array.isArray(opActions) ? opActions : [opActions];
+
   if (shouldUseNewPrivilegeSystem) {
-    if (actorPermission.can(opAction, opSubject)) {
-      return {
-        isValid: true,
-        missingPermissions: []
-      };
+    const subjectToCheck = subjectFields ? subject(opSubject as string, subjectFields) : opSubject;
+
+    for (const opAction of actions) {
+      if (actorPermission.can(opAction, subjectToCheck)) {
+        return {
+          isValid: true,
+          missingPermissions: []
+        };
+      }
     }
 
+    // Report the first (primary) action in missingPermissions.
+    // For example, when evaluating legacy actions fallback, it returns the error related to the new one not the legacy one.
     return {
       isValid: false,
       missingPermissions: [
         {
-          action: opAction,
+          action: actions[0],
           subject: opSubject
         }
       ]
@@ -205,7 +304,7 @@ const constructPermissionErrorMessage = (
 ) => {
   return `${baseMessage}${
     shouldUseNewPrivilegeSystem
-      ? `. Actor is missing permission ${opAction as string} on ${opSubject as string}`
+      ? `. Permission denied: ${opAction as string} on ${opSubject as string}. Check that the actor's role grants this permission and that all permission conditions are met.`
       : ". Actor privilege level is not high enough to perform this action"
   }`;
 };

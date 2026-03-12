@@ -6,6 +6,7 @@ import { TPamAccount } from "@app/ee/services/pam-resource/pam-resource-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 export const registerPamAccountEndpoints = <C extends TPamAccount>({
   server,
@@ -25,7 +26,8 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
-    metadata?: Record<string, unknown>;
+    internalMetadata?: Record<string, unknown>;
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   updateAccountSchema: z.ZodType<{
     credentials?: C["credentials"];
@@ -34,10 +36,18 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
-    metadata?: Record<string, unknown>;
+    internalMetadata?: Record<string, unknown>;
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   accountResponseSchema: z.ZodTypeAny;
 }) => {
+  // Convert resource type enum value to PascalCase for operation IDs
+  // e.g., "postgres" -> "Postgres", "aws-iam" -> "AwsIam"
+  const resourceTypeId = resourceType
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+
   server.route({
     method: "POST",
     url: "/",
@@ -45,6 +55,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `create${resourceTypeId}PamAccount`,
       description: "Create PAM account",
       body: createAccountSchema,
       response: {
@@ -87,6 +98,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `update${resourceTypeId}PamAccount`,
       description: "Update PAM account",
       params: z.object({
         accountId: z.string().uuid()
@@ -138,6 +150,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `delete${resourceTypeId}PamAccount`,
       description: "Delete PAM account",
       params: z.object({
         accountId: z.string().uuid()

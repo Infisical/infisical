@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-import { PamAccountsSchema, PamResourcesSchema } from "@app/db/schemas";
+import { PamAccountsSchema, PamResourcesSchema, ResourceMetadataSchema } from "@app/db/schemas";
 import { slugSchema } from "@app/server/lib/schemas";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 export const GatewayAccessResponseSchema = z.object({
   sessionId: z.string(),
@@ -20,11 +21,14 @@ export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
   encryptedRotationAccountCredentials: true,
   resourceType: true
+}).extend({
+  metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional()
 });
 
 const CoreCreatePamResourceSchema = z.object({
   projectId: z.string().uuid(),
-  name: slugSchema({ field: "name" })
+  name: slugSchema({ field: "name" }),
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
 export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.extend({
@@ -34,7 +38,8 @@ export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.ex
 export const BaseCreatePamResourceSchema = CoreCreatePamResourceSchema;
 
 const CoreUpdatePamResourceSchema = z.object({
-  name: slugSchema({ field: "name" }).optional()
+  name: slugSchema({ field: "name" }).optional(),
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
 export const BaseUpdateGatewayPamResourceSchema = CoreUpdatePamResourceSchema.extend({
@@ -46,6 +51,8 @@ export const BaseUpdatePamResourceSchema = CoreUpdatePamResourceSchema;
 // Accounts
 export const BasePamAccountSchema = PamAccountsSchema.omit({
   encryptedCredentials: true
+}).extend({
+  metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional()
 });
 
 export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
@@ -67,7 +74,8 @@ export const BaseCreatePamAccountSchema = z.object({
   description: z.string().max(512).nullable().optional(),
   rotationEnabled: z.boolean(),
   rotationIntervalSeconds: z.number().min(3600).nullable().optional(),
-  requireMfa: z.boolean().optional().default(false)
+  requireMfa: z.boolean().optional().default(false),
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
 export const BaseUpdatePamAccountSchema = z.object({
@@ -75,5 +83,6 @@ export const BaseUpdatePamAccountSchema = z.object({
   description: z.string().max(512).nullable().optional(),
   rotationEnabled: z.boolean().optional(),
   rotationIntervalSeconds: z.number().min(3600).nullable().optional(),
-  requireMfa: z.boolean().optional()
+  requireMfa: z.boolean().optional(),
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });

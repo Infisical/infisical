@@ -182,11 +182,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .where({ [`${TableName.Membership}.scope` as "scope"]: AccessScope.Project })
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-        .join<TUserEncryptionKeys>(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
         .select(
           selectAllTableCols(TableName.Membership),
           db.ref("id").withSchema(TableName.Users).as("userId"),

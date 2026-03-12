@@ -1,19 +1,31 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { faFilter, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import {
   CheckIcon,
   CopyIcon,
   EllipsisVerticalIcon,
+  KeyRoundIcon,
   LogInIcon,
   PencilIcon,
   PlusIcon,
   RefreshCwIcon,
   TrashIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import {
+  Button as V2Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  IconButton as V2IconButton,
+  Input as V2Input
+} from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -37,7 +49,7 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp, useToggle } from "@app/hooks";
+import { useDebounce, usePopUp, useToggle } from "@app/hooks";
 import { ApprovalPolicyType, useCheckPolicyMatch } from "@app/hooks/api/approvalPolicies";
 import {
   PamResourceType,
@@ -47,6 +59,10 @@ import {
   TWindowsAccount,
   useListPamAccounts
 } from "@app/hooks/api/pam";
+import {
+  MetadataFilterEntry,
+  MetadataFilterSection
+} from "@app/pages/cert-manager/components/MetadataFilterSection";
 
 import { PamAccessAccountModal } from "../../PamAccountsPage/components/PamAccessAccountModal";
 import { PamAddAccountModal } from "../../PamAccountsPage/components/PamAddAccountModal";
@@ -64,10 +80,10 @@ const hasAccountType = (resourceType: PamResourceType) =>
 
 const getAccountType = (account: TPamAccount): string | undefined => {
   if (account.resource.resourceType === PamResourceType.Windows) {
-    return (account as TWindowsAccount).metadata?.accountType;
+    return (account as TWindowsAccount).internalMetadata?.accountType;
   }
   if (account.resource.resourceType === PamResourceType.ActiveDirectory) {
-    return (account as TActiveDirectoryAccount).metadata?.accountType;
+    return (account as TActiveDirectoryAccount).internalMetadata?.accountType;
   }
   return undefined;
 };
@@ -81,6 +97,12 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
 
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+
+  const [pendingMetadataEntries, setPendingMetadataEntries] = useState<MetadataFilterEntry[]>([]);
+  const [appliedMetadataEntries, setAppliedMetadataEntries] = useState<MetadataFilterEntry[]>([]);
+
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addAccount",
     "accessAccount",
@@ -89,9 +111,30 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     "deleteAccount"
   ] as const);
 
+  const isTableFiltered = Boolean(appliedMetadataEntries.some((e) => e.key.trim()));
+
+  const hasFilterChanges = useMemo(() => {
+    return JSON.stringify(pendingMetadataEntries) !== JSON.stringify(appliedMetadataEntries);
+  }, [pendingMetadataEntries, appliedMetadataEntries]);
+
+  const handleApplyFilters = () => {
+    setAppliedMetadataEntries(pendingMetadataEntries);
+  };
+
+  const handleClearFilters = () => {
+    setPendingMetadataEntries([]);
+    setAppliedMetadataEntries([]);
+  };
+
   const { data: accountsData, isPending } = useListPamAccounts({
     projectId: projectId!,
-    filterResourceIds: resource.id
+    filterResourceIds: resource.id,
+    search: debouncedSearch || undefined,
+    metadataFilter: appliedMetadataEntries.filter((e) => e.key.trim()).length
+      ? appliedMetadataEntries
+          .filter((e) => e.key.trim())
+          .map((e) => ({ key: e.key.trim(), ...(e.value.trim() ? { value: e.value.trim() } : {}) }))
+      : undefined
   });
 
   const accounts = accountsData?.accounts || [];
@@ -179,6 +222,68 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         </ProjectPermissionCan>
       </div>
       <div className="p-4">
+        <div className="mb-4 flex gap-2">
+          <V2Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            placeholder="Search accounts..."
+            className="flex-1"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <V2IconButton
+                ariaLabel="Filter accounts"
+                variant="plain"
+                size="sm"
+                className={twMerge(
+                  "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                  isTableFiltered && "border-primary/50 text-primary"
+                )}
+              >
+                <FontAwesomeIcon icon={faFilter} />
+              </V2IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              sideOffset={2}
+              className="max-h-[70vh] thin-scrollbar w-80 overflow-y-auto p-4"
+              align="end"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-mineshaft-100">Filters</h3>
+                  <span className="text-xs text-bunker-300">
+                    {isTableFiltered && (
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="cursor-pointer text-primary hover:text-primary-600"
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </span>
+                </div>
+
+                <MetadataFilterSection
+                  entries={pendingMetadataEntries}
+                  onChange={setPendingMetadataEntries}
+                />
+
+                <div className="pt-2">
+                  <V2Button
+                    onClick={handleApplyFilters}
+                    className="w-full bg-primary font-medium text-black hover:bg-primary-600"
+                    size="sm"
+                    isDisabled={!hasFilterChanges}
+                  >
+                    Apply Filters
+                  </V2Button>
+                </div>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <UnstableTable>
           <UnstableTableHeader>
             <UnstableTableRow>
@@ -203,7 +308,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                 <UnstableTableCell colSpan={hasAccountType(resource.resourceType) ? 3 : 2}>
                   <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                     <UnstableEmptyHeader>
-                      <UnstableEmptyTitle>No accounts found</UnstableEmptyTitle>
+                      <UnstableEmptyTitle>
+                        {debouncedSearch || isTableFiltered
+                          ? "No accounts match your search"
+                          : "No accounts found"}
+                      </UnstableEmptyTitle>
                     </UnstableEmptyHeader>
                   </UnstableEmpty>
                 </UnstableTableCell>
@@ -228,34 +337,40 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   onClick={() => handleAccountClick(account)}
                 >
                   <UnstableTableCell>
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col">
                         <span className="font-medium">{account.name}</span>
-                        {lastRotatedAt && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge
-                                variant={rotationStatus === "failed" ? "danger" : "success"}
-                                className="text-xs"
-                              >
-                                <RefreshCwIcon className="size-3" />
-                                <span>
-                                  Rotated {formatDistance(new Date(), new Date(lastRotatedAt))} ago
-                                </span>
-                              </Badge>
-                            </TooltipTrigger>
-                            {lastRotationMessage && (
-                              <TooltipContent className="max-w-sm text-center">
-                                {lastRotationMessage}
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
+                        {account.description && (
+                          <span className="line-clamp-1 text-xs text-muted">
+                            {account.description}
+                          </span>
                         )}
                       </div>
-                      {account.description && (
-                        <span className="line-clamp-1 text-xs text-muted">
-                          {account.description}
-                        </span>
+                      {!account.credentialsConfigured && (
+                        <Badge variant="warning" className="text-xs">
+                          <KeyRoundIcon className="size-3" />
+                          <span>No password</span>
+                        </Badge>
+                      )}
+                      {lastRotatedAt && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant={rotationStatus === "failed" ? "danger" : "success"}
+                              className="text-xs"
+                            >
+                              <RefreshCwIcon className="size-3" />
+                              <span>
+                                Rotated {formatDistance(new Date(), new Date(lastRotatedAt))} ago
+                              </span>
+                            </Badge>
+                          </TooltipTrigger>
+                          {lastRotationMessage && (
+                            <TooltipContent className="max-w-sm text-center">
+                              {lastRotationMessage}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
                       )}
                     </div>
                   </UnstableTableCell>

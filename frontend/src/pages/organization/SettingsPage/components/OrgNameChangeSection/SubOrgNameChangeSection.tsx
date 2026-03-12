@@ -93,6 +93,12 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
         />
       </div>
       <div className="mb-4">
+        <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization ID</h2>
+        <FormControl className="max-w-md">
+          <Input isDisabled value={currentOrg.id} />
+        </FormControl>
+      </div>
+      <div className="mb-4">
         <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization Slug</h2>
         <Controller
           defaultValue=""

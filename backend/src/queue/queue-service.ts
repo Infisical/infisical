@@ -2,6 +2,7 @@ import { Job, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from 
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TQueueJobs } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -101,7 +102,9 @@ export enum QueueName {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
-  AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate"
+  AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
+  AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
+  PamDiscoveryScan = "pam-discovery-scan"
 }
 
 export enum QueueJobs {
@@ -167,7 +170,10 @@ export enum QueueJobs {
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
   AppConnectionCredentialRotationQueueRotations = "app-connection-credential-rotation-queue-rotations",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
-  AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification"
+  AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
+  AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
+  PamDiscoverySourceRunScan = "pam-discovery-run-scan",
+  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan"
 }
 
 export type TQueueOptions = {
@@ -511,6 +517,19 @@ export type TQueueJobTypes = {
     name: QueueJobs.AppConnectionCredentialRotationRotate;
     payload: TAppConnectionCredentialRotationRotateJobPayload;
   };
+  [QueueName.AuditLogClickHouseBatch]: {
+    name: QueueJobs.AuditLogClickHouseBatch;
+    payload: undefined;
+  };
+  [QueueName.PamDiscoveryScan]:
+    | {
+        name: QueueJobs.PamDiscoverySourceRunScan;
+        payload: { discoverySourceId: string; triggeredBy: PamDiscoverySourceRunTrigger };
+      }
+    | {
+        name: QueueJobs.PamDiscoveryScheduledScan;
+        payload: undefined;
+      };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -840,14 +859,18 @@ export const queueServiceFactory = (
   const initialize = async () => {
     const appCfg = getConfig();
 
+    const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
+
     // Initialize internal recovery queue (BullMQ for distributed coordination)
     queueContainer[QueueName.QueueInternalRecovery] = new Queue(QueueName.QueueInternalRecovery, {
       prefix: isClusterMode ? `{${QueueName.QueueInternalRecovery}}` : undefined,
+      ...fipsSettings,
       connection
     });
 
     // Initialize internal reconciliation queue
     queueContainer[QueueName.QueueInternalReconciliation] = new Queue(QueueName.QueueInternalReconciliation, {
+      ...fipsSettings,
       prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
       connection
     });
@@ -860,6 +883,7 @@ export const queueServiceFactory = (
           await startupRecovery();
         },
         {
+          ...fipsSettings,
           prefix: isClusterMode ? `{${QueueName.QueueInternalRecovery}}` : undefined,
           connection
         }
@@ -872,6 +896,7 @@ export const queueServiceFactory = (
           await runReconciliation();
         },
         {
+          ...fipsSettings,
           prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
           connection
         }
@@ -921,18 +946,13 @@ export const queueServiceFactory = (
 
     const { persistence, ...restQueueSettings } = queueSettings || {};
 
+    const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
+
     queueContainer[name] = new Queue(name as string, {
       // ref: docs.bullmq.io/bull/patterns/redis-cluster
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...restQueueSettings,
-      ...(crypto.isFipsModeEnabled()
-        ? {
-            settings: {
-              ...restQueueSettings?.settings,
-              repeatKeyHashAlgorithm: "sha256"
-            }
-          }
-        : {}),
+      ...fipsSettings,
       connection
     });
 
@@ -947,15 +967,8 @@ export const queueServiceFactory = (
 
     workerContainer[name] = new Worker(name, wrappedJobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
+      ...fipsSettings,
       ...restQueueSettings,
-      ...(crypto.isFipsModeEnabled()
-        ? {
-            settings: {
-              ...restQueueSettings?.settings,
-              repeatKeyHashAlgorithm: "sha256"
-            }
-          }
-        : {}),
       connection
     });
 
@@ -1033,7 +1046,8 @@ export const queueServiceFactory = (
       removeOnFail: true,
       removeOnComplete: true,
       ...opts,
-      repeat: repeat ? { ...repeat, utc: true } : undefined
+      repeat: repeat ? { ...repeat, utc: true } : undefined,
+      jobId
     };
 
     if (persistantQueues.has(name)) {
@@ -1052,12 +1066,12 @@ export const queueServiceFactory = (
           tx
         );
         // if this fails transaction rollback happens
-        await q.add(job, data, { ...opts, jobId });
+        await q.add(job, data, finalOptions);
       });
       return;
     }
 
-    await q.add(job, data, { ...opts, jobId });
+    await q.add(job, data, finalOptions);
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {

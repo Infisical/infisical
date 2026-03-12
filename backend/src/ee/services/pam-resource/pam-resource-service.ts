@@ -14,6 +14,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -27,22 +28,23 @@ import {
   decryptResourceConnectionDetails,
   decryptResourceMetadata,
   encryptResourceConnectionDetails,
-  encryptResourceMetadata,
+  encryptResourceInternalMetadata,
   listResourceOptions
 } from "./pam-resource-fns";
 import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
-import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
+import { TSSHResourceInternalMetadata } from "./ssh/ssh-resource-types";
 import { TWindowsResource } from "./windows-server/windows-server-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithResourceDetails">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithResourceDetails" | "findMetadataByAccountIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
 export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFactory>;
@@ -52,7 +54,8 @@ export const pamResourceServiceFactory = ({
   pamAccountDAL,
   permissionService,
   kmsService,
-  gatewayV2Service
+  gatewayV2Service,
+  resourceMetadataDAL
 }: TPamResourceServiceFactoryDep) => {
   const getById = async (id: string, resourceType: PamResource, actor: OrgServiceActor) => {
     const resource = await pamResourceDAL.findById(id);
@@ -67,7 +70,14 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const canReadResources = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+    // Fetch metadata for permission check
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([resource.id]);
+    const resourceMetadata = metadataByResourceId[resource.id] || [];
+
+    const canReadResources = permission.can(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.PamResources, { name: resource.name, metadata: resourceMetadata })
+    );
 
     if (!canReadResources) {
       // Check if user can read at least one account in this resource
@@ -77,12 +87,16 @@ export const pamResourceServiceFactory = ({
         filterResourceIds: [id]
       });
 
+      const accountIds = accounts.map((a) => a.id);
+      const accountMetadata = await pamAccountDAL.findMetadataByAccountIds(accountIds);
+
       const hasAccountAccess = accounts.some((account) => {
         return permission.can(
           ProjectPermissionPamAccountActions.Read,
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
-            accountName: account.name
+            accountName: account.name,
+            metadata: accountMetadata[account.id] || []
           })
         );
       });
@@ -90,7 +104,7 @@ export const pamResourceServiceFactory = ({
       if (!hasAccountAccess) {
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionActions.Read,
-          ProjectPermissionSub.PamResources
+          subject(ProjectPermissionSub.PamResources, { name: resource.name, metadata: resourceMetadata })
         );
       }
     }
@@ -101,7 +115,10 @@ export const pamResourceServiceFactory = ({
       });
     }
 
-    return decryptResource(resource, resource.projectId, kmsService);
+    return {
+      ...(await decryptResource(resource, resource.projectId, kmsService)),
+      metadata: resourceMetadata
+    };
   };
 
   const create = async (
@@ -112,7 +129,8 @@ export const pamResourceServiceFactory = ({
       name,
       projectId,
       rotationAccountCredentials,
-      adServerResourceId
+      adServerResourceId,
+      metadata
     }: TCreateResourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -125,7 +143,13 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.PamResources);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.PamResources, {
+        name,
+        metadata: (metadata || []).map(({ key, value }) => ({ key, value: value ?? "" }))
+      })
+    );
 
     const factory = PAM_RESOURCE_FACTORY_MAP[resourceType](
       resourceType,
@@ -164,17 +188,38 @@ export const pamResourceServiceFactory = ({
     }
 
     try {
-      const resource = await pamResourceDAL.create({
-        resourceType,
-        encryptedConnectionDetails,
-        gatewayId,
-        name,
-        projectId,
-        encryptedRotationAccountCredentials,
-        adServerResourceId: adServerResourceId ?? null
+      const { resource, insertedMetadata } = await pamResourceDAL.transaction(async (tx) => {
+        const newResource = await pamResourceDAL.create(
+          {
+            resourceType,
+            encryptedConnectionDetails,
+            gatewayId,
+            name,
+            projectId,
+            encryptedRotationAccountCredentials,
+            adServerResourceId: adServerResourceId ?? null
+          },
+          tx
+        );
+        let metadataRows: Awaited<ReturnType<typeof resourceMetadataDAL.insertMany>> | undefined;
+        if (metadata && metadata.length > 0) {
+          metadataRows = await resourceMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              key,
+              value: value ?? "",
+              pamResourceId: newResource.id,
+              orgId: actor.orgId
+            })),
+            tx
+          );
+        }
+        return { resource: newResource, insertedMetadata: metadataRows };
       });
 
-      return await decryptResource(resource, projectId, kmsService);
+      return {
+        ...(await decryptResource(resource, projectId, kmsService)),
+        metadata: insertedMetadata?.map(({ id, key, value }) => ({ id, key, value: value ?? "" })) ?? []
+      };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
@@ -192,7 +237,8 @@ export const pamResourceServiceFactory = ({
       name,
       rotationAccountCredentials,
       gatewayId,
-      adServerResourceId
+      adServerResourceId,
+      metadata
     }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -208,7 +254,29 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PamResources);
+    // Fetch current metadata for permission check
+    const existingMetadata = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+    const currentMetadata = existingMetadata[resourceId] || [];
+
+    // Check permission against current state
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: currentMetadata
+      })
+    );
+
+    // If any conditionable field is changing, also check permission against proposed state
+    if (metadata || name) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.PamResources, {
+          name: name ?? resource.name,
+          metadata: metadata ? metadata.map(({ key, value }) => ({ key, value: value ?? "" })) : currentMetadata
+        })
+      );
+    }
 
     const updateDoc: Partial<TPamResources> = {};
 
@@ -306,14 +374,42 @@ export const pamResourceServiceFactory = ({
     }
 
     // If nothing was updated, return the fetched resource
-    if (Object.keys(updateDoc).length === 0) {
-      return decryptResource(resource, resource.projectId, kmsService);
+    if (Object.keys(updateDoc).length === 0 && metadata === undefined) {
+      const existingMeta = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+      return {
+        ...(await decryptResource(resource, resource.projectId, kmsService)),
+        metadata: existingMeta[resourceId] || []
+      };
     }
 
     try {
-      const updatedResource = await pamResourceDAL.updateById(resourceId, updateDoc);
+      const updatedResource = await pamResourceDAL.transaction(async (tx) => {
+        if (metadata) {
+          await resourceMetadataDAL.delete({ pamResourceId: resourceId }, tx);
+          if (metadata.length > 0) {
+            await resourceMetadataDAL.insertMany(
+              metadata.map(({ key, value }) => ({
+                key,
+                value: value ?? "",
+                pamResourceId: resourceId,
+                orgId: actor.orgId
+              })),
+              tx
+            );
+          }
+        }
+        if (Object.keys(updateDoc).length > 0) {
+          return pamResourceDAL.updateById(resourceId, updateDoc, tx);
+        }
+        return resource;
+      });
 
-      return await decryptResource(updatedResource, resource.projectId, kmsService);
+      const freshMeta = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+
+      return {
+        ...(await decryptResource(updatedResource, resource.projectId, kmsService)),
+        metadata: freshMeta[resourceId] || []
+      };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
@@ -337,7 +433,15 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.PamResources);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([id]);
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: metadataByResourceId[id] || []
+      })
+    );
 
     try {
       const deletedResource = await pamResourceDAL.deleteById(id);
@@ -365,29 +469,76 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
+    // Check what kind of PamResources read rules the user has
     const canReadResources = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
 
     if (canReadResources) {
-      const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
-      return {
-        resources: await Promise.all(resources.map((resource) => decryptResource(resource, projectId, kmsService))),
-        totalCount
-      };
+      // Check if rules have conditions
+      const resourceRules = permission.rulesFor(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+      const hasConditions = resourceRules.some((rule) => rule.conditions || rule.inverted);
+
+      if (!hasConditions) {
+        // TIER 1: Unconditional access — fast path with DB pagination (existing behavior)
+        const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
+        const resourceIds = resources.map((r) => r.id);
+        const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(resourceIds);
+        return {
+          resources: await Promise.all(
+            resources.map(async (resource) => ({
+              ...(await decryptResource(resource, projectId, kmsService)),
+              metadata: metadataByResourceId[resource.id] || []
+            }))
+          ),
+          totalCount
+        };
+      }
     }
 
-    // Fallback: include resources where the user can read at least one account.
-    // Fetch all resources (without pagination) so we can filter by account-level access
-    // and then apply pagination on the permitted results.
+    // Fetch all resources once for both Tier 2 and Tier 3
     const { resources: allResources } = await pamResourceDAL.findByProjectId({
       projectId,
       search: params.search,
       orderBy: params.orderBy,
       orderDirection: params.orderDirection,
-      filterResourceTypes: params.filterResourceTypes
+      filterResourceTypes: params.filterResourceTypes,
+      metadataFilter: params.metadataFilter
     });
 
     if (allResources.length === 0) {
       return { resources: [], totalCount: 0 };
+    }
+
+    // TIER 2: Conditional access — filter per-resource
+    if (canReadResources) {
+      const allResourceIds = allResources.map((r) => r.id);
+      const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(allResourceIds);
+
+      const permittedResources = allResources.filter((resource) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.PamResources, {
+            name: resource.name,
+            metadata: metadataByResourceId[resource.id] || []
+          })
+        )
+      );
+
+      if (permittedResources.length > 0) {
+        const totalCount = permittedResources.length;
+        const offset = params.offset || 0;
+        const limit = params.limit || 100;
+        const paginatedResources = permittedResources.slice(offset, offset + limit);
+
+        return {
+          resources: await Promise.all(
+            paginatedResources.map(async (resource) => ({
+              ...(await decryptResource(resource, projectId, kmsService)),
+              metadata: metadataByResourceId[resource.id] || []
+            }))
+          ),
+          totalCount
+        };
+      }
     }
 
     // Fetch all accounts for the project (flat view, no pagination) for permission checking
@@ -400,11 +551,18 @@ export const pamResourceServiceFactory = ({
       return { resources: [], totalCount: 0 };
     }
 
+    // Fetch account metadata for permission checks
+    const allAccountIds = allAccounts.map((a) => a.id);
+    const accountMetadata = await pamAccountDAL.findMetadataByAccountIds(allAccountIds);
+
     // Group accounts by resource ID
-    const accountsByResourceId = new Map<string, Array<{ accountName: string }>>();
+    const accountsByResourceId = new Map<
+      string,
+      Array<{ accountName: string; metadata: Array<{ id: string; key: string; value: string }> }>
+    >();
     for (const account of allAccounts) {
       const existing = accountsByResourceId.get(account.resourceId) || [];
-      existing.push({ accountName: account.name });
+      existing.push({ accountName: account.name, metadata: accountMetadata[account.id] || [] });
       accountsByResourceId.set(account.resourceId, existing);
     }
 
@@ -416,7 +574,8 @@ export const pamResourceServiceFactory = ({
           ProjectPermissionPamAccountActions.Read,
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
-            accountName: account.accountName
+            accountName: account.accountName,
+            metadata: account.metadata
           })
         )
       );
@@ -427,9 +586,15 @@ export const pamResourceServiceFactory = ({
     const limit = params.limit || 100;
     const paginatedResources = permittedResources.slice(offset, offset + limit);
 
+    const paginatedResourceIds = paginatedResources.map((r) => r.id);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(paginatedResourceIds);
+
     return {
       resources: await Promise.all(
-        paginatedResources.map((resource) => decryptResource(resource, projectId, kmsService))
+        paginatedResources.map(async (resource) => ({
+          ...(await decryptResource(resource, projectId, kmsService)),
+          metadata: metadataByResourceId[resource.id] || []
+        }))
       ),
       totalCount
     };
@@ -452,11 +617,19 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PamResources);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: metadataByResourceId[resourceId] || []
+      })
+    );
 
     // Check if metadata already exists with CA
     if (resource.encryptedResourceMetadata) {
-      const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+      const metadata = await decryptResourceMetadata<TSSHResourceInternalMetadata>({
         encryptedMetadata: resource.encryptedResourceMetadata,
         projectId: resource.projectId,
         kmsService
@@ -471,7 +644,7 @@ export const pamResourceServiceFactory = ({
       // Re-check after acquiring lock in case another transaction created it
       const currentResource = await pamResourceDAL.findById(resourceId, tx);
       if (currentResource?.encryptedResourceMetadata) {
-        const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+        const metadata = await decryptResourceMetadata<TSSHResourceInternalMetadata>({
           encryptedMetadata: currentResource.encryptedResourceMetadata,
           projectId: currentResource.projectId,
           kmsService
@@ -483,21 +656,21 @@ export const pamResourceServiceFactory = ({
       const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
       const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
-      const metadata: TSSHResourceMetadata = {
+      const internalMetadata: TSSHResourceInternalMetadata = {
         caPrivateKey: privateKey,
         caPublicKey: publicKey.trim(),
         caKeyAlgorithm: keyAlgorithm
       };
 
-      const encryptedResourceMetadata = await encryptResourceMetadata({
-        metadata,
+      const encryptedResourceMetadata = await encryptResourceInternalMetadata({
+        internalMetadata,
         projectId: resource.projectId,
         kmsService
       });
 
       await pamResourceDAL.updateById(resourceId, { encryptedResourceMetadata }, tx);
 
-      return metadata.caPublicKey;
+      return internalMetadata.caPublicKey;
     });
 
     return { caPublicKey };
@@ -520,7 +693,15 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([adServerResourceId]);
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: metadataByResourceId[adServerResourceId] || []
+      })
+    );
 
     const relatedResources = await pamResourceDAL.findByAdServerResourceId(adServerResourceId);
 

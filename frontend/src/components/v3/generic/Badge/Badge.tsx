@@ -24,7 +24,7 @@ const badgeVariants = cva(
         true: "w-4.5 justify-center px-0.5"
       },
       variant: {
-        ghost: "text-foreground border-none",
+        ghost: "text-foreground border-none [a&,button&]:hover:bg-foreground/10",
         default: "bg-label text-background border-label [a&,button&]:hover:bg-primary/35",
         outline: "text-label border-label border",
         neutral: "bg-neutral/15 border-neutral/10 text-neutral [a&,button&]:hover:bg-neutral/35",

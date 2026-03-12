@@ -32,6 +32,7 @@ export enum ApiDocsTags {
   AzureAuth = "Azure Auth",
   KubernetesAuth = "Kubernetes Auth",
   JwtAuth = "JWT Auth",
+  SpiffeAuth = "SPIFFE Auth",
   OidcAuth = "OIDC Auth",
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
@@ -745,6 +746,61 @@ export const JWT_AUTH = {
   }
 } as const;
 
+export const SPIFFE_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the machine identity to login.",
+    jwt: "The JWT-SVID token to authenticate with.",
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+  },
+  ATTACH: {
+    identityId: "The ID of the machine identity to attach the configuration onto.",
+    trustDomain: "The SPIFFE trust domain (e.g. prod.example.com).",
+    allowedSpiffeIds:
+      "Comma-separated list of allowed SPIFFE ID patterns. Supports picomatch glob patterns (e.g. spiffe://prod.example.com/**).",
+    allowedAudiences: "Comma-separated list of allowed audiences for JWT-SVID validation.",
+    trustBundleDistribution: {
+      profile:
+        "The trust bundle distribution profile. Must be one of: 'static' (admin uploads JWKS), 'https_web_bundle' (auto-refresh from HTTPS endpoint).",
+      bundle: "The JWKS JSON containing public keys for JWT-SVID verification. Required when profile is 'static'.",
+      endpointUrl:
+        "The SPIRE bundle endpoint URL for automatic trust bundle retrieval. Required when profile is 'https_web_bundle'.",
+      caCert:
+        "Optional PEM-encoded root CA certificate for verifying the bundle endpoint TLS connection. Defaults to system root CAs when not provided.",
+      refreshHintSeconds: "The interval in seconds between bundle refresh attempts. Defaults to 3600."
+    },
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the machine identity to update the auth method for.",
+    trustDomain: "The new SPIFFE trust domain.",
+    allowedSpiffeIds: "The new comma-separated list of allowed SPIFFE ID patterns.",
+    allowedAudiences: "The new comma-separated list of allowed audiences.",
+    trustBundleDistribution: {
+      profile: "The new trust bundle distribution profile.",
+      bundle: "The new JWKS JSON containing public keys.",
+      endpointUrl: "The new SPIRE bundle endpoint URL.",
+      caCert: "The new PEM-encoded CA certificate for the bundle endpoint.",
+      refreshHintSeconds: "The new interval in seconds between bundle refresh attempts."
+    },
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the machine identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the machine identity to revoke the auth method for."
+  },
+  REFRESH: {
+    identityId: "The ID of the machine identity to force-refresh the cached SPIFFE trust bundle for."
+  }
+} as const;
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
@@ -845,7 +901,16 @@ export const SUB_ORGANIZATIONS = {
   LIST: {
     limit: "The number of sub organizations to return.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th sub organization.",
+    search: "Optional. Filter sub organizations by name (case-insensitive substring match).",
+    orderBy: "The field to order sub organizations by. Currently only 'name' is supported.",
+    orderDirection: "The direction to order sub organizations. Either 'asc' or 'desc'.",
     isAccessible: "Filter to only return sub organizations that the actor has access to."
+  },
+  DELETE: {
+    subOrgId: "The id of the sub organization to delete."
+  },
+  JOIN: {
+    subOrgId: "The id of the sub organization to create a membership in."
   }
 } as const;
 
@@ -944,6 +1009,20 @@ export const PROJECTS = {
     commonName: "The common name of the certificate to filter by.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
     limit: "The number of certificates to return."
+  },
+  SEARCH_CERTIFICATES: {
+    friendlyName: "The friendly name of the certificate to filter by.",
+    commonName: "The common name of the certificate to filter by.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
+    limit: "The number of certificates to return.",
+    forPkiSync: "Retrieve only certificates available for PKI sync.",
+    search: "Search by SAN, CN, certificate ID, or serial number.",
+    status: "Filter by certificate status.",
+    profileIds: "Filter by certificate profile IDs.",
+    fromDate: "Filter certificates created from this date.",
+    toDate: "Filter certificates created until this date.",
+    metadata:
+      "Filter by metadata key-value pairs. Each entry should have a key (required) and optionally a value to match against."
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
@@ -2426,7 +2505,8 @@ export const CertificateAuthorities = {
       provider: `The DNS provider for the ACME Certificate Authority.`,
       hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`,
       eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
-      eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`
+      eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
+      dnsResolver: `An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.`
     },
     AWS_PCA: {
       appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Private Certificate Authority (PCA). This connection must have permissions to issue, get, and revoke certificates from the specified PCA.`,
