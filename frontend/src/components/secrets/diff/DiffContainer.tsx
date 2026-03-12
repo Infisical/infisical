@@ -22,7 +22,7 @@ export const DiffContainer = ({
     return (
       <div
         className={twMerge(
-          "relative overflow-x-auto thin-scrollbar rounded-md border border-border p-2",
+          "relative thin-scrollbar overflow-x-auto rounded-md border border-border p-2",
           "bg-bunker-800/60",
           variant && variant === "added" && "border-success/45",
           variant && variant === "removed" && "border-danger/45",
