@@ -107,8 +107,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
 
       const appCfg = getConfig();
-      // capture posthog when its cloud, dedicated cloud (INFISICAL_CLOUD), or signup event in self-hosted
-      if (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD || event.event === PostHogEventTypes.UserSignedUp) {
+      // capture posthog only for cloud and dedicated cloud (INFISICAL_CLOUD) instances
+      if (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD) {
         if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
           const eventKey = createTelemetryEventKey(event.event, event.distinctId);
           await keyStore.setItemWithExpiry(
