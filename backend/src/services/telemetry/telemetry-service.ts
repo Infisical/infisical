@@ -138,10 +138,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           // person properties (email, username). This avoids relying on identify() which
           // is Cloud-only, and ensures dedicated instances also get person properties set.
           let captureProperties: Record<string, unknown> = event.properties;
-          if (
-            event.event === PostHogEventTypes.UserSignedUp &&
-            (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD)
-          ) {
+          if (event.event === PostHogEventTypes.UserSignedUp) {
             captureProperties = {
               ...event.properties,
               $set: {
