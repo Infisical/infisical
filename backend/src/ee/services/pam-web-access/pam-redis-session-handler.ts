@@ -106,6 +106,9 @@ export const handleRedisSession = async (
             socket.close();
             return;
           }
+          if (message.data === "clear-buffer") {
+            return;
+          }
           return;
         }
 

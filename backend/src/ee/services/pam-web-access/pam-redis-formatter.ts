@@ -8,6 +8,8 @@ export const tokenizeRedisInput = (input: string): string[] => {
 
     if (inQuote) {
       if (ch === inQuote) {
+        tokens.push(current);
+        current = "";
         inQuote = null;
       } else {
         current += ch;

@@ -43,7 +43,7 @@ describe("tokenizeRedisInput", () => {
   });
 
   it("handles empty quoted string", () => {
-    expect(tokenizeRedisInput('SET key ""')).toEqual(["SET", "key"]);
+    expect(tokenizeRedisInput('SET key ""')).toEqual(["SET", "key", ""]);
   });
 
   it("handles mixed quoted and unquoted", () => {
