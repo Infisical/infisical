@@ -18,10 +18,17 @@ import {
   UntagResourceCommand,
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
+import {
+  AddTagsToResourceCommand,
+  DeleteParameterCommand,
+  DescribeParametersCommand,
+  GetParametersByPathCommand,
+  PutParameterCommand,
+  SSMClient
+} from "@aws-sdk/client-ssm";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
-import AWS, { AWSError } from "aws-sdk";
 import { AxiosError } from "axios";
 import https from "https";
 import sodium from "libsodium-wrappers";
@@ -827,23 +834,19 @@ const syncSecretsAWSParameterStore = async ({
     secretAccessKey = accessToken;
   }
 
-  const config = new AWS.Config({
+  const ssm = new SSMClient({
     region: integration.region as string,
     credentials: {
       accessKeyId,
       secretAccessKey,
       sessionToken
-    }
+    },
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher
   });
-
-  const ssm = new AWS.SSM({
-    apiVersion: "2014-11-06",
-    region: integration.region as string
-  });
-  ssm.config.update(config);
 
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
-  const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter & { KeyId?: string }> = {};
+  const awsParameterStoreSecretsObj: Record<string, { Name?: string; Value?: string; KeyId?: string }> = {};
   logger.info(
     `getIntegrationSecrets: integration sync triggered for ssm with [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [shouldDisableDelete=${metadata.shouldDisableDelete}]`
   );
@@ -851,15 +854,15 @@ const syncSecretsAWSParameterStore = async ({
   let hasNext = true;
   let nextToken: string | undefined;
   while (hasNext) {
-    const parameters = await ssm
-      .getParametersByPath({
+    const parameters = await ssm.send(
+      new GetParametersByPathCommand({
         Path: integration.path as string,
         Recursive: false,
         WithDecryption: true,
         MaxResults: 10,
         NextToken: nextToken
       })
-      .promise();
+    );
 
     if (parameters.Parameters) {
       parameters.Parameters.forEach((parameter) => {
@@ -883,8 +886,8 @@ const syncSecretsAWSParameterStore = async ({
       let describeNextToken: string | undefined;
 
       while (hasNextDescribePage) {
-        const parameters = await ssm
-          .describeParameters({
+        const parameters = await ssm.send(
+          new DescribeParametersCommand({
             MaxResults: 10,
             NextToken: describeNextToken,
             ParameterFilters: [
@@ -895,7 +898,7 @@ const syncSecretsAWSParameterStore = async ({
               }
             ]
           })
-          .promise();
+        );
 
         if (parameters.Parameters) {
           parameters.Parameters.forEach((parameter) => {
@@ -911,7 +914,7 @@ const syncSecretsAWSParameterStore = async ({
       }
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((error as any).code === "AccessDeniedException") {
+      if ((error as any).name === "AccessDeniedException") {
         logger.error(
           `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
         );
@@ -919,7 +922,7 @@ const syncSecretsAWSParameterStore = async ({
 
       response = {
         isSynced: false,
-        syncMessage: (error as AWSError)?.message || "Error syncing with AWS Parameter Store"
+        syncMessage: (error as Error)?.message || "Error syncing with AWS Parameter Store"
       };
     }
   }
@@ -938,15 +941,15 @@ const syncSecretsAWSParameterStore = async ({
           );
 
           try {
-            await ssm
-              .putParameter({
+            await ssm.send(
+              new PutParameterCommand({
                 Name: `${integration.path}${key}`,
                 Type: "SecureString",
                 Value: secrets[key].value,
                 ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
                 Overwrite: true
               })
-              .promise();
+            );
           } catch (error) {
             (error as { secretKey: string }).secretKey = key;
             throw error;
@@ -954,8 +957,8 @@ const syncSecretsAWSParameterStore = async ({
 
           if (metadata.secretAWSTag?.length) {
             try {
-              await ssm
-                .addTagsToResource({
+              await ssm.send(
+                new AddTagsToResourceCommand({
                   ResourceType: "Parameter",
                   ResourceId: `${integration.path}${key}`,
                   Tags: metadata.secretAWSTag
@@ -965,14 +968,14 @@ const syncSecretsAWSParameterStore = async ({
                       }))
                     : []
                 })
-                .promise();
+              );
             } catch (err) {
               logger.error(
                 err,
                 `getIntegrationSecrets: create secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
               );
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if ((err as any).code === "AccessDeniedException") {
+              if ((err as any).name === "AccessDeniedException") {
                 logger.error(
                   `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
                 );
@@ -980,7 +983,7 @@ const syncSecretsAWSParameterStore = async ({
 
               response = {
                 isSynced: false,
-                syncMessage: (err as AWSError)?.message || "Error syncing with AWS Parameter Store"
+                syncMessage: (err as Error)?.message || "Error syncing with AWS Parameter Store"
               };
             }
           }
@@ -999,15 +1002,15 @@ const syncSecretsAWSParameterStore = async ({
         // we ensure that the KMS key configured in the integration is applied for ALL parameters on AWS
         if (secrets[key].value && (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value)) {
           try {
-            await ssm
-              .putParameter({
+            await ssm.send(
+              new PutParameterCommand({
                 Name: `${integration.path}${key}`,
                 Type: "SecureString",
                 Value: secrets[key].value,
                 Overwrite: true,
                 ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId })
               })
-              .promise();
+            );
           } catch (error) {
             (error as { secretKey: string }).secretKey = key;
             throw error;
@@ -1016,8 +1019,8 @@ const syncSecretsAWSParameterStore = async ({
 
         if (awsParameterStoreSecretsObj[key].Name) {
           try {
-            await ssm
-              .addTagsToResource({
+            await ssm.send(
+              new AddTagsToResourceCommand({
                 ResourceType: "Parameter",
                 ResourceId: awsParameterStoreSecretsObj[key].Name as string,
                 Tags: metadata.secretAWSTag
@@ -1027,14 +1030,14 @@ const syncSecretsAWSParameterStore = async ({
                     }))
                   : []
               })
-              .promise();
+            );
           } catch (err) {
             logger.error(
               err,
               `getIntegrationSecrets: update secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
             );
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if ((err as any).code === "AccessDeniedException") {
+            if ((err as any).name === "AccessDeniedException") {
               logger.error(
                 `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
               );
@@ -1042,7 +1045,7 @@ const syncSecretsAWSParameterStore = async ({
 
             response = {
               isSynced: false,
-              syncMessage: (err as AWSError)?.message || "Error syncing with AWS Parameter Store"
+              syncMessage: (err as Error)?.message || "Error syncing with AWS Parameter Store"
             };
           }
         }
@@ -1069,11 +1072,11 @@ const syncSecretsAWSParameterStore = async ({
           );
           // case:
           // -> delete secret
-          await ssm
-            .deleteParameter({
+          await ssm.send(
+            new DeleteParameterCommand({
               Name: awsParameterStoreSecretsObj[key].Name as string
             })
-            .promise();
+          );
           logger.info(
             `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=4]`
           );
