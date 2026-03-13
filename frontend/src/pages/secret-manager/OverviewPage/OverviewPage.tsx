@@ -187,6 +187,7 @@ import {
 } from "../SecretDashboardPage/components/SecretListView/SecretItem";
 import {
   PendingChanges,
+  PendingFolderUpdate,
   StoreProvider,
   useBatchMode,
   useBatchModeActions
@@ -1130,23 +1131,46 @@ const OverviewPageContent = () => {
         const pendingCreate = pendingChanges.folders.find(
           (c) => c.type === PendingAction.Create && c.folderName === oldFolderName
         );
-        if (!pendingCreate) {
+        if (pendingCreate) {
+          // Send as an Update so the store merges it into the existing Create
+          addPendingChange(
+            {
+              id: pendingCreate.id,
+              resourceType: "folder",
+              type: PendingAction.Update,
+              originalFolderName: oldFolderName,
+              folderName: newFolderName,
+              description: description ?? undefined,
+              timestamp: Date.now()
+            },
+            { projectId, environment: singleVisibleEnv.slug, secretPath }
+          );
           handlePopUpClose("updateFolder");
           return;
         }
-        // Send as an Update so the store merges it into the existing Create
-        addPendingChange(
-          {
-            id: pendingCreate.id,
-            resourceType: "folder",
-            type: PendingAction.Update,
-            originalFolderName: oldFolderName,
-            folderName: newFolderName,
-            description: description ?? undefined,
-            timestamp: Date.now()
-          },
-          { projectId, environment: singleVisibleEnv.slug, secretPath }
-        );
+
+        // Folder might be a pending update (already renamed) — find by displayed name
+        const pendingUpdate = pendingChanges.folders.find(
+          (c) => c.type === PendingAction.Update && c.folderName === oldFolderName
+        ) as PendingFolderUpdate | undefined;
+        if (pendingUpdate) {
+          addPendingChange(
+            {
+              id: pendingUpdate.id,
+              resourceType: "folder",
+              type: PendingAction.Update,
+              originalFolderName: pendingUpdate.originalFolderName,
+              folderName: newFolderName,
+              originalDescription: pendingUpdate.originalDescription,
+              description: description ?? undefined,
+              timestamp: Date.now()
+            },
+            { projectId, environment: singleVisibleEnv.slug, secretPath }
+          );
+          handlePopUpClose("updateFolder");
+          return;
+        }
+
         handlePopUpClose("updateFolder");
         return;
       }

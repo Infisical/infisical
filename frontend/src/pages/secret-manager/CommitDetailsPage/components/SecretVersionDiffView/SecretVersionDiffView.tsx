@@ -231,7 +231,7 @@ export const SecretVersionDiffView = ({
     >
       <UnstableAccordionItem value={item.id} className="border-b-0">
         {showHeader && (
-          <UnstableAccordionTrigger className="min-h-10 py-0">
+          <UnstableAccordionTrigger className="min-h-10 overflow-hidden py-0">
             {customHeader ?? (
               <>
                 <TypeIcon className="size-4 shrink-0 text-accent" />
