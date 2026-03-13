@@ -18,8 +18,12 @@ export type TActiveDirectoryCredentials = {
   password: string;
 };
 
-export type TActiveDirectoryAccountMetadata = {
+export type TActiveDirectoryAccountInternalMetadata = {
   accountType: ActiveDirectoryAccountType;
+  adGuid?: string;
+  userPrincipalName?: string;
+  pwdLastSet?: string;
+  lastLogonTimestamp?: string;
 };
 
 // Resources
@@ -33,5 +37,5 @@ export type TActiveDirectoryResource = TBasePamResource & {
 // Accounts
 export type TActiveDirectoryAccount = TBasePamAccount & {
   credentials: TActiveDirectoryCredentials;
-  internalMetadata: TActiveDirectoryAccountMetadata;
+  internalMetadata: TActiveDirectoryAccountInternalMetadata;
 };

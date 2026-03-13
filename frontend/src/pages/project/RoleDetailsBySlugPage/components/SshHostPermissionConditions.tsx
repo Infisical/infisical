@@ -13,7 +13,13 @@ export const SshHostPermissionConditions = ({ position = 0, isDisabled }: Props)
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.SshHosts}
       position={position}
-      selectOptions={[{ value: "hostname", label: "Hostname" }]}
+      selectOptions={[
+        {
+          value: "hostname",
+          label: "Hostname",
+          description: "The hostname of the SSH host"
+        }
+      ]}
     />
   );
 };

@@ -103,6 +103,7 @@ export enum TableName {
   IdentityJwtAuth = "identity_jwt_auths",
   IdentityLdapAuth = "identity_ldap_auths",
   IdentityTlsCertAuth = "identity_tls_cert_auths",
+  IdentitySpiffeAuth = "identity_spiffe_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
@@ -223,6 +224,12 @@ export enum TableName {
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
+  PamDiscoverySource = "pam_discovery_sources",
+  PamDiscoverySourceRun = "pam_discovery_source_runs",
+  PamDiscoverySourceResource = "pam_discovery_source_resources",
+  PamDiscoverySourceAccount = "pam_discovery_source_accounts",
+  PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
+  PamAccountDependency = "pam_account_dependencies",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
 
@@ -344,7 +351,8 @@ export enum IdentityAuthMethod {
   OCI_AUTH = "oci-auth",
   OIDC_AUTH = "oidc-auth",
   JWT_AUTH = "jwt-auth",
-  LDAP_AUTH = "ldap-auth"
+  LDAP_AUTH = "ldap-auth",
+  SPIFFE_AUTH = "spiffe-auth"
 }
 
 export enum ProjectType {

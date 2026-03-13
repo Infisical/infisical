@@ -13,7 +13,13 @@ export const PkiSyncPermissionConditions = ({ position = 0, isDisabled }: Props)
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.PkiSyncs}
       position={position}
-      selectOptions={[{ value: "name", label: "Sync Name" }]}
+      selectOptions={[
+        {
+          value: "name",
+          label: "Sync Name",
+          description: "The name of the PKI sync configuration"
+        }
+      ]}
     />
   );
 };

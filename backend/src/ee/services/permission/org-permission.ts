@@ -15,8 +15,18 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionSsoActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  BypassSsoEnforcement = "bypass-sso-enforcement"
+}
+
 export enum OrgPermissionSubOrgActions {
   Create = "create",
+  Edit = "edit",
+  Delete = "delete",
   DirectAccess = "direct-access",
   LinkGroup = "link-group"
 }
@@ -140,7 +150,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
-  | [OrgPermissionActions, OrgPermissionSubjects.Sso]
+  | [OrgPermissionSsoActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSync]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSyncManual]
@@ -196,12 +206,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.SubOrganization).describe("The entity this permission pertains to."),
-    // Use CASL_ACTION_SCHEMA_ENUM so OpenAPI anyOf structure matches reference (string enum + array), avoiding oasdiff breaking change
-    action: CASL_ACTION_SCHEMA_ENUM([
-      OrgPermissionSubOrgActions.Create,
-      OrgPermissionSubOrgActions.DirectAccess,
-      OrgPermissionSubOrgActions.LinkGroup
-    ]).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionSubOrgActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Member).describe("The entity this permission pertains to."),
@@ -217,7 +224,7 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Sso).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionSsoActions).describe("Describe what action an entity can take.")
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Scim).describe("The entity this permission pertains to."),
@@ -328,6 +335,8 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
 
   can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
+  can(OrgPermissionSubOrgActions.Edit, OrgPermissionSubjects.SubOrganization);
+  can(OrgPermissionSubOrgActions.Delete, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.DirectAccess, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.LinkGroup, OrgPermissionSubjects.SubOrganization);
 
@@ -357,10 +366,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.IncidentAccount);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.Delete, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);

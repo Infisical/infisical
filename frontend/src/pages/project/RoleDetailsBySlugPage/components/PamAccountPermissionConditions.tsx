@@ -14,10 +14,26 @@ export const PamAccountPermissionConditions = ({ position = 0, isDisabled }: Pro
       subject={ProjectPermissionSub.PamAccounts}
       position={position}
       selectOptions={[
-        { value: "resourceName", label: "Resource Name" },
-        { value: "accountName", label: "Account Name" },
-        { value: "metadataKey", label: "Metadata Key" },
-        { value: "metadataValue", label: "Metadata Value" }
+        {
+          value: "resourceName",
+          label: "Resource Name",
+          description: "PAM resource name"
+        },
+        {
+          value: "accountName",
+          label: "Account Name",
+          description: "PAM account name"
+        },
+        {
+          value: "metadataKey",
+          label: "Metadata Key",
+          description: "The key of a metadata pair (use with $elemMatch for nested matching)"
+        },
+        {
+          value: "metadataValue",
+          label: "Metadata Value",
+          description: "The value of a metadata pair (use with $elemMatch for nested matching)"
+        }
       ]}
     />
   );

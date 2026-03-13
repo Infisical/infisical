@@ -54,7 +54,7 @@ export const secretRotationV2QueueServiceFactory = async ({
       await rotateSecretsFns({
         job: {
           id: job.id || job.data?.rotationId,
-          retryCount: job.attemptsMade,
+          retryCount: job.attemptsMade + 1,
           retryLimit: job.opts.attempts || 1,
           data: job.data
         },
@@ -146,7 +146,7 @@ export const secretRotationV2QueueServiceFactory = async ({
 
         const rotationType = SECRET_ROTATION_NAME_MAP[type as SecretRotation];
 
-        const rotationPath = `/organizations/${project.orgId}/projects/secret-management/${projectId}/secrets/${environment.slug}`;
+        const rotationPath = `/organizations/${project.orgId}/projects/secret-management/${projectId}/overview`;
 
         await notificationService.createUserNotifications(
           projectAdmins.map((admin) => ({
@@ -171,6 +171,7 @@ export const secretRotationV2QueueServiceFactory = async ({
             ).toISOString()}. Please check the rotation status in Infisical for more details.`,
             secretPath: folder.path,
             environment: environment.name,
+            environmentSlug: environment.slug,
             projectName: project.name,
             rotationUrl: encodeURI(`${appCfg.SITE_URL}${rotationPath}`)
           }

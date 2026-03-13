@@ -7,6 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import { LeaveProjectModal } from "@app/components/v2/LeaveProjectModal";
 import {
   ProjectPermissionActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useOrganization,
   useProject,
@@ -27,7 +28,7 @@ export const DeleteProjectSection = () => {
 
   const { user } = useUser();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { currentProject } = useProject();
   const [isDeleting, setIsDeleting] = useToggle();
   const [isLeaving, setIsLeaving] = useToggle();
@@ -37,17 +38,24 @@ export const DeleteProjectSection = () => {
     currentProject?.id || ""
   );
 
-  // If isNoAccessMember is true, then the user can't read the workspace members. So we need to handle this case separately.
-  const isNoAccessMember = hasProjectRole("no-access");
+  const canReadMembers = permission.can(
+    ProjectPermissionMemberActions.Read,
+    ProjectPermissionSub.Member
+  );
 
   const isOnlyAdminMember = useMemo(() => {
-    if (!members || !hasProjectRole("admin")) return false;
+    if (!members) return false;
 
-    const adminMembers = members.filter(
-      (member) => member.roles.map((r) => r.role).includes("admin") && member.user.id !== user.id // exclude the current user
+    const currentUserIsAdmin = members.some(
+      (member) => member.user.id === user.id && member.roles.some((r) => r.role === "admin")
+    );
+    if (!currentUserIsAdmin) return false;
+
+    const otherAdminMembers = members.filter(
+      (member) => member.roles.map((r) => r.role).includes("admin") && member.user.id !== user.id
     );
 
-    return !adminMembers.length;
+    return otherAdminMembers.length === 0;
   }, [members, user]);
 
   const handleDeleteWorkspaceSubmit = async () => {
@@ -80,11 +88,9 @@ export const DeleteProjectSection = () => {
 
       if (!currentProject?.id || !currentOrg?.id) return;
 
-      // If there's no members, and the user has access to read members, something went wrong.
-      if (!members && !isNoAccessMember) return;
-
-      // If the user has elevated permissions and can read members:
-      if (!isNoAccessMember) {
+      // If the user can read members, perform client-side validation
+      if (canReadMembers) {
+        // If there's no members data but user should be able to read them, something went wrong
         if (!members) return;
 
         if (members.length < 2) {
@@ -94,7 +100,7 @@ export const DeleteProjectSection = () => {
           });
           return;
         }
-        // If the user has access to read members, and there's less than 1 admin member excluding the current user, they can't leave the project.
+        // If the user is the only admin, they can't leave
         if (isOnlyAdminMember) {
           createNotification({
             text: "You can't leave a project with no admin members left. Promote another member to admin first.",
@@ -104,7 +110,7 @@ export const DeleteProjectSection = () => {
         }
       }
 
-      // If it's actually a no-access member, then we don't really care about the members.
+      // If the user can't read members (e.g., limited permissions), let the backend handle validation
 
       await leaveProject.mutateAsync({
         projectId: currentProject.id
@@ -139,7 +145,10 @@ export const DeleteProjectSection = () => {
         </ProjectPermissionCan>
         {!isOnlyAdminMember && (
           <Button
-            disabled={isMembersLoading || (members && members?.length < 2)}
+            disabled={
+              (canReadMembers && isMembersLoading) ||
+              (canReadMembers && members && members.length < 2)
+            }
             isLoading={isLeaving}
             colorSchema="danger"
             variant="outline_bg"

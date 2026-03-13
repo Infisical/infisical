@@ -87,17 +87,22 @@ export const newProjectMembershipIdentityFactory = ({
       if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
         const permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionIdentityActions.GrantPrivileges,
+          [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
           ProjectPermissionSub.Identity,
           permission,
-          permissionRole.permission
+          permissionRole.permission,
+          {
+            identityId: identityDetails.id,
+            assignableRole: permissionRole.role?.slug
+          }
         );
+
         if (!permissionBoundary.isValid)
           throw new PermissionBoundaryError({
             message: constructPermissionErrorMessage(
               "Failed to create identity project membership",
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionIdentityActions.GrantPrivileges,
+              ProjectPermissionIdentityActions.AssignRole,
               ProjectPermissionSub.Identity
             ),
             details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -136,17 +141,22 @@ export const newProjectMembershipIdentityFactory = ({
     for (const permissionRole of permissionRoles) {
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
-        ProjectPermissionIdentityActions.GrantPrivileges,
+        [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
         ProjectPermissionSub.Identity,
         permission,
-        permissionRole.permission
+        permissionRole.permission,
+        {
+          identityId: identityDetails.id,
+          assignableRole: permissionRole.role?.slug
+        }
       );
+
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to update identity project membership",
             shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionIdentityActions.AssignRole,
             ProjectPermissionSub.Identity
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }

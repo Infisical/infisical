@@ -7,7 +7,7 @@ import { getActiveDirectoryResourceListItem } from "./active-directory/active-di
 import { getAwsIamResourceListItem } from "./aws-iam/aws-iam-resource-fns";
 import { getKubernetesResourceListItem } from "./kubernetes/kubernetes-resource-fns";
 import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
-import { TPamResource, TPamResourceConnectionDetails, TPamResourceMetadata } from "./pam-resource-types";
+import { TPamResource, TPamResourceConnectionDetails, TPamResourceInternalMetadata } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 import { getRedisResourceListItem } from "./redis/redis-resource-fns";
 import { getWindowsResourceListItem } from "./windows-server/windows-server-resource-fns";
@@ -68,13 +68,13 @@ export const decryptResourceConnectionDetails = async ({
 };
 
 // Resource Metadata
-export const encryptResourceMetadata = async ({
+export const encryptResourceInternalMetadata = async ({
   projectId,
-  metadata,
+  internalMetadata,
   kmsService
 }: {
   projectId: string;
-  metadata: TPamResourceMetadata;
+  internalMetadata: TPamResourceInternalMetadata;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
   const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -83,13 +83,13 @@ export const encryptResourceMetadata = async ({
   });
 
   const { cipherTextBlob } = encryptor({
-    plainText: Buffer.from(JSON.stringify(metadata))
+    plainText: Buffer.from(JSON.stringify(internalMetadata))
   });
 
   return cipherTextBlob;
 };
 
-export const decryptResourceMetadata = async <T extends TPamResourceMetadata>({
+export const decryptResourceMetadata = async <T extends TPamResourceInternalMetadata>({
   projectId,
   encryptedMetadata,
   kmsService

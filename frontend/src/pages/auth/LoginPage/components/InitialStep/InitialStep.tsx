@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faEye, faEyeSlash, faLock } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -11,14 +11,18 @@ import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
-import { Button, IconButton, Input, Tooltip } from "@app/components/v2";
+import { Button, Input } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
+import { useLastLogin } from "@app/hooks/useLastLogin";
 
 import { useNavigateToSelectOrganization } from "../../Login.utils";
+import { OrgLoginButton } from "../OrgLoginButton";
+import { SocialLoginButton } from "../SocialLoginButton";
 
 type Props = {
   setStep: (step: number) => void;
@@ -51,33 +55,34 @@ export const InitialStep = ({
   const { data: serverDetails } = useFetchServerStatus();
 
   const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
+  const { lastLogin, saveLastLogin } = useLastLogin();
+
+  const callbackPort = queryParams.get("callback_port");
 
   const redirectToSaml = (orgSlug: string) => {
-    const callbackPort = queryParams.get("callback_port");
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
       callbackPort ? `?callback_port=${callbackPort}` : ""
     }`;
-
     window.location.assign(redirectUrl);
   };
 
   const redirectToOidc = (orgSlug: string) => {
-    const callbackPort = queryParams.get("callback_port");
     const redirectUrl = `/api/v1/sso/oidc/login?orgSlug=${orgSlug}${
       callbackPort ? `&callbackPort=${callbackPort}` : ""
     }`;
-
     window.location.assign(redirectUrl);
   };
 
   useEffect(() => {
     if (serverDetails?.samlDefaultOrgSlug && !isAdmin) {
+      saveLastLogin({ method: LoginMethod.SAML, orgSlug: serverDetails.samlDefaultOrgSlug });
       redirectToSaml(serverDetails.samlDefaultOrgSlug);
     }
   }, [serverDetails?.samlDefaultOrgSlug]);
 
   const handleSaml = () => {
     if (config.defaultAuthOrgSlug) {
+      saveLastLogin({ method: LoginMethod.SAML, orgSlug: config.defaultAuthOrgSlug });
       redirectToSaml(config.defaultAuthOrgSlug);
     } else {
       setStep(2);
@@ -86,11 +91,30 @@ export const InitialStep = ({
 
   const handleOidc = () => {
     if (config.defaultAuthOrgSlug) {
+      saveLastLogin({ method: LoginMethod.OIDC, orgSlug: config.defaultAuthOrgSlug });
       redirectToOidc(config.defaultAuthOrgSlug);
     } else {
       setStep(3);
     }
   };
+
+  const handleSocialLogin = (method: LoginMethod) => {
+    const searchParams = new URLSearchParams();
+    if (callbackPort) {
+      searchParams.append("callback_port", callbackPort);
+    }
+    if (isAdmin) {
+      searchParams.append("is_admin_login", "true");
+    }
+    const qs = searchParams.toString();
+    const popup = window.open(`/api/v1/sso/redirect/${method}${qs ? `?${qs}` : ""}`);
+    if (popup) {
+      saveLastLogin({ method });
+    }
+    window.close();
+  };
+
+  const isLastUsedMethod = (method: LoginMethod) => lastLogin?.method === method;
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
@@ -103,10 +127,7 @@ export const InitialStep = ({
       }
 
       setIsLoading(true);
-      if (queryParams && queryParams.get("callback_port")) {
-        const callbackPort = queryParams.get("callback_port");
-
-        // attemptCliLogin
+      if (callbackPort) {
         const isCliLoginSuccessful = await attemptCliLogin({
           email: email.toLowerCase(),
           password,
@@ -114,7 +135,7 @@ export const InitialStep = ({
         });
 
         if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
-          navigateToSelectOrganization(callbackPort!);
+          navigateToSelectOrganization(callbackPort);
         } else {
           setLoginError(true);
           createNotification({
@@ -130,7 +151,7 @@ export const InitialStep = ({
         });
 
         if (isLoginSuccessful && isLoginSuccessful.success) {
-          // case: login was successful
+          saveLastLogin({ method: LoginMethod.EMAIL });
           navigateToSelectOrganization(undefined, isAdmin);
           createNotification({
             text: "Successfully logged in",
@@ -182,30 +203,10 @@ export const InitialStep = ({
         </h1>
         <RegionSelect />
         {config.defaultAuthOrgAuthMethod === AuthMethod.SAML && (
-          <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={handleSaml}
-              leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-              className="mx-0 h-10 w-full"
-            >
-              Continue with SAML
-            </Button>
-          </div>
+          <OrgLoginButton label="Continue with SAML" onClick={handleSaml} />
         )}
         {config.defaultAuthOrgAuthMethod === AuthMethod.OIDC && (
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={handleOidc}
-              leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-              className="mx-0 h-10 w-full"
-            >
-              Continue with OIDC
-            </Button>
-          </div>
+          <OrgLoginButton label="Continue with OIDC" onClick={handleOidc} className="mt-2" />
         )}
       </form>
     );
@@ -221,133 +222,52 @@ export const InitialStep = ({
       </h1>
       <RegionSelect />
       {shouldDisplayLoginMethod(LoginMethod.SAML) && (
-        <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={handleSaml}
-            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            Continue with SAML
-          </Button>
-        </div>
+        <OrgLoginButton
+          label="Continue with SAML"
+          onClick={handleSaml}
+          showLastUsed={isLastUsedMethod(LoginMethod.SAML)}
+        />
       )}
       {shouldDisplayLoginMethod(LoginMethod.OIDC) && (
-        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={handleOidc}
-            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            Continue with OIDC
-          </Button>
-        </div>
+        <OrgLoginButton
+          label="Continue with OIDC"
+          onClick={handleOidc}
+          className="mt-2"
+          showLastUsed={isLastUsedMethod(LoginMethod.OIDC)}
+        />
       )}
       {shouldDisplayLoginMethod(LoginMethod.LDAP) && (
-        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={() => {
-              navigate({ to: "/login/ldap" });
-            }}
-            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            Continue with LDAP
-          </Button>
-        </div>
+        <OrgLoginButton
+          label="Continue with LDAP"
+          onClick={() => navigate({ to: "/login/ldap" })}
+          className="mt-2"
+          showLastUsed={isLastUsedMethod(LoginMethod.LDAP)}
+        />
       )}
       <div className="mt-2 flex w-1/4 min-w-[21.2rem] gap-2 md:min-w-[20.1rem] lg:w-1/6">
         {shouldDisplayLoginMethod(LoginMethod.GOOGLE) && (
-          <Tooltip position="bottom" content={t("login.continue-with-google")}>
-            <IconButton
-              ariaLabel={t("login.continue-with-google")}
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/google${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
-              className="h-10 w-full bg-mineshaft-600"
-            >
-              <FontAwesomeIcon icon={faGoogle} />
-            </IconButton>
-          </Tooltip>
+          <SocialLoginButton
+            icon={faGoogle}
+            label={t("login.continue-with-google")}
+            onClick={() => handleSocialLogin(LoginMethod.GOOGLE)}
+            showLastUsed={isLastUsedMethod(LoginMethod.GOOGLE)}
+          />
         )}
         {shouldDisplayLoginMethod(LoginMethod.GITHUB) && (
-          <Tooltip position="bottom" content="Continue with GitHub">
-            <IconButton
-              ariaLabel="Login continue with GitHub"
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/github${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
-              className="h-10 w-full bg-mineshaft-600"
-            >
-              <FontAwesomeIcon icon={faGithub} />
-            </IconButton>
-          </Tooltip>
+          <SocialLoginButton
+            icon={faGithub}
+            label="Continue with GitHub"
+            onClick={() => handleSocialLogin(LoginMethod.GITHUB)}
+            showLastUsed={isLastUsedMethod(LoginMethod.GITHUB)}
+          />
         )}
         {shouldDisplayLoginMethod(LoginMethod.GITLAB) && (
-          <Tooltip position="bottom" content="Continue with GitLab">
-            <IconButton
-              ariaLabel="Login continue with GitLab"
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/gitlab${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
-              className="h-10 w-full bg-mineshaft-600"
-            >
-              <FontAwesomeIcon icon={faGitlab} />
-            </IconButton>
-          </Tooltip>
+          <SocialLoginButton
+            icon={faGitlab}
+            label="Continue with GitLab"
+            onClick={() => handleSocialLogin(LoginMethod.GITLAB)}
+            showLastUsed={isLastUsedMethod(LoginMethod.GITLAB)}
+          />
         )}
       </div>
       {(!config.enabledLoginMethods ||
@@ -403,7 +323,7 @@ export const InitialStep = ({
               />
             </div>
           )}
-          <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <div className="relative mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
             <Button
               disabled={shouldShowCaptcha && captchaToken === ""}
               type="submit"
@@ -414,9 +334,13 @@ export const InitialStep = ({
               variant="solid"
               isLoading={isLoading}
             >
-              {" "}
-              Continue with Email{" "}
+              Continue with Email
             </Button>
+            {isLastUsedMethod(LoginMethod.EMAIL) && (
+              <Badge variant="default" className="absolute -top-2 -right-2 rounded-full">
+                Last used
+              </Badge>
+            )}
           </div>
         </>
       )}

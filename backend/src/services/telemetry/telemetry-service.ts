@@ -1,3 +1,4 @@
+import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -7,6 +8,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
@@ -29,6 +31,7 @@ type SingleEventData = {
   event: string;
   properties: unknown;
   organizationId: string;
+  organizationName?: string;
 };
 
 export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory>;
@@ -37,7 +40,8 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "getKeysByPattern" | "getItems"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getInstanceType">;
+  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 const getBucketForDistinctId = (distinctId: string): string => {
@@ -56,7 +60,7 @@ export const createTelemetryEventKey = (event: string, distinctId: string): stri
   return `telemetry-event-${event}-${bucketId}-${distinctId}-${crypto.nativeCrypto.randomUUID()}`;
 };
 
-export const telemetryServiceFactory = ({ keyStore, licenseService }: TTelemetryServiceFactoryDep) => {
+export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
@@ -97,9 +101,45 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const getOrgGroupProperties = async (orgId: string, orgName?: string): Promise<Record<string, unknown>> => {
+    const properties: Record<string, unknown> = {};
+    if (orgName) {
+      properties.name = orgName;
+    }
+
+    const instanceType = licenseService.getInstanceType();
+    properties.is_cloud = instanceType === InstanceType.Cloud;
+
+    try {
+      const org = await orgDAL.findOrgById(orgId);
+      if (org) {
+        if (!properties.name) {
+          properties.name = org.name;
+        }
+        properties.created_at = org.createdAt.toISOString();
+      }
+    } catch (error) {
+      logger.error(error, "Failed to fetch org details for PostHog group properties");
+    }
+
+    try {
+      const plan = await licenseService.getPlan(orgId);
+      properties.plan = plan.slug ?? "free";
+      properties.seat_count = plan.membersUsed;
+    } catch (error) {
+      logger.error(error, "Failed to fetch org plan for PostHog group properties");
+    }
+
+    return properties;
+  };
+
   const sendPostHogEvents = async (event: TPostHogEvent) => {
     if (postHog) {
       const instanceType = licenseService.getInstanceType();
+
+      // Resolve org name: prefer explicit value, fall back to request context
+      const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
+
       // capture posthog only when its cloud or signup event happens in self-hosted
       if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
         if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
@@ -111,16 +151,26 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
               distinctId: event.distinctId,
               event: event.event,
               properties: event.properties,
-              organizationId: event.organizationId
+              organizationId: event.organizationId,
+              ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
             })
           );
         } else {
           if (event.organizationId) {
-            try {
-              postHog.groupIdentify({ groupType: "organization", groupKey: event.organizationId });
-            } catch (error) {
-              logger.error(error, "Failed to identify PostHog organization");
-            }
+            // Fire-and-forget: enrich groupIdentify without blocking the HTTP response
+            const orgId = event.organizationId;
+            void getOrgGroupProperties(orgId, resolvedOrgName)
+              .then((groupProperties) => {
+                postHog.groupIdentify({
+                  groupType: "organization",
+                  groupKey: orgId,
+                  properties: groupProperties,
+                  distinctId: event.distinctId
+                });
+              })
+              .catch((error) => {
+                logger.error(error, "Failed to identify PostHog organization");
+              });
           }
           postHog.capture({
             event: event.event,
@@ -250,11 +300,28 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       if (eventsGrouped.size === 0) return 0;
 
+      // Cache org group properties per orgId to avoid redundant DB/API calls
+      // when multiple users share the same org within a bucket
+      const orgPropertiesCache = new Map<string, Record<string, unknown>>();
+
       for (const [eventsKey, events] of eventsGrouped) {
         const key = JSON.parse(eventsKey) as { id: string; org?: string };
         if (key.org) {
           try {
-            postHog.groupIdentify({ groupType: "organization", groupKey: key.org });
+            let groupProperties = orgPropertiesCache.get(key.org);
+            if (!groupProperties) {
+              // Use the organizationName from the first event in the group (all events in a group share the same org)
+              const orgName = events[0]?.organizationName;
+              // eslint-disable-next-line no-await-in-loop
+              groupProperties = await getOrgGroupProperties(key.org, orgName);
+              orgPropertiesCache.set(key.org, groupProperties);
+            }
+            postHog.groupIdentify({
+              groupType: "organization",
+              groupKey: key.org,
+              properties: groupProperties,
+              distinctId: key.id
+            });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
           }
@@ -303,6 +370,27 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const identifyUser = (
+    distinctId: string,
+    properties: {
+      email?: string;
+      username?: string;
+      userId?: string;
+      firstName?: string;
+      lastName?: string;
+      isMfaEnabled?: boolean;
+      isEmailVerified?: boolean;
+      superAdmin?: boolean;
+    }
+  ) => {
+    if (postHog && distinctId) {
+      const instanceType = licenseService.getInstanceType();
+      if (instanceType === InstanceType.Cloud) {
+        postHog.identify({ distinctId, properties });
+      }
+    }
+  };
+
   const flushAll = async () => {
     if (postHog) {
       await postHog.shutdownAsync();
@@ -312,6 +400,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   return {
     sendLoopsEvent,
     sendPostHogEvents,
+    identifyUser,
     processAggregatedEvents,
     flushAll,
     getBucketForDistinctId
