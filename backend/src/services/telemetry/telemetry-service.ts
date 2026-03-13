@@ -161,11 +161,12 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             const orgId = event.organizationId;
             void getOrgGroupProperties(orgId, resolvedOrgName)
               .then((groupProperties) => {
-                postHog.groupIdentify({
-                  groupType: "organization",
-                  groupKey: orgId,
-                  properties: groupProperties
-                });
+                    postHog.groupIdentify({
+                      groupType: "organization",
+                      groupKey: orgId,
+                      properties: groupProperties,
+                      distinctId: event.distinctId
+                    });
               })
               .catch((error) => {
                 logger.error(error, "Failed to identify PostHog organization");
@@ -318,7 +319,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             postHog.groupIdentify({
               groupType: "organization",
               groupKey: key.org,
-              properties: groupProperties
+              properties: groupProperties,
+              distinctId: key.id
             });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
