@@ -72,15 +72,17 @@ export const signingOperationDALFactory = (db: TDbClient) => {
             membershipId?: string | null;
           };
 
-        let resolvedActorName: string | null = null;
-        if (op.actorType === ActorType.USER) {
-          if (userFirstName || userLastName) {
-            resolvedActorName = [userFirstName, userLastName].filter(Boolean).join(" ");
-          } else {
-            resolvedActorName = userEmail || userUsername || null;
+        let resolvedActorName: string | null = op.actorName ?? null;
+        if (!resolvedActorName) {
+          if (op.actorType === ActorType.USER) {
+            if (userFirstName || userLastName) {
+              resolvedActorName = [userFirstName, userLastName].filter(Boolean).join(" ");
+            } else {
+              resolvedActorName = userEmail || userUsername || null;
+            }
+          } else if (op.actorType === ActorType.IDENTITY) {
+            resolvedActorName = identityName || null;
           }
-        } else if (op.actorType === ActorType.IDENTITY) {
-          resolvedActorName = identityName || null;
         }
 
         return {

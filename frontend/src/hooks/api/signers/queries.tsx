@@ -14,7 +14,8 @@ import {
 export const signerKeys = {
   all: ["signers"] as const,
   list: (projectId: string) => [...signerKeys.all, "list", projectId] as const,
-  listWithOpts: (filters: TListSignersDTO) => [...signerKeys.list(filters.projectId), filters] as const,
+  listWithOpts: (filters: TListSignersDTO) =>
+    [...signerKeys.list(filters.projectId), filters] as const,
   byId: (signerId: string) => [...signerKeys.all, "detail", signerId] as const,
   publicKey: (signerId: string) => [...signerKeys.all, "publicKey", signerId] as const,
   operations: (signerId: string) => [...signerKeys.all, "operations", signerId] as const,
@@ -47,9 +48,7 @@ export const useGetSigner = (signerId: string) => {
   return useQuery({
     queryKey: signerKeys.byId(signerId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TSigner>(
-        `/api/v1/cert-manager/signers/${signerId}`
-      );
+      const { data } = await apiRequest.get<TSigner>(`/api/v1/cert-manager/signers/${signerId}`);
       return data;
     },
     enabled: Boolean(signerId)

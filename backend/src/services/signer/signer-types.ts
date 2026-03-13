@@ -40,10 +40,11 @@ export type TSignDataDTO = {
   data: string;
   signingAlgorithm: SigningAlgorithm;
   isDigest: boolean;
+  actorName?: string;
   clientMetadata?: {
     tool?: string;
     hostname?: string;
-    ip?: string;
+    reportedIp?: string;
   };
 } & TActorPermission;
 

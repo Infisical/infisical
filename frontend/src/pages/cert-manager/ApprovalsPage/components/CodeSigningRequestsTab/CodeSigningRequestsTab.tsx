@@ -110,7 +110,7 @@ export const CodeSigningRequestsTab = () => {
     })
   );
 
-  const { page, perPage, setPage, offset } = usePagination("", {
+  const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
     initPerPage: 10
   });
 
@@ -151,11 +151,7 @@ export const CodeSigningRequestsTab = () => {
             Review and manage code signing approval requests
           </p>
         </div>
-        <Button
-          colorSchema="secondary"
-          size="sm"
-          onClick={() => setIsRequestModalOpen(true)}
-        >
+        <Button colorSchema="secondary" size="sm" onClick={() => setIsRequestModalOpen(true)}>
           Request Signing Access
         </Button>
       </div>
@@ -360,12 +356,10 @@ export const CodeSigningRequestsTab = () => {
           page={page}
           perPage={perPage}
           onChangePage={setPage}
+          onChangePerPage={setPerPage}
         />
       )}
-      <RequestSigningAccessModal
-        isOpen={isRequestModalOpen}
-        onOpenChange={setIsRequestModalOpen}
-      />
+      <RequestSigningAccessModal isOpen={isRequestModalOpen} onOpenChange={setIsRequestModalOpen} />
     </div>
   );
 };

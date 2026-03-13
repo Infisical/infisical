@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { KeyObject } from "crypto";
 import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -7,9 +8,9 @@ import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -23,9 +24,8 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { CertExtendedKeyUsage, CertStatus } from "../certificate/certificate-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
-import { SignerStatus, SigningOperationStatus } from "./signer-enums";
 import { TSignerDALFactory } from "./signer-dal";
-import { TSigningOperationDALFactory } from "./signing-operation-dal";
+import { SignerStatus, SigningOperationStatus } from "./signer-enums";
 import {
   TCreateSignerDTO,
   TDeleteSignerDTO,
@@ -36,6 +36,7 @@ import {
   TSignDataDTO,
   TUpdateSignerDTO
 } from "./signer-types";
+import { TSigningOperationDALFactory } from "./signing-operation-dal";
 
 const SIGNER_NAME_REGEX = new RE2("^[a-z0-9-]+$");
 
@@ -55,9 +56,7 @@ type TSignerServiceFactoryDep = {
 
 export type TSignerServiceFactory = ReturnType<typeof signerServiceFactory>;
 
-const getKeyAlgorithm = (
-  key: ReturnType<typeof crypto.nativeCrypto.createPrivateKey> | ReturnType<typeof crypto.nativeCrypto.createPublicKey>
-): AsymmetricKeyAlgorithm => {
+const getKeyAlgorithm = (key: KeyObject): AsymmetricKeyAlgorithm => {
   const keyType = key.asymmetricKeyType;
   if (keyType === "rsa") {
     return AsymmetricKeyAlgorithm.RSA_4096;
@@ -409,29 +408,47 @@ export const signerServiceFactory = ({
 
       let matchingGrant: (typeof activeGrants)[number] | undefined;
 
+      const now = new Date();
+      const expiredGrantIds: string[] = [];
+
       for (const grant of activeGrants) {
         const attrs = grant.attributes as TCodeSigningGrantAttributes | null;
-        if (!attrs || attrs.signerId !== signer.id) continue;
-
-        const now = new Date();
-
-        if (attrs.windowStart && new Date(attrs.windowStart) > now) continue;
-
-        if (grant.expiresAt && new Date(grant.expiresAt) < now) {
-          await approvalRequestGrantsDAL.updateById(grant.id, { status: ApprovalRequestGrantStatus.Expired }, tx);
-          continue;
-        }
-
-        if (attrs.maxSignings) {
-          const usedCount = await signingOperationDAL.countByGrantId(grant.id, tx);
-          if (usedCount >= attrs.maxSignings) {
-            await approvalRequestGrantsDAL.updateById(grant.id, { status: ApprovalRequestGrantStatus.Expired }, tx);
-            continue;
+        if (attrs && attrs.signerId === signer.id) {
+          const windowNotStarted = attrs.windowStart && new Date(attrs.windowStart) > now;
+          if (!windowNotStarted) {
+            if (grant.expiresAt && new Date(grant.expiresAt) < now) {
+              expiredGrantIds.push(grant.id);
+            } else if (!matchingGrant) {
+              matchingGrant = grant;
+            }
           }
         }
+      }
 
-        matchingGrant = grant;
-        break;
+      await Promise.all(
+        expiredGrantIds.map((id) =>
+          approvalRequestGrantsDAL.updateById(id, { status: ApprovalRequestGrantStatus.Expired }, tx)
+        )
+      );
+
+      if (matchingGrant) {
+        const lockedGrant = await approvalRequestGrantsDAL.findByIdForUpdate(matchingGrant.id, tx);
+        if (!lockedGrant || lockedGrant.status !== ApprovalRequestGrantStatus.Active) {
+          matchingGrant = undefined;
+        } else {
+          const matchAttrs = lockedGrant.attributes as TCodeSigningGrantAttributes | null;
+          if (matchAttrs?.maxSignings) {
+            const usedCount = await signingOperationDAL.countByGrantId(matchingGrant.id, tx);
+            if (usedCount >= matchAttrs.maxSignings) {
+              await approvalRequestGrantsDAL.updateById(
+                matchingGrant.id,
+                { status: ApprovalRequestGrantStatus.Expired },
+                tx
+              );
+              matchingGrant = undefined;
+            }
+          }
+        }
       }
 
       if (!matchingGrant) {
@@ -462,6 +479,7 @@ export const signerServiceFactory = ({
             dataHash,
             actorType: dto.actor,
             actorId: dto.actorId,
+            actorName: dto.actorName ?? null,
             approvalGrantId: grantId,
             clientMetadata: dto.clientMetadata ?? null,
             errorMessage: errorMessage.substring(0, 255)
@@ -481,6 +499,7 @@ export const signerServiceFactory = ({
           dataHash,
           actorType: dto.actor,
           actorId: dto.actorId,
+          actorName: dto.actorName ?? null,
           approvalGrantId: grantId,
           clientMetadata: dto.clientMetadata ?? null
         },

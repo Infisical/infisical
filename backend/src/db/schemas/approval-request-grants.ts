@@ -12,7 +12,6 @@ export const ApprovalRequestGrantsSchema = z.object({
   projectId: z.string(),
   requestId: z.string().uuid().nullable().optional(),
   granteeUserId: z.string().uuid().nullable().optional(),
-  granteeMachineIdentityId: z.string().uuid().nullable().optional(),
   revokedByUserId: z.string().uuid().nullable().optional(),
   revocationReason: z.string().nullable().optional(),
   status: z.string(),
@@ -20,7 +19,8 @@ export const ApprovalRequestGrantsSchema = z.object({
   attributes: z.unknown(),
   createdAt: z.date().nullable().optional(),
   expiresAt: z.date().nullable().optional(),
-  revokedAt: z.date().nullable().optional()
+  revokedAt: z.date().nullable().optional(),
+  granteeMachineIdentityId: z.string().uuid().nullable().optional()
 });
 
 export type TApprovalRequestGrants = z.infer<typeof ApprovalRequestGrantsSchema>;

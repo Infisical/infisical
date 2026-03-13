@@ -53,7 +53,6 @@ import { useOrganization, useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { usePagination } from "@app/hooks";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
-import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership/queries";
 import {
   approvalGrantQuery,
   ApprovalGrantStatus,
@@ -61,6 +60,7 @@ import {
   useRevokeApprovalGrant
 } from "@app/hooks/api/approvalGrants";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership/queries";
 
 const revokeGrantSchema = z.object({
   revocationReason: z.string().max(256).optional()
@@ -113,9 +113,33 @@ export const CodeSigningGrantsTab = () => {
     resolver: zodResolver(revokeGrantSchema)
   });
 
-  const { page, perPage, setPage, offset } = usePagination("", {
+  const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
     initPerPage: 10
   });
+
+  const getGrantedUser = (grantedUserId: string) => {
+    const member = members?.find((m) => m.user.id === grantedUserId);
+    if (member) {
+      return getMemberLabel(member);
+    }
+    return grantedUserId;
+  };
+
+  const getGranteeName = (grant: {
+    granteeUserId: string | null;
+    granteeMachineIdentityId: string | null;
+  }): string => {
+    if (grant.granteeUserId) {
+      return getGrantedUser(grant.granteeUserId);
+    }
+    if (grant.granteeMachineIdentityId) {
+      const identity = identityMemberships?.identityMemberships?.find(
+        (m) => m.identity.id === grant.granteeMachineIdentityId
+      );
+      return identity?.identity.name ?? grant.granteeMachineIdentityId;
+    }
+    return "Unknown";
+  };
 
   const filteredGrants = useMemo(() => {
     let filtered = grants;
@@ -150,27 +174,6 @@ export const CodeSigningGrantsTab = () => {
     setRevokeModalOpen(false);
     setGrantToRevoke(null);
     reset();
-  };
-
-  const getGrantedUser = (grantedUserId: string) => {
-    const member = members?.find((m) => m.user.id === grantedUserId);
-    if (member) {
-      return getMemberLabel(member);
-    }
-    return grantedUserId;
-  };
-
-  const getGranteeName = (grant: { granteeUserId: string | null; granteeMachineIdentityId: string | null }): string => {
-    if (grant.granteeUserId) {
-      return getGrantedUser(grant.granteeUserId);
-    }
-    if (grant.granteeMachineIdentityId) {
-      const identity = identityMemberships?.identityMemberships?.find(
-        (m) => m.identity.id === grant.granteeMachineIdentityId
-      );
-      return identity?.identity.name ?? grant.granteeMachineIdentityId;
-    }
-    return "Unknown";
   };
 
   const handleRevokeGrant = async (data: TRevokeGrantForm) => {
@@ -212,9 +215,7 @@ export const CodeSigningGrantsTab = () => {
         <div className="flex items-center gap-x-2">
           <p className="text-xl font-medium text-mineshaft-100">Signing Grants</p>
         </div>
-        <p className="text-sm text-bunker-300">
-          View and revoke signing access grants
-        </p>
+        <p className="text-sm text-bunker-300">View and revoke signing access grants</p>
       </div>
       <div>
         <div className="flex gap-2">
@@ -240,9 +241,7 @@ export const CodeSigningGrantsTab = () => {
                   setFilter(ApprovalGrantStatus.Active);
                 }}
                 icon={
-                  filter === ApprovalGrantStatus.Active && (
-                    <FontAwesomeIcon icon={faCheckCircle} />
-                  )
+                  filter === ApprovalGrantStatus.Active && <FontAwesomeIcon icon={faCheckCircle} />
                 }
                 iconPos="right"
               >
@@ -320,9 +319,7 @@ export const CodeSigningGrantsTab = () => {
 
                   return (
                     <Tr key={grant.id} className="group">
-                      <Td>
-                        {getGranteeName(grant)}
-                      </Td>
+                      <Td>{getGranteeName(grant)}</Td>
                       <Td>
                         <span className="text-sm text-mineshaft-200">
                           {attrs.signerName || "-"}
@@ -422,6 +419,7 @@ export const CodeSigningGrantsTab = () => {
               page={page}
               perPage={perPage}
               onChangePage={setPage}
+              onChangePerPage={setPerPage}
             />
           )}
           {!isGrantsLoading && !filteredGrants?.length && (

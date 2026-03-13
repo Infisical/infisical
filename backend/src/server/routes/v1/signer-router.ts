@@ -76,12 +76,14 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          signers: z.array(SignersSchema.extend({
-            certificateCommonName: z.string().nullable().optional(),
-            certificateSerialNumber: z.string().nullable().optional(),
-            certificateNotAfter: z.date().nullable().optional(),
-            approvalPolicyName: z.string().nullable().optional()
-          })),
+          signers: z.array(
+            SignersSchema.extend({
+              certificateCommonName: z.string().nullable().optional(),
+              certificateSerialNumber: z.string().nullable().optional(),
+              certificateNotAfter: z.date().nullable().optional(),
+              approvalPolicyName: z.string().nullable().optional()
+            })
+          ),
           totalCount: z.number()
         })
       }
@@ -276,7 +278,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
           .object({
             tool: z.string().max(128).optional(),
             hostname: z.string().max(256).optional(),
-            ip: z.string().max(64).optional()
+            reportedIp: z.string().max(64).optional()
           })
           .optional()
       }),
@@ -290,9 +292,17 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      let actorName: string | undefined;
+      if (req.auth.authMode === AuthMode.JWT) {
+        actorName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim() || undefined;
+      } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
+        actorName = req.auth.identityName ?? undefined;
+      }
+
       const result = await server.services.signer.sign({
         signerId: req.params.signerId,
         ...req.body,
+        actorName,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

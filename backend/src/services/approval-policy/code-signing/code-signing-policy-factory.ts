@@ -1,5 +1,5 @@
-import { ms } from "@app/lib/ms";
 import { BadRequestError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 
 import { ApprovalRequestGrantStatus } from "../approval-policy-enums";
 import {
@@ -66,20 +66,15 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
 
     const now = new Date();
 
-    for (const grant of grants) {
+    const hasMatchingGrant = grants.some((grant) => {
       const attributes = grant.attributes as TCodeSigningGrantAttributes | null;
-      if (!attributes) continue;
-
-      if (attributes.signerId !== inputs.signerId) continue;
-
-      if (attributes.windowStart && new Date(attributes.windowStart) > now) continue;
-
-      if (grant.expiresAt && new Date(grant.expiresAt) < now) continue;
-
+      if (!attributes || attributes.signerId !== inputs.signerId) return false;
+      if (attributes.windowStart && new Date(attributes.windowStart) > now) return false;
+      if (grant.expiresAt && new Date(grant.expiresAt) < now) return false;
       return true;
-    }
+    });
 
-    return false;
+    return hasMatchingGrant;
   };
 
   const validateConstraints: TApprovalRequestFactoryValidateConstraints<TCodeSigningPolicy, TCodeSigningRequestData> = (
@@ -142,11 +137,7 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
     };
   };
 
-  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (
-    approvalRequestGrantsDAL,
-    request,
-    _context
-  ) => {
+  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (approvalRequestGrantsDAL, request) => {
     const requestData = request.requestData.requestData as TCodeSigningRequestData;
     const approvalMode = requestData.approvalMode ?? CodeSigningApprovalMode.Manual;
 

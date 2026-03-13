@@ -68,7 +68,7 @@ export type TSigningOperation = {
   clientMetadata?: {
     tool?: string;
     hostname?: string;
-    ip?: string;
+    reportedIp?: string;
   } | null;
   errorMessage?: string | null;
   createdAt: string;

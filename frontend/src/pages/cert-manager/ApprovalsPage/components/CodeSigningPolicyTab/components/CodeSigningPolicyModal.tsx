@@ -16,12 +16,9 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import {
-  CodeSigningPolicyFormSchema,
-  TCodeSigningPolicyForm
-} from "./CodeSigningPolicySchema";
 import { CodeSigningPolicyDetailsStep } from "./CodeSigningPolicySteps/CodeSigningPolicyDetailsStep";
 import { CodeSigningPolicyReviewStep } from "./CodeSigningPolicySteps/CodeSigningPolicyReviewStep";
+import { CodeSigningPolicyFormSchema, TCodeSigningPolicyForm } from "./CodeSigningPolicySchema";
 
 type Props = {
   popUp: UsePopUpState<["policy"]>;
@@ -133,6 +130,7 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       await createPolicy({
         policyType: ApprovalPolicyType.CertManagerCodeSigning,
         projectId: currentProject.id,
+        conditions: [],
         ...data
       });
       createNotification({

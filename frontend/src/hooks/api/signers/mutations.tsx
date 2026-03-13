@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from "@app/config/request";
 import { createNotification } from "@app/components/notifications";
+import { apiRequest } from "@app/config/request";
 
 import { signerKeys } from "./queries";
 import { TCreateSignerDTO, TDeleteSignerDTO, TSigner, TUpdateSignerDTO } from "./types";
@@ -26,7 +26,10 @@ export const useUpdateSigner = () => {
 
   return useMutation<TSigner, object, TUpdateSignerDTO>({
     mutationFn: async ({ signerId, ...body }) => {
-      const { data } = await apiRequest.patch<TSigner>(`/api/v1/cert-manager/signers/${signerId}`, body);
+      const { data } = await apiRequest.patch<TSigner>(
+        `/api/v1/cert-manager/signers/${signerId}`,
+        body
+      );
       return data;
     },
     onSuccess: (signer) => {
@@ -42,9 +45,7 @@ export const useDeleteSigner = () => {
 
   return useMutation<TSigner, object, TDeleteSignerDTO & { projectId: string }>({
     mutationFn: async ({ signerId }) => {
-      const { data } = await apiRequest.delete<TSigner>(
-        `/api/v1/cert-manager/signers/${signerId}`
-      );
+      const { data } = await apiRequest.delete<TSigner>(`/api/v1/cert-manager/signers/${signerId}`);
       return data;
     },
     onSuccess: (_, { projectId }) => {
