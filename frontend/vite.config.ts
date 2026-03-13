@@ -55,9 +55,10 @@ export default defineConfig(({ mode }) => {
     experimental: {
       renderBuiltUrl(filename, { hostType }) {
         if (hostType === "js") {
-          return { runtime: `window.__toCdnUrl(${JSON.stringify(filename)})` };
+          const fallback = `function(f){ return "/" + f; }`;
+          const fn = `(typeof window.__toCdnUrl === "function" ? window.__toCdnUrl : ${fallback})`;
+          return { runtime: `${fn}(${JSON.stringify(filename)})` };
         }
-
         return { relative: true };
       }
     },
