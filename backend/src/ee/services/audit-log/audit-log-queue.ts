@@ -38,6 +38,13 @@ const normalizeJsonPayload = (payload: unknown) => {
   return {};
 };
 
+const nullable = (value: string | undefined | null, isClickhouse: boolean) => {
+  if (!value) {
+    return isClickhouse ? "" : null;
+  }
+  return value;
+};
+
 // keep this timeout 5s it must be fast because else the queue will take time to finish
 // audit log is a crowded queue thus needs to be fast
 export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
@@ -104,12 +111,12 @@ export const auditLogQueueServiceFactory = async ({
         id,
         actor: actor.type,
         actorMetadata,
-        ipAddress: ipAddress ?? "",
+        ipAddress: nullable(ipAddress, isClickHouseBatchEnabled),
         eventType: event.type,
         eventMetadata,
-        userAgent: userAgent ?? "",
-        userAgentType: userAgentType ?? "",
-        projectId: projectId ?? "",
+        userAgent: nullable(userAgent, isClickHouseBatchEnabled),
+        userAgentType: nullable(userAgentType, isClickHouseBatchEnabled),
+        projectId: nullable(projectId, isClickHouseBatchEnabled),
         orgId,
         expiresAt: new Date(createdAt.getTime() + ttl),
         createdAt,
