@@ -4,7 +4,7 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { VenafiRegion } from "@app/services/app-connection/venafi/venafi-connection-enum";
+import { VenafiRegion } from "@app/services/app-connection/venafi/venafi-connection-enums";
 import { getVenafiBaseUrl, getVenafiHeaders } from "@app/services/app-connection/venafi/venafi-connection-fns";
 
 import { TVenafiDestinationConfig } from "./ca-signing-config-types";

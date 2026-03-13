@@ -76,7 +76,7 @@ consisting of an (optional) root CA and an intermediate CA.
 
         ![pki create intermediate ca](/images/platform/pki/ca/ca-create-intermediate.png)
 
-        Next, press the **Install Certificate** option on the intermediate CA.
+        Next, press the **Install CA Certificate** option on the intermediate CA.
 
         ![pki install cert opt](/images/platform/pki/ca/ca-install-intermediate-opt.png)
 
@@ -88,7 +88,7 @@ consisting of an (optional) root CA and an intermediate CA.
           <Tab title="Infisical CA">
             Select **Infisical CA** and press **Continue**. This option chains the intermediate CA to a root or intermediate CA managed by Infisical.
 
-            Set the **Parent CA** to the root CA created in step 1 and configure the intended **Valid Until** and **Path Length** fields on the intermediate CA; feel free to use the prefilled values.
+            Set the **Parent CA** to the root CA created in step 1 (or any other existing root or intermediate CA) and configure the intended **Valid Until** and **Path Length** fields on the intermediate CA; feel free to use the prefilled values.
 
             ![pki install infisical ca](/images/platform/pki/ca/ca-install-infisical-ca.png)
 

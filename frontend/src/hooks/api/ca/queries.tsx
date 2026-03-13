@@ -232,7 +232,7 @@ export const useGetCaSigningConfig = (caId: string, options?: { enabled?: boolea
   return useQuery({
     queryKey: caKeys.getCaSigningConfig(caId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TCaSigningConfig>(
+      const { data } = await apiRequest.get<TCaSigningConfig | null>(
         `/api/v1/cert-manager/ca/internal/${caId}/signing-config`
       );
       return data;

@@ -194,6 +194,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case LaravelForgeConnectionMethod.ApiToken:
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
+      return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:

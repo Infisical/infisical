@@ -255,23 +255,7 @@ export const caAutoRenewalQueueFactory = ({
             continue;
           }
 
-          const signingConfig = await caSigningConfigDAL.findByCaId(internalCa.id);
-          if (!signingConfig) {
-            logger.warn(`CA ${internalCa.caId}: no signing config found, skipping auto-renewal`);
-            continue;
-          }
-
-          if (signingConfig.type === CaSigningConfigType.Manual) {
-            logger.warn(`CA ${internalCa.caId}: manual signing config does not support auto-renewal`);
-            await internalCertificateAuthorityDAL.updateById(internalCa.id, {
-              autoRenewalEnabled: false,
-              lastRenewalStatus: CaRenewalStatus.FAILED,
-              lastRenewalMessage: "Auto-renewal is not supported for manual signing configuration"
-            });
-            continue;
-          }
-
-          if (signingConfig.type === CaSigningConfigType.Internal) {
+          if (internalCa.type === "root") {
             if (!internalCa.notBefore) {
               throw new Error("Cannot auto-renew: certificate has no notBefore date");
             }
@@ -281,15 +265,43 @@ export const caAutoRenewalQueueFactory = ({
               notBefore: new Date(internalCa.notBefore),
               notAfter: expiryDate
             });
-          } else if (signingConfig.type === CaSigningConfigType.Venafi) {
-            await processVenafiCertificateIssuance({
-              caId: internalCa.caId,
-              internalCaId: internalCa.id
-            });
+          } else {
+            const signingConfig = await caSigningConfigDAL.findByCaId(internalCa.id);
+            if (!signingConfig) {
+              logger.warn(`CA ${internalCa.caId}: no signing config found, skipping auto-renewal`);
+              continue;
+            }
+
+            if (signingConfig.type === CaSigningConfigType.Manual) {
+              logger.warn(`CA ${internalCa.caId}: manual signing config does not support auto-renewal`);
+              await internalCertificateAuthorityDAL.updateById(internalCa.id, {
+                autoRenewalEnabled: false,
+                lastRenewalStatus: CaRenewalStatus.FAILED,
+                lastRenewalMessage: "Auto-renewal is not supported for manual signing configuration"
+              });
+              continue;
+            }
+
+            if (signingConfig.type === CaSigningConfigType.Internal) {
+              if (!internalCa.notBefore) {
+                throw new Error("Cannot auto-renew: certificate has no notBefore date");
+              }
+              await processInternalCaRenewal({
+                caId: internalCa.caId,
+                internalCaId: internalCa.id,
+                notBefore: new Date(internalCa.notBefore),
+                notAfter: expiryDate
+              });
+            } else if (signingConfig.type === CaSigningConfigType.Venafi) {
+              await processVenafiCertificateIssuance({
+                caId: internalCa.caId,
+                internalCaId: internalCa.id
+              });
+            }
           }
 
           totalRenewed += 1;
-          logger.info(`CA ${internalCa.caId}: successfully auto-renewed (${signingConfig.type})`);
+          logger.info(`CA ${internalCa.caId}: successfully auto-renewed`);
         } catch (error) {
           totalFailed += 1;
           const errorMessage = error instanceof Error ? error.message : "Unknown error";

@@ -4,7 +4,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { VenafiConnectionMethod, VenafiRegion } from "./venafi-connection-enum";
+import { VenafiConnectionMethod, VenafiRegion } from "./venafi-connection-enums";
 import { TVenafiConnection, TVenafiConnectionConfig } from "./venafi-connection-types";
 
 type TVenafiCredentials = {
