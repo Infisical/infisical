@@ -195,3 +195,19 @@ export type TUpdatePamFolderDTO = Partial<Pick<TPamFolder, "name" | "description
 export type TDeletePamFolderDTO = {
   folderId: string;
 };
+
+export type TPamAccountDependency = {
+  id: string;
+  accountId: string;
+  resourceId: string;
+  dependencyType: string;
+  name: string;
+  displayName?: string | null;
+  state?: string | null;
+  data: Record<string, unknown>;
+  source: string;
+  isEnabled?: boolean | null;
+  resourceName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};

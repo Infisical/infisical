@@ -1,20 +1,24 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamDiscoverySources } from "@app/db/schemas";
+import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionPamAccountActions,
   ProjectPermissionPamDiscoveryActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { decryptResourceMetadata } from "../pam-resource/pam-resource-fns";
+import { TPamAccountDependenciesDALFactory } from "./pam-account-dependencies-dal";
 import { PamDiscoverySourceRunStatus, PamDiscoverySourceStatus, PamDiscoveryType } from "./pam-discovery-enums";
 import { PAM_DISCOVERY_FACTORY_MAP } from "./pam-discovery-factory";
 import {
@@ -26,6 +30,7 @@ import {
 import { TPamDiscoveryQueueFactory } from "./pam-discovery-queue";
 import { TPamDiscoverySourceAccountsDALFactory } from "./pam-discovery-source-accounts-dal";
 import { TPamDiscoverySourceDALFactory } from "./pam-discovery-source-dal";
+import { TPamDiscoverySourceDependenciesDALFactory } from "./pam-discovery-source-dependencies-dal";
 import { TPamDiscoverySourceResourcesDALFactory } from "./pam-discovery-source-resources-dal";
 import { TPamDiscoverySourceRunDALFactory } from "./pam-discovery-source-run-dal";
 import {
@@ -57,6 +62,12 @@ type TPamDiscoverySourceServiceFactoryDep = {
     TPamDiscoverySourceAccountsDALFactory,
     "findByDiscoverySourceIdWithAccounts" | "countByDiscoverySourceIds"
   >;
+  pamDiscoverySourceDependenciesDAL: Pick<TPamDiscoverySourceDependenciesDALFactory, "countByDiscoverySourceIds">;
+  pamAccountDependenciesDAL: Pick<
+    TPamAccountDependenciesDALFactory,
+    "countByAccountIds" | "countByResourceIds" | "findByAccountId" | "findById" | "updateById" | "deleteById"
+  >;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithResourceDetails" | "findMetadataByAccountIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
@@ -71,6 +82,9 @@ export const pamDiscoverySourceServiceFactory = ({
   pamDiscoveryRunDAL,
   pamDiscoverySourceResourcesDAL,
   pamDiscoverySourceAccountsDAL,
+  pamDiscoverySourceDependenciesDAL,
+  pamAccountDependenciesDAL,
+  pamAccountDAL,
   permissionService,
   kmsService,
   gatewayV2DAL,
@@ -386,9 +400,10 @@ export const pamDiscoverySourceServiceFactory = ({
 
     const sourceIds = sources.map((s) => s.id);
 
-    const [resourceCounts, accountCounts]: { [k: string]: number }[] = await Promise.all([
+    const [resourceCounts, accountCounts, dependencyCounts]: { [k: string]: number }[] = await Promise.all([
       sourceIds.length ? pamDiscoverySourceResourcesDAL.countByDiscoverySourceIds(sourceIds) : {},
-      sourceIds.length ? pamDiscoverySourceAccountsDAL.countByDiscoverySourceIds(sourceIds) : {}
+      sourceIds.length ? pamDiscoverySourceAccountsDAL.countByDiscoverySourceIds(sourceIds) : {},
+      sourceIds.length ? pamDiscoverySourceDependenciesDAL.countByDiscoverySourceIds(sourceIds) : {}
     ]);
 
     return {
@@ -396,7 +411,8 @@ export const pamDiscoverySourceServiceFactory = ({
         sources.map(async (src) => ({
           ...(await decryptDiscoverySource(src, projectId, kmsService)),
           totalResources: resourceCounts[src.id] ?? 0,
-          totalAccounts: accountCounts[src.id] ?? 0
+          totalAccounts: accountCounts[src.id] ?? 0,
+          totalDependencies: dependencyCounts[src.id] ?? 0
         }))
       ),
       totalCount
@@ -543,7 +559,18 @@ export const pamDiscoverySourceServiceFactory = ({
       })
     );
 
-    return { resources: decryptedResources, totalCount, discoverySource };
+    // Add dependency counts per resource
+    const resourceIds = decryptedResources.map((r) => r.resourceId).filter(Boolean);
+    const depCountsByResource = resourceIds.length
+      ? await pamAccountDependenciesDAL.countByResourceIds(resourceIds)
+      : {};
+
+    const resourcesWithDeps = decryptedResources.map((r) => ({
+      ...r,
+      dependencyCount: (r.resourceId ? depCountsByResource[r.resourceId] : 0) ?? 0
+    }));
+
+    return { resources: resourcesWithDeps, totalCount, discoverySource };
   };
 
   const getDiscoveredAccounts = async (
@@ -573,7 +600,140 @@ export const pamDiscoverySourceServiceFactory = ({
       offset,
       limit
     });
-    return { ...result, discoverySource };
+
+    // Add dependency counts per account
+    const accountIds = result.accounts.map((a) => a.accountId).filter(Boolean);
+    const depCountsByAccount = accountIds.length ? await pamAccountDependenciesDAL.countByAccountIds(accountIds) : {};
+
+    const accountsWithDeps = result.accounts.map((a) => ({
+      ...a,
+      dependencyCount: (a.accountId ? depCountsByAccount[a.accountId] : 0) ?? 0
+    }));
+
+    return { accounts: accountsWithDeps, totalCount: result.totalCount, discoverySource };
+  };
+
+  const verifyAccountPermission = async (
+    accountId: string,
+    action: ProjectPermissionPamAccountActions,
+    actor: ActorType,
+    actorId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string
+  ) => {
+    const accountWithResource = await pamAccountDAL.findByIdWithResourceDetails(accountId);
+    if (!accountWithResource) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accountWithResource.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds([accountWithResource.id]);
+    const accountMetadata = metadataByAccountId[accountWithResource.id] || [];
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      action,
+      subject(ProjectPermissionSub.PamAccounts, {
+        resourceName: accountWithResource.resource.name,
+        accountName: accountWithResource.name,
+        metadata: accountMetadata
+      })
+    );
+
+    return accountWithResource;
+  };
+
+  const getAccountDependencies = async ({
+    accountId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    accountId: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    await verifyAccountPermission(
+      accountId,
+      ProjectPermissionPamAccountActions.Read,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    return pamAccountDependenciesDAL.findByAccountId(accountId);
+  };
+
+  const updateAccountDependency = async ({
+    accountId,
+    dependencyId,
+    isEnabled,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    accountId: string;
+    dependencyId: string;
+    isEnabled: boolean;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    await verifyAccountPermission(
+      accountId,
+      ProjectPermissionPamAccountActions.Edit,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    const dep = await pamAccountDependenciesDAL.findById(dependencyId);
+    if (!dep || dep.accountId !== accountId) {
+      throw new NotFoundError({ message: "Dependency not found" });
+    }
+    return pamAccountDependenciesDAL.updateById(dependencyId, { isEnabled });
+  };
+
+  const deleteAccountDependency = async ({
+    accountId,
+    dependencyId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    accountId: string;
+    dependencyId: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    await verifyAccountPermission(
+      accountId,
+      ProjectPermissionPamAccountActions.Edit,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    const dep = await pamAccountDependenciesDAL.findById(dependencyId);
+    if (!dep || dep.accountId !== accountId) {
+      throw new NotFoundError({ message: "Dependency not found" });
+    }
+    return pamAccountDependenciesDAL.deleteById(dependencyId);
   };
 
   return {
@@ -587,6 +747,9 @@ export const pamDiscoverySourceServiceFactory = ({
     getDiscoveryRunById,
     getDiscoveredResources,
     getDiscoveredAccounts,
+    getAccountDependencies,
+    updateAccountDependency,
+    deleteAccountDependency,
     listDiscoverySourceOptions
   };
 };
