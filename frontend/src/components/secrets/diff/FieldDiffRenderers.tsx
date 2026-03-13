@@ -95,7 +95,7 @@ export const TagsDiffRenderer = ({
   const otherTagSlugs = new Set(otherTags?.map((t) => t.slug) ?? []);
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5">
       {tags.map(({ slug, color }) => {
         const isInOther = otherTagSlugs.has(slug);
         const isRemoved = isOldVersion && !isInOther;
@@ -140,7 +140,7 @@ export const MetadataDiffRenderer = ({
   const otherMetaByValue = new Map(otherMetadata?.map((m) => [m.value, m.key]) ?? []);
 
   return (
-    <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
+    <div className="mt-1 flex flex-wrap gap-1.5 text-sm text-mineshaft-300">
       {metadata.map((el) => {
         const keyExistsInOther = otherMetaByKey.has(el.key);
         const otherDataForKey = otherMetaByKey.get(el.key);
@@ -209,7 +209,7 @@ export const MetadataDiffRenderer = ({
             <Tag
               size="xs"
               className={twMerge(
-                "flex items-center !rounded-l-none border-l-0 pl-1",
+                "mr-0 flex items-center !rounded-l-none border-l-0 pl-1",
                 borderClass,
                 valueBgClass
               )}
