@@ -1,8 +1,8 @@
+import { KMSClient, ListAliasesCommand } from "@aws-sdk/client-kms";
 import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
-import AWS from "aws-sdk";
 
 import {
   ActionProjectType,
@@ -13,6 +13,7 @@ import {
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
@@ -1046,15 +1047,17 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const kms = new AWS.KMS({
+    const kms = new KMSClient({
       region,
       credentials: {
         accessKeyId: String(accessId),
         secretAccessKey: accessToken
-      }
+      },
+      useFipsEndpoint: crypto.isFipsModeEnabled(),
+      sha256: CustomAWSHasher
     });
 
-    const aliases = await kms.listAliases({}).promise();
+    const aliases = await kms.send(new ListAliasesCommand({}));
 
     const keyAliases = aliases.Aliases!.filter((alias) => {
       if (!alias.TargetKeyId) return false;
