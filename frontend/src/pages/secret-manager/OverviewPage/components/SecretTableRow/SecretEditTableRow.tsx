@@ -273,6 +273,23 @@ export const SecretEditTableRow = ({
     }
   }, [sharedValueData]);
 
+  // Keep original refs for comment/tags/metadata in sync with server data.
+  // Without this, after a batch commit clears pending changes, the form reset
+  // (line ~514) would revert to stale values from initial mount instead of
+  // the freshly committed server data.
+  useEffect(() => {
+    if (!isSingleEnvView || hasPendingChange) return;
+
+    originalCommentRef.current = comment ?? "";
+    originalTagsRef.current = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
+    originalMetadataRef.current =
+      secretMetadata?.map((m) => ({
+        key: m.key,
+        value: m.value,
+        isEncrypted: m.isEncrypted ?? false
+      })) ?? [];
+  }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
+
   const { permission } = useProjectPermission();
   const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
 
