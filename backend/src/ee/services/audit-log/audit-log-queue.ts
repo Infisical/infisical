@@ -98,47 +98,38 @@ export const auditLogQueueServiceFactory = async ({
       const id = randomUUID();
       const eventMetadata = normalizeJsonPayload(event.metadata);
       const actorMetadata = normalizeJsonPayload(actor.metadata);
-      const auditLog = await auditLogDAL.create({
-        // @ts-expect-error: id is added from our side to make it easier for us to correlate between the database and the stream
+
+      const createdAt = new Date(job.timestamp);
+      const auditLog = {
         id,
         actor: actor.type,
         actorMetadata,
-        userAgent,
-        projectId,
-        projectName: project?.name,
-        ipAddress,
-        orgId,
+        ipAddress: ipAddress ?? "",
         eventType: event.type,
-        expiresAt: new Date(Date.now() + ttl),
         eventMetadata,
-        userAgentType
-      });
-      await auditLogStreamService.streamLog(orgId, auditLog);
+        userAgent: userAgent ?? "",
+        userAgentType: userAgentType ?? "",
+        projectId: projectId ?? "",
+        orgId,
+        expiresAt: new Date(createdAt.getTime() + ttl),
+        createdAt,
+        updatedAt: createdAt
+      };
 
-      const createdAt = new Date(job.timestamp);
       // Push to Redis stream for ClickHouse batch processing
       if (isClickHouseBatchEnabled) {
         try {
           await keyStore.streamAdd(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, "*", {
-            data: JSON.stringify({
-              id,
-              actor: actor.type,
-              actorMetadata,
-              ipAddress: ipAddress ?? "",
-              eventType: event.type,
-              eventMetadata,
-              userAgent: userAgent ?? "",
-              userAgentType: userAgentType ?? "",
-              projectId: projectId ?? "",
-              orgId,
-              expiresAt: new Date(createdAt.getTime() + ttl),
-              createdAt
-            })
+            data: JSON.stringify(auditLog)
           });
         } catch (error) {
           logger.error(error, "Failed to push audit log to Redis stream for ClickHouse batch");
         }
+      } else {
+        await auditLogDAL.create(auditLog);
       }
+
+      await auditLogStreamService.streamLog(orgId, auditLog);
     }
   });
 
