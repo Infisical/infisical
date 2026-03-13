@@ -15,6 +15,8 @@ import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./teleme
 export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
+const IDENTITY_IDENTIFY_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
 export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled];
 const TELEMETRY_AGGREGATED_KEY_EXP = 600; // 10mins
 
@@ -391,6 +393,35 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  // In-memory dedup cache to avoid calling postHog.identify() on every request for the same identity.
+  // Entries auto-expire after IDENTITY_IDENTIFY_CACHE_TTL_MS.
+  const identityIdentifyDedup = new Set<string>();
+
+  const identifyIdentity = (
+    identityId: string,
+    properties: {
+      name?: string;
+      authMethod?: string;
+    }
+  ) => {
+    if (postHog && identityId) {
+      const instanceType = licenseService.getInstanceType();
+      if (instanceType === InstanceType.Cloud) {
+        if (identityIdentifyDedup.has(identityId)) return;
+
+        identityIdentifyDedup.add(identityId);
+        setTimeout(() => identityIdentifyDedup.delete(identityId), IDENTITY_IDENTIFY_CACHE_TTL_MS);
+
+        const distinctId = `identity-${identityId}`;
+        try {
+          postHog.identify({ distinctId, properties });
+        } catch (error) {
+          logger.error(error, `Failed to identify PostHog machine identity [identityId=${identityId}]`);
+        }
+      }
+    }
+  };
+
   const flushAll = async () => {
     if (postHog) {
       await postHog.shutdownAsync();
@@ -401,6 +432,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     sendLoopsEvent,
     sendPostHogEvents,
     identifyUser,
+    identifyIdentity,
     processAggregatedEvents,
     flushAll,
     getBucketForDistinctId
