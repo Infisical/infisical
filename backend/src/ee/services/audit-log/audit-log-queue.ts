@@ -38,7 +38,7 @@ const normalizeJsonPayload = (payload: unknown) => {
   return {};
 };
 
-const nullable = (value: string | undefined | null, isClickhouse: boolean) => {
+const normalizeEmptyValue = (value: string | undefined | null, isClickhouse: boolean) => {
   if (!value) {
     return isClickhouse ? "" : null;
   }
@@ -111,12 +111,12 @@ export const auditLogQueueServiceFactory = async ({
         id,
         actor: actor.type,
         actorMetadata,
-        ipAddress: nullable(ipAddress, isClickHouseBatchEnabled),
+        ipAddress: normalizeEmptyValue(ipAddress, isClickHouseBatchEnabled),
         eventType: event.type,
         eventMetadata,
-        userAgent: nullable(userAgent, isClickHouseBatchEnabled),
-        userAgentType: nullable(userAgentType, isClickHouseBatchEnabled),
-        projectId: nullable(projectId, isClickHouseBatchEnabled),
+        userAgent: normalizeEmptyValue(userAgent, isClickHouseBatchEnabled),
+        userAgentType: normalizeEmptyValue(userAgentType, isClickHouseBatchEnabled),
+        projectId: normalizeEmptyValue(projectId, isClickHouseBatchEnabled),
         orgId,
         expiresAt: new Date(createdAt.getTime() + ttl),
         createdAt,
