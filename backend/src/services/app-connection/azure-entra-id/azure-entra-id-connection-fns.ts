@@ -95,6 +95,28 @@ export const getAzureEntraIdConnectionListItem = () => {
   };
 };
 
+export const graphApiRequest = async <T>(
+  url: string,
+  headers: Record<string, string>,
+  description: string
+): Promise<T> => {
+  try {
+    const { data } = await request.get<T>(url, { headers });
+    return data;
+  } catch (err: unknown) {
+    if (err instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to ${description}: ${
+          (err.response?.data as { error?: { message?: string } })?.error?.message || err.message
+        }`
+      });
+    }
+    throw new BadRequestError({
+      message: `Failed to ${description}`
+    });
+  }
+};
+
 export const validateAzureEntraIdConnectionCredentials = async (config: TAzureEntraIdConnectionConfig) => {
   const { credentials: inputCredentials, method } = config;
 

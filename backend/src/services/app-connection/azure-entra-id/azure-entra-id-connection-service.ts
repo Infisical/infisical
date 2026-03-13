@@ -1,13 +1,12 @@
 import RE2 from "re2";
 
-import { request } from "@app/lib/config/request";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { getAzureEntraIdConnectionAccessToken } from "./azure-entra-id-connection-fns";
+import { getAzureEntraIdConnectionAccessToken, graphApiRequest } from "./azure-entra-id-connection-fns";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
@@ -64,17 +63,21 @@ export const azureEntraIdConnectionService = (
       }
     }
 
-    const { data }: { data: TAzureServicePrincipalsResponse } = await request.get(url, { headers });
+    const data = await graphApiRequest<TAzureServicePrincipalsResponse>(
+      url,
+      headers,
+      "list service principals from Microsoft Graph"
+    );
 
     // Filter to only those with SCIM synchronization jobs
     const scimServicePrincipals: { id: string; displayName: string; appId: string }[] = [];
 
-    for (const sp of data.value) {
+    const checkScimServicePrincipal = async (sp: TAzureServicePrincipal) => {
       try {
-        // eslint-disable-next-line no-await-in-loop
-        const { data: jobsData } = await request.get<TAzureSyncJobsResponse>(
+        const jobsData = await graphApiRequest<TAzureSyncJobsResponse>(
           `https://graph.microsoft.com/v1.0/servicePrincipals/${sp.id}/synchronization/jobs`,
-          { headers }
+          headers,
+          `fetch synchronization jobs for service principal '${sp.displayName}'`
         );
 
         const hasScimJob = jobsData.value.some((job) => job.templateId?.toLowerCase().includes("scim"));
@@ -89,7 +92,9 @@ export const azureEntraIdConnectionService = (
       } catch {
         // SP doesn't have synchronization configured, skip
       }
-    }
+    };
+
+    await Promise.all(data.value.map(checkScimServicePrincipal));
 
     return scimServicePrincipals;
   };

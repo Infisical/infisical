@@ -5,7 +5,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const AzureEntraIdScimSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
-    secretKey: z.string().optional()
+    secretKey: z.string().trim().min(1, "Secret key is required")
   })
 ).merge(
   z.object({
