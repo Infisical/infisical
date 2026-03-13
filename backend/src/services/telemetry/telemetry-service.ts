@@ -416,6 +416,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         try {
           postHog.identify({ distinctId, properties });
         } catch (error) {
+          identityIdentifyDedup.delete(identityId);
           logger.error(error, `Failed to identify PostHog machine identity [identityId=${identityId}]`);
         }
       }
