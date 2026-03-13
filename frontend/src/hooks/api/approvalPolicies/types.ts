@@ -59,11 +59,17 @@ export type TApprovalPolicy = {
   type: ApprovalPolicyType;
   conditions: {
     version: number;
-    conditions: PamAccessPolicyConditions | CertRequestPolicyConditions | CodeSigningPolicyConditions;
+    conditions:
+      | PamAccessPolicyConditions
+      | CertRequestPolicyConditions
+      | CodeSigningPolicyConditions;
   };
   constraints: {
     version: number;
-    constraints: PamAccessPolicyConstraints | CertRequestPolicyConstraints | CodeSigningPolicyConstraints;
+    constraints:
+      | PamAccessPolicyConstraints
+      | CertRequestPolicyConstraints
+      | CodeSigningPolicyConstraints;
   };
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
@@ -77,7 +83,10 @@ export type TCreateApprovalPolicyDTO = {
   name: string;
   maxRequestTtl?: string | null;
   conditions: PamAccessPolicyConditions | CertRequestPolicyConditions | CodeSigningPolicyConditions;
-  constraints: PamAccessPolicyConstraints | CertRequestPolicyConstraints | CodeSigningPolicyConstraints;
+  constraints:
+    | PamAccessPolicyConstraints
+    | CertRequestPolicyConstraints
+    | CodeSigningPolicyConstraints;
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
 };
@@ -87,8 +96,14 @@ export type TUpdateApprovalPolicyDTO = {
   policyId: string;
   name?: string;
   maxRequestTtl?: string | null;
-  conditions?: PamAccessPolicyConditions | CertRequestPolicyConditions | CodeSigningPolicyConditions;
-  constraints?: PamAccessPolicyConstraints | CertRequestPolicyConstraints | CodeSigningPolicyConstraints;
+  conditions?:
+    | PamAccessPolicyConditions
+    | CertRequestPolicyConditions
+    | CodeSigningPolicyConditions;
+  constraints?:
+    | PamAccessPolicyConstraints
+    | CertRequestPolicyConstraints
+    | CodeSigningPolicyConstraints;
   steps?: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
 };

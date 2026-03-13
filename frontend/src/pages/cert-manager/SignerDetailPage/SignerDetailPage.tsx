@@ -6,12 +6,12 @@ import { ChevronLeftIcon } from "lucide-react";
 import { EmptyState, PageHeader } from "@app/components/v2";
 import { Badge, UnstablePageLoader } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   getSignerStatusBadgeVariant,
   signerStatusLabels,
   useGetSigner
 } from "@app/hooks/api/signers";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { SignerOverviewSection } from "./components/SignerOverviewSection";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";

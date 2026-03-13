@@ -626,7 +626,10 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionPkiDiscoveryActions.Read], ProjectPermissionSub.PkiDiscovery);
   can([ProjectPermissionPkiCertificateInstallationActions.Read], ProjectPermissionSub.PkiCertificateInstallations);
-  can([ProjectPermissionCodeSigningActions.Read, ProjectPermissionCodeSigningActions.Sign], ProjectPermissionSub.CodeSigners);
+  can(
+    [ProjectPermissionCodeSigningActions.Read, ProjectPermissionCodeSigningActions.Sign],
+    ProjectPermissionSub.CodeSigners
+  );
 
   can(
     [

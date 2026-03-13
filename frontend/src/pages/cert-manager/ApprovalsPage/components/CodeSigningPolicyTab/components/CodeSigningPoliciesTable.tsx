@@ -4,8 +4,8 @@ import {
   faEdit,
   faEllipsisV,
   faFileCircleQuestion,
-  faHashtag,
   faHandPointer,
+  faHashtag,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -92,69 +92,67 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
           </Tr>
         </THead>
         <TBody>
-          {isPoliciesLoading && (
-            <TableSkeleton columns={5} innerKey="cs-approval-policies" />
-          )}
+          {isPoliciesLoading && <TableSkeleton columns={5} innerKey="cs-approval-policies" />}
           {!isPoliciesLoading &&
             sortedPolicies.map((policy) => (
-                <Tr key={policy.id} className="group">
-                  <Td>
-                    <div className="text-sm font-medium text-mineshaft-100">{policy.name}</div>
-                  </Td>
-                  <Td>
-                    {(() => {
-                      const config = getApprovalModeConfig(policy);
-                      return (
-                        <span className="inline-flex items-center gap-1.5 rounded bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-200">
-                          <FontAwesomeIcon icon={config.icon} className="h-3 w-3" />
-                          {config.label}
-                        </span>
-                      );
-                    })()}
-                  </Td>
-                  <Td>
-                    <span className="text-sm text-mineshaft-200">
-                      {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
-                    </span>
-                  </Td>
-                  <Td>
-                    <span className="text-sm text-mineshaft-400">
-                      {format(new Date(policy.createdAt), "MMM d, yyyy")}
-                    </span>
-                  </Td>
-                  <Td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="rounded-lg">
-                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                          <Tooltip content="More options">
-                            <IconButton
-                              ariaLabel="More options"
-                              variant="plain"
-                              className="w-4 p-0"
-                              size="md"
-                            >
-                              <FontAwesomeIcon icon={faEllipsisV} />
-                            </IconButton>
-                          </Tooltip>
-                        </div>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="p-1" sideOffset={5}>
-                        <DropdownMenuItem
-                          onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
-                          icon={<FontAwesomeIcon icon={faEdit} />}
-                        >
-                          Edit Policy
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
-                          icon={<FontAwesomeIcon icon={faTrash} />}
-                        >
-                          Delete Policy
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Td>
-                </Tr>
+              <Tr key={policy.id} className="group">
+                <Td>
+                  <div className="text-sm font-medium text-mineshaft-100">{policy.name}</div>
+                </Td>
+                <Td>
+                  {(() => {
+                    const config = getApprovalModeConfig(policy);
+                    return (
+                      <span className="inline-flex items-center gap-1.5 rounded bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-200">
+                        <FontAwesomeIcon icon={config.icon} className="h-3 w-3" />
+                        {config.label}
+                      </span>
+                    );
+                  })()}
+                </Td>
+                <Td>
+                  <span className="text-sm text-mineshaft-200">
+                    {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
+                  </span>
+                </Td>
+                <Td>
+                  <span className="text-sm text-mineshaft-400">
+                    {format(new Date(policy.createdAt), "MMM d, yyyy")}
+                  </span>
+                </Td>
+                <Td>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild className="rounded-lg">
+                      <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                        <Tooltip content="More options">
+                          <IconButton
+                            ariaLabel="More options"
+                            variant="plain"
+                            className="w-4 p-0"
+                            size="md"
+                          >
+                            <FontAwesomeIcon icon={faEllipsisV} />
+                          </IconButton>
+                        </Tooltip>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="p-1" sideOffset={5}>
+                      <DropdownMenuItem
+                        onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
+                        icon={<FontAwesomeIcon icon={faEdit} />}
+                      >
+                        Edit Policy
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
+                        icon={<FontAwesomeIcon icon={faTrash} />}
+                      >
+                        Delete Policy
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </Td>
+              </Tr>
             ))}
         </TBody>
       </Table>

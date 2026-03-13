@@ -15,10 +15,7 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import {
-  approvalPolicyQuery,
-  ApprovalPolicyType
-} from "@app/hooks/api/approvalPolicies";
+import { approvalPolicyQuery, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { useCreateSigner } from "@app/hooks/api/signers";
 
@@ -92,17 +89,17 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
     }
   });
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) reset();
+    onOpenChange(open);
+  };
+
   const onSubmit = async (data: FormData) => {
     await createSigner.mutateAsync({
       projectId,
       ...data
     });
     handleOpenChange(false);
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) reset();
-    onOpenChange(open);
   };
 
   return (
@@ -122,11 +119,7 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
             name="description"
             control={control}
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Description"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
+              <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
                 <TextArea {...field} placeholder="Optional description" rows={2} />
               </FormControl>
             )}
@@ -183,10 +176,7 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
             )}
           />
           <div className="mt-4 flex justify-end gap-2">
-            <Button
-              variant="outline_bg"
-              onClick={() => handleOpenChange(false)}
-            >
+            <Button variant="outline_bg" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" isLoading={isSubmitting}>

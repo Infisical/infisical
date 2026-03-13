@@ -89,9 +89,7 @@ export const PkiManagerLayout = () => {
                   {({ isActive }) => (
                     <Tab
                       value={
-                        isActive || location.pathname.match(/\/code-signing/)
-                          ? "selected"
-                          : ""
+                        isActive || location.pathname.match(/\/code-signing/) ? "selected" : ""
                       }
                     >
                       Code Signing

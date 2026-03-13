@@ -101,9 +101,9 @@ const Content = ({ onOpenChange }: Props) => {
 
   const policyMap = useMemo(() => {
     const map = new Map<string, TApprovalPolicy>();
-    for (const policy of policies) {
+    policies.forEach((policy) => {
       map.set(policy.id, policy);
-    }
+    });
     return map;
   }, [policies]);
 
@@ -161,7 +161,7 @@ const Content = ({ onOpenChange }: Props) => {
       setValue("windowStart", undefined);
       setValue("windowEnd", undefined);
     }
-    void trigger();
+    trigger();
   }, [approvalMode, setValue, trigger]);
 
   const onSubmit = async (formData: FormData) => {

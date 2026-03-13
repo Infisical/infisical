@@ -22,8 +22,11 @@ const DurationSchema = (
 
 export const CodeSigningPolicyFormSchema = z.object({
   name: z.string().min(1, "Policy name is required").max(128),
-  maxRequestTtl: DurationSchema(86400, 2592000, "Duration must be between 1 day and 30 days")
-    .nullish(),
+  maxRequestTtl: DurationSchema(
+    86400,
+    2592000,
+    "Duration must be between 1 day and 30 days"
+  ).nullish(),
   constraints: z.object({
     approvalMode: z.nativeEnum(CodeSigningApprovalMode),
     maxWindowDuration: DurationSchema().optional(),

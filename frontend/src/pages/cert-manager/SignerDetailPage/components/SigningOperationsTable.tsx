@@ -188,15 +188,13 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
                       <TooltipTrigger asChild>
                         <div className="flex items-center gap-1.5">
                           {op.actorType === SigningActorType.User ? (
-                            <UserIcon className="size-3.5 text-muted-foreground" />
+                            <UserIcon className="text-muted-foreground size-3.5" />
                           ) : (
-                            <HardDriveIcon className="size-3.5 text-muted-foreground" />
+                            <HardDriveIcon className="text-muted-foreground size-3.5" />
                           )}
                           <button
                             type="button"
-                            onClick={
-                              isActorClickable(op) ? () => handleActorClick(op) : undefined
-                            }
+                            onClick={isActorClickable(op) ? () => handleActorClick(op) : undefined}
                             className={
                               isActorClickable(op)
                                 ? "cursor-pointer font-medium text-accent underline"
@@ -207,9 +205,7 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
                           </button>
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        {op.actorName ?? op.actorId}
-                      </TooltipContent>
+                      <TooltipContent>{op.actorName ?? op.actorId}</TooltipContent>
                     </Tooltip>
                   </UnstableTableCell>
                 </UnstableTableRow>

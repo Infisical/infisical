@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BanIcon, CheckCircleIcon, ClipboardCopyIcon, MoreHorizontalIcon, PlusIcon, SearchIcon } from "lucide-react";
+import {
+  BanIcon,
+  CheckCircleIcon,
+  ClipboardCopyIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  SearchIcon
+} from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
@@ -101,11 +108,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
               a={ProjectPermissionSub.CodeSigners}
             >
               {(isAllowed) => (
-                <Button
-                  variant="project"
-                  isDisabled={!isAllowed}
-                  onClick={onCreateSigner}
-                >
+                <Button variant="project" isDisabled={!isAllowed} onClick={onCreateSigner}>
                   <PlusIcon />
                   Create Signer
                 </Button>
@@ -179,14 +182,14 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                     <UnstableTableCell>
                       <UnstableDropdownMenu>
                         <UnstableDropdownMenuTrigger asChild>
-                          <UnstableIconButton
-                            variant="ghost"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          <UnstableIconButton variant="ghost" onClick={(e) => e.stopPropagation()}>
                             <MoreHorizontalIcon />
                           </UnstableIconButton>
                         </UnstableDropdownMenuTrigger>
-                        <UnstableDropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <UnstableDropdownMenuContent
+                          align="end"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <UnstableDropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
