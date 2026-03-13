@@ -398,7 +398,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   // Entries auto-expire after IDENTITY_IDENTIFY_CACHE_TTL_MS.
   const identityIdentifyDedup = new Map<string, NodeJS.Timeout>();
 
-  const identifyIdentity = (
+  const identifyIdentity = async (
     identityId: string,
     properties: {
       name?: string;

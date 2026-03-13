@@ -243,16 +243,12 @@ export const injectIdentity = fp(
           requestContext.set("identityAuthInfo", identityAuthInfo);
 
           // Fire-and-forget: enrich PostHog person record for this machine identity
-          void Promise.resolve()
-            .then(() =>
-              server.services.telemetry.identifyIdentity(identity.identityId, {
-                name: identity.identityName,
-                authMethod: identity.authMethod
-              })
-            )
-            .catch((error) => {
-              req.log.error(error, "Failed to enrich PostHog identity");
-            });
+          void server.services.telemetry.identifyIdentity(identity.identityId, {
+            name: identity.identityName,
+            authMethod: identity.authMethod
+          }).catch((error) => {
+            req.log.error(error, "Failed to enrich PostHog identity");
+          });
 
           break;
         }
