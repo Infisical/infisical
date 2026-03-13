@@ -120,7 +120,9 @@ export const auditLogQueueServiceFactory = async ({
         orgId,
         expiresAt: new Date(createdAt.getTime() + ttl),
         createdAt,
-        updatedAt: createdAt
+        updatedAt: createdAt,
+        // project name is only used for non-ClickHouse insertion
+        ...(!isClickHouseBatchEnabled ? { projectName: project?.name } : {})
       };
 
       // Push to Redis stream for ClickHouse batch processing
