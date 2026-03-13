@@ -1,11 +1,11 @@
 import type { Preview } from "@storybook/react-vite";
 
-import { DocumentDecorator, RouterDecorator } from "./decorators";
+import { RouterDecorator } from "./decorators";
 
 import "../src/index.css";
 
 const preview: Preview = {
-  decorators: [DocumentDecorator, RouterDecorator],
+  decorators: [RouterDecorator],
   parameters: {
     controls: {
       matchers: {
