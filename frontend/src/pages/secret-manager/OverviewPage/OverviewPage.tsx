@@ -2443,7 +2443,7 @@ const OverviewPageContent = () => {
                             </TooltipContent>
                           </Tooltip>
                         )}
-                        <Badge asChild className="float-right cursor-pointer" variant="neutral">
+                        <Badge asChild variant="neutral">
                           <button
                             type="button"
                             onClick={() => {
@@ -2462,7 +2462,7 @@ const OverviewPageContent = () => {
                           </button>
                         </Badge>
                         <Tooltip>
-                          <TooltipTrigger>
+                          <TooltipTrigger asChild>
                             <Badge
                               asChild
                               className={isOverviewBatchMode ? "" : "opacity-75"}
