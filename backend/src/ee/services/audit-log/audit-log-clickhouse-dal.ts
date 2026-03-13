@@ -41,6 +41,7 @@ type TClickHouseAuditLogRow = {
   createdAt: string;
   orgId: string;
   projectId: string;
+  expiresAt?: string;
 };
 
 // Validate JSON path keys to prevent injection
@@ -187,7 +188,7 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         orgId: row.orgId || null,
         projectId: row.projectId || null,
         projectName: projectNameMap[row.projectId] ?? null,
-        expiresAt: null
+        expiresAt: row.expiresAt ? new Date(row.expiresAt) : null
       })) as TAuditLogWithProjectName[];
     } catch (error) {
       logger.error(error, "Failed to query audit logs from ClickHouse");
