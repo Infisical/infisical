@@ -1686,14 +1686,20 @@ const OverviewPageContent = () => {
   const mergedSecKeys = useMemo(() => {
     if (!isBatchModeActive) return secKeys;
 
+    // If resource filter is active and secrets are excluded, don't add pending creates
+    if (isFilteredByResources && !filter.secret) return secKeys;
+
     const result = [...secKeys];
+    const searchLower = debouncedSearchFilter.toLowerCase();
     pendingChanges.secrets.forEach((change) => {
       if (change.type === PendingAction.Create && !result.includes(change.secretKey)) {
-        result.unshift(change.secretKey);
+        if (!searchLower || change.secretKey.toLowerCase().includes(searchLower)) {
+          result.unshift(change.secretKey);
+        }
       }
     });
     return result;
-  }, [secKeys, isBatchModeActive, pendingChanges.secrets]);
+  }, [secKeys, isBatchModeActive, pendingChanges.secrets, debouncedSearchFilter, isFilteredByResources, filter.secret]);
 
   const getSecretByKeyWithPending = useCallback(
     (env: string, key: string) => {
@@ -1783,13 +1789,22 @@ const OverviewPageContent = () => {
       pendingAction: undefined as PendingAction | undefined
     }));
 
+    // If resource filter is active and folders are excluded, skip pending folder creates
+    const includePendingFolderCreates = !isFilteredByResources || filter.folder;
+
+    const searchLower = debouncedSearchFilter.toLowerCase();
     pendingChanges.folders.forEach((change) => {
       if (change.type === PendingAction.Create) {
-        result.unshift({
-          name: change.folderName,
-          description: change.description,
-          pendingAction: PendingAction.Create
-        });
+        if (
+          includePendingFolderCreates &&
+          (!searchLower || change.folderName.toLowerCase().includes(searchLower))
+        ) {
+          result.unshift({
+            name: change.folderName,
+            description: change.description,
+            pendingAction: PendingAction.Create
+          });
+        }
       } else if (change.type === PendingAction.Update) {
         const idx = result.findIndex((f) => f.name === change.originalFolderName);
         if (idx >= 0) {
@@ -1813,7 +1828,7 @@ const OverviewPageContent = () => {
     });
 
     return result;
-  }, [folderNamesAndDescriptions, isBatchModeActive, pendingChanges.folders]);
+  }, [folderNamesAndDescriptions, isBatchModeActive, pendingChanges.folders, debouncedSearchFilter, isFilteredByResources, filter.folder]);
 
   // Batch mode: revert a pending change (e.g. when user reverts value to original)
   const handleBatchRevert = useCallback(
@@ -2204,7 +2219,10 @@ const OverviewPageContent = () => {
 
   const [tableWidth, setTableWidth] = useState(0);
 
-  const isTableEmpty = totalCount === 0 && !isOverviewLoading;
+  const hasPendingCreates =
+    mergedSecKeys.length > secKeys.length ||
+    mergedFolderNamesAndDescriptions.some((f) => f.pendingAction === PendingAction.Create);
+  const isTableEmpty = totalCount === 0 && !hasPendingCreates && !isOverviewLoading;
 
   useEffect(() => {
     // track previous page size to make navigation loading rows less janky
