@@ -1,5 +1,13 @@
-import AWS from "aws-sdk";
+import {
+  DescribeListenersCommand,
+  DescribeLoadBalancersCommand,
+  ElasticLoadBalancingV2Client
+} from "@aws-sdk/client-elastic-load-balancing-v2";
+import { IAMClient, ListUsersCommand } from "@aws-sdk/client-iam";
+import { DescribeKeyCommand, KMSClient, ListAliasesCommand } from "@aws-sdk/client-kms";
 
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
+import { crypto } from "@app/lib/crypto";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
@@ -23,26 +31,31 @@ const listAwsKmsKeys = async (
   appConnection: TAwsConnection,
   { region, destination }: Pick<TListAwsConnectionKmsKeys, "region" | "destination">
 ) => {
-  const { credentials } = await getAwsConnectionConfig(appConnection, region);
+  const config = await getAwsConnectionConfig(appConnection, region);
 
-  const awsKms = new AWS.KMS({
-    credentials,
-    region
+  const awsKms = new KMSClient({
+    region: config.region,
+    credentials: config.credentials,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher
   });
 
-  const aliasEntries: AWS.KMS.AliasList = [];
+  const aliasEntries: { AliasName?: string; AliasArn?: string; TargetKeyId?: string }[] = [];
   let aliasMarker: string | undefined;
   do {
     // eslint-disable-next-line no-await-in-loop
-    const response = await awsKms.listAliases({ Limit: 100, Marker: aliasMarker }).promise();
+    const response = await awsKms.send(new ListAliasesCommand({ Limit: 100, Marker: aliasMarker }));
     aliasEntries.push(...(response.Aliases || []));
     aliasMarker = response.NextMarker;
   } while (aliasMarker);
 
-  const keyMetadataRecord: Record<string, AWS.KMS.KeyMetadata | undefined> = {};
+  const keyMetadataRecord: Record<
+    string,
+    { KeyUsage?: string; KeySpec?: string; KeyId?: string; Arn?: string } | undefined
+  > = {};
   for await (const aliasEntry of aliasEntries) {
     if (aliasEntry.TargetKeyId) {
-      const keyDescription = await awsKms.describeKey({ KeyId: aliasEntry.TargetKeyId }).promise();
+      const keyDescription = await awsKms.send(new DescribeKeyCommand({ KeyId: aliasEntry.TargetKeyId }));
 
       keyMetadataRecord[aliasEntry.TargetKeyId] = keyDescription.KeyMetadata;
     }
@@ -76,17 +89,28 @@ const listAwsKmsKeys = async (
   return kmsKeys;
 };
 
-const listAwsIamUsers = async (appConnection: TAwsConnection) => {
-  const { credentials } = await getAwsConnectionConfig(appConnection);
+const listAwsIamUsers = async (appConnection: TAwsConnection): Promise<Array<{ Arn: string; UserName: string }>> => {
+  const config = await getAwsConnectionConfig(appConnection);
 
-  const iam = new AWS.IAM({ credentials });
+  const iam = new IAMClient({
+    region: config.region,
+    credentials: config.credentials,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher
+  });
 
-  const userEntries: AWS.IAM.User[] = [];
+  const userEntries: Array<{ Arn: string; UserName: string }> = [];
   let userMarker: string | undefined;
   do {
     // eslint-disable-next-line no-await-in-loop
-    const response = await iam.listUsers({ MaxItems: 100, Marker: userMarker }).promise();
-    userEntries.push(...(response.Users || []));
+    const response = await iam.send(new ListUsersCommand({ MaxItems: 100, Marker: userMarker }));
+    if (response.Users) {
+      for (const user of response.Users) {
+        if (user.Arn && user.UserName) {
+          userEntries.push({ Arn: user.Arn, UserName: user.UserName });
+        }
+      }
+    }
     userMarker = response.Marker;
   } while (userMarker);
 
@@ -119,11 +143,13 @@ const listAwsLoadBalancers = async (
   appConnection: TAwsConnection,
   { region }: { region: AWSRegion }
 ): Promise<TAwsLoadBalancerInfo[]> => {
-  const { credentials } = await getAwsConnectionConfig(appConnection, region);
+  const config = await getAwsConnectionConfig(appConnection, region);
 
-  const elbClient = new AWS.ELBv2({
-    credentials,
-    region
+  const elbClient = new ElasticLoadBalancingV2Client({
+    region: config.region,
+    credentials: config.credentials,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher
   });
 
   const loadBalancers: TAwsLoadBalancerInfo[] = [];
@@ -131,11 +157,11 @@ const listAwsLoadBalancers = async (
 
   do {
     // eslint-disable-next-line no-await-in-loop
-    const response = await elbClient
-      .describeLoadBalancers({
+    const response = await elbClient.send(
+      new DescribeLoadBalancersCommand({
         Marker: marker
       })
-      .promise();
+    );
 
     if (response.LoadBalancers) {
       for (const lb of response.LoadBalancers) {
@@ -165,11 +191,13 @@ const listAwsListeners = async (
   appConnection: TAwsConnection,
   { region, loadBalancerArn }: { region: AWSRegion; loadBalancerArn: string }
 ): Promise<TAwsListenerInfo[]> => {
-  const { credentials } = await getAwsConnectionConfig(appConnection, region);
+  const config = await getAwsConnectionConfig(appConnection, region);
 
-  const elbClient = new AWS.ELBv2({
-    credentials,
-    region
+  const elbClient = new ElasticLoadBalancingV2Client({
+    region: config.region,
+    credentials: config.credentials,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher
   });
 
   const listeners: TAwsListenerInfo[] = [];
@@ -177,12 +205,12 @@ const listAwsListeners = async (
 
   do {
     // eslint-disable-next-line no-await-in-loop
-    const response = await elbClient
-      .describeListeners({
+    const response = await elbClient.send(
+      new DescribeListenersCommand({
         LoadBalancerArn: loadBalancerArn,
         Marker: marker
       })
-      .promise();
+    );
 
     if (response.Listeners) {
       for (const listener of response.Listeners) {

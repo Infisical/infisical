@@ -1,4 +1,5 @@
-import { secrets, vault } from "oci-sdk";
+import * as secrets from "oci-secrets";
+import * as vault from "oci-vault";
 
 import { getOCIProvider } from "@app/ee/services/app-connections/oci";
 import {
