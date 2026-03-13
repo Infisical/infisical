@@ -68,6 +68,9 @@ import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/c
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
+
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
@@ -181,6 +184,7 @@ export const SecretEditTableRow = ({
 
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
+  const batchStore = useBatchStoreApi();
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
 
@@ -473,9 +477,64 @@ export const SecretEditTableRow = ({
         return;
       }
 
+      // Check for key rename conflicts before applying (read store snapshot, no subscription)
+      let effectiveKeyDirty = isKeyDirty;
+      if (isKeyDirty) {
+        const { existingSecretKeys, pendingChanges: pc } = batchStore.getState();
+        const newKey = watchedKey as string;
+        const isTaken =
+          existingSecretKeys.has(newKey) ||
+          pc.secrets.some(
+            (s) =>
+              s.id !== secretId &&
+              (s.secretKey === newKey ||
+                (s.type === PendingAction.Update && s.newSecretName === newKey))
+          );
+        if (isTaken) {
+          createNotification({
+            type: "error",
+            text: "A secret with this name already exists"
+          });
+          effectiveKeyDirty = false;
+        }
+      }
+
+      // If only the key was dirty and it conflicted, reset key back and bail
+      if (
+        !isValueChanged &&
+        !effectiveKeyDirty &&
+        !isCommentDirty &&
+        !isTagsDirty &&
+        !isMetadataDirty
+      ) {
+        if (isKeyDirty) {
+          // Key conflicted — reset form key back to original so the input updates.
+          // Update lastAppliedRef first so the effect doesn't re-trigger on the reset.
+          lastAppliedRef.current = {
+            value: watchedValue,
+            key: secretName,
+            comment: watchedComment,
+            tags: watchedTags,
+            metadata: watchedMetadata
+          };
+          reset({
+            value: watchedValue,
+            ...(isSingleEnvView
+              ? {
+                  key: secretName,
+                  comment: watchedComment ?? "",
+                  tags: watchedTags ?? [],
+                  metadata: watchedMetadata ?? []
+                }
+              : {})
+          });
+        }
+        return;
+      }
+
       lastAppliedRef.current = {
         value: watchedValue,
-        key: watchedKey,
+        key: effectiveKeyDirty ? watchedKey : secretName,
         comment: watchedComment,
         tags: watchedTags,
         metadata: watchedMetadata
@@ -493,7 +552,7 @@ export const SecretEditTableRow = ({
           secretValueHidden,
           type: SecretType.Shared,
           secretId,
-          newSecretName: isKeyDirty ? (watchedKey as string) : undefined,
+          newSecretName: effectiveKeyDirty ? (watchedKey as string) : undefined,
           secretComment: isCommentDirty ? (watchedComment as string) : undefined,
           tags: isTagsDirty ? watchedTags : undefined,
           secretMetadata: isMetadataDirty ? watchedMetadata : undefined
@@ -501,11 +560,12 @@ export const SecretEditTableRow = ({
       }
 
       // Reset form to mark as clean (like SecretDashboardPage's auto-save)
+      const resetKey = effectiveKeyDirty ? watchedKey || secretName : secretName;
       reset({
         value: watchedValue,
         ...(isSingleEnvView
           ? {
-              key: watchedKey || secretName,
+              key: resetKey,
               comment: watchedComment ?? "",
               tags: watchedTags ?? [],
               metadata: watchedMetadata ?? []

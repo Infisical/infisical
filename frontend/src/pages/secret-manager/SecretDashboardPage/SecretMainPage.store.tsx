@@ -814,3 +814,9 @@ export const useBatchMode = () =>
   );
 
 export const useBatchModeActions = () => useStoreContext(useShallow((state) => state.batchActions));
+
+export const useBatchStoreApi = () => {
+  const ctx = useContext(StoreContext);
+  if (!ctx) throw new Error("Missing StoreProvider");
+  return ctx;
+};
