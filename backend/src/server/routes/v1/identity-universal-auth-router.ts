@@ -1,14 +1,17 @@
 import { z } from "zod";
 
-import { IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, UNIVERSAL_AUTH } from "@app/lib/api-docs";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const sanitizedClientSecretSchema = IdentityUaClientSecretsSchema.pick({
   id: true,
@@ -76,6 +79,21 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityLogin,
+          distinctId: `identity-${identityUa.identityId}`,
+          organizationId: identity.orgId,
+          properties: {
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityUa.identityId}]`);
+        });
 
       return {
         accessToken,
@@ -201,6 +219,21 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityUniversalAuth.orgId,
+          properties: {
+            identityId: identityUniversalAuth.identityId,
+            orgId: identityUniversalAuth.orgId,
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityUniversalAuth.identityId}]`);
+        });
+
       return { identityUniversalAuth };
     }
   });
@@ -325,6 +358,21 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityUniversalAuth.orgId,
+          properties: {
+            identityId: identityUniversalAuth.identityId,
+            orgId: identityUniversalAuth.orgId,
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityUniversalAuth.identityId}]`);
+        });
+
       return { identityUniversalAuth };
     }
   });
@@ -425,6 +473,21 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityUniversalAuth.orgId,
+          properties: {
+            identityId: identityUniversalAuth.identityId,
+            orgId: identityUniversalAuth.orgId,
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityUniversalAuth.identityId}]`);
+        });
+
       return { identityUniversalAuth };
     }
   });
@@ -483,6 +546,20 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityClientSecretCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: orgId,
+          properties: {
+            identityId: req.params.identityId,
+            orgId
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${req.params.identityId}]`);
+        });
 
       return { clientSecret, clientSecretData };
     }
@@ -640,6 +717,20 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityClientSecretRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: clientSecretData.orgId,
+          properties: {
+            identityId: clientSecretData.identityId,
+            orgId: clientSecretData.orgId
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${clientSecretData.identityId}]`);
+        });
 
       return { clientSecretData };
     }
