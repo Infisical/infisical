@@ -481,13 +481,28 @@ export const SecretEditTableRow = ({
       if (isKeyDirty) {
         const { existingSecretKeys, pendingChanges: pc } = batchStore.getState();
         const newKey = watchedKey as string;
+
+        // A server key is "freed" if there's a pending rename away from it
+        const isServerKeyFreed = (key: string) =>
+          pc.secrets.some(
+            (s) =>
+              s.type === PendingAction.Update &&
+              s.secretKey === key &&
+              s.newSecretName &&
+              s.newSecretName !== key
+          );
+
         const isTaken =
-          existingSecretKeys.has(newKey) ||
+          (existingSecretKeys.has(newKey) && !isServerKeyFreed(newKey)) ||
           pc.secrets.some(
             (s) =>
               s.id !== secretId &&
-              (s.secretKey === newKey ||
-                (s.type === PendingAction.Update && s.newSecretName === newKey))
+              // Match the effective key: for renames use newSecretName, otherwise secretKey
+              ((s.type === PendingAction.Update && s.newSecretName
+                ? s.newSecretName === newKey
+                : s.secretKey === newKey) ||
+                // Also check if a create uses this key
+                (s.type === PendingAction.Create && s.secretKey === newKey))
           );
         if (isTaken) {
           createNotification({
