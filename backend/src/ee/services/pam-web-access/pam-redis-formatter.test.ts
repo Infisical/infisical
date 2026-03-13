@@ -86,6 +86,14 @@ describe("formatRedisReply", () => {
     expect(formatRedisReply("OK")).toBe('"OK"');
   });
 
+  it("escapes embedded double quotes", () => {
+    expect(formatRedisReply('He said "hello"')).toBe('"He said \\"hello\\""');
+  });
+
+  it("escapes embedded backslashes", () => {
+    expect(formatRedisReply("path\\to\\file")).toBe('"path\\\\to\\\\file"');
+  });
+
   it("formats empty array", () => {
     expect(formatRedisReply([])).toBe("(empty array)");
   });

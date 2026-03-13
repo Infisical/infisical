@@ -45,11 +45,12 @@ export const formatRedisReply = (reply: unknown, indent: number = 0): string => 
   }
 
   if (typeof reply === "string") {
-    return `${prefix}"${reply}"`;
+    return `${prefix}"${reply.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
   }
 
   if (Buffer.isBuffer(reply)) {
-    return `${prefix}"${reply.toString()}"`;
+    const str = reply.toString();
+    return `${prefix}"${str.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
   }
 
   if (Array.isArray(reply)) {
