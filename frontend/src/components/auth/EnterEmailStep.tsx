@@ -3,9 +3,16 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
+import {
+  Button,
+  FieldError,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableInput
+} from "@app/components/v3";
 import { useSendVerificationEmail } from "@app/hooks/api";
-
-import { Button, Input } from "../v2";
 
 interface DownloadBackupPDFStepProps {
   incrementStep: () => void;
@@ -53,54 +60,48 @@ export default function EnterEmailStep({
   };
 
   return (
-    <div>
-      <div className="mx-auto w-full md:px-6">
-        <p className="flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-xl font-medium text-transparent">
-          {t("signup.step1-start")}
-        </p>
-        <div className="m-auto mt-8 flex w-1/4 min-w-[20rem] flex-col items-center justify-center rounded-lg lg:w-1/6">
-          <Input
-            placeholder="Enter your email address..."
-            onChange={(e) => setEmail(e.target.value)}
-            value={email}
-            isRequired
-            autoComplete="username"
-            className="h-12"
-          />
-          {emailError && (
-            <p className="mt-1.5 ml-1.5 w-full text-left text-xs text-red-600">
-              Please enter a valid email.
-            </p>
-          )}
-        </div>
-        <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-1/6">
-          <div className="text-l w-full py-1 text-lg">
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+        <UnstableCardHeader className="mb-4 gap-4">
+          <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+            {t("signup.step1-start")}
+          </UnstableCardTitle>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <div className="w-full">
+            <UnstableInput
+              placeholder="Enter your email address..."
+              onChange={(e) => setEmail(e.target.value)}
+              value={email}
+              required
+              autoComplete="username"
+              className="h-10"
+              isError={emailError}
+            />
+            {emailError && <FieldError>Please enter a valid email.</FieldError>}
+          </div>
+          <div className="mt-4 w-full">
             <Button
               type="submit"
               onClick={emailCheck}
-              size="sm"
+              variant="project"
+              size="lg"
               isFullWidth
-              className="h-14"
-              colorSchema="primary"
-              variant="outline_bg"
-              isLoading={isPending}
               isDisabled={isPending}
+              isPending={isPending}
             >
-              {" "}
-              {String(t("signup.step1-submit"))}{" "}
+              {String(t("signup.step1-submit"))}
             </Button>
           </div>
-        </div>
-      </div>
-      <div className="mx-auto mt-2 mb-48 flex w-full max-w-md flex-col items-center justify-center pt-2 md:mb-16 md:pb-2">
-        <Link to="/login">
-          <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
-            <span className="cursor-pointer text-sm text-mineshaft-400 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              {t("signup.already-have-account")}
-            </span>
-          </button>
-        </Link>
-      </div>
+          <div className="mt-6 flex w-full justify-center text-sm text-muted">
+            <Link to="/login">
+              <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                {t("signup.already-have-account")}
+              </span>
+            </Link>
+          </div>
+        </UnstableCardContent>
+      </UnstableCard>
     </div>
   );
 }
