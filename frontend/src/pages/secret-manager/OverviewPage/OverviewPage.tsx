@@ -1701,7 +1701,14 @@ const OverviewPageContent = () => {
       }
     });
     return result;
-  }, [secKeys, isBatchModeActive, pendingChanges.secrets, debouncedSearchFilter, isFilteredByResources, filter.secret]);
+  }, [
+    secKeys,
+    isBatchModeActive,
+    pendingChanges.secrets,
+    debouncedSearchFilter,
+    isFilteredByResources,
+    filter.secret
+  ]);
 
   const getSecretByKeyWithPending = useCallback(
     (env: string, key: string) => {
@@ -1830,7 +1837,14 @@ const OverviewPageContent = () => {
     });
 
     return result;
-  }, [folderNamesAndDescriptions, isBatchModeActive, pendingChanges.folders, debouncedSearchFilter, isFilteredByResources, filter.folder]);
+  }, [
+    folderNamesAndDescriptions,
+    isBatchModeActive,
+    pendingChanges.folders,
+    debouncedSearchFilter,
+    isFilteredByResources,
+    filter.folder
+  ]);
 
   // Batch mode: revert a pending change (e.g. when user reverts value to original)
   const handleBatchRevert = useCallback(
