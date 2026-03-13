@@ -121,7 +121,10 @@
     "tsup": "^8.5.0",
     "tsx": "^4.4.0",
     "typescript": "^5.3.2",
-    "vitest": "^3.0.6"
+    "vitest": "^3.0.6",
+    "ora": "^7.0.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0"
   },
   "dependencies": {
     "@aws-sdk/client-acm": "^3.609.0",
@@ -230,7 +233,6 @@
     "oci-vault": "^2.108.0",
     "odbc": "^2.4.9",
     "openid-client": "^5.6.5",
-    "ora": "^7.0.1",
     "oracledb": "^6.4.0",
     "otplib": "^12.0.1",
     "p-limit": "^3.1.0",
@@ -259,8 +261,6 @@
     "snowflake-sdk": "^2.0.4",
     "ssh2": "^1.17.0",
     "tedious": "^18.2.1",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^11.1.0",
