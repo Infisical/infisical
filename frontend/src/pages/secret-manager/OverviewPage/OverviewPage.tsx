@@ -1493,7 +1493,8 @@ const OverviewPageContent = () => {
     secretComment,
     tags: updatedTags,
     secretMetadata: updatedMetadata,
-    skipMultilineEncoding: updatedSkipMultilineEncoding
+    skipMultilineEncoding: updatedSkipMultilineEncoding,
+    originalValue: providedOriginalValue
   }: {
     env: string;
     key: string;
@@ -1506,6 +1507,7 @@ const OverviewPageContent = () => {
     tags?: { id: string; slug: string }[];
     secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     skipMultilineEncoding?: boolean | null;
+    originalValue?: string;
   }) => {
     if (isBatchModeActive) {
       const existingSecret = getSecretByKey(env, key);
@@ -1561,7 +1563,7 @@ const OverviewPageContent = () => {
           type: PendingAction.Update,
           secretKey: key,
           newSecretName,
-          originalValue: existingSecret.value,
+          originalValue: providedOriginalValue ?? existingSecret.value,
           secretValue: batchSecretValue,
           originalComment: existingSecret.comment,
           secretComment,

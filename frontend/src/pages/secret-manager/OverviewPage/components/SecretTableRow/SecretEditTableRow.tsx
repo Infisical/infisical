@@ -108,6 +108,7 @@ type Props = {
     tags?: { id: string; slug: string }[];
     secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     skipMultilineEncoding?: boolean | null;
+    originalValue?: string;
   }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   onAddOverride?: () => void;
@@ -443,11 +444,9 @@ export const SecretEditTableRow = ({
         return;
       }
 
-      // Compare against true originals, not form defaults (which shift after reset)
-      const isValueChanged =
-        watchedValue !== originalValueRef.current &&
-        watchedValue !== null &&
-        watchedValue !== undefined;
+      // Compare against true originals, not form defaults (which shift after reset).
+      // Normalize null/undefined to "" so clearing a value to empty is detected as a change.
+      const isValueChanged = (watchedValue ?? "") !== (originalValueRef.current ?? "");
       const isKeyDirty = isSingleEnvView && watchedKey && watchedKey !== secretName;
       const isCommentDirty =
         isSingleEnvView &&
@@ -548,14 +547,15 @@ export const SecretEditTableRow = ({
         onSecretUpdate({
           env: environment,
           key: secretName,
-          value: isValueChanged ? ((watchedValue as string) ?? undefined) : undefined,
+          value: isValueChanged ? ((watchedValue as string) ?? "") : undefined,
           secretValueHidden,
           type: SecretType.Shared,
           secretId,
           newSecretName: effectiveKeyDirty ? (watchedKey as string) : undefined,
           secretComment: isCommentDirty ? (watchedComment as string) : undefined,
           tags: isTagsDirty ? watchedTags : undefined,
-          secretMetadata: isMetadataDirty ? watchedMetadata : undefined
+          secretMetadata: isMetadataDirty ? watchedMetadata : undefined,
+          originalValue: originalValueRef.current ?? undefined
         });
       }
 

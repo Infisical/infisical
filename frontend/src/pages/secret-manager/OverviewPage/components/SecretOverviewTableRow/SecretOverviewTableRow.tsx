@@ -49,6 +49,7 @@ type Props = {
     tags?: { id: string; slug: string }[];
     secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     skipMultilineEncoding?: boolean | null;
+    originalValue?: string;
   }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
