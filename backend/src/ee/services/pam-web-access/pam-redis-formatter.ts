@@ -1,3 +1,10 @@
+import RE2 from "re2";
+
+const escapeBackslash = new RE2(/\\/, "g");
+const escapeQuote = new RE2(/"/, "g");
+
+const escapeRedisString = (str: string): string => str.replace(escapeBackslash, "\\\\").replace(escapeQuote, '\\"');
+
 export const tokenizeRedisInput = (input: string): string[] => {
   const tokens: string[] = [];
   let current = "";
@@ -45,12 +52,11 @@ export const formatRedisReply = (reply: unknown, indent: number = 0): string => 
   }
 
   if (typeof reply === "string") {
-    return `${prefix}"${reply.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    return `${prefix}"${escapeRedisString(reply)}"`;
   }
 
   if (Buffer.isBuffer(reply)) {
-    const str = reply.toString();
-    return `${prefix}"${str.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    return `${prefix}"${escapeRedisString(reply.toString())}"`;
   }
 
   if (Array.isArray(reply)) {
