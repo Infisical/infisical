@@ -32,6 +32,8 @@ export const AuthPageFooter = () => (
         </svg>
       </a>
     </div>
-    <p className="text-xs text-mineshaft-400">&copy; 2026 Infisical Inc. All rights reserved.</p>
+    <p className="text-xs text-mineshaft-400">
+      &copy; {new Date().getFullYear()} Infisical Inc. All rights reserved.
+    </p>
   </footer>
 );
