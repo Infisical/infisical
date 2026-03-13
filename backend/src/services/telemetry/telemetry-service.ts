@@ -394,8 +394,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   // In-memory dedup cache to avoid calling postHog.identify() on every request for the same identity.
+  // Keyed by identityId + authMethod so auth method changes are reflected immediately.
   // Entries auto-expire after IDENTITY_IDENTIFY_CACHE_TTL_MS.
-  const identityIdentifyDedup = new Set<string>();
+  const identityIdentifyDedup = new Map<string, NodeJS.Timeout>();
 
   const identifyIdentity = (
     identityId: string,
@@ -407,16 +408,18 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     if (postHog && identityId) {
       const instanceType = licenseService.getInstanceType();
       if (instanceType === InstanceType.Cloud) {
-        if (identityIdentifyDedup.has(identityId)) return;
+        const dedupKey = `${identityId}-${properties.authMethod ?? ""}`;
+        if (identityIdentifyDedup.has(dedupKey)) return;
 
-        identityIdentifyDedup.add(identityId);
-        setTimeout(() => identityIdentifyDedup.delete(identityId), IDENTITY_IDENTIFY_CACHE_TTL_MS);
+        const timer = setTimeout(() => identityIdentifyDedup.delete(dedupKey), IDENTITY_IDENTIFY_CACHE_TTL_MS);
+        identityIdentifyDedup.set(dedupKey, timer);
 
         const distinctId = `identity-${identityId}`;
         try {
           postHog.identify({ distinctId, properties });
         } catch (error) {
-          identityIdentifyDedup.delete(identityId);
+          clearTimeout(timer);
+          identityIdentifyDedup.delete(dedupKey);
           logger.error(error, `Failed to identify PostHog machine identity [identityId=${identityId}]`);
         }
       }
