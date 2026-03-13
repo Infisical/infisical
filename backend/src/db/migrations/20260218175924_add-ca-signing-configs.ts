@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+/* eslint-disable no-await-in-loop, no-continue */
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
@@ -22,25 +22,14 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.CaSigningConfig);
 
-    const internalCas = await knex(TableName.InternalCertificateAuthority).select("id", "type", "parentCaId");
+    const internalCas = await knex(TableName.InternalCertificateAuthority).select("id", "type");
 
     for (const ca of internalCas) {
-      let signingType: string;
-      let parentCaId: string | null = null;
-
-      if (ca.type === "root") {
-        signingType = "internal";
-      } else if (ca.parentCaId) {
-        signingType = "internal";
-        parentCaId = ca.parentCaId;
-      } else {
-        signingType = "manual";
-      }
+      if (ca.type === "root") continue;
 
       await knex(TableName.CaSigningConfig).insert({
         caId: ca.id,
-        type: signingType,
-        parentCaId
+        type: "manual"
       });
     }
   }

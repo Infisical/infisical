@@ -745,7 +745,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_SIGNING_CONFIG.caId)
       }),
       response: {
-        200: CaSigningConfigsSchema
+        200: CaSigningConfigsSchema.nullable()
       }
     },
     handler: async (req) => {

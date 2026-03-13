@@ -9,7 +9,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
-import { VenafiConnectionMethod, VenafiRegion } from "./venafi-connection-enum";
+import { VenafiConnectionMethod, VenafiRegion } from "./venafi-connection-enums";
 
 export const VenafiConnectionApiKeyCredentialsSchema = z.object({
   apiKey: z.string().trim().min(1, "API key required").max(256, "API key cannot exceed 256 characters"),

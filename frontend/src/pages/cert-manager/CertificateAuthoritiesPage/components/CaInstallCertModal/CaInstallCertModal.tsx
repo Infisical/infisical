@@ -52,7 +52,7 @@ const SIGNING_METHOD_OPTIONS: TSigningMethodOption[] = [
     value: SigningMethod.Automated,
     name: "External CA (Automated)",
     description:
-      "Connect to a third-party CA provider. Certificate signing and renewal are handled automatically via API.",
+      "Connect to a third-party CA provider. Infisical automatically handles certificate signing and renewal through the provider's API.",
     icon: LinkIcon
   }
 ];
@@ -192,7 +192,13 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         ))}
       </div>
       <div className="mt-6 flex items-center justify-end gap-2">
-        <Button variant="outline" onClick={() => handlePopUpToggle("installCaCert", false)}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            resetState();
+            handlePopUpToggle("installCaCert", false);
+          }}
+        >
           Cancel
         </Button>
         <Button variant="neutral" isDisabled={!selectedMethod} onClick={handleContinue}>

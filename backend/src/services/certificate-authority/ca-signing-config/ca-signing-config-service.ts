@@ -53,25 +53,12 @@ export const caSigningConfigServiceFactory = ({
     }
   };
 
-  const getOrCreateLegacySigningConfig = async (internalCaId: string, caType: string, parentCaId?: string | null) => {
-    const existing = await caSigningConfigDAL.findByCaId(internalCaId);
-    if (existing) return existing;
-
-    const isRoot = caType === InternalCaType.ROOT;
-    const hasInternalParent = !!parentCaId;
-
-    if (isRoot || hasInternalParent) {
-      return caSigningConfigDAL.create({
-        caId: internalCaId,
-        type: CaSigningConfigType.Internal,
-        parentCaId: hasInternalParent ? parentCaId : undefined
-      });
+  const getSigningConfigByCaId = async (internalCaId: string) => {
+    const config = await caSigningConfigDAL.findByCaId(internalCaId);
+    if (!config) {
+      throw new NotFoundError({ message: "No signing configuration found for this CA" });
     }
-
-    return caSigningConfigDAL.create({
-      caId: internalCaId,
-      type: CaSigningConfigType.Manual
-    });
+    return config;
   };
 
   const createSigningConfig = async ({
@@ -110,9 +97,8 @@ export const caSigningConfigServiceFactory = ({
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
 
-    // Root CAs can only have internal signing
-    if (internalCa.type === InternalCaType.ROOT && type !== CaSigningConfigType.Internal) {
-      throw new BadRequestError({ message: "Root CAs can only use internal signing configuration" });
+    if (internalCa.type === InternalCaType.ROOT) {
+      throw new BadRequestError({ message: "Root CAs are self-signed and do not require a signing configuration" });
     }
 
     // If a config already exists with a different type (e.g., auto-created "manual"), replace it
@@ -184,7 +170,11 @@ export const caSigningConfigServiceFactory = ({
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
 
-    const config = await getOrCreateLegacySigningConfig(internalCa.id, internalCa.type, internalCa.parentCaId);
+    if (internalCa.type === InternalCaType.ROOT) {
+      return { config: null, ca: { id: ca.id, dn: ca.internalCa?.dn ?? "", projectId: ca.projectId } };
+    }
+
+    const config = await getSigningConfigByCaId(internalCa.id);
 
     return { config, ca: { id: ca.id, dn: ca.internalCa?.dn ?? "", projectId: ca.projectId } };
   };
@@ -346,8 +336,30 @@ export const caSigningConfigServiceFactory = ({
       });
     }
 
-    if (autoRenewalEnabled) {
-      const signingConfig = await getOrCreateLegacySigningConfig(internalCa.id, internalCa.type, internalCa.parentCaId);
+    const effectiveDaysBeforeExpiry = autoRenewalDaysBeforeExpiry ?? internalCa.autoRenewalDaysBeforeExpiry;
+
+    if (effectiveDaysBeforeExpiry !== undefined && effectiveDaysBeforeExpiry !== null) {
+      const MAX_DAYS_BEFORE_EXPIRY = 30;
+      if (effectiveDaysBeforeExpiry > MAX_DAYS_BEFORE_EXPIRY) {
+        throw new BadRequestError({
+          message: `autoRenewalDaysBeforeExpiry cannot exceed ${MAX_DAYS_BEFORE_EXPIRY} days`
+        });
+      }
+
+      if (internalCa.notBefore && internalCa.notAfter) {
+        const ttlDays = Math.floor(
+          (new Date(internalCa.notAfter).getTime() - new Date(internalCa.notBefore).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (effectiveDaysBeforeExpiry >= ttlDays) {
+          throw new BadRequestError({
+            message: `autoRenewalDaysBeforeExpiry (${effectiveDaysBeforeExpiry}) must be less than the certificate's TTL (${ttlDays} days)`
+          });
+        }
+      }
+    }
+
+    if (autoRenewalEnabled && internalCa.type !== InternalCaType.ROOT) {
+      const signingConfig = await getSigningConfigByCaId(internalCa.id);
 
       if (signingConfig.type === CaSigningConfigType.Manual) {
         throw new BadRequestError({
@@ -428,7 +440,7 @@ export const caSigningConfigServiceFactory = ({
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
 
-    const signingConfig = await getOrCreateLegacySigningConfig(internalCa.id, internalCa.type, internalCa.parentCaId);
+    const signingConfig = await getSigningConfigByCaId(internalCa.id);
 
     if (signingConfig.type !== CaSigningConfigType.Venafi) {
       throw new BadRequestError({ message: "CA signing config is not configured for Venafi" });
