@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { GitbeakerRequestError } from "@gitbeaker/rest";
+import RE2 from "re2";
 
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import {
@@ -16,6 +17,14 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { GitLabSyncScope } from "./gitlab-sync-enums";
+
+// GitLab only allows masking values that match this character set.
+// Reference: https://docs.gitlab.com/ee/ci/variables/#mask-a-cicd-variable
+const GITLAB_MASKED_VARIABLE_REGEX = new RE2("^[a-zA-Z0-9+/=@:.~ -]+$");
+
+const isValidMaskedValue = (value: string): boolean => {
+  return value.length >= 8 && GITLAB_MASKED_VARIABLE_REGEX.test(value);
+};
 
 interface TGitLabVariablePayload {
   key?: string;
@@ -315,9 +324,18 @@ export const GitLabSyncFns = {
       const currentVariableMap = new Map(currentVariables.map((v) => [v.key, v]));
 
       for (const [key, { value }] of Object.entries(secretMap)) {
-        if (value?.length < 8 && destinationConfig.shouldMaskSecrets) {
+        if (
+          (destinationConfig.shouldMaskSecrets || destinationConfig.shouldHideSecrets) &&
+          !isValidMaskedValue(value)
+        ) {
+          if (value.length < 8) {
+            throw new SecretSyncError({
+              message: `Secret '${key}' is too short to be masked/hidden. GitLab requires a minimum of 8 characters for masked or hidden secrets.`,
+              secretKey: key
+            });
+          }
           throw new SecretSyncError({
-            message: `Secret ${key} is too short to be masked. GitLab requires a minimum of 8 characters for masked secrets.`,
+            message: `Secret '${key}' contains characters that are not compatible with GitLab variable masking. Only alphanumeric characters and the following special characters are allowed: + / = @ : . ~ - (space). Either disable the 'Mask Secrets' / 'Hide Secrets' option or update the secret value.`,
             secretKey: key
           });
         }
