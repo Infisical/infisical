@@ -230,17 +230,11 @@ export const secretSyncQueueFactory = ({
   };
 
   const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      decrementedCount
-    );
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    const newCount = await keyStore.incrementBy(key, -1);
+    if (newCount > 0) {
+      await keyStore.setExpiry(key, (REQUEUE_MS * REQUEUE_LIMIT) / 1000);
+    }
   };
 
   const $getInfisicalSecrets = async (
