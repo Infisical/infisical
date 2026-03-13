@@ -3,7 +3,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Modal,
+  ModalClose,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useRevokeCert } from "@app/hooks/api";
 import { crlReasons } from "@app/hooks/api/certificates/constants";
@@ -112,9 +120,11 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
             >
               Revoke
             </Button>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
+            <ModalClose asChild>
+              <Button colorSchema="secondary" variant="plain">
+                Cancel
+              </Button>
+            </ModalClose>
           </div>
         </form>
       </ModalContent>
