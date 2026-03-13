@@ -1630,6 +1630,7 @@ export const secretApprovalRequestServiceFactory = ({
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
+    const project = await projectDAL.findById(projectId);
     await triggerWorkflowIntegrationNotification({
       input: {
         projectId,
@@ -1640,6 +1641,7 @@ export const secretApprovalRequestServiceFactory = ({
             environment: env.name,
             secretPath,
             projectId,
+            projectName: project.name,
             requestId: secretApprovalRequest.id,
             secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))],
             approvalUrl
@@ -2070,6 +2072,7 @@ export const secretApprovalRequestServiceFactory = ({
             environment: env.name,
             secretPath,
             projectId,
+            projectName: project.name,
             requestId: secretApprovalRequest.id,
             secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))],
             approvalUrl
