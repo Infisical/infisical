@@ -97,6 +97,7 @@ export enum QueueName {
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
+  CaAutoRenewal = "ca-auto-renewal",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan"
 }
@@ -162,6 +163,8 @@ export enum QueueJobs {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  CaDailyAutoRenewal = "ca-daily-auto-renewal",
+  CaVenafiInstall = "ca-venafi-install-job",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan"
@@ -495,6 +498,16 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
       };
+  [QueueName.CaAutoRenewal]:
+    | {
+        name: QueueJobs.CaDailyAutoRenewal;
+        payload: undefined;
+      }
+    | {
+        name: QueueJobs.CaVenafiInstall;
+        payload: { caId: string; maxPathLength?: number };
+      };
+
   [QueueName.AuditLogClickHouseBatch]: {
     name: QueueJobs.AuditLogClickHouseBatch;
     payload: undefined;

@@ -57,6 +57,7 @@ import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
+import { VenafiConnectionForm } from "./VenafiConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
@@ -197,6 +198,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OpenRouterConnectionForm onSubmit={onSubmit} />;
     case AppConnection.CircleCI:
       return <CircleCIConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Venafi:
+      return <VenafiConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -371,6 +374,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.CircleCI:
       return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Venafi:
+      return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }
