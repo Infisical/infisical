@@ -691,11 +691,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsModalOpen(false)}
-                  isDisabled={isBusy}
-                >
+                <Button variant="ghost" onClick={() => setIsModalOpen(false)} isDisabled={isBusy}>
                   Cancel
                 </Button>
                 <Button
