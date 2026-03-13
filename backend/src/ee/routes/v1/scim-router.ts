@@ -25,7 +25,7 @@ const ScimUserSchema = z.object({
     )
     .optional(),
   displayName: z.string().trim(),
-  active: z.boolean()
+  active: z.boolean().or(z.string()) // PATCH responses from azure can be string?
 });
 
 const ScimGroupSchema = z.object({
