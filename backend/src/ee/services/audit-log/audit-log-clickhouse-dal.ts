@@ -145,13 +145,26 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
 
     const whereClause = conditions.join(" AND ");
+
+    // Two-phase query: inner subquery finds matching row IDs using only primary key
+    // and lightweight columns (avoids reading expensive JSON blob columns for all rows).
+    // Outer query then fetches full data for only the final result set.
     const query = `
-      SELECT *
+      SELECT
+        id, actor, actorMetadata, ipAddress, eventType, eventMetadata,
+        userAgent, userAgentType, orgId, projectId, expiresAt, createdAt
       FROM ${tableName}
-      WHERE ${whereClause}
+      WHERE orgId = {orgId:UUID}
+        ${arg.projectId ? "AND projectId = {projectId:String}" : ""}
+        AND id IN (
+          SELECT id
+          FROM ${tableName}
+          WHERE ${whereClause}
+          ORDER BY createdAt DESC
+          LIMIT {limit:UInt32}
+          OFFSET {offset:UInt32}
+        )
       ORDER BY createdAt DESC
-      LIMIT {limit:UInt32}
-      OFFSET {offset:UInt32}
     `;
 
     params.limit = arg.limit ?? 20;
