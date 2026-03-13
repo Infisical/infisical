@@ -179,6 +179,57 @@ const makeSqlConnection = (
         close: async () => {}
       };
     }
+    case PamResource.MsSQL: {
+      const mssqlOptions = sslEnabled
+        ? {
+            encrypt: true,
+            trustServerCertificate: !sslRejectUnauthorized,
+            cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
+          }
+        : { encrypt: false };
+
+      const client = knex({
+        client: "mssql",
+        connection: {
+          server: "localhost",
+          port: proxyPort,
+          user: actualUsername,
+          password: actualPassword,
+          database: connectionDetails.database,
+          requestTimeout: EXTERNAL_REQUEST_TIMEOUT,
+          // mssqlOptions includes cryptoCredentialsDetails which is passed to tedious driver
+          // ref: https://github.com/knex/knex/blob/b6507a7129d2b9fafebf5f831494431e64c6a8a0/lib/dialects/mssql/index.js#L66
+          options: mssqlOptions
+        }
+      });
+      return {
+        validate: async (connectOnly) => {
+          try {
+            await client.raw(SIMPLE_QUERY);
+          } catch (error) {
+            if (error instanceof Error) {
+              // Check for authentication failure - MSSQL returns error code 18456 for login failures
+              if (
+                connectOnly &&
+                (error.message.includes("Login failed for user") || error.message.includes("ELOGIN"))
+              ) {
+                return;
+              }
+            }
+            throw new BadRequestError({
+              message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+            });
+          }
+        },
+        rotateCredentials: async () => {
+          // Password rotation for MSSQL is not supported yet
+          throw new BadRequestError({
+            message: "Unsupported operation"
+          });
+        },
+        close: () => client.destroy()
+      };
+    }
     default:
       throw new BadRequestError({
         message: `Unhandled SQL Resource Connection Config: ${resourceType as PamResource}`
