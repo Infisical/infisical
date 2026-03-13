@@ -2623,7 +2623,12 @@ export const registerRoutes = async (
   await appConnectionCredentialRotationQueueFactory({
     queueService,
     appConnectionCredentialRotationDAL,
-    appConnectionCredentialRotationService
+    appConnectionCredentialRotationService,
+    smtpService,
+    notificationService,
+    projectMembershipDAL,
+    projectDAL,
+    orgDAL
   });
 
   const secretScanningV2Queue = secretScanningV2QueueServiceFactory({

@@ -109,6 +109,7 @@ export type TAppConnectionCredentialRotationSendNotificationJobPayload = {
   connectionId: string;
   connectionName: string;
   orgId: string;
+  projectId?: string | null;
   strategy: string;
   lastRotationAttemptedAt: Date;
 };

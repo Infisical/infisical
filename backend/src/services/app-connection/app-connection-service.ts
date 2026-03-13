@@ -1002,7 +1002,7 @@ export const appConnectionServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Edit,
+        ProjectPermissionAppConnectionActions.RotateCredentials,
         subject(ProjectPermissionSub.AppConnections, { connectionId })
       );
     } else {
@@ -1016,7 +1016,7 @@ export const appConnectionServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Edit,
+        OrgPermissionAppConnectionActions.RotateCredentials,
         subject(OrgPermissionSubjects.AppConnections, { connectionId })
       );
     }

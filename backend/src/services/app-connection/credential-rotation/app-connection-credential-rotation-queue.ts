@@ -1,8 +1,15 @@
 import { v4 as uuidv4 } from "uuid";
 
+import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
 import { getCredentialRotationJobOptions, getNextUtcRotationInterval } from "./app-connection-credential-rotation-fns";
@@ -19,12 +26,22 @@ type TAppConnectionCredentialRotationQueueFactoryDep = {
     "findRotationsDueForQueue" | "findByIdWithConnection"
   >;
   appConnectionCredentialRotationService: Pick<TAppConnectionCredentialRotationServiceFactory, "rotateCredentials">;
+  smtpService: Pick<TSmtpService, "sendMail">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findAllOrgMembers">;
 };
 
 export const appConnectionCredentialRotationQueueFactory = async ({
   queueService,
   appConnectionCredentialRotationDAL,
-  appConnectionCredentialRotationService
+  appConnectionCredentialRotationService,
+  smtpService,
+  notificationService,
+  projectMembershipDAL,
+  projectDAL,
+  orgDAL
 }: TAppConnectionCredentialRotationQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -63,7 +80,7 @@ export const appConnectionCredentialRotationQueueFactory = async ({
         await appConnectionCredentialRotationService.rotateCredentials(rotationId, {
           jobId: job.id || uuidv4(),
           shouldSendNotification: true,
-          isFinalAttempt: retryCount === retryLimit,
+          isFinalAttempt: retryCount + 1 >= retryLimit,
           isManualRotation
         });
 
@@ -130,10 +147,64 @@ export const appConnectionCredentialRotationQueueFactory = async ({
       try {
         logger.info(`credentialRotationQueue: Sending Failure Notification [connectionId=${payload.connectionId}]`);
 
-        // Notification sending can be expanded later with email + in-app notifications
-        logger.warn(
-          `credentialRotationQueue: Credential rotation failed for connection "${payload.connectionName}" (strategy: ${payload.strategy}). Last attempt: ${payload.lastRotationAttemptedAt.toISOString()}`
+        let adminEmails: string[] = [];
+        let adminUserIds: string[] = [];
+        let projectName: string | undefined;
+        let rotationUrl: string;
+
+        if (payload.projectId) {
+          // Project-scoped connection: notify project admins
+          const projectMembers = await projectMembershipDAL.findAllProjectMembers(payload.projectId);
+          const project = await projectDAL.findById(payload.projectId);
+
+          const projectAdmins = projectMembers.filter((member) =>
+            member.roles.some((role) => role.role === ProjectMembershipRole.Admin)
+          );
+
+          adminEmails = projectAdmins.map((admin) => admin.user.email!).filter(Boolean);
+          adminUserIds = projectAdmins.map((admin) => admin.userId);
+          projectName = project.name;
+          rotationUrl = encodeURI(
+            `${appCfg.SITE_URL}/organizations/${payload.orgId}/projects/secret-management/${payload.projectId}/app-connections`
+          );
+        } else {
+          // Org-scoped connection: notify org admins
+          const orgMembers = await orgDAL.findAllOrgMembers(payload.orgId);
+
+          const orgAdmins = orgMembers.filter((member) => member.role === OrgMembershipRole.Admin);
+
+          adminEmails = orgAdmins.map((admin) => admin.user.email!).filter(Boolean);
+          adminUserIds = orgAdmins.map((admin) => admin.user.id);
+          rotationUrl = encodeURI(`${appCfg.SITE_URL}/organizations/${payload.orgId}/settings/app-connections`);
+        }
+
+        const rotationType = payload.strategy;
+
+        await notificationService.createUserNotifications(
+          adminUserIds.map((userId) => ({
+            userId,
+            orgId: payload.orgId,
+            type: NotificationType.CREDENTIAL_ROTATION_FAILED,
+            title: "Credential Rotation Failed",
+            body: `Your **${rotationType}** credential rotation for connection **${payload.connectionName}** failed to rotate.`,
+            link: rotationUrl
+          }))
         );
+
+        await smtpService.sendMail({
+          recipients: adminEmails,
+          template: SmtpTemplates.CredentialRotationFailed,
+          subjectLine: "Credential Rotation Failed",
+          substitutions: {
+            connectionName: payload.connectionName,
+            rotationType,
+            content: `Your ${rotationType} credential rotation failed during its scheduled rotation. The last rotation attempt occurred at ${new Date(
+              payload.lastRotationAttemptedAt
+            ).toISOString()}. Please check the rotation status in Infisical for more details.`,
+            projectName,
+            rotationUrl
+          }
+        });
       } catch (error) {
         logger.error(
           error,

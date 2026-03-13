@@ -232,7 +232,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
    * Update credential rotation config for a connection.
    * Permission checks are handled by the caller.
    */
-  const updateRotation = async (dto: TUpdateAppConnectionCredentialRotationDTO, tx?: Knex) => {
+  const updateRotation = async (dto: TUpdateAppConnectionCredentialRotationDTO, tx: Knex) => {
     const { connectionId, rotationInterval, rotateAtUtc, isAutoRotationEnabled } = dto;
 
     const connection = await appConnectionDAL.findById(connectionId, tx);
@@ -245,16 +245,8 @@ export const appConnectionCredentialRotationServiceFactory = ({
 
     // If disabling auto rotation, preserve the rotation record but null out nextRotationAt so cron won't pick it up
     if (isAutoRotationEnabled === false) {
-      const disable = async (trx: Knex) => {
-        await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: false }, trx);
-        await appConnectionCredentialRotationDAL.updateById(existingRotation.id, { nextRotationAt: null }, trx);
-      };
-
-      if (tx) {
-        await disable(tx);
-      } else {
-        await appConnectionDAL.transaction(disable);
-      }
+      await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: false }, tx);
+      await appConnectionCredentialRotationDAL.updateById(existingRotation.id, { nextRotationAt: null }, tx);
 
       return null;
     }
@@ -499,13 +491,13 @@ export const appConnectionCredentialRotationServiceFactory = ({
         if (inactiveCredential) {
           try {
             logger.info(
-              `credentialRotation: Revoking old credential keyId=${inactiveCredential.keyId} at index=${inactiveIndex} [rotationId=${rotationId}]`
+              `credentialRotation: Revoking old credential [inactive-index=${inactiveIndex}] [rotationId=${rotationId}]`
             );
             await provider.revokeCredential(inactiveCredential, config, parsedCredentials.data);
           } catch (revokeError) {
             logger.warn(
               revokeError,
-              `credentialRotation: Failed to revoke old credential keyId=${inactiveCredential.keyId} [rotationId=${rotationId}] — will retry on next cycle`
+              `credentialRotation: Failed to revoke old credential [inactive-index=${inactiveIndex}] [rotationId=${rotationId}] — will retry on next cycle`
             );
           }
         }
@@ -555,6 +547,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
             connectionId,
             connectionName,
             orgId,
+            projectId: connection?.projectId,
             strategy,
             lastRotationAttemptedAt: now
           },

@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const AppConnectionCredentialRotationRotateAtUtcSchema = z.object({
-  hours: z.number().int().min(0).max(23).describe("The hour (0-23) at which to rotate."),
-  minutes: z.number().int().min(0).max(59).describe("The minute (0-59) at which to rotate.")
+  hours: z.number().int().min(0).max(23).describe("The hour (0-23) at which to rotate (UTC timezone)."),
+  minutes: z.number().int().min(0).max(59).describe("The minute (0-59) at which to rotate (UTC timezone).")
 });
 
 export const CreateAppConnectionCredentialRotationSchema = z.object({
