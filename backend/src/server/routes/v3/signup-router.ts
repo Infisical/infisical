@@ -151,6 +151,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
         distinctId: user.username ?? "",
+        ...(organizationId ? { organizationId } : {}),
         properties: {
           username: user.username,
           email: user.email ?? "",
