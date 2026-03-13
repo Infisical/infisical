@@ -3,7 +3,7 @@ import { PostHog } from "posthog-node";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { InstanceType } from "@app/ee/services/license/license-types";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -391,9 +391,6 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const IDENTITY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify-identity";
-  const IDENTITY_IDENTIFY_CACHE_TTL = 600; // 10 minutes in seconds
-
   // In-memory fallback dedup set to limit blast radius during Redis outages
   const inMemoryIdentityDedup = new Set<string>();
 
@@ -409,17 +406,25 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       if (instanceType === InstanceType.Cloud) {
         const dedupKey = `${identityId}-${properties.authMethod ?? ""}`;
         try {
-          const cacheKey = `${IDENTITY_IDENTIFY_CACHE_KEY_PREFIX}:${dedupKey}`;
+          const cacheKey = KeyStorePrefixes.TelemetryIdentifyIdentity(dedupKey);
           // Atomic SET NX + EX: only the first caller within the TTL window proceeds
-          const wasSet = await keyStore.setItemWithExpiryNX(cacheKey, IDENTITY_IDENTIFY_CACHE_TTL, "1");
+          const wasSet = await keyStore.setItemWithExpiryNX(
+            cacheKey,
+            KeyStoreTtls.TelemetryIdentifyIdentityInSeconds,
+            "1"
+          );
           if (!wasSet) return;
         } catch (error) {
           logger.error(error, `Failed to check PostHog identity dedup cache [identityId=${identityId}]`);
           // In-memory fallback to limit blast radius during Redis outage
           if (inMemoryIdentityDedup.has(dedupKey)) return;
           inMemoryIdentityDedup.add(dedupKey);
-          const timer = setTimeout(() => inMemoryIdentityDedup.delete(dedupKey), IDENTITY_IDENTIFY_CACHE_TTL * 1000);
+          const timer = setTimeout(
+            () => inMemoryIdentityDedup.delete(dedupKey),
+            KeyStoreTtls.TelemetryIdentifyIdentityInSeconds * 1000
+          );
           timer.unref();
+          // falls through intentionally: first caller during Redis outage still identifies
         }
 
         const distinctId = `identity-${identityId}`;

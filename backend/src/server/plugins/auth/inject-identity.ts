@@ -249,7 +249,7 @@ export const injectIdentity = fp(
               authMethod: identity.authMethod
             })
             .catch((error) => {
-              req.log.error(error, "Failed to enrich PostHog identity");
+              req.log.error(error, `Failed to enrich PostHog identity [identityId=${identity.identityId}]`);
             });
 
           break;
