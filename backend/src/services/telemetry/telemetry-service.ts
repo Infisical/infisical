@@ -412,6 +412,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         if (identityIdentifyDedup.has(dedupKey)) return;
 
         const timer = setTimeout(() => identityIdentifyDedup.delete(dedupKey), IDENTITY_IDENTIFY_CACHE_TTL_MS);
+        timer.unref();
         identityIdentifyDedup.set(dedupKey, timer);
 
         const distinctId = `identity-${identityId}`;
