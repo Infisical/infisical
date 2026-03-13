@@ -68,10 +68,21 @@ export const handleRedisSession = async (
   });
 
   // Wait for connection to be ready
-  await new Promise<void>((resolve, reject) => {
+  const connectionReady = new Promise<void>((resolve, reject) => {
     redisClient.once("ready", resolve);
     redisClient.once("error", reject);
   });
+
+  try {
+    await connectionReady;
+  } catch (err) {
+    try {
+      redisClient.disconnect();
+    } catch {
+      /* ignore */
+    }
+    throw err;
+  }
 
   const prompt = `${connectionDetails.host}:${connectionDetails.port}> `;
 
