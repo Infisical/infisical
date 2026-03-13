@@ -44,8 +44,7 @@ const checkboxStyles = cva(
           "data-[state=checked]:border-sub-org/25 data-[state=checked]:bg-sub-org/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-sub-org/15 data-[state=checked]:hover:border-sub-org/30",
         success:
           "data-[state=checked]:border-success/25 data-[state=checked]:bg-success/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-success/15 data-[state=checked]:hover:border-success/30",
-        info:
-          "data-[state=checked]:border-info/25 data-[state=checked]:bg-info/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-info/15 data-[state=checked]:hover:border-info/30",
+        info: "data-[state=checked]:border-info/25 data-[state=checked]:bg-info/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-info/15 data-[state=checked]:hover:border-info/30",
         warning:
           "data-[state=checked]:border-warning/25 data-[state=checked]:bg-warning/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-warning/15 data-[state=checked]:hover:border-warning/30",
         danger:
@@ -61,14 +60,13 @@ const checkboxStyles = cva(
 export type CheckboxProps = Omit<
   React.ComponentProps<typeof CheckboxPrimitive>,
   "checked" | "disabled" | "required"
-> &
-  {
-    variant?: CheckboxVariant;
-    isDisabled?: boolean;
-    isIndeterminate?: boolean;
-    isChecked?: boolean;
-    isRequired?: boolean;
-  };
+> & {
+  variant?: CheckboxVariant;
+  isDisabled?: boolean;
+  isIndeterminate?: boolean;
+  isChecked?: boolean;
+  isRequired?: boolean;
+};
 
 function Checkbox({
   className,
