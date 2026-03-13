@@ -1,14 +1,14 @@
 #!/usr/bin/env sh
 set -e
 
-cd "infisical-standalone-postgres"
-helm dependency update
-helm package .
-
 if [ -z "$CLOUDSMITH_API_KEY" ] || [ -z "$CLOUDSMITH_USERNAME" ]; then
     echo "Error: CLOUDSMITH_API_KEY and CLOUDSMITH_USERNAME environment variables must be set."
     exit 1
 fi
+
+cd "infisical-standalone-postgres"
+helm dependency update
+helm package .
 
 echo "$CLOUDSMITH_API_KEY" | helm registry login helm.oci.cloudsmith.io \
     --username "$CLOUDSMITH_USERNAME" \
