@@ -338,9 +338,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
             (state.existingSecretKeys.has(change.secretKey) &&
               !isServerKeyFreed(change.secretKey)) ||
             newChanges.secrets.some(
-              (s) =>
-                effectiveKey(s) === change.secretKey &&
-                s.type !== PendingAction.Create
+              (s) => effectiveKey(s) === change.secretKey && s.type !== PendingAction.Create
             );
 
           if (change.type === PendingAction.Create && existingSecret) {
@@ -358,8 +356,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
             ((state.existingSecretKeys.has(change.newSecretName) &&
               !isServerKeyFreed(change.newSecretName)) ||
               newChanges.secrets.some(
-                (s) =>
-                  s.id !== change.id && effectiveKey(s) === change.newSecretName
+                (s) => s.id !== change.id && effectiveKey(s) === change.newSecretName
               ));
 
           if (existingNewSecretName) {

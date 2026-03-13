@@ -62,13 +62,12 @@ import { usePopUp, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
-
-import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 import { SecretAccessInsights } from "./SecretAccessInsights";
@@ -278,23 +277,6 @@ export const SecretEditTableRow = ({
     }
   }, [sharedValueData]);
 
-  // Keep original refs for comment/tags/metadata in sync with server data.
-  // Without this, after a batch commit clears pending changes, the form reset
-  // (line ~514) would revert to stale values from initial mount instead of
-  // the freshly committed server data.
-  useEffect(() => {
-    if (!isSingleEnvView || hasPendingChange) return;
-
-    originalCommentRef.current = comment ?? "";
-    originalTagsRef.current = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
-    originalMetadataRef.current =
-      secretMetadata?.map((m) => ({
-        key: m.key,
-        value: m.value,
-        isEncrypted: m.isEncrypted ?? false
-      })) ?? [];
-  }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
-
   const { permission } = useProjectPermission();
   const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
 
@@ -322,6 +304,23 @@ export const SecretEditTableRow = ({
       isEncrypted: m.isEncrypted ?? false
     })) ?? []
   );
+
+  // Keep original refs for comment/tags/metadata in sync with server data.
+  // Without this, after a batch commit clears pending changes, the form reset
+  // (line ~514) would revert to stale values from initial mount instead of
+  // the freshly committed server data.
+  useEffect(() => {
+    if (!isSingleEnvView || hasPendingChange) return;
+
+    originalCommentRef.current = comment ?? "";
+    originalTagsRef.current = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
+    originalMetadataRef.current =
+      secretMetadata?.map((m) => ({
+        key: m.key,
+        value: m.value,
+        isEncrypted: m.isEncrypted ?? false
+      })) ?? [];
+  }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
 
   // Stable callbacks for child components to avoid resetting their debounce timers on re-render
   const handleCommentChange = useCallback(
@@ -901,14 +900,16 @@ export const SecretEditTableRow = ({
                 {...field}
                 isReadOnly={isReadOnly}
                 value={
-                  secretValueHidden || isFetchingSharedValue
-                    ? HIDDEN_SECRET_VALUE
-                    : isErrorFetchingSharedValue
-                      ? "Error fetching secret value..."
-                      : (field.value as string)
+                  secretValueHidden
+                    ? ((field.value as string) ?? "")
+                    : isFetchingSharedValue
+                      ? HIDDEN_SECRET_VALUE
+                      : isErrorFetchingSharedValue
+                        ? "Error fetching secret value..."
+                        : (field.value as string)
                 }
                 key="secret-input-shared"
-                isVisible={isVisible && !secretValueHidden}
+                isVisible={isVisible}
                 secretPath={secretPath}
                 environment={environment}
                 isImport={isImportedSecret}

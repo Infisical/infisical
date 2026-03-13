@@ -182,7 +182,7 @@ const RenderSecretChanges = ({
               version: 2, // placeholder, not used
               secretKey: change.newSecretName ?? existingSecret.key,
               secretValue: newSecretValue,
-              secretValueHidden: change.existingSecret.secretValueHidden,
+              secretValueHidden: change.existingSecret.secretValueHidden && !hasValueChange,
               tags:
                 change.tags?.map((tag) => tag.slug) ??
                 existingSecret.tags?.map((tag) => tag.slug) ??
