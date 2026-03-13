@@ -62,7 +62,6 @@ export const handleRedisSession = async (
     port: relayPort,
     connectTimeout: 30_000,
     maxRetriesPerRequest: 0,
-    enableReadyCheck: false,
     reconnectOnError: () => false,
     retryStrategy: () => null
   });
