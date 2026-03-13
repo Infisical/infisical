@@ -1196,6 +1196,7 @@ export const projectServiceFactory = ({
     fromDate,
     toDate,
     metadataFilter,
+    extendedKeyUsage,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1228,7 +1229,8 @@ export const projectServiceFactory = ({
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),
       ...(toDate && { toDate }),
-      ...(metadataFilter && { metadataFilter })
+      ...(metadataFilter && { metadataFilter }),
+      ...(extendedKeyUsage && { extendedKeyUsage })
     };
     const permissionFilters = getProcessedPermissionRules(
       permission,
@@ -1257,7 +1259,8 @@ export const projectServiceFactory = ({
       ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
       ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
       ...(regularFilters.toDate && { toDate: regularFilters.toDate }),
-      ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter })
+      ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter }),
+      ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) })
     };
 
     const count = forPkiSync

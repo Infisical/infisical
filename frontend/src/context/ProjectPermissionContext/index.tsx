@@ -6,6 +6,7 @@ export {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,
+  ProjectPermissionCodeSigningActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,

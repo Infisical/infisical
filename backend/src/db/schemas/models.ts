@@ -259,6 +259,10 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
 
+  // Code Signing
+  Signers = "signers",
+  SigningOperations = "signing_operations",
+
   QueueJobs = "queue_jobs"
 }
 

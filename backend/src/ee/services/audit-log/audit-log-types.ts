@@ -652,7 +652,17 @@ export enum EventType {
   GET_PKI_INSTALLATION = "get-pki-installation",
   GET_PKI_INSTALLATIONS = "get-pki-installations",
   UPDATE_PKI_INSTALLATION = "update-pki-installation",
-  DELETE_PKI_INSTALLATION = "delete-pki-installation"
+  DELETE_PKI_INSTALLATION = "delete-pki-installation",
+
+  // Code Signing
+  CREATE_SIGNER = "create-signer",
+  UPDATE_SIGNER = "update-signer",
+  DELETE_SIGNER = "delete-signer",
+  GET_SIGNER = "get-signer",
+  GET_SIGNERS = "get-signers",
+  GET_SIGNER_PUBLIC_KEY = "get-signer-public-key",
+  GET_SIGNING_OPERATIONS = "get-signing-operations",
+  SIGNER_SIGN = "signer-sign"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -3610,6 +3620,74 @@ interface DeletePkiInstallationEvent {
   };
 }
 
+interface CreateSignerEvent {
+  type: EventType.CREATE_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+    certificateId: string;
+    approvalPolicyId: string;
+  };
+}
+
+interface UpdateSignerEvent {
+  type: EventType.UPDATE_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface DeleteSignerEvent {
+  type: EventType.DELETE_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface GetSignerEvent {
+  type: EventType.GET_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface GetSignersEvent {
+  type: EventType.GET_SIGNERS;
+  metadata: {
+    count: number;
+    offset: number;
+    limit: number;
+  };
+}
+
+interface GetSignerPublicKeyEvent {
+  type: EventType.GET_SIGNER_PUBLIC_KEY;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface GetSigningOperationsEvent {
+  type: EventType.GET_SIGNING_OPERATIONS;
+  metadata: {
+    signerId: string;
+    count: number;
+  };
+}
+
+interface SignerSignEvent {
+  type: EventType.SIGNER_SIGN;
+  metadata: {
+    signerId: string;
+    name: string;
+    signingAlgorithm: string;
+  };
+}
+
 interface OidcGroupMembershipMappingAssignUserEvent {
   type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
   metadata: {
@@ -5373,6 +5451,14 @@ export type Event =
   | GetPkiInstallationsEvent
   | UpdatePkiInstallationEvent
   | DeletePkiInstallationEvent
+  | CreateSignerEvent
+  | UpdateSignerEvent
+  | DeleteSignerEvent
+  | GetSignerEvent
+  | GetSignersEvent
+  | GetSignerPublicKeyEvent
+  | GetSigningOperationsEvent
+  | SignerSignEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent

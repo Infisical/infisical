@@ -60,6 +60,7 @@ import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
 import { registerPkiCollectionRouter } from "./pki-collection-router";
+import { registerSignerRouter } from "./signer-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { PKI_SYNC_REGISTER_ROUTER_MAP, registerPkiSyncRouter } from "./pki-sync-routers";
 import { registerProjectEnvRouter } from "./project-env-router";
@@ -188,6 +189,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         { prefix: "/certificate-profiles" }
       );
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
+      await pkiRouter.register(registerSignerRouter, { prefix: "/signers" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);
