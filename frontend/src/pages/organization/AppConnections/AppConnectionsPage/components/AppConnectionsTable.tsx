@@ -249,12 +249,6 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
             text: `Auto-rotation ${enabling ? "enabled" : "disabled"}`,
             type: "success"
           });
-        },
-        onError: (error) => {
-          createNotification({
-            text: `Failed to ${enabling ? "enable" : "disable"} auto-rotation: ${error.message}`,
-            type: "error"
-          });
         }
       }
     );
