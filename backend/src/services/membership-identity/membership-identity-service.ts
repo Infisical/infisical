@@ -23,7 +23,7 @@ import { newProjectMembershipIdentityFactory } from "./project/project-membershi
 
 type TMembershipIdentityServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete" | "find">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -32,6 +32,26 @@ type TMembershipIdentityServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
+};
+
+// Builds a composite key for role matching to preserve IDs during updates
+const buildRoleKey = (r: {
+  role: string;
+  customRoleId?: string | null;
+  isTemporary?: boolean;
+  temporaryMode?: string | null;
+  temporaryRange?: string | null;
+  temporaryAccessStartTime?: Date | string | null;
+}) => {
+  const parts = [
+    r.role,
+    r.customRoleId ?? "",
+    String(r.isTemporary ?? false),
+    r.temporaryMode ?? "",
+    r.temporaryRange ?? "",
+    r.temporaryAccessStartTime ? new Date(r.temporaryAccessStartTime).toISOString() : ""
+  ];
+  return parts.join("|");
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -226,43 +246,84 @@ export const membershipIdentityServiceFactory = ({
               tx
             );
 
-      const roleDocs: TMembershipRolesInsert[] = [];
-      data.roles.forEach((membershipRole) => {
+      // Build the desired role documents from input
+      const desiredRoles = data.roles.map((membershipRole) => {
         const isCustomRole = Boolean(customRolesGroupBySlug?.[membershipRole.role]?.[0]);
+        const resolvedRole = isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role;
+        const resolvedCustomRoleId = customRolesGroupBySlug[membershipRole.role]
+          ? customRolesGroupBySlug[membershipRole.role][0].id
+          : null;
+
         if (membershipRole.isTemporary) {
           const relativeTimeInMs = membershipRole.temporaryRange ? ms(membershipRole.temporaryRange) : null;
-          roleDocs.push({
+          return {
             membershipId: doc.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
-            customRoleId: customRolesGroupBySlug[membershipRole.role]
-              ? customRolesGroupBySlug[membershipRole.role][0].id
-              : null,
-            isTemporary: true,
+            role: resolvedRole,
+            customRoleId: resolvedCustomRoleId,
+            isTemporary: true as const,
             temporaryMode: TemporaryPermissionMode.Relative,
             temporaryRange: membershipRole.temporaryRange,
             temporaryAccessStartTime: new Date(membershipRole.temporaryAccessStartTime as string),
             temporaryAccessEndTime: new Date(
               new Date(membershipRole.temporaryAccessStartTime as string).getTime() + (relativeTimeInMs as number)
             )
-          });
-        } else {
-          roleDocs.push({
-            membershipId: doc.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
-            customRoleId: customRolesGroupBySlug[membershipRole.role]
-              ? customRolesGroupBySlug[membershipRole.role][0].id
-              : null
-          });
+          };
         }
+        return {
+          membershipId: doc.id,
+          role: resolvedRole,
+          customRoleId: resolvedCustomRoleId,
+          isTemporary: false as const
+        };
       });
-      await membershipRoleDAL.delete(
-        {
-          membershipId: doc.id
-        },
-        tx
-      );
-      const insertedRoleDocs = await membershipRoleDAL.insertMany(roleDocs, tx);
-      return { ...doc, roles: insertedRoleDocs };
+
+      // Fetch existing roles to do a smart diff and preserve IDs for unchanged roles
+      const existingRoles = await membershipRoleDAL.find({ membershipId: doc.id }, { tx });
+
+      // Track which existing roles are matched so we can delete unmatched ones
+      const existingRolesByKey = new Map<string, { id: string; matched: boolean }>();
+      for (const er of existingRoles) {
+        const key = buildRoleKey(er);
+        // If there are duplicate keys, only store the first unmatched one
+        if (!existingRolesByKey.has(key)) {
+          existingRolesByKey.set(key, { id: er.id, matched: false });
+        }
+      }
+
+      const rolesToInsert: TMembershipRolesInsert[] = [];
+      const keptRoleIds: Set<string> = new Set();
+
+      for (const desired of desiredRoles) {
+        const key = buildRoleKey(desired);
+        const existing = existingRolesByKey.get(key);
+        if (existing && !existing.matched) {
+          // This role already exists with the same configuration - keep it
+          existing.matched = true;
+          keptRoleIds.add(existing.id);
+        } else {
+          // New role that needs to be inserted
+          rolesToInsert.push(desired);
+        }
+      }
+
+      // Delete only the roles that are no longer needed
+      const roleIdsToDelete = existingRoles.filter((er) => !keptRoleIds.has(er.id)).map((er) => er.id);
+
+      if (roleIdsToDelete.length > 0) {
+        await membershipRoleDAL.delete(
+          {
+            membershipId: doc.id,
+            $in: { id: roleIdsToDelete }
+          },
+          tx
+        );
+      }
+
+      const insertedRoleDocs = rolesToInsert.length > 0 ? await membershipRoleDAL.insertMany(rolesToInsert, tx) : [];
+
+      // Return all roles: kept existing ones + newly inserted ones
+      const keptRoles = existingRoles.filter((er) => keptRoleIds.has(er.id));
+      return { ...doc, roles: [...keptRoles, ...insertedRoleDocs] };
     });
 
     return { membership: membershipDoc };
