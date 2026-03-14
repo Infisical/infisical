@@ -7,12 +7,26 @@ description: "Learn how to configure an Azure Entra ID SCIM Sync for Infisical."
 
 - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
 - Create an [Azure Entra ID Connection](/integrations/app-connections/azure-entra-id)
-- Ensure your network security policies allow incoming requests from Infisical to this secret sync provider, if network restrictions apply.
+- Have an existing Enterprise Application in Azure Entra ID with [SCIM provisioning already configured](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/configure-automatic-user-provisioning-portal)
 
-<Note>
-  The Azure Entra ID SCIM Sync pushes a single secret value as the SCIM provisioning token for an Azure Entra ID Enterprise Application.
-  This is useful for automating SCIM token rotation — when the secret value changes in Infisical, it is automatically synced to the target service principal's synchronization secrets.
-</Note>
+## How It Works
+
+The Azure Entra ID SCIM Sync lets you manage SCIM provisioning tokens for your Azure Entra ID Enterprise Applications through Infisical.
+Each sync manages the token for a single Enterprise Application — if you use SCIM provisioning across multiple apps, you'll need a separate sync for each one.
+
+**Example workflow:**
+
+1. You have an Enterprise Application (e.g., ServiceNow) in Azure Entra ID with SCIM provisioning already configured.
+2. You obtain the SCIM bearer token from the third-party service (e.g., from ServiceNow's admin panel) and store it as a secret in Infisical.
+3. You create an Azure Entra ID SCIM Sync that points to this secret and targets the Enterprise Application.
+4. Infisical pushes the token value to Azure, keeping your SCIM provisioning credentials in sync.
+5. When the third-party service rotates the token, you update the secret in Infisical — the new value is automatically synced to Azure.
+
+<Warning>
+  The selected secret's value **must** be a valid SCIM bearer token obtained from the third-party service.
+  When a sync runs, it overwrites the existing SCIM token on the Enterprise Application with the secret's current value.
+  If the secret contains an incorrect value, it will break SCIM provisioning for that application.
+</Warning>
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -32,7 +46,7 @@ description: "Learn how to configure an Azure Entra ID SCIM Sync for Infisical."
 
                 - **Environment**: The project environment to retrieve the secret from.
                 - **Secret Path**: The folder path to retrieve the secret from.
-                - **Secret**: The specific secret whose value will be used as the SCIM provisioning token.
+                - **Secret**: The secret containing the SCIM bearer token obtained from the third-party service. This value will be pushed to the Enterprise Application's SCIM configuration in Azure.
             </Step>
             <Step title="Configure destination">
                 Configure the **Destination** to where the SCIM token should be deployed, then click **Next**.
@@ -47,7 +61,7 @@ description: "Learn how to configure an Azure Entra ID SCIM Sync for Infisical."
 
                 ![Configure Sync Options](/images/secret-syncs/azure-entra-id-scim-token/configure-sync-options.png)
 
-                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync. For SCIM token syncing, only **Overwrite Destination** is supported since import is not available.
+                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync. For SCIM token syncing, only **Overwrite Destination** is supported since import is not available. Please note that this will overwrite your current token with the selected secret value.
                 - **Auto-Sync Enabled**: If enabled, the SCIM token will automatically be synced when the source secret changes. Disable to enforce manual syncing only.
             </Step>
             <Step title="Configure details">

@@ -75,6 +75,7 @@ export const TerraformCloudSyncListItemSchema = z
     name: z.literal("Terraform Cloud"),
     connection: z.literal(AppConnection.TerraformCloud),
     destination: z.literal(SecretSync.TerraformCloud),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.TerraformCloud] }));

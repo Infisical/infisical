@@ -112,7 +112,6 @@ export const AzureEntraIdScimSyncSourceFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
-            isRequired
             isError={Boolean(error)}
             errorText={error?.message}
             label="Secret"

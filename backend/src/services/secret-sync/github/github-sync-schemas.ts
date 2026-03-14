@@ -83,6 +83,7 @@ export const GitHubSyncListItemSchema = z
     name: z.literal("GitHub"),
     connection: z.literal(AppConnection.GitHub),
     destination: z.literal(SecretSync.GitHub),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GitHub] }));

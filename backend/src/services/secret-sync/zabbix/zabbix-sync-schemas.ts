@@ -67,6 +67,7 @@ export const ZabbixSyncListItemSchema = z
     name: z.literal("Zabbix"),
     connection: z.literal(AppConnection.Zabbix),
     destination: z.literal(SecretSync.Zabbix),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Zabbix] }));

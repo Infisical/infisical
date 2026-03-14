@@ -36,7 +36,9 @@ export const AzureEntraIdScimSyncFns = {
     const secretEntry = Object.entries(secretMap).find(([, s]) => s.id === secretId);
     if (!secretEntry) {
       throw new SecretSyncError({
-        error: new Error(`Secret with ID "${secretId}" not found in source`),
+        error: new Error(
+          `Secret with ID "${secretId}" not found in source. Verify if the secret used for this sync wasn't deleted or moved.`
+        ),
         shouldRetry: false
       });
     }

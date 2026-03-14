@@ -33,13 +33,22 @@ type Props = {
   initialFormData?: Partial<TSecretSyncForm>;
 };
 
-const FORM_TABS: { name: string; key: string; fields: (keyof TSecretSyncForm)[] }[] = [
-  { name: "Source", key: "source", fields: ["secretPath", "environment"] },
-  { name: "Destination", key: "destination", fields: ["connection", "destinationConfig"] },
-  { name: "Sync Options", key: "options", fields: ["syncOptions"] },
-  { name: "Details", key: "details", fields: ["name", "description"] },
-  { name: "Review", key: "review", fields: [] }
-];
+const getFormTabs = (
+  destination: SecretSync
+): { name: string; key: string; fields: (keyof TSecretSyncForm)[] }[] => {
+  const sourceFields: (keyof TSecretSyncForm)[] =
+    destination === SecretSync.AzureEntraIdScim
+      ? ["secretPath", "environment", "syncOptions"]
+      : ["secretPath", "environment"];
+
+  return [
+    { name: "Source", key: "source", fields: sourceFields },
+    { name: "Destination", key: "destination", fields: ["connection", "destinationConfig"] },
+    { name: "Sync Options", key: "options", fields: ["syncOptions"] },
+    { name: "Details", key: "details", fields: ["name", "description"] },
+    { name: "Review", key: "review", fields: [] }
+  ];
+};
 
 export const CreateSecretSyncForm = ({
   destination,
@@ -51,6 +60,7 @@ export const CreateSecretSyncForm = ({
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
+  const formTabs = getFormTabs(destination);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -111,9 +121,9 @@ export const CreateSecretSyncForm = ({
     destinationConfig: watch("destinationConfig")
   });
 
-  const isStepValid = async (index: number) => trigger(FORM_TABS[index].fields);
+  const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
-  const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
+  const isFinalStep = selectedTabIndex === formTabs.length - 1;
   const isCreateButtonDisabled =
     isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations;
 
@@ -182,7 +192,7 @@ export const CreateSecretSyncForm = ({
       <FormProvider {...formMethods}>
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
           <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-            {FORM_TABS.map((tab, index) => (
+            {formTabs.map((tab, index) => (
               <Tab
                 onClick={async (e) => {
                   e.preventDefault();

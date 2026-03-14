@@ -80,9 +80,7 @@ export const azureEntraIdConnectionService = (
           `fetch synchronization jobs for service principal '${sp.displayName}'`
         );
 
-        const hasScimJob = jobsData.value.some((job) => job.templateId?.toLowerCase().includes("scim"));
-
-        if (hasScimJob) {
+        if (jobsData.value.length > 0) {
           scimServicePrincipals.push({
             id: sp.id,
             displayName: sp.displayName,
