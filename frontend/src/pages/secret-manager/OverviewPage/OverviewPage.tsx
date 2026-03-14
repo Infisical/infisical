@@ -19,7 +19,6 @@ import {
   InfoIcon,
   LayersIcon,
   LockIcon,
-  LogInIcon,
   SettingsIcon,
   TrashIcon
 } from "lucide-react";
@@ -1996,46 +1995,6 @@ const OverviewPageContent = () => {
     });
   };
 
-  const handleExploreEnvClick = async (slug: string) => {
-    if (secretPath !== "/") {
-      const pathSegment = secretPath.split("/").filter(Boolean);
-      const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-      const folderName = pathSegment.at(-1);
-      const canCreateFolder = permission.can(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, {
-          environment: slug,
-          secretPath: parentPath
-        })
-      );
-      if (folderName && parentPath && canCreateFolder) {
-        await getOrCreateFolder({
-          projectId,
-          environment: slug,
-          path: parentPath,
-          name: folderName
-        });
-      }
-    }
-
-    const query: Record<string, string | string[] | undefined> = {
-      ...routerSearch,
-      search: searchFilter
-    };
-    const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
-    if (envIndex !== -1) {
-      navigate({
-        to: "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
-        params: {
-          orgId,
-          projectId,
-          envSlug: slug
-        },
-        search: query
-      });
-    }
-  };
-
   const handleToggleRowType = useCallback(
     (rowType: RowType) =>
       setFilter((state) => {
@@ -2604,12 +2563,6 @@ const OverviewPageContent = () => {
                                       <TooltipContent>{name}</TooltipContent>
                                     </Tooltip>
                                     <UnstableDropdownMenuContent align="end">
-                                      <UnstableDropdownMenuItem
-                                        onClick={() => handleExploreEnvClick(slug)}
-                                      >
-                                        <LogInIcon />
-                                        Explore Environment
-                                      </UnstableDropdownMenuItem>
                                       <UnstableDropdownMenuItem
                                         onClick={() => {
                                           navigator.clipboard.writeText(slug);
