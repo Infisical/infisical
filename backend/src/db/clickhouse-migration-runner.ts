@@ -15,7 +15,6 @@ const buildCreateAuditLogsTableSQL = (tableName: string, engine: string) => `CRE
     orgId UUID,
     projectId String,
     expiresAt DateTime64(6),
-    INDEX idx_createdAt createdAt TYPE minmax GRANULARITY 1
 )
 ENGINE = ${engine}
 PARTITION BY toYYYYMM(createdAt)
