@@ -21,7 +21,6 @@ PARTITION BY toYYYYMM(createdAt)
 PRIMARY KEY (orgId, projectId, createdAt, id)
 ORDER BY (orgId, projectId, createdAt, id)
 TTL toDateTime(expiresAt)
-SETTINGS index_granularity = 8192
 `;
 
 export type TEnsureClickHouseSchemaOpts = {
