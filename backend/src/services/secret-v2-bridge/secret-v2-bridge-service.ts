@@ -2010,11 +2010,7 @@ export const secretV2BridgeServiceFactory = ({
     const folders = await folderDAL.findByManySecretPath(
       Object.keys(secretsToUpdateGroupByPath).map((el) => ({ envId: projectEnvironment.id, secretPath: el }))
     );
-    if (folders.length !== Object.keys(secretsToUpdateGroupByPath).length)
-      throw new NotFoundError({
-        message: `Folder with path '${null}' in environment with slug '${environment}' not found`,
-        name: "UpdateManySecret"
-      });
+    const secretPaths = Object.keys(secretsToUpdateGroupByPath);
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -2034,8 +2030,12 @@ export const secretV2BridgeServiceFactory = ({
         }
       > = [];
 
-      for await (const folder of folders) {
-        if (!folder) throw new NotFoundError({ message: "Folder not found" });
+      for await (const [folderIdx, folder] of folders.entries()) {
+        if (!folder) {
+          throw new NotFoundError({
+            message: `Folder with path '${secretPaths[folderIdx]}' in environment '${environment}' not found`
+          });
+        }
 
         const folderId = folder.id;
         const secretPath = folder.path;

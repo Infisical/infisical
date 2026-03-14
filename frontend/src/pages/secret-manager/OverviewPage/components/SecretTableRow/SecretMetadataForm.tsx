@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,6 +44,8 @@ type Props = {
   environment: string;
   secretPath: string;
   onClose?: () => void;
+  isBatchMode?: boolean;
+  onMetadataChange?: (metadata: { key: string; value: string; isEncrypted?: boolean }[]) => void;
 };
 
 export const SecretMetadataForm = ({
@@ -50,7 +53,9 @@ export const SecretMetadataForm = ({
   secretKey,
   environment,
   secretPath,
-  onClose
+  onClose,
+  isBatchMode,
+  onMetadataChange
 }: Props) => {
   const { projectId, currentProject } = useProject();
   const { mutateAsync: updateSecretV3, isPending } = useUpdateSecretV3();
@@ -69,6 +74,7 @@ export const SecretMetadataForm = ({
   const {
     handleSubmit,
     control,
+    watch,
     formState: { isDirty, errors }
   } = useForm<TFormSchema>({
     defaultValues: {
@@ -87,6 +93,34 @@ export const SecretMetadataForm = ({
     control,
     name: "metadata"
   });
+
+  // In batch mode, debounce metadata changes to parent form.
+  // Use JSON.stringify as the dependency because watch("metadata") returns the same
+  // array reference when nested field values change (typing in key/value inputs).
+  const watchedMetadata = watch("metadata");
+  const serializedMetadata = JSON.stringify(watchedMetadata);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!isBatchMode) return () => {};
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      onMetadataChange?.(
+        watchedMetadata.map((m) => ({ key: m.key, value: m.value, isEncrypted: m.isEncrypted }))
+      );
+    }, 500);
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBatchMode, serializedMetadata, onMetadataChange]);
 
   const onSubmit = async (data: TFormSchema) => {
     const result = await updateSecretV3({
@@ -120,8 +154,8 @@ export const SecretMetadataForm = ({
     Array.isArray(errors.metadata) &&
     errors.metadata.some((metadata) => metadata?.isEncrypted?.type === "invalid_literal");
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+  const metadataFields = (
+    <>
       <div>
         <p className="text-sm font-medium">Metadata</p>
         <p className="mt-1 text-xs text-accent">
@@ -241,7 +275,25 @@ export const SecretMetadataForm = ({
           You do not have permission to edit metadata on this secret.
         </p>
       )}
+    </>
+  );
 
+  if (isBatchMode) {
+    return (
+      <div className="space-y-3">
+        {metadataFields}
+        <div className="flex justify-end">
+          <Button variant="ghost" size="xs" type="button" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+      {metadataFields}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="xs" type="button" onClick={onClose}>
           Close

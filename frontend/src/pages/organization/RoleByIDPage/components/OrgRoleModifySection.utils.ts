@@ -12,6 +12,7 @@ import {
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSecretShareAction,
+  OrgPermissionSsoActions,
   OrgPermissionSubOrgActions,
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
@@ -133,6 +134,16 @@ const subOrganizationPermissionSchema = z
   })
   .optional();
 
+const ssoPermissionSchema = z
+  .object({
+    [OrgPermissionSsoActions.Read]: z.boolean().optional(),
+    [OrgPermissionSsoActions.Create]: z.boolean().optional(),
+    [OrgPermissionSsoActions.Edit]: z.boolean().optional(),
+    [OrgPermissionSsoActions.Delete]: z.boolean().optional(),
+    [OrgPermissionSsoActions.BypassSsoEnforcement]: z.boolean().optional()
+  })
+  .optional();
+
 export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
@@ -155,7 +166,7 @@ export const formSchema = z.object({
       "service-account": generalPermissionSchema,
       "incident-contact": generalPermissionSchema,
       "secret-scanning": generalPermissionSchema,
-      sso: generalPermissionSchema,
+      sso: ssoPermissionSchema,
       scim: generalPermissionSchema,
       [OrgPermissionSubjects.GithubOrgSync]: generalPermissionSchema,
       ldap: generalPermissionSchema,

@@ -3,7 +3,7 @@ import { PostHog } from "posthog-node";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { InstanceType } from "@app/ee/services/license/license-types";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -164,7 +164,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
                 postHog.groupIdentify({
                   groupType: "organization",
                   groupKey: orgId,
-                  properties: groupProperties
+                  properties: groupProperties,
+                  distinctId: event.distinctId
                 });
               })
               .catch((error) => {
@@ -318,7 +319,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             postHog.groupIdentify({
               groupType: "organization",
               groupKey: key.org,
-              properties: groupProperties
+              properties: groupProperties,
+              distinctId: key.id
             });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
@@ -414,6 +416,52 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  // In-memory fallback dedup set to limit blast radius during Redis outages
+  const inMemoryIdentityDedup = new Set<string>();
+
+  const identifyIdentity = async (
+    identityId: string,
+    properties: {
+      name?: string;
+      authMethod?: string;
+    }
+  ) => {
+    if (postHog && identityId) {
+      const instanceType = licenseService.getInstanceType();
+      if (instanceType === InstanceType.Cloud) {
+        const dedupKey = `${identityId}-${properties.authMethod ?? ""}`;
+        try {
+          const cacheKey = KeyStorePrefixes.TelemetryIdentifyIdentity(dedupKey);
+          // Atomic SET NX + EX: only the first caller within the TTL window proceeds
+          const wasSet = await keyStore.setItemWithExpiryNX(
+            cacheKey,
+            KeyStoreTtls.TelemetryIdentifyIdentityInSeconds,
+            "1"
+          );
+          if (!wasSet) return;
+        } catch (error) {
+          logger.error(error, `Failed to check PostHog identity dedup cache [identityId=${identityId}]`);
+          // In-memory fallback to limit blast radius during Redis outage
+          if (inMemoryIdentityDedup.has(dedupKey)) return;
+          inMemoryIdentityDedup.add(dedupKey);
+          const timer = setTimeout(
+            () => inMemoryIdentityDedup.delete(dedupKey),
+            KeyStoreTtls.TelemetryIdentifyIdentityInSeconds * 1000
+          );
+          timer.unref();
+          // falls through intentionally: first caller during Redis outage still identifies
+        }
+
+        const distinctId = `identity-${identityId}`;
+        try {
+          postHog.identify({ distinctId, properties });
+        } catch (err) {
+          logger.error(err, `Failed to call postHog.identify for machine identity [identityId=${identityId}]`);
+        }
+      }
+    }
+  };
+
   const flushAll = async () => {
     if (postHog) {
       await postHog.shutdownAsync();
@@ -424,6 +472,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     sendLoopsEvent,
     sendPostHogEvents,
     identifyUser,
+    identifyIdentity,
     processAggregatedEvents,
     flushAll,
     getBucketForDistinctId

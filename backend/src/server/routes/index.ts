@@ -1000,7 +1000,8 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    keyStore
+    keyStore,
+    permissionService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
