@@ -152,6 +152,50 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/:accountId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerPamAccountRotation",
+      description: "Manually trigger credential rotation for a PAM account",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          accountId: z.string().uuid()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+
+      if (account) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: account.projectId,
+          event: {
+            type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION,
+            metadata: {
+              accountId: req.params.accountId,
+              accountName: account.name,
+              resourceId: account.resourceId,
+              resourceType: "unknown"
+            }
+          }
+        });
+      }
+
+      return { success: true, accountId: req.params.accountId };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:accountId",
     config: {

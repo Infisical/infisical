@@ -94,6 +94,8 @@ import { pamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
+import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-dal";
+import { pamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
@@ -2619,6 +2621,7 @@ export const registerRoutes = async (
   const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
   const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
   const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
+  const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
@@ -2641,6 +2644,12 @@ export const registerRoutes = async (
     resourceMetadataDAL
   });
 
+  const pamResourceRotationRulesService = pamResourceRotationRulesServiceFactory({
+    pamResourceRotationRulesDAL,
+    pamResourceDAL,
+    permissionService
+  });
+
   const mfaSessionService = mfaSessionServiceFactory({
     keyStore,
     tokenService,
@@ -2655,6 +2664,7 @@ export const registerRoutes = async (
 
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
+    pamResourceRotationRulesDAL,
     gatewayV2Service,
     kmsService,
     pamResourceDAL,
@@ -2670,7 +2680,8 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     approvalPolicyDAL,
     pamSessionExpirationService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pamAccountDependenciesDAL
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({
@@ -2953,6 +2964,7 @@ export const registerRoutes = async (
     notification: notificationService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
+    pamResourceRotationRules: pamResourceRotationRulesService,
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
     pamWebAccess: pamWebAccessService,

@@ -5,12 +5,9 @@ import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TPostgresResource } from "@app/hooks/api/pam";
-import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
-import { BaseSqlAccountSchema } from "@app/pages/pam/PamAccountsPage/components/PamAccountForm/shared/sql-account-schemas";
 
 import { BaseSqlResourceSchema } from "./shared/sql-resource-schemas";
 import { SqlResourceFields } from "./shared/SqlResourceFields";
-import { SqlRotateAccountFields } from "./shared/SqlRotateAccountFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 import { MetadataFields } from "./MetadataFields";
 
@@ -21,8 +18,7 @@ type Props = {
 
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.Postgres),
-  connectionDetails: BaseSqlResourceSchema,
-  rotationAccountCredentials: BaseSqlAccountSchema.nullable().optional()
+  connectionDetails: BaseSqlResourceSchema
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -34,15 +30,7 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: resource
-      ? {
-          ...resource,
-          rotationAccountCredentials: resource.rotationAccountCredentials
-            ? {
-                ...resource.rotationAccountCredentials,
-                password: UNCHANGED_PASSWORD_SENTINEL
-              }
-            : resource.rotationAccountCredentials
-        }
+      ? { ...resource }
       : {
           resourceType: PamResourceType.Postgres,
           connectionDetails: {
@@ -74,7 +62,6 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
           selectedTabIndex={selectedTabIndex}
           setSelectedTabIndex={setSelectedTabIndex}
         />
-        <SqlRotateAccountFields isUpdate={isUpdate} />
         <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button

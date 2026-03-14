@@ -27,7 +27,6 @@ const formSchema = genericAccountFieldsSchema.extend({
   internalMetadata: z.object({
     accountType: z.nativeEnum(ActiveDirectoryAccountType)
   }),
-  rotationEnabled: z.boolean().default(false),
   requireMfa: z.boolean().nullable().optional()
 });
 
@@ -51,7 +50,6 @@ export const ActiveDirectoryAccountForm = ({ account, onSubmit }: Props) => {
           name: "",
           description: "",
           requireMfa: false,
-          rotationEnabled: false,
           credentials: {
             username: "",
             password: ""

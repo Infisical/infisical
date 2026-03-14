@@ -63,7 +63,7 @@ const DATA_LABEL_MAP: Record<string, string> = {
   identityType: "Identity Type"
 };
 
-const COL_COUNT = 7;
+const COL_COUNT = 8;
 const DATA_KEY_ORDER: Record<string, number> = { actions: -2, triggers: -1 };
 
 const formatValue = (key: string, value: unknown): string => {
@@ -120,6 +120,35 @@ const DependencyRow = ({
             <Badge variant="success">Enabled</Badge>
           ) : (
             <Badge variant="neutral">Disabled</Badge>
+          )}
+        </UnstableTableCell>
+        <UnstableTableCell>
+          {dep.syncStatus ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant={
+                    ({ success: "success", failed: "danger", pending: "warning" } as const)[
+                      dep.syncStatus
+                    ] ?? "neutral"
+                  }
+                >
+                  {(
+                    { success: "Synced", failed: "Failed", pending: "Pending" } as Record<
+                      string,
+                      string
+                    >
+                  )[dep.syncStatus] ?? dep.syncStatus}
+                </Badge>
+              </TooltipTrigger>
+              {dep.lastSyncedAt && (
+                <TooltipContent side="top">
+                  Last synced: {format(new Date(dep.lastSyncedAt), "MMM d, yyyy HH:mm")}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          ) : (
+            <span className="text-xs text-muted">-</span>
           )}
         </UnstableTableCell>
         <UnstableTableCell>
@@ -241,6 +270,7 @@ export const PamAccountDependenciesSection = ({ account }: { account: TPamAccoun
                 </Tooltip>
               </div>
             </UnstableTableHead>
+            <UnstableTableHead>Sync Status</UnstableTableHead>
             <UnstableTableHead className="w-5" />
           </UnstableTableRow>
         </UnstableTableHeader>

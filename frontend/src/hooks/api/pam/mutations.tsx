@@ -7,15 +7,20 @@ import {
   TCreatePamAccountDTO,
   TCreatePamFolderDTO,
   TCreatePamResourceDTO,
+  TCreatePamRotationRuleDTO,
   TDeletePamAccountDTO,
   TDeletePamFolderDTO,
   TDeletePamResourceDTO,
+  TDeletePamRotationRuleDTO,
   TPamAccount,
   TPamFolder,
   TPamResource,
+  TPamRotationRule,
+  TReorderPamRotationRulesDTO,
   TUpdatePamAccountDTO,
   TUpdatePamFolderDTO,
-  TUpdatePamResourceDTO
+  TUpdatePamResourceDTO,
+  TUpdatePamRotationRuleDTO
 } from "./types";
 
 // Resources
@@ -215,6 +220,86 @@ export const useDeletePamAccountDependency = () => {
     },
     onSuccess: (_, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+    }
+  });
+};
+
+// Rotation Rules
+export const useCreatePamRotationRule = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ resourceId, ...params }: TCreatePamRotationRuleDTO) => {
+      const { data } = await apiRequest.post<{ rule: TPamRotationRule }>(
+        `/api/v1/pam/resources/${resourceId}/rotation-rules`,
+        params
+      );
+      return data.rule;
+    },
+    onSuccess: (_, { resourceId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.rotationRules(resourceId) });
+    }
+  });
+};
+
+export const useUpdatePamRotationRule = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ resourceId, ruleId, ...params }: TUpdatePamRotationRuleDTO) => {
+      const { data } = await apiRequest.patch<{ rule: TPamRotationRule }>(
+        `/api/v1/pam/resources/${resourceId}/rotation-rules/${ruleId}`,
+        params
+      );
+      return data.rule;
+    },
+    onSuccess: (_, { resourceId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.rotationRules(resourceId) });
+    }
+  });
+};
+
+export const useDeletePamRotationRule = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ resourceId, ruleId }: TDeletePamRotationRuleDTO) => {
+      const { data } = await apiRequest.delete<{ rule: TPamRotationRule }>(
+        `/api/v1/pam/resources/${resourceId}/rotation-rules/${ruleId}`
+      );
+      return data.rule;
+    },
+    onSuccess: (_, { resourceId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.rotationRules(resourceId) });
+    }
+  });
+};
+
+export const useReorderPamRotationRules = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ resourceId, ruleIds }: TReorderPamRotationRulesDTO) => {
+      const { data } = await apiRequest.put<{ rules: TPamRotationRule[] }>(
+        `/api/v1/pam/resources/${resourceId}/rotation-rules/reorder`,
+        { ruleIds }
+      );
+      return data.rules;
+    },
+    onSuccess: (_, { resourceId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.rotationRules(resourceId) });
+    }
+  });
+};
+
+// Manual Rotation
+export const useManualRotateAccount = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId }: { accountId: string }) => {
+      const { data } = await apiRequest.post<{ success: boolean; accountId: string }>(
+        `/api/v1/pam/accounts/${accountId}/rotate`
+      );
+      return data;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
     }
   });
 };

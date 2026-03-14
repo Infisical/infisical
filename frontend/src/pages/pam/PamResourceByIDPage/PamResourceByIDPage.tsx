@@ -33,7 +33,9 @@ import {
   PamResourceConnectionSection,
   PamResourceDetailsSection,
   PamResourceMetadataSection,
-  PamResourceRelatedResourcesSection
+  PamResourceRelatedResourcesSection,
+  PamResourceRotationPolicySection,
+  PamRotationPolicyModal
 } from "./components";
 
 const PageContent = () => {
@@ -65,6 +67,7 @@ const PageContent = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRotationPolicyModalOpen, setIsRotationPolicyModalOpen] = useState(false);
 
   const { data: resource, isPending } = useGetPamResourceById(
     resourceType as PamResourceType,
@@ -199,6 +202,10 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsEditModalOpen(true)}
           />
+          <PamResourceRotationPolicySection
+            resource={resource}
+            onEdit={() => setIsRotationPolicyModalOpen(true)}
+          />
           <PamResourceMetadataSection resource={resource} />
         </div>
 
@@ -235,6 +242,12 @@ const PageContent = () => {
         onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
         deleteKey={resource.name}
         onDeleteApproved={handleDeleteConfirm}
+      />
+
+      <PamRotationPolicyModal
+        isOpen={isRotationPolicyModalOpen}
+        onOpenChange={setIsRotationPolicyModalOpen}
+        resource={resource}
       />
     </div>
   );

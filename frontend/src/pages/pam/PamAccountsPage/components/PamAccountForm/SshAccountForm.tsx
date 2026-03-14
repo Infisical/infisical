@@ -53,9 +53,6 @@ const BaseSshAccountSchema = z.discriminatedUnion("authMethod", [
 
 const formSchema = genericAccountFieldsSchema.extend({
   credentials: BaseSshAccountSchema,
-  // We don't support rotation for now, just feed a false value to
-  // make the schema happy
-  rotationEnabled: z.boolean().default(false),
   requireMfa: z.boolean().nullable().optional()
 });
 
@@ -229,7 +226,6 @@ export const SshAccountForm = ({ account, resourceId, onSubmit }: Props) => {
           name: "",
           description: "",
           requireMfa: false,
-          rotationEnabled: false,
           credentials: {
             authMethod: SSHAuthMethod.Password,
             username: "",

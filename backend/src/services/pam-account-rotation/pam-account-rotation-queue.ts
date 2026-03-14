@@ -25,7 +25,7 @@ export const pamAccountRotationServiceFactory = ({
       QueueName.PamAccountRotation,
       QueueJobs.PamAccountRotation,
       { pattern: "0 * * * *", utc: true },
-      QueueName.PamAccountRotation // job id
+      QueueName.PamAccountRotation
     );
 
     queueService.start(QueueName.PamAccountRotation, async () => {
@@ -43,6 +43,7 @@ export const pamAccountRotationServiceFactory = ({
       jobId: QueueJobs.PamAccountRotation,
       repeat: {
         pattern: "0 * * * *",
+        utc: true,
         key: QueueJobs.PamAccountRotation
       }
     });

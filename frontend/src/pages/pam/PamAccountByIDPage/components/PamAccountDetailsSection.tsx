@@ -3,23 +3,60 @@ import { PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableIconButton
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
-import { PAM_RESOURCE_TYPE_MAP, TPamAccount } from "@app/hooks/api/pam";
+import { PAM_RESOURCE_TYPE_MAP, PamAccountRotationStatus, TPamAccount } from "@app/hooks/api/pam";
+import { useGetPamAccountById } from "@app/hooks/api/pam/queries";
 
 type Props = {
   account: TPamAccount;
   onEdit: VoidFunction;
 };
 
+const rotationStatusVariant = (status?: string | null) => {
+  switch (status) {
+    case PamAccountRotationStatus.Success:
+      return "success" as const;
+    case PamAccountRotationStatus.Failed:
+      return "danger" as const;
+    case PamAccountRotationStatus.Rotating:
+      return "info" as const;
+    default:
+      return "neutral" as const;
+  }
+};
+
+const rotationStatusLabel = (status?: string | null) => {
+  switch (status) {
+    case PamAccountRotationStatus.Success:
+      return "Success";
+    case PamAccountRotationStatus.Failed:
+      return "Failed";
+    case PamAccountRotationStatus.Rotating:
+      return "Rotating";
+    default:
+      return "Never";
+  }
+};
+
 export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
   const resourceTypeInfo = PAM_RESOURCE_TYPE_MAP[account.resource.resourceType];
+  const isRotating = account.rotationStatus === PamAccountRotationStatus.Rotating;
+
+  // Poll for status updates while rotation is in progress
+  useGetPamAccountById(account.id, {
+    refetchInterval: isRotating ? 3000 : false
+  });
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
@@ -66,6 +103,38 @@ export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
           <DetailLabel>Created</DetailLabel>
           <DetailValue>{format(new Date(account.createdAt), "MM/dd/yyyy, hh:mm a")}</DetailValue>
         </Detail>
+        <Detail>
+          <DetailLabel>Rotation Status</DetailLabel>
+          <DetailValue>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant={rotationStatusVariant(account.rotationStatus)}
+                className={isRotating ? "animate-pulse" : undefined}
+              >
+                {rotationStatusLabel(account.rotationStatus)}
+              </Badge>
+              {account.rotationStatus === PamAccountRotationStatus.Failed &&
+                account.lastRotationMessage && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help text-xs text-red-400">View error</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      {account.lastRotationMessage}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+            </div>
+          </DetailValue>
+        </Detail>
+        {"lastRotatedAt" in account && account.lastRotatedAt && (
+          <Detail>
+            <DetailLabel>Last Rotated</DetailLabel>
+            <DetailValue>
+              {format(new Date(account.lastRotatedAt as string), "MM/dd/yyyy, hh:mm a")}
+            </DetailValue>
+          </Detail>
+        )}
       </DetailGroup>
     </div>
   );

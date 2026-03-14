@@ -18,6 +18,9 @@ export const PamAccountDependenciesSchema = z.object({
   data: z.unknown(),
   source: z.string(),
   isEnabled: z.boolean().default(false).nullable().optional(),
+  syncStatus: z.string().nullable().optional(),
+  lastSyncedAt: z.date().nullable().optional(),
+  encryptedLastSyncMessage: z.any().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

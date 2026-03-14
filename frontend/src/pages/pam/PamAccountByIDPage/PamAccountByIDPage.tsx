@@ -2,9 +2,18 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { BanIcon, EllipsisVerticalIcon, LogInIcon } from "lucide-react";
+import {
+  BanIcon,
+  EllipsisVerticalIcon,
+  LogInIcon,
+  PencilIcon,
+  RefreshCwIcon,
+  Trash2Icon
+} from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
@@ -22,7 +31,15 @@ import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, useCheckPolicyMatch } from "@app/hooks/api/approvalPolicies";
-import { PAM_RESOURCE_TYPE_MAP, PamResourceType, useGetPamAccountById } from "@app/hooks/api/pam";
+import {
+  PAM_RESOURCE_TYPE_MAP,
+  PamAccountRotationStatus,
+  PamResourceType,
+  TPamAccount,
+  useGetPamAccountById
+} from "@app/hooks/api/pam";
+import { useManualRotateAccount } from "@app/hooks/api/pam/mutations";
+import { pamKeys } from "@app/hooks/api/pam/queries";
 
 import { PamAccessAccountModal } from "../PamAccountsPage/components/PamAccessAccountModal";
 import { PamDeleteAccountModal } from "../PamAccountsPage/components/PamDeleteAccountModal";
@@ -80,8 +97,10 @@ const PageContent = () => {
     "deleteAccount"
   ] as const);
 
+  const queryClient = useQueryClient();
   const { accessAwsIam, isPending: isAwsAccessPending } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
+  const rotateAccount = useManualRotateAccount();
 
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
@@ -144,6 +163,22 @@ const PageContent = () => {
     }
   };
 
+  const handleRotate = async () => {
+    // Optimistically show rotating status immediately
+    queryClient.setQueryData(pamKeys.getAccount(account.id), (old: TPamAccount | undefined) =>
+      old ? { ...old, rotationStatus: PamAccountRotationStatus.Rotating } : old
+    );
+
+    try {
+      createNotification({ text: "Credential rotation triggered", type: "success" });
+      await rotateAccount.mutateAsync({ accountId: account.id });
+    } catch {
+      // Revert optimistic update on failure
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(account.id) });
+      createNotification({ text: "Failed to trigger rotation", type: "error" });
+    }
+  };
+
   return (
     <div className="container mx-auto flex max-w-7xl flex-col px-6 py-6 text-mineshaft-50">
       <button
@@ -202,10 +237,29 @@ const PageContent = () => {
                     onClick={() => setIsEditModalOpen(true)}
                     isDisabled={!isAllowed}
                   >
+                    <PencilIcon className="size-3.5" />
                     Edit Account
                   </UnstableDropdownMenuItem>
                 )}
               </ProjectPermissionCan>
+              {account.resource.rotationCredentialsConfigured && (
+                <ProjectPermissionCan
+                  I={ProjectPermissionPamAccountActions.TriggerRotation}
+                  a={ProjectPermissionSub.PamAccounts}
+                >
+                  {(isAllowed) => (
+                    <UnstableDropdownMenuItem
+                      onClick={handleRotate}
+                      isDisabled={
+                        !isAllowed || account.rotationStatus === PamAccountRotationStatus.Rotating
+                      }
+                    >
+                      <RefreshCwIcon className="size-3.5" />
+                      Rotate Account
+                    </UnstableDropdownMenuItem>
+                  )}
+                </ProjectPermissionCan>
+              )}
               <ProjectPermissionCan
                 I={ProjectPermissionPamAccountActions.Delete}
                 a={ProjectPermissionSub.PamAccounts}
@@ -216,6 +270,7 @@ const PageContent = () => {
                     variant="danger"
                     isDisabled={!isAllowed}
                   >
+                    <Trash2Icon className="size-3.5" />
                     Delete Account
                   </UnstableDropdownMenuItem>
                 )}
