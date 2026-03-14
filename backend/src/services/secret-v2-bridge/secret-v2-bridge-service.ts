@@ -51,7 +51,12 @@ import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { PersonalOverridesBehavior, TGetASecretByIdDTO, TRedactSecretVersionValueDTO } from "../secret/secret-types";
+import {
+  PersonalOverridesBehavior,
+  SecretImportReferencesBehavior,
+  TGetASecretByIdDTO,
+  TRedactSecretVersionValueDTO
+} from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -65,6 +70,8 @@ import {
 } from "./secret-v2-bridge-dal";
 import {
   buildHierarchy,
+  createFetchFolderSecretsWithImports,
+  createRelativeImportExpander,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
@@ -1104,6 +1111,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       actor,
       actorOrgId,
+      secretImportReferencesBehavior,
       viewSecretValue,
       actorAuthMethod,
       includeImports,
@@ -1321,10 +1329,27 @@ export const secretV2BridgeServiceFactory = ({
         );
       });
 
+    // note(daniel):  when in relative mode, direct secret references also resolve through imported secrets.
+    // wrap secretDAL with import-aware fetch so the expander sees the full merged view.
+    const mainExpanderSecretDAL =
+      secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
+        ? {
+            findByFolderId: async (args: Parameters<(typeof secretDAL)["findByFolderId"]>[0]) => {
+              const fetchWithImports = createFetchFolderSecretsWithImports({
+                projectId,
+                secretDAL,
+                secretImportDAL,
+                folderDAL
+              });
+              return fetchWithImports(args.folderId, args.userId);
+            }
+          }
+        : secretDAL;
+
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
-      secretDAL,
+      secretDAL: mainExpanderSecretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1404,13 +1429,35 @@ export const secretV2BridgeServiceFactory = ({
 
     const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
     const allowedImports = secretImports.filter(({ isReplication }) => !isReplication);
+
+    const { expandImportedSecretReferences } = createRelativeImportExpander({
+      projectId,
+      currentEnvironment: environment,
+      currentSecretPath: path,
+      secretDAL,
+      secretImportDAL,
+      folderDAL,
+      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+      canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment: expandEnvironment,
+          secretPath: expandSecretPath,
+          secretName: expandSecretKey,
+          secretTags: expandSecretTags
+        }),
+      userId: expandPersonalOverrides ? actorId : undefined
+    });
+
     const importedSecrets = await fnSecretsV2FromImports({
       viewSecretValue,
       secretImports: allowedImports,
       secretDAL,
       folderDAL,
       secretImportDAL,
-      expandSecretReferences,
+      expandSecretReferences:
+        secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
+          ? expandImportedSecretReferences
+          : expandSecretReferences,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
         const canDescribe = hasSecretReadValueOrDescribePermission(
