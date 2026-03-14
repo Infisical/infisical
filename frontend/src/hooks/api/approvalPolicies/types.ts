@@ -1,6 +1,7 @@
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
-  CertRequest = "cert-request"
+  CertRequest = "cert-request",
+  CertManagerCodeSigning = "cert-manager-code-signing"
 }
 
 export enum ApproverType {
@@ -36,6 +37,20 @@ export type CertRequestPolicyConditions = {
 
 export type CertRequestPolicyConstraints = Record<string, never>;
 
+export enum CodeSigningApprovalMode {
+  Manual = "manual",
+  TimeWindow = "time-window",
+  NSignings = "n-signings"
+}
+
+export type CodeSigningPolicyConditions = Record<string, never>[];
+
+export type CodeSigningPolicyConstraints = {
+  approvalMode: CodeSigningApprovalMode;
+  maxWindowDuration?: string;
+  maxSignings?: number;
+};
+
 export type TApprovalPolicy = {
   id: string;
   projectId: string;
@@ -44,11 +59,17 @@ export type TApprovalPolicy = {
   type: ApprovalPolicyType;
   conditions: {
     version: number;
-    conditions: PamAccessPolicyConditions | CertRequestPolicyConditions;
+    conditions:
+      | PamAccessPolicyConditions
+      | CertRequestPolicyConditions
+      | CodeSigningPolicyConditions;
   };
   constraints: {
     version: number;
-    constraints: PamAccessPolicyConstraints | CertRequestPolicyConstraints;
+    constraints:
+      | PamAccessPolicyConstraints
+      | CertRequestPolicyConstraints
+      | CodeSigningPolicyConstraints;
   };
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
@@ -61,8 +82,11 @@ export type TCreateApprovalPolicyDTO = {
   projectId: string;
   name: string;
   maxRequestTtl?: string | null;
-  conditions: PamAccessPolicyConditions | CertRequestPolicyConditions;
-  constraints: PamAccessPolicyConstraints | CertRequestPolicyConstraints;
+  conditions: PamAccessPolicyConditions | CertRequestPolicyConditions | CodeSigningPolicyConditions;
+  constraints:
+    | PamAccessPolicyConstraints
+    | CertRequestPolicyConstraints
+    | CodeSigningPolicyConstraints;
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
 };
@@ -72,8 +96,14 @@ export type TUpdateApprovalPolicyDTO = {
   policyId: string;
   name?: string;
   maxRequestTtl?: string | null;
-  conditions?: PamAccessPolicyConditions | CertRequestPolicyConditions;
-  constraints?: PamAccessPolicyConstraints | CertRequestPolicyConstraints;
+  conditions?:
+    | PamAccessPolicyConditions
+    | CertRequestPolicyConditions
+    | CodeSigningPolicyConditions;
+  constraints?:
+    | PamAccessPolicyConstraints
+    | CertRequestPolicyConstraints
+    | CodeSigningPolicyConstraints;
   steps?: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
 };

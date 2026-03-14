@@ -1,4 +1,4 @@
-import { ApprovalPolicyType, ApproverType } from "../approvalPolicies";
+import { ApprovalPolicyType, ApproverType, CodeSigningApprovalMode } from "../approvalPolicies";
 
 export enum ApprovalRequestStatus {
   Pending = "pending",
@@ -82,6 +82,17 @@ export type CertRequestRequestData = {
   certificateRequestId: string;
 };
 
+export type CodeSigningRequestData = {
+  signerId: string;
+  approvalPolicyId: string;
+  signerName: string;
+  approvalMode: CodeSigningApprovalMode;
+  justification?: string;
+  requestedWindowStart?: string;
+  requestedWindowEnd?: string;
+  requestedSignings?: number;
+};
+
 export type TApprovalRequest = {
   id: string;
   projectId: string;
@@ -95,7 +106,7 @@ export type TApprovalRequest = {
   expiresAt?: string | null;
   requestData: {
     version: number;
-    requestData: PamAccessRequestData | CertRequestRequestData;
+    requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
   };
   steps: ApprovalRequestStep[];
   createdAt: string;
@@ -107,7 +118,7 @@ export type TCreateApprovalRequestDTO = {
   projectId: string;
   justification?: string | null;
   requestDuration?: string | null;
-  requestData: PamAccessRequestData | CertRequestRequestData;
+  requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
 };
 
 export type TGetApprovalRequestByIdDTO = {

@@ -12,6 +12,7 @@ export {
   type ApprovalRequestStep,
   ApprovalRequestStepStatus,
   type CertRequestRequestData,
+  type CodeSigningRequestData,
   type PamAccessRequestData,
   type TApprovalRequest,
   type TApproveApprovalRequestDTO,

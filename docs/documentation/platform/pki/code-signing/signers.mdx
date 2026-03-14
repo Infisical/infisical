@@ -1,0 +1,137 @@
+---
+title: "Signers"
+sidebarTitle: "Signers"
+description: "Learn how to create and manage code-signing identities."
+---
+
+In Infisical, a signer is a named code-signing identity bound to an X.509 certificate with the `codeSigning` extended key usage (EKU). Each signer represents a signing capability within a project, for example `release-signer` for production releases or `ci-signer` for CI pipeline artifacts.
+
+Private keys never leave the Infisical server. When a signing operation is requested, the server retrieves the key, computes the signature, and returns only the signature bytes. This ensures that signing keys cannot be exfiltrated from build environments.
+
+## Key Characteristics
+
+- **Bound to a certificate**: Every signer must be linked to a certificate that has the `codeSigning` EKU.
+- **Linked to an approval policy**: Every signer must be associated with an [approval policy](/documentation/platform/pki/code-signing/approvals) that governs who can sign and under what conditions.
+- **Supports RSA and ECDSA**: Signers support RSA (2048, 3072, 4096-bit) and ECDSA (P-256, P-384, P-521) key types depending on the certificate.
+- **Tracks signing history**: Every signing operation is recorded with actor, algorithm, data hash, and grant information.
+
+## Guide to Creating a Signer
+
+<Steps>
+  <Step title="Issuing a code-signing certificate">
+    Before creating a signer, you need a certificate with the `codeSigning` extended key usage. You can issue one from your Certificate Authority (CA) by specifying `codeSigning` in the extended key usage field.
+
+    <Note>
+      Only certificates with the `codeSigning` extended key usage will be available when creating a signer. If you don't see your certificate, verify that it was issued with the correct EKU.
+    </Note>
+  </Step>
+  <Step title="Creating an approval policy">
+    Every signer requires an approval policy. If you haven't created one yet, head to **Code Signing > Approvals > Policies** and press **Create Policy**. See [Approval Policies](/documentation/platform/pki/code-signing/approvals) for details.
+  </Step>
+  <Step title="Creating the signer">
+    Head to your Certificate Management Project > **Code Signing > Signers** and press **Create Signer**.
+
+    ![Create signer modal](/images/platform/pki/code-signing/signer-create.png)
+
+    Fill in the following fields:
+
+    - **Name**: A slug-friendly name for the signer such as `release-signer`.
+    - **Description**: An optional description of the signer's purpose.
+    - **Certificate**: The code-signing certificate to bind to this signer.
+    - **Approval Policy**: The approval policy that governs signing access for this signer.
+
+    Press **Create** to save the signer.
+  </Step>
+</Steps>
+
+## Managing Signers
+
+### Viewing Signer Details
+
+Press on any signer in the table to view its detail page, which includes:
+
+- **Overview**: Signer name, status, linked certificate details (serial number, algorithm, validity dates), and the associated approval policy.
+- **Signing Operations**: A paginated audit log of all signing operations performed with this signer, including status, algorithm, actor, and timestamp.
+
+![Signer detail page](/images/platform/pki/code-signing/signer-detail.png)
+
+### Signing Operations Log
+
+The signer detail page includes a complete audit trail of all signing activity, including successful signatures, denied requests, and errors. Each entry shows the timestamp, algorithm, data hash, and the actor that performed the operation.
+
+### Enabling and Disabling Signers
+
+Signers can be toggled between **Active** and **Disabled** states. A disabled signer will reject all signing requests until re-enabled. To toggle the status, use the status switch on the signer detail page or the signer table.
+
+![Signers table with actions menu](/images/platform/pki/code-signing/signers-table.png)
+
+### Deleting a Signer
+
+To delete a signer, press the delete action on the signer table row. Deleting a signer does not delete the underlying certificate or its signing operation history.
+
+<Warning>
+  Deleting a signer is irreversible. Any active grants for the signer will no longer be usable.
+</Warning>
+
+## Supported Signing Algorithms
+
+The available signing algorithms depend on the certificate's key type:
+
+### RSA
+
+| Algorithm | Description |
+|-----------|-------------|
+| `RSASSA_PKCS1_V1_5_SHA256` | RSA PKCS#1 v1.5 with SHA-256 |
+| `RSASSA_PKCS1_V1_5_SHA384` | RSA PKCS#1 v1.5 with SHA-384 |
+| `RSASSA_PKCS1_V1_5_SHA512` | RSA PKCS#1 v1.5 with SHA-512 |
+| `RSASSA_PSS_SHA256` | RSA-PSS with SHA-256 |
+| `RSASSA_PSS_SHA384` | RSA-PSS with SHA-384 |
+| `RSASSA_PSS_SHA512` | RSA-PSS with SHA-512 |
+
+### ECDSA
+
+| Algorithm | Description |
+|-----------|-------------|
+| `ECDSA_SHA256` | ECDSA with SHA-256 |
+| `ECDSA_SHA384` | ECDSA with SHA-384 |
+| `ECDSA_SHA512` | ECDSA with SHA-512 |
+
+## Signing via API
+
+You can also sign data programmatically by making an API request to the Sign endpoint:
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/pki/signers/{signerId}/sign \
+  --header 'Authorization: Bearer <access-token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "data": "<base64-encoded-data>",
+    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA256",
+    "isDigest": true,
+    "clientMetadata": {
+      "tool": "custom-pipeline",
+      "hostname": "build-server-1"
+    }
+  }'
+```
+
+<Note>
+  - The `data` field must be base64-encoded and no larger than 128 bytes (the digest of what you want to sign).
+  - Set `isDigest` to `true` if the data is already a hash digest, or `false` if you want the server to hash it.
+  - The `clientMetadata` field is optional and recorded in the signing operation audit log.
+</Note>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I use the same certificate for multiple signers?">
+    Yes. Multiple signers can reference the same certificate, each with a different approval policy. This is useful if you want different approval workflows for different teams using the same signing key.
+  </Accordion>
+  <Accordion title="What happens if my certificate expires?">
+    Signing requests will be rejected if the signer's certificate has expired. You should issue a new certificate and update the signer's certificate binding before expiry.
+  </Accordion>
+  <Accordion title="Can machine identities sign without human approval?">
+    Yes, depending on the approval policy configuration. If the policy allows machine identity bypass or uses automatic approval modes, machine identities can sign without human intervention after obtaining a grant.
+  </Accordion>
+</AccordionGroup>

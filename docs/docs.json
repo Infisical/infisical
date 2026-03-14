@@ -784,6 +784,26 @@
                   "documentation/platform/pki/ca/azure-adcs",
                   "documentation/platform/pki/ca/aws-pca"
                 ]
+              },
+              {
+                "group": "Code Signing",
+                "pages": [
+                  "documentation/platform/pki/code-signing/overview",
+                  "documentation/platform/pki/code-signing/signers",
+                  "documentation/platform/pki/code-signing/approvals",
+                  "documentation/platform/pki/code-signing/pkcs11-module",
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/platform/pki/code-signing/guides/pkcs11-jarsigner",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-osslsigncode",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-apksigner",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-cosign",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-openssl",
+                      "documentation/platform/pki/code-signing/guides/pkcs11-gpg"
+                    ]
+                  }
+                ]
               }
             ]
           },

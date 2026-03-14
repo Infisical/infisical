@@ -183,6 +183,14 @@ export enum ProjectPermissionPkiCertificateInstallationActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCodeSigningActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Sign = "sign"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -326,6 +334,7 @@ export enum ProjectPermissionSub {
   PkiSyncs = "pki-syncs",
   PkiDiscovery = "pki-discovery",
   PkiCertificateInstallations = "pki-certificate-installations",
+  CodeSigners = "code-signers",
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
@@ -532,6 +541,7 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionPkiDiscoveryActions, ProjectPermissionSub.PkiDiscovery]
   | [ProjectPermissionPkiCertificateInstallationActions, ProjectPermissionSub.PkiCertificateInstallations]
+  | [ProjectPermissionCodeSigningActions, ProjectPermissionSub.CodeSigners]
   | [
       ProjectPermissionActions,
       (
@@ -1500,6 +1510,12 @@ const GeneralPermissionSchema = [
       .literal(ProjectPermissionSub.PkiCertificateInstallations)
       .describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPkiCertificateInstallationActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.CodeSigners).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCodeSigningActions).describe(
       "Describe what action an entity can take."
     )
   }),

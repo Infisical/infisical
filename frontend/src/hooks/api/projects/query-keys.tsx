@@ -53,7 +53,8 @@ export const projectKeys = {
     profileIds,
     fromDate,
     toDate,
-    metadataFilter
+    metadataFilter,
+    extendedKeyUsage
   }: {
     projectId: string;
     offset: number;
@@ -67,6 +68,7 @@ export const projectKeys = {
     fromDate?: Date;
     toDate?: Date;
     metadataFilter?: Array<{ key: string; value?: string }>;
+    extendedKeyUsage?: string;
   }) =>
     [
       ...projectKeys.forProjectCertificates(projectId),
@@ -81,7 +83,8 @@ export const projectKeys = {
         profileIds,
         fromDate,
         toDate,
-        metadataFilter
+        metadataFilter,
+        extendedKeyUsage
       }
     ] as const,
   getProjectPkiAlerts: (projectId: string) => [{ projectId }, "project-pki-alerts"] as const,

@@ -1,0 +1,139 @@
+---
+title: "Sign Windows Executables with osslsigncode"
+sidebarTitle: "osslsigncode"
+description: "Use the Infisical PKCS#11 module to sign Windows executables, DLLs, and MSI installers with osslsigncode."
+---
+
+In the following steps, we explore how to sign Windows Authenticode artifacts using `osslsigncode` with the Infisical PKCS#11 module. osslsigncode is a cross-platform tool that lets you sign Windows binaries from Linux and macOS, making it ideal for CI/CD pipelines that don't run on Windows.
+
+## Prerequisites
+
+- An Infisical project with a [signer](/documentation/platform/pki/code-signing/signers) configured
+- An active [signing grant](/documentation/platform/pki/code-signing/approvals) for the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- The Infisical PKCS#11 module [installed and configured](/documentation/platform/pki/code-signing/pkcs11-module)
+- `osslsigncode` 2.5 or later (includes native PKCS#11 support)
+
+## Step 1: Install osslsigncode and Dependencies
+
+<Tabs>
+  <Tab title="Ubuntu / Debian">
+    ```bash
+    sudo apt-get update
+    sudo apt-get install -y osslsigncode opensc
+    ```
+  </Tab>
+  <Tab title="macOS (Homebrew)">
+    ```bash
+    brew install osslsigncode opensc
+    ```
+  </Tab>
+  <Tab title="Build from source">
+    ```bash
+    git clone https://github.com/mtrojnar/osslsigncode.git
+    cd osslsigncode
+    mkdir build && cd build
+    cmake ..
+    make
+    sudo make install
+    ```
+  </Tab>
+</Tabs>
+
+## Step 2: Identify Your Signer
+
+Use `pkcs11-tool` to list available signers and note the token label:
+
+```bash
+pkcs11-tool --module /usr/local/lib/libinfisical-pkcs11.so --list-slots
+```
+
+```
+Available slots:
+Slot 0 (0x0): release-signer
+  token label        : release-signer
+  token manufacturer : Infisical
+```
+
+## Step 3: Sign a Windows Executable
+
+Use `osslsigncode` with the PKCS#11 module to sign your binary:
+
+```bash
+osslsigncode sign \
+  -pkcs11module /usr/local/lib/libinfisical-pkcs11.so \
+  -pkcs11cert "pkcs11:object=release-signer;type=cert" \
+  -key "pkcs11:object=release-signer;type=private" \
+  -h sha256 \
+  -n "My Application" \
+  -i "https://example.com" \
+  -t http://timestamp.digicert.com \
+  -in MyApp.exe \
+  -out MyApp-signed.exe
+```
+
+<Note>
+  - `-pkcs11module`: Path to the Infisical PKCS#11 shared library.
+  - `-pkcs11cert` and `-key`: PKCS#11 URI referencing your signer by name. Replace `release-signer` with your signer name.
+  - `-h sha256`: Hash algorithm for the signature digest.
+  - `-n`: Description embedded in the signature (shown in Windows UAC prompts).
+  - `-i`: URL for more information about the publisher.
+  - `-t`: Timestamp server URL. Timestamping ensures the signature remains valid after your certificate expires.
+</Note>
+
+### Supported File Types
+
+osslsigncode can sign the following Windows artifact types:
+
+| Type | Extensions |
+|------|-----------|
+| Executables | `.exe`, `.dll`, `.sys`, `.ocx` |
+| Installers | `.msi`, `.msix`, `.appx` |
+| Cabinet files | `.cab` |
+| Scripts | `.ps1`, `.vbs` |
+| Catalogs | `.cat` |
+
+## Step 4: Verify the Signature
+
+Verify the signed binary:
+
+```bash
+osslsigncode verify MyApp-signed.exe
+```
+
+The output confirms the signature is valid:
+
+```
+Signature verification: ok
+```
+
+## CI/CD Integration
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_CLIENT_SECRET}"
+export INFISICAL_PKCS11_CONFIG="/path/to/pkcs11.conf"
+
+osslsigncode sign \
+  -pkcs11module /usr/local/lib/libinfisical-pkcs11.so \
+  -pkcs11cert "pkcs11:object=release-signer;type=cert" \
+  -key "pkcs11:object=release-signer;type=private" \
+  -h sha256 \
+  -n "My Application" \
+  -t http://timestamp.digicert.com \
+  -in MyApp.exe \
+  -out MyApp-signed.exe
+```
+
+## Troubleshooting
+
+For any issue, enable debug logging in your config file (`"log_level": "debug"`, `"log_file": "/tmp/infisical-pkcs11.log"`) to get detailed output.
+
+<AccordionGroup>
+  <Accordion title="Key not found or signing errors">
+    Verify the object name in the PKCS#11 URI matches your signer name exactly and that you have an active signing grant. You can list available signers with `pkcs11-tool --module /path/to/lib --list-slots`.
+  </Accordion>
+  <Accordion title="Certificate not found in PKCS#11">
+    The `-pkcs11cert` URI must match your signer name exactly. Use `pkcs11-tool --module /path/to/lib --list-objects --type cert` to verify available certificate labels.
+  </Accordion>
+</AccordionGroup>

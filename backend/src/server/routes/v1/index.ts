@@ -73,6 +73,7 @@ import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
+import { registerSignerRouter } from "./signer-router";
 import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUpgradePathRouter } from "./upgrade-path-router";
@@ -190,6 +191,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         { prefix: "/certificate-profiles" }
       );
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
+      await pkiRouter.register(registerSignerRouter, { prefix: "/signers" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);

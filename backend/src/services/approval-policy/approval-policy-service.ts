@@ -11,6 +11,7 @@ import {
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -404,10 +405,12 @@ export const approvalPolicyServiceFactory = ({
       requestDuration,
       justification,
       requesterName,
-      requesterEmail
+      requesterEmail,
+      machineIdentityId
     }: TCreateRequestDTO & {
       requesterName: string;
       requesterEmail: string;
+      machineIdentityId?: string;
     },
     actor: OrgServiceActor
   ) => {
@@ -467,7 +470,8 @@ export const approvalPolicyServiceFactory = ({
       requestData,
       justification,
       expiresAt,
-      requesterUserId: actor.id,
+      requesterUserId: actor.type === ActorType.IDENTITY ? undefined : actor.id,
+      machineIdentityId,
       requesterName,
       requesterEmail
     });

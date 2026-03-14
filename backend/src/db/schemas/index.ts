@@ -208,6 +208,8 @@ export * from "./secret-versions-v2";
 export * from "./secrets";
 export * from "./secrets-v2";
 export * from "./service-tokens";
+export * from "./signers";
+export * from "./signing-operations";
 export * from "./slack-integrations";
 export * from "./ssh-certificate-authorities";
 export * from "./ssh-certificate-authority-secrets";
