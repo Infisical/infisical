@@ -30,6 +30,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-config-dal";
+import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { extractCertificateFields } from "../../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../../certificate/certificate-secret-dal";
 import {
@@ -113,6 +115,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
 };
 
 export type TInternalCertificateAuthorityServiceFactory = ReturnType<typeof internalCertificateAuthorityServiceFactory>;
@@ -131,7 +134,8 @@ export const internalCertificateAuthorityServiceFactory = ({
   internalCertificateAuthorityDAL,
   projectDAL,
   kmsService,
-  permissionService
+  permissionService,
+  caSigningConfigDAL
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $checkSignature = (caKeyAlg: string, requestedKeyType: string, signatureAlgorithm?: string) => {
     const isRsaCa = caKeyAlg.startsWith("RSA");
@@ -1347,6 +1351,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     });
 
+    if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE) {
+      const existingConfig = await caSigningConfigDAL.findByCaId(ca.internalCa.id);
+      if (!existingConfig) {
+        await caSigningConfigDAL.create({
+          caId: ca.internalCa.id,
+          type: CaSigningConfigType.Manual
+        });
+      }
+    }
+
     return { ca: expandInternalCa(ca) };
   };
 
@@ -1470,6 +1484,31 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateChain: signedResult.certificateChain,
       parentCaId
     });
+
+    const internalCaId = intermediateCa.internalCa.id;
+    const existingSigningConfig = await caSigningConfigDAL.findByCaId(internalCaId);
+    if (!existingSigningConfig) {
+      await caSigningConfigDAL.create({
+        caId: internalCaId,
+        type: CaSigningConfigType.Internal,
+        parentCaId
+      });
+    } else if (
+      existingSigningConfig.type !== CaSigningConfigType.Internal ||
+      existingSigningConfig.parentCaId !== parentCaId
+    ) {
+      await caSigningConfigDAL.transaction(async (signingTx) => {
+        await caSigningConfigDAL.deleteById(existingSigningConfig.id, signingTx);
+        await caSigningConfigDAL.create(
+          {
+            caId: internalCaId,
+            type: CaSigningConfigType.Internal,
+            parentCaId
+          },
+          signingTx
+        );
+      });
+    }
 
     const updatedCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
     if (!updatedCa.internalCa?.activeCaCertId) {

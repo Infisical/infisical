@@ -2320,7 +2320,8 @@ export const registerRoutes = async (
     projectDAL,
     internalCertificateAuthorityDAL,
     kmsService,
-    permissionService
+    permissionService,
+    caSigningConfigDAL
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
