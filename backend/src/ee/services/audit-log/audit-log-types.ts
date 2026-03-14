@@ -4489,8 +4489,6 @@ interface PamAccountCreateEvent {
     folderId?: string | null;
     name: string;
     description?: string | null;
-    rotationEnabled: boolean;
-    rotationIntervalSeconds?: number | null;
     requireMfa?: boolean | null;
   };
 }
@@ -4503,8 +4501,6 @@ interface PamAccountUpdateEvent {
     resourceType: string;
     name?: string;
     description?: string | null;
-    rotationEnabled?: boolean;
-    rotationIntervalSeconds?: number | null;
     requireMfa?: boolean | null;
   };
 }

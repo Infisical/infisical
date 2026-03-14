@@ -25,10 +25,7 @@ const formSchema = genericAccountFieldsSchema
         .max(256, "Password must be 256 characters or less")
         .transform((value) => (value === "" ? undefined : value))
         .optional()
-    }),
-    // We don't support rotation for now, just feed a false value to
-    // make the schema happy
-    rotationEnabled: z.boolean().default(false)
+    })
   })
   .superRefine((data, ctx) => {
     // Make credentials required when credentialsEnabled is true
@@ -87,8 +84,7 @@ export const RedisAccountForm = ({ account, onSubmit }: Props) => {
           credentials: {
             username: undefined,
             password: undefined
-          },
-          rotationEnabled: false
+          }
         }
   });
 

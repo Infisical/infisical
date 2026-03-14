@@ -379,7 +379,9 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPamAccountActions.Read,
       ProjectPermissionPamAccountActions.Create,
       ProjectPermissionPamAccountActions.Edit,
-      ProjectPermissionPamAccountActions.Delete
+      ProjectPermissionPamAccountActions.Delete,
+      ProjectPermissionPamAccountActions.TriggerRotation,
+      ProjectPermissionPamAccountActions.EditRotationConfig
     ],
     ProjectPermissionSub.PamAccounts
   );

@@ -155,22 +155,6 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findAccountsDueForRotation = async (tx?: Knex) => {
-    const dbClient = tx || db.replicaNode();
-
-    const accounts = await dbClient(TableName.PamAccount)
-      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .whereNotNull(`${TableName.PamResource}.encryptedRotationAccountCredentials`)
-      .whereNotNull(`${TableName.PamAccount}.rotationIntervalSeconds`)
-      .where(`${TableName.PamAccount}.rotationEnabled`, true)
-      .whereRaw(
-        `COALESCE("${TableName.PamAccount}"."lastRotatedAt", "${TableName.PamAccount}"."createdAt") + "${TableName.PamAccount}"."rotationIntervalSeconds" * interval '1 second' < NOW()`
-      )
-      .select(selectAllTableCols(TableName.PamAccount));
-
-    return accounts;
-  };
-
   const findMetadataByAccountIds = async (accountIds: string[], tx?: Knex) => {
     if (!accountIds.length) return {};
     const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
@@ -190,7 +174,6 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     ...orm,
     findByProjectIdWithResourceDetails,
     findByIdWithResourceDetails,
-    findAccountsDueForRotation,
     findMetadataByAccountIds
   };
 };

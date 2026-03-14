@@ -1,0 +1,213 @@
+import { runPowershell } from "winrm-client";
+
+import { TPamAccountDependencies, TPamResources } from "@app/db/schemas";
+import { groupBy } from "@app/lib/fn";
+import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+
+import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
+import { PamAccountDependencyType } from "../../pam-discovery/pam-discovery-enums";
+import { decryptResource } from "../pam-resource-fns";
+import { TPostRotateContext } from "../pam-resource-types";
+
+export const WINRM_PORT = 5985;
+
+// Escape a string for use inside PowerShell single-quoted strings (doubles single quotes)
+export const escapePowershellSingleQuote = (value: string) => value.replace(/'/g, "''");
+
+export const buildDependencySyncScript = (
+  dep: TPamAccountDependencies,
+  accountUsername: string,
+  newPassword: string
+): string => {
+  const escapedPassword = escapePowershellSingleQuote(newPassword);
+  const escapedName = escapePowershellSingleQuote(dep.name);
+  const escapedUsername = escapePowershellSingleQuote(accountUsername);
+
+  switch (dep.dependencyType) {
+    case PamAccountDependencyType.WindowsService:
+      return [
+        `sc.exe config '${escapedName}' obj= '${escapedUsername}' password= '${escapedPassword}'`,
+        `Restart-Service -Name '${escapedName}' -Force -ErrorAction SilentlyContinue`
+      ].join("; ");
+
+    case PamAccountDependencyType.ScheduledTask: {
+      const taskData = dep.data as { TaskPath?: string } | null;
+      const taskPath = taskData?.TaskPath ?? "\\";
+      const escapedPath = escapePowershellSingleQuote(taskPath);
+      return `schtasks.exe /Change /TN '${escapedPath}${escapedName}' /RU '${escapedUsername}' /RP '${escapedPassword}'`;
+    }
+
+    case PamAccountDependencyType.IisAppPool:
+      return [
+        `Import-Module WebAdministration`,
+        `Set-ItemProperty 'IIS:\\AppPools\\${escapedName}' processModel.userName '${escapedUsername}'`,
+        `Set-ItemProperty 'IIS:\\AppPools\\${escapedName}' processModel.password '${escapedPassword}'`,
+        `Restart-WebAppPool '${escapedName}'`
+      ].join("; ");
+
+    default:
+      throw new Error(`Unknown dependency type: ${dep.dependencyType}`);
+  }
+};
+
+type TSyncDependenciesParams = {
+  accountId: string;
+  newCredentials: { username: string; password: string };
+  projectId: string;
+  ctx: TPostRotateContext;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  formatWinrmUsername?: (rotationUsername: string, hostname: string, resourceType: string) => string;
+};
+
+export const syncDependenciesAfterRotation = async ({
+  accountId,
+  newCredentials,
+  projectId,
+  ctx,
+  gatewayV2Service,
+  formatWinrmUsername
+}: TSyncDependenciesParams) => {
+  const allDeps = await ctx.pamAccountDependenciesDAL.findByAccountId(accountId);
+  const enabledDeps = allDeps.filter((d) => d.isEnabled);
+  if (!enabledDeps.length) return;
+
+  const grouped = groupBy(enabledDeps, (d) => d.resourceId);
+
+  // Batch-fetch all target resources in a single query
+  const resourceIds = Object.keys(grouped);
+  const resources = await ctx.pamResourceDAL.find({ $in: { id: resourceIds } });
+  const resourceMap = new Map(resources.map((r) => [r.id, r]));
+
+  // Create encryptor lazily (only on first error)
+  let encryptor: ((params: { plainText: Buffer }) => { cipherTextBlob: Buffer }) | null = null;
+  const getEncryptor = async () => {
+    if (!encryptor) {
+      const cipherPair = await ctx.kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      encryptor = cipherPair.encryptor;
+    }
+    return encryptor;
+  };
+
+  await Promise.all(
+    Object.entries(grouped).map(async ([resourceId, deps]) => {
+      const resource = resourceMap.get(resourceId);
+      if (!resource) {
+        logger.warn(`[DependencySync] Resource ${resourceId} not found, skipping`);
+        return;
+      }
+
+      let rotationCredentials: { username: string; password: string } | null = null;
+      let depGatewayId: string | null = null;
+      let hostname: string | null = null;
+
+      try {
+        const decrypted = await decryptResource(resource as TPamResources, projectId, ctx.kmsService);
+        rotationCredentials = decrypted.rotationAccountCredentials as {
+          username: string;
+          password: string;
+        } | null;
+        depGatewayId = decrypted.gatewayId ?? null;
+
+        const connDetails = decrypted.connectionDetails as { hostname?: string; domain?: string };
+        hostname = connDetails.hostname ?? connDetails.domain ?? null;
+      } catch (err) {
+        logger.error(err, `[DependencySync] Failed to decrypt resource ${resourceId}`);
+        return;
+      }
+
+      if (!rotationCredentials || !depGatewayId || !hostname) {
+        logger.warn(`[DependencySync] Missing rotation credentials or gateway for resource ${resourceId}, skipping`);
+        return;
+      }
+
+      const winrmUsername = formatWinrmUsername
+        ? formatWinrmUsername(rotationCredentials.username, hostname, resource.resourceType)
+        : rotationCredentials.username;
+
+      // Resolve host and gateway connection once per resource group
+      const [targetHost] = await verifyHostInputValidity({
+        host: hostname,
+        isGateway: true,
+        isDynamicSecret: false
+      });
+
+      const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+        gatewayId: depGatewayId,
+        targetHost,
+        targetPort: WINRM_PORT
+      });
+
+      if (!platformConnectionDetails) {
+        logger.warn(`[DependencySync] Unable to connect to gateway for resource ${resourceId}, skipping`);
+        return;
+      }
+
+      // eslint-disable-next-line no-restricted-syntax
+      for (const dep of deps) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await ctx.pamAccountDependenciesDAL.updateById(dep.id, { syncStatus: "pending" });
+
+          const script = buildDependencySyncScript(dep, newCredentials.username, newCredentials.password);
+
+          // eslint-disable-next-line no-await-in-loop
+          await withGatewayV2Proxy(
+            async (proxyPort) => {
+              await runPowershell(script, "localhost", winrmUsername, rotationCredentials!.password, proxyPort);
+            },
+            {
+              protocol: GatewayProxyProtocol.Tcp,
+              relayHost: platformConnectionDetails.relayHost,
+              gateway: platformConnectionDetails.gateway,
+              relay: platformConnectionDetails.relay
+            }
+          );
+
+          // eslint-disable-next-line no-await-in-loop
+          await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
+            syncStatus: "success",
+            lastSyncedAt: new Date(),
+            encryptedLastSyncMessage: null
+          });
+
+          logger.info(`[DependencySync] Synced ${dep.dependencyType} '${dep.name}' on resource ${resourceId}`);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.error(
+            error,
+            `[DependencySync] Failed to sync ${dep.dependencyType} '${dep.name}' on resource ${resourceId}`
+          );
+
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const enc = await getEncryptor();
+            const { cipherTextBlob: encryptedMessage } = enc({
+              plainText: Buffer.from(errorMessage)
+            });
+
+            // eslint-disable-next-line no-await-in-loop
+            await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
+              syncStatus: "failed",
+              lastSyncedAt: new Date(),
+              encryptedLastSyncMessage: encryptedMessage
+            });
+          } catch (encryptErr) {
+            logger.error(encryptErr, `[DependencySync] Failed to encrypt error message for dep ${dep.id}`);
+            // eslint-disable-next-line no-await-in-loop
+            await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
+              syncStatus: "failed",
+              lastSyncedAt: new Date()
+            });
+          }
+        }
+      }
+    })
+  );
+};

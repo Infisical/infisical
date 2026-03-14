@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
 import {
   TActiveDirectoryAccount,
   TActiveDirectoryAccountCredentials,
@@ -28,6 +30,7 @@ import {
   TMySQLResource,
   TMySQLResourceConnectionDetails
 } from "./mysql/mysql-resource-types";
+import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource, PamResourceOrderBy } from "./pam-resource-enums";
 import {
   TPostgresAccount,
@@ -131,6 +134,12 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
   currentCredentials: C
 ) => Promise<C>;
 
+export type TPostRotateContext = {
+  pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "findByAccountId" | "updateById">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
 export type TPamResourceFactory<
   T extends TPamResourceConnectionDetails,
   C extends TPamAccountCredentials,
@@ -146,5 +155,6 @@ export type TPamResourceFactory<
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;
   rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<C>;
+  postRotate?: (accountId: string, newCredentials: C, projectId: string, ctx: TPostRotateContext) => Promise<void>;
   handleOverwritePreventionForCensoredValues: (updatedAccountCredentials: C, currentCredentials: C) => Promise<C>;
 };

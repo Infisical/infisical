@@ -21,9 +21,6 @@ type Props = {
 
 const formSchema = genericAccountFieldsSchema.extend({
   credentials: BaseSqlAccountSchema,
-  // We don't support rotation for now, just feed a false value to
-  // make the schema happy
-  rotationEnabled: z.boolean().default(false),
   requireMfa: z.boolean().nullable().optional()
 });
 

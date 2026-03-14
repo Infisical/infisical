@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { BanIcon, EllipsisVerticalIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -33,7 +33,9 @@ import {
   PamResourceConnectionSection,
   PamResourceDetailsSection,
   PamResourceMetadataSection,
-  PamResourceRelatedResourcesSection
+  PamResourceRelatedResourcesSection,
+  PamResourceRotationPolicySection,
+  PamRotationPolicyModal
 } from "./components";
 
 const PageContent = () => {
@@ -45,8 +47,27 @@ const PageContent = () => {
 
   const { resourceId, resourceType, projectId } = params;
 
+  const selectedTab = useSearch({
+    strict: false,
+    select: (el) => el.selectedTab
+  });
+
+  const handleTabChange = (tab: string) => {
+    navigate({
+      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+      search: (prev) => ({ ...prev, selectedTab: tab }),
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        resourceType: resourceType!,
+        resourceId: resourceId!
+      }
+    });
+  };
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRotationPolicyModalOpen, setIsRotationPolicyModalOpen] = useState(false);
 
   const { data: resource, isPending } = useGetPamResourceById(
     resourceType as PamResourceType,
@@ -181,12 +202,16 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsEditModalOpen(true)}
           />
+          <PamResourceRotationPolicySection
+            resource={resource}
+            onEdit={() => setIsRotationPolicyModalOpen(true)}
+          />
           <PamResourceMetadataSection resource={resource} />
         </div>
 
         {/* Right Column - Tabbed Content */}
         <div className="flex-1">
-          <Tabs defaultValue="accounts">
+          <Tabs value={selectedTab} onValueChange={handleTabChange}>
             <TabList>
               <Tab value="accounts">Accounts</Tab>
               {resource.resourceType === PamResourceType.ActiveDirectory && (
@@ -217,6 +242,12 @@ const PageContent = () => {
         onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
         deleteKey={resource.name}
         onDeleteApproved={handleDeleteConfirm}
+      />
+
+      <PamRotationPolicyModal
+        isOpen={isRotationPolicyModalOpen}
+        onOpenChange={setIsRotationPolicyModalOpen}
+        resource={resource}
       />
     </div>
   );

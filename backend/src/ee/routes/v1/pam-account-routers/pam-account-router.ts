@@ -1,6 +1,7 @@
 import type WebSocket from "ws";
 import { z } from "zod";
 
+import { PamAccountDependenciesSchema } from "@app/db/schemas";
 import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedActiveDirectoryAccountWithResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
@@ -45,6 +46,155 @@ const ListPamAccountsResponseSchema = z.object({
 });
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/:accountId/dependencies",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get PAM account dependencies",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          dependencies: PamAccountDependenciesSchema.extend({
+            resourceName: z.string().nullable().optional()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependencies = await server.services.pamDiscoverySource.getAccountDependencies({
+        accountId: req.params.accountId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependencies };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:accountId/dependencies/:dependencyId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Update a PAM account dependency",
+      params: z.object({
+        accountId: z.string().uuid(),
+        dependencyId: z.string().uuid()
+      }),
+      body: z.object({
+        isEnabled: z.boolean()
+      }),
+      response: {
+        200: z.object({
+          dependency: PamAccountDependenciesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependency = await server.services.pamDiscoverySource.updateAccountDependency({
+        accountId: req.params.accountId,
+        dependencyId: req.params.dependencyId,
+        isEnabled: req.body.isEnabled,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependency };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accountId/dependencies/:dependencyId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Delete a PAM account dependency",
+      params: z.object({
+        accountId: z.string().uuid(),
+        dependencyId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          dependency: z.object({
+            id: z.string().uuid()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependency = await server.services.pamDiscoverySource.deleteAccountDependency({
+        accountId: req.params.accountId,
+        dependencyId: req.params.dependencyId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependency };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerPamAccountRotation",
+      description: "Manually trigger credential rotation for a PAM account",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          accountId: z.string().uuid()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+
+      if (account) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: account.projectId,
+          event: {
+            type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION,
+            metadata: {
+              accountId: req.params.accountId,
+              accountName: account.name,
+              resourceId: account.resourceId,
+              resourceType: "unknown"
+            }
+          }
+        });
+      }
+
+      return { success: true, accountId: req.params.accountId };
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/:accountId",

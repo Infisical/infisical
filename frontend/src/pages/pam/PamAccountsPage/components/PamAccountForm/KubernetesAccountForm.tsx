@@ -22,10 +22,7 @@ const KubernetesServiceAccountTokenCredentialsSchema = z.object({
 });
 
 const formSchema = genericAccountFieldsSchema.extend({
-  credentials: KubernetesServiceAccountTokenCredentialsSchema,
-  // We don't support rotation for now, just feed a false value to
-  // make the schema happy
-  rotationEnabled: z.boolean().default(false)
+  credentials: KubernetesServiceAccountTokenCredentialsSchema
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -82,8 +79,7 @@ export const KubernetesAccountForm = ({ account, onSubmit }: Props) => {
           credentials: {
             authMethod: KubernetesAuthMethod.ServiceAccountToken,
             serviceAccountToken: ""
-          },
-          rotationEnabled: false
+          }
         }
   });
 
