@@ -558,6 +558,7 @@ export const permissionServiceFactory = ({
 
     // fetch identity permissions
     const rawIdentityProjectPermissions = await permissionDAL.getProjectIdentityPermissions(projectId, orgId);
+    const unescapedIdentityAuthInfo = requestContext.get("identityAuthInfo");
     const identityPermissions = rawIdentityProjectPermissions.map((identityProjectPermission) => {
       const rolePermissions =
         identityProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
@@ -577,12 +578,17 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
+      const identityAuthInfo =
+        unescapedIdentityAuthInfo?.identityId === identityProjectPermission.identityId && unescapedIdentityAuthInfo
+          ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
+          : {};
       const interpolateRules = templatedRules(
         {
           identity: {
             id: identityProjectPermission.identityId,
             username: identityProjectPermission.username,
-            metadata: metadataKeyValuePair
+            metadata: metadataKeyValuePair,
+            auth: identityAuthInfo
           }
         },
         { data: false }
