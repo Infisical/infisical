@@ -63,7 +63,7 @@ import {
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "updateById">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
@@ -1178,6 +1178,45 @@ export const authLoginServiceFactory = ({
           authMethods: [...(user.authMethods || []), authMethod],
           firstName: !user.isAccepted ? firstName : undefined,
           lastName: !user.isAccepted ? lastName : undefined
+        });
+      }
+
+      // Sync email/username if the provider email has changed (user found by alias)
+      const normalizedProviderEmail = email.trim().toLowerCase();
+      if (existingAlias && user.email !== normalizedProviderEmail) {
+        const conflictingUsers = await userDAL.findUserByUsername(normalizedProviderEmail);
+        const conflictingUser =
+          conflictingUsers?.length > 1
+            ? conflictingUsers.find((el) => el.username === normalizedProviderEmail)
+            : conflictingUsers?.[0];
+
+        if (conflictingUser && conflictingUser.id !== user.id) {
+          throw new BadRequestError({
+            message:
+              "Unable to complete login: the email associated with your SSO account is already in use by another Infisical user.",
+            name: "Oauth 2 login"
+          });
+        }
+
+        user = await userDAL.transaction(async (tx) => {
+          const updatedUser = await userDAL.updateById(
+            user!.id,
+            {
+              username: normalizedProviderEmail,
+              email: normalizedProviderEmail
+            },
+            tx
+          );
+
+          await userAliasDAL.updateById(
+            existingAlias.id,
+            {
+              emails: [normalizedProviderEmail]
+            },
+            tx
+          );
+
+          return updatedUser;
         });
       }
     }
