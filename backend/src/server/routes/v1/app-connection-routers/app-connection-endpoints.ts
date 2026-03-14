@@ -8,6 +8,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnection, TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
+import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerAppConnectionEndpoints = <T extends TAppConnection, I extends TAppConnectionInput>({
@@ -25,8 +26,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     credentials: I["credentials"];
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
+    isAutoRotationEnabled?: boolean | null;
     gatewayId?: string | null;
     projectId?: string;
+    rotation?: TCreateAppConnectionCredentialRotationSchema | null;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
@@ -34,6 +37,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
     gatewayId?: string | null;
+    isAutoRotationEnabled?: boolean | null;
+    rotation?: Partial<TCreateAppConnectionCredentialRotationSchema> | null;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
@@ -272,10 +277,31 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, method, credentials, description, isPlatformManagedCredentials, gatewayId, projectId } = req.body;
+      const {
+        name,
+        method,
+        credentials,
+        description,
+        isPlatformManagedCredentials,
+        gatewayId,
+        projectId,
+        isAutoRotationEnabled,
+        rotation
+      } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
-        { name, method, app, credentials, description, isPlatformManagedCredentials, gatewayId, projectId },
+        {
+          name,
+          method,
+          app,
+          credentials,
+          description,
+          isPlatformManagedCredentials,
+          gatewayId,
+          projectId,
+          rotation,
+          isAutoRotationEnabled: isAutoRotationEnabled ?? false
+        },
         req.permission
       )) as T;
 
@@ -320,11 +346,28 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, credentials, description, isPlatformManagedCredentials, gatewayId } = req.body;
+      const {
+        name,
+        credentials,
+        description,
+        isPlatformManagedCredentials,
+        gatewayId,
+        rotation,
+        isAutoRotationEnabled
+      } = req.body;
       const { connectionId } = req.params;
 
       const appConnection = (await server.services.appConnection.updateAppConnection(
-        { name, credentials, connectionId, description, isPlatformManagedCredentials, gatewayId },
+        {
+          name,
+          credentials,
+          connectionId,
+          description,
+          isPlatformManagedCredentials,
+          gatewayId,
+          isAutoRotationEnabled: isAutoRotationEnabled ?? undefined,
+          rotation: rotation ?? undefined
+        },
         req.permission
       )) as T;
 
@@ -382,6 +425,52 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.DELETE_APP_CONNECTION,
+          metadata: {
+            connectionId
+          }
+        }
+      });
+
+      return { appConnection };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:connectionId/rotate-credentials",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: `rotate${appNameForOpId}AppConnectionCredentials`,
+      tags: [ApiDocsTags.AppConnections],
+      description: `Rotate the credentials for the specified ${appName} Connection.`,
+      params: z.object({
+        connectionId: z.string().uuid().describe(AppConnections.ROTATE_CREDENTIALS(app).connectionId)
+      }),
+      response: {
+        200: z.object({ appConnection: sanitizedResponseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      await server.services.appConnection.triggerCredentialRotation({ app, connectionId }, req.permission);
+
+      const appConnection = (await server.services.appConnection.findAppConnectionById(
+        app,
+        connectionId,
+        req.permission
+      )) as T;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: appConnection.projectId ?? undefined,
+        event: {
+          type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS,
           metadata: {
             connectionId
           }

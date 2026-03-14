@@ -15,7 +15,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets";
+import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets/azure-client-secrets-connection-fns";
 
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
 

@@ -185,11 +185,22 @@ export type TUpdateAppConnectionDTO = Partial<
 > & {
   connectionId: string;
   app: AppConnection;
+  isAutoRotationEnabled?: boolean;
+  rotation?: {
+    rotationInterval?: number;
+    rotateAtUtc?: { hours: number; minutes: number };
+  };
 };
 
 export type TDeleteAppConnectionDTO = {
   app: AppConnection;
   connectionId: string;
+};
+
+export type TRotateAppConnectionCredentialsDTO = {
+  app: AppConnection;
+  connectionId: string;
+  projectId?: string;
 };
 
 // scott: we will need this once we have individual app connection page
