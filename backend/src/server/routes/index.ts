@@ -295,6 +295,8 @@ import { identityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/ide
 import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identitySpiffeAuthDALFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-dal";
+import { identitySpiffeAuthServiceFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-service";
 import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
 import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
@@ -535,6 +537,7 @@ export const registerRoutes = async (
   const identityOciAuthDAL = identityOciAuthDALFactory(db);
   const identityOidcAuthDAL = identityOidcAuthDALFactory(db);
   const identityJwtAuthDAL = identityJwtAuthDALFactory(db);
+  const identitySpiffeAuthDAL = identitySpiffeAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
   const identityLdapAuthDAL = identityLdapAuthDALFactory(db);
 
@@ -780,7 +783,8 @@ export const registerRoutes = async (
     projectDAL,
     licenseService,
     auditLogStreamService,
-    clickhouseClient: clickhouse
+    clickhouseClient: clickhouse,
+    keyStore
   });
 
   const notificationQueue = notificationQueueServiceFactory({
@@ -945,7 +949,8 @@ export const registerRoutes = async (
 
   const telemetryService = telemetryServiceFactory({
     keyStore,
-    licenseService
+    licenseService,
+    orgDAL
   });
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
@@ -995,7 +1000,8 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    keyStore
+    keyStore,
+    permissionService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1624,7 +1630,8 @@ export const registerRoutes = async (
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
     folderCommitService,
-    notificationService
+    notificationService,
+    telemetryService
   });
 
   const secretService = secretServiceFactory({
@@ -1950,6 +1957,17 @@ export const registerRoutes = async (
   const identityJwtAuthService = identityJwtAuthServiceFactory({
     identityDAL,
     identityJwtAuthDAL,
+    orgDAL,
+    permissionService,
+    identityAccessTokenDAL,
+    licenseService,
+    kmsService,
+    membershipIdentityDAL
+  });
+
+  const identitySpiffeAuthService = identitySpiffeAuthServiceFactory({
+    identityDAL,
+    identitySpiffeAuthDAL,
     orgDAL,
     permissionService,
     identityAccessTokenDAL,
@@ -2874,6 +2892,7 @@ export const registerRoutes = async (
     identityTlsCertAuth: identityTlsCertAuthService,
     identityOidcAuth: identityOidcAuthService,
     identityJwtAuth: identityJwtAuthService,
+    identitySpiffeAuth: identitySpiffeAuthService,
     identityLdapAuth: identityLdapAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,

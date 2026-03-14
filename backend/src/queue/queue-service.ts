@@ -97,6 +97,7 @@ export enum QueueName {
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
+  AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan"
 }
 
@@ -161,6 +162,7 @@ export enum QueueJobs {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan"
 }
@@ -493,6 +495,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
       };
+  [QueueName.AuditLogClickHouseBatch]: {
+    name: QueueJobs.AuditLogClickHouseBatch;
+    payload: undefined;
+  };
   [QueueName.PamDiscoveryScan]:
     | {
         name: QueueJobs.PamDiscoverySourceRunScan;

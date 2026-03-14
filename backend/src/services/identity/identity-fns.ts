@@ -12,7 +12,8 @@ export const buildAuthMethods = ({
   tokenId,
   jwtId,
   ldapId,
-  tlsCertId
+  tlsCertId,
+  spiffeId
 }: {
   uaId?: string;
   gcpId?: string;
@@ -26,6 +27,7 @@ export const buildAuthMethods = ({
   jwtId?: string;
   ldapId?: string;
   tlsCertId?: string;
+  spiffeId?: string;
 }) => {
   return [
     ...[uaId ? IdentityAuthMethod.UNIVERSAL_AUTH : null],
@@ -39,6 +41,7 @@ export const buildAuthMethods = ({
     ...[tokenId ? IdentityAuthMethod.TOKEN_AUTH : null],
     ...[jwtId ? IdentityAuthMethod.JWT_AUTH : null],
     ...[ldapId ? IdentityAuthMethod.LDAP_AUTH : null],
-    ...[tlsCertId ? IdentityAuthMethod.TLS_CERT_AUTH : null]
+    ...[tlsCertId ? IdentityAuthMethod.TLS_CERT_AUTH : null],
+    ...[spiffeId ? IdentityAuthMethod.SPIFFE_AUTH : null]
   ].filter((authMethod) => authMethod) as IdentityAuthMethod[];
 };
