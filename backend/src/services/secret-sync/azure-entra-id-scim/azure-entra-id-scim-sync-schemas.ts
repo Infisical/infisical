@@ -27,6 +27,7 @@ const AzureEntraIdScimSyncDestinationConfigSchema = z.object({
 
 const AzureEntraIdScimSyncOptionsConfig: TSyncOptionsConfig = {
   canImportSecrets: false,
+  canRemoveSecretsOnDeletion: false,
   supportsKeySchema: false,
   supportsDisableSecretDeletion: false
 };
@@ -81,6 +82,7 @@ export const AzureEntraIdScimSyncListItemSchema = z
     destination: z.literal(SecretSync.AzureEntraIdScim),
     canImportSecrets: z.literal(false),
     supportsKeySchema: z.literal(false),
-    supportsDisableSecretDeletion: z.literal(false)
+    supportsDisableSecretDeletion: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(false)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureEntraIdScim] }));
