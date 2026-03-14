@@ -307,6 +307,10 @@ export const appConnectionCredentialRotationServiceFactory = ({
       await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled }, tx);
     }
 
+    if (Object.keys(updateData).length === 0) {
+      return expandCredentialRotation(existingRotation, connection.orgId, connection.projectId, kmsService);
+    }
+
     const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
     return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsService);
   };

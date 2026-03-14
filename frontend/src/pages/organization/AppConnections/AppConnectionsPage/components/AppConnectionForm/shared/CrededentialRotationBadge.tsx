@@ -1,7 +1,7 @@
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistanceToNow } from "date-fns";
-import { RefreshCwIcon, XIcon } from "lucide-react";
+import { PauseIcon, RefreshCwIcon, XIcon } from "lucide-react";
 
 import { Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
@@ -15,8 +15,17 @@ type Props = {
 export const CrededentialRotationStatusBadge = ({ appConnection }: Props) => {
   const { isAutoRotationEnabled, rotation } = appConnection;
 
-  if (!rotation || !isAutoRotationEnabled) {
+  if (!rotation) {
     return null;
+  }
+
+  if (!isAutoRotationEnabled) {
+    return (
+      <Badge variant="neutral">
+        <PauseIcon />
+        Auto-Rotation Disabled
+      </Badge>
+    );
   }
 
   if (rotation.rotationStatus === AppConnectionCredentialRotationStatus.Failed) {

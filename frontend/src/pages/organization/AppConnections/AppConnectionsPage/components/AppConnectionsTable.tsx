@@ -47,7 +47,8 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   TAppConnection,
   useListAppConnections,
-  useRotateAppConnectionCredentials
+  useRotateAppConnectionCredentials,
+  useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -86,6 +87,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
   const isProjectView = Boolean(projectId);
   const { isPending, data: appConnections = [] } = useListAppConnections(projectId);
   const rotateCredentials = useRotateAppConnectionCredentials();
+  const updateAppConnection = useUpdateAppConnection();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addConnection",
@@ -226,6 +228,31 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
         onError: (error) => {
           createNotification({
             text: `Failed to trigger credential rotation: ${error.message}`,
+            type: "error"
+          });
+        }
+      }
+    );
+  };
+
+  const handleToggleAutoRotation = (appConnection: TAppConnection) => {
+    const enabling = !appConnection.isAutoRotationEnabled;
+    updateAppConnection.mutate(
+      {
+        connectionId: appConnection.id,
+        app: appConnection.app,
+        isAutoRotationEnabled: enabling
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: `Auto-rotation ${enabling ? "enabled" : "disabled"}`,
+            type: "success"
+          });
+        },
+        onError: (error) => {
+          createNotification({
+            text: `Failed to ${enabling ? "enable" : "disable"} auto-rotation: ${error.message}`,
             type: "error"
           });
         }
@@ -442,6 +469,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                 onEditCredentials={handleEditCredentials}
                 onEditDetails={handleEditDetails}
                 onRotateCredentials={handleRotateCredentials}
+                onToggleAutoRotation={handleToggleAutoRotation}
                 isProjectView={isProjectView}
               />
             ))}

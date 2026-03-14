@@ -706,19 +706,19 @@ export const appConnectionServiceFactory = ({
               );
             }
           } else if (credentials && existingRotation) {
-            // Credentials were changed and rotation was torn down above — re-initialize
-            const existingRotateAtUtc = existingRotation.rotateAtUtc as { hours: number; minutes: number };
-            await appConnectionCredentialRotationService.createRotation(
+            // Credentials were changed and rotation was torn down above — re-enable with updated config
+            await appConnectionCredentialRotationService.updateRotation(
               {
                 connectionId,
+                isAutoRotationEnabled: true,
                 rotationInterval: rotation?.rotationInterval ?? existingRotation.rotationInterval,
-                rotateAtUtc: rotation?.rotateAtUtc ?? existingRotateAtUtc
+                rotateAtUtc:
+                  rotation?.rotateAtUtc ?? (existingRotation.rotateAtUtc as { hours: number; minutes: number })
               },
               tx
             );
-            await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true }, tx);
           } else if (existingRotation && isAutoRotationEnabled === true) {
-            // Re-enabling rotation on a connection that was previously disabled (record preserved)
+            // Re-enabling rotation on a connection that was previously disabled
             await appConnectionCredentialRotationService.updateRotation(
               { connectionId, isAutoRotationEnabled: true, ...rotation },
               tx
@@ -740,16 +740,16 @@ export const appConnectionServiceFactory = ({
             await appConnectionCredentialRotationService.updateRotation({ connectionId, ...rotation }, tx);
           }
         } else if (credentials && existingRotation) {
-          // Credentials changed but no rotation fields provided — re-initialize with previous config
-          await appConnectionCredentialRotationService.createRotation(
+          // Credentials changed but no rotation fields provided — re-enable with previous config
+          await appConnectionCredentialRotationService.updateRotation(
             {
               connectionId,
+              isAutoRotationEnabled: true,
               rotationInterval: existingRotation.rotationInterval,
               rotateAtUtc: existingRotation.rotateAtUtc as { hours: number; minutes: number }
             },
             tx
           );
-          await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true }, tx);
         }
 
         return connection;

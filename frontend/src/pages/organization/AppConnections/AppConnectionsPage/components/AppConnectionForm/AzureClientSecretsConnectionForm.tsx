@@ -123,14 +123,18 @@ const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partia
       }
       break;
     case AzureClientSecretsConnectionMethod.ClientSecret:
-      if ("clientSecret" in credentials && "clientId" in credentials) {
+      if ("clientId" in credentials) {
         return {
           ...base,
           method: AzureClientSecretsConnectionMethod.ClientSecret,
           credentials: {
-            clientSecret: credentials.clientSecret,
             clientId: credentials.clientId,
-            tenantId: credentials.tenantId
+            tenantId: credentials.tenantId,
+            clientSecretKeyId:
+              "clientSecretKeyId" in credentials
+                ? (credentials.clientSecretKeyId as string | undefined)
+                : undefined,
+            clientSecret: ""
           }
         };
       }

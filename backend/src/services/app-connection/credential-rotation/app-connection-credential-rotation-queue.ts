@@ -175,7 +175,7 @@ export const appConnectionCredentialRotationQueueFactory = async ({
 
           adminEmails = orgAdmins.map((admin) => admin.user.email!).filter(Boolean);
           adminUserIds = orgAdmins.map((admin) => admin.user.id);
-          rotationUrl = encodeURI(`${appCfg.SITE_URL}/organizations/${payload.orgId}/settings/app-connections`);
+          rotationUrl = encodeURI(`${appCfg.SITE_URL}/organizations/${payload.orgId}/app-connections`);
         }
 
         const rotationType = payload.strategy;

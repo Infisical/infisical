@@ -8,6 +8,8 @@ import {
   faEdit,
   faEllipsisV,
   faInfoCircle,
+  faPause,
+  faPlay,
   faRotate,
   faTable,
   faTrash
@@ -46,6 +48,7 @@ type Props = {
   onEditCredentials: (appConnection: TAppConnection) => void;
   onEditDetails: (appConnection: TAppConnection) => void;
   onRotateCredentials: (appConnection: TAppConnection) => void;
+  onToggleAutoRotation: (appConnection: TAppConnection) => void;
   isProjectView: boolean;
 };
 
@@ -55,6 +58,7 @@ export const AppConnectionRow = ({
   onEditCredentials,
   onEditDetails,
   onRotateCredentials,
+  onToggleAutoRotation,
   isProjectView
 }: Props) => {
   const { currentOrg } = useOrganization();
@@ -180,7 +184,7 @@ export const AppConnectionRow = ({
             </Tooltip>
           )}
 
-          {isAutoRotationEnabled && (
+          {appConnection.rotation && (
             <CrededentialRotationStatusBadge appConnection={appConnection} />
           )}
 
@@ -259,7 +263,7 @@ export const AppConnectionRow = ({
                         </DropdownMenuItem>
                       )}
                     </VariablePermissionCan>
-                    {isAutoRotationEnabled && (
+                    {appConnection.rotation && (
                       <VariablePermissionCan
                         type={isProjectView ? "project" : "org"}
                         I={
@@ -278,13 +282,26 @@ export const AppConnectionRow = ({
                         }
                       >
                         {(isAllowed: boolean) => (
-                          <DropdownMenuItem
-                            isDisabled={!isAllowed}
-                            icon={<FontAwesomeIcon icon={faRotate} />}
-                            onClick={() => onRotateCredentials(appConnection)}
-                          >
-                            Rotate Credentials
-                          </DropdownMenuItem>
+                          <>
+                            {isAutoRotationEnabled && (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faRotate} />}
+                                onClick={() => onRotateCredentials(appConnection)}
+                              >
+                                Rotate Credentials
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              icon={
+                                <FontAwesomeIcon icon={isAutoRotationEnabled ? faPause : faPlay} />
+                              }
+                              onClick={() => onToggleAutoRotation(appConnection)}
+                            >
+                              {isAutoRotationEnabled ? "Disable" : "Enable"} Auto-Rotation
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </VariablePermissionCan>
                     )}
