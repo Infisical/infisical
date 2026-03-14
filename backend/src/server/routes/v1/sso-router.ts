@@ -73,7 +73,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 lastName: profile?.name?.familyName || "",
                 authMethod: AuthMethod.GOOGLE,
                 callbackPort,
-                orgSlug
+                orgSlug,
+                providerUserId: profile.id
               });
 
             const googleDistinctId = user.username ?? user.email ?? "";
@@ -155,7 +156,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 firstName: githubUser.name || githubUser.login,
                 lastName: "",
                 authMethod: AuthMethod.GITHUB,
-                callbackPort
+                callbackPort,
+                providerUserId: String(githubUser.id)
               });
 
             const githubDistinctId = user.username ?? user.email ?? "";
@@ -229,7 +231,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 firstName: profile.displayName || profile.username || "",
                 lastName: "",
                 authMethod: AuthMethod.GITLAB,
-                callbackPort
+                callbackPort,
+                providerUserId: String(profile.id)
               });
 
             const gitlabDistinctId = user.username ?? user.email ?? "";
