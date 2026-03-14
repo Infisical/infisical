@@ -279,6 +279,7 @@ export const useUpdateCaSigningConfig = () => {
     object,
     {
       caId: string;
+      parentCaId?: string;
       appConnectionId?: string;
       destinationConfig?: {
         applicationId: string;
