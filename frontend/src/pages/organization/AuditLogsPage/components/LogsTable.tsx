@@ -37,16 +37,17 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
     // Use the projectId from the filter if it exists
     filter?.projectId || null;
 
-  const { data, isPending, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
-    {
-      ...filter,
-      limit: AUDIT_LOG_LIMIT
-    },
-    filterProjectId,
-    {
-      refetchInterval
-    }
-  );
+  const { data, isPending, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useGetAuditLogs(
+      {
+        ...filter,
+        limit: AUDIT_LOG_LIMIT
+      },
+      filterProjectId,
+      {
+        refetchInterval
+      }
+    );
 
   const isEmpty = !isPending && !data?.pages?.[0].length;
   const totalLoaded = data?.pages?.reduce((sum, page) => sum + page.length, 0) ?? 0;
