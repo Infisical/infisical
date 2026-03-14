@@ -370,7 +370,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const identifyUser = (
+  const TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify";
+  const TELEMETRY_IDENTIFY_CACHE_TTL = 600; // 10 minutes
+
+  // In-memory fallback dedup set to limit blast radius during Redis outages
+  const inMemoryIdentifyDedup = new Set<string>();
+
+  const identifyUser = async (
     distinctId: string,
     properties: {
       email?: string;
@@ -381,12 +387,31 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       isMfaEnabled?: boolean;
       isEmailVerified?: boolean;
       superAdmin?: boolean;
-    }
+    },
+    { skipDedup }: { skipDedup?: boolean } = {}
   ) => {
     if (postHog && distinctId) {
       const instanceType = licenseService.getInstanceType();
       if (instanceType === InstanceType.Cloud) {
-        postHog.identify({ distinctId, properties });
+        if (!skipDedup) {
+          try {
+            const cacheKey = `${TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX}:${distinctId}`;
+            // Atomic SET NX + EX: only the first caller within the TTL window proceeds
+            const wasSet = await keyStore.setItemWithExpiryNX(cacheKey, TELEMETRY_IDENTIFY_CACHE_TTL, "1");
+            if (!wasSet) return;
+          } catch (error) {
+            logger.error(error, `Failed to check PostHog identify dedup cache for distinctId=${distinctId}`);
+            // In-memory fallback to limit blast radius during Redis outage
+            if (inMemoryIdentifyDedup.has(distinctId)) return;
+            inMemoryIdentifyDedup.add(distinctId);
+            setTimeout(() => inMemoryIdentifyDedup.delete(distinctId), TELEMETRY_IDENTIFY_CACHE_TTL * 1000);
+          }
+        }
+        try {
+          postHog.identify({ distinctId, properties });
+        } catch (err) {
+          logger.error(err, `Failed to call postHog.identify for distinctId=${distinctId}`);
+        }
       }
     }
   };
