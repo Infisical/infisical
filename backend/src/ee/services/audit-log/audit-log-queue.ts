@@ -103,13 +103,13 @@ export const auditLogQueueServiceFactory = async ({
 
       const ttl = ttlInDays * MS_IN_DAY;
 
-      // UUIDv7 for ClickHouse (time-sortable, aligns with ORDER BY createdAt)
-      // UUIDv4 for Postgres (existing schema expectation)
-      const id = isClickHouseBatchEnabled ? uuidv7() : randomUUID();
+      const createdAt = new Date(job.timestamp);
       const eventMetadata = normalizeJsonPayload(event.metadata);
       const actorMetadata = normalizeJsonPayload(actor.metadata);
 
-      const createdAt = new Date(job.timestamp);
+      // UUIDv7 embeds job.timestamp so the id's time matches createdAt
+      // UUIDv4 for Postgres (existing schema expectation)
+      const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
       const auditLog = {
         id,
         actor: actor.type,
