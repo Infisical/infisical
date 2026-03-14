@@ -1,5 +1,6 @@
 import type { ClickHouseClient } from "@clickhouse/client";
 import { randomUUID } from "crypto";
+import { v7 as uuidv7 } from "uuid";
 
 import type { TProjects } from "@app/db/schemas";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -102,7 +103,9 @@ export const auditLogQueueServiceFactory = async ({
 
       const ttl = ttlInDays * MS_IN_DAY;
 
-      const id = randomUUID();
+      // UUIDv7 for ClickHouse (time-sortable, aligns with ORDER BY createdAt)
+      // UUIDv4 for Postgres (existing schema expectation)
+      const id = isClickHouseBatchEnabled ? uuidv7() : randomUUID();
       const eventMetadata = normalizeJsonPayload(event.metadata);
       const actorMetadata = normalizeJsonPayload(actor.metadata);
 

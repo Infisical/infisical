@@ -37,7 +37,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
     // Use the projectId from the filter if it exists
     filter?.projectId || null;
 
-  const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
+  const { data, isPending, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
     {
       ...filter,
       limit: AUDIT_LOG_LIMIT
@@ -58,7 +58,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
           <THead>
             <Tr>
               <Th className="w-24">
-                <Spinner size="xs" className={twMerge(isPending ? "opacity-100" : "opacity-0")} />
+                <Spinner size="xs" className={twMerge(isLoading ? "opacity-100" : "opacity-0")} />
               </Th>
               <Th className="w-64">Timestamp</Th>
               <Th>Event</Th>
