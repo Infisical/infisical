@@ -2417,7 +2417,7 @@ export const certificateV3ServiceFactory = ({
       ProjectPermissionCertificateActions.Edit,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
-        altNames: certificate.altNames ?? undefined,
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
         serialNumber: certificate.serialNumber,
         metadata: certMetadata
       })
@@ -2534,7 +2534,7 @@ export const certificateV3ServiceFactory = ({
       ProjectPermissionCertificateActions.Edit,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
-        altNames: certificate.altNames ?? undefined,
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
         serialNumber: certificate.serialNumber,
         metadata: certMetadata
       })
@@ -2602,7 +2602,7 @@ export const certificateV3ServiceFactory = ({
       ProjectPermissionCertificateActions.Edit,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
-        altNames: certificate.altNames ?? undefined,
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
         serialNumber: certificate.serialNumber,
         metadata: currentMetadata
       })
@@ -2613,7 +2613,7 @@ export const certificateV3ServiceFactory = ({
         ProjectPermissionCertificateActions.Edit,
         subject(ProjectPermissionSub.Certificates, {
           commonName: certificate.commonName,
-          altNames: certificate.altNames ?? undefined,
+          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
           serialNumber: certificate.serialNumber,
           metadata
         })

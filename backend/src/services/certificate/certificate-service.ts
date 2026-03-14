@@ -134,7 +134,7 @@ export const certificateServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certWithDetails.commonName,
-        altNames: certWithDetails.altNames ?? undefined,
+        altNames: certWithDetails.altNames?.split(",").map((s) => s.trim()),
         serialNumber: certWithDetails.serialNumber,
         metadata: certMetadata
       })
@@ -247,7 +247,7 @@ export const certificateServiceFactory = ({
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         metadata: certMetadata
       })
@@ -289,7 +289,7 @@ export const certificateServiceFactory = ({
       ProjectPermissionCertificateActions.Delete,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         metadata: certMetadata
       })
@@ -357,7 +357,7 @@ export const certificateServiceFactory = ({
       ProjectPermissionCertificateActions.Delete,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
         status: cert.status,
@@ -450,7 +450,7 @@ export const certificateServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         metadata: certMetadata
       })
@@ -763,7 +763,7 @@ export const certificateServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
         status: cert.status,
@@ -774,7 +774,7 @@ export const certificateServiceFactory = ({
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
         status: cert.status,
@@ -896,7 +896,7 @@ export const certificateServiceFactory = ({
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
         status: cert.status,

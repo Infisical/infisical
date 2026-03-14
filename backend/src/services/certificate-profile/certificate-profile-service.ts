@@ -1064,7 +1064,7 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         metadata: certMetadata
       })
@@ -1074,7 +1074,7 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         metadata: certMetadata
       })

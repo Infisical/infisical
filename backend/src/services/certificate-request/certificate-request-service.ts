@@ -209,7 +209,9 @@ export const certificateRequestServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificateRequest.commonName ?? undefined,
-        altNames: certificateRequest.altNames ? JSON.stringify(certificateRequest.altNames) : undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
         metadata: requestMetadata
       })
     );
@@ -245,7 +247,9 @@ export const certificateRequestServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificateRequest.commonName ?? undefined,
-        altNames: certificateRequest.altNames ? JSON.stringify(certificateRequest.altNames) : undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
         metadata: requestMetadata
       })
     );
@@ -293,7 +297,9 @@ export const certificateRequestServiceFactory = ({
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificateRequest.commonName ?? undefined,
-        altNames: certificateRequest.altNames ? JSON.stringify(certificateRequest.altNames) : undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
         metadata: requestMetadata
       })
     );

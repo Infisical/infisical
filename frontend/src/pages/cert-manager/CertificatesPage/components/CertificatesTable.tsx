@@ -508,7 +508,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                               ProjectPermissionCertificateActions.Edit,
                               subject(ProjectPermissionSub.Certificates, {
                                 commonName: certificate.commonName,
-                                altNames: certificate.altNames,
+                                altNames: certificate.altNames?.split(",").map((s) => s.trim()),
                                 serialNumber: certificate.serialNumber
                               })
                             );
@@ -585,7 +585,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                             I={ProjectPermissionCertificateActions.Read}
                             a={subject(ProjectPermissionSub.Certificates, {
                               commonName: certificate.commonName,
-                              altNames: certificate.altNames,
+                              altNames: certificate.altNames?.split(",").map((s) => s.trim()),
                               serialNumber: certificate.serialNumber,
                               friendlyName: certificate.friendlyName
                             })}
@@ -614,7 +614,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                               I={ProjectPermissionCertificateActions.Read}
                               a={subject(ProjectPermissionSub.Certificates, {
                                 commonName: certificate.commonName,
-                                altNames: certificate.altNames,
+                                altNames: certificate.altNames?.split(",").map((s) => s.trim()),
                                 serialNumber: certificate.serialNumber,
                                 friendlyName: certificate.friendlyName
                               })}
@@ -656,7 +656,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                 I={ProjectPermissionCertificateActions.Edit}
                                 a={subject(ProjectPermissionSub.Certificates, {
                                   commonName: certificate.commonName,
-                                  altNames: certificate.altNames,
+                                  altNames: certificate.altNames?.split(",").map((s) => s.trim()),
                                   serialNumber: certificate.serialNumber,
                                   friendlyName: certificate.friendlyName
                                 })}
@@ -725,7 +725,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                 I={ProjectPermissionCertificateActions.Edit}
                                 a={subject(ProjectPermissionSub.Certificates, {
                                   commonName: certificate.commonName,
-                                  altNames: certificate.altNames,
+                                  altNames: certificate.altNames?.split(",").map((s) => s.trim()),
                                   serialNumber: certificate.serialNumber,
                                   friendlyName: certificate.friendlyName
                                 })}
@@ -767,7 +767,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                 I={ProjectPermissionCertificateActions.Edit}
                                 a={subject(ProjectPermissionSub.Certificates, {
                                   commonName: certificate.commonName,
-                                  altNames: certificate.altNames,
+                                  altNames: certificate.altNames?.split(",").map((s) => s.trim()),
                                   serialNumber: certificate.serialNumber,
                                   friendlyName: certificate.friendlyName
                                 })}
@@ -841,7 +841,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                 I={ProjectPermissionCertificateActions.Delete}
                                 a={subject(ProjectPermissionSub.Certificates, {
                                   commonName: certificate.commonName,
-                                  altNames: certificate.altNames,
+                                  altNames: certificate.altNames?.split(",").map((s) => s.trim()),
                                   serialNumber: certificate.serialNumber,
                                   friendlyName: certificate.friendlyName
                                 })}
@@ -871,7 +871,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                             I={ProjectPermissionCertificateActions.Delete}
                             a={subject(ProjectPermissionSub.Certificates, {
                               commonName: certificate.commonName,
-                              altNames: certificate.altNames,
+                              altNames: certificate.altNames?.split(",").map((s) => s.trim()),
                               serialNumber: certificate.serialNumber,
                               friendlyName: certificate.friendlyName
                             })}
