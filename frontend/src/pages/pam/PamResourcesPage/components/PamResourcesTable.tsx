@@ -1,13 +1,6 @@
 import { useMemo, useState } from "react";
 import { faCircleXmark } from "@fortawesome/free-regular-svg-icons";
-import {
-  faArrowDown,
-  faArrowUp,
-  faFilter,
-  faMagnifyingGlass,
-  faPlus,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
+import { faFilter, faMagnifyingGlass, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
@@ -23,14 +16,7 @@ import {
   IconButton,
   Input,
   Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tooltip,
-  Tr
+  Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -44,7 +30,6 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PAM_RESOURCE_TYPE_MAP,
   PamResourceOrderBy,
@@ -58,7 +43,7 @@ import {
 
 import { PamAddResourceModal } from "./PamAddResourceModal";
 import { PamDeleteResourceModal } from "./PamDeleteResourceModal";
-import { PamResourceRow } from "./PamResourceRow";
+import { PamResourceCard } from "./PamResourceCard";
 import { PamUpdateResourceModal } from "./PamUpdateResourceModal";
 
 const ResourceTypeOptionLabel = ({ label, image }: { label: string; image?: string }) => (
@@ -100,12 +85,9 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     setPerPage,
     offset,
     orderDirection,
-    toggleOrderDirection,
-    orderBy,
-    setOrderDirection,
-    setOrderBy
+    orderBy
   } = usePagination<PamResourceOrderBy>(PamResourceOrderBy.Name, {
-    initPerPage: getUserTablePreference("pamResourcesTable", PreferenceKey.PerPage, 20),
+    initPerPage: getUserTablePreference("pamResourcesTable", PreferenceKey.PerPage, 9),
     initSearch
   });
 
@@ -137,22 +119,6 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     offset,
     setPage
   });
-
-  const handleSort = (column: PamResourceOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
-      return;
-    }
-
-    setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
-  };
-
-  const getClassName = (col: PamResourceOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
-
-  const getColSortIcon = (col: PamResourceOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
   const isTableFiltered = Boolean(
     appliedResourceTypes.length || appliedMetadataEntries.some((e) => e.key.trim())
@@ -330,40 +296,25 @@ export const PamResourcesTable = ({ projectId }: Props) => {
           )}
         </OrgPermissionCan>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th>
-                <div className="flex items-center">
-                  Resource
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(PamResourceOrderBy.Name)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(PamResourceOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(PamResourceOrderBy.Name)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isLoading && <TableSkeleton columns={2} innerKey="pam-resources" />}
-            {!isLoading &&
-              resources.map((resource) => (
-                <PamResourceRow
-                  key={resource.id}
-                  resource={resource}
-                  onUpdate={(e) => handlePopUpOpen("updateResource", e)}
-                  onDelete={(e) => handlePopUpOpen("deleteResource", e)}
-                  search={search.trim().toLowerCase()}
-                />
-              ))}
-          </TBody>
-        </Table>
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {isLoading &&
+          Array.from({ length: 9 }).map((_, i) => (
+            <div
+              // eslint-disable-next-line react/no-array-index-key
+              key={`skeleton-${i}`}
+              className="h-[88px] animate-pulse rounded-sm border border-mineshaft-600 bg-mineshaft-800"
+            />
+          ))}
+        {!isLoading &&
+          resources.map((resource) => (
+            <PamResourceCard
+              key={resource.id}
+              resource={resource}
+              onUpdate={(e) => handlePopUpOpen("updateResource", e)}
+              onDelete={(e) => handlePopUpOpen("deleteResource", e)}
+              search={search.trim().toLowerCase()}
+            />
+          ))}
         {Boolean(totalCount) && !isLoading && (
           <Pagination
             count={totalCount}
@@ -371,15 +322,18 @@ export const PamResourcesTable = ({ projectId }: Props) => {
             perPage={perPage}
             onChangePage={(newPage) => setPage(newPage)}
             onChangePerPage={handlePerPageChange}
+            perPageList={[9, 18, 48, 99]}
+            className="col-span-full justify-start! border-transparent bg-transparent pl-2"
           />
         )}
         {!isLoading && isContentEmpty && (
           <EmptyState
             title={isSearchEmpty ? "No resources match search" : "No resources"}
             icon={isSearchEmpty ? faSearch : faCircleXmark}
+            className="col-span-full rounded border border-mineshaft-500"
           />
         )}
-      </TableContainer>
+      </div>
       <PamDeleteResourceModal
         isOpen={popUp.deleteResource.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteResource", isOpen)}
