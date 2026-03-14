@@ -75,21 +75,11 @@ export const PamResourcesTable = ({ projectId }: Props) => {
   const [pendingMetadataEntries, setPendingMetadataEntries] = useState<MetadataFilterEntry[]>([]);
   const [appliedMetadataEntries, setAppliedMetadataEntries] = useState<MetadataFilterEntry[]>([]);
 
-  const {
-    search,
-    debouncedSearch,
-    setSearch,
-    setPage,
-    page,
-    perPage,
-    setPerPage,
-    offset,
-    orderDirection,
-    orderBy
-  } = usePagination<PamResourceOrderBy>(PamResourceOrderBy.Name, {
-    initPerPage: getUserTablePreference("pamResourcesTable", PreferenceKey.PerPage, 9),
-    initSearch
-  });
+  const { search, debouncedSearch, setSearch, setPage, page, perPage, setPerPage, offset } =
+    usePagination(PamResourceOrderBy.Name, {
+      initPerPage: getUserTablePreference("pamResourcesTable", PreferenceKey.PerPage, 9),
+      initSearch
+    });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -101,8 +91,6 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     offset,
     limit: perPage,
     search: debouncedSearch,
-    orderBy,
-    orderDirection,
     filterResourceTypes: appliedResourceTypes.length ? appliedResourceTypes.join(",") : undefined,
     metadataFilter: appliedMetadataEntries.filter((e) => e.key.trim()).length
       ? appliedMetadataEntries
