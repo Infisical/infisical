@@ -6,6 +6,7 @@ import { TAwsParameterStoreSync } from "./aws-parameter-store-sync";
 import { TAwsSecretsManagerSync } from "./aws-secrets-manager-sync";
 import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
 import { TAzureDevOpsSync } from "./azure-devops-sync";
+import { TAzureEntraIdScimSync } from "./azure-entra-id-scim-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TBitbucketSync } from "./bitbucket-sync";
 import { TCamundaSync } from "./camunda-sync";
@@ -41,6 +42,9 @@ export type TSecretSyncOption = {
   name: string;
   destination: SecretSync;
   canImportSecrets: boolean;
+  supportsKeySchema?: boolean;
+  supportsDisableSecretDeletion?: boolean;
+  canRemoveSecretsOnDeletion?: boolean;
   enterprise?: boolean;
 };
 
@@ -79,7 +83,8 @@ export type TSecretSync =
   | TLaravelForgeSync
   | TChefSync
   | TOctopusDeploySync
-  | TCircleCISync;
+  | TCircleCISync
+  | TAzureEntraIdScimSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

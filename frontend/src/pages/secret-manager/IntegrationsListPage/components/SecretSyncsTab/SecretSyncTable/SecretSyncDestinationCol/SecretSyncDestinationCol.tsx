@@ -5,6 +5,7 @@ import { AwsParameterStoreSyncDestinationCol } from "./AwsParameterStoreSyncDest
 import { AwsSecretsManagerSyncDestinationCol } from "./AwsSecretsManagerSyncDestinationCol";
 import { AzureAppConfigurationDestinationSyncCol } from "./AzureAppConfigurationDestinationSyncCol";
 import { AzureDevOpsSyncDestinationCol } from "./AzureDevOpsSyncDestinationCol";
+import { AzureEntraIdScimSyncDestinationCol } from "./AzureEntraIdScimSyncDestinationCol";
 import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncCol";
 import { BitbucketSyncDestinationCol } from "./BitbucketSyncDestinationCol";
 import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
@@ -112,6 +113,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <OctopusDeploySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.CircleCI:
       return <CircleCISyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.AzureEntraIdScim:
+      return <AzureEntraIdScimSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

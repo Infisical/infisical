@@ -71,6 +71,12 @@ import {
   TValidateAzureDnsConnectionCredentialsSchema
 } from "./azure-dns/azure-dns-connection-types";
 import {
+  TAzureEntraIdConnection,
+  TAzureEntraIdConnectionConfig,
+  TAzureEntraIdConnectionInput,
+  TValidateAzureEntraIdConnectionCredentialsSchema
+} from "./azure-entra-id/azure-entra-id-connection-types";
+import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
@@ -352,6 +358,7 @@ export type TAppConnection = { id: string } & (
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
+  | TAzureEntraIdConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -410,6 +417,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
+  | TAzureEntraIdConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -485,7 +493,8 @@ export type TAppConnectionConfig =
   | TDbtConnectionConfig
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
-  | TCircleCIConnectionConfig;
+  | TCircleCIConnectionConfig
+  | TAzureEntraIdConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -538,7 +547,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDbtConnectionCredentialsSchema
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
-  | TValidateCircleCIConnectionCredentialsSchema;
+  | TValidateCircleCIConnectionCredentialsSchema
+  | TValidateAzureEntraIdConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

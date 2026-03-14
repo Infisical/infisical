@@ -67,6 +67,7 @@ export const WindmillSyncListItemSchema = z
     name: z.literal("Windmill"),
     connection: z.literal(AppConnection.Windmill),
     destination: z.literal(SecretSync.Windmill),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Windmill] }));

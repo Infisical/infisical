@@ -7,15 +7,17 @@ import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { TSecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
+
+import { AzureEntraIdScimSyncSourceSection } from "./AzureEntraIdScimSyncSourceSection";
 
 type Props = {
   secretSync: TSecretSync;
   onEditSource: VoidFunction;
 };
 
-export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => {
+const DefaultSecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => {
   const { folder, environment } = secretSync;
 
   const permissionSubject = getSecretSyncPermissionSubject(secretSync);
@@ -60,4 +62,15 @@ export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => 
       </div>
     </div>
   );
+};
+
+export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => {
+  switch (secretSync.destination) {
+    case SecretSync.AzureEntraIdScim:
+      return (
+        <AzureEntraIdScimSyncSourceSection secretSync={secretSync} onEditSource={onEditSource} />
+      );
+    default:
+      return <DefaultSecretSyncSourceSection secretSync={secretSync} onEditSource={onEditSource} />;
+  }
 };

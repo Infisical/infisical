@@ -133,6 +133,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.CircleCI]: {
     name: "CircleCI",
     image: "CircleCI.png"
+  },
+  [SecretSync.AzureEntraIdScim]: {
+    name: "Azure Entra ID SCIM",
+    image: "Microsoft Azure.png"
   }
 };
 
@@ -171,7 +175,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.LaravelForge]: AppConnection.LaravelForge,
   [SecretSync.Chef]: AppConnection.Chef,
   [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
-  [SecretSync.CircleCI]: AppConnection.CircleCI
+  [SecretSync.CircleCI]: AppConnection.CircleCI,
+  [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

@@ -8,6 +8,7 @@ import { TAzureAppConfigurationConnection } from "./azure-app-configuration-conn
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureDNSConnection } from "./azure-dns-connection";
+import { TAzureEntraIdConnection } from "./azure-entra-id-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
@@ -60,6 +61,7 @@ export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-dns-connection";
+export * from "./azure-entra-id-connection";
 export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
@@ -154,7 +156,8 @@ export type TAppConnection =
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
-  | TCircleCIConnection;
+  | TCircleCIConnection
+  | TAzureEntraIdConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

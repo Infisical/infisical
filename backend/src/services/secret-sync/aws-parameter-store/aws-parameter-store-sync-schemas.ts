@@ -135,6 +135,7 @@ export const AwsParameterStoreSyncListItemSchema = z
     name: z.literal("AWS Parameter Store"),
     connection: z.literal(AppConnection.AWS),
     destination: z.literal(SecretSync.AWSParameterStore),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSParameterStore] }));
