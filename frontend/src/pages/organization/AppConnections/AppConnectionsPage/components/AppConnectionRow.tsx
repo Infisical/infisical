@@ -283,15 +283,13 @@ export const AppConnectionRow = ({
                       >
                         {(isAllowed: boolean) => (
                           <>
-                            {isAutoRotationEnabled && (
-                              <DropdownMenuItem
-                                isDisabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faRotate} />}
-                                onClick={() => onRotateCredentials(appConnection)}
-                              >
-                                Rotate Credentials
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              icon={<FontAwesomeIcon icon={faRotate} />}
+                              onClick={() => onRotateCredentials(appConnection)}
+                            >
+                              Rotate Credentials
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               isDisabled={!isAllowed}
                               icon={

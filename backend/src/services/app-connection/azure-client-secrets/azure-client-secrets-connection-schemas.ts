@@ -176,8 +176,7 @@ export const SanitizedAzureClientSecretsConnectionSchema = z.discriminatedUnion(
     method: z.literal(AzureClientSecretsConnectionMethod.ClientSecret),
     credentials: AzureClientSecretsConnectionClientSecretOutputCredentialsSchema.pick({
       clientId: true,
-      tenantId: true,
-      clientSecretKeyId: true
+      tenantId: true
     })
   }).describe(
     JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureClientSecrets]} (Client Secret)` })

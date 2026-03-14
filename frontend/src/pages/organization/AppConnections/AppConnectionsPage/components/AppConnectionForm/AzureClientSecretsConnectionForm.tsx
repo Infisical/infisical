@@ -130,10 +130,6 @@ const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partia
           credentials: {
             clientId: credentials.clientId,
             tenantId: credentials.tenantId,
-            clientSecretKeyId:
-              "clientSecretKeyId" in credentials
-                ? (credentials.clientSecretKeyId as string | undefined)
-                : undefined,
             clientSecret: ""
           }
         };
