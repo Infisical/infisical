@@ -60,20 +60,17 @@ export const handleRedisSession = async (
   const redisClient = new Redis({
     host: "localhost",
     port: relayPort,
-    connectTimeout: 30_000,
     maxRetriesPerRequest: 0,
     reconnectOnError: () => false,
     retryStrategy: () => null
   });
 
-  // Wait for connection to be ready
-  const connectionReady = new Promise<void>((resolve, reject) => {
-    redisClient.once("ready", resolve);
-    redisClient.once("error", reject);
-  });
-
   try {
-    await connectionReady;
+    await new Promise<void>((resolve, reject) => {
+      redisClient.once("ready", resolve);
+      redisClient.once("error", reject);
+      redisClient.once("close", () => reject(new Error("Redis connection closed before ready")));
+    });
   } catch (err) {
     try {
       redisClient.disconnect();
