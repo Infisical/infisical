@@ -1,0 +1,147 @@
+---
+title: "PKCS#11 Module"
+sidebarTitle: "PKCS#11 Module"
+description: "Install and configure the Infisical PKCS#11 module for use with standard signing tools."
+---
+
+The Infisical PKCS#11 module implements the PKCS#11 v2.40 standard, allowing tools like `jarsigner`, `openssl`, `cosign`, `osslsigncode`, `apksigner`, and `gpg` to use Infisical signers without code changes. Private keys never leave the server.
+
+## Installation
+
+Download the pre-built binary for your platform from the [releases page](https://github.com/Infisical/infisical-pkcs-11/releases):
+
+| Platform | File |
+|----------|------|
+| Linux x86_64 | `libinfisical-pkcs11.so` |
+| Linux ARM64 | `libinfisical-pkcs11.so` |
+| macOS x86_64 | `libinfisical-pkcs11.dylib` |
+| macOS ARM64 | `libinfisical-pkcs11.dylib` |
+| Windows x86_64 | `libinfisical-pkcs11.dll` |
+
+Place the binary in a known location, for example `/usr/local/lib/`:
+
+```bash
+# Linux
+sudo cp libinfisical-pkcs11.so /usr/local/lib/
+sudo chmod 755 /usr/local/lib/libinfisical-pkcs11.so
+
+# macOS
+sudo cp libinfisical-pkcs11.dylib /usr/local/lib/
+sudo chmod 755 /usr/local/lib/libinfisical-pkcs11.dylib
+```
+
+### Building from Source
+
+If you prefer to build from source, you need Go 1.24+ and a C compiler:
+
+```bash
+git clone https://github.com/Infisical/infisical-pkcs-11.git
+cd infisical-pkcs-11
+make build
+```
+
+The output binary will be in the current directory.
+
+## Configuration
+
+Create a JSON configuration file at `/etc/infisical/pkcs11.conf` (or any path you prefer):
+
+```json
+{
+  "server_url": "https://app.infisical.com",
+  "project_id": "<your-project-id>",
+  "log_level": "info"
+}
+```
+
+Then set the authentication credentials via environment variables:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<your-machine-identity-client-id>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<your-machine-identity-client-secret>"
+```
+
+<Note>
+  Credentials can also be placed in the config file under `auth.client_id` and `auth.client_secret`, but we recommend using environment variables to prevent secrets from being committed to version control or exposed in file system backups.
+</Note>
+
+If using a non-default config path, set:
+
+```bash
+export INFISICAL_PKCS11_CONFIG=/path/to/your/pkcs11.conf
+```
+
+### Configuration Reference
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `server_url` | Yes | None | Infisical server URL |
+| `project_id` | Yes | None | Project ID containing the signers |
+| `auth.method` | No | `universal-auth` | Authentication method |
+| `auth.client_id` | No | None | Machine identity client ID (prefer env var) |
+| `auth.client_secret` | No | None | Machine identity client secret (prefer env var) |
+| `tls.ca_cert_path` | No | None | Custom CA cert for self-hosted instances |
+| `tls.skip_verify` | No | `false` | Skip TLS verification (development only) |
+| `cache.token_ttl_seconds` | No | `300` | Auth token cache duration |
+| `cache.cert_ttl_seconds` | No | `3600` | Certificate data cache duration |
+| `cache.signer_ttl_seconds` | No | `300` | Signer list cache duration |
+| `log_level` | No | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
+| `log_file` | No | stderr | Path to log file |
+
+### Environment Variable Reference
+
+| Variable | Description |
+|----------|-------------|
+| `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` | Machine identity client ID |
+| `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` | Machine identity client secret |
+| `INFISICAL_PKCS11_SERVER_URL` | Override `server_url` from config |
+| `INFISICAL_PKCS11_CONFIG` | Path to config file (default: `/etc/infisical/pkcs11.conf`) |
+
+<Note>
+  Environment variables always take precedence over values in the configuration file.
+</Note>
+
+## Verifying the Module
+
+Use `pkcs11-tool` (from OpenSC) to verify the module is working:
+
+```bash
+# List available slots (one per signer)
+pkcs11-tool --module /usr/local/lib/libinfisical-pkcs11.so --list-slots
+```
+
+The output lists one slot per signer in your project:
+
+```
+Available slots:
+Slot 0 (0x0): release-signer
+  token label        : release-signer
+  token manufacturer : Infisical
+  ...
+```
+
+To list the objects (private key, certificate, public key) in a slot:
+
+```bash
+pkcs11-tool --module /usr/local/lib/libinfisical-pkcs11.so --slot 0 --list-objects
+```
+
+## Troubleshooting
+
+For any issue, start by enabling debug logging in your config file to get detailed output:
+
+```json
+{
+  "log_level": "debug",
+  "log_file": "/tmp/infisical-pkcs11.log"
+}
+```
+
+<AccordionGroup>
+  <Accordion title="No slots visible or authentication errors">
+    Verify that your credentials and `project_id` are correct, and that the machine identity has been added to the project with the appropriate permissions.
+  </Accordion>
+  <Accordion title="CKR_GENERAL_ERROR when signing">
+    This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in the Infisical UI under **Code Signing > Approvals > Grants**.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,124 @@
+---
+title: "Sign Android APKs with apksigner"
+sidebarTitle: "apksigner"
+description: "Use the Infisical PKCS#11 module to sign Android APK and AAB files with apksigner."
+---
+
+In the following steps, we explore how to sign Android APK and Android App Bundle (AAB) files using `apksigner` with the Infisical PKCS#11 module. Since `apksigner` is a Java-based tool, it uses the same SunPKCS11 provider approach as jarsigner.
+
+## Prerequisites
+
+- An Infisical project with a [signer](/documentation/platform/pki/code-signing/signers) configured
+- An active [signing grant](/documentation/platform/pki/code-signing/approvals) for the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- The Infisical PKCS#11 module [installed and configured](/documentation/platform/pki/code-signing/pkcs11-module)
+- Android SDK Build Tools 30.0.0 or later (includes `apksigner`)
+
+## Step 1: Create the SunPKCS11 Provider Configuration
+
+Create a configuration file for Java's SunPKCS11 provider. Save it as `infisical-pkcs11.cfg`:
+
+```
+name = Infisical
+library = /usr/local/lib/libinfisical-pkcs11.so
+```
+
+<Note>
+  On macOS, use `.dylib`. On Windows, use `.dll`. If you have multiple signers and need a specific one, add `slot = 0` (replace with the correct slot index).
+</Note>
+
+## Step 2: Sign an APK
+
+Use `apksigner` with the PKCS#11 provider:
+
+```bash
+apksigner sign \
+  --ks NONE \
+  --ks-type PKCS11 \
+  --provider-class sun.security.pkcs11.SunPKCS11 \
+  --provider-arg infisical-pkcs11.cfg \
+  --ks-key-alias "release-signer" \
+  --out app-release-signed.apk \
+  app-release-unsigned.apk
+```
+
+<Note>
+  - `--ks NONE`: Required when using PKCS#11 (no file-based keystore).
+  - `--ks-type PKCS11`: Tells apksigner to use the PKCS#11 provider.
+  - `--ks-key-alias`: The signer name (token label in PKCS#11).
+  - `--out`: Writes the signed APK to a new file. Without this flag, `apksigner` modifies the APK **in place**.
+</Note>
+
+When prompted for a keystore password, press Enter (the module authenticates using the credentials from your environment variables or config file).
+
+### Signing an Android App Bundle (AAB)
+
+For AAB files, use `jarsigner` instead of `apksigner` since AAB signing follows the JAR signing format:
+
+```bash
+jarsigner \
+  -keystore NONE \
+  -storetype PKCS11 \
+  -addprovider SunPKCS11 \
+  -providerArg infisical-pkcs11.cfg \
+  -sigalg SHA256withRSA \
+  app-release.aab \
+  "release-signer"
+```
+
+## Step 3: Verify the Signature
+
+Verify the signed APK. If you signed in place (without `--out`), verify the same file. If you used `--out`, verify the output file:
+
+```bash
+apksigner verify --verbose app-release-signed.apk
+```
+
+The output confirms the APK signature is valid:
+
+```
+Verifies
+Verified using v1 scheme (JAR signing): true
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+```
+
+## CI/CD Integration
+
+Example for a Gradle-based Android project in CI:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_CLIENT_SECRET}"
+export INFISICAL_PKCS11_CONFIG="/path/to/pkcs11.conf"
+
+# Build unsigned APK
+./gradlew assembleRelease
+
+# Sign with Infisical
+apksigner sign \
+  --ks NONE \
+  --ks-type PKCS11 \
+  --provider-class sun.security.pkcs11.SunPKCS11 \
+  --provider-arg infisical-pkcs11.cfg \
+  --ks-key-alias "release-signer" \
+  --ks-pass pass:"" \
+  --out app-release-signed.apk \
+  app/build/outputs/apk/release/app-release-unsigned.apk
+
+# Verify
+apksigner verify --verbose app-release-signed.apk
+```
+
+## Troubleshooting
+
+For any issue, enable debug logging in your config file (`"log_level": "debug"`, `"log_file": "/tmp/infisical-pkcs11.log"`) to get detailed output.
+
+<AccordionGroup>
+  <Accordion title="Failed to load signer or key alias not found">
+    Ensure the `--provider-class` is `sun.security.pkcs11.SunPKCS11`, the `--provider-arg` points to a valid config file, and the `--ks-key-alias` matches your signer name exactly.
+  </Accordion>
+  <Accordion title="APK signature scheme v2/v3 not applied">
+    Use `apksigner` (not `jarsigner`) for APK signing. Only `apksigner` applies v2/v3 APK signature schemes.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,119 @@
+---
+title: "Sign JARs with jarsigner"
+sidebarTitle: "jarsigner"
+description: "Use the Infisical PKCS#11 module to sign Java artifacts with jarsigner."
+---
+
+In the following steps, we explore how to sign Java JAR files using `jarsigner` with the Infisical PKCS#11 module. The module implements the PKCS#11 v2.40 standard, allowing standard signing tools to use Infisical signers without code changes. Private keys never leave the server.
+
+## Prerequisites
+
+- An Infisical project with a [signer](/documentation/platform/pki/code-signing/signers) configured
+- An active [signing grant](/documentation/platform/pki/code-signing/approvals) for the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- The Infisical PKCS#11 module [installed and configured](/documentation/platform/pki/code-signing/pkcs11-module)
+- Java JDK 9 or later (for the `-addprovider` flag)
+
+## Step 1: Create the SunPKCS11 Provider Configuration
+
+Create a configuration file for Java's SunPKCS11 provider. Save it as `infisical-pkcs11.cfg`:
+
+```
+name = Infisical
+library = /usr/local/lib/libinfisical-pkcs11.so
+```
+
+<Note>
+  On macOS, use the `.dylib` extension. On Windows, use `.dll`.
+</Note>
+
+If you have multiple signers and want to target a specific one, add the `slot` parameter:
+
+```
+name = Infisical
+library = /usr/local/lib/libinfisical-pkcs11.so
+slot = 0
+```
+
+## Step 2: Sign a JAR
+
+Use `jarsigner` with the PKCS#11 provider to sign your JAR file:
+
+```bash
+jarsigner \
+  -keystore NONE \
+  -storetype PKCS11 \
+  -addprovider SunPKCS11 \
+  -providerArg infisical-pkcs11.cfg \
+  -sigalg SHA256withRSA \
+  myapp.jar \
+  "release-signer"
+```
+
+<Note>
+  - `-keystore NONE`: Required when using PKCS#11 (no file-based keystore).
+  - `-storetype PKCS11`: Tells jarsigner to use the PKCS#11 provider.
+  - `-sigalg`: Must match the signer's key type. Use `SHA256withRSA` for RSA keys or `SHA256withECDSA` for EC keys.
+  - The last argument (`release-signer`) is the **signer name** (the token label in PKCS#11).
+</Note>
+
+When prompted for a keystore password, you can either press Enter (the module authenticates automatically using the credentials from your environment variables or config file) or provide the PIN in the format `clientId:clientSecret`.
+
+### Verify the Signature
+
+After signing, verify the JAR signature:
+
+```bash
+jarsigner -verify -verbose myapp.jar
+```
+
+The output indicates the JAR is signed and verified:
+
+```
+jar verified.
+```
+
+## CI/CD Integration
+
+For automated signing in CI/CD pipelines, use environment variables for credentials and suppress the password prompt:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_CLIENT_SECRET}"
+export INFISICAL_PKCS11_CONFIG="/path/to/pkcs11.conf"
+
+jarsigner \
+  -keystore NONE \
+  -storetype PKCS11 \
+  -addprovider SunPKCS11 \
+  -providerArg infisical-pkcs11.cfg \
+  -sigalg SHA256withRSA \
+  -storepass "" \
+  myapp.jar \
+  "release-signer"
+```
+
+<Note>
+  - Use `-storepass ""` to avoid the interactive password prompt in non-interactive environments.
+  - Ensure your machine identity has an active signing grant before the build starts. You can automate grant requests via the Infisical API.
+</Note>
+
+## Troubleshooting
+
+For any issue, start by enabling debug logging in your config file to get detailed output:
+
+```json
+{
+  "log_level": "debug",
+  "log_file": "/tmp/infisical-pkcs11.log"
+}
+```
+
+<AccordionGroup>
+  <Accordion title="CKR_GENERAL_ERROR when signing">
+    This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in the Infisical UI under **Code Signing > Approvals > Grants**.
+  </Accordion>
+  <Accordion title="No slots visible or authentication errors">
+    Verify that your credentials and `project_id` are correct, and that the machine identity has been added to the project with the appropriate permissions.
+  </Accordion>
+</AccordionGroup>
