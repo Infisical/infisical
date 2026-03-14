@@ -260,7 +260,8 @@ describe("CertificateProfileService", () => {
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
-      projectDAL: mockProjectDAL
+      projectDAL: mockProjectDAL,
+      resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) }
     });
   });
 

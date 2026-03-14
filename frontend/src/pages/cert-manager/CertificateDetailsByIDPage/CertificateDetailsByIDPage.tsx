@@ -6,7 +6,12 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
-import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
+import {
+  AccessRestrictedBanner,
+  DeleteActionModal,
+  EmptyState,
+  PageHeader
+} from "@app/components/v2";
 import {
   Button,
   UnstableDropdownMenu,
@@ -186,14 +191,15 @@ const Page = () => {
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-      {certificate && (
+      {certificate ? (
         <ProjectPermissionCan
           I={ProjectPermissionCertificateActions.Read}
           a={subject(ProjectPermissionSub.Certificates, {
             commonName: certificate.commonName,
             altNames: certificate.altNames,
             serialNumber: certificate.serialNumber,
-            friendlyName: certificate.friendlyName
+            friendlyName: certificate.friendlyName,
+            metadata: certificate.metadata
           })}
         >
           {(isAllowed) =>
@@ -230,7 +236,8 @@ const Page = () => {
                           commonName: certificate.commonName,
                           altNames: certificate.altNames,
                           serialNumber: certificate.serialNumber,
-                          friendlyName: certificate.friendlyName
+                          friendlyName: certificate.friendlyName,
+                          metadata: certificate.metadata
                         })}
                       >
                         {(canRead) => (
@@ -261,7 +268,8 @@ const Page = () => {
                               commonName: certificate.commonName,
                               altNames: certificate.altNames,
                               serialNumber: certificate.serialNumber,
-                              friendlyName: certificate.friendlyName
+                              friendlyName: certificate.friendlyName,
+                              metadata: certificate.metadata
                             })}
                           >
                             {(canEdit) => (
@@ -313,7 +321,8 @@ const Page = () => {
                               commonName: certificate.commonName,
                               altNames: certificate.altNames,
                               serialNumber: certificate.serialNumber,
-                              friendlyName: certificate.friendlyName
+                              friendlyName: certificate.friendlyName,
+                              metadata: certificate.metadata
                             })}
                           >
                             {(canEdit) => (
@@ -338,7 +347,8 @@ const Page = () => {
                               commonName: certificate.commonName,
                               altNames: certificate.altNames,
                               serialNumber: certificate.serialNumber,
-                              friendlyName: certificate.friendlyName
+                              friendlyName: certificate.friendlyName,
+                              metadata: certificate.metadata
                             })}
                           >
                             {(canEdit) => (
@@ -389,7 +399,8 @@ const Page = () => {
                               commonName: certificate.commonName,
                               altNames: certificate.altNames,
                               serialNumber: certificate.serialNumber,
-                              friendlyName: certificate.friendlyName
+                              friendlyName: certificate.friendlyName,
+                              metadata: certificate.metadata
                             })}
                           >
                             {(canRevoke) => (
@@ -413,7 +424,8 @@ const Page = () => {
                           commonName: certificate.commonName,
                           altNames: certificate.altNames,
                           serialNumber: certificate.serialNumber,
-                          friendlyName: certificate.friendlyName
+                          friendlyName: certificate.friendlyName,
+                          metadata: certificate.metadata
                         })}
                       >
                         {(canDelete) => (
@@ -444,6 +456,8 @@ const Page = () => {
             )
           }
         </ProjectPermissionCan>
+      ) : (
+        <EmptyState title="Error: Unable to find the certificate." className="py-12" />
       )}
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateExportModal

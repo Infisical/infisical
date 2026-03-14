@@ -121,7 +121,8 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
                 commonName: certificate.commonName,
                 altNames: certificate.altNames,
                 serialNumber: certificate.serialNumber,
-                friendlyName: certificate.friendlyName
+                friendlyName: certificate.friendlyName,
+                metadata: certificate.metadata
               })}
             >
               {(isAllowed) => (
