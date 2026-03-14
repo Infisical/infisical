@@ -127,12 +127,16 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: certWithDetails.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certWithDetails.commonName,
-        altNames: certWithDetails.altNames ?? undefined,
-        serialNumber: certWithDetails.serialNumber
+        altNames: certWithDetails.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certWithDetails.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -201,9 +205,6 @@ export const certificateServiceFactory = ({
       }
     }
 
-    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
-    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
-
     return {
       cert: {
         ...cert,
@@ -239,12 +240,16 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -277,12 +282,16 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Delete,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -341,14 +350,18 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Delete,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
-        status: cert.status
+        status: cert.status,
+        metadata: certMetadata
       })
     );
 
@@ -430,12 +443,16 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -739,24 +756,29 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
-        status: cert.status
+        status: cert.status,
+        metadata: certMetadata
       })
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
-        status: cert.status
+        status: cert.status,
+        metadata: certMetadata
       })
     );
 
@@ -867,14 +889,18 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
-        status: cert.status
+        status: cert.status,
+        metadata: certMetadata
       })
     );
 
