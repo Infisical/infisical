@@ -390,7 +390,7 @@ const OverviewPageContent = () => {
 
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
-    []
+    userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
   useEffect(() => {
