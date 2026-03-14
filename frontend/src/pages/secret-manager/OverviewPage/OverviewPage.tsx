@@ -2996,27 +2996,6 @@ const OverviewPageContent = () => {
                                 0
                               )}
                             />
-                            {visibleEnvs.length > 1 && (
-                              <UnstableTableRow className="hover:bg-container">
-                                <UnstableTableCell className="sticky left-0 z-10 bg-container" />
-                                <UnstableTableCell className="sticky left-10 z-10 border-r bg-container" />
-                                {visibleEnvs?.map(({ slug }) => (
-                                  <UnstableTableCell
-                                    className="border-r last:border-r-0"
-                                    key={`explore-${slug}`}
-                                  >
-                                    <Button
-                                      onClick={() => handleExploreEnvClick(slug)}
-                                      isFullWidth
-                                      variant="project"
-                                      size="xs"
-                                    >
-                                      Explore <LogInIcon />
-                                    </Button>
-                                  </UnstableTableCell>
-                                ))}
-                              </UnstableTableRow>
-                            )}
                           </>
                         )}
                       </UnstableTableBody>
