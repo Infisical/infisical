@@ -15,7 +15,10 @@ import {
   CommandSeparator,
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import {
@@ -32,9 +35,10 @@ import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/comp
 type Props = {
   selectedEnvs: ProjectEnv[];
   setSelectedEnvs: (value: SetStateAction<ProjectEnv[]>) => void;
+  isDisabled?: boolean;
 };
 
-export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
+export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
 
@@ -105,17 +109,23 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
         text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
       />
       <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={isOpen}
-            className="w-[180px] justify-between"
-          >
-            <span className="truncate">{label}</span>
-            <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
+        <Tooltip open={isDisabled ? undefined : false}>
+          <TooltipTrigger>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={isOpen}
+                disabled={isDisabled}
+                className="w-[180px] justify-between"
+              >
+                <span className="truncate">{label}</span>
+                <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Save or discard pending changes to switch environments</TooltipContent>
+        </Tooltip>
         <PopoverContent align="start" className="w-[180px] p-0">
           <Command>
             <CommandInput

@@ -18,24 +18,18 @@ export const DiffContainer = ({
   className,
   isSingleLine = false
 }: DiffContainerProps) => {
-  const getBackgroundColor = () => {
-    if (!variant) return undefined;
-    return variant === "removed" ? "#120808" : "#081208";
-  };
-
-  const backgroundColor = getBackgroundColor();
-
   if (isSingleLine) {
     return (
       <div
         className={twMerge(
-          "relative rounded-lg border border-mineshaft-600 p-2",
-          !variant && "bg-bunker-800",
+          "relative thin-scrollbar overflow-x-auto rounded-md border border-border p-2",
+          "bg-bunker-800/60",
+          variant && variant === "added" && "border-success/45",
+          variant && variant === "removed" && "border-danger/45",
           className
         )}
-        style={backgroundColor ? { backgroundColor } : undefined}
       >
-        {children}
+        <div className="w-max min-w-full">{children}</div>
       </div>
     );
   }
@@ -44,11 +38,12 @@ export const DiffContainer = ({
     <div
       ref={containerRef}
       className={twMerge(
-        "relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2",
-        !variant && "bg-bunker-800",
+        "relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-md border border-border p-2",
+        "bg-bunker-800/60",
+        variant && variant === "added" && "border-success/45",
+        variant && variant === "removed" && "border-danger/45",
         className
       )}
-      style={backgroundColor ? { backgroundColor } : undefined}
     >
       <div className="w-max min-w-full">{children}</div>
     </div>
