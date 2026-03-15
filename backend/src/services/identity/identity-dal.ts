@@ -21,7 +21,8 @@ export const identityDALFactory = (db: TDbClient) => {
       [IdentityAuthMethod.OCI_AUTH]: TableName.IdentityOciAuth,
       [IdentityAuthMethod.OIDC_AUTH]: TableName.IdentityOidcAuth,
       [IdentityAuthMethod.JWT_AUTH]: TableName.IdentityJwtAuth,
-      [IdentityAuthMethod.LDAP_AUTH]: TableName.IdentityLdapAuth
+      [IdentityAuthMethod.LDAP_AUTH]: TableName.IdentityLdapAuth,
+      [IdentityAuthMethod.SPIFFE_AUTH]: TableName.IdentitySpiffeAuth
     } as const;
     const tableName = authMethodToTableName[authMethod];
     if (!tableName) return;

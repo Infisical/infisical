@@ -15,6 +15,14 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionSsoActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  BypassSsoEnforcement = "bypass-sso-enforcement"
+}
+
 export enum OrgPermissionSubOrgActions {
   Create = "create",
   Edit = "edit",
@@ -28,7 +36,8 @@ export enum OrgPermissionAppConnectionActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Connect = "connect"
+  Connect = "connect",
+  RotateCredentials = "rotate-credentials"
 }
 
 export enum OrgPermissionAuditLogsActions {
@@ -142,7 +151,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
-  | [OrgPermissionActions, OrgPermissionSubjects.Sso]
+  | [OrgPermissionSsoActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSync]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSyncManual]
@@ -216,7 +225,7 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Sso).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionSsoActions).describe("Describe what action an entity can take.")
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Scim).describe("The entity this permission pertains to."),
@@ -358,10 +367,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.IncidentAccount);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.Delete, OrgPermissionSubjects.Sso);
+  can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
@@ -423,6 +433,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionAppConnectionActions.Edit, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionAppConnectionActions.Delete, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.RotateCredentials, OrgPermissionSubjects.AppConnections);
 
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);

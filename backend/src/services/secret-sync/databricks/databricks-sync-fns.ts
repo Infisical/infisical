@@ -1,7 +1,7 @@
 import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { getDatabricksConnectionAccessToken } from "@app/services/app-connection/databricks";
+import { getDatabricksConnectionAccessToken } from "@app/services/app-connection/databricks/databricks-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {
   TDatabricksDeleteSecret,

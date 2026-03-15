@@ -85,12 +85,12 @@ export const UnixLinuxLocalAccountRotationParametersFields = () => {
         <Controller
           name="parameters.useSudo"
           control={control}
-          defaultValue={false}
+          defaultValue
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               isError={Boolean(error)}
               errorText={error?.message}
-              tooltipText="When enabled, uses 'sudo chpasswd' to change the password. When disabled, uses 'chpasswd' directly. Enable this if the SSH connection user requires sudo privileges to change passwords."
+              tooltipText="When enabled, uses 'sudo passwd' to change the password. When disabled, uses 'passwd' directly. Enable this if the SSH connection user requires sudo privileges to change other users' passwords. If sudo prompts for a password, the app connection password will be provided automatically."
               tooltipClassName="max-w-sm"
             >
               <Checkbox
