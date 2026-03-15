@@ -35,7 +35,8 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       orderBy = PamResourceOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       filterResourceTypes,
-      metadataFilter
+      metadataFilter,
+      userId
     }: {
       projectId: string;
       search?: string;
@@ -45,12 +46,22 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       orderDirection?: OrderByDirection;
       filterResourceTypes?: string[];
       metadataFilter?: Array<{ key: string; value?: string }>;
+      userId?: string;
     },
     tx?: Knex
   ) => {
     try {
       const dbInstance = tx || db.replicaNode();
       const query = dbInstance(TableName.PamResource).where(`${TableName.PamResource}.projectId`, projectId);
+
+      if (userId) {
+        void query.leftJoin(TableName.PamResourceFavorite, function joinFavorites() {
+          this.on(`${TableName.PamResourceFavorite}.pamResourceId`, `${TableName.PamResource}.id`).andOn(
+            `${TableName.PamResourceFavorite}.userId`,
+            db.raw("?", [userId])
+          );
+        });
+      }
 
       if (search) {
         // escape special characters (`%`, `_`) and the escape character itself (`\`)
@@ -78,8 +89,19 @@ export const pamResourceDALFactory = (db: TDbClient) => {
 
       void query.select(selectAllTableCols(TableName.PamResource));
 
+      if (userId) {
+        void query.select(
+          db.raw(
+            `CASE WHEN "${TableName.PamResourceFavorite}"."id" IS NOT NULL THEN true ELSE false END as "isFavorite"`
+          )
+        );
+      }
+
       const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
 
+      if (userId) {
+        void query.orderByRaw(`"isFavorite" DESC`);
+      }
       void query.orderByRaw(`${TableName.PamResource}.?? COLLATE "en-x-icu" ${direction}`, [orderBy]);
 
       if (typeof limit === "number") {

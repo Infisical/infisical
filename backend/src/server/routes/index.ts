@@ -94,6 +94,7 @@ import { pamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
+import { pamResourceFavoriteDALFactory } from "@app/ee/services/pam-resource/pam-resource-favorite-dal";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
@@ -2656,6 +2657,7 @@ export const registerRoutes = async (
 
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamResourceDAL = pamResourceDALFactory(db);
+  const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
@@ -2679,6 +2681,7 @@ export const registerRoutes = async (
 
   const pamResourceService = pamResourceServiceFactory({
     pamResourceDAL,
+    pamResourceFavoriteDAL,
     pamAccountDAL,
     permissionService,
     kmsService,

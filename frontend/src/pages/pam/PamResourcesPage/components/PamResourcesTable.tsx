@@ -36,6 +36,7 @@ import {
   PamResourceType,
   useListPamResources
 } from "@app/hooks/api/pam";
+import { useSetPamResourceFavorite } from "@app/hooks/api/pam/mutations";
 import {
   MetadataFilterEntry,
   MetadataFilterSection
@@ -85,6 +86,8 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     setPerPage(newPerPage);
     setUserTablePreference("pamResourcesTable", PreferenceKey.PerPage, newPerPage);
   };
+
+  const setFavorite = useSetPamResourceFavorite();
 
   const { data, isLoading } = useListPamResources({
     projectId,
@@ -300,6 +303,9 @@ export const PamResourcesTable = ({ projectId }: Props) => {
               resource={resource}
               onUpdate={(e) => handlePopUpOpen("updateResource", e)}
               onDelete={(e) => handlePopUpOpen("deleteResource", e)}
+              onToggleFavorite={(e) =>
+                setFavorite.mutate({ projectId, resourceId: e.id, isFavorite: !e.isFavorite })
+              }
               search={search.trim().toLowerCase()}
             />
           ))}
