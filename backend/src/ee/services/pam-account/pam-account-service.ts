@@ -1099,7 +1099,14 @@ export const pamAccountServiceFactory = ({
   const rotateAccount = async (account: TPamAccounts) => {
     let logResourceType = "unknown";
     try {
-      // Read resource and mark account as rotating
+      // Atomically claim rotation lock, only proceeds if not already rotating
+      const [claimed] = await pamAccountDAL.update(
+        { id: account.id, $notEqual: { rotationStatus: PamAccountRotationStatus.Rotating } },
+        { rotationStatus: PamAccountRotationStatus.Rotating }
+      );
+      if (!claimed) return;
+
+      // Read resource
       const resource = await pamResourceDAL.findById(account.resourceId);
       if (!resource || !resource.encryptedRotationAccountCredentials) return;
       logResourceType = resource.resourceType;
@@ -1110,8 +1117,6 @@ export const pamAccountServiceFactory = ({
         kmsService
       );
       if (!rotationAccountCredentials) return;
-
-      await pamAccountDAL.updateById(account.id, { rotationStatus: PamAccountRotationStatus.Rotating });
 
       // Perform rotation
       const accountCredentials = await decryptAccountCredentials({
@@ -1177,37 +1182,48 @@ export const pamAccountServiceFactory = ({
 
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
 
-      const { encryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId: account.projectId
-      });
+      try {
+        const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: account.projectId
+        });
 
-      const { cipherTextBlob: encryptedMessage } = encryptor({
-        plainText: Buffer.from(errorMessage)
-      });
+        const { cipherTextBlob: encryptedMessage } = encryptor({
+          plainText: Buffer.from(errorMessage)
+        });
 
-      await pamAccountDAL.updateById(account.id, {
-        rotationStatus: PamAccountRotationStatus.Failed,
-        encryptedLastRotationMessage: encryptedMessage
-      });
+        await pamAccountDAL.updateById(account.id, {
+          rotationStatus: PamAccountRotationStatus.Failed,
+          encryptedLastRotationMessage: encryptedMessage
+        });
+      } catch (encryptErr) {
+        logger.error(encryptErr, `Failed to encrypt rotation error for account [accountId=${account.id}]`);
+        await pamAccountDAL.updateById(account.id, {
+          rotationStatus: PamAccountRotationStatus.Failed
+        });
+      }
 
-      await auditLogService.createAuditLog({
-        projectId: account.projectId,
-        actor: {
-          type: ActorType.PLATFORM,
-          metadata: {}
-        },
-        event: {
-          type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED,
-          metadata: {
-            accountId: account.id,
-            accountName: account.name,
-            resourceId: account.resourceId,
-            resourceType: logResourceType,
-            errorMessage
+      try {
+        await auditLogService.createAuditLog({
+          projectId: account.projectId,
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          event: {
+            type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED,
+            metadata: {
+              accountId: account.id,
+              accountName: account.name,
+              resourceId: account.resourceId,
+              resourceType: logResourceType,
+              errorMessage
+            }
           }
-        }
-      });
+        });
+      } catch (auditErr) {
+        logger.error(auditErr, `Failed to create audit log for rotation failure [accountId=${account.id}]`);
+      }
     }
   };
 
@@ -1253,9 +1269,11 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Account is already being rotated" });
     }
 
-    await rotateAccount(account);
+    void rotateAccount(account).catch((err) => {
+      logger.error(err, `Background rotation failed for account [accountId=${accountId}]`);
+    });
 
-    return pamAccountDAL.findById(accountId);
+    return { accountId };
   };
 
   return {

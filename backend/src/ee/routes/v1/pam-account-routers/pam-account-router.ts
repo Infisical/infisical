@@ -164,33 +164,17 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         accountId: z.string().uuid()
       }),
       response: {
-        200: z.object({
+        202: z.object({
           success: z.boolean(),
           accountId: z.string().uuid()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+    handler: async (req, res) => {
+      await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
 
-      if (account) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId: account.projectId,
-          event: {
-            type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION,
-            metadata: {
-              accountId: req.params.accountId,
-              accountName: account.name,
-              resourceId: account.resourceId,
-              resourceType: "unknown"
-            }
-          }
-        });
-      }
-
+      void res.status(202);
       return { success: true, accountId: req.params.accountId };
     }
   });

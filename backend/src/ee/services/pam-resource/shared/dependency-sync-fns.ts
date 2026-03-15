@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { runPowershell } from "winrm-client";
 
 import { TPamAccountDependencies, TPamResources } from "@app/db/schemas";
@@ -16,7 +17,7 @@ import { TPostRotateContext } from "../pam-resource-types";
 export const WINRM_PORT = 5985;
 
 // Escape a string for use inside PowerShell single-quoted strings (doubles single quotes)
-export const escapePowershellSingleQuote = (value: string) => value.replace(/'/g, "''");
+export const escapePowershellSingleQuote = (value: string) => new RE2("'", "g").replace(value, "''");
 
 export const buildDependencySyncScript = (
   dep: TPamAccountDependencies,
