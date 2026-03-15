@@ -744,16 +744,23 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
-
     const userId = actorId;
 
-    if (isFavorite) {
-      const resource = await pamResourceDAL.findById(resourceId);
-      if (!resource || resource.projectId !== projectId) {
-        throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found in project` });
-      }
+    const resource = await pamResourceDAL.findById(resourceId);
+    if (!resource || resource.projectId !== projectId) {
+      throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
+    }
 
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: metadataByResourceId[resource.id] || []
+      })
+    );
+
+    if (isFavorite) {
       await pamResourceFavoriteDAL.upsert(
         [{ userId, pamResourceId: resourceId, projectId }],
         ["userId", "pamResourceId"]
