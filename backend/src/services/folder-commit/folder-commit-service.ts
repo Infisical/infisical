@@ -1027,8 +1027,11 @@ export const folderCommitServiceFactory = ({
             ];
             await secretV2BridgeDAL.insertMany(newSecret, tx);
 
-            const metadata: { key: string; value?: string; encryptedValue?: string }[] =
-              (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[]) || [];
+            const metadata: { key: string; value?: string; encryptedValue?: string }[] = Array.isArray(
+              secretVersion.metadata
+            )
+              ? (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[])
+              : [];
             if (metadata.length > 0) {
               await resourceMetadataDAL.insertMany(
                 metadata.map(({ key, value, encryptedValue }) => ({
@@ -1102,8 +1105,11 @@ export const folderCommitServiceFactory = ({
               tx
             );
 
-            const metadata: { key: string; value?: string; encryptedValue?: string }[] =
-              (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[]) || [];
+            const metadata: { key: string; value?: string; encryptedValue?: string }[] = Array.isArray(
+              secretVersion.metadata
+            )
+              ? (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[])
+              : [];
             await resourceMetadataDAL.delete({ secretId: change.id }, tx);
             if (metadata.length > 0) {
               await resourceMetadataDAL.insertMany(

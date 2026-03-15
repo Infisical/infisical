@@ -1,17 +1,17 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 import { useRef, useState } from "react";
-import {
-  faCircleCheck,
-  faCircleXmark,
-  faEye,
-  faEyeSlash,
-  faTriangleExclamation
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CircleCheckIcon, CircleXIcon, EyeIcon, EyeOffIcon, TriangleAlertIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { isSingleLine, scrollToFirstChange } from "@app/components/utilities/diff";
-import { Tooltip } from "@app/components/v2";
+import {
+  Badge,
+  Tooltip as V3Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableIconButton
+} from "@app/components/v3";
 import {
   HIDDEN_SECRET_VALUE,
   HIDDEN_SECRET_VALUE_API_MASK
@@ -80,13 +80,15 @@ const SecretValueRenderer = ({
   const renderVisibilityIcon = () => {
     if (isValueHidden) {
       return (
-        <div className="absolute top-1/2 left-2 z-10 -translate-y-1/2">
-          <Tooltip
-            position="right"
-            content={`You do not have access to view the ${isOldVersion ? "old" : "new"} secret value.`}
-          >
-            <FontAwesomeIcon className="text-mineshaft-300" size="sm" icon={faEyeSlash} />
-          </Tooltip>
+        <div className="absolute top-3 right-3 z-10">
+          <V3Tooltip>
+            <TooltipTrigger asChild>
+              <EyeOffIcon className="size-3.5 text-muted" />
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              You do not have access to view the {isOldVersion ? "old" : "new"} secret value.
+            </TooltipContent>
+          </V3Tooltip>
         </div>
       );
     }
@@ -112,14 +114,23 @@ const SecretValueRenderer = ({
     };
 
     return (
-      <div className="absolute top-1 right-1.5 z-10">
-        <Tooltip content={isVisible ? "Hide value" : "Reveal value"}>
-          <FontAwesomeIcon
-            icon={isVisible ? faEyeSlash : faEye}
-            className={`cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700 ${isLoading ? "animate-pulse" : ""}`}
-            onClick={handleToggleVisibility}
-          />
-        </Tooltip>
+      <div className="absolute top-[5px] right-1.5 z-10">
+        <V3Tooltip>
+          <TooltipTrigger asChild>
+            <UnstableIconButton
+              variant="ghost"
+              size="xs"
+              className={twMerge(
+                isLoading ? "animate-pulse" : "",
+                isOldVersion ? "bg-[#161518]/80" : "bg-[#121819]/80"
+              )}
+              onClick={handleToggleVisibility}
+            >
+              {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+            </UnstableIconButton>
+          </TooltipTrigger>
+          <TooltipContent>{isVisible ? "Hide value" : "Reveal value"}</TooltipContent>
+        </V3Tooltip>
       </div>
     );
   };
@@ -145,7 +156,7 @@ const SecretValueRenderer = ({
   const containerVariant = hasValueChanges ? variant : undefined;
 
   if (!value && !(value === HIDDEN_SECRET_VALUE_API_MASK)) {
-    return <span className="text-sm text-mineshaft-300">-</span>;
+    return <span className="text-sm text-muted">&mdash;</span>;
   }
 
   return (
@@ -200,16 +211,15 @@ export const SecretDiffView = ({
   return (
     <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
       {showOldVersion ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
+        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-danger/35 bg-danger/5 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
             <span className="text-md font-medium">Previous Secret</span>
-            <div className="rounded-full bg-red px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
-              <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
-              Previous
-            </div>
+            <Badge variant="danger">
+              <CircleXIcon /> Previous
+            </Badge>
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Key</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Key</div>
             <SingleLineTextDiffRenderer
               text={oldKey}
               oldText={oldKey}
@@ -218,8 +228,8 @@ export const SecretDiffView = ({
               isOldVersion
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Value</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Value</div>
             <SecretValueRenderer
               value={oldVersion?.secretValue}
               isValueHidden={oldVersion?.secretValueHidden}
@@ -233,8 +243,8 @@ export const SecretDiffView = ({
               isLoading={isLoadingOldValue}
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Comment</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Comment</div>
             <MultiLineTextDiffRenderer
               text={oldComment}
               oldText={oldComment}
@@ -244,24 +254,24 @@ export const SecretDiffView = ({
               containerRef={oldCommentDiffContainerRef}
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Tags</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Tags</div>
             <TagsDiffRenderer
               tags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
               otherTags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
               isOldVersion
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Metadata</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Metadata</div>
             <MetadataDiffRenderer
               metadata={oldVersion?.secretMetadata}
               otherMetadata={newVersion?.secretMetadata}
               isOldVersion
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Multi-line Encoding</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Multi-line Encoding</div>
             <InlineTextDiff
               oldText={oldMultiline}
               newText={newMultiline}
@@ -280,33 +290,32 @@ export const SecretDiffView = ({
       )}
 
       {showNewVersion ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
+        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-success/35 bg-success/5 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
             <span className="text-md font-medium">New Secret</span>
 
             <div className="flex items-center gap-2">
               {isRollingToRedactedVersion && (
-                <div className="rounded-full bg-red-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
-                  <Tooltip
-                    side="top"
-                    content="This secret version has been redacted. Rolling back to this version will result in an empty secret value."
-                  >
-                    <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faTriangleExclamation} className="mb-0.5 text-white" />
-                      <span className="text-white">Redacted Version</span>
-                    </div>
-                  </Tooltip>
-                </div>
+                <V3Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="danger">
+                      <TriangleAlertIcon /> Redacted Version
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    This secret version has been redacted. Rolling back to this version will result
+                    in an empty secret value.
+                  </TooltipContent>
+                </V3Tooltip>
               )}
 
-              <div className="rounded-full bg-green-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
-                <FontAwesomeIcon icon={faCircleCheck} className="pr-1 text-white" />
-                New
-              </div>
+              <Badge variant="success">
+                <CircleCheckIcon /> New
+              </Badge>
             </div>
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Key</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Key</div>
             <SingleLineTextDiffRenderer
               text={newKey}
               oldText={oldKey}
@@ -315,8 +324,8 @@ export const SecretDiffView = ({
               isOldVersion={false}
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Value</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Value</div>
             <SecretValueRenderer
               value={newVersion?.secretValue}
               oldValue={oldSecretValue}
@@ -330,8 +339,8 @@ export const SecretDiffView = ({
               isLoading={isLoadingNewValue}
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Comment</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Comment</div>
             <MultiLineTextDiffRenderer
               text={newComment}
               oldText={oldComment}
@@ -341,24 +350,24 @@ export const SecretDiffView = ({
               containerRef={newCommentDiffContainerRef}
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Tags</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Tags</div>
             <TagsDiffRenderer
               tags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
               otherTags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
               isOldVersion={false}
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Metadata</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Metadata</div>
             <MetadataDiffRenderer
               metadata={newVersion?.secretMetadata}
               otherMetadata={oldVersion?.secretMetadata}
               isOldVersion={false}
             />
           </div>
-          <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Multi-line Encoding</div>
+          <div className="mb-2.5">
+            <div className="mb-0.5 text-xs font-medium text-label">Multi-line Encoding</div>
             <InlineTextDiff
               oldText={oldMultiline}
               newText={newMultiline}

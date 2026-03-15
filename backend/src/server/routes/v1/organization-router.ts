@@ -160,7 +160,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           eventType: z
             .string()
             .optional()
-            .transform((val) => (val ? val.split(",") : undefined)),
+            .transform((val) => (val ? val.split(",") : undefined))
+            .pipe(z.nativeEnum(EventType).array().optional()),
           userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
           eventMetadata: z
             .string()
@@ -174,9 +175,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
               return pairs.reduce(
                 (acc, pair) => {
-                  const [key, value] = pair.split("=");
-                  if (key && value) {
-                    acc[key] = value;
+                  const eqIdx = pair.indexOf("=");
+                  if (eqIdx > 0) {
+                    const key = pair.slice(0, eqIdx);
+                    const value = pair.slice(eqIdx + 1);
+                    if (value) acc[key] = value;
                   }
                   return acc;
                 },
@@ -246,7 +249,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
           actorType: req.query.actorType,
-          eventType: req.query.eventType as EventType[] | undefined
+          eventType: req.query.eventType
         },
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,

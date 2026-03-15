@@ -43,8 +43,8 @@ export const renderTextDiff = ({
   newText,
   isOldVersion,
   keyPrefix = "diff",
-  addedClass = "rounded bg-green-600/70 px-0.5",
-  removedClass = "rounded bg-red-600/70 px-0.5"
+  addedClass = "rounded-[2px] bg-success/50 px-0.5",
+  removedClass = "rounded-[2px] bg-danger/50 px-0.5"
 }: RenderTextDiffOptions): React.ReactNode => {
   // Check if one text contains the other (pure insertion or deletion)
   const oldExistsInNew = oldText !== "" && newText !== "" && newText.includes(oldText);

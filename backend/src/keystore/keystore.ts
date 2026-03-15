@@ -97,7 +97,11 @@ export const KeyStorePrefixes = {
   ProjectSSEConnectionsSet: (projectId: string) => `project-sse-connections:${projectId}` as const,
   ProjectSSEConnectionsLockoutKey: (projectId: string) => `project-sse-connections:lockout:${projectId}` as const,
   ProjectSSEConnection: (projectId: string, connectionId: string) =>
-    `project-sse-conn:${projectId}:${connectionId}` as const
+    `project-sse-conn:${projectId}:${connectionId}` as const,
+
+  ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
+
+  TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const
 };
 
 export const KeyStoreTtls = {
@@ -108,7 +112,8 @@ export const KeyStoreTtls = {
   ProjectPermissionDalVersionTtl: "15m", // Project permission DAL version TTL
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
-  ProjectSSEConnectionTtlSeconds: 180 // Must be > heartbeat interval (60s) * 2
+  ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
+  TelemetryIdentifyIdentityInSeconds: 600 // 10 minutes
 };
 
 type TDeleteItems = {
@@ -138,6 +143,12 @@ export type TKeyStoreFactory = {
     value: string | number | Buffer,
     prefix?: string
   ) => Promise<"OK">;
+  setItemWithExpiryNX: (
+    key: string,
+    expiryInSeconds: number | string,
+    value: string | number | Buffer,
+    prefix?: string
+  ) => Promise<"OK" | null>;
   deleteItem: (key: string) => Promise<number>;
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
@@ -148,6 +159,15 @@ export type TKeyStoreFactory = {
   listRange: (key: string, start: number, stop: number) => Promise<string[]>;
   listRemove: (key: string, count: number, value: string) => Promise<number>;
   listLength: (key: string) => Promise<number>;
+  // stream operations
+  streamAdd: (key: string, id: string, fieldValue: Record<string, string>, maxLen?: number) => Promise<string | null>;
+  streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
+  streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
+  streamCollect: (
+    key: string,
+    batchSize: number,
+    maxEntries: number
+  ) => Promise<{ entries: [string, string[]][]; lastId: string | null }>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -209,6 +229,13 @@ export const keyStoreFactory = (
     value: string | number | Buffer,
     prefix?: string
   ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
+
+  const setItemWithExpiryNX = async (
+    key: string,
+    expiryInSeconds: number | string,
+    value: string | number | Buffer,
+    prefix?: string
+  ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds, "NX");
 
   const deleteItem = async (key: string) => primaryRedis.del(key);
 
@@ -291,6 +318,52 @@ export const keyStoreFactory = (
 
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
+  // Stream operations
+  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1000000) => {
+    const args: string[] = [];
+    for (const [field, value] of Object.entries(fieldValue)) {
+      args.push(field, value);
+    }
+    return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+  };
+
+  const streamRange = async (key: string, start: string, end: string, count?: number) => {
+    if (count) {
+      return primaryRedis.xrange(key, start, end, "COUNT", count);
+    }
+    return primaryRedis.xrange(key, start, end);
+  };
+
+  const streamTrim = async (key: string, minId: string, inclusive = false) => {
+    let id = minId;
+    if (inclusive) {
+      const [ts, seq] = minId.split("-");
+      id = `${ts}-${Number(seq) + 1}`;
+    }
+    return primaryRedis.xtrim(key, "MINID", id);
+  };
+
+  const streamCollect = async (key: string, batchSize: number, maxEntries: number) => {
+    let lastId: string | null = null;
+    const allEntries: [string, string[]][] = [];
+
+    for (let i = 0; i < Math.ceil(maxEntries / batchSize); i += 1) {
+      const start: string = lastId ? `(${lastId}` : "-";
+      // eslint-disable-next-line no-await-in-loop
+      const batch: [string, string[]][] = await primaryRedis.xrange(key, start, "+", "COUNT", batchSize);
+
+      if (batch.length === 0) break;
+
+      allEntries.push(...batch);
+      // eslint-disable-next-line prefer-destructuring
+      lastId = batch[batch.length - 1][0];
+
+      if (allEntries.length >= maxEntries || batch.length < batchSize) break;
+    }
+
+    return { entries: allEntries, lastId };
+  };
+
   const waitTillReady = async ({
     key,
     waitingCb,
@@ -319,6 +392,7 @@ export const keyStoreFactory = (
     getItem,
     setExpiry,
     setItemWithExpiry,
+    setItemWithExpiryNX,
     deleteItem,
     deleteItems,
     incrementBy,
@@ -334,6 +408,10 @@ export const keyStoreFactory = (
     listPush,
     listRange,
     listRemove,
-    listLength
+    listLength,
+    streamAdd,
+    streamRange,
+    streamTrim,
+    streamCollect
   };
 };

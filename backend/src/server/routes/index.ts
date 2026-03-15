@@ -202,6 +202,11 @@ import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import {
+  appConnectionCredentialRotationDALFactory,
+  appConnectionCredentialRotationQueueFactory,
+  appConnectionCredentialRotationServiceFactory
+} from "@app/services/app-connection/credential-rotation";
+import {
   approvalPolicyDALFactory,
   approvalPolicyStepApproversDALFactory,
   approvalPolicyStepsDALFactory
@@ -295,6 +300,8 @@ import { identityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/ide
 import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identitySpiffeAuthDALFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-dal";
+import { identitySpiffeAuthServiceFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-service";
 import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
 import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
@@ -535,6 +542,7 @@ export const registerRoutes = async (
   const identityOciAuthDAL = identityOciAuthDALFactory(db);
   const identityOidcAuthDAL = identityOidcAuthDALFactory(db);
   const identityJwtAuthDAL = identityJwtAuthDALFactory(db);
+  const identitySpiffeAuthDAL = identitySpiffeAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
   const identityLdapAuthDAL = identityLdapAuthDALFactory(db);
 
@@ -642,6 +650,8 @@ export const registerRoutes = async (
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
   const pkiAlertChannelDAL = pkiAlertChannelDALFactory(db);
   const pkiAlertV2DAL = pkiAlertV2DALFactory(db);
+
+  const appConnectionCredentialRotationDAL = appConnectionCredentialRotationDALFactory(db);
 
   const vaultExternalMigrationConfigDAL = vaultExternalMigrationConfigDALFactory(db);
 
@@ -780,7 +790,8 @@ export const registerRoutes = async (
     projectDAL,
     licenseService,
     auditLogStreamService,
-    clickhouseClient: clickhouse
+    clickhouseClient: clickhouse,
+    keyStore
   });
 
   const notificationQueue = notificationQueueServiceFactory({
@@ -945,7 +956,8 @@ export const registerRoutes = async (
 
   const telemetryService = telemetryServiceFactory({
     keyStore,
-    licenseService
+    licenseService,
+    orgDAL
   });
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
@@ -995,7 +1007,8 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    keyStore
+    keyStore,
+    permissionService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1624,7 +1637,8 @@ export const registerRoutes = async (
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
     folderCommitService,
-    notificationService
+    notificationService,
+    telemetryService
   });
 
   const secretService = secretServiceFactory({
@@ -1958,6 +1972,17 @@ export const registerRoutes = async (
     membershipIdentityDAL
   });
 
+  const identitySpiffeAuthService = identitySpiffeAuthServiceFactory({
+    identityDAL,
+    identitySpiffeAuthDAL,
+    orgDAL,
+    permissionService,
+    identityAccessTokenDAL,
+    licenseService,
+    kmsService,
+    membershipIdentityDAL
+  });
+
   const identityLdapAuthService = identityLdapAuthServiceFactory({
     identityLdapAuthDAL,
     orgDAL,
@@ -2159,6 +2184,14 @@ export const registerRoutes = async (
     roleDAL
   });
 
+  const appConnectionCredentialRotationService = appConnectionCredentialRotationServiceFactory({
+    appConnectionCredentialRotationDAL,
+    appConnectionDAL,
+    keyStore,
+    kmsService,
+    queueService
+  });
+
   const appConnectionService = appConnectionServiceFactory({
     appConnectionDAL,
     permissionService,
@@ -2168,7 +2201,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayDAL,
     gatewayV2DAL,
-    projectDAL
+    projectDAL,
+    appConnectionCredentialRotationService
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -2586,6 +2620,17 @@ export const registerRoutes = async (
     notificationService
   });
 
+  await appConnectionCredentialRotationQueueFactory({
+    queueService,
+    appConnectionCredentialRotationDAL,
+    appConnectionCredentialRotationService,
+    smtpService,
+    notificationService,
+    projectMembershipDAL,
+    projectDAL,
+    orgDAL
+  });
+
   const secretScanningV2Queue = secretScanningV2QueueServiceFactory({
     auditLogService,
     secretScanningV2DAL,
@@ -2877,6 +2922,7 @@ export const registerRoutes = async (
     identityTlsCertAuth: identityTlsCertAuthService,
     identityOidcAuth: identityOidcAuthService,
     identityJwtAuth: identityJwtAuthService,
+    identitySpiffeAuth: identitySpiffeAuthService,
     identityLdapAuth: identityLdapAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
@@ -2971,7 +3017,8 @@ export const registerRoutes = async (
     aiMcpServer: aiMcpServerService,
     aiMcpEndpoint: aiMcpEndpointService,
     aiMcpActivityLog: aiMcpActivityLogService,
-    approvalPolicy: approvalPolicyService
+    approvalPolicy: approvalPolicyService,
+    appConnectionCredentialRotation: appConnectionCredentialRotationService
   });
 
   const cronJobs: CronJob[] = [];

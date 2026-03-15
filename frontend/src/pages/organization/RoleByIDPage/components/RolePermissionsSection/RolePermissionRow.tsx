@@ -75,6 +75,7 @@ type Props = {
     | "audit-logs"
     | "machine-identity-auth-template"
     | "sub-organization"
+    | "sso"
   >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;

@@ -6,9 +6,11 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const maxTimePeriodSchema = z
   .string()
@@ -117,6 +119,24 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           req.body.name ?? `${req.body.environment || req.body.environments?.join("-").substring(0, 250)}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalPolicyCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            policyId: approval.id,
+            projectId: approval.projectId,
+            environments: approval.environments.map((e: { slug: string }) => e.slug),
+            secretPath: req.body.secretPath,
+            approvals: req.body.approvals,
+            enforcementLevel: req.body.enforcementLevel,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
       return { approval };
     }
   });
@@ -302,6 +322,20 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         policyId: req.params.policyId
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalPolicyDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            policyId: approval.id,
+            projectId: approval.projectId,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
       return { approval };
     }
   });

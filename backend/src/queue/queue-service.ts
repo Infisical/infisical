@@ -21,6 +21,10 @@ import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
 import { QueueWorkerProfile } from "@app/lib/types";
+import {
+  TAppConnectionCredentialRotationRotateJobPayload,
+  TAppConnectionCredentialRotationSendNotificationJobPayload
+} from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { ExternalPlatforms } from "@app/services/external-migration/external-migration-types";
 import { TCreateUserNotificationDTO } from "@app/services/notification/notification-types";
@@ -97,6 +101,9 @@ export enum QueueName {
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
+  AppConnectionCredentialRotation = "app-connection-credential-rotation",
+  AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
+  AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan"
 }
 
@@ -161,6 +168,10 @@ export enum QueueJobs {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  AppConnectionCredentialRotationQueueRotations = "app-connection-credential-rotation-queue-rotations",
+  AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
+  AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
+  AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan"
 }
@@ -493,6 +504,23 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
       };
+  [QueueName.AppConnectionCredentialRotation]:
+    | {
+        name: QueueJobs.AppConnectionCredentialRotationQueueRotations;
+        payload: undefined;
+      }
+    | {
+        name: QueueJobs.AppConnectionCredentialRotationSendNotification;
+        payload: TAppConnectionCredentialRotationSendNotificationJobPayload;
+      };
+  [QueueName.AppConnectionCredentialRotationRotate]: {
+    name: QueueJobs.AppConnectionCredentialRotationRotate;
+    payload: TAppConnectionCredentialRotationRotateJobPayload;
+  };
+  [QueueName.AuditLogClickHouseBatch]: {
+    name: QueueJobs.AuditLogClickHouseBatch;
+    payload: undefined;
+  };
   [QueueName.PamDiscoveryScan]:
     | {
         name: QueueJobs.PamDiscoverySourceRunScan;

@@ -76,9 +76,25 @@ type Props = {
   secretPath?: string;
   defaultSelectedEnvs?: { name: string; slug: string }[];
   onClose: () => void;
+  isBatchMode?: boolean;
+  onBatchSecretCreate?: (params: {
+    env: string;
+    key: string;
+    value: string;
+    comment?: string;
+    skipMultilineEncoding?: boolean;
+    tags?: { id: string; slug: string }[];
+    metadata?: { key: string; value: string; isEncrypted?: boolean }[];
+  }) => void;
 };
 
-export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClose }: Props) => {
+export const CreateSecretForm = ({
+  secretPath = "/",
+  defaultSelectedEnvs,
+  onClose,
+  isBatchMode,
+  onBatchSecretCreate
+}: Props) => {
   const {
     handleSubmit,
     control,
@@ -132,6 +148,34 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
     metadata
   }: TFormSchema) => {
     const filteredMetadata = metadata?.filter((m) => m.key && m.value);
+
+    if (isBatchMode && onBatchSecretCreate) {
+      selectedEnv.forEach((env) => {
+        onBatchSecretCreate({
+          env: env.slug,
+          key,
+          value: value || "",
+          comment: comment || undefined,
+          skipMultilineEncoding: skipMultilineEncoding || undefined,
+          tags: tags?.map((t) => ({ id: t.value, slug: t.label })),
+          metadata: filteredMetadata?.length ? filteredMetadata : undefined
+        });
+      });
+
+      if (createMore) {
+        setValue("key", "");
+        setValue("value", "");
+        setValue("comment", "");
+        setValue("skipMultilineEncoding", false);
+        setValue("tags", []);
+        setValue("metadata", []);
+        setTimeout(() => secretKeyInputRef.current?.focus(), 150);
+      } else {
+        onClose();
+        reset();
+      }
+      return;
+    }
 
     const promises = selectedEnv.map(async (env) => {
       const environment = env.slug;
@@ -268,38 +312,40 @@ export const CreateSecretForm = ({ secretPath = "/", defaultSelectedEnvs, onClos
       className="flex flex-1 flex-col gap-4 overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <Controller
-          control={control}
-          name="environments"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel>Environments</FieldLabel>
-              <FieldContent>
-                <FilterableSelect
-                  isMulti
-                  isError={Boolean(error)}
-                  options={environments.filter((environment) =>
-                    permission.can(
-                      ProjectPermissionSecretActions.Create,
-                      subject(ProjectPermissionSub.Secrets, {
-                        environment: environment.slug,
-                        secretPath,
-                        secretName: "*",
-                        secretTags: ["*"]
-                      })
-                    )
-                  )}
-                  value={value}
-                  onChange={onChange}
-                  placeholder="Select environments to create secret in..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.slug}
-                />
-                <FieldError errors={[error]} />
-              </FieldContent>
-            </Field>
-          )}
-        />
+        {defaultSelectedEnvs?.length === 1 ? null : (
+          <Controller
+            control={control}
+            name="environments"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Environments</FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    isMulti
+                    isError={Boolean(error)}
+                    options={environments.filter((environment) =>
+                      permission.can(
+                        ProjectPermissionSecretActions.Create,
+                        subject(ProjectPermissionSub.Secrets, {
+                          environment: environment.slug,
+                          secretPath,
+                          secretName: "*",
+                          secretTags: ["*"]
+                        })
+                      )
+                    )}
+                    value={value}
+                    onChange={onChange}
+                    placeholder="Select environments to create secret in..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.slug}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+          />
+        )}
 
         <Controller
           control={control}

@@ -218,6 +218,13 @@ export enum EventType {
   GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
   REVOKE_IDENTITY_JWT_AUTH = "revoke-identity-jwt-auth",
 
+  LOGIN_IDENTITY_SPIFFE_AUTH = "login-identity-spiffe-auth",
+  ADD_IDENTITY_SPIFFE_AUTH = "add-identity-spiffe-auth",
+  UPDATE_IDENTITY_SPIFFE_AUTH = "update-identity-spiffe-auth",
+  GET_IDENTITY_SPIFFE_AUTH = "get-identity-spiffe-auth",
+  REVOKE_IDENTITY_SPIFFE_AUTH = "revoke-identity-spiffe-auth",
+  REFRESH_IDENTITY_SPIFFE_AUTH_BUNDLE = "refresh-identity-spiffe-auth-bundle",
+
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS = "clear-identity-universal-auth-lockouts",
@@ -443,6 +450,7 @@ export enum EventType {
   DELETE_APP_CONNECTION = "delete-app-connection",
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
+  ROTATE_APP_CONNECTION_CREDENTIALS = "rotate-app-connection-credentials",
   CREATE_SHARED_SECRET = "create-shared-secret",
   CREATE_SECRET_REQUEST = "create-secret-request",
   DELETE_SHARED_SECRET = "delete-shared-secret",
@@ -1870,6 +1878,66 @@ interface GetIdentityJwtAuthEvent {
   };
 }
 
+interface LoginIdentitySpiffeAuthEvent {
+  type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    identitySpiffeAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentitySpiffeAuthEvent {
+  type: EventType.ADD_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    trustDomain: string;
+    allowedSpiffeIds: string;
+    allowedAudiences: string;
+    configurationType: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentitySpiffeAuthEvent {
+  type: EventType.UPDATE_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    trustDomain?: string;
+    allowedSpiffeIds?: string;
+    allowedAudiences?: string;
+    configurationType?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentitySpiffeAuthEvent {
+  type: EventType.REVOKE_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface GetIdentitySpiffeAuthEvent {
+  type: EventType.GET_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface RefreshIdentitySpiffeAuthBundleEvent {
+  type: EventType.REFRESH_IDENTITY_SPIFFE_AUTH_BUNDLE;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -1915,10 +1983,12 @@ interface AddProjectMemberEvent {
 
 interface AddBatchProjectMemberEvent {
   type: EventType.ADD_BATCH_PROJECT_MEMBER;
-  metadata: Array<{
-    userId: string;
-    email: string;
-  }>;
+  metadata: {
+    members: Array<{
+      userId: string;
+      email: string;
+    }>;
+  };
 }
 
 interface RemoveProjectMemberEvent {
@@ -3348,6 +3418,13 @@ interface UpdateAppConnectionEvent {
 
 interface DeleteAppConnectionEvent {
   type: EventType.DELETE_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
+interface RotateAppConnectionCredentialsEvent {
+  type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS;
   metadata: {
     connectionId: string;
   };
@@ -5299,6 +5376,12 @@ export type Event =
   | UpdateIdentityJwtAuthEvent
   | GetIdentityJwtAuthEvent
   | DeleteIdentityJwtAuthEvent
+  | LoginIdentitySpiffeAuthEvent
+  | AddIdentitySpiffeAuthEvent
+  | UpdateIdentitySpiffeAuthEvent
+  | GetIdentitySpiffeAuthEvent
+  | RefreshIdentitySpiffeAuthBundleEvent
+  | DeleteIdentitySpiffeAuthEvent
   | LoginIdentityLdapAuthEvent
   | AddIdentityLdapAuthEvent
   | UpdateIdentityLdapAuthEvent
@@ -5462,6 +5545,7 @@ export type Event =
   | DeleteAppConnectionEvent
   | GetAppConnectionUsageEvent
   | MigrateAppConnectionEvent
+  | RotateAppConnectionCredentialsEvent
   | GetSshHostGroupEvent
   | CreateSshHostGroupEvent
   | UpdateSshHostGroupEvent
