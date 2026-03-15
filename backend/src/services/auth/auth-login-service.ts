@@ -146,8 +146,10 @@ export const authLoginServiceFactory = ({
   };
 
   /*
-   * Check user device and send mail if new device
-   * generate the auth and refresh token. fn shared by mfa verification and login verification with mfa disabled
+   * Generate the auth and refresh token.
+   * Shared by mfa verification, login verification with mfa disabled, and select organization.
+   * Note: device tracking (updateUserDeviceSession) is intentionally NOT called here —
+   * it must only run after full authentication (including MFA) is complete.
    */
   const generateUserTokens = async (
     {
@@ -172,7 +174,6 @@ export const authLoginServiceFactory = ({
     tx?: Knex
   ) => {
     const cfg = getConfig();
-    await updateUserDeviceSession(user, ip, userAgent, tx);
     const tokenSession = await tokenService.getUserTokenSession(
       {
         userAgent,
@@ -662,6 +663,8 @@ export const authLoginServiceFactory = ({
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod } as const;
     }
+
+    await updateUserDeviceSession(user as TUsers, ipAddress, userAgent);
 
     const tokens = await generateUserTokens({
       authMethod: decodedToken.authMethod,
