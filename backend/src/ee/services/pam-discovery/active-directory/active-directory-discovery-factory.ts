@@ -42,6 +42,7 @@ import {
   PamDiscoveryStepStatus
 } from "../pam-discovery-enums";
 import { TPamDiscoveryFactory } from "../pam-discovery-types";
+import { DEPENDENCY_ENUMERATION_SCRIPT } from "./active-directory-discovery-scripts";
 import {
   TActiveDirectoryDiscoverySourceConfiguration as TAdDiscoveryConfiguration,
   TActiveDirectoryDiscoverySourceCredentials as TAdDiscoveryCredentials,
@@ -690,54 +691,6 @@ const executeWinRmLocalAccountEnumeration = async (
     }
   );
 };
-
-const DEPENDENCY_ENUMERATION_SCRIPT = [
-  "$result = @{};",
-  "$result.services = @(Get-WmiObject Win32_Service | Where-Object { $_.StartName -and $_.StartName -notmatch 'LocalSystem|NT AUTHORITY|NT SERVICE|LocalService|NetworkService' } | Select-Object Name, DisplayName, StartName, State, StartMode, ProcessId, PathName, Description);",
-  "$result.scheduledTasks = @(Get-ScheduledTask | ForEach-Object {",
-  "  $t = $_;",
-  "  $info = $null; try { $info = $t | Get-ScheduledTaskInfo -ErrorAction Stop } catch {};",
-  "  $lrt = $null; $nrt = $null; $ltr = $null;",
-  "  if ($info) {",
-  "    try { $lrt = $info.LastRunTime.ToString('o') } catch {};",
-  "    try { $nrt = $info.NextRunTime.ToString('o') } catch {};",
-  "    $ltr = $info.LastTaskResult",
-  "  };",
-  "  $trig = @();",
-  "  if ($t.Triggers) {",
-  "    $trig = @($t.Triggers | Where-Object { $_ -ne $null } | ForEach-Object {",
-  "      $rep = $null;",
-  "      if ($_.Repetition -and $_.Repetition.Interval) { $rep = $_.Repetition.Interval };",
-  "      [PSCustomObject]@{ Type = $_.GetType().Name; StartBoundary = $_.StartBoundary; Interval = $rep }",
-  "    })",
-  "  };",
-  "  $acts = @();",
-  "  if ($t.Actions) {",
-  "    $acts = @($t.Actions | Where-Object { $_ -ne $null } | ForEach-Object {",
-  "      [PSCustomObject]@{ Type = [string]$_.GetType().Name; Execute = $_.Execute; Arguments = $_.Arguments }",
-  "    })",
-  "  };",
-  "  [PSCustomObject]@{",
-  "    TaskName = $t.TaskName; TaskPath = $t.TaskPath; State = [string]$t.State;",
-  "    UserId = $t.Principal.UserId; LogonType = [string]$t.Principal.LogonType; RunLevel = [string]$t.Principal.RunLevel;",
-  "    LastRunTime = $lrt; NextRunTime = $nrt; LastTaskResult = $ltr;",
-  "    Triggers = $trig; Actions = $acts",
-  "  }",
-  "} | Where-Object { $_.UserId -and $_.UserId -notmatch 'SYSTEM|LOCAL SERVICE|NETWORK SERVICE' });",
-  "try {",
-  "  Import-Module WebAdministration -ErrorAction Stop;",
-  "  $result.iisAppPools = @(Get-ChildItem IIS:\\AppPools | ForEach-Object {",
-  "    [PSCustomObject]@{",
-  "      Name = $_.Name; State = [string]$_.State;",
-  "      IdentityType = [string]$_.processModel.identityType; Username = $_.processModel.userName;",
-  "      ManagedRuntimeVersion = [string]$_.managedRuntimeVersion;",
-  "      ManagedPipelineMode = [string]$_.managedPipelineMode;",
-  "      AutoStart = [bool]$_.autoStart",
-  "    }",
-  "  } | Where-Object { $_.IdentityType -eq 'SpecificUser' })",
-  "} catch { $result.iisAppPools = @() };",
-  "$result | ConvertTo-Json -Depth 4"
-].join(" ");
 
 const executeWinRmDependencyEnumeration = async (
   computer: TLdapComputer,
