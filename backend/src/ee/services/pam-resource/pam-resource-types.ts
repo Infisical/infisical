@@ -136,7 +136,7 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
 
 export type TPostRotateContext = {
   pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "findByAccountId" | "updateById">;
-  pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "findById" | "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 

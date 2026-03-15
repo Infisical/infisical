@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { runPowershell } from "winrm-client";
 
-import { TPamAccountDependencies, TPamResources } from "@app/db/schemas";
+import { TPamAccountDependencies } from "@app/db/schemas";
 import { groupBy } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -109,7 +109,7 @@ export const syncDependenciesAfterRotation = async ({
       let hostname: string | null = null;
 
       try {
-        const decrypted = await decryptResource(resource as TPamResources, projectId, ctx.kmsService);
+        const decrypted = await decryptResource(resource, projectId, ctx.kmsService);
         rotationCredentials = decrypted.rotationAccountCredentials as {
           username: string;
           password: string;
