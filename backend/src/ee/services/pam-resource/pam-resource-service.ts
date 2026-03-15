@@ -462,6 +462,8 @@ export const pamResourceServiceFactory = ({
     }
   };
 
+  const getIsFavorite = (resource: object): boolean => Boolean((resource as Record<string, unknown>).isFavorite);
+
   const list = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId, ...params }: TListResourcesDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -494,7 +496,7 @@ export const pamResourceServiceFactory = ({
             resources.map(async (resource) => ({
               ...(await decryptResource(resource, projectId, kmsService)),
               metadata: metadataByResourceId[resource.id] || [],
-              isFavorite: Boolean((resource as Record<string, unknown>).isFavorite)
+              isFavorite: getIsFavorite(resource)
             }))
           ),
           totalCount
@@ -543,7 +545,7 @@ export const pamResourceServiceFactory = ({
             paginatedResources.map(async (resource) => ({
               ...(await decryptResource(resource, projectId, kmsService)),
               metadata: metadataByResourceId[resource.id] || [],
-              isFavorite: Boolean((resource as Record<string, unknown>).isFavorite)
+              isFavorite: getIsFavorite(resource)
             }))
           ),
           totalCount
@@ -604,7 +606,7 @@ export const pamResourceServiceFactory = ({
         paginatedResources.map(async (resource) => ({
           ...(await decryptResource(resource, projectId, kmsService)),
           metadata: metadataByResourceId[resource.id] || [],
-          isFavorite: Boolean((resource as Record<string, unknown>).isFavorite)
+          isFavorite: getIsFavorite(resource)
         }))
       ),
       totalCount
@@ -751,10 +753,10 @@ export const pamResourceServiceFactory = ({
         throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found in project` });
       }
 
-      const existing = await pamResourceFavoriteDAL.findOne({ userId, pamResourceId: resourceId });
-      if (!existing) {
-        await pamResourceFavoriteDAL.create({ userId, pamResourceId: resourceId, projectId });
-      }
+      await pamResourceFavoriteDAL.upsert(
+        [{ userId, pamResourceId: resourceId, projectId }],
+        ["userId", "pamResourceId"]
+      );
     } else {
       await pamResourceFavoriteDAL.delete({ userId, pamResourceId: resourceId });
     }

@@ -55,12 +55,18 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       const query = dbInstance(TableName.PamResource).where(`${TableName.PamResource}.projectId`, projectId);
 
       if (userId) {
-        void query.leftJoin(TableName.PamResourceFavorite, function joinFavorites() {
-          this.on(`${TableName.PamResourceFavorite}.pamResourceId`, `${TableName.PamResource}.id`).andOn(
-            `${TableName.PamResourceFavorite}.userId`,
-            db.raw("?", [userId])
+        void query
+          .leftJoin(TableName.PamResourceFavorite, function joinFavorites() {
+            this.on(`${TableName.PamResourceFavorite}.pamResourceId`, `${TableName.PamResource}.id`).andOn(
+              `${TableName.PamResourceFavorite}.userId`,
+              db.raw("?", [userId])
+            );
+          })
+          .select(
+            db.raw(
+              `CASE WHEN "${TableName.PamResourceFavorite}"."id" IS NOT NULL THEN true ELSE false END as "isFavorite"`
+            )
           );
-        });
       }
 
       if (search) {
@@ -88,14 +94,6 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       const countQuery = query.clone().count("*", { as: "count" }).first();
 
       void query.select(selectAllTableCols(TableName.PamResource));
-
-      if (userId) {
-        void query.select(
-          db.raw(
-            `CASE WHEN "${TableName.PamResourceFavorite}"."id" IS NOT NULL THEN true ELSE false END as "isFavorite"`
-          )
-        );
-      }
 
       const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
 
