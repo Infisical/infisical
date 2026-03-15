@@ -12,7 +12,7 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
@@ -727,25 +727,26 @@ export const pamResourceServiceFactory = ({
     projectId,
     resourceId,
     isFavorite,
-    actor
-  }: {
-    projectId: string;
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TProjectPermission & {
     resourceId: string;
     isFavorite: boolean;
-    actor: OrgServiceActor;
   }) => {
     const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
+      actor,
+      actorAuthMethod,
+      actorId,
+      actorOrgId,
       projectId,
       actionProjectType: ActionProjectType.PAM
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
 
-    const userId = actor.id;
+    const userId = actorId;
 
     if (isFavorite) {
       const resource = await pamResourceDAL.findById(resourceId);

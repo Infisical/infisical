@@ -249,7 +249,10 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
         projectId,
         resourceId,
         isFavorite,
-        actor: req.permission
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return { message: isFavorite ? "Resource added to favorites" : "Resource removed from favorites" };
