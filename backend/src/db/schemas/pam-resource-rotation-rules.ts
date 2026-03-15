@@ -13,8 +13,8 @@ export const PamResourceRotationRulesSchema = z.object({
   name: z.string().nullable().optional(),
   namePattern: z.string(),
   enabled: z.boolean().default(true),
-  intervalSeconds: z.number().int().nullable().optional(),
-  priority: z.number().int(),
+  intervalSeconds: z.number().nullable().optional(),
+  priority: z.number(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

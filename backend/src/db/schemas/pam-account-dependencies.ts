@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const PamAccountDependenciesSchema = z.object({
@@ -18,11 +20,11 @@ export const PamAccountDependenciesSchema = z.object({
   data: z.unknown(),
   source: z.string(),
   isEnabled: z.boolean().default(false).nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   syncStatus: z.string().nullable().optional(),
   lastSyncedAt: z.date().nullable().optional(),
-  encryptedLastSyncMessage: z.any().nullable().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date()
+  encryptedLastSyncMessage: zodBuffer.nullable().optional()
 });
 
 export type TPamAccountDependencies = z.infer<typeof PamAccountDependenciesSchema>;
