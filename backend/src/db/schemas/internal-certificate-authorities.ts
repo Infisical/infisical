@@ -25,12 +25,7 @@ export const InternalCertificateAuthoritiesSchema = z.object({
   notBefore: z.date().nullable().optional(),
   notAfter: z.date().nullable().optional(),
   activeCaCertId: z.string().uuid().nullable().optional(),
-  caId: z.string().uuid(),
-  autoRenewalEnabled: z.boolean().default(false),
-  autoRenewalDaysBeforeExpiry: z.number().nullable().optional(),
-  lastRenewalStatus: z.string().nullable().optional(),
-  lastRenewalMessage: z.string().nullable().optional(),
-  lastRenewalAt: z.date().nullable().optional()
+  caId: z.string().uuid()
 });
 
 export type TInternalCertificateAuthorities = z.infer<typeof InternalCertificateAuthoritiesSchema>;
