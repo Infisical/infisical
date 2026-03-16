@@ -180,11 +180,19 @@ const makeSqlConnection = (
       };
     }
     case PamResource.MsSQL: {
+      // For MSSQL through a gateway proxy:
+      // - TCP connects to localhost:proxyPort, gateway forwards to real server
+      // - TLS certificate is issued for the real hostname, not localhost
+      // - The tedious driver doesn't support custom checkServerIdentity
+      // - We must use serverName option to tell tedious to validate against the real host
       const mssqlOptions = sslEnabled
         ? {
             encrypt: true,
             trustServerCertificate: !sslRejectUnauthorized,
-            cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
+            cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {},
+            // serverName tells tedious to use this hostname for TLS SNI and certificate validation
+            // instead of the server/host value used for the TCP connection
+            serverName: host
           }
         : { encrypt: false };
 
@@ -197,7 +205,7 @@ const makeSqlConnection = (
           password: actualPassword,
           database: connectionDetails.database,
           requestTimeout: EXTERNAL_REQUEST_TIMEOUT,
-          // mssqlOptions includes cryptoCredentialsDetails which is passed to tedious driver
+          // mssqlOptions is passed to tedious driver
           // ref: https://github.com/knex/knex/blob/b6507a7129d2b9fafebf5f831494431e64c6a8a0/lib/dialects/mssql/index.js#L66
           options: mssqlOptions
         }
