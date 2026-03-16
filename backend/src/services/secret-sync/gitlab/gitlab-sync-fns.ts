@@ -2,12 +2,8 @@
 import { GitbeakerRequestError } from "@gitbeaker/rest";
 
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import {
-  getGitLabClient,
-  GitLabConnectionMethod,
-  refreshGitLabToken,
-  TGitLabConnection
-} from "@app/services/app-connection/gitlab";
+import { GitLabConnectionMethod, TGitLabConnection } from "@app/services/app-connection/gitlab";
+import { getGitLabClient, refreshGitLabToken } from "@app/services/app-connection/gitlab/gitlab-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TGitLabSyncWithCredentials, TGitLabVariable } from "@app/services/secret-sync/gitlab/gitlab-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";

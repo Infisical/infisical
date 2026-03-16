@@ -6,6 +6,7 @@ import {
   TAppConnectionResponse,
   TCreateAppConnectionDTO,
   TDeleteAppConnectionDTO,
+  TRotateAppConnectionCredentialsDTO,
   TUpdateAppConnectionDTO
 } from "@app/hooks/api/appConnections/types";
 
@@ -42,6 +43,23 @@ export const useUpdateAppConnection = () => {
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
       // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
+    }
+  });
+};
+
+export const useRotateAppConnectionCredentials = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ connectionId, app }: TRotateAppConnectionCredentialsDTO) => {
+      const { data } = await apiRequest.post<TAppConnectionResponse>(
+        `/api/v1/app-connections/${app}/${connectionId}/rotate-credentials`
+      );
+
+      return data.appConnection;
+    },
+    onSuccess: (_, { projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
     }
   });
 };

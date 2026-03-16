@@ -346,7 +346,7 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
     }
 
     case AzureClientSecretsConnectionMethod.ClientSecret: {
-      const { tenantId, clientId, clientSecret } = inputCredentials;
+      const { tenantId, clientId, clientSecret, clientSecretKeyId } = inputCredentials;
       try {
         const { data: clientData } = await request.post<ExchangeCodeAzureResponse>(
           IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId || "common"),
@@ -363,7 +363,8 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
           accessToken: clientData.access_token,
           expiresAt: Date.now() + clientData.expires_in * 1000,
           clientId,
-          clientSecret
+          clientSecret,
+          clientSecretKeyId
         };
       } catch (e: unknown) {
         if (e instanceof AxiosError) {

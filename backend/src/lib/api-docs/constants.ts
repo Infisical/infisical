@@ -32,6 +32,7 @@ export enum ApiDocsTags {
   AzureAuth = "Azure Auth",
   KubernetesAuth = "Kubernetes Auth",
   JwtAuth = "JWT Auth",
+  SpiffeAuth = "SPIFFE Auth",
   OidcAuth = "OIDC Auth",
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
@@ -742,6 +743,61 @@ export const JWT_AUTH = {
   },
   REVOKE: {
     identityId: "The ID of the machine identity to revoke the auth method for."
+  }
+} as const;
+
+export const SPIFFE_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the machine identity to login.",
+    jwt: "The JWT-SVID token to authenticate with.",
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+  },
+  ATTACH: {
+    identityId: "The ID of the machine identity to attach the configuration onto.",
+    trustDomain: "The SPIFFE trust domain (e.g. prod.example.com).",
+    allowedSpiffeIds:
+      "Comma-separated list of allowed SPIFFE ID patterns. Supports picomatch glob patterns (e.g. spiffe://prod.example.com/**).",
+    allowedAudiences: "Comma-separated list of allowed audiences for JWT-SVID validation.",
+    trustBundleDistribution: {
+      profile:
+        "The trust bundle distribution profile. Must be one of: 'static' (admin uploads JWKS), 'https_web_bundle' (auto-refresh from HTTPS endpoint).",
+      bundle: "The JWKS JSON containing public keys for JWT-SVID verification. Required when profile is 'static'.",
+      endpointUrl:
+        "The SPIRE bundle endpoint URL for automatic trust bundle retrieval. Required when profile is 'https_web_bundle'.",
+      caCert:
+        "Optional PEM-encoded root CA certificate for verifying the bundle endpoint TLS connection. Defaults to system root CAs when not provided.",
+      refreshHintSeconds: "The interval in seconds between bundle refresh attempts. Defaults to 3600."
+    },
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the machine identity to update the auth method for.",
+    trustDomain: "The new SPIFFE trust domain.",
+    allowedSpiffeIds: "The new comma-separated list of allowed SPIFFE ID patterns.",
+    allowedAudiences: "The new comma-separated list of allowed audiences.",
+    trustBundleDistribution: {
+      profile: "The new trust bundle distribution profile.",
+      bundle: "The new JWKS JSON containing public keys.",
+      endpointUrl: "The new SPIRE bundle endpoint URL.",
+      caCert: "The new PEM-encoded CA certificate for the bundle endpoint.",
+      refreshHintSeconds: "The new interval in seconds between bundle refresh attempts."
+    },
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the machine identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the machine identity to revoke the auth method for."
+  },
+  REFRESH: {
+    identityId: "The ID of the machine identity to force-refresh the cached SPIFFE trust bundle for."
   }
 } as const;
 
@@ -2045,6 +2101,24 @@ export const CERTIFICATE_AUTHORITIES = {
     caId: "The ID of the CA to get the certificate revocation lists (CRLs) for.",
     id: "The ID of certificate revocation list (CRL).",
     crl: "The certificate revocation list (CRL)."
+  },
+  INSTALL_CERT_VENAFI: {
+    caId: "The ID of the CA to install the certificate for via Venafi."
+  },
+  CREATE_SIGNING_CONFIG: {
+    caId: "The ID of the CA to create a signing configuration for."
+  },
+  GET_SIGNING_CONFIG: {
+    caId: "The ID of the CA to get the signing configuration for."
+  },
+  UPDATE_SIGNING_CONFIG: {
+    caId: "The ID of the CA to update the signing configuration for."
+  },
+  GET_AUTO_RENEWAL: {
+    caId: "The ID of the CA to get the auto-renewal configuration for."
+  },
+  UPDATE_AUTO_RENEWAL: {
+    caId: "The ID of the CA to update the auto-renewal configuration for."
   }
 };
 
@@ -2495,7 +2569,9 @@ export const AppConnections = {
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
-      projectId: `The ID of the project to create the ${appName} Connection in.`
+      projectId: `The ID of the project to create the ${appName} Connection in.`,
+      isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
+      rotation: `The credential rotation configuration for the ${appName} Connection.`
     };
   },
   UPDATE: (app: AppConnection) => {
@@ -2506,11 +2582,16 @@ export const AppConnections = {
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
-      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`
+      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
+      isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
+      rotation: `The updated credential rotation configuration for the ${appName} Connection.`
     };
   },
   DELETE: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to be deleted.`
+  }),
+  ROTATE_CREDENTIALS: (app: AppConnection) => ({
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
   CREDENTIALS: {
     AUTH0_CONNECTION: {
@@ -2571,7 +2652,9 @@ export const AppConnections = {
       clientSecret: "The Client Secret to use to connect with Azure Client Secrets.",
       certificateBody: "The certificate body in PEM format to use to connect with Azure Client Secrets.",
       privateKey:
-        "The private key to use to connect with Azure Client Secrets. This is never transmitted to Azure and is only used to sign the Azure client assertion with."
+        "The private key to use to connect with Azure Client Secrets. This is never transmitted to Azure and is only used to sign the Azure client assertion with.",
+      clientSecretKeyId:
+        "The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked."
     },
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
@@ -2676,6 +2759,10 @@ export const AppConnections = {
     },
     OPEN_ROUTER: {
       apiKey: "The OpenRouter Provisioning API key used to manage API keys."
+    },
+    VENAFI: {
+      apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
+      region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."
     }
   }
 };

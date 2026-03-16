@@ -269,7 +269,7 @@ export const CommitDetailsTab = ({
         description={
           <div className="flex items-center gap-2">
             <div>
-              Commited by {actorDisplay === ActorType.PLATFORM ? "Platform" : actorDisplay} on{" "}
+              Committed by {actorDisplay === ActorType.PLATFORM ? "Platform" : actorDisplay} on{" "}
               {formatDisplayDate(
                 parsedCommitDetails.changes?.createdAt || new Date().toISOString()
               )}

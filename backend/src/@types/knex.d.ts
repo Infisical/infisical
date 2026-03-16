@@ -44,6 +44,9 @@ import {
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
+  TAppConnectionCredentialRotations,
+  TAppConnectionCredentialRotationsInsert,
+  TAppConnectionCredentialRotationsUpdate,
   TAppConnections,
   TAppConnectionsInsert,
   TAppConnectionsUpdate,
@@ -86,6 +89,9 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TCaSigningConfigs,
+  TCaSigningConfigsInsert,
+  TCaSigningConfigsUpdate,
   TCertificateAuthorities,
   TCertificateAuthoritiesInsert,
   TCertificateAuthoritiesUpdate,
@@ -642,6 +648,11 @@ import {
   TIdentityLdapAuthsUpdate
 } from "@app/db/schemas/identity-ldap-auths";
 import {
+  TIdentitySpiffeAuths,
+  TIdentitySpiffeAuthsInsert,
+  TIdentitySpiffeAuthsUpdate
+} from "@app/db/schemas/identity-spiffe-auths";
+import {
   TMicrosoftTeamsIntegrations,
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
@@ -1099,6 +1110,11 @@ declare module "knex/types/tables" {
       TIdentityLdapAuths,
       TIdentityLdapAuthsInsert,
       TIdentityLdapAuthsUpdate
+    >;
+    [TableName.IdentitySpiffeAuth]: KnexOriginal.CompositeTableType<
+      TIdentitySpiffeAuths,
+      TIdentitySpiffeAuthsInsert,
+      TIdentitySpiffeAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,
@@ -1664,5 +1680,15 @@ declare module "knex/types/tables" {
     >;
 
     [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
+    [TableName.AppConnectionCredentialRotation]: KnexOriginal.CompositeTableType<
+      TAppConnectionCredentialRotations,
+      TAppConnectionCredentialRotationsInsert,
+      TAppConnectionCredentialRotationsUpdate
+    >;
+    [TableName.CaSigningConfig]: KnexOriginal.CompositeTableType<
+      TCaSigningConfigs,
+      TCaSigningConfigsInsert,
+      TCaSigningConfigsUpdate
+    >;
   }
 }

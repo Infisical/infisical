@@ -67,7 +67,7 @@ export const auditLogServiceFactory = ({
     }
 
     const appCfg = getConfig();
-    const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED && clickhouseAuditLogDAL;
+    const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL;
 
     const findArgs = {
       startDate: filter.startDate,
@@ -98,7 +98,7 @@ export const auditLogServiceFactory = ({
     return auditLogs.map(({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({
       ...el,
       updatedAt: el.createdAt,
-      expiresAt: null as Date | null,
+      expiresAt: el.expiresAt,
       event: { type: logEventType, metadata: eventMetadata },
       actor: { type: eActor, metadata: actorMetadata }
     }));

@@ -1,5 +1,6 @@
 import type { ClickHouseClient } from "@clickhouse/client";
 import { randomUUID } from "crypto";
+import { v7 as uuidv7 } from "uuid";
 
 import type { TProjects } from "@app/db/schemas";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -25,6 +26,24 @@ type TAuditLogQueueServiceFactoryDep = {
 
 export type TAuditLogQueueServiceFactory = {
   pushToLog: (data: TCreateAuditLogDTO) => Promise<void>;
+};
+
+const normalizeJsonPayload = (payload: unknown) => {
+  if (Array.isArray(payload)) {
+    return { data: payload };
+  }
+  if (typeof payload === "object" && payload !== null) {
+    return payload;
+  }
+  logger.error({ payload }, "Unexpected audit log payload type, expected object or array");
+  return {};
+};
+
+const normalizeEmptyValue = (value: string | undefined | null, isClickhouse: boolean) => {
+  if (!value) {
+    return isClickhouse ? "" : null;
+  }
+  return value;
 };
 
 // keep this timeout 5s it must be fast because else the queue will take time to finish
@@ -84,48 +103,45 @@ export const auditLogQueueServiceFactory = async ({
 
       const ttl = ttlInDays * MS_IN_DAY;
 
-      const id = randomUUID();
-      const auditLog = await auditLogDAL.create({
-        // @ts-expect-error: id is added from our side to make it easier for us to correlate between the database and the stream
+      const createdAt = new Date(job.timestamp);
+      const eventMetadata = normalizeJsonPayload(event.metadata);
+      const actorMetadata = normalizeJsonPayload(actor.metadata);
+
+      // UUIDv7 embeds job.timestamp so the id's time matches createdAt
+      // UUIDv4 for Postgres (existing schema expectation)
+      const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
+      const auditLog = {
         id,
         actor: actor.type,
-        actorMetadata: actor.metadata,
-        userAgent,
-        projectId,
-        projectName: project?.name,
-        ipAddress,
-        orgId,
+        actorMetadata,
+        ipAddress: normalizeEmptyValue(ipAddress, isClickHouseBatchEnabled),
         eventType: event.type,
-        expiresAt: new Date(Date.now() + ttl),
-        eventMetadata: event.metadata,
-        userAgentType
-      });
-      await auditLogStreamService.streamLog(orgId, auditLog);
+        eventMetadata,
+        userAgent: normalizeEmptyValue(userAgent, isClickHouseBatchEnabled),
+        userAgentType: normalizeEmptyValue(userAgentType, isClickHouseBatchEnabled),
+        projectId: normalizeEmptyValue(projectId, isClickHouseBatchEnabled),
+        orgId,
+        expiresAt: new Date(createdAt.getTime() + ttl),
+        createdAt,
+        updatedAt: createdAt,
+        // project name is only used for non-ClickHouse insertion
+        ...(!isClickHouseBatchEnabled ? { projectName: project?.name } : {})
+      };
 
-      const createdAt = new Date(job.timestamp);
       // Push to Redis stream for ClickHouse batch processing
       if (isClickHouseBatchEnabled) {
         try {
           await keyStore.streamAdd(AUDIT_LOG_CLICKHOUSE_STREAM_KEY, "*", {
-            data: JSON.stringify({
-              id,
-              actor: actor.type,
-              actorMetadata: actor.metadata ?? {},
-              ipAddress: ipAddress ?? "",
-              eventType: event.type,
-              eventMetadata: event.metadata ?? {},
-              userAgent: userAgent ?? "",
-              userAgentType: userAgentType ?? "",
-              projectId: projectId ?? "",
-              orgId,
-              expiresAt: new Date(createdAt.getTime() + ttl),
-              createdAt
-            })
+            data: JSON.stringify(auditLog)
           });
         } catch (error) {
           logger.error(error, "Failed to push audit log to Redis stream for ClickHouse batch");
         }
+      } else {
+        await auditLogDAL.create(auditLog);
       }
+
+      await auditLogStreamService.streamLog(orgId, auditLog);
     }
   });
 

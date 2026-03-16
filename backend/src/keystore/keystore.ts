@@ -99,7 +99,9 @@ export const KeyStorePrefixes = {
   ProjectSSEConnection: (projectId: string, connectionId: string) =>
     `project-sse-conn:${projectId}:${connectionId}` as const,
 
-  ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const
+  ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
+
+  TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const
 };
 
 export const KeyStoreTtls = {
@@ -110,7 +112,8 @@ export const KeyStoreTtls = {
   ProjectPermissionDalVersionTtl: "15m", // Project permission DAL version TTL
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
-  ProjectSSEConnectionTtlSeconds: 180 // Must be > heartbeat interval (60s) * 2
+  ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
+  TelemetryIdentifyIdentityInSeconds: 600 // 10 minutes
 };
 
 type TDeleteItems = {
@@ -140,6 +143,12 @@ export type TKeyStoreFactory = {
     value: string | number | Buffer,
     prefix?: string
   ) => Promise<"OK">;
+  setItemWithExpiryNX: (
+    key: string,
+    expiryInSeconds: number | string,
+    value: string | number | Buffer,
+    prefix?: string
+  ) => Promise<"OK" | null>;
   deleteItem: (key: string) => Promise<number>;
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
@@ -220,6 +229,13 @@ export const keyStoreFactory = (
     value: string | number | Buffer,
     prefix?: string
   ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
+
+  const setItemWithExpiryNX = async (
+    key: string,
+    expiryInSeconds: number | string,
+    value: string | number | Buffer,
+    prefix?: string
+  ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds, "NX");
 
   const deleteItem = async (key: string) => primaryRedis.del(key);
 
@@ -376,6 +392,7 @@ export const keyStoreFactory = (
     getItem,
     setExpiry,
     setItemWithExpiry,
+    setItemWithExpiryNX,
     deleteItem,
     deleteItems,
     incrementBy,

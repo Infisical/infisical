@@ -9,8 +9,8 @@ export interface MultiLineDiffProps {
 }
 
 // Color classes for multiline diff (slightly different opacity for line context)
-const ADDED_CLASS = "rounded bg-green-500/60 px-0.5";
-const REMOVED_CLASS = "rounded bg-red-500/60 px-0.5";
+const ADDED_CLASS = "rounded-[2px] bg-success/60 px-0.5";
+const REMOVED_CLASS = "rounded-[2px] bg-danger/60 px-0.5";
 
 /**
  * Render multiline diff for approval screen (side-by-side view)
@@ -74,7 +74,7 @@ export const MultiLineDiff = ({ oldText, newText, isOldVersion }: MultiLineDiffP
 
           const lineClass = isChanged
             ? `flex min-w-full ${
-                isOldVersion ? "bg-red-500/30 text-red-200" : "bg-green-500/30 text-green-200"
+                isOldVersion ? "bg-danger/30 text-foreground" : "bg-success/30 text-foreground"
               }`
             : "flex min-w-full";
 
