@@ -127,9 +127,11 @@ export const SelectOrganizationSection = () => {
             }
           }
         } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
-          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
-            callbackPort ? `&callbackPort=${callbackPort}` : ""
-          }`;
+          if (authToken.authMethod !== AuthMethod.OIDC) {
+            url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
+              callbackPort ? `&callbackPort=${callbackPort}` : ""
+            }`;
+          }
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
           if (
             !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
