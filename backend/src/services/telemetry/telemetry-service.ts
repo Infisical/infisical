@@ -8,6 +8,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
@@ -430,7 +431,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         const distinctId = `identity-${identityId}`;
         const enrichedProperties = {
           ...properties,
-          actorType: "machine_identity",
+          actorType: ActorType.IDENTITY,
           ...(properties.name ? { name: `[Machine Identity] ${properties.name}` } : {})
         };
         try {
