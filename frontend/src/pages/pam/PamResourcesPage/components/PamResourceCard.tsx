@@ -165,7 +165,7 @@ export const PamResourceCard = ({
             </div>
           </div>
           <Badge variant="neutral" className="mt-1">
-            <HighlightText text={resourceTypeName} highlight={search} />
+            {resourceTypeName}
           </Badge>
         </div>
       </div>
