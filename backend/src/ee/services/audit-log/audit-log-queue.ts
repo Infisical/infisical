@@ -176,15 +176,12 @@ export const auditLogQueueServiceFactory = async ({
     });
 
     // Schedule repeatable job every 5 seconds
-    await queueService.queue(QueueName.AuditLogClickHouseBatch, QueueJobs.AuditLogClickHouseBatch, undefined, {
-      jobId: "audit-log-clickhouse-batch",
-      repeat: {
-        every: 5000,
-        key: "audit-log-clickhouse-batch"
-      },
-      removeOnFail: true,
-      removeOnComplete: true
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.AuditLogClickHouseBatch,
+      "audit-log-clickhouse-batch",
+      { every: 5000 },
+      { name: QueueJobs.AuditLogClickHouseBatch }
+    );
   }
 
   return {

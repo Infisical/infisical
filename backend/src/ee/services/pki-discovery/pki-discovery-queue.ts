@@ -101,14 +101,12 @@ export const pkiDiscoveryQueueFactory = ({
     });
 
     void queueService
-      .queue(QueueName.PkiDiscoveryScan, QueueJobs.PkiDiscoveryScheduledScan, undefined, {
-        repeat: {
-          pattern: "0 2 * * *",
-          utc: true,
-          key: "pki-discovery-scheduled-scan"
-        },
-        jobId: "pki-discovery-scheduled-scan-cron"
-      })
+      .upsertJobScheduler(
+        QueueName.PkiDiscoveryScan,
+        "pki-discovery-scheduled-scan",
+        { pattern: "0 2 * * *" },
+        { name: QueueJobs.PkiDiscoveryScheduledScan }
+      )
       .catch((err) => logger.error(err, "Failed to schedule PKI discovery cron"));
   };
 

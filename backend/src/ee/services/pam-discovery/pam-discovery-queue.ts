@@ -118,16 +118,14 @@ export const pamDiscoveryQueueFactory = ({
       }
     });
 
+    // runs every day at 3:00 AM
     void queueService
-      .queue(QueueName.PamDiscoveryScan, QueueJobs.PamDiscoveryScheduledScan, undefined, {
-        repeat: {
-          // runs every day at 3:00 AM
-          pattern: "0 3 * * *",
-          utc: true,
-          key: "pam-discovery-scheduled-scan"
-        },
-        jobId: "pam-discovery-scheduled-scan-cron"
-      })
+      .upsertJobScheduler(
+        QueueName.PamDiscoveryScan,
+        "pam-discovery-scheduled-scan",
+        { pattern: "0 3 * * *" },
+        { name: QueueJobs.PamDiscoveryScheduledScan }
+      )
       .catch((err) => logger.error(err, "Failed to schedule PAM Discovery cron"));
   };
 

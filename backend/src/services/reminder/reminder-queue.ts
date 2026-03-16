@@ -149,19 +149,12 @@ export const dailyReminderQueueServiceFactory = ({
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
   const startDailyRemindersJob = async () => {
-    // clear previous job
-    await queueService.stopRepeatableJob(
+    await queueService.upsertJobScheduler(
       QueueName.DailyReminders,
       QueueJobs.DailyReminders,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.DailyReminders // just a job id
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.DailyReminders, opts: { delay: 5000 } }
     );
-
-    await queueService.queue(QueueName.DailyReminders, QueueJobs.DailyReminders, undefined, {
-      delay: 5000,
-      jobId: QueueName.DailyReminders,
-      repeat: { pattern: "0 0 * * *", utc: true, key: QueueJobs.DailyReminders }
-    });
   };
 
   // TODO: remove once all the old reminders in queues are migrated

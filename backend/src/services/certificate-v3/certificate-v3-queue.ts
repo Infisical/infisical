@@ -29,13 +29,6 @@ export const certificateV3QueueServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.CertificateV3AutoRenewal,
-      QueueJobs.CertificateV3DailyAutoRenewal,
-      { pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE, utc: true },
-      QueueName.CertificateV3AutoRenewal
-    );
-
     queueService.start(QueueName.CertificateV3AutoRenewal, async () => {
       try {
         logger.info(`${QueueJobs.CertificateV3DailyAutoRenewal}: queue task started`);
@@ -139,13 +132,12 @@ export const certificateV3QueueServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.CertificateV3AutoRenewal, QueueJobs.CertificateV3DailyAutoRenewal, undefined, {
-      jobId: QueueJobs.CertificateV3DailyAutoRenewal,
-      repeat: {
-        pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE,
-        key: QueueJobs.CertificateV3DailyAutoRenewal
-      }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.CertificateV3AutoRenewal,
+      QueueJobs.CertificateV3DailyAutoRenewal,
+      { pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE },
+      { name: QueueJobs.CertificateV3DailyAutoRenewal }
+    );
   };
 
   return {

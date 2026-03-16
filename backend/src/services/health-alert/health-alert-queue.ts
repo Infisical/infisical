@@ -24,13 +24,6 @@ export const healthAlertServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.HealthAlert,
-      QueueJobs.HealthAlert,
-      { pattern: "*/5 * * * *", utc: true },
-      QueueName.HealthAlert // job id
-    );
-
     queueService.start(QueueName.HealthAlert, async () => {
       try {
         logger.info(`${QueueName.HealthAlert}: health check alert task started`);
@@ -43,13 +36,12 @@ export const healthAlertServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.HealthAlert, QueueJobs.HealthAlert, undefined, {
-      jobId: QueueJobs.HealthAlert,
-      repeat: {
-        pattern: "*/5 * * * *",
-        key: QueueJobs.HealthAlert
-      }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.HealthAlert,
+      QueueJobs.HealthAlert,
+      { pattern: "*/5 * * * *" },
+      { name: QueueJobs.HealthAlert }
+    );
   };
 
   return {

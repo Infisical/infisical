@@ -216,16 +216,10 @@ export const appConnectionCredentialRotationQueueFactory = async ({
   });
 
   // Schedule the cron job
-  await queueService.queue(
+  await queueService.upsertJobScheduler(
     QueueName.AppConnectionCredentialRotation,
-    QueueJobs.AppConnectionCredentialRotationQueueRotations,
-    undefined,
-    {
-      jobId: "app-connection-credential-rotation-cron",
-      repeat: {
-        pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
-        key: "app-connection-credential-rotation-cron"
-      }
-    }
+    "app-connection-credential-rotation-cron",
+    { pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *" },
+    { name: QueueJobs.AppConnectionCredentialRotationQueueRotations }
   );
 };

@@ -210,13 +210,12 @@ export const pkiAlertV2QueueServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.DailyPkiAlertV2Processing, QueueJobs.DailyPkiAlertV2Processing, undefined, {
-      jobId: QueueJobs.DailyPkiAlertV2Processing,
-      repeat: {
-        pattern: "0 0 * * *",
-        key: QueueJobs.DailyPkiAlertV2Processing
-      }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.DailyPkiAlertV2Processing,
+      QueueJobs.DailyPkiAlertV2Processing,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.DailyPkiAlertV2Processing }
+    );
   };
 
   return {
