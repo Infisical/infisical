@@ -821,6 +821,8 @@
                           "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/mysql",
+                          "documentation/platform/pam/getting-started/resources/postgresql",
                           "documentation/platform/pam/getting-started/resources/redis",
                           "documentation/platform/pam/getting-started/resources/ssh",
                           "documentation/platform/pam/getting-started/resources/windows-server"
