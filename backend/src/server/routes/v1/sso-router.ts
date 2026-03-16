@@ -28,7 +28,6 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
@@ -74,7 +73,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 lastName: profile?.name?.familyName || "",
                 authMethod: AuthMethod.GOOGLE,
                 callbackPort,
-                orgSlug
+                orgSlug,
+                providerUserId: profile.id
               });
 
             const googleDistinctId = user.username ?? user.email ?? "";
@@ -90,20 +90,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 },
                 { skipDedup: true }
               );
-            }
-
-            if (!isUserCompleted && googleDistinctId) {
-              void server.services.telemetry.sendPostHogEvents({
-                event: PostHogEventTypes.UserSignedUp,
-                distinctId: googleDistinctId,
-                ...(orgId ? { organizationId: orgId } : {}),
-                ...(orgName ? { organizationName: orgName } : {}),
-                properties: {
-                  username: user.username,
-                  email: user.email ?? "",
-                  attributionSource: "Google OAuth"
-                }
-              });
             }
 
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -174,7 +160,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 firstName: githubUser.name || githubUser.login,
                 lastName: "",
                 authMethod: AuthMethod.GITHUB,
-                callbackPort
+                callbackPort,
+                providerUserId: String(githubUser.id)
               });
 
             const githubDistinctId = user.username ?? user.email ?? "";
@@ -190,20 +177,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 },
                 { skipDedup: true }
               );
-            }
-
-            if (!isUserCompleted && githubDistinctId) {
-              void server.services.telemetry.sendPostHogEvents({
-                event: PostHogEventTypes.UserSignedUp,
-                distinctId: githubDistinctId,
-                ...(orgId ? { organizationId: orgId } : {}),
-                ...(orgName ? { organizationName: orgName } : {}),
-                properties: {
-                  username: user.username,
-                  email: user.email ?? "",
-                  attributionSource: "GitHub OAuth"
-                }
-              });
             }
 
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -266,7 +239,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 firstName: profile.displayName || profile.username || "",
                 lastName: "",
                 authMethod: AuthMethod.GITLAB,
-                callbackPort
+                callbackPort,
+                providerUserId: String(profile.id)
               });
 
             const gitlabDistinctId = user.username ?? user.email ?? "";
@@ -282,20 +256,6 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 },
                 { skipDedup: true }
               );
-            }
-
-            if (!isUserCompleted && gitlabDistinctId) {
-              void server.services.telemetry.sendPostHogEvents({
-                event: PostHogEventTypes.UserSignedUp,
-                distinctId: gitlabDistinctId,
-                ...(orgId ? { organizationId: orgId } : {}),
-                ...(orgName ? { organizationName: orgName } : {}),
-                properties: {
-                  username: user.username,
-                  email: user.email ?? "",
-                  attributionSource: "GitLab OAuth"
-                }
-              });
             }
 
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {

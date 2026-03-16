@@ -139,6 +139,10 @@ export const mockKeyStore = (): TKeyStoreFactory => {
         list = JSON.parse(existing) as string[];
       }
       return list.length;
-    }
+    },
+    streamAdd: async () => null,
+    streamRange: async () => [],
+    streamTrim: async () => 0,
+    streamCollect: async () => ({ entries: [], lastId: null })
   };
 };

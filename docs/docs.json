@@ -153,6 +153,7 @@
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
+                      "integrations/app-connections/venafi",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
                       "integrations/app-connections/smb",
@@ -280,6 +281,7 @@
                   "documentation/platform/identities/kubernetes-auth",
                   "documentation/platform/identities/oci-auth",
                   "documentation/platform/identities/token-auth",
+                  "documentation/platform/identities/spiffe-auth",
                   "documentation/platform/identities/tls-cert-auth",
                   "documentation/platform/identities/universal-auth",
                   {
@@ -781,7 +783,8 @@
                   "documentation/platform/pki/ca/digicert",
                   "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
-                  "documentation/platform/pki/ca/aws-pca"
+                  "documentation/platform/pki/ca/aws-pca",
+                  "documentation/platform/pki/ca/venafi"
                 ]
               }
             ]
@@ -818,6 +821,8 @@
                           "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/mysql",
+                          "documentation/platform/pam/getting-started/resources/postgresql",
                           "documentation/platform/pam/getting-started/resources/redis",
                           "documentation/platform/pam/getting-started/resources/ssh",
                           "documentation/platform/pam/getting-started/resources/windows-server"
@@ -1733,6 +1738,18 @@
                       "api-reference/endpoints/app-connections/terraform-cloud/create",
                       "api-reference/endpoints/app-connections/terraform-cloud/update",
                       "api-reference/endpoints/app-connections/terraform-cloud/delete"
+                    ]
+                  },
+                  {
+                    "group": "Venafi",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/venafi/list",
+                      "api-reference/endpoints/app-connections/venafi/available",
+                      "api-reference/endpoints/app-connections/venafi/get-by-id",
+                      "api-reference/endpoints/app-connections/venafi/get-by-name",
+                      "api-reference/endpoints/app-connections/venafi/create",
+                      "api-reference/endpoints/app-connections/venafi/update",
+                      "api-reference/endpoints/app-connections/venafi/delete"
                     ]
                   },
                   {
@@ -2782,9 +2799,30 @@
                       "api-reference/endpoints/certificate-authorities/internal/list-ca-certs",
                       "api-reference/endpoints/certificate-authorities/internal/csr",
                       "api-reference/endpoints/certificate-authorities/internal/cert",
-                      "api-reference/endpoints/certificate-authorities/internal/sign-intermediate",
-                      "api-reference/endpoints/certificate-authorities/internal/import-cert",
-                      "api-reference/endpoints/certificate-authorities/internal/crl"
+                      "api-reference/endpoints/certificate-authorities/internal/crl",
+                      {
+                        "group": "Installation",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/internal/sign-intermediate",
+                          "api-reference/endpoints/certificate-authorities/internal/import-cert",
+                          "api-reference/endpoints/certificate-authorities/internal/install-cert-venafi"
+                        ]
+                      },
+                      {
+                        "group": "Signing Config",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/internal/create-signing-config",
+                          "api-reference/endpoints/certificate-authorities/internal/get-signing-config",
+                          "api-reference/endpoints/certificate-authorities/internal/update-signing-config"
+                        ]
+                      },
+                      {
+                        "group": "Auto-Renewal",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/internal/get-auto-renewal",
+                          "api-reference/endpoints/certificate-authorities/internal/update-auto-renewal"
+                        ]
+                      }
                     ]
                   }
                 ]

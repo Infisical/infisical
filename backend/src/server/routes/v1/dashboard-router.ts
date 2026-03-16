@@ -1524,7 +1524,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environment,
             secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
-            ...req.auditLogInfo
+            ...req.auditLogInfo,
+            actorType: req.permission.type
           }
         });
       }

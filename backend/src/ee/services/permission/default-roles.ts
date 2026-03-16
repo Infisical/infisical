@@ -367,7 +367,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionAppConnectionActions.Edit,
       ProjectPermissionAppConnectionActions.Delete,
       ProjectPermissionAppConnectionActions.Read,
-      ProjectPermissionAppConnectionActions.Connect
+      ProjectPermissionAppConnectionActions.Connect,
+      ProjectPermissionAppConnectionActions.RotateCredentials
     ],
     ProjectPermissionSub.AppConnections
   );

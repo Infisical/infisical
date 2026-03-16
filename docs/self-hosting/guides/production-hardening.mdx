@@ -461,77 +461,132 @@ containers:
 
 **Regular updates**. Monitor [Docker Hub](https://hub.docker.com/r/infisical/infisical/tags) for new releases and update your deployment manifests with new image tags regularly.
 
-### Linux Binary Deployment
+### Linux Package (infisical-ctl) Deployment
 
-These recommendations are specific to Linux binary deployments of Infisical.
+These recommendations are specific to deployments using the [Infisical Linux package](/self-hosting/deployment-options/native/linux-package/installation), which is managed by the `infisical-ctl` CLI tool.
 
-#### System User Management
+#### Built-in Security Features
 
-**Create dedicated user account**. Run Infisical under a dedicated service account:
+The Infisical Linux package (omnibus) includes several security measures out of the box:
+
+- **Privilege dropping**: The package uses `chpst` to automatically drop the running application process from `root` to the dedicated `infisical` user. You do not need to configure this manually.
+- **Service supervision**: Services are managed by `runsvdir`, which provides automatic process supervision and restart.
+- **Structured directories**: Application files, data, and logs are organized under standard paths (`/opt/infisical-core`, `/var/opt/infisical-core`, `/var/log/infisical-core`).
+
+#### systemd Hardening
+
+The `infisical-core` package ships a systemd unit (`infisical-runsvdir.service`) that starts the `runsvdir` process supervisor. You can apply additional hardening using a systemd drop-in override without modifying the original unit file:
 
 ```bash
-# Create dedicated user
-sudo useradd --system --shell /bin/false --home-dir /opt/infisical infisical
-
-# Create application directory
-sudo mkdir -p /opt/infisical
-sudo chown infisical:infisical /opt/infisical
+# Create a systemd drop-in override
+sudo systemctl edit infisical-runsvdir.service
 ```
 
-#### Service Configuration
-
-**Configure systemd service**. Create a secure systemd service:
+Add the following content to the override file:
 
 ```ini
-# /etc/systemd/system/infisical.service
-[Unit]
-Description=Infisical Secret Management
-After=network.target
-
+# /etc/systemd/system/infisical-runsvdir.service.d/override.conf
 [Service]
-Type=simple
-# IMPORTANT: Change from default 'root' user to dedicated service account
-User=infisical
-Group=infisical
-WorkingDirectory=/opt/infisical
-ExecStart=/opt/infisical/infisical-linux-amd64
-Restart=always
 RestartSec=10
 
-# Security settings
+# Prevent child processes from gaining new privileges
 NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/opt/infisical
+
+# Isolate /tmp from the rest of the system
 PrivateTmp=true
-ProtectKernelTunables=true
+
+# Protect /home, /root, and /run/user from access
+ProtectHome=true
+
+# Make the entire filesystem read-only except for explicitly allowed paths
+ProtectSystem=strict
+ReadWritePaths=/opt/infisical-core
+ReadWritePaths=/var/opt/infisical-core
+ReadWritePaths=/var/log/infisical-core
+
+# Create and manage /run/infisical-core automatically at service start
+RuntimeDirectory=infisical-core
+
+# Prevent loading of kernel modules
 ProtectKernelModules=true
+
+# Protect cgroup hierarchy from modification
 ProtectControlGroups=true
+
+# Restrict creation of SUID/SGID files
 RestrictSUIDSGID=true
+
+# Disable core dumps to prevent sensitive data exposure
 LimitCORE=0
+
+# Limit swap usage to 0 for this service's cgroup (also disable system-wide swap in the System Security section below)
 MemorySwapMax=0
-
-# Environment file
-EnvironmentFile=/etc/infisical/environment
-
-[Install]
-WantedBy=multi-user.target
 ```
+
+After saving, reload systemd and restart the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart infisical-runsvdir.service
+```
+
+<Warning>
+**Do not** set `User=` or `Group=` in the systemd override. The Infisical omnibus package uses `chpst` internally to drop privileges to the `infisical` user. Setting these directives in systemd will conflict with `chpst` and break the service.
+</Warning>
+
+<Warning>
+**Do not** enable `ProtectKernelTunables=true`. The `runsvdir-start` script adjusts `/proc/sys/fs/file-max` at startup. Enabling this setting makes `/proc/sys` read-only, which will cause errors. While the service may still start, it will log warnings and may not perform optimally.
+</Warning>
 
 #### Configuration Security
 
-**Secure environment configuration**. Store environment variables securely:
+**Secure the configuration file**. The `infisical.rb` file contains sensitive credentials and should be properly protected:
 
 ```bash
-# Create secure config directory
-sudo mkdir -p /etc/infisical
-sudo chmod 750 /etc/infisical
-sudo chown root:infisical /etc/infisical
+# Restrict permissions on the configuration file
+sudo chmod 600 /etc/infisical/infisical.rb
+sudo chown root:root /etc/infisical/infisical.rb
+```
 
-# Create environment file
-sudo touch /etc/infisical/environment
-sudo chmod 640 /etc/infisical/environment
-sudo chown root:infisical /etc/infisical/environment
+**Use secure values in configuration**. Generate strong cryptographic keys:
+
+```ruby
+# /etc/infisical/infisical.rb
+# Generate with: openssl rand -hex 16
+infisical_core['ENCRYPTION_KEY'] = '<secure-random-hex-key>'
+
+# Generate with: openssl rand -base64 32
+infisical_core['AUTH_SECRET'] = '<secure-random-base64-key>'
+
+# Use SSL for database connections
+infisical_core['DB_CONNECTION_URI'] = 'postgres://user:pass@host:5432/db?sslmode=require'
+
+# Use TLS for Redis if supported
+infisical_core['REDIS_URL'] = 'rediss://user:password@redis:6380'
+```
+
+After making configuration changes, apply them with:
+
+```bash
+infisical-ctl reconfigure
+```
+
+#### File Permissions
+
+**Verify directory permissions**. Ensure proper ownership on application directories:
+
+```bash
+# Application directory
+sudo chown -R root:root /opt/infisical-core
+sudo chmod 755 /opt/infisical-core
+
+# Data directory
+sudo chown -R infisical:infisical /var/opt/infisical-core
+sudo chmod 750 /var/opt/infisical-core
+
+# Log directory
+sudo chown -R infisical:infisical /var/log/infisical-core
+sudo chmod 750 /var/log/infisical-core
 ```
 
 #### System Security
@@ -556,23 +611,19 @@ echo "* hard core 0" | sudo tee -a /etc/security/limits.conf
 ulimit -c 0
 ```
 
-#### File Permissions
-
-**Secure file permissions**. Set proper permissions on application files:
+**Synchronize system clocks**. Ensure accurate time for JWT token validation and audit log timestamps:
 
 ```bash
-# Set binary permissions
-sudo chmod 755 /opt/infisical/infisical-linux-amd64
-sudo chown infisical:infisical /opt/infisical/infisical-linux-amd64
-
-# Set config file permissions
-sudo chmod 640 /etc/infisical/environment
-sudo chown root:infisical /etc/infisical/environment
+# Verify time synchronization is active
+# (systemd-timesyncd is enabled by default on most modern distributions;
+# replace with chrony or ntp if preferred)
+timedatectl status
+sudo systemctl enable --now systemd-timesyncd
 ```
 
 #### Network Security
 
-**Host firewall configuration**. Configure comprehensive firewall for Linux binary deployments:
+**Host firewall configuration**. Configure comprehensive firewall for Linux package deployments:
 
 ```bash
 # Configure UFW firewall
@@ -595,22 +646,35 @@ sudo ufw allow from 127.0.0.1 to any port 6379
 sudo ufw --force enable
 ```
 
-#### System Maintenance
+#### Health Monitoring
 
-**Synchronize system clocks**. Ensure accurate time for JWT tokens and audit logs:
+**Monitor service health**. Use `infisical-ctl` to monitor the service:
 
 ```bash
-# Install and configure NTP
-sudo apt-get update
-sudo apt-get install -y ntp
-sudo systemctl enable ntp
-sudo systemctl start ntp
+# Check service status
+infisical-ctl status
 
-# Verify time synchronization
-timedatectl status
+# Stream real-time logs for monitoring
+infisical-ctl tail
 ```
 
-**Regular updates**. Monitor [Cloudsmith releases](https://cloudsmith.io/~infisical/repos/infisical-core/packages) for new binary versions and update your installation regularly.
+#### Maintenance
+
+**Regular updates**. Monitor [Infisical releases](https://github.com/Infisical/infisical/releases) for new package versions. Update using your package manager:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get update && sudo apt-get install --only-upgrade infisical-core
+
+# RHEL/CentOS/Amazon Linux
+sudo yum update infisical-core
+```
+
+After updating, apply the new version:
+
+```bash
+infisical-ctl reconfigure
+```
 
 ## Enterprise Security Features
 

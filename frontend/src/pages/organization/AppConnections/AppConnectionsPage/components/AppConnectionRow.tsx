@@ -8,6 +8,9 @@ import {
   faEdit,
   faEllipsisV,
   faInfoCircle,
+  faPause,
+  faPlay,
+  faRotate,
   faTable,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -37,11 +40,15 @@ import { getProjectBaseURL } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 
+import { CrededentialRotationStatusBadge } from "./AppConnectionForm/shared/CrededentialRotationBadge";
+
 type Props = {
   appConnection: TAppConnection;
   onDelete: (appConnection: TAppConnection) => void;
   onEditCredentials: (appConnection: TAppConnection) => void;
   onEditDetails: (appConnection: TAppConnection) => void;
+  onRotateCredentials: (appConnection: TAppConnection) => void;
+  onToggleAutoRotation: (appConnection: TAppConnection) => void;
   isProjectView: boolean;
 };
 
@@ -50,11 +57,21 @@ export const AppConnectionRow = ({
   onDelete,
   onEditCredentials,
   onEditDetails,
+  onRotateCredentials,
+  onToggleAutoRotation,
   isProjectView
 }: Props) => {
   const { currentOrg } = useOrganization();
-  const { id, name, method, app, description, isPlatformManagedCredentials, project } =
-    appConnection;
+  const {
+    id,
+    name,
+    method,
+    app,
+    description,
+    isPlatformManagedCredentials,
+    project,
+    isAutoRotationEnabled
+  } = appConnection;
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -166,6 +183,11 @@ export const AppConnectionRow = ({
               </div>
             </Tooltip>
           )}
+
+          {appConnection.rotation && (
+            <CrededentialRotationStatusBadge appConnection={appConnection} />
+          )}
+
           <Tooltip className="max-w-sm text-center" content="Options">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -241,6 +263,46 @@ export const AppConnectionRow = ({
                         </DropdownMenuItem>
                       )}
                     </VariablePermissionCan>
+                    {appConnection.rotation && (
+                      <VariablePermissionCan
+                        type={isProjectView ? "project" : "org"}
+                        I={
+                          isProjectView
+                            ? ProjectPermissionAppConnectionActions.Edit
+                            : OrgPermissionAppConnectionActions.Edit
+                        }
+                        a={
+                          isProjectView
+                            ? subject(ProjectPermissionSub.AppConnections, {
+                                connectionId: id
+                              })
+                            : subject(OrgPermissionSubjects.AppConnections, {
+                                connectionId: id
+                              })
+                        }
+                      >
+                        {(isAllowed: boolean) => (
+                          <>
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              icon={<FontAwesomeIcon icon={faRotate} />}
+                              onClick={() => onRotateCredentials(appConnection)}
+                            >
+                              Rotate Credentials
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              icon={
+                                <FontAwesomeIcon icon={isAutoRotationEnabled ? faPause : faPlay} />
+                              }
+                              onClick={() => onToggleAutoRotation(appConnection)}
+                            >
+                              {isAutoRotationEnabled ? "Disable" : "Enable"} Auto-Rotation
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </VariablePermissionCan>
+                    )}
                     <VariablePermissionCan
                       type={isProjectView ? "project" : "org"}
                       I={

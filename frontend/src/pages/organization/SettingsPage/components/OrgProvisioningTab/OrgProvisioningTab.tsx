@@ -15,5 +15,5 @@ export const OrgProvisioningTab = withPermission(
       </>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Sso }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Scim }
 );

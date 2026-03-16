@@ -35,6 +35,11 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import {
+  TAWSAuthDetails,
+  TKubernetesAuthDetails,
+  TOidcAuthDetails
+} from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
@@ -218,6 +223,13 @@ export enum EventType {
   GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
   REVOKE_IDENTITY_JWT_AUTH = "revoke-identity-jwt-auth",
 
+  LOGIN_IDENTITY_SPIFFE_AUTH = "login-identity-spiffe-auth",
+  ADD_IDENTITY_SPIFFE_AUTH = "add-identity-spiffe-auth",
+  UPDATE_IDENTITY_SPIFFE_AUTH = "update-identity-spiffe-auth",
+  GET_IDENTITY_SPIFFE_AUTH = "get-identity-spiffe-auth",
+  REVOKE_IDENTITY_SPIFFE_AUTH = "revoke-identity-spiffe-auth",
+  REFRESH_IDENTITY_SPIFFE_AUTH_BUNDLE = "refresh-identity-spiffe-auth-bundle",
+
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS = "clear-identity-universal-auth-lockouts",
@@ -332,6 +344,12 @@ export enum EventType {
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
+  INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
+  CREATE_CA_SIGNING_CONFIG = "create-ca-signing-config",
+  GET_CA_SIGNING_CONFIG = "get-ca-signing-config",
+  UPDATE_CA_SIGNING_CONFIG = "update-ca-signing-config",
+  GET_CA_AUTO_RENEWAL_CONFIG = "get-ca-auto-renewal-config",
+  UPDATE_CA_AUTO_RENEWAL_CONFIG = "update-ca-auto-renewal-config",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   SIGN_CERT = "sign-cert",
@@ -443,6 +461,7 @@ export enum EventType {
   DELETE_APP_CONNECTION = "delete-app-connection",
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
+  ROTATE_APP_CONNECTION_CREDENTIALS = "rotate-app-connection-credentials",
   CREATE_SHARED_SECRET = "create-shared-secret",
   CREATE_SECRET_REQUEST = "create-secret-request",
   DELETE_SHARED_SECRET = "delete-shared-secret",
@@ -694,6 +713,10 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
   permission?: Record<string, unknown>;
+
+  aws?: TAWSAuthDetails;
+  kubernetes?: TKubernetesAuthDetails;
+  oidc?: TOidcAuthDetails;
 }
 
 interface ScimClientActorMetadata {}
@@ -1870,6 +1893,66 @@ interface GetIdentityJwtAuthEvent {
   };
 }
 
+interface LoginIdentitySpiffeAuthEvent {
+  type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    identitySpiffeAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentitySpiffeAuthEvent {
+  type: EventType.ADD_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    trustDomain: string;
+    allowedSpiffeIds: string;
+    allowedAudiences: string;
+    configurationType: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentitySpiffeAuthEvent {
+  type: EventType.UPDATE_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+    trustDomain?: string;
+    allowedSpiffeIds?: string;
+    allowedAudiences?: string;
+    configurationType?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentitySpiffeAuthEvent {
+  type: EventType.REVOKE_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface GetIdentitySpiffeAuthEvent {
+  type: EventType.GET_IDENTITY_SPIFFE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface RefreshIdentitySpiffeAuthBundleEvent {
+  type: EventType.REFRESH_IDENTITY_SPIFFE_AUTH_BUNDLE;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -1915,10 +1998,12 @@ interface AddProjectMemberEvent {
 
 interface AddBatchProjectMemberEvent {
   type: EventType.ADD_BATCH_PROJECT_MEMBER;
-  metadata: Array<{
-    userId: string;
-    email: string;
-  }>;
+  metadata: {
+    members: Array<{
+      userId: string;
+      email: string;
+    }>;
+  };
 }
 
 interface RemoveProjectMemberEvent {
@@ -2483,6 +2568,57 @@ interface GenerateCaCertificate {
     dn: string;
     serialNumber: string;
     parentCaId?: string;
+  };
+}
+
+interface InstallCaCertVenafi {
+  type: EventType.INSTALL_CA_CERT_VENAFI;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface CreateCaSigningConfig {
+  type: EventType.CREATE_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+    signingConfigType: string;
+  };
+}
+
+interface GetCaSigningConfig {
+  type: EventType.GET_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCaSigningConfig {
+  type: EventType.UPDATE_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+    signingConfigType: string;
+  };
+}
+
+interface GetCaAutoRenewalConfig {
+  type: EventType.GET_CA_AUTO_RENEWAL_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCaAutoRenewalConfig {
+  type: EventType.UPDATE_CA_AUTO_RENEWAL_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+    autoRenewalEnabled?: boolean;
   };
 }
 
@@ -3348,6 +3484,13 @@ interface UpdateAppConnectionEvent {
 
 interface DeleteAppConnectionEvent {
   type: EventType.DELETE_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
+interface RotateAppConnectionCredentialsEvent {
+  type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS;
   metadata: {
     connectionId: string;
   };
@@ -5299,6 +5442,12 @@ export type Event =
   | UpdateIdentityJwtAuthEvent
   | GetIdentityJwtAuthEvent
   | DeleteIdentityJwtAuthEvent
+  | LoginIdentitySpiffeAuthEvent
+  | AddIdentitySpiffeAuthEvent
+  | UpdateIdentitySpiffeAuthEvent
+  | GetIdentitySpiffeAuthEvent
+  | RefreshIdentitySpiffeAuthBundleEvent
+  | DeleteIdentitySpiffeAuthEvent
   | LoginIdentityLdapAuthEvent
   | AddIdentityLdapAuthEvent
   | UpdateIdentityLdapAuthEvent
@@ -5366,6 +5515,12 @@ export type Event =
   | ImportCaCert
   | GetCaCrls
   | GenerateCaCertificate
+  | InstallCaCertVenafi
+  | CreateCaSigningConfig
+  | GetCaSigningConfig
+  | UpdateCaSigningConfig
+  | GetCaAutoRenewalConfig
+  | UpdateCaAutoRenewalConfig
   | IssueCert
   | ImportCert
   | SignCert
@@ -5462,6 +5617,7 @@ export type Event =
   | DeleteAppConnectionEvent
   | GetAppConnectionUsageEvent
   | MigrateAppConnectionEvent
+  | RotateAppConnectionCredentialsEvent
   | GetSshHostGroupEvent
   | CreateSshHostGroupEvent
   | UpdateSshHostGroupEvent
