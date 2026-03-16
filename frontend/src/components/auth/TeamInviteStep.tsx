@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 
 import {
   Button,
+  FieldError,
   TextArea,
   UnstableCard,
   UnstableCardContent,
@@ -23,9 +25,10 @@ export default function TeamInviteStep(): JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [emails, setEmails] = useState("");
+  const [validationError, setValidationError] = useState("");
   const { data: serverDetails } = useFetchServerStatus();
 
-  const { mutateAsync } = useAddUsersToOrg();
+  const { mutateAsync, isPending } = useAddUsersToOrg();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   const orgId = String(localStorage.getItem("orgData.id"));
@@ -39,16 +42,33 @@ export default function TeamInviteStep(): JSX.Element {
   };
 
   const inviteUsers = async ({ emails: inviteEmails }: { emails: string }) => {
-    inviteEmails
+    const parsed = inviteEmails
       .split(",")
       .map((email) => email.trim())
-      .map(async (email) => {
+      .filter(Boolean);
+
+    if (parsed.length === 0) {
+      setValidationError("Please enter at least one email address.");
+      return;
+    }
+
+    const invalid = parsed.filter((email) => !z.string().email().safeParse(email).success);
+    if (invalid.length > 0) {
+      setValidationError(`Invalid email${invalid.length > 1 ? "s" : ""}: ${invalid.join(", ")}`);
+      return;
+    }
+
+    setValidationError("");
+
+    await Promise.all(
+      parsed.map((email) =>
         mutateAsync({
           inviteeEmails: [email],
           organizationId: orgId,
           organizationRoleSlug: "member"
-        });
-      });
+        })
+      )
+    );
 
     await redirectToHome();
   };
@@ -62,12 +82,18 @@ export default function TeamInviteStep(): JSX.Element {
           </UnstableCardTitle>
         </UnstableCardHeader>
         <UnstableCardContent className="flex flex-col gap-y-4">
-          <TextArea
-            className="min-h-20"
-            value={emails}
-            onChange={(e) => setEmails(e.target.value)}
-            placeholder="email1@example.com, email2@example.com"
-          />
+          <div className="w-full">
+            <TextArea
+              className="min-h-20"
+              value={emails}
+              onChange={(e) => {
+                setEmails(e.target.value);
+                if (validationError) setValidationError("");
+              }}
+              placeholder="email1@example.com, email2@example.com"
+            />
+            {validationError && <FieldError>{validationError}</FieldError>}
+          </div>
           <Button
             onClick={() => {
               if (serverDetails?.emailConfigured) {
@@ -79,11 +105,18 @@ export default function TeamInviteStep(): JSX.Element {
             variant="project"
             size="lg"
             isFullWidth
+            isPending={isPending}
           >
             {t("signup.step5-send-invites") ?? ""}
           </Button>
 
-          <Button onClick={redirectToHome} variant="outline" size="lg" isFullWidth>
+          <Button
+            onClick={redirectToHome}
+            isDisabled={isPending}
+            variant="outline"
+            size="lg"
+            isFullWidth
+          >
             {t("signup.step5-skip") ?? "Skip"}
           </Button>
         </UnstableCardContent>
