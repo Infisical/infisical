@@ -150,6 +150,7 @@ import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
 } from "@app/services/app-connection/terraform-cloud";
+import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
 import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
 import {
   SanitizedWindmillConnectionSchema,
@@ -211,7 +212,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options,
-  ...SanitizedAzureEntraIdConnectionSchema.options
+  ...SanitizedAzureEntraIdConnectionSchema.options,
+  ...SanitizedVenafiConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -266,7 +268,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SshConnectionListItemSchema,
   DbtConnectionListItemSchema,
   OpenRouterConnectionListItemSchema,
-  AzureEntraIdConnectionListItemSchema
+  AzureEntraIdConnectionListItemSchema,
+  VenafiConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

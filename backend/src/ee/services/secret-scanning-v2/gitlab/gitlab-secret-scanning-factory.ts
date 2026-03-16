@@ -28,11 +28,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { GitLabProjectRegex } from "@app/lib/regex";
+import { TGitLabConnection } from "@app/services/app-connection/gitlab";
 import {
   getGitLabConnectionClient,
-  getGitLabInstanceUrl,
-  TGitLabConnection
-} from "@app/services/app-connection/gitlab";
+  getGitLabInstanceUrl
+} from "@app/services/app-connection/gitlab/gitlab-connection-fns";
 
 import { GitLabDataSourceScope } from "./gitlab-secret-scanning-enums";
 import {

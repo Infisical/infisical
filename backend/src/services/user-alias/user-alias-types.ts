@@ -1,5 +1,8 @@
 export enum UserAliasType {
   LDAP = "ldap",
   SAML = "saml",
-  OIDC = "oidc"
+  OIDC = "oidc",
+  GOOGLE = "google",
+  GITHUB = "github",
+  GITLAB = "gitlab"
 }

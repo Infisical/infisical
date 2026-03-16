@@ -36,7 +36,8 @@ export enum OrgPermissionAppConnectionActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Connect = "connect"
+  Connect = "connect",
+  RotateCredentials = "rotate-credentials"
 }
 
 export enum OrgPermissionAuditLogsActions {
@@ -432,6 +433,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionAppConnectionActions.Edit, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionAppConnectionActions.Delete, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionAppConnectionActions.RotateCredentials, OrgPermissionSubjects.AppConnections);
 
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);

@@ -174,6 +174,7 @@ export enum TableName {
   SlackIntegrations = "slack_integrations",
   ProjectSlackConfigs = "project_slack_configs",
   AppConnection = "app_connections",
+  AppConnectionCredentialRotation = "app_connection_credential_rotations",
   SecretSync = "secret_syncs",
   PkiSync = "pki_syncs",
   CertificateSync = "certificate_syncs",
@@ -266,7 +267,8 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
 
-  QueueJobs = "queue_jobs"
+  QueueJobs = "queue_jobs",
+  CaSigningConfig = "ca_signing_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

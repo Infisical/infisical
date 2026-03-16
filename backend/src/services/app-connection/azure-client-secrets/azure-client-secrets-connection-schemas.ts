@@ -46,7 +46,13 @@ export const AzureClientSecretsConnectionClientSecretInputCredentialsSchema = z.
     .uuid()
     .trim()
     .min(1, "Tenant ID required")
-    .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.tenantId)
+    .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.tenantId),
+  clientSecretKeyId: z
+    .string()
+    .uuid()
+    .trim()
+    .optional()
+    .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.clientSecretKeyId)
 });
 
 export const AzureClientSecretsConnectionCertificateInputCredentialsSchema = z.object({
@@ -78,6 +84,8 @@ export const AzureClientSecretsConnectionClientSecretOutputCredentialsSchema = z
   clientId: z.string(),
   clientSecret: z.string(),
   tenantId: z.string(),
+  clientSecretKeyId: z.string().optional(),
+  applicationObjectId: z.string().optional(),
   accessToken: z.string(),
   expiresAt: z.number()
 });
@@ -119,7 +127,7 @@ export const ValidateAzureClientSecretsConnectionCredentialsSchema = z.discrimin
 ]);
 
 export const CreateAzureClientSecretsConnectionSchema = ValidateAzureClientSecretsConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureClientSecrets)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureClientSecrets, { supportsCredentialRotation: true })
 );
 
 export const UpdateAzureClientSecretsConnectionSchema = z
@@ -133,7 +141,7 @@ export const UpdateAzureClientSecretsConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureClientSecrets).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureClientSecrets));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureClientSecrets, { supportsCredentialRotation: true }));
 
 const BaseAzureClientSecretsConnectionSchema = BaseAppConnectionSchema.extend({
   app: z.literal(AppConnection.AzureClientSecrets)

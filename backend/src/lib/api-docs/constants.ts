@@ -2101,6 +2101,24 @@ export const CERTIFICATE_AUTHORITIES = {
     caId: "The ID of the CA to get the certificate revocation lists (CRLs) for.",
     id: "The ID of certificate revocation list (CRL).",
     crl: "The certificate revocation list (CRL)."
+  },
+  INSTALL_CERT_VENAFI: {
+    caId: "The ID of the CA to install the certificate for via Venafi."
+  },
+  CREATE_SIGNING_CONFIG: {
+    caId: "The ID of the CA to create a signing configuration for."
+  },
+  GET_SIGNING_CONFIG: {
+    caId: "The ID of the CA to get the signing configuration for."
+  },
+  UPDATE_SIGNING_CONFIG: {
+    caId: "The ID of the CA to update the signing configuration for."
+  },
+  GET_AUTO_RENEWAL: {
+    caId: "The ID of the CA to get the auto-renewal configuration for."
+  },
+  UPDATE_AUTO_RENEWAL: {
+    caId: "The ID of the CA to update the auto-renewal configuration for."
   }
 };
 
@@ -2551,7 +2569,9 @@ export const AppConnections = {
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
-      projectId: `The ID of the project to create the ${appName} Connection in.`
+      projectId: `The ID of the project to create the ${appName} Connection in.`,
+      isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
+      rotation: `The credential rotation configuration for the ${appName} Connection.`
     };
   },
   UPDATE: (app: AppConnection) => {
@@ -2562,11 +2582,16 @@ export const AppConnections = {
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
-      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`
+      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
+      isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
+      rotation: `The updated credential rotation configuration for the ${appName} Connection.`
     };
   },
   DELETE: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to be deleted.`
+  }),
+  ROTATE_CREDENTIALS: (app: AppConnection) => ({
+    connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
   CREDENTIALS: {
     AUTH0_CONNECTION: {
@@ -2627,7 +2652,9 @@ export const AppConnections = {
       clientSecret: "The Client Secret to use to connect with Azure Client Secrets.",
       certificateBody: "The certificate body in PEM format to use to connect with Azure Client Secrets.",
       privateKey:
-        "The private key to use to connect with Azure Client Secrets. This is never transmitted to Azure and is only used to sign the Azure client assertion with."
+        "The private key to use to connect with Azure Client Secrets. This is never transmitted to Azure and is only used to sign the Azure client assertion with.",
+      clientSecretKeyId:
+        "The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked."
     },
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
@@ -2732,6 +2759,10 @@ export const AppConnections = {
     },
     OPEN_ROUTER: {
       apiKey: "The OpenRouter Provisioning API key used to manage API keys."
+    },
+    VENAFI: {
+      apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
+      region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."
     }
   }
 };

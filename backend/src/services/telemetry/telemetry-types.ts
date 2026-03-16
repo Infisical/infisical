@@ -1,3 +1,4 @@
+import { IdentityAuthMethod } from "@app/db/schemas";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -28,6 +29,16 @@ export enum PostHogEventTypes {
   IntegrationSynced = "Integration Synced",
   IntegrationDeleted = "Integration Deleted",
   MachineIdentityCreated = "Machine Identity Created",
+  MachineIdentityUpdated = "Machine Identity Updated",
+  MachineIdentityDeleted = "Machine Identity Deleted",
+  MachineIdentityLogin = "Machine Identity Login",
+  MachineIdentityAuthMethodAttached = "Machine Identity Auth Method Attached",
+  MachineIdentityAuthMethodUpdated = "Machine Identity Auth Method Updated",
+  MachineIdentityAuthMethodRevoked = "Machine Identity Auth Method Revoked",
+  MachineIdentityClientSecretCreated = "Machine Identity Client Secret Created",
+  MachineIdentityClientSecretRevoked = "Machine Identity Client Secret Revoked",
+  MachineIdentityTokenCreated = "Machine Identity Token Created",
+  MachineIdentityTokenRevoked = "Machine Identity Token Revoked",
   UserOrgInvitation = "User Org Invitation",
   TelemetryInstanceStats = "Self Hosted Instance Stats",
   SecretRequestCreated = "Secret Request Created",
@@ -73,6 +84,7 @@ export type TSecretModifiedEvent = {
     secretPath: string;
     channel?: string;
     userAgent?: string;
+    actorType?: string;
     actor?:
       | UserActor
       | IdentityActor
@@ -128,6 +140,61 @@ export type TMachineIdentityCreatedEvent = {
     hasDeleteProtection: boolean;
     orgId: string;
     identityId: string;
+  };
+};
+
+export type TMachineIdentityUpdatedEvent = {
+  event: PostHogEventTypes.MachineIdentityUpdated;
+  properties: {
+    identityId: string;
+    orgId: string;
+    name: string;
+    hasDeleteProtection: boolean;
+  };
+};
+
+export type TMachineIdentityDeletedEvent = {
+  event: PostHogEventTypes.MachineIdentityDeleted;
+  properties: {
+    identityId: string;
+    orgId: string;
+  };
+};
+
+export type TMachineIdentityLoginEvent = {
+  event: PostHogEventTypes.MachineIdentityLogin;
+  properties: {
+    identityId: string;
+    orgId: string;
+    authMethod: IdentityAuthMethod;
+  };
+};
+
+export type TMachineIdentityAuthMethodEvent = {
+  event:
+    | PostHogEventTypes.MachineIdentityAuthMethodAttached
+    | PostHogEventTypes.MachineIdentityAuthMethodUpdated
+    | PostHogEventTypes.MachineIdentityAuthMethodRevoked;
+  properties: {
+    identityId: string;
+    orgId: string;
+    authMethod: IdentityAuthMethod;
+  };
+};
+
+export type TMachineIdentityClientSecretEvent = {
+  event: PostHogEventTypes.MachineIdentityClientSecretCreated | PostHogEventTypes.MachineIdentityClientSecretRevoked;
+  properties: {
+    identityId: string;
+    orgId: string;
+  };
+};
+
+export type TMachineIdentityTokenEvent = {
+  event: PostHogEventTypes.MachineIdentityTokenCreated | PostHogEventTypes.MachineIdentityTokenRevoked;
+  properties: {
+    identityId: string;
+    orgId: string;
   };
 };
 
@@ -484,6 +551,12 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TSecretScannerEvent
   | TUserOrgInvitedEvent
   | TMachineIdentityCreatedEvent
+  | TMachineIdentityUpdatedEvent
+  | TMachineIdentityDeletedEvent
+  | TMachineIdentityLoginEvent
+  | TMachineIdentityAuthMethodEvent
+  | TMachineIdentityClientSecretEvent
+  | TMachineIdentityTokenEvent
   | TIntegrationCreatedEvent
   | TIntegrationSyncedEvent
   | TIntegrationDeletedEvent

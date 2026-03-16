@@ -46,7 +46,8 @@ const appConnectionsPermissionSchema = z
     [OrgPermissionAppConnectionActions.Edit]: z.boolean().optional(),
     [OrgPermissionAppConnectionActions.Create]: z.boolean().optional(),
     [OrgPermissionAppConnectionActions.Delete]: z.boolean().optional(),
-    [OrgPermissionAppConnectionActions.Connect]: z.boolean().optional()
+    [OrgPermissionAppConnectionActions.Connect]: z.boolean().optional(),
+    [OrgPermissionAppConnectionActions.RotateCredentials]: z.boolean().optional()
   })
   .optional();
 

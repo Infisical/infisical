@@ -223,10 +223,11 @@ export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureK
       };
 
     case AzureKeyVaultConnectionMethod.ClientSecret:
-      const { tenantId, clientId, clientSecret } = inputCredentials as {
+      const { tenantId, clientId, clientSecret, clientSecretKeyId } = inputCredentials as {
         tenantId: string;
         clientId: string;
         clientSecret: string;
+        clientSecretKeyId?: string;
       };
 
       try {
@@ -245,7 +246,8 @@ export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureK
           accessToken: clientData.access_token,
           expiresAt: Date.now() + clientData.expires_in * 1000,
           clientId,
-          clientSecret
+          clientSecret,
+          clientSecretKeyId
         };
       } catch (e: unknown) {
         if (e instanceof AxiosError) {

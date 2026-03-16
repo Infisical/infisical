@@ -87,7 +87,8 @@ export enum OrgPermissionAppConnectionActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Connect = "connect"
+  Connect = "connect",
+  RotateCredentials = "rotate-credentials"
 }
 
 export enum OrgPermissionAuditLogsActions {

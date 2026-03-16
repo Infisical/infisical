@@ -224,6 +224,10 @@ export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.CircleCI;
 };
 
+export type TVenafiConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Venafi;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -276,7 +280,8 @@ export type TAppConnectionOption =
   | TSshConnectionOption
   | TDbtConnectionOption
   | TSmbConnectionOption
-  | TAzureEntraIdConnectionOption;
+  | TAzureEntraIdConnectionOption
+  | TVenafiConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -331,4 +336,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
+  [AppConnection.Venafi]: TVenafiConnectionOption;
 };

@@ -5,6 +5,7 @@ import {
   DetailValue,
   UnstableCard,
   UnstableCardContent,
+  UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
@@ -43,6 +44,7 @@ export const CaCertDetailsSection = ({ caId }: Props) => {
     <UnstableCard className="mt-4 w-full">
       <UnstableCardHeader className="border-b">
         <UnstableCardTitle>Certificate Details</UnstableCardTitle>
+        <UnstableCardDescription>Subject and issuer information</UnstableCardDescription>
       </UnstableCardHeader>
       <UnstableCardContent>
         <DetailGroup>
