@@ -454,11 +454,14 @@ export const AwsParameterStoreSyncFns = {
 
       if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);
-        deletedSecretKeys.push(key);
       }
     }
 
     await deleteParametersBatch(ssm, parametersToDelete);
+
+    for (const param of parametersToDelete) {
+      deletedSecretKeys.push(param.Name!);
+    }
 
     return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
   },
