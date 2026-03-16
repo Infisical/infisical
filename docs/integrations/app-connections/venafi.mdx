@@ -1,0 +1,47 @@
+---
+title: "Venafi Connection"
+description: "Learn how to configure a Venafi TLS Protect Cloud Connection for Infisical."
+---
+
+Connect Infisical to Venafi TLS Protect Cloud to use Venafi as an external CA for signing internal intermediate certificate authorities.
+
+## Prerequisites
+
+- A [Venafi TLS Protect Cloud](https://venafi.com/) account
+- An API key generated from your Venafi TLS Protect Cloud dashboard
+
+## Connection Setup
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **App Connections** tab on the **Organization Settings** page.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Venafi TLS Protect Cloud** option from the connection options modal.
+  </Step>
+  <Step title="Configure Connection Details">
+    Configure the following fields:
+
+    - **Name**: A friendly name for this Venafi connection (e.g., "Production Venafi")
+    - **Method**: The authentication method. Currently only **API Key** is supported.
+    - **Region**: The region of your Venafi TLS Protect Cloud instance. Supported regions:
+      - US (United States)
+      - EU (Europe)
+      - AU (Australia)
+      - UK (United Kingdom)
+      - SG (Singapore)
+      - CA (Canada)
+    - **API Key**: The API key from your Venafi TLS Protect Cloud dashboard
+
+    Click **Connect to Venafi** to validate your credentials and create the connection.
+
+    <Note>
+      Infisical validates the API key by connecting to the Venafi TLS Protect Cloud API during connection creation.
+      If the validation fails, check that your API key is correct and that you have selected the right region.
+    </Note>
+  </Step>
+  <Step title="Connection Created">
+    Your **Venafi Connection** is now available for use with internal intermediate CAs in your Infisical projects.
+  </Step>
+</Steps>

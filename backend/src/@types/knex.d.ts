@@ -89,6 +89,9 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TCaSigningConfigs,
+  TCaSigningConfigsInsert,
+  TCaSigningConfigsUpdate,
   TCertificateAuthorities,
   TCertificateAuthoritiesInsert,
   TCertificateAuthoritiesUpdate,
@@ -1681,6 +1684,11 @@ declare module "knex/types/tables" {
       TAppConnectionCredentialRotations,
       TAppConnectionCredentialRotationsInsert,
       TAppConnectionCredentialRotationsUpdate
+    >;
+    [TableName.CaSigningConfig]: KnexOriginal.CompositeTableType<
+      TCaSigningConfigs,
+      TCaSigningConfigsInsert,
+      TCaSigningConfigsUpdate
     >;
   }
 }

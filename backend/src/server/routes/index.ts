@@ -229,6 +229,9 @@ import { certificateBodyDALFactory } from "@app/services/certificate/certificate
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { caAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
+import { caSigningConfigDALFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-dal";
+import { caSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
@@ -999,6 +1002,7 @@ export const registerRoutes = async (
 
   const loginService = authLoginServiceFactory({
     userDAL,
+    userAliasDAL,
     smtpService,
     tokenService,
     orgDAL,
@@ -1201,6 +1205,7 @@ export const registerRoutes = async (
 
   const certificateAuthorityDAL = certificateAuthorityDALFactory(db);
   const internalCertificateAuthorityDAL = internalCertificateAuthorityDALFactory(db);
+  const caSigningConfigDAL = caSigningConfigDALFactory(db);
   const externalCertificateAuthorityDAL = externalCertificateAuthorityDALFactory(db);
   const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
   const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
@@ -2314,7 +2319,8 @@ export const registerRoutes = async (
     appConnectionDAL,
     appConnectionService,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    internalCertificateAuthorityDAL
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -2332,7 +2338,26 @@ export const registerRoutes = async (
     projectDAL,
     internalCertificateAuthorityDAL,
     kmsService,
-    permissionService
+    permissionService,
+    caSigningConfigDAL
+  });
+
+  const caAutoRenewalQueue = caAutoRenewalQueueFactory({
+    queueService,
+    internalCertificateAuthorityDAL,
+    caSigningConfigDAL,
+    internalCertificateAuthorityService,
+    appConnectionDAL,
+    kmsService
+  });
+
+  const caSigningConfigService = caSigningConfigServiceFactory({
+    caSigningConfigDAL,
+    certificateAuthorityDAL,
+    internalCertificateAuthorityDAL,
+    permissionService,
+    appConnectionDAL,
+    caAutoRenewalQueue
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
@@ -2866,9 +2891,11 @@ export const registerRoutes = async (
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
+  await certificateAuthorityQueue.startCaCrlRebuildJob();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await pkiAlertV2Queue.init();
   await certificateV3Queue.init();
+  await caAutoRenewalQueue.startDailyAutoRenewalJob();
   await microsoftTeamsService.start();
   await eventBusService.init();
 
@@ -2943,6 +2970,7 @@ export const registerRoutes = async (
     sshHostGroup: sshHostGroupService,
     certificateAuthority: certificateAuthorityService,
     internalCertificateAuthority: internalCertificateAuthorityService,
+    caSigningConfig: caSigningConfigService,
     certificateTemplate: certificateTemplateService,
     certificatePolicy: certificatePolicyService,
     certificateProfile: certificateProfileService,
@@ -3015,7 +3043,8 @@ export const registerRoutes = async (
     aiMcpEndpoint: aiMcpEndpointService,
     aiMcpActivityLog: aiMcpActivityLogService,
     approvalPolicy: approvalPolicyService,
-    appConnectionCredentialRotation: appConnectionCredentialRotationService
+    appConnectionCredentialRotation: appConnectionCredentialRotationService,
+    caAutoRenewalQueue
   });
 
   const cronJobs: CronJob[] = [];

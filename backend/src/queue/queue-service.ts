@@ -104,7 +104,8 @@ export enum QueueName {
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
-  PamDiscoveryScan = "pam-discovery-scan"
+  PamDiscoveryScan = "pam-discovery-scan",
+  CaAutoRenewal = "ca-auto-renewal"
 }
 
 export enum QueueJobs {
@@ -173,7 +174,9 @@ export enum QueueJobs {
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
-  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan"
+  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
+  CaDailyAutoRenewal = "ca-daily-auto-renewal",
+  CaVenafiInstall = "ca-venafi-install-job"
 }
 
 export type TQueueOptions = {
@@ -318,9 +321,7 @@ export type TQueueJobTypes = {
       };
   [QueueName.CaCrlRotation]: {
     name: QueueJobs.CaCrlRotation;
-    payload: {
-      caId: string;
-    };
+    payload: undefined;
   };
   [QueueName.SecretReplication]: {
     name: QueueJobs.SecretReplication;
@@ -529,6 +530,15 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.PamDiscoveryScheduledScan;
         payload: undefined;
+      };
+  [QueueName.CaAutoRenewal]:
+    | {
+        name: QueueJobs.CaDailyAutoRenewal;
+        payload: undefined;
+      }
+    | {
+        name: QueueJobs.CaVenafiInstall;
+        payload: { caId: string; maxPathLength?: number };
       };
 };
 
