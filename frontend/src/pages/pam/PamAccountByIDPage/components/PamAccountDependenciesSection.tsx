@@ -117,9 +117,9 @@ const DependencyRow = ({
         <UnstableTableCell className="text-muted">{dep.state ?? "-"}</UnstableTableCell>
         <UnstableTableCell>
           {dep.isRotationSyncEnabled ? (
-            <Badge variant="success">Sync Enabled</Badge>
+            <Badge variant="success">Enabled</Badge>
           ) : (
-            <Badge variant="neutral">Sync Disabled</Badge>
+            <Badge variant="neutral">Disabled</Badge>
           )}
         </UnstableTableCell>
         <UnstableTableCell>
@@ -140,7 +140,7 @@ const DependencyRow = ({
                   });
                 }}
               >
-                {dep.isRotationSyncEnabled ? "Disable Sync" : "Enable Sync"}
+                {dep.isRotationSyncEnabled ? "Disable Rotation Sync" : "Enable Rotation Sync"}
               </UnstableDropdownMenuItem>
               <UnstableDropdownMenuItem
                 variant="danger"
@@ -229,7 +229,7 @@ export const PamAccountDependenciesSection = ({ account }: { account: TPamAccoun
             <UnstableTableHead>State</UnstableTableHead>
             <UnstableTableHead>
               <div className="flex items-center gap-1">
-                Sync Enabled
+                Rotation Sync
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <CircleHelpIcon className="size-3.5 text-muted" />
