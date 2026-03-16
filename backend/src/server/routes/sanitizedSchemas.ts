@@ -289,7 +289,12 @@ export const InternalCertificateAuthorityResponseSchema = CertificateAuthorities
   InternalCertificateAuthoritiesSchema.omit({
     caId: true,
     notAfter: true,
-    notBefore: true
+    notBefore: true,
+    autoRenewalEnabled: true,
+    autoRenewalDaysBeforeExpiry: true,
+    lastRenewalStatus: true,
+    lastRenewalMessage: true,
+    lastRenewalAt: true
   })
 ).extend({
   requireTemplateForIssuance: z.boolean().optional(),

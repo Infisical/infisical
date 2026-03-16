@@ -2,7 +2,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto/cryptography";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
@@ -66,6 +66,64 @@ export const parseDistinguishedName = (dn: string): TDNParts => {
   }
 
   return parts;
+};
+
+/**
+ * Validates that an imported certificate's subject DN and BasicConstraints
+ * match the CA's stored configuration. Collects all mismatches and throws
+ * a single error listing every discrepancy.
+ */
+export const validateImportedCertificate = (
+  certObj: x509.X509Certificate,
+  caConfig: {
+    commonName: string;
+    organization: string;
+    ou: string;
+    country: string;
+    province: string;
+    locality: string;
+    maxPathLength: number | null;
+  }
+) => {
+  const mismatches: string[] = [];
+
+  const certDn = parseDistinguishedName(certObj.subject);
+
+  const dnFieldChecks: { label: string; expected: string; actual: string | undefined }[] = [
+    { label: "Common Name (CN)", expected: caConfig.commonName, actual: certDn.commonName },
+    { label: "Organization (O)", expected: caConfig.organization, actual: certDn.organization },
+    { label: "Organizational Unit (OU)", expected: caConfig.ou, actual: certDn.ou },
+    { label: "Country (C)", expected: caConfig.country, actual: certDn.country },
+    { label: "State/Province (ST)", expected: caConfig.province, actual: certDn.province },
+    { label: "Locality (L)", expected: caConfig.locality, actual: certDn.locality }
+  ];
+
+  for (const check of dnFieldChecks) {
+    if (check.expected && check.expected !== (check.actual ?? "")) {
+      mismatches.push(`${check.label} mismatch (expected '${check.expected}', got '${check.actual || ""}')`);
+    }
+  }
+
+  const basicConstraints = certObj.getExtension(x509.BasicConstraintsExtension);
+
+  if (!basicConstraints || !basicConstraints.ca) {
+    mismatches.push("Certificate is not a CA certificate (BasicConstraints CA flag is not set)");
+  }
+
+  if (caConfig.maxPathLength !== null && caConfig.maxPathLength >= 0 && basicConstraints) {
+    const certPathLength = basicConstraints.pathLength;
+    if (certPathLength === undefined || certPathLength !== caConfig.maxPathLength) {
+      mismatches.push(
+        `Path length mismatch (expected ${caConfig.maxPathLength}, got ${certPathLength === undefined ? "unlimited" : certPathLength})`
+      );
+    }
+  }
+
+  if (mismatches.length > 0) {
+    throw new BadRequestError({
+      message: `Imported certificate does not match CA configuration: ${mismatches.join("; ")}`
+    });
+  }
 };
 
 export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {

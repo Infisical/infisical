@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { projectKeys } from "../projects";
-import { CaType } from "./enums";
+import { CaRenewalStatus, CaType } from "./enums";
 import { caKeys } from "./queries";
 import {
   TCreateCertificateAuthorityDTO,
@@ -210,6 +210,124 @@ export const useRenewCa = () => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCsr(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCrl(caId) });
+    }
+  });
+};
+
+export const useInstallCaCertificateVenafi = (projectId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { message: string; caId: string },
+    object,
+    { caId: string; maxPathLength?: number }
+  >({
+    mutationFn: async ({ caId, ...body }) => {
+      const { data } = await apiRequest.post<{ message: string; caId: string }>(
+        `/api/v1/cert-manager/ca/internal/${caId}/install-certificate-venafi`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaAutoRenewal(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectCas({ projectId }) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, projectId)
+      });
+    }
+  });
+};
+
+export const useCreateCaSigningConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    unknown,
+    object,
+    {
+      caId: string;
+      type: string;
+      parentCaId?: string;
+      appConnectionId?: string;
+      destinationConfig?: {
+        applicationId: string;
+        issuingTemplateId: string;
+        validityPeriod?: number;
+      };
+    }
+  >({
+    mutationFn: async ({ caId, ...body }) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/cert-manager/ca/internal/${caId}/signing-config`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
+    }
+  });
+};
+
+export const useUpdateCaSigningConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    unknown,
+    object,
+    {
+      caId: string;
+      parentCaId?: string;
+      appConnectionId?: string;
+      destinationConfig?: {
+        applicationId: string;
+        issuingTemplateId: string;
+        validityPeriod?: number;
+      };
+    }
+  >({
+    mutationFn: async ({ caId, ...body }) => {
+      const { data } = await apiRequest.patch(
+        `/api/v1/cert-manager/ca/internal/${caId}/signing-config`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
+    }
+  });
+};
+
+export const useUpdateCaAutoRenewal = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    {
+      autoRenewalEnabled: boolean;
+      autoRenewalDaysBeforeExpiry: number | null;
+      lastRenewalStatus: CaRenewalStatus | null;
+      lastRenewalMessage: string | null;
+      lastRenewalAt: string | null;
+    },
+    object,
+    {
+      caId: string;
+      autoRenewalEnabled?: boolean;
+      autoRenewalDaysBeforeExpiry?: number;
+    }
+  >({
+    mutationFn: async ({ caId, ...body }) => {
+      const { data } = await apiRequest.patch(
+        `/api/v1/cert-manager/ca/internal/${caId}/auto-renewal`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaAutoRenewal(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
     }
   });
 };
