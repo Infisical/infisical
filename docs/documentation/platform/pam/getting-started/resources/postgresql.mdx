@@ -145,9 +145,19 @@ A PAM Account represents a specific set of credentials that users can request ac
   </Step>
 </Steps>
 
-## Access PostgreSQL Instance
+## Access PostgreSQL Account
 
-Once your resource and accounts are configured, users can request access through the Infisical CLI:
+There are two ways to access a PostgreSQL account: through the browser via Web Access, or locally via the CLI.
+
+### Web Access
+
+PostgreSQL resources can be accessed directly from the browser using Infisical's web-based SQL console. This provides a convenient way to run queries without installing any local tools.
+
+For details, see [PostgreSQL Web Access](/documentation/platform/pam/product-reference/web-access/postgresql).
+
+### CLI Access
+
+The Infisical CLI starts a local proxy that allows you to connect with any PostgreSQL client (psql, pgAdmin, DBeaver, etc.) and supports multiple concurrent connections per session.
 
 <Steps>
   <Step title="Get the Access Command">
@@ -198,12 +208,6 @@ Once your resource and accounts are configured, users can request access through
 
   </Step>
 </Steps>
-
-## Web Access
-
-PostgreSQL resources can also be accessed directly from the browser using Infisical's web-based SQL console. This provides a convenient way to run queries without installing any local tools.
-
-For details, see [PostgreSQL Web Access](/documentation/platform/pam/product-reference/web-access/postgresql).
 
 ## Automated Credential Rotation
 
