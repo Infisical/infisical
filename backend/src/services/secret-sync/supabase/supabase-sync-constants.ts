@@ -6,5 +6,6 @@ export const SUPABASE_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Supabase",
   destination: SecretSync.Supabase,
   connection: AppConnection.Supabase,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

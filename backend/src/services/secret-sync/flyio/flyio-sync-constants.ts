@@ -6,5 +6,6 @@ export const FLYIO_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Fly.io",
   destination: SecretSync.Flyio,
   connection: AppConnection.Flyio,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

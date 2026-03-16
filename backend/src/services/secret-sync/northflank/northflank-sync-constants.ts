@@ -6,5 +6,6 @@ export const NORTHFLANK_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Northflank",
   destination: SecretSync.Northflank,
   connection: AppConnection.Northflank,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

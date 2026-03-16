@@ -8,5 +8,6 @@ export const AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION: TSecretSyncListItem = {
   connection: AppConnection.AzureEntraId,
   canImportSecrets: false,
   supportsKeySchema: false,
+  canRemoveSecretsOnDeletion: false,
   supportsDisableSecretDeletion: false
 };

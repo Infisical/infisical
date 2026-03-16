@@ -6,5 +6,6 @@ export const RAILWAY_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Railway",
   destination: SecretSync.Railway,
   connection: AppConnection.Railway,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };
