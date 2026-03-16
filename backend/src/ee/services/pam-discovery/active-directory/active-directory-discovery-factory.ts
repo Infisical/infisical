@@ -1128,123 +1128,124 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             }
 
             // Dependency discovery (services, scheduled tasks, IIS app pools)
-            try {
-              // eslint-disable-next-line no-await-in-loop
-              const dependencies = await executeWinRmDependencyEnumeration(
-                computer,
-                configuration.domainFQDN,
-                credentials,
-                gatewayId,
-                gatewayV2Service
-              );
-
-              const depItems: {
-                type: PamAccountDependencyType;
-                name: string;
-                displayName: string | null;
-                state: string | null;
-                runAsUser: string;
-                data: Record<string, unknown>;
-              }[] = [];
-
-              for (const svc of dependencies.services) {
-                const startName = (svc.StartName || "").toLowerCase();
-                if (!startName || BUILTIN_SERVICE_ACCOUNTS.has(startName) || startName.startsWith("nt service\\")) {
-                  // eslint-disable-next-line no-continue
-                  continue;
-                }
-                depItems.push({
-                  type: PamAccountDependencyType.WindowsService,
-                  name: svc.Name,
-                  displayName: svc.DisplayName,
-                  state: svc.State,
-                  runAsUser: svc.StartName,
-                  data: {
-                    startMode: svc.StartMode,
-                    processId: svc.ProcessId,
-                    pathName: svc.PathName,
-                    description: svc.Description,
-                    runAsAccount: svc.StartName
-                  }
-                });
-              }
-
-              for (const task of dependencies.scheduledTasks) {
-                depItems.push({
-                  type: PamAccountDependencyType.ScheduledTask,
-                  name: task.TaskName,
-                  displayName: null,
-                  state: task.State,
-                  runAsUser: task.UserId,
-                  data: {
-                    taskPath: task.TaskPath,
-                    logonType: task.LogonType,
-                    runLevel: task.RunLevel,
-                    lastRunTime: task.LastRunTime,
-                    nextRunTime: task.NextRunTime,
-                    lastTaskResult: task.LastTaskResult,
-                    runAsAccount: task.UserId,
-                    triggers: task.Triggers ?? [],
-                    actions: task.Actions ?? []
-                  }
-                });
-              }
-
-              for (const pool of dependencies.iisAppPools) {
-                depItems.push({
-                  type: PamAccountDependencyType.IisAppPool,
-                  name: pool.Name,
-                  displayName: null,
-                  state: pool.State,
-                  runAsUser: pool.Username,
-                  data: {
-                    identityType: pool.IdentityType,
-                    managedRuntimeVersion: pool.ManagedRuntimeVersion,
-                    managedPipelineMode: pool.ManagedPipelineMode,
-                    autoStart: pool.AutoStart,
-                    runAsAccount: pool.Username
-                  }
-                });
-              }
-
-              for (const dep of depItems) {
-                const accountId = resolveAccountForDependency(
-                  dep.runAsUser,
+            if (configuration.discoverDependencies)
+              try {
+                // eslint-disable-next-line no-await-in-loop
+                const dependencies = await executeWinRmDependencyEnumeration(
+                  computer,
                   configuration.domainFQDN,
-                  domainAccountMap,
-                  localAccountMap
+                  credentials,
+                  gatewayId,
+                  gatewayV2Service
                 );
 
-                if (accountId) {
-                  try {
-                    // eslint-disable-next-line no-await-in-loop
-                    const dependency = await upsertDiscoveredDependency(
-                      dep.type,
-                      dep.name,
-                      dep.displayName,
-                      dep.state,
-                      dep.data,
-                      accountId,
-                      windowsResourceId,
-                      discoverySourceId,
-                      run.id,
-                      pamAccountDependenciesDAL,
-                      pamDiscoverySourceDependenciesDAL
-                    );
+                const depItems: {
+                  type: PamAccountDependencyType;
+                  name: string;
+                  displayName: string | null;
+                  state: string | null;
+                  runAsUser: string;
+                  data: Record<string, unknown>;
+                }[] = [];
 
-                    dependenciesDiscoveredCount += 1;
-
-                    if (dependency.isNew) {
-                      newDependenciesCount += 1;
+                for (const svc of dependencies.services) {
+                  const startName = (svc.StartName || "").toLowerCase();
+                  if (!startName || BUILTIN_SERVICE_ACCOUNTS.has(startName) || startName.startsWith("nt service\\")) {
+                    // eslint-disable-next-line no-continue
+                    continue;
+                  }
+                  depItems.push({
+                    type: PamAccountDependencyType.WindowsService,
+                    name: svc.Name,
+                    displayName: svc.DisplayName,
+                    state: svc.State,
+                    runAsUser: svc.StartName,
+                    data: {
+                      startMode: svc.StartMode,
+                      processId: svc.ProcessId,
+                      pathName: svc.PathName,
+                      description: svc.Description,
+                      runAsAccount: svc.StartName
                     }
-                  } catch (err) {
-                    logger.warn(err, `Failed to import dependency [dependency=${dep.name}] [computer=${hostname}]`);
+                  });
+                }
+
+                for (const task of dependencies.scheduledTasks) {
+                  depItems.push({
+                    type: PamAccountDependencyType.ScheduledTask,
+                    name: task.TaskName,
+                    displayName: null,
+                    state: task.State,
+                    runAsUser: task.UserId,
+                    data: {
+                      taskPath: task.TaskPath,
+                      logonType: task.LogonType,
+                      runLevel: task.RunLevel,
+                      lastRunTime: task.LastRunTime,
+                      nextRunTime: task.NextRunTime,
+                      lastTaskResult: task.LastTaskResult,
+                      runAsAccount: task.UserId,
+                      triggers: task.Triggers ?? [],
+                      actions: task.Actions ?? []
+                    }
+                  });
+                }
+
+                for (const pool of dependencies.iisAppPools) {
+                  depItems.push({
+                    type: PamAccountDependencyType.IisAppPool,
+                    name: pool.Name,
+                    displayName: null,
+                    state: pool.State,
+                    runAsUser: pool.Username,
+                    data: {
+                      identityType: pool.IdentityType,
+                      managedRuntimeVersion: pool.ManagedRuntimeVersion,
+                      managedPipelineMode: pool.ManagedPipelineMode,
+                      autoStart: pool.AutoStart,
+                      runAsAccount: pool.Username
+                    }
+                  });
+                }
+
+                for (const dep of depItems) {
+                  const accountId = resolveAccountForDependency(
+                    dep.runAsUser,
+                    configuration.domainFQDN,
+                    domainAccountMap,
+                    localAccountMap
+                  );
+
+                  if (accountId) {
+                    try {
+                      // eslint-disable-next-line no-await-in-loop
+                      const dependency = await upsertDiscoveredDependency(
+                        dep.type,
+                        dep.name,
+                        dep.displayName,
+                        dep.state,
+                        dep.data,
+                        accountId,
+                        windowsResourceId,
+                        discoverySourceId,
+                        run.id,
+                        pamAccountDependenciesDAL,
+                        pamDiscoverySourceDependenciesDAL
+                      );
+
+                      dependenciesDiscoveredCount += 1;
+
+                      if (dependency.isNew) {
+                        newDependenciesCount += 1;
+                      }
+                    } catch (err) {
+                      logger.warn(err, `Failed to import dependency [dependency=${dep.name}] [computer=${hostname}]`);
+                    }
                   }
                 }
+              } catch (err) {
+                logger.warn(err, `WinRM dependency enumeration failed for machine [computer=${hostname}]`);
               }
-            } catch (err) {
-              logger.warn(err, `WinRM dependency enumeration failed for machine [computer=${hostname}]`);
-            }
 
             scannedMachines += 1;
           } catch (err) {

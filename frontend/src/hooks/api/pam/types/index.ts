@@ -206,7 +206,7 @@ export type TPamAccountDependency = {
   state?: string | null;
   data: Record<string, unknown>;
   source: string;
-  isEnabled?: boolean | null;
+  isRotationSyncEnabled: boolean;
   resourceName?: string | null;
   createdAt: string;
   updatedAt: string;

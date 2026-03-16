@@ -86,7 +86,7 @@ export async function up(knex: Knex): Promise<void> {
       t.jsonb("data").notNullable();
 
       t.string("source").notNullable(); // "discovery" or "manual"
-      t.boolean("isEnabled").defaultTo(false);
+      t.boolean("isRotationSyncEnabled").defaultTo(false);
 
       t.unique(["accountId", "resourceId", "dependencyType", "name"], {
         indexName: "uidx_pam_account_dependency"

@@ -675,7 +675,7 @@ export const pamDiscoverySourceServiceFactory = ({
   const updateAccountDependency = async ({
     accountId,
     dependencyId,
-    isEnabled,
+    isRotationSyncEnabled,
     actor,
     actorId,
     actorAuthMethod,
@@ -683,7 +683,7 @@ export const pamDiscoverySourceServiceFactory = ({
   }: {
     accountId: string;
     dependencyId: string;
-    isEnabled: boolean;
+    isRotationSyncEnabled: boolean;
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
@@ -702,7 +702,7 @@ export const pamDiscoverySourceServiceFactory = ({
     if (!dep || dep.accountId !== accountId) {
       throw new NotFoundError({ message: "Dependency not found" });
     }
-    return pamAccountDependenciesDAL.updateById(dependencyId, { isEnabled });
+    return pamAccountDependenciesDAL.updateById(dependencyId, { isRotationSyncEnabled });
   };
 
   const deleteAccountDependency = async ({

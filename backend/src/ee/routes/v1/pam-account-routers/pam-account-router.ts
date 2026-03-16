@@ -92,7 +92,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         dependencyId: z.string().uuid()
       }),
       body: z.object({
-        isEnabled: z.boolean()
+        isRotationSyncEnabled: z.boolean()
       }),
       response: {
         200: z.object({
@@ -105,7 +105,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const dependency = await server.services.pamDiscoverySource.updateAccountDependency({
         accountId: req.params.accountId,
         dependencyId: req.params.dependencyId,
-        isEnabled: req.body.isEnabled,
+        isRotationSyncEnabled: req.body.isRotationSyncEnabled,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,

@@ -57,12 +57,12 @@ import { usePagination } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { PamResourceType } from "@app/hooks/api/pam";
 import type {
-  PamDiscoveryType,
   TPamDiscoverySource,
   TPamDiscoverySourceRunProgress
 } from "@app/hooks/api/pamDiscovery";
 import {
   PAM_DISCOVERY_TYPE_MAP,
+  PamDiscoveryType,
   useDeletePamDiscoverySource,
   useGetDiscoveredAccounts,
   useGetDiscoveredResources,
@@ -178,6 +178,16 @@ const DiscoveryConfigurationSection = ({
         <Detail>
           <DetailLabel>Port</DetailLabel>
           <DetailValue>{(source.discoveryConfiguration?.port as number) ?? "-"}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Dependency Discovery</DetailLabel>
+          <DetailValue>
+            {source.discoveryConfiguration?.discoverDependencies ? (
+              <Badge variant="success">Enabled</Badge>
+            ) : (
+              <Badge variant="neutral">Disabled</Badge>
+            )}
+          </DetailValue>
         </Detail>
       </div>
     </div>
@@ -352,12 +362,14 @@ const RunsTab = ({
   discoverySourceId,
   discoveryType,
   autoExpandLatestRunning,
-  onAutoExpandConsumed
+  onAutoExpandConsumed,
+  isDependencyDiscoveryDisabled
 }: {
   discoverySourceId: string;
   discoveryType: PamDiscoveryType;
   autoExpandLatestRunning?: boolean;
   onAutoExpandConsumed?: () => void;
+  isDependencyDiscoveryDisabled?: boolean;
 }) => {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
@@ -395,6 +407,16 @@ const RunsTab = ({
 
   return (
     <div>
+      {discoveryType === PamDiscoveryType.ActiveDirectory && isDependencyDiscoveryDisabled && (
+        <UnstableAlert variant="org" className="mb-4">
+          <InfoIcon />
+          <UnstableAlertTitle>Dependency discovery is disabled</UnstableAlertTitle>
+          <UnstableAlertDescription>
+            Windows Services, Scheduled Tasks, and IIS App Pools will not be discovered. Enable
+            &quot;Discover Dependencies&quot; in the source configuration to scan for dependencies
+          </UnstableAlertDescription>
+        </UnstableAlert>
+      )}
       <UnstableTable>
         <UnstableTableHeader>
           <UnstableTableRow>
@@ -1056,6 +1078,9 @@ const PageContent = () => {
                     discoveryType={source.discoveryType}
                     autoExpandLatestRunning={shouldAutoExpand}
                     onAutoExpandConsumed={handleAutoExpandConsumed}
+                    isDependencyDiscoveryDisabled={
+                      !source.discoveryConfiguration?.discoverDependencies
+                    }
                   />
                 </TabPanel>
                 <TabPanel value="resources" className="p-0">

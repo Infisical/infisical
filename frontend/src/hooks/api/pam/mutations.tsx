@@ -178,15 +178,15 @@ export const useTogglePamAccountDependency = () => {
     mutationFn: async ({
       accountId,
       dependencyId,
-      isEnabled
+      isRotationSyncEnabled
     }: {
       accountId: string;
       dependencyId: string;
-      isEnabled: boolean;
+      isRotationSyncEnabled: boolean;
     }) => {
       const { data } = await apiRequest.patch(
         `/api/v1/pam/accounts/${accountId}/dependencies/${dependencyId}`,
-        { isEnabled }
+        { isRotationSyncEnabled }
       );
 
       return data.dependency;

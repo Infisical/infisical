@@ -116,10 +116,10 @@ const DependencyRow = ({
         <UnstableTableCell className="text-muted">{dep.resourceName ?? "-"}</UnstableTableCell>
         <UnstableTableCell className="text-muted">{dep.state ?? "-"}</UnstableTableCell>
         <UnstableTableCell>
-          {dep.isEnabled ? (
-            <Badge variant="success">Enabled</Badge>
+          {dep.isRotationSyncEnabled ? (
+            <Badge variant="success">Sync Enabled</Badge>
           ) : (
-            <Badge variant="neutral">Disabled</Badge>
+            <Badge variant="neutral">Sync Disabled</Badge>
           )}
         </UnstableTableCell>
         <UnstableTableCell>
@@ -136,11 +136,11 @@ const DependencyRow = ({
                   toggleMutation.mutate({
                     accountId,
                     dependencyId: dep.id,
-                    isEnabled: !dep.isEnabled
+                    isRotationSyncEnabled: !dep.isRotationSyncEnabled
                   });
                 }}
               >
-                {dep.isEnabled ? "Disable" : "Enable"}
+                {dep.isRotationSyncEnabled ? "Disable Sync" : "Enable Sync"}
               </UnstableDropdownMenuItem>
               <UnstableDropdownMenuItem
                 variant="danger"
@@ -229,7 +229,7 @@ export const PamAccountDependenciesSection = ({ account }: { account: TPamAccoun
             <UnstableTableHead>State</UnstableTableHead>
             <UnstableTableHead>
               <div className="flex items-center gap-1">
-                Enabled
+                Sync Enabled
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <CircleHelpIcon className="size-3.5 text-muted" />

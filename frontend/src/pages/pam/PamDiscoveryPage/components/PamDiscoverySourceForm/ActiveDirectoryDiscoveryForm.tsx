@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose, Switch } from "@app/components/v2";
+import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { PamDiscoveryType, TPamDiscoverySource } from "@app/hooks/api/pamDiscovery";
 
@@ -19,7 +21,8 @@ const formSchema = genericDiscoveryFieldsSchema.extend({
   discoveryConfiguration: z.object({
     domainFQDN: z.string().trim().min(1, "Domain FQDN is required").max(255),
     dcAddress: z.string().trim().min(1, "DC Address is required").max(255),
-    port: z.coerce.number().int().min(1).max(65535)
+    port: z.coerce.number().int().min(1).max(65535),
+    discoverDependencies: z.boolean().default(false)
   }),
   discoveryCredentials: z.object({
     username: z.string().trim().min(1, "Username is required").max(255),
@@ -43,7 +46,8 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
           discoveryConfiguration: {
             domainFQDN: (source.discoveryConfiguration?.domainFQDN as string) || "",
             dcAddress: (source.discoveryConfiguration?.dcAddress as string) || "",
-            port: (source.discoveryConfiguration?.port as number) || 389
+            port: (source.discoveryConfiguration?.port as number) || 389,
+            discoverDependencies: Boolean(source.discoveryConfiguration?.discoverDependencies)
           },
           discoveryCredentials: {
             username: (source.discoveryCredentials?.username as string) || "",
@@ -56,7 +60,8 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
           discoveryConfiguration: {
             domainFQDN: "",
             dcAddress: "",
-            port: 389
+            port: 389,
+            discoverDependencies: false
           },
           discoveryCredentials: {
             username: "",
@@ -73,6 +78,10 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const password = useWatch({ control, name: "discoveryCredentials.password" });
+  const discoverDependencies = useWatch({
+    control,
+    name: "discoveryConfiguration.discoverDependencies"
+  });
 
   useEffect(() => {
     if (password === UNCHANGED_PASSWORD_SENTINEL) {
@@ -182,6 +191,32 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
               )}
             />
           </div>
+        </div>
+        <div className="mb-4">
+          <Controller
+            name="discoveryConfiguration.discoverDependencies"
+            control={control}
+            render={({ field }) => (
+              <Switch
+                id="discover-dependencies"
+                isChecked={field.value}
+                onCheckedChange={field.onChange}
+              >
+                Discover Dependencies
+              </Switch>
+            )}
+          />
+          {discoverDependencies && (
+            <UnstableAlert variant="org" className="mt-3">
+              <TriangleAlertIcon />
+              <UnstableAlertTitle>Warning</UnstableAlertTitle>
+              <UnstableAlertDescription>
+                Windows Services, Scheduled Tasks, and IIS App Pools will be automatically synced
+                during account credential rotation by default. To prevent a dependency from being
+                synced, you must manually disable it on the account&apos;s dependencies tab
+              </UnstableAlertDescription>
+            </UnstableAlert>
+          )}
         </div>
         <div className="mt-6 flex items-center">
           <Button

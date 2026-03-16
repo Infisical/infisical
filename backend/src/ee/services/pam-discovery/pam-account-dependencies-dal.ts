@@ -83,14 +83,14 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
       const [doc] = await knex(TableName.PamAccountDependency)
         .insert({
           ...data,
-          isEnabled: false
+          isRotationSyncEnabled: true
         })
         .onConflict(["accountId", "resourceId", "dependencyType", "name"])
         .merge({
           displayName: data.displayName,
           state: data.state,
           data: data.data
-          // Note: isEnabled is NOT merged - preserves admin's explicit enable/disable
+          // Note: isRotationSyncEnabled is NOT merged - preserves admin's explicit enable/disable
         })
         .returning(["*", knex.raw('(xmax = 0) as "isNew"')]);
 
