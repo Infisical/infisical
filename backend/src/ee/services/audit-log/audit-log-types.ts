@@ -35,6 +35,11 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import {
+  TAWSAuthDetails,
+  TKubernetesAuthDetails,
+  TOidcAuthDetails
+} from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
@@ -708,6 +713,10 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
   permission?: Record<string, unknown>;
+
+  aws?: TAWSAuthDetails;
+  kubernetes?: TKubernetesAuthDetails;
+  oidc?: TOidcAuthDetails;
 }
 
 interface ScimClientActorMetadata {}
