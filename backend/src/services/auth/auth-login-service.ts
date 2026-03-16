@@ -1162,7 +1162,8 @@ export const authLoginServiceFactory = ({
             aliasType,
             externalId: providerUserId,
             emails: [email],
-            orgId: orgId || null
+            orgId: orgId || null,
+            isEmailVerified: true
           },
           tx
         );
@@ -1248,7 +1249,8 @@ export const authLoginServiceFactory = ({
           aliasType,
           externalId: providerUserId,
           emails: [email],
-          orgId: orgId || null
+          orgId: orgId || null,
+          isEmailVerified: true
         });
       } catch (err) {
         // Swallow duplicate key errors from the unique index (race condition: concurrent login already created the alias)
