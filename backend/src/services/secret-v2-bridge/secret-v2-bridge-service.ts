@@ -1436,7 +1436,12 @@ export const secretV2BridgeServiceFactory = ({
         );
 
         return viewSecretValue ? canDescribe && canReadValue : canDescribe;
-      }
+      },
+      userId:
+        personalOverridesBehavior === PersonalOverridesBehavior.Priority ||
+        personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll
+          ? actorId
+          : undefined
     });
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
@@ -1655,7 +1660,8 @@ export const secretV2BridgeServiceFactory = ({
             secretName: expandSecretKey,
             secretTags: expandSecretTags
           });
-        }
+        },
+        userId: secretType === SecretType.Personal ? actorId : undefined
       });
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {

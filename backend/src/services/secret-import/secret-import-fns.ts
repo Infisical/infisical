@@ -229,7 +229,8 @@ export const fnSecretsV2FromImports = async ({
   decryptor,
   expandSecretReferences,
   hasSecretAccess,
-  viewSecretValue
+  viewSecretValue,
+  userId
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
@@ -247,6 +248,7 @@ export const fnSecretsV2FromImports = async ({
     secretKey: string;
   }) => Promise<string | undefined>;
   hasSecretAccess: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
+  userId?: string;
 }) => {
   const cyclicDetector = new Set();
   const stack: {
@@ -284,7 +286,7 @@ export const fnSecretsV2FromImports = async ({
 
     const importedFolderGroupBySourceImport = groupBy(importedFolders, (i) => `${i?.envId}-${i?.path}`);
 
-    const importedSecrets = await secretDAL.find(
+    let importedSecrets = await secretDAL.find(
       {
         $in: { folderId: importedFolderIds },
         type: SecretType.Shared
@@ -293,6 +295,39 @@ export const fnSecretsV2FromImports = async ({
         sort: [["id", "asc"]]
       }
     );
+
+    if (userId) {
+      const personalSecrets = await secretDAL.find(
+        {
+          $in: { folderId: importedFolderIds },
+          type: SecretType.Personal,
+          userId
+        },
+        {
+          sort: [["id", "asc"]]
+        }
+      );
+
+      if (personalSecrets.length) {
+        const personalSecretsByFolderAndKey = new Map<string, (typeof personalSecrets)[number]>();
+        personalSecrets.forEach((ps) => {
+          personalSecretsByFolderAndKey.set(`${ps.folderId}-${ps.key}`, ps);
+        });
+
+        importedSecrets = importedSecrets.map((secret) => {
+          const personalOverride = personalSecretsByFolderAndKey.get(`${secret.folderId}-${secret.key}`);
+          if (personalOverride) {
+            return {
+              ...secret,
+              encryptedValue: personalOverride.encryptedValue,
+              encryptedComment: personalOverride.encryptedComment
+            };
+          }
+          return secret;
+        });
+      }
+    }
+
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
     const processedBatchImports = await processReservedImports(sanitizedImports, secretImportDAL);
