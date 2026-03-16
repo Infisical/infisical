@@ -33,11 +33,7 @@ type TGroupModalData = {
   name: string;
   slug: string;
   role: string;
-  customRole?: {
-    name: string;
-    slug: string;
-    id?: string;
-  };
+  customRoleSlug?: string | null;
 };
 
 type Props = {
@@ -69,10 +65,14 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
         : undefined) ?? roles[0];
 
     if (group) {
+      const selectedRole = group.customRoleSlug
+        ? roles.find((role) => role.slug === group.customRoleSlug)
+        : findOrgMembershipRole(roles, group.role);
+
       reset({
         name: group.name,
         slug: group.slug,
-        role: group.customRole ?? findOrgMembershipRole(roles, group.role) ?? defaultRole
+        role: selectedRole ?? defaultRole
       });
     } else {
       reset({
