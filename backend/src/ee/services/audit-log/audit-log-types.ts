@@ -51,6 +51,11 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import {
+  TAWSAuthDetails,
+  TKubernetesAuthDetails,
+  TOidcAuthDetails
+} from "@app/services/identity-access-token/identity-access-token-types";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -708,6 +713,10 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
   permission?: Record<string, unknown>;
+
+  aws?: TAWSAuthDetails;
+  kubernetes?: TKubernetesAuthDetails;
+  oidc?: TOidcAuthDetails;
 }
 
 interface ScimClientActorMetadata {}
