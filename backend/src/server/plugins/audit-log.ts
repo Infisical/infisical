@@ -1,3 +1,4 @@
+import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
@@ -66,11 +67,16 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         }
       };
     } else if (req.auth.actor === ActorType.IDENTITY) {
+      const identityAuthInfo = requestContext.get("identityAuthInfo");
+
       payload.actor = {
         type: ActorType.IDENTITY,
         metadata: {
           name: req.auth.identityName,
-          identityId: req.auth.identityId
+          identityId: req.auth.identityId,
+          ...(identityAuthInfo?.aws ? { aws: identityAuthInfo.aws } : {}),
+          ...(identityAuthInfo?.kubernetes ? { kubernetes: identityAuthInfo.kubernetes } : {}),
+          ...(identityAuthInfo?.oidc ? { oidc: identityAuthInfo.oidc } : {})
         }
       };
     } else if (req.auth.actor === ActorType.SCIM_CLIENT) {
