@@ -137,6 +137,34 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/:id/heartbeat",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerGatewayHeartbeat",
+      params: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.gatewayV2.triggerHeartbeat({
+        orgPermission: req.permission,
+        id: req.params.id
+      });
+
+      return { message: "Successfully triggered heartbeat" };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/pam-session-key",
     config: {

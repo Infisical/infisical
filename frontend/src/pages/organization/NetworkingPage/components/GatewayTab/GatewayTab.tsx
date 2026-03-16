@@ -4,6 +4,7 @@ import {
   faDoorClosed,
   faEdit,
   faEllipsisV,
+  faHeartPulse,
   faInfoCircle,
   faMagnifyingGlass,
   faPlus,
@@ -45,7 +46,7 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
-import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
+import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
@@ -82,6 +83,22 @@ export const GatewayTab = withPermission(
 
     const deleteGatewayById = useDeleteGatewayById();
     const deleteGatewayV2ById = useDeleteGatewayV2ById();
+    const triggerGatewayV2Heartbeat = useTriggerGatewayV2Heartbeat();
+
+    const handleTriggerHealthCheck = async (id: string) => {
+      try {
+        await triggerGatewayV2Heartbeat.mutateAsync(id);
+        createNotification({
+          type: "success",
+          text: "Health check successful - gateway is healthy"
+        });
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Health check failed - gateway is unreachable"
+        });
+      }
+    };
 
     const handleDeleteGateway = async () => {
       const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
@@ -186,6 +203,14 @@ export const GatewayTab = withPermission(
                             >
                               Copy ID
                             </DropdownMenuItem>
+                            {!el.isV1 && (
+                              <DropdownMenuItem
+                                icon={<FontAwesomeIcon icon={faHeartPulse} />}
+                                onClick={() => handleTriggerHealthCheck(el.id)}
+                              >
+                                Trigger Health Check
+                              </DropdownMenuItem>
+                            )}
                             {el.isV1 && (
                               <OrgPermissionCan
                                 I={OrgGatewayPermissionActions.EditGateways}
