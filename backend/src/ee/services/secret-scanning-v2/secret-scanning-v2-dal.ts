@@ -53,6 +53,7 @@ const baseSecretScanningDataSourceQuery = ({
       db.ref("projectId").withSchema(TableName.AppConnection).as("connectionProjectId"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("connectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt"),
+      db.ref("isAutoRotationEnabled").withSchema(TableName.AppConnection).as("connectionIsAutoRotationEnabled"),
       db
         .ref("isPlatformManagedCredentials")
         .withSchema(TableName.AppConnection)
@@ -77,6 +78,7 @@ const expandSecretScanningDataSource = <
     connectionName,
     connectionId,
     connectionOrgId,
+    connectionIsAutoRotationEnabled,
     connectionEncryptedCredentials,
     connectionMethod,
     connectionDescription,
@@ -104,6 +106,7 @@ const expandSecretScanningDataSource = <
           createdAt: connectionCreatedAt,
           updatedAt: connectionUpdatedAt,
           version: connectionVersion,
+          isAutoRotationEnabled: connectionIsAutoRotationEnabled,
           isPlatformManagedCredentials: connectionIsPlatformManagedCredentials,
           gatewayId: connectionGatewayId,
           projectId: connectionProjectId

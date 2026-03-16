@@ -29,6 +29,7 @@ const PageContent = () => {
     orgId: orgId!,
     resourceName: account?.resource.name ?? "",
     accountName: account?.name ?? "",
+    resourceType: account?.resource.resourceType ?? "",
     onSessionEnd: () => setSessionEnded(true)
   });
 

@@ -1,3 +1,4 @@
+import { IdentityAuthMethod } from "@app/db/schemas";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -10,6 +11,7 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { EnforcementLevel } from "@app/lib/types";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
@@ -27,6 +29,16 @@ export enum PostHogEventTypes {
   IntegrationSynced = "Integration Synced",
   IntegrationDeleted = "Integration Deleted",
   MachineIdentityCreated = "Machine Identity Created",
+  MachineIdentityUpdated = "Machine Identity Updated",
+  MachineIdentityDeleted = "Machine Identity Deleted",
+  MachineIdentityLogin = "Machine Identity Login",
+  MachineIdentityAuthMethodAttached = "Machine Identity Auth Method Attached",
+  MachineIdentityAuthMethodUpdated = "Machine Identity Auth Method Updated",
+  MachineIdentityAuthMethodRevoked = "Machine Identity Auth Method Revoked",
+  MachineIdentityClientSecretCreated = "Machine Identity Client Secret Created",
+  MachineIdentityClientSecretRevoked = "Machine Identity Client Secret Revoked",
+  MachineIdentityTokenCreated = "Machine Identity Token Created",
+  MachineIdentityTokenRevoked = "Machine Identity Token Revoked",
   UserOrgInvitation = "User Org Invitation",
   TelemetryInstanceStats = "Self Hosted Instance Stats",
   SecretRequestCreated = "Secret Request Created",
@@ -38,7 +50,23 @@ export enum PostHogEventTypes {
   SignCert = "Sign PKI Certificate",
   IssueCert = "Issue PKI Certificate",
   InvalidateCache = "Invalidate Cache",
-  NotificationUpdated = "Notification Updated"
+  NotificationUpdated = "Notification Updated",
+  SecretApprovalPolicyCreated = "Secret Approval Policy Created",
+  SecretApprovalPolicyDeleted = "Secret Approval Policy Deleted",
+  SecretApprovalRequestSubmitted = "Secret Approval Request Submitted",
+  SecretApprovalRequestReviewed = "Secret Approval Request Reviewed",
+  SecretApprovalRequestStatusChanged = "Secret Approval Request Status Changed",
+  SecretApprovalRequestMerged = "Secret Approval Request Merged",
+  AccessApprovalPolicyCreated = "Access Approval Policy Created",
+  AccessApprovalPolicyDeleted = "Access Approval Policy Deleted",
+  AccessApprovalRequestCreated = "Access Approval Request Created",
+  AccessApprovalRequestReviewed = "Access Approval Request Reviewed",
+  SecretSyncCreated = "Secret Sync Created",
+  SecretSyncDeleted = "Secret Sync Deleted",
+  DynamicSecretCreated = "Dynamic Secret Created",
+  DynamicSecretDeleted = "Dynamic Secret Deleted",
+  DynamicSecretLeaseCreated = "Dynamic Secret Lease Created",
+  DynamicSecretLeaseRenewed = "Dynamic Secret Lease Renewed"
 }
 
 export type TSecretModifiedEvent = {
@@ -56,6 +84,7 @@ export type TSecretModifiedEvent = {
     secretPath: string;
     channel?: string;
     userAgent?: string;
+    actorType?: string;
     actor?:
       | UserActor
       | IdentityActor
@@ -111,6 +140,61 @@ export type TMachineIdentityCreatedEvent = {
     hasDeleteProtection: boolean;
     orgId: string;
     identityId: string;
+  };
+};
+
+export type TMachineIdentityUpdatedEvent = {
+  event: PostHogEventTypes.MachineIdentityUpdated;
+  properties: {
+    identityId: string;
+    orgId: string;
+    name: string;
+    hasDeleteProtection: boolean;
+  };
+};
+
+export type TMachineIdentityDeletedEvent = {
+  event: PostHogEventTypes.MachineIdentityDeleted;
+  properties: {
+    identityId: string;
+    orgId: string;
+  };
+};
+
+export type TMachineIdentityLoginEvent = {
+  event: PostHogEventTypes.MachineIdentityLogin;
+  properties: {
+    identityId: string;
+    orgId: string;
+    authMethod: IdentityAuthMethod;
+  };
+};
+
+export type TMachineIdentityAuthMethodEvent = {
+  event:
+    | PostHogEventTypes.MachineIdentityAuthMethodAttached
+    | PostHogEventTypes.MachineIdentityAuthMethodUpdated
+    | PostHogEventTypes.MachineIdentityAuthMethodRevoked;
+  properties: {
+    identityId: string;
+    orgId: string;
+    authMethod: IdentityAuthMethod;
+  };
+};
+
+export type TMachineIdentityClientSecretEvent = {
+  event: PostHogEventTypes.MachineIdentityClientSecretCreated | PostHogEventTypes.MachineIdentityClientSecretRevoked;
+  properties: {
+    identityId: string;
+    orgId: string;
+  };
+};
+
+export type TMachineIdentityTokenEvent = {
+  event: PostHogEventTypes.MachineIdentityTokenCreated | PostHogEventTypes.MachineIdentityTokenRevoked;
+  properties: {
+    identityId: string;
+    orgId: string;
   };
 };
 
@@ -290,13 +374,189 @@ export type TNotificationUpdatedEvent = {
   };
 };
 
-export type TPostHogEvent = { distinctId: string; organizationId?: string } & (
+export type TSecretApprovalPolicyCreatedEvent = {
+  event: PostHogEventTypes.SecretApprovalPolicyCreated;
+  properties: {
+    policyId: string;
+    projectId: string;
+    environments: string[];
+    secretPath: string;
+    approvals: number;
+    enforcementLevel: EnforcementLevel;
+  };
+};
+
+export type TSecretApprovalPolicyDeletedEvent = {
+  event: PostHogEventTypes.SecretApprovalPolicyDeleted;
+  properties: {
+    policyId: string;
+    projectId: string;
+  };
+};
+
+export type TSecretApprovalRequestSubmittedEvent = {
+  event: PostHogEventTypes.SecretApprovalRequestSubmitted;
+  properties: {
+    requestId: string;
+    policyId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    numberOfCommits: number;
+  };
+};
+
+export type TSecretApprovalRequestReviewedEvent = {
+  event: PostHogEventTypes.SecretApprovalRequestReviewed;
+  properties: {
+    requestId: string;
+    projectId: string;
+    reviewStatus: string;
+  };
+};
+
+export type TSecretApprovalRequestStatusChangedEvent = {
+  event: PostHogEventTypes.SecretApprovalRequestStatusChanged;
+  properties: {
+    requestId: string;
+    projectId: string;
+    status: string;
+  };
+};
+
+export type TSecretApprovalRequestMergedEvent = {
+  event: PostHogEventTypes.SecretApprovalRequestMerged;
+  properties: {
+    requestId: string;
+    projectId: string;
+    requestSlug: string;
+  };
+};
+
+export type TAccessApprovalPolicyCreatedEvent = {
+  event: PostHogEventTypes.AccessApprovalPolicyCreated;
+  properties: {
+    policyId: string;
+    projectId: string;
+    environments: string[];
+    secretPath: string;
+    approvals: number;
+    enforcementLevel: EnforcementLevel;
+  };
+};
+
+export type TAccessApprovalPolicyDeletedEvent = {
+  event: PostHogEventTypes.AccessApprovalPolicyDeleted;
+  properties: {
+    policyId: string;
+    projectId: string;
+  };
+};
+
+export type TAccessApprovalRequestCreatedEvent = {
+  event: PostHogEventTypes.AccessApprovalRequestCreated;
+  properties: {
+    requestId: string;
+    projectId: string;
+    isTemporary: boolean;
+    temporaryRange?: string;
+  };
+};
+
+export type TAccessApprovalRequestReviewedEvent = {
+  event: PostHogEventTypes.AccessApprovalRequestReviewed;
+  properties: {
+    requestId: string;
+    projectId: string;
+    reviewStatus: string;
+  };
+};
+
+export type TSecretSyncCreatedEvent = {
+  event: PostHogEventTypes.SecretSyncCreated;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isAutoSyncEnabled: boolean;
+  };
+};
+
+export type TSecretSyncDeletedEvent = {
+  event: PostHogEventTypes.SecretSyncDeleted;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    removeSecrets: boolean;
+  };
+};
+
+export type TDynamicSecretCreatedEvent = {
+  event: PostHogEventTypes.DynamicSecretCreated;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    defaultTTL: string;
+    maxTTL?: string | null;
+    hasGateway: boolean;
+  };
+};
+
+export type TDynamicSecretDeletedEvent = {
+  event: PostHogEventTypes.DynamicSecretDeleted;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isForced: boolean;
+  };
+};
+
+export type TDynamicSecretLeaseCreatedEvent = {
+  event: PostHogEventTypes.DynamicSecretLeaseCreated;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    dynamicSecretId: string;
+    ttl: string;
+  };
+};
+
+export type TDynamicSecretLeaseRenewedEvent = {
+  event: PostHogEventTypes.DynamicSecretLeaseRenewed;
+  properties: {
+    provider: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    dynamicSecretId: string;
+    ttl: string;
+  };
+};
+
+export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent
   | TSecretScannerEvent
   | TUserOrgInvitedEvent
   | TMachineIdentityCreatedEvent
+  | TMachineIdentityUpdatedEvent
+  | TMachineIdentityDeletedEvent
+  | TMachineIdentityLoginEvent
+  | TMachineIdentityAuthMethodEvent
+  | TMachineIdentityClientSecretEvent
+  | TMachineIdentityTokenEvent
   | TIntegrationCreatedEvent
   | TIntegrationSyncedEvent
   | TIntegrationDeletedEvent
@@ -312,4 +572,20 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string } & (
   | TIssueCertificateEvent
   | TInvalidateCacheEvent
   | TNotificationUpdatedEvent
+  | TSecretApprovalPolicyCreatedEvent
+  | TSecretApprovalPolicyDeletedEvent
+  | TSecretApprovalRequestSubmittedEvent
+  | TSecretApprovalRequestReviewedEvent
+  | TSecretApprovalRequestStatusChangedEvent
+  | TSecretApprovalRequestMergedEvent
+  | TAccessApprovalPolicyCreatedEvent
+  | TAccessApprovalPolicyDeletedEvent
+  | TAccessApprovalRequestCreatedEvent
+  | TAccessApprovalRequestReviewedEvent
+  | TSecretSyncCreatedEvent
+  | TSecretSyncDeletedEvent
+  | TDynamicSecretCreatedEvent
+  | TDynamicSecretDeletedEvent
+  | TDynamicSecretLeaseCreatedEvent
+  | TDynamicSecretLeaseRenewedEvent
 );

@@ -225,7 +225,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
-            ...req.auditLogInfo
+            ...req.auditLogInfo,
+            actorType: req.permission.type
           }
         });
       }
@@ -378,7 +379,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
-            ...req.auditLogInfo
+            ...req.auditLogInfo,
+            actorType: req.permission.type
           }
         });
       }
@@ -517,7 +519,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
 
@@ -666,7 +669,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secret };
@@ -775,7 +779,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
 
@@ -965,7 +970,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };
@@ -1048,6 +1054,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { environment, secretPath, secrets: inputSecrets } = req.body;
+
+      // Sort by secretKey to ensure consistent lock ordering and prevent deadlocks
+      const sortedSecrets = [...inputSecrets].sort((a, b) => a.secretKey.localeCompare(b.secretKey));
+
       const secretOperation = await server.services.secret.updateManySecretsRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -1056,7 +1066,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment,
         projectId: req.body.projectId,
-        secrets: inputSecrets,
+        secrets: sortedSecrets,
         mode: req.body.mode
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
@@ -1144,7 +1154,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };
@@ -1200,6 +1211,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { environment, secretPath, secrets: inputSecrets } = req.body;
+
+      // Sort by secretKey to ensure consistent lock ordering and prevent deadlocks
+      const sortedSecrets = [...inputSecrets].sort((a, b) => a.secretKey.localeCompare(b.secretKey));
+
       const secretOperation = await server.services.secret.deleteManySecretsRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -1208,7 +1223,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment,
         secretPath,
         projectId: req.body.projectId,
-        secrets: inputSecrets
+        secrets: sortedSecrets
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
         await server.services.auditLog.createAuditLog({
@@ -1222,7 +1237,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretApprovalRequestSlug: secretOperation.approval.slug,
               secretPath,
               environment,
-              secrets: inputSecrets.map((secret) => ({
+              secrets: sortedSecrets.map((secret) => ({
                 secretKey: secret.secretKey
               })),
               eventType: SecretApprovalEvent.DeleteMany
@@ -1261,7 +1276,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };

@@ -18,6 +18,7 @@ export type TAcmeCertificateAuthority = {
     accountEmail: string;
     eabKid?: string;
     eabHmacKey?: string;
+    dnsResolver?: string;
   };
 };
 

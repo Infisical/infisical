@@ -35,6 +35,7 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   type: ProjectType;
   projectId?: string;
+  allowedSubjects?: ProjectPermissionSub[];
 };
 
 type ContentProps = {
@@ -43,11 +44,12 @@ type ContentProps = {
   // note(daniel): we allow projectId to be undefined because we use this component for project templates, in which case no project ID will be present.
   projectId?: string;
   type: ProjectType;
+  allowedSubjects?: ProjectPermissionSub[];
 };
 
 type TForm = { permissions: Record<ProjectPermissionSub, boolean> };
 
-const Content = ({ onClose, projectId, type: projectType }: ContentProps) => {
+const Content = ({ onClose, projectId, type: projectType, allowedSubjects }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
   const [search, setSearch] = useState("");
   const isSecretManagerProject = projectType === ProjectType.SecretManager;
@@ -84,6 +86,9 @@ const Content = ({ onClose, projectId, type: projectType }: ContentProps) => {
       ([subject]) =>
         // Hide Native Integrations policy if project has no integrations
         subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
+    )
+    .filter(
+      ([subject]) => !allowedSubjects || allowedSubjects.includes(subject as ProjectPermissionSub)
     )
     .sort((a, b) => a[1].title.localeCompare(b[1].title))
     .map(([subject]) => subject);
@@ -218,7 +223,13 @@ const Content = ({ onClose, projectId, type: projectType }: ContentProps) => {
   );
 };
 
-export const PolicySelectionModal = ({ isOpen, onOpenChange, type, projectId }: Props) => {
+export const PolicySelectionModal = ({
+  isOpen,
+  onOpenChange,
+  type,
+  projectId,
+  allowedSubjects
+}: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -226,7 +237,12 @@ export const PolicySelectionModal = ({ isOpen, onOpenChange, type, projectId }: 
         subTitle="Select one or more policies to add to this role."
         className="max-w-3xl"
       >
-        <Content onClose={() => onOpenChange(false)} type={type} projectId={projectId} />
+        <Content
+          onClose={() => onOpenChange(false)}
+          type={type}
+          projectId={projectId}
+          allowedSubjects={allowedSubjects}
+        />
       </ModalContent>
     </Modal>
   );

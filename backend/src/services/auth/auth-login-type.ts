@@ -34,6 +34,7 @@ export type TOauthLoginDTO = {
   authMethod: AuthMethod;
   callbackPort?: string;
   orgSlug?: string;
+  providerUserId: string;
 };
 
 export type TOauthTokenExchangeDTO = {

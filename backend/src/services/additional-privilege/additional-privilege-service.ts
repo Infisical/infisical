@@ -11,6 +11,7 @@ import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission
 
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { TUserDALFactory } from "../user/user-dal";
 import { TAdditionalPrivilegeDALFactory } from "./additional-privilege-dal";
 import {
   TAdditionalPrivilegesScopeFactory,
@@ -30,6 +31,7 @@ type TAdditionalPrivilegeServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export type TAdditionalPrivilegeServiceFactory = ReturnType<typeof additionalPrivilegeServiceFactory>;
@@ -38,14 +40,16 @@ export const additionalPrivilegeServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   orgDAL,
-  membershipDAL
+  membershipDAL,
+  userDAL
 }: TAdditionalPrivilegeServiceFactoryDep) => {
   const scopeFactory: Record<AccessScope, TAdditionalPrivilegesScopeFactory> = {
     [AccessScope.Organization]: newOrgAdditionalPrivilegesFactory({}),
     [AccessScope.Project]: newProjectAdditionalPrivilegesFactory({
       membershipDAL,
       orgDAL,
-      permissionService
+      permissionService,
+      userDAL
     })
   };
 

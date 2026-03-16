@@ -182,6 +182,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionMemberActions.Delete,
       ProjectPermissionMemberActions.Read,
       ProjectPermissionMemberActions.GrantPrivileges,
+      ProjectPermissionMemberActions.AssignRole,
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
       ProjectPermissionMemberActions.AssumePrivileges
     ],
     ProjectPermissionSub.Member
@@ -193,7 +195,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionGroupActions.Edit,
       ProjectPermissionGroupActions.Delete,
       ProjectPermissionGroupActions.Read,
-      ProjectPermissionGroupActions.GrantPrivileges
+      ProjectPermissionGroupActions.GrantPrivileges,
+      ProjectPermissionGroupActions.AssignRole
     ],
     ProjectPermissionSub.Groups
   );
@@ -205,6 +208,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.Delete,
       ProjectPermissionIdentityActions.Read,
       ProjectPermissionIdentityActions.GrantPrivileges,
+      ProjectPermissionIdentityActions.AssignRole,
+      ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
       ProjectPermissionIdentityActions.AssumePrivileges,
       ProjectPermissionIdentityActions.GetToken,
       ProjectPermissionIdentityActions.CreateToken,
@@ -362,7 +367,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionAppConnectionActions.Edit,
       ProjectPermissionAppConnectionActions.Delete,
       ProjectPermissionAppConnectionActions.Read,
-      ProjectPermissionAppConnectionActions.Connect
+      ProjectPermissionAppConnectionActions.Connect,
+      ProjectPermissionAppConnectionActions.RotateCredentials
     ],
     ProjectPermissionSub.AppConnections
   );

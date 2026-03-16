@@ -1,16 +1,48 @@
 ---
 title: "DigiCert"
-description: "Learn how to connect Infisical to DigiCert to issue certificates."
+description: "Learn how to connect Infisical to DigiCert to issue certificates via ACME."
 ---
 
 ## Concept
 
 Infisical can connect to [DigiCert](https://www.digicert.com/) using the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) to issue certificates back to your end-entities.
 
-## Guide to Connecting Infisical to DigiCert CA
+DigiCert CertCentral supports the ACME protocol and requires **External Account Binding (EAB)** for all ACME registrations. You will need to obtain the ACME Directory URL, a Key Identifier (KID), and an HMAC Key from your DigiCert CertCentral account before registering the ACME CA in Infisical.
 
-To connect Infisical to DigiCert, follow the steps in the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) guide but use the DigiCert **ACME Directory URL**: `https://acme.digicert.com/v2/acme/directory`.
+## Guide to Connecting Infisical to DigiCert
 
-DigiCert requires **External Account Binding (EAB)** for all ACME registrations. You will need to obtain both a Key Identifier (KID) and an HMAC Key from your DigiCert account before registering the ACME CA in Infisical.
+<Steps>
+  <Step title="Retrieve ACME credentials from DigiCert CertCentral">
+    Log in to your DigiCert CertCentral account and navigate to **Automation > ACME Directory URLs** in the left sidebar. Click **Add ACME Directory URL** at the top of the page.
 
-DigiCert typically issues certificates with a 90-day validity period.
+    ![DigiCert ACME Directory URLs](/images/platform/pki/digicert/digicert-acme-directory-urls.png)
+
+    In the modal that appears, configure the following options:
+    - **Name**: A friendly name for the credential set.
+    - **Product**: The certificate product to use.
+    - **Division**: The division to associate with issued certificates.
+    - **Organization**: Required for OV/EV certificates.
+    - **Validity period**: The certificate validity duration.
+
+    Click **Add ACME Directory URL** to generate your credentials. A modal will display the generated credentials. Copy the following values:
+    - **ACME Directory URL**: A unique URL generated for your ACME requests.
+    - **Key Identifier (KID)**: Identifies your CertCentral account.
+    - **HMAC Key**: Used for authentication and encryption.
+
+    <Note>
+      These credentials are **only displayed once**. Make sure to copy and save them in a secure location before dismissing the modal. If you lose your credentials, you will need to revoke them and generate new ones.
+    </Note>
+  </Step>
+  <Step title="Create an External CA in Infisical">
+    Follow the steps in the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) guide to create an External CA in Infisical with the **ACME** CA type. When filling out the form, use the values from DigiCert:
+
+    - **Directory URL**: Paste the **ACME Directory URL** from DigiCert.
+    - **EAB Key Identifier (KID)**: Paste the **Key Identifier** from DigiCert.
+    - **EAB HMAC Key**: Paste the **HMAC Key** from DigiCert.
+
+    ![Create External CA with ACME](/images/platform/pki/sectigo/infisical-create-external-ca-acme.png)
+  </Step>
+  <Step title="Issue certificates">
+    Once the External CA is created, follow the rest of the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) guide to create a Certificate Profile and start issuing certificates through DigiCert.
+  </Step>
+</Steps>
