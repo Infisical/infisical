@@ -202,6 +202,11 @@ import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import {
+  appConnectionCredentialRotationDALFactory,
+  appConnectionCredentialRotationQueueFactory,
+  appConnectionCredentialRotationServiceFactory
+} from "@app/services/app-connection/credential-rotation";
+import {
   approvalPolicyDALFactory,
   approvalPolicyStepApproversDALFactory,
   approvalPolicyStepsDALFactory
@@ -645,6 +650,8 @@ export const registerRoutes = async (
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
   const pkiAlertChannelDAL = pkiAlertChannelDALFactory(db);
   const pkiAlertV2DAL = pkiAlertV2DALFactory(db);
+
+  const appConnectionCredentialRotationDAL = appConnectionCredentialRotationDALFactory(db);
 
   const vaultExternalMigrationConfigDAL = vaultExternalMigrationConfigDALFactory(db);
 
@@ -2177,6 +2184,14 @@ export const registerRoutes = async (
     roleDAL
   });
 
+  const appConnectionCredentialRotationService = appConnectionCredentialRotationServiceFactory({
+    appConnectionCredentialRotationDAL,
+    appConnectionDAL,
+    keyStore,
+    kmsService,
+    queueService
+  });
+
   const appConnectionService = appConnectionServiceFactory({
     appConnectionDAL,
     permissionService,
@@ -2186,7 +2201,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayDAL,
     gatewayV2DAL,
-    projectDAL
+    projectDAL,
+    appConnectionCredentialRotationService
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -2604,6 +2620,17 @@ export const registerRoutes = async (
     notificationService
   });
 
+  await appConnectionCredentialRotationQueueFactory({
+    queueService,
+    appConnectionCredentialRotationDAL,
+    appConnectionCredentialRotationService,
+    smtpService,
+    notificationService,
+    projectMembershipDAL,
+    projectDAL,
+    orgDAL
+  });
+
   const secretScanningV2Queue = secretScanningV2QueueServiceFactory({
     auditLogService,
     secretScanningV2DAL,
@@ -2987,7 +3014,8 @@ export const registerRoutes = async (
     aiMcpServer: aiMcpServerService,
     aiMcpEndpoint: aiMcpEndpointService,
     aiMcpActivityLog: aiMcpActivityLogService,
-    approvalPolicy: approvalPolicyService
+    approvalPolicy: approvalPolicyService,
+    appConnectionCredentialRotation: appConnectionCredentialRotationService
   });
 
   const cronJobs: CronJob[] = [];

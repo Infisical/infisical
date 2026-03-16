@@ -35,6 +35,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
     const userAgent = req.headers["user-agent"] ?? "";
     const payload = {
       ipAddress: req.realIp,
+      orgId: req?.permission?.orgId,
       userAgent,
       userAgentType: getUserAgentType(userAgent)
     } as typeof req.auditLogInfo;

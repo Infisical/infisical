@@ -1,6 +1,6 @@
 import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { getCamundaConnectionAccessToken } from "@app/services/app-connection/camunda";
+import { getCamundaConnectionAccessToken } from "@app/services/app-connection/camunda/camunda-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {

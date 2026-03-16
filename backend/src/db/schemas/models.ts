@@ -174,6 +174,7 @@ export enum TableName {
   SlackIntegrations = "slack_integrations",
   ProjectSlackConfigs = "project_slack_configs",
   AppConnection = "app_connections",
+  AppConnectionCredentialRotation = "app_connection_credential_rotations",
   SecretSync = "secret_syncs",
   PkiSync = "pki_syncs",
   CertificateSync = "certificate_syncs",

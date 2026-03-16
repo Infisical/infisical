@@ -64,6 +64,7 @@ import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/a
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TAppConnectionCredentialRotationServiceFactory } from "@app/services/app-connection/credential-rotation";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
@@ -236,7 +237,7 @@ declare module "fastify" {
       clientId: string;
       name: string;
     };
-    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
       allowedFields?: TAllowedFields[];
@@ -387,6 +388,7 @@ declare module "fastify" {
       aiMcpEndpoint: TAiMcpEndpointServiceFactory;
       aiMcpActivityLog: TAiMcpActivityLogServiceFactory;
       approvalPolicy: TApprovalPolicyServiceFactory;
+      appConnectionCredentialRotation: TAppConnectionCredentialRotationServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

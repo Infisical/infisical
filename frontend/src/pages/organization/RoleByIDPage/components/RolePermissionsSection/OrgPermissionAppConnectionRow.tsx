@@ -28,7 +28,8 @@ const PERMISSION_ACTIONS = [
   { action: OrgPermissionAppConnectionActions.Create, label: "Create" },
   { action: OrgPermissionAppConnectionActions.Edit, label: "Modify" },
   { action: OrgPermissionAppConnectionActions.Delete, label: "Remove" },
-  { action: OrgPermissionAppConnectionActions.Connect, label: "Connect" }
+  { action: OrgPermissionAppConnectionActions.Connect, label: "Connect" },
+  { action: OrgPermissionAppConnectionActions.RotateCredentials, label: "Rotate Credentials" }
 ] as const;
 
 export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }: Props) => {
@@ -83,7 +84,8 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
             [OrgPermissionAppConnectionActions.Edit]: true,
             [OrgPermissionAppConnectionActions.Create]: true,
             [OrgPermissionAppConnectionActions.Delete]: true,
-            [OrgPermissionAppConnectionActions.Connect]: true
+            [OrgPermissionAppConnectionActions.Connect]: true,
+            [OrgPermissionAppConnectionActions.RotateCredentials]: true
           },
           { shouldDirty: true }
         );
@@ -96,7 +98,8 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
             [OrgPermissionAppConnectionActions.Edit]: false,
             [OrgPermissionAppConnectionActions.Create]: false,
             [OrgPermissionAppConnectionActions.Delete]: false,
-            [OrgPermissionAppConnectionActions.Connect]: false
+            [OrgPermissionAppConnectionActions.Connect]: false,
+            [OrgPermissionAppConnectionActions.RotateCredentials]: false
           },
           { shouldDirty: true }
         );
@@ -111,7 +114,8 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
             [OrgPermissionAppConnectionActions.Edit]: false,
             [OrgPermissionAppConnectionActions.Create]: false,
             [OrgPermissionAppConnectionActions.Delete]: false,
-            [OrgPermissionAppConnectionActions.Connect]: false
+            [OrgPermissionAppConnectionActions.Connect]: false,
+            [OrgPermissionAppConnectionActions.RotateCredentials]: false
           },
           { shouldDirty: true }
         );
