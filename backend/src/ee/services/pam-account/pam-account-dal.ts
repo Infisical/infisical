@@ -170,10 +170,33 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return byAccountId;
   };
 
+  const findRotationCandidates = async (resourceIds: string[], minIntervalSeconds: number, tx?: Knex) => {
+    if (!resourceIds.length) return [];
+
+    try {
+      const cutoff = new Date(Date.now() - minIntervalSeconds * 1000);
+
+      return await (tx || db.replicaNode())(TableName.PamAccount)
+        .whereIn("resourceId", resourceIds)
+        .where((qb) => {
+          void qb.whereNot("rotationStatus", "rotating").orWhereNull("rotationStatus");
+        })
+        .where((qb) => {
+          void qb.where("lastRotatedAt", "<", cutoff).orWhere((inner) => {
+            void inner.whereNull("lastRotatedAt").andWhere("createdAt", "<", cutoff);
+          });
+        })
+        .select(selectAllTableCols(TableName.PamAccount));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find rotation candidates" });
+    }
+  };
+
   return {
     ...orm,
     findByProjectIdWithResourceDetails,
     findByIdWithResourceDetails,
-    findMetadataByAccountIds
+    findMetadataByAccountIds,
+    findRotationCandidates
   };
 };

@@ -1051,16 +1051,21 @@ export const pamAccountServiceFactory = ({
     const allRules = await pamResourceRotationRulesDAL.findByResourceIds(resourceIds);
     if (!allRules.length) return [];
 
-    // Group rules by resource
+    // Group rules by resource, compute minimum interval for DB pre-filter
     const rulesByResource: Record<string, typeof allRules> = {};
+    let minIntervalSeconds = Infinity;
     for (const rule of allRules) {
       if (!rulesByResource[rule.resourceId]) rulesByResource[rule.resourceId] = [];
       rulesByResource[rule.resourceId].push(rule);
+      if (rule.enabled && rule.intervalSeconds) {
+        minIntervalSeconds = Math.min(minIntervalSeconds, rule.intervalSeconds);
+      }
     }
 
-    // Get accounts for resources that have rules
+    if (minIntervalSeconds === Infinity) return [];
+
     const resourceIdsWithRules = Object.keys(rulesByResource);
-    const accounts = await pamAccountDAL.find({ $in: { resourceId: resourceIdsWithRules } });
+    const accounts = await pamAccountDAL.findRotationCandidates(resourceIdsWithRules, minIntervalSeconds);
 
     const now = Date.now();
     const dueAccounts: TPamAccounts[] = [];
@@ -1075,10 +1080,6 @@ export const pamAccountServiceFactory = ({
 
       // eslint-disable-next-line no-continue
       if (!matchedRule || !matchedRule.enabled || !matchedRule.intervalSeconds) continue;
-
-      // Skip if already rotating
-      // eslint-disable-next-line no-continue
-      if (account.rotationStatus === PamAccountRotationStatus.Rotating) continue;
 
       // Check if interval has elapsed
       const lastRotated = account.lastRotatedAt
