@@ -1232,10 +1232,10 @@ export const createFetchFolderSecretsWithImports = ({
   type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
   type SecretRow = Awaited<ReturnType<TCreateFetchFolderSecretsWithImportsArg["secretDAL"]["findByFolderId"]>>[number];
 
-  const fetchFolderSecretsWithImports = async (
+  const recursiveFetch = async (
     folderId: string,
     userIdArg: string | undefined,
-    visitedFolderIds = new Set<string>()
+    visitedFolderIds: Set<string>
   ): Promise<SecretRow[]> => {
     if (visitedFolderIds.has(folderId)) return [];
     visitedFolderIds.add(folderId);
@@ -1268,14 +1268,14 @@ export const createFetchFolderSecretsWithImports = ({
       activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
     );
     const importedSecretArrays = await Promise.all(
-      importedFolders.filter(Boolean).map((f) => fetchFolderSecretsWithImports(f!.id, userIdArg, visitedFolderIds))
+      importedFolders.filter(Boolean).map((f) => recursiveFetch(f!.id, userIdArg, visitedFolderIds))
     );
     const importedMerged = new Map<string, SecretRow>(importedSecretArrays.flat().map((s) => [s.key, s]));
     directSecrets.forEach((s) => importedMerged.set(s.key, s));
     return [...importedMerged.values()];
   };
 
-  return fetchFolderSecretsWithImports;
+  return (args: { folderId: string; userId?: string }) => recursiveFetch(args.folderId, args.userId, new Set());
 };
 
 type TCreateRelativeImportExpanderArg = {
@@ -1339,15 +1339,15 @@ export const createRelativeImportExpander = ({
         findByFolderId: async (folderIdArgs) => {
           if (folderIdArgs.folderId !== virtualFolderId) {
             // non-virtual folder (e.g. prod, staging, etc). use import-aware fetch so that local refs within absolute-ref chains can resolve through the env's own secret imports.
-            return fetchFolderSecretsWithImports(folderIdArgs.folderId, folderIdArgs.userId);
+            return fetchFolderSecretsWithImports({ folderId: folderIdArgs.folderId, userId: folderIdArgs.userId });
           }
           const [currentFolder, sourceFolder] = await Promise.all([
             folderDAL.findBySecretPath(projectId, currentEnvironment, currentSecretPath),
             folderDAL.findBySecretPath(projectId, sourceEnvironment, sourcePath)
           ]);
           const [currentSecrets, sourceSecrets] = await Promise.all([
-            currentFolder ? fetchFolderSecretsWithImports(currentFolder.id, folderIdArgs.userId) : [],
-            sourceFolder ? fetchFolderSecretsWithImports(sourceFolder.id, folderIdArgs.userId) : []
+            currentFolder ? fetchFolderSecretsWithImports({ folderId: currentFolder.id, userId: folderIdArgs.userId }) : [],
+            sourceFolder ? fetchFolderSecretsWithImports({ folderId: sourceFolder.id, userId: folderIdArgs.userId }) : []
           ]);
           // source goes in first (lower priority). current overwrites (higher priority). record the origin of each key so the permission check can use the right env.
           const envMerged = new Map(

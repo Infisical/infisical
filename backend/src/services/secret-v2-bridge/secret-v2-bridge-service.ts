@@ -1333,17 +1333,7 @@ export const secretV2BridgeServiceFactory = ({
     // wrap secretDAL with import-aware fetch so the expander sees the full merged view.
     const mainExpanderSecretDAL =
       secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
-        ? {
-            findByFolderId: async (args: Parameters<(typeof secretDAL)["findByFolderId"]>[0]) => {
-              const fetchWithImports = createFetchFolderSecretsWithImports({
-                projectId,
-                secretDAL,
-                secretImportDAL,
-                folderDAL
-              });
-              return fetchWithImports(args.folderId, args.userId);
-            }
-          }
+        ? { findByFolderId: createFetchFolderSecretsWithImports({ projectId, secretDAL, secretImportDAL, folderDAL }) }
         : secretDAL;
 
     const { expandSecretReferences } = expandSecretReferencesFactory({
