@@ -2,7 +2,17 @@ import { FormEvent, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
 
-import { Button, EmailServiceSetupModal, Input } from "@app/components/v2";
+import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
+import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
+import { EmailServiceSetupModal } from "@app/components/v2";
+import {
+  Button,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableInput
+} from "@app/components/v3";
 import { usePopUp } from "@app/hooks";
 import { useSendAccountRecoveryEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -16,9 +26,6 @@ export const AccountRecoveryEmailPage = () => {
 
   const { mutateAsync } = useSendAccountRecoveryEmail();
 
-  /**
-   * This function sends the recovery email and forwards a user to the next step.
-   */
   const sendRecoveryEmail = async () => {
     if (email) {
       try {
@@ -43,7 +50,8 @@ export const AccountRecoveryEmailPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-6">
+      <AuthPageBackground />
       <Helmet>
         <title>Account Recovery</title>
         <link rel="icon" href="/infisical.ico" />
@@ -54,81 +62,80 @@ export const AccountRecoveryEmailPage = () => {
           content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
         />
       </Helmet>
-      <Link to="/">
-        <div className="mt-20 mb-4 flex justify-center">
-          <img
-            src="/images/gradientLogo.svg"
-            style={{
-              height: "90px",
-              width: "120px"
-            }}
-            alt="Infisical Logo"
-          />
-        </div>
-      </Link>
-      {step === 1 && (
-        <form
-          onSubmit={onSubmit}
-          className="mx-auto flex w-full flex-col items-center justify-center"
-        >
-          <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-            Recover your account?
-          </h1>
-          <p className="w-max justify-center text-center text-sm text-gray-400">
-            Enter your email to start the recovery process. <br /> You will receive an email with
-            instructions.
-          </p>
-          <div className="mt-8 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="Enter your email..."
-              isRequired
-              autoComplete="username"
-              className="h-10"
+      <div className="relative z-10 my-auto flex flex-col items-center py-10">
+        <Link to="/">
+          <div className="mb-4 flex justify-center">
+            <img
+              src="/images/gradientLogo.svg"
+              style={{ height: "90px", width: "120px" }}
+              alt="Infisical Logo"
             />
           </div>
-          <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              type="submit"
-              size="sm"
-              isFullWidth
-              className="h-10"
-              colorSchema="primary"
-              variant="solid"
-              isLoading={loading}
-            >
-              Continue
-            </Button>
-          </div>
-          <div className="mt-6 flex flex-row text-sm text-bunker-400">
-            <Link to="/login">
-              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-                Back to Login
-              </span>
-            </Link>
-          </div>
-        </form>
-      )}
-      {step === 2 && (
-        <div className="mx-auto flex w-full flex-col items-center justify-center">
-          <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-            Look for an email in your inbox
-          </h1>
-          <p className="w-max max-w-lg justify-center text-center text-sm text-gray-400">
-            If the email is in our system, you will receive an email at{" "}
-            <span className="italic">{email}</span> to initiate the account recovery process.
-          </p>
-          <div className="mt-6 flex flex-row text-sm text-bunker-400">
-            <Link to="/login">
-              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-                Back to Login
-              </span>
-            </Link>
-          </div>
-        </div>
-      )}
+        </Link>
+        {step === 1 && (
+          <form onSubmit={onSubmit} className="mx-auto w-full max-w-sm">
+            <UnstableCard className="w-full items-stretch gap-0 p-6">
+              <UnstableCardHeader className="mb-4 gap-4">
+                <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+                  Recover your account
+                </UnstableCardTitle>
+              </UnstableCardHeader>
+              <UnstableCardContent>
+                <p className="mb-4 text-sm text-muted">
+                  Enter your email to start the recovery process. You will receive an email with
+                  instructions.
+                </p>
+                <div className="w-full">
+                  <UnstableInput
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder="Enter your email..."
+                    required
+                    autoComplete="username"
+                    className="h-10"
+                  />
+                </div>
+                <div className="mt-4 w-full">
+                  <Button type="submit" variant="project" size="lg" isFullWidth isPending={loading}>
+                    Continue
+                  </Button>
+                </div>
+                <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+                  <Link to="/login">
+                    <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                      Back to Login
+                    </span>
+                  </Link>
+                </div>
+              </UnstableCardContent>
+            </UnstableCard>
+          </form>
+        )}
+        {step === 2 && (
+          <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+            <UnstableCardHeader className="mb-4 gap-4">
+              <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+                Check your inbox
+              </UnstableCardTitle>
+            </UnstableCardHeader>
+            <UnstableCardContent>
+              <p className="text-center text-sm text-foreground">
+                If the email is in our system, you will receive an email at{" "}
+                <span className="italic">{email}</span> to initiate the account recovery process.
+              </p>
+              <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+                <Link to="/login">
+                  <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                    Back to Login
+                  </span>
+                </Link>
+              </div>
+            </UnstableCardContent>
+          </UnstableCard>
+        )}
+      </div>
+      <AuthPageFooter />
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
