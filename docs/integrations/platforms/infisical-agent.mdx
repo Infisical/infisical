@@ -502,8 +502,8 @@ templates:
         command: ./reload-app.sh
 ```
 
-The secret template below will be used to render the secrets with the key and the value separated by `=` sign. You'll notice that a custom function named `secret` is used to fetch the secrets.
-This function takes the following arguments: `secret "<project-id>" "<environment-slug>" "<secret-path>"`.
+The secret template below will be used to render the secrets with the key and the value separated by `=` sign. You'll notice that a custom function named `listSecrets` is used to fetch the secrets.
+This function takes the following arguments: `listSecrets "<project-id>" "<environment-slug>" "<secret-path>"`.
 
 ```text my-dot-ev-secret-template
 {{- with listSecrets "6553ccb2b7da580d7f6e7260" "dev" "/" }}
