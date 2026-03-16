@@ -428,8 +428,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         }
 
         const distinctId = `identity-${identityId}`;
+        const enrichedProperties = {
+          ...properties,
+          actorType: "machine_identity",
+          ...(properties.name ? { name: `[Machine Identity] ${properties.name}` } : {})
+        };
         try {
-          postHog.identify({ distinctId, properties });
+          postHog.identify({ distinctId, properties: enrichedProperties });
         } catch (err) {
           logger.error(err, `Failed to call postHog.identify for machine identity [identityId=${identityId}]`);
         }
