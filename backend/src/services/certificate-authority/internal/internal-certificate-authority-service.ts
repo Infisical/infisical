@@ -30,8 +30,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-config-dal";
-import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { extractCertificateFields } from "../../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../../certificate/certificate-secret-dal";
 import {
@@ -45,6 +43,8 @@ import {
 import { DEFAULT_CRL_VALIDITY_DAYS } from "../../certificate-common/certificate-constants";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
+import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-config-dal";
+import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";

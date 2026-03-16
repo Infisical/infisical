@@ -529,7 +529,7 @@ export type TQueueJobTypes = {
       }
     | {
         name: QueueJobs.PamDiscoveryScheduledScan;
-    payload: undefined;
+        payload: undefined;
       };
   [QueueName.CaAutoRenewal]:
     | {
