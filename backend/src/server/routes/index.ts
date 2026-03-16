@@ -2213,8 +2213,11 @@ export const registerRoutes = async (
   const secretSyncService = secretSyncServiceFactory({
     secretSyncDAL,
     secretImportDAL,
-    permissionService,
+    secretV2BridgeDAL,
+    appConnectionDAL,
     appConnectionService,
+    kmsService,
+    permissionService,
     projectDAL,
     orgDAL,
     folderDAL,

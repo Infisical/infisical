@@ -55,6 +55,7 @@ export const HumanitecSyncListItemSchema = z
     name: z.literal("Humanitec"),
     connection: z.literal(AppConnection.Humanitec),
     destination: z.literal(SecretSync.Humanitec),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Humanitec] }));

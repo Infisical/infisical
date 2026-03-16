@@ -114,6 +114,7 @@
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
                       "integrations/app-connections/azure-dns",
+                      "integrations/app-connections/azure-entra-id",
                       "integrations/app-connections/azure-key-vault",
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
@@ -565,6 +566,7 @@
                       "integrations/secret-syncs/aws-secrets-manager",
                       "integrations/secret-syncs/azure-app-configuration",
                       "integrations/secret-syncs/azure-devops",
+                      "integrations/secret-syncs/azure-entra-id-scim",
                       "integrations/secret-syncs/azure-key-vault",
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
@@ -1284,6 +1286,18 @@
                       "api-reference/endpoints/app-connections/azure-devops/create",
                       "api-reference/endpoints/app-connections/azure-devops/update",
                       "api-reference/endpoints/app-connections/azure-devops/delete"
+                    ]
+                  },
+                  {
+                    "group": "Azure Entra ID",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/azure-entra-id/list",
+                      "api-reference/endpoints/app-connections/azure-entra-id/available",
+                      "api-reference/endpoints/app-connections/azure-entra-id/get-by-id",
+                      "api-reference/endpoints/app-connections/azure-entra-id/get-by-name",
+                      "api-reference/endpoints/app-connections/azure-entra-id/create",
+                      "api-reference/endpoints/app-connections/azure-entra-id/update",
+                      "api-reference/endpoints/app-connections/azure-entra-id/delete"
                     ]
                   },
                   {
@@ -2351,6 +2365,20 @@
                       "api-reference/endpoints/secret-syncs/azure-devops/sync-secrets",
                       "api-reference/endpoints/secret-syncs/azure-devops/import-secrets",
                       "api-reference/endpoints/secret-syncs/azure-devops/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Azure Entra ID SCIM",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/list",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/get-by-id",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/get-by-name",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
                     ]
                   },
                   {

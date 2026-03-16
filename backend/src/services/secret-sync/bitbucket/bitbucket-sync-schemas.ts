@@ -46,6 +46,7 @@ export const BitbucketSyncListItemSchema = z
     name: z.literal("Bitbucket"),
     connection: z.literal(AppConnection.Bitbucket),
     destination: z.literal(SecretSync.Bitbucket),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Bitbucket] }));

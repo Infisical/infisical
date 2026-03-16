@@ -205,33 +205,35 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
                   )}
                 </ProjectPermissionCan>
               )}
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretSyncActions.RemoveSecrets}
-                a={permissionSubject}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    icon={<FontAwesomeIcon icon={faEraser} />}
-                    onClick={() => handlePopUpOpen("removeSecrets")}
-                    isDisabled={!isAllowed}
-                  >
-                    <Tooltip
-                      position="left"
-                      sideOffset={42}
-                      content={`Remove secrets synced by Infisical from this ${destinationName} destination.`}
+              {syncOption?.canRemoveSecretsOnDeletion && (
+                <ProjectPermissionCan
+                  I={ProjectPermissionSecretSyncActions.RemoveSecrets}
+                  a={permissionSubject}
+                >
+                  {(isAllowed: boolean) => (
+                    <DropdownMenuItem
+                      icon={<FontAwesomeIcon icon={faEraser} />}
+                      onClick={() => handlePopUpOpen("removeSecrets")}
+                      isDisabled={!isAllowed}
                     >
-                      <div className="flex h-full w-full items-center justify-between gap-1">
-                        <span>Remove Secrets</span>
-                        <FontAwesomeIcon
-                          className="text-bunker-300"
-                          size="sm"
-                          icon={faInfoCircle}
-                        />
-                      </div>
-                    </Tooltip>
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
+                      <Tooltip
+                        position="left"
+                        sideOffset={42}
+                        content={`Remove secrets synced by Infisical from this ${destinationName} destination.`}
+                      >
+                        <div className="flex h-full w-full items-center justify-between gap-1">
+                          <span>Remove Secrets</span>
+                          <FontAwesomeIcon
+                            className="text-bunker-300"
+                            size="sm"
+                            icon={faInfoCircle}
+                          />
+                        </div>
+                      </Tooltip>
+                    </DropdownMenuItem>
+                  )}
+                </ProjectPermissionCan>
+              )}
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.Edit}
                 a={permissionSubject}

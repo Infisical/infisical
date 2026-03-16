@@ -38,6 +38,10 @@ import {
   SanitizedAzureDnsConnectionSchema
 } from "@app/services/app-connection/azure-dns/azure-dns-connection-schema";
 import {
+  AzureEntraIdConnectionListItemSchema,
+  SanitizedAzureEntraIdConnectionSchema
+} from "@app/services/app-connection/azure-entra-id";
+import {
   AzureKeyVaultConnectionListItemSchema,
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
@@ -208,6 +212,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options,
+  ...SanitizedAzureEntraIdConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options
 ]);
 
@@ -263,6 +268,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SshConnectionListItemSchema,
   DbtConnectionListItemSchema,
   OpenRouterConnectionListItemSchema,
+  AzureEntraIdConnectionListItemSchema,
   VenafiConnectionListItemSchema
 ]);
 

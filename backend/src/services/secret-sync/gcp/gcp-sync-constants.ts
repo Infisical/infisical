@@ -6,5 +6,6 @@ export const GCP_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "GCP Secret Manager",
   destination: SecretSync.GCPSecretManager,
   connection: AppConnection.GCP,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

@@ -6,5 +6,6 @@ export const HUMANITEC_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Humanitec",
   destination: SecretSync.Humanitec,
   connection: AppConnection.Humanitec,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

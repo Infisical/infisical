@@ -67,6 +67,7 @@ export const RenderSyncListItemSchema = z
     name: z.literal("Render"),
     connection: z.literal(AppConnection.Render),
     destination: z.literal(SecretSync.Render),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Render] }));

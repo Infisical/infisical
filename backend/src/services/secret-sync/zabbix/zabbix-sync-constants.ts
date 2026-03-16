@@ -6,5 +6,6 @@ export const ZABBIX_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Zabbix",
   destination: SecretSync.Zabbix,
   connection: AppConnection.Zabbix,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

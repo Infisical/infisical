@@ -52,6 +52,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.SMB]: "SMB",
   [AppConnection.OpenRouter]: "OpenRouter",
   [AppConnection.CircleCI]: "CircleCI",
+  [AppConnection.AzureEntraId]: "Azure Entra ID",
   [AppConnection.Venafi]: "Venafi TLS Protect Cloud"
 };
 
@@ -107,5 +108,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.SMB]: AppConnectionPlanType.Regular,
   [AppConnection.OpenRouter]: AppConnectionPlanType.Regular,
   [AppConnection.CircleCI]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureEntraId]: AppConnectionPlanType.Regular,
   [AppConnection.Venafi]: AppConnectionPlanType.Regular
 };

@@ -49,6 +49,7 @@ import {
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
+import { AzureEntraIdConnectionMethod } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
@@ -152,6 +153,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.SMB]: { name: "SMB", image: "SMB.png", size: 50 },
   [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
   [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" },
+  [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" }
 };
 
@@ -243,6 +245,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return { name: "API Key & Secret", icon: faKey };
     case AzureDNSConnectionMethod.ClientSecret:
+    case AzureEntraIdConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };

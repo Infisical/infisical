@@ -22,6 +22,7 @@ import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConn
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureDNSConnectionForm } from "./AzureDNSConnectionForm";
+import { AzureEntraIdConnectionForm } from "./AzureEntraIdConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
@@ -264,6 +265,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.AzureEntraId:
+        return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }

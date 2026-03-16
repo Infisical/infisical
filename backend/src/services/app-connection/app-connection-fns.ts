@@ -66,6 +66,11 @@ import {
   getAzureDnsConnectionListItem,
   validateAzureDnsConnectionCredentials
 } from "./azure-dns/azure-dns-connection-fns";
+import {
+  AzureEntraIdConnectionMethod,
+  getAzureEntraIdConnectionListItem,
+  validateAzureEntraIdConnectionCredentials
+} from "./azure-entra-id";
 import { AzureKeyVaultConnectionMethod } from "./azure-key-vault";
 import {
   getAzureKeyVaultConnectionListItem,
@@ -265,6 +270,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
     getCircleCIConnectionListItem(),
+    getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem()
   ]
     .filter((option) => {
@@ -407,6 +413,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -458,6 +465,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
     case AzureDnsConnectionMethod.ClientSecret:
+    case AzureEntraIdConnectionMethod.ClientSecret:
       return "Client Secret";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -601,6 +609,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported
 };
 

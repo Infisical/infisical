@@ -7,5 +7,6 @@ export const CHEF_SYNC_LIST_OPTION: TSecretSyncListItem = {
   destination: SecretSync.Chef,
   connection: AppConnection.Chef,
   canImportSecrets: true,
+  canRemoveSecretsOnDeletion: true,
   enterprise: true
 };
