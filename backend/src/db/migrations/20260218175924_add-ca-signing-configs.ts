@@ -22,14 +22,15 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.CaSigningConfig);
 
-    const internalCas = await knex(TableName.InternalCertificateAuthority).select("id", "type");
+    const internalCas = await knex(TableName.InternalCertificateAuthority).select("id", "type", "parentCaId");
 
     for (const ca of internalCas) {
       if (ca.type === "root") continue;
 
       await knex(TableName.CaSigningConfig).insert({
         caId: ca.id,
-        type: "manual"
+        type: ca.parentCaId ? "internal" : "manual",
+        ...(ca.parentCaId ? { parentCaId: ca.parentCaId } : {})
       });
     }
   }
