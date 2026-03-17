@@ -334,10 +334,7 @@ const deleteParametersBatch = async (
 };
 
 export const AwsParameterStoreSyncFns = {
-  syncSecrets: async (
-    secretSync: TAwsParameterStoreSyncWithCredentials,
-    secretMap: TSecretMap
-  ): Promise<TSyncSecretsResult> => {
+  syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
 
     const ssm = await getSSM(secretSync);
@@ -454,14 +451,11 @@ export const AwsParameterStoreSyncFns = {
 
       if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);
+        deletedSecretKeys.push(parameter.Name!);
       }
     }
 
     await deleteParametersBatch(ssm, parametersToDelete);
-
-    for (const param of parametersToDelete) {
-      deletedSecretKeys.push(param.Name!);
-    }
 
     return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
   },
