@@ -363,7 +363,7 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
   },
   [ProjectPermissionSub.Identity]: {
     [ProjectPermissionIdentityActions.Read]: ["identityId"],
-    [ProjectPermissionIdentityActions.Create]: ["identityId"],
+    [ProjectPermissionIdentityActions.Create]: [],
     [ProjectPermissionIdentityActions.Edit]: ["identityId"],
     [ProjectPermissionIdentityActions.Delete]: ["identityId"],
     [ProjectPermissionIdentityActions.GrantPrivileges]: [
