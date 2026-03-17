@@ -274,10 +274,13 @@ export const projectMembershipServiceFactory = ({
       ...new Set(usernamesAndEmails.map((element) => element))
     ]);
 
-    // Compare by unique usernames rather than raw membership count to handle
-    // cases where a user may have multiple membership records (duplicates)
+    // Compare by unique usernames/emails rather than raw membership count to handle
+    // cases where a user may have multiple membership records (duplicates).
+    // Include both username and email in the lookup set since callers may pass either.
     const uniqueUsernames = new Set(usernamesAndEmails);
-    const foundUsernames = new Set(projectMembers.map(({ user }) => user.username));
+    const foundUsernames = new Set(
+      projectMembers.flatMap(({ user }) => [user.username, user.email].filter(Boolean))
+    );
     const missingUsernames = [...uniqueUsernames].filter((u) => !foundUsernames.has(u));
 
     if (missingUsernames.length > 0) {

@@ -185,14 +185,17 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.Membership),
           db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.ref("username").withSchema(TableName.Users)
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("email").withSchema(TableName.Users)
         )
-        .whereIn("username", usernames)
+        .where(function () {
+          void this.whereIn(`${TableName.Users}.username`, usernames).orWhereIn(`${TableName.Users}.email`, usernames);
+        })
         .where({ isGhost: false });
 
-      return members.map(({ userId, username, ...data }) => ({
+      return members.map(({ userId, username, email, ...data }) => ({
         ...data,
-        user: { id: userId, username }
+        user: { id: userId, username, email }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find members by email" });

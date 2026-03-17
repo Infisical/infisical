@@ -331,7 +331,14 @@ export const membershipUserServiceFactory = ({
 
     if (membershipDoc.length === 0) return { memberships: [] };
 
-    const { signUpTokens } = await factory.onCreateMembershipComplete(dto, newMembershipUsers);
+    // Only pass truly inserted users to onCreateMembershipComplete to avoid
+    // sending duplicate invitation emails during partial race conditions
+    const insertedUserIds = new Set(membershipDoc.map((m) => m.actorUserId));
+    const trulyNewMembershipUsers = newMembershipUsers.filter((u) => insertedUserIds.has(u.id));
+
+    if (trulyNewMembershipUsers.length === 0) return { memberships: membershipDoc };
+
+    const { signUpTokens } = await factory.onCreateMembershipComplete(dto, trulyNewMembershipUsers);
     return { memberships: membershipDoc, signUpTokens };
   };
 
