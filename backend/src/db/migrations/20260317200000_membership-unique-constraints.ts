@@ -63,21 +63,25 @@ const deduplicateProjectMemberships = async (
   for (const { keeper, duplicateIds, actorId, scopeId } of groups) {
     // Get existing roles on the keeper so we can skip true duplicates
     // eslint-disable-next-line no-await-in-loop
-    const keeperRoles: { role: string; customRoleId: string | null }[] = await tx(TableName.MembershipRole)
+    const keeperRoles: { role: string; customRoleId: string | null; isTemporary: boolean }[] = await tx(
+      TableName.MembershipRole
+    )
       .where({ membershipId: keeper.id })
-      .select("role", "customRoleId");
+      .select("role", "customRoleId", "isTemporary");
 
-    const keeperRoleKeys = new Set(keeperRoles.map((r) => `${r.role}:${r.customRoleId ?? ""}`));
+    const keeperRoleKeys = new Set(keeperRoles.map((r) => `${r.role}:${r.customRoleId ?? ""}:${r.isTemporary}`));
 
     // Find roles on duplicates that don't already exist on the keeper
     // eslint-disable-next-line no-await-in-loop
-    const duplicateRoles: { id: string; role: string; customRoleId: string | null }[] = await tx(
+    const duplicateRoles: { id: string; role: string; customRoleId: string | null; isTemporary: boolean }[] = await tx(
       TableName.MembershipRole
     )
       .whereIn("membershipId", duplicateIds)
-      .select("id", "role", "customRoleId");
+      .select("id", "role", "customRoleId", "isTemporary");
 
-    const rolesToReparent = duplicateRoles.filter((r) => !keeperRoleKeys.has(`${r.role}:${r.customRoleId ?? ""}`));
+    const rolesToReparent = duplicateRoles.filter(
+      (r) => !keeperRoleKeys.has(`${r.role}:${r.customRoleId ?? ""}:${r.isTemporary}`)
+    );
 
     if (rolesToReparent.length > 0) {
       // eslint-disable-next-line no-await-in-loop
@@ -142,34 +146,34 @@ export async function up(knex: Knex): Promise<void> {
 
   // Project scope
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX membership_unique_user_project
+    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_user_project
     ON ${TableName.Membership} ("scopeProjectId", "actorUserId")
     WHERE scope = 'project' AND "actorUserId" IS NOT NULL;
   `);
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX membership_unique_identity_project
+    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_identity_project
     ON ${TableName.Membership} ("scopeProjectId", "actorIdentityId")
     WHERE scope = 'project' AND "actorIdentityId" IS NOT NULL;
   `);
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX membership_unique_group_project
+    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_group_project
     ON ${TableName.Membership} ("scopeProjectId", "actorGroupId")
     WHERE scope = 'project' AND "actorGroupId" IS NOT NULL;
   `);
 
   // Org scope
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX membership_unique_user_org
+    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_user_org
     ON ${TableName.Membership} ("scopeOrgId", "actorUserId")
     WHERE scope = 'organization' AND "actorUserId" IS NOT NULL;
   `);
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX membership_unique_identity_org
+    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_identity_org
     ON ${TableName.Membership} ("scopeOrgId", "actorIdentityId")
     WHERE scope = 'organization' AND "actorIdentityId" IS NOT NULL;
   `);
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX membership_unique_group_org
+    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_group_org
     ON ${TableName.Membership} ("scopeOrgId", "actorGroupId")
     WHERE scope = 'organization' AND "actorGroupId" IS NOT NULL;
   `);
