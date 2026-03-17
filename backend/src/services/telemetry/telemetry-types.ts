@@ -11,7 +11,9 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export enum PostHogEventTypes {
@@ -75,7 +77,14 @@ export enum PostHogEventTypes {
   SecretRollbackPerformed = "Secret Rollback Performed",
   WebhookCreated = "Webhook Created",
   SecretReminderCreated = "Secret Reminder Created",
-  EnvironmentCreated = "Environment Created"
+  EnvironmentCreated = "Environment Created",
+  SSOConfigured = "SSO Configured",
+  AppConnectionCreated = "App Connection Created",
+  AppConnectionDeleted = "App Connection Deleted",
+  SecretRotationV2Created = "Secret Rotation V2 Created",
+  SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
+  SecretRotationV2Executed = "Secret Rotation V2 Executed",
+  GatewayCertExchanged = "Gateway Cert Exchanged"
 }
 
 export type TSecretModifiedEvent = {
@@ -632,6 +641,72 @@ export type TDynamicSecretLeaseRenewedEvent = {
   };
 };
 
+export type TSSOConfiguredEvent = {
+  event: PostHogEventTypes.SSOConfigured;
+  properties: {
+    provider: string;
+    action: "create" | "update";
+  };
+};
+
+export type TAppConnectionCreatedEvent = {
+  event: PostHogEventTypes.AppConnectionCreated;
+  properties: {
+    appConnectionId: string;
+    app: AppConnection;
+    method: string;
+  };
+};
+
+export type TAppConnectionDeletedEvent = {
+  event: PostHogEventTypes.AppConnectionDeleted;
+  properties: {
+    appConnectionId: string;
+    app: AppConnection;
+  };
+};
+
+export type TSecretRotationV2CreatedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Created;
+  properties: {
+    rotationId: string;
+    type: SecretRotation;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type TSecretRotationV2DeletedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Deleted;
+  properties: {
+    rotationId: string;
+    type: SecretRotation;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type TSecretRotationV2ExecutedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Executed;
+  properties: {
+    rotationId: string;
+    type: SecretRotation;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type TGatewayCertExchangedEvent = {
+  event: PostHogEventTypes.GatewayCertExchanged;
+  properties: {
+    certificateSerialNumber: string;
+    identityId: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -684,4 +759,11 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TWebhookCreatedEvent
   | TSecretReminderCreatedEvent
   | TEnvironmentCreatedEvent
+  | TSSOConfiguredEvent
+  | TAppConnectionCreatedEvent
+  | TAppConnectionDeletedEvent
+  | TSecretRotationV2CreatedEvent
+  | TSecretRotationV2DeletedEvent
+  | TSecretRotationV2ExecutedEvent
+  | TGatewayCertExchangedEvent
 );

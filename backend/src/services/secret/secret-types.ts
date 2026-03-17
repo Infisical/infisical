@@ -192,6 +192,11 @@ export enum PersonalOverridesBehavior {
   NeverInclude = "never-include" // used in v4 router when includePersonalOverrides is false
 }
 
+export enum SecretImportReferencesBehavior {
+  Relative = "relative",
+  SourceEnvironment = "source-environment"
+}
+
 export type TGetAccessibleSecretsDTO = {
   secretPath: string;
   environment: string;
@@ -202,6 +207,7 @@ export type TGetAccessibleSecretsDTO = {
 export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
   personalOverridesBehavior: PersonalOverridesBehavior;
+  secretImportReferencesBehavior: SecretImportReferencesBehavior;
   expandPersonalOverrides?: boolean;
   path: string;
   environment: string;
