@@ -218,3 +218,99 @@ This allows Infisical to control certificate expiration dates directly.
 - Common SSL errors: `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, `SELF_SIGNED_CERT_IN_CHAIN`, `CERT_HAS_EXPIRED`
 - The SSL configuration applies to all HTTPS communications between Infisical and your ADCS server
 - Only HTTPS URLs are supported - HTTP connections are not allowed for security reasons
+
+## Signing Internal Intermediate CAs with AD CS
+
+In addition to using AD CS as an external CA for direct certificate issuance, you can use AD CS to **sign internal intermediate CAs** in Infisical. This lets you create an Infisical-managed CA hierarchy where the intermediate CA's certificate is issued by your AD CS server, with support for auto-renewal.
+
+### How It Works
+
+1. Infisical generates a CSR for the intermediate CA.
+2. The CSR is submitted to AD CS via Web Enrollment using the configured certificate template.
+3. AD CS signs the certificate (immediately or after approval, depending on template config).
+4. Infisical fetches the issuing CA's certificate to build the chain.
+5. The signed certificate and chain are imported into the intermediate CA.
+
+<Warning>
+  The certificate template must be configured to allow "Supply in the request" for subject information,
+  so that the CSR's subject fields are honored.
+</Warning>
+
+### Installing an Intermediate CA Certificate via AD CS
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Create an Intermediate CA">
+        Go to **Certificate Authorities** > **Internal Certificate Authorities** and press **Create CA**.
+        Set the type to **Intermediate** and fill out the CA details.
+      </Step>
+      <Step title="Open the Install Certificate Modal">
+        Press **Install Certificate** on the intermediate CA. Select **External CA (Automated)** and press **Choose Integration**.
+      </Step>
+      <Step title="Select Azure AD CS">
+        Choose **Azure AD CS** as the integration provider and press **Continue**.
+      </Step>
+      <Step title="Configure Signing Details">
+        - **Azure AD CS Connection**: Select your AD CS Connection.
+        - **Certificate Template**: The AD CS template name (e.g., `SubCA`).
+        - **Validity Period**: Optional TTL (e.g., `365d`). Requires `EDITF_ATTRIBUTEENDDATE` on the AD CS server.
+        - **Path Length**: Max intermediate CAs below this one (`-1` for no limit, `0` to prevent chaining).
+      </Step>
+      <Step title="Install">
+        Press **Install**. The request is queued and processed asynchronously.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    <Steps>
+      <Step title="Create a Signing Configuration">
+        ```bash Request
+        curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/signing-config' \
+          --header 'Authorization: Bearer <access-token>' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "type": "azure-ad-cs",
+              "appConnectionId": "<adcs-connection-id>",
+              "destinationConfig": {
+                  "template": "SubCA",
+                  "validityPeriod": "365d"
+              }
+          }'
+        ```
+      </Step>
+      <Step title="Install the Certificate">
+        ```bash Request
+        curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/install-certificate-adcs' \
+          --header 'Authorization: Bearer <access-token>' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "maxPathLength": -1
+          }'
+        ```
+
+        Returns HTTP 202. Poll the CA details endpoint to check when the certificate has been installed.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+### Auto-Renewal for AD CS-Signed CAs
+
+Infisical can automatically renew intermediate CA certificates signed by AD CS. Each renewal submits a fresh CSR (AD CS has no renewal API).
+
+Enable via the CA details page or the API:
+
+```bash Request
+curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/auto-renewal' \
+  --header 'Authorization: Bearer <access-token>' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+      "autoRenewalEnabled": true,
+      "autoRenewalDaysBeforeExpiry": 7
+  }'
+```
+
+<Note>
+  `autoRenewalDaysBeforeExpiry` must be less than the certificate's TTL and at most 30 days.
+</Note>

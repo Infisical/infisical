@@ -64,7 +64,8 @@ type Props = {
 const signingTypeLabels: Record<CaSigningConfigType, string> = {
   [CaSigningConfigType.INTERNAL]: "Internal (Infisical CA)",
   [CaSigningConfigType.MANUAL]: "Manual",
-  [CaSigningConfigType.VENAFI]: "Venafi TLS Protect Cloud"
+  [CaSigningConfigType.VENAFI]: "Venafi TLS Protect Cloud",
+  [CaSigningConfigType.AZURE_ADCS]: "Azure AD CS"
 };
 
 const getSigningTypeBadgeVariant = (type: CaSigningConfigType) => {
@@ -85,6 +86,14 @@ const editSchema = z.object({
 });
 
 type EditFormData = z.infer<typeof editSchema>;
+
+const adcsEditSchema = z.object({
+  appConnectionId: z.string().min(1, "App connection is required"),
+  template: z.string().min(1, "Certificate template is required"),
+  validityPeriod: z.string().optional().or(z.literal(""))
+});
+
+type AdcsEditFormData = z.infer<typeof adcsEditSchema>;
 
 export const CaSigningConfigSection = ({ caId }: Props) => {
   const { currentProject } = useProject();
@@ -114,9 +123,9 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
     resolver: zodResolver(editSchema),
     values: {
       appConnectionId: signingConfig?.appConnectionId ?? "",
-      applicationId: signingConfig?.destinationConfig?.applicationId ?? "",
-      issuingTemplateId: signingConfig?.destinationConfig?.issuingTemplateId ?? "",
-      validityPeriod: signingConfig?.destinationConfig?.validityPeriod ?? ""
+      applicationId: (signingConfig?.destinationConfig?.applicationId as string) ?? "",
+      issuingTemplateId: (signingConfig?.destinationConfig?.issuingTemplateId as string) ?? "",
+      validityPeriod: (signingConfig?.destinationConfig?.validityPeriod as number | undefined) ?? ""
     }
   });
 
@@ -140,11 +149,29 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
       }
     );
 
+  const { data: availableAdcsConnections, isPending: isAdcsConnectionsPending } =
+    useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id);
+
+  const {
+    control: adcsControl,
+    handleSubmit: handleAdcsSubmit,
+    reset: adcsReset,
+    formState: { isSubmitting: isAdcsSubmitting }
+  } = useForm<AdcsEditFormData>({
+    resolver: zodResolver(adcsEditSchema),
+    values: {
+      appConnectionId: signingConfig?.appConnectionId ?? "",
+      template: (signingConfig?.destinationConfig?.template as string) ?? "",
+      validityPeriod: (signingConfig?.destinationConfig?.validityPeriod as string) ?? ""
+    }
+  });
+
   if (!ca || ca.status === CaStatus.PENDING_CERTIFICATE || !signingConfig) {
     return null;
   }
 
   const isVenafi = signingConfig.type === CaSigningConfigType.VENAFI;
+  const isAdcs = signingConfig.type === CaSigningConfigType.AZURE_ADCS;
 
   const onEditSubmit = async ({
     appConnectionId,
@@ -183,7 +210,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
           <UnstableCardDescription>
             How this CA&apos;s certificate is signed
           </UnstableCardDescription>
-          {isVenafi && ca?.name && (
+          {(isVenafi || isAdcs) && ca?.name && (
             <UnstableCardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionCertificateAuthorityActions.Edit}
@@ -218,16 +245,39 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
               <>
                 <Detail>
                   <DetailLabel>Application ID</DetailLabel>
-                  <DetailValue>{signingConfig.destinationConfig.applicationId}</DetailValue>
+                  <DetailValue>
+                    {signingConfig.destinationConfig.applicationId as string}
+                  </DetailValue>
                 </Detail>
                 <Detail>
                   <DetailLabel>Issuing Template ID</DetailLabel>
-                  <DetailValue>{signingConfig.destinationConfig.issuingTemplateId}</DetailValue>
+                  <DetailValue>
+                    {signingConfig.destinationConfig.issuingTemplateId as string}
+                  </DetailValue>
                 </Detail>
                 {signingConfig.destinationConfig.validityPeriod && (
                   <Detail>
                     <DetailLabel>Validity Period</DetailLabel>
-                    <DetailValue>{signingConfig.destinationConfig.validityPeriod} days</DetailValue>
+                    <DetailValue>
+                      {signingConfig.destinationConfig.validityPeriod as number} days
+                    </DetailValue>
+                  </Detail>
+                )}
+              </>
+            )}
+
+            {isAdcs && signingConfig.destinationConfig && (
+              <>
+                <Detail>
+                  <DetailLabel>Certificate Template</DetailLabel>
+                  <DetailValue>{signingConfig.destinationConfig.template as string}</DetailValue>
+                </Detail>
+                {signingConfig.destinationConfig.validityPeriod && (
+                  <Detail>
+                    <DetailLabel>Validity Period</DetailLabel>
+                    <DetailValue>
+                      {signingConfig.destinationConfig.validityPeriod as string}
+                    </DetailValue>
                   </Detail>
                 )}
               </>
@@ -235,6 +285,114 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
           </DetailGroup>
         </UnstableCardContent>
       </UnstableCard>
+
+      {isAdcs && (
+        <Modal
+          isOpen={popUp.editSigningConfig.isOpen}
+          onOpenChange={(isOpen) => {
+            handlePopUpToggle("editSigningConfig", isOpen);
+            if (!isOpen) adcsReset();
+          }}
+        >
+          <ModalContent title="Edit Signing Configuration" bodyClassName="overflow-visible">
+            <form
+              onSubmit={handleAdcsSubmit(
+                async ({ appConnectionId, template, validityPeriod }: AdcsEditFormData) => {
+                  try {
+                    await updateSigningConfig({
+                      caId,
+                      appConnectionId,
+                      destinationConfig: {
+                        template,
+                        ...(validityPeriod && { validityPeriod })
+                      }
+                    });
+                    createNotification({
+                      text: "Signing configuration updated",
+                      type: "success"
+                    });
+                    handlePopUpToggle("editSigningConfig", false);
+                  } catch {
+                    createNotification({
+                      text: "Failed to update signing configuration",
+                      type: "error"
+                    });
+                  }
+                }
+              )}
+            >
+              <Controller
+                control={adcsControl}
+                name="appConnectionId"
+                render={({ field: { onChange, value }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Azure AD CS Connection"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    isRequired
+                  >
+                    <FilterableSelect
+                      isLoading={isAdcsConnectionsPending}
+                      value={(availableAdcsConnections || []).find((conn) => conn.id === value)}
+                      onChange={(option) => {
+                        const selected = option as SingleValue<TAvailableAppConnection>;
+                        onChange(selected?.id ?? "");
+                      }}
+                      options={availableAdcsConnections || []}
+                      placeholder="Select an Azure AD CS connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={adcsControl}
+                name="template"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Certificate Template"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    isRequired
+                  >
+                    <Input {...field} placeholder="SubCA" />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={adcsControl}
+                name="validityPeriod"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Validity Period"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    helperText="Optional TTL (e.g. 365d, 1y)"
+                  >
+                    <Input {...field} placeholder="365d" />
+                  </FormControl>
+                )}
+              />
+              <div className="flex w-full justify-between gap-4 pt-4">
+                <ModalClose asChild>
+                  <ButtonV2 colorSchema="secondary" variant="plain">
+                    Cancel
+                  </ButtonV2>
+                </ModalClose>
+                <ButtonV2
+                  isLoading={isAdcsSubmitting}
+                  isDisabled={isAdcsSubmitting}
+                  type="submit"
+                  colorSchema="secondary"
+                >
+                  Save
+                </ButtonV2>
+              </div>
+            </form>
+          </ModalContent>
+        </Modal>
+      )}
 
       {isVenafi && (
         <Modal

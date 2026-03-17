@@ -178,6 +178,7 @@ export enum QueueJobs {
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
+  CaAdcsInstall = "ca-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job"
 }
 
@@ -540,6 +541,10 @@ export type TQueueJobTypes = {
       }
     | {
         name: QueueJobs.CaVenafiInstall;
+        payload: { caId: string; maxPathLength?: number };
+      }
+    | {
+        name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
   [QueueName.CertificateCleanup]: {

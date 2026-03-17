@@ -2840,7 +2840,8 @@
                         "pages": [
                           "api-reference/endpoints/certificate-authorities/internal/sign-intermediate",
                           "api-reference/endpoints/certificate-authorities/internal/import-cert",
-                          "api-reference/endpoints/certificate-authorities/internal/install-cert-venafi"
+                          "api-reference/endpoints/certificate-authorities/internal/install-cert-venafi",
+                          "api-reference/endpoints/certificate-authorities/internal/install-cert-adcs"
                         ]
                       },
                       {
