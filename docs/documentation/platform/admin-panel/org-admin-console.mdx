@@ -61,38 +61,42 @@ Refer to the [API reference](/api-reference/endpoints/organization-admin/grant-a
 
 ### Example: Bootstrap Access to All Projects
 
-The following script demonstrates how to grant yourself admin access to every project in your organization:
+The following script demonstrates how to grant yourself admin access to every project in your organization.
+
+<Note>
+  Infisical uses SRP (Secure Remote Password) for user authentication, which cannot be performed via a simple cURL request.
+  To obtain a JWT for API calls, use one of these methods:
+  - **Copy Token from UI** (recommended): In the Infisical dashboard, click your profile icon (top-right) and select **Copy Token**. This gives you an org-scoped JWT ready to use.
+  - **Infisical CLI**: Run `infisical login` and copy the resulting token.
+</Note>
 
 ```bash
-# 1. Log in to get an access token
-ACCESS_TOKEN=$(curl -s --request POST \
-  --url 'https://app.infisical.com/api/v3/auth/login' \
-  --header 'Content-Type: application/json' \
-  --data '{"email": "you@example.com", "password": "your-password"}' \
-  | jq -r '.accessToken')
+# Set your token (copied from the Infisical UI or CLI)
+TOKEN="your-jwt-token-here"
 
-# 2. Select your organization to get an org-scoped token
-ORG_TOKEN=$(curl -s --request POST \
-  --url 'https://app.infisical.com/api/v3/auth/select-organization' \
-  --header "Authorization: Bearer $ACCESS_TOKEN" \
-  --header 'Content-Type: application/json' \
-  --data '{"organizationId": "your-org-id"}' \
-  | jq -r '.token')
+# Paginate through all projects and grant admin access to each
+OFFSET=0
+LIMIT=100
 
-# 3. List all projects in the organization
-PROJECTS=$(curl -s --request GET \
-  --url 'https://app.infisical.com/api/v1/organization-admin/projects?limit=100&offset=0' \
-  --header "Authorization: Bearer $ORG_TOKEN")
+while true; do
+  RESPONSE=$(curl -s --request GET \
+    --url "https://app.infisical.com/api/v1/organization-admin/projects?limit=$LIMIT&offset=$OFFSET" \
+    --header "Authorization: Bearer $TOKEN")
 
-# 4. Grant yourself admin access to each project
-echo "$PROJECTS" | jq -r '.projects[].id' | while read PROJECT_ID; do
-  echo "Granting admin access to project: $PROJECT_ID"
-  curl -s --request POST \
-    --url "https://app.infisical.com/api/v1/organization-admin/projects/$PROJECT_ID/grant-admin-access" \
-    --header "Authorization: Bearer $ORG_TOKEN"
+  PROJECT_IDS=$(echo "$RESPONSE" | jq -r '.projects[].id')
+
+  # Break if no more projects
+  if [ -z "$PROJECT_IDS" ]; then
+    break
+  fi
+
+  echo "$PROJECT_IDS" | while read PROJECT_ID; do
+    echo "Granting admin access to project: $PROJECT_ID"
+    curl -s --request POST \
+      --url "https://app.infisical.com/api/v1/organization-admin/projects/$PROJECT_ID/grant-admin-access" \
+      --header "Authorization: Bearer $TOKEN"
+  done
+
+  OFFSET=$((OFFSET + LIMIT))
 done
 ```
-
-<Tip>
-  You can also copy your current session token directly from the Infisical UI using the **Copy Token** option in the user dropdown menu (top-right), and use it as the Bearer token in API calls.
-</Tip>
