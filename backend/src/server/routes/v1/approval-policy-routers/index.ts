@@ -59,10 +59,10 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       inputsSchema: CertRequestPolicyInputsSchema
     });
   },
-  [ApprovalPolicyType.CertManagerCodeSigning]: async (server: FastifyZodProvider) => {
+  [ApprovalPolicyType.CertCodeSigning]: async (server: FastifyZodProvider) => {
     registerApprovalPolicyEndpoints({
       server,
-      policyType: ApprovalPolicyType.CertManagerCodeSigning,
+      policyType: ApprovalPolicyType.CertCodeSigning,
       createPolicySchema: CreateCodeSigningPolicySchema,
       updatePolicySchema: UpdateCodeSigningPolicySchema,
       policyResponseSchema: CodeSigningPolicySchema,

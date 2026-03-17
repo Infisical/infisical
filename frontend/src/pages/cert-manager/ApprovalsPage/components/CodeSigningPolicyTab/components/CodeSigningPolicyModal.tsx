@@ -9,7 +9,6 @@ import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
   ApprovalPolicyType,
-  CodeSigningApprovalMode,
   TApprovalPolicy,
   useCreateApprovalPolicy,
   useUpdateApprovalPolicy
@@ -26,7 +25,6 @@ type Props = {
 };
 
 type CodeSigningConstraints = {
-  approvalMode: CodeSigningApprovalMode;
   maxWindowDuration?: string;
   maxSignings?: number;
 };
@@ -56,7 +54,8 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       name: "",
       maxRequestTtl: null,
       constraints: {
-        approvalMode: CodeSigningApprovalMode.Manual
+        maxWindowDuration: undefined,
+        maxSignings: undefined
       },
       bypassForMachineIdentities: false,
       steps: [
@@ -82,7 +81,6 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
         name: policyData.policy.name,
         maxRequestTtl: policyData.policy.maxRequestTtl,
         constraints: {
-          approvalMode: constraints.approvalMode || CodeSigningApprovalMode.Manual,
           maxWindowDuration: constraints.maxWindowDuration,
           maxSignings: constraints.maxSignings
         },
@@ -97,7 +95,8 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
         name: "",
         maxRequestTtl: null,
         constraints: {
-          approvalMode: CodeSigningApprovalMode.Manual
+          maxWindowDuration: undefined,
+          maxSignings: undefined
         },
         bypassForMachineIdentities: false,
         steps: [
@@ -118,7 +117,7 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     if (policyData?.policyId) {
       await updatePolicy({
-        policyType: ApprovalPolicyType.CertManagerCodeSigning,
+        policyType: ApprovalPolicyType.CertCodeSigning,
         policyId: policyData.policyId,
         ...data
       });
@@ -128,7 +127,7 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
     } else {
       await createPolicy({
-        policyType: ApprovalPolicyType.CertManagerCodeSigning,
+        policyType: ApprovalPolicyType.CertCodeSigning,
         projectId: currentProject.id,
         conditions: [],
         ...data

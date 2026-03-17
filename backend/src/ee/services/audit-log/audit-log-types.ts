@@ -686,14 +686,14 @@ export enum EventType {
   DELETE_PKI_INSTALLATION = "delete-pki-installation",
 
   // Code Signing
-  CREATE_SIGNER = "create-signer",
-  UPDATE_SIGNER = "update-signer",
-  DELETE_SIGNER = "delete-signer",
-  GET_SIGNER = "get-signer",
-  GET_SIGNERS = "get-signers",
-  GET_SIGNER_PUBLIC_KEY = "get-signer-public-key",
-  GET_SIGNING_OPERATIONS = "get-signing-operations",
-  SIGNER_SIGN = "signer-sign"
+  CREATE_PKI_SIGNER = "create-pki-signer",
+  UPDATE_PKI_SIGNER = "update-pki-signer",
+  DELETE_PKI_SIGNER = "delete-pki-signer",
+  GET_PKI_SIGNER = "get-pki-signer",
+  GET_PKI_SIGNERS = "get-pki-signers",
+  GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
+  GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
+  PKI_SIGNER_SIGN = "pki-signer-sign"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -3793,42 +3793,42 @@ interface DeletePkiInstallationEvent {
   };
 }
 
-interface CreateSignerEvent {
-  type: EventType.CREATE_SIGNER;
+interface CreatePkiSignerEvent {
+  type: EventType.CREATE_PKI_SIGNER;
   metadata: {
     signerId: string;
     name: string;
     certificateId: string;
-    approvalPolicyId: string;
+    approvalPolicyId?: string | null;
   };
 }
 
-interface UpdateSignerEvent {
-  type: EventType.UPDATE_SIGNER;
+interface UpdatePkiSignerEvent {
+  type: EventType.UPDATE_PKI_SIGNER;
   metadata: {
     signerId: string;
     name: string;
   };
 }
 
-interface DeleteSignerEvent {
-  type: EventType.DELETE_SIGNER;
+interface DeletePkiSignerEvent {
+  type: EventType.DELETE_PKI_SIGNER;
   metadata: {
     signerId: string;
     name: string;
   };
 }
 
-interface GetSignerEvent {
-  type: EventType.GET_SIGNER;
+interface GetPkiSignerEvent {
+  type: EventType.GET_PKI_SIGNER;
   metadata: {
     signerId: string;
     name: string;
   };
 }
 
-interface GetSignersEvent {
-  type: EventType.GET_SIGNERS;
+interface GetPkiSignersEvent {
+  type: EventType.GET_PKI_SIGNERS;
   metadata: {
     count: number;
     offset: number;
@@ -3836,24 +3836,24 @@ interface GetSignersEvent {
   };
 }
 
-interface GetSignerPublicKeyEvent {
-  type: EventType.GET_SIGNER_PUBLIC_KEY;
+interface GetPkiSignerPublicKeyEvent {
+  type: EventType.GET_PKI_SIGNER_PUBLIC_KEY;
   metadata: {
     signerId: string;
     name: string;
   };
 }
 
-interface GetSigningOperationsEvent {
-  type: EventType.GET_SIGNING_OPERATIONS;
+interface GetPkiSigningOperationsEvent {
+  type: EventType.GET_PKI_SIGNING_OPERATIONS;
   metadata: {
     signerId: string;
     count: number;
   };
 }
 
-interface SignerSignEvent {
-  type: EventType.SIGNER_SIGN;
+interface PkiSignerSignEvent {
+  type: EventType.PKI_SIGNER_SIGN;
   metadata: {
     signerId: string;
     name: string;
@@ -5735,14 +5735,14 @@ export type Event =
   | GetPkiInstallationsEvent
   | UpdatePkiInstallationEvent
   | DeletePkiInstallationEvent
-  | CreateSignerEvent
-  | UpdateSignerEvent
-  | DeleteSignerEvent
-  | GetSignerEvent
-  | GetSignersEvent
-  | GetSignerPublicKeyEvent
-  | GetSigningOperationsEvent
-  | SignerSignEvent
+  | CreatePkiSignerEvent
+  | UpdatePkiSignerEvent
+  | DeletePkiSignerEvent
+  | GetPkiSignerEvent
+  | GetPkiSignersEvent
+  | GetPkiSignerPublicKeyEvent
+  | GetPkiSigningOperationsEvent
+  | PkiSignerSignEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent

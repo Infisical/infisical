@@ -11,7 +11,7 @@ Private keys never leave the Infisical server. When a signing operation is reque
 ## Key Characteristics
 
 - **Bound to a certificate**: Every signer must be linked to a certificate that has the `codeSigning` EKU.
-- **Linked to an approval policy**: Every signer must be associated with an [approval policy](/documentation/platform/pki/code-signing/approvals) that governs who can sign and under what conditions.
+- **Optional approval policy**: A signer can optionally be associated with an [approval policy](/documentation/platform/pki/code-signing/approval-policies) that governs who can sign and under what conditions. Without a policy, signing is allowed without approval.
 - **Supports RSA and ECDSA**: Signers support RSA (2048, 3072, 4096-bit) and ECDSA (P-256, P-384, P-521) key types depending on the certificate.
 - **Tracks signing history**: Every signing operation is recorded with actor, algorithm, data hash, and grant information.
 
@@ -19,14 +19,14 @@ Private keys never leave the Infisical server. When a signing operation is reque
 
 <Steps>
   <Step title="Issuing a code-signing certificate">
-    Before creating a signer, you need a certificate with the `codeSigning` extended key usage. You can issue one from your Certificate Authority (CA) by specifying `codeSigning` in the extended key usage field.
+    Before creating a signer, you need a certificate with the `codeSigning` extended key usage. Follow the [guide to issuing certificates](/documentation/platform/pki/certificates/certificates#guide-to-issuing-certificates) and specify `codeSigning` in the extended key usage field.
 
     <Note>
       Only certificates with the `codeSigning` extended key usage will be available when creating a signer. If you don't see your certificate, verify that it was issued with the correct EKU.
     </Note>
   </Step>
-  <Step title="Creating an approval policy">
-    Every signer requires an approval policy. If you haven't created one yet, head to **Code Signing > Approvals > Policies** and press **Create Policy**. See [Approval Policies](/documentation/platform/pki/code-signing/approvals) for details.
+  <Step title="(Optional) Creating an approval policy">
+    If you want to require approval before signing, head to **Code Signing > Approvals > Policies** and press **Create Policy**. See [Approval Policies](/documentation/platform/pki/code-signing/approval-policies) for details. Without a policy, any authorized user or identity can sign immediately.
   </Step>
   <Step title="Creating the signer">
     Head to your Certificate Management Project > **Code Signing > Signers** and press **Create Signer**.
@@ -38,40 +38,11 @@ Private keys never leave the Infisical server. When a signing operation is reque
     - **Name**: A slug-friendly name for the signer such as `release-signer`.
     - **Description**: An optional description of the signer's purpose.
     - **Certificate**: The code-signing certificate to bind to this signer.
-    - **Approval Policy**: The approval policy that governs signing access for this signer.
+    - **Approval Policy** (optional): The approval policy that governs signing access for this signer. If omitted, signing is allowed without approval.
 
     Press **Create** to save the signer.
   </Step>
 </Steps>
-
-## Managing Signers
-
-### Viewing Signer Details
-
-Press on any signer in the table to view its detail page, which includes:
-
-- **Overview**: Signer name, status, linked certificate details (serial number, algorithm, validity dates), and the associated approval policy.
-- **Signing Operations**: A paginated audit log of all signing operations performed with this signer, including status, algorithm, actor, and timestamp.
-
-![Signer detail page](/images/platform/pki/code-signing/signer-detail.png)
-
-### Signing Operations Log
-
-The signer detail page includes a complete audit trail of all signing activity, including successful signatures, denied requests, and errors. Each entry shows the timestamp, algorithm, data hash, and the actor that performed the operation.
-
-### Enabling and Disabling Signers
-
-Signers can be toggled between **Active** and **Disabled** states. A disabled signer will reject all signing requests until re-enabled. To toggle the status, use the status switch on the signer detail page or the signer table.
-
-![Signers table with actions menu](/images/platform/pki/code-signing/signers-table.png)
-
-### Deleting a Signer
-
-To delete a signer, press the delete action on the signer table row. Deleting a signer does not delete the underlying certificate or its signing operation history.
-
-<Warning>
-  Deleting a signer is irreversible. Any active grants for the signer will no longer be usable.
-</Warning>
 
 ## Supported Signing Algorithms
 

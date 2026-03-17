@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { CheckIcon, ClipboardListIcon, ExternalLinkIcon } from "lucide-react";
+import { CheckIcon, ClipboardListIcon, ExternalLinkIcon, PencilIcon } from "lucide-react";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { Tooltip } from "@app/components/v2";
 import {
   Badge,
@@ -11,13 +12,18 @@ import {
   DetailLabel,
   DetailValue,
   UnstableCard,
+  UnstableCardAction,
   UnstableCardContent,
   UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
   UnstableIconButton
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import {
+  ProjectPermissionCodeSigningActions,
+  ProjectPermissionSub,
+  useOrganization
+} from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import {
   getSignerStatusBadgeVariant,
@@ -29,6 +35,7 @@ import {
 type Props = {
   signer: TSigner;
   projectId: string;
+  onEdit?: () => void;
 };
 
 const ALGORITHM_LABELS: Record<string, string> = {
@@ -39,7 +46,7 @@ const ALGORITHM_LABELS: Record<string, string> = {
   ed448: "Ed448"
 };
 
-export const SignerOverviewSection = ({ signer, projectId }: Props) => {
+export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: publicKeyData } = useGetSignerPublicKey(signer.id);
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
@@ -57,6 +64,25 @@ export const SignerOverviewSection = ({ signer, projectId }: Props) => {
         <UnstableCardHeader className="border-b">
           <UnstableCardTitle>Signing Identity</UnstableCardTitle>
           <UnstableCardDescription>Signer configuration and key details</UnstableCardDescription>
+          {onEdit && (
+            <UnstableCardAction>
+              <ProjectPermissionCan
+                I={ProjectPermissionCodeSigningActions.Edit}
+                a={ProjectPermissionSub.CodeSigners}
+              >
+                {(isAllowed) => (
+                  <UnstableIconButton
+                    isDisabled={!isAllowed}
+                    onClick={onEdit}
+                    size="xs"
+                    variant="outline"
+                  >
+                    <PencilIcon />
+                  </UnstableIconButton>
+                )}
+              </ProjectPermissionCan>
+            </UnstableCardAction>
+          )}
         </UnstableCardHeader>
         <UnstableCardContent>
           <DetailGroup>
@@ -97,7 +123,21 @@ export const SignerOverviewSection = ({ signer, projectId }: Props) => {
             <Detail>
               <DetailLabel>Approval Policy</DetailLabel>
               <DetailValue>
-                {signer.approvalPolicyName || <span className="text-muted">—</span>}
+                {signer.approvalPolicyId && signer.approvalPolicyName ? (
+                  <Link
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/approvals"
+                    params={{
+                      orgId: currentOrg.id,
+                      projectId
+                    }}
+                    className="flex items-center gap-1 text-primary hover:underline"
+                  >
+                    {signer.approvalPolicyName}
+                    <ExternalLinkIcon className="h-3 w-3" />
+                  </Link>
+                ) : (
+                  <span className="text-muted">None</span>
+                )}
               </DetailValue>
             </Detail>
             <Detail>

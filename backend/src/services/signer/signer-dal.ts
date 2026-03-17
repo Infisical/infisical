@@ -1,12 +1,12 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSigners } from "@app/db/schemas";
+import { TableName, TPkiSigners } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TSignerWithCertificate = TSigners & {
+export type TSignerWithCertificate = TPkiSigners & {
   certificateCommonName: string | null;
   certificateSerialNumber: string | null;
   certificateNotAfter: Date | null;
@@ -17,7 +17,7 @@ export type TSignerWithCertificate = TSigners & {
   approvalPolicyName: string | null;
 };
 
-export type TSignerWithCertificateSummary = TSigners & {
+export type TSignerWithCertificateSummary = TPkiSigners & {
   certificateCommonName: string | null;
   certificateSerialNumber: string | null;
   certificateNotAfter: Date | null;
@@ -27,18 +27,18 @@ export type TSignerWithCertificateSummary = TSigners & {
 export type TSignerDALFactory = ReturnType<typeof signerDALFactory>;
 
 export const signerDALFactory = (db: TDbClient) => {
-  const orm = ormify(db, TableName.Signers);
+  const orm = ormify(db, TableName.PkiSigners);
 
   const findByIdWithCertificate = async (signerId: string, tx?: Knex): Promise<TSignerWithCertificate | undefined> => {
     try {
-      const result = await (tx || db.replicaNode())(TableName.Signers)
-        .leftJoin(TableName.Certificate, `${TableName.Signers}.certificateId`, `${TableName.Certificate}.id`)
+      const result = await (tx || db.replicaNode())(TableName.PkiSigners)
+        .leftJoin(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
         .leftJoin(
           TableName.ApprovalPolicies,
-          `${TableName.Signers}.approvalPolicyId`,
+          `${TableName.PkiSigners}.approvalPolicyId`,
           `${TableName.ApprovalPolicies}.id`
         )
-        .select(selectAllTableCols(TableName.Signers))
+        .select(selectAllTableCols(TableName.PkiSigners))
         .select(
           db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
@@ -49,7 +49,7 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
         )
-        .where(`${TableName.Signers}.id`, signerId)
+        .where(`${TableName.PkiSigners}.id`, signerId)
         .first();
 
       return result as TSignerWithCertificate | undefined;
@@ -72,33 +72,33 @@ export const signerDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      let query: Knex.QueryBuilder = (tx || db.replicaNode())(TableName.Signers)
-        .leftJoin(TableName.Certificate, `${TableName.Signers}.certificateId`, `${TableName.Certificate}.id`)
+      let query: Knex.QueryBuilder = (tx || db.replicaNode())(TableName.PkiSigners)
+        .leftJoin(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
         .leftJoin(
           TableName.ApprovalPolicies,
-          `${TableName.Signers}.approvalPolicyId`,
+          `${TableName.PkiSigners}.approvalPolicyId`,
           `${TableName.ApprovalPolicies}.id`
         )
-        .select(selectAllTableCols(TableName.Signers))
+        .select(selectAllTableCols(TableName.PkiSigners))
         .select(
           db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
         )
-        .where(`${TableName.Signers}.projectId`, projectId);
+        .where(`${TableName.PkiSigners}.projectId`, projectId);
 
       if (search) {
         const sanitizedSearch = `%${sanitizeSqlLikeString(search)}%`;
         query = query.where((qb) => {
           void qb
-            .whereILike(`${TableName.Signers}.name`, sanitizedSearch)
+            .whereILike(`${TableName.PkiSigners}.name`, sanitizedSearch)
             .orWhereILike(`${TableName.Certificate}.commonName`, sanitizedSearch);
         });
       }
 
       return (await query
-        .orderBy(`${TableName.Signers}.createdAt`, "desc")
+        .orderBy(`${TableName.PkiSigners}.createdAt`, "desc")
         .offset(offset)
         .limit(limit)) as TSignerWithCertificateSummary[];
     } catch (error) {
@@ -108,18 +108,18 @@ export const signerDALFactory = (db: TDbClient) => {
 
   const countByProjectId = async (projectId: string, search?: string, tx?: Knex) => {
     try {
-      let query: Knex.QueryBuilder = (tx || db.replicaNode())(TableName.Signers).where(
-        `${TableName.Signers}.projectId`,
+      let query: Knex.QueryBuilder = (tx || db.replicaNode())(TableName.PkiSigners).where(
+        `${TableName.PkiSigners}.projectId`,
         projectId
       );
 
       if (search) {
         const sanitizedSearch = `%${sanitizeSqlLikeString(search)}%`;
         query = query
-          .leftJoin(TableName.Certificate, `${TableName.Signers}.certificateId`, `${TableName.Certificate}.id`)
+          .leftJoin(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
           .where((qb) => {
             void qb
-              .whereILike(`${TableName.Signers}.name`, sanitizedSearch)
+              .whereILike(`${TableName.PkiSigners}.name`, sanitizedSearch)
               .orWhereILike(`${TableName.Certificate}.commonName`, sanitizedSearch);
           });
       }

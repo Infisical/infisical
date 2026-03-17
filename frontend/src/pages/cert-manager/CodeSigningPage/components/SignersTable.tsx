@@ -6,6 +6,7 @@ import {
   CheckCircleIcon,
   ClipboardCopyIcon,
   MoreHorizontalIcon,
+  PencilIcon,
   PlusIcon,
   SearchIcon
 } from "lucide-react";
@@ -50,11 +51,14 @@ import {
   getSignerStatusBadgeVariant,
   SignerStatus,
   signerStatusLabels,
+  TSigner,
   useDeleteSigner,
   useListSigners,
   useUpdateSigner
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
+
+import { EditSignerModal } from "../../SignerDetailPage/components/EditSignerModal";
 
 type Props = {
   projectId: string;
@@ -71,6 +75,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [deleteSignerId, setDeleteSignerId] = useState<string | null>(null);
+  const [editSigner, setEditSigner] = useState<TSigner | null>(null);
 
   const { data, isLoading } = useListSigners({
     projectId,
@@ -100,7 +105,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/code-signing" />
           </UnstableCardTitle>
           <UnstableCardDescription>
-            Manage code signing identities and control who can sign artifacts.
+            Manage signers and control who can sign artifacts.
           </UnstableCardDescription>
           <UnstableCardAction>
             <ProjectPermissionCan
@@ -206,6 +211,20 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                             {(isAllowed) => (
                               <UnstableDropdownMenuItem
                                 isDisabled={!isAllowed}
+                                onClick={() => setEditSigner(signer)}
+                              >
+                                <PencilIcon />
+                                Edit Signer
+                              </UnstableDropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionCodeSigningActions.Edit}
+                            a={ProjectPermissionSub.CodeSigners}
+                          >
+                            {(isAllowed) => (
+                              <UnstableDropdownMenuItem
+                                isDisabled={!isAllowed}
                                 onClick={() =>
                                   updateSigner.mutateAsync({
                                     signerId: signer.id,
@@ -278,6 +297,16 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
         }}
         onDeleteApproved={handleDeleteConfirm}
       />
+      {editSigner && (
+        <EditSignerModal
+          isOpen={Boolean(editSigner)}
+          onOpenChange={(open) => {
+            if (!open) setEditSigner(null);
+          }}
+          signer={editSigner}
+          projectId={projectId}
+        />
+      )}
     </>
   );
 };

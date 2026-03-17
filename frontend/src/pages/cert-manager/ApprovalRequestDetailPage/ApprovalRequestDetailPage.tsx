@@ -10,7 +10,7 @@ import { Button, ConfirmActionModal, ContentLoader, EmptyState } from "@app/comp
 import { Badge } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ApprovalPolicyType, CodeSigningApprovalMode } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
@@ -28,10 +28,13 @@ import {
 const ROUTE_ID =
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approval-requests/$approvalRequestId" as const;
 
-const APPROVAL_MODE_LABELS: Record<CodeSigningApprovalMode, string> = {
-  [CodeSigningApprovalMode.Manual]: "One time use",
-  [CodeSigningApprovalMode.TimeWindow]: "Time Window",
-  [CodeSigningApprovalMode.NSignings]: "Count-Limited"
+const deriveApprovalModeLabel = (requestData: CodeSigningRequestData): string => {
+  const hasTime = Boolean(requestData.requestedWindowStart);
+  const hasCount = Boolean(requestData.requestedSignings);
+  if (hasTime && hasCount) return "Combined";
+  if (hasTime) return "Time-based";
+  if (hasCount) return "Count-based";
+  return "Manual";
 };
 
 const CodeSigningDetailsSection = ({ requestData }: { requestData: CodeSigningRequestData }) => {
@@ -45,9 +48,7 @@ const CodeSigningDetailsSection = ({ requestData }: { requestData: CodeSigningRe
         </div>
         <div>
           <span className="text-xs text-mineshaft-400">Approval Mode</span>
-          <p className="text-sm text-mineshaft-100">
-            {APPROVAL_MODE_LABELS[requestData.approvalMode]}
-          </p>
+          <p className="text-sm text-mineshaft-100">{deriveApprovalModeLabel(requestData)}</p>
         </div>
         {requestData.requestedWindowStart && requestData.requestedWindowEnd && (
           <>
@@ -87,7 +88,7 @@ const PageContent = () => {
   const { handlePopUpOpen, handlePopUpToggle, popUp } = usePopUp(["cancelRequest"]);
 
   const resolvedPolicyType = policyType || ApprovalPolicyType.CertRequest;
-  const isCodeSigning = resolvedPolicyType === ApprovalPolicyType.CertManagerCodeSigning;
+  const isCodeSigning = resolvedPolicyType === ApprovalPolicyType.CertCodeSigning;
 
   const { data: request, isPending } = useQuery(
     approvalRequestQuery.getById({

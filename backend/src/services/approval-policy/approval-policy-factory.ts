@@ -18,5 +18,5 @@ type TApprovalPolicyFactoryImplementation = TApprovalResourceFactory<
 export const APPROVAL_POLICY_FACTORY_MAP: Record<ApprovalPolicyType, TApprovalPolicyFactoryImplementation> = {
   [ApprovalPolicyType.PamAccess]: pamAccessPolicyFactory as TApprovalPolicyFactoryImplementation,
   [ApprovalPolicyType.CertRequest]: certRequestPolicyFactory as TApprovalPolicyFactoryImplementation,
-  [ApprovalPolicyType.CertManagerCodeSigning]: codeSigningPolicyFactory as TApprovalPolicyFactoryImplementation
+  [ApprovalPolicyType.CertCodeSigning]: codeSigningPolicyFactory as TApprovalPolicyFactoryImplementation
 };

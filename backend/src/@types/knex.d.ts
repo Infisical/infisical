@@ -365,6 +365,12 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiSigners,
+  TPkiSignersInsert,
+  TPkiSignersUpdate,
+  TPkiSigningOperations,
+  TPkiSigningOperationsInsert,
+  TPkiSigningOperationsUpdate,
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
@@ -557,12 +563,6 @@ import {
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
-  TSigners,
-  TSignersInsert,
-  TSignersUpdate,
-  TSigningOperations,
-  TSigningOperationsInsert,
-  TSigningOperationsUpdate,
   TSlackIntegrations,
   TSlackIntegrationsInsert,
   TSlackIntegrationsUpdate,
@@ -943,11 +943,11 @@ declare module "knex/types/tables" {
       TPkiDiscoveryScanHistoryInsert,
       TPkiDiscoveryScanHistoryUpdate
     >;
-    [TableName.Signers]: KnexOriginal.CompositeTableType<TSigners, TSignersInsert, TSignersUpdate>;
-    [TableName.SigningOperations]: KnexOriginal.CompositeTableType<
-      TSigningOperations,
-      TSigningOperationsInsert,
-      TSigningOperationsUpdate
+    [TableName.PkiSigners]: KnexOriginal.CompositeTableType<TPkiSigners, TPkiSignersInsert, TPkiSignersUpdate>;
+    [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
+      TPkiSigningOperations,
+      TPkiSigningOperationsInsert,
+      TPkiSigningOperationsUpdate
     >;
     [TableName.CertificateSync]: KnexOriginal.CompositeTableType<
       TCertificateSyncs,

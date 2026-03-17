@@ -2867,8 +2867,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     ]
   },
   [ProjectPermissionSub.CodeSigners]: {
-    title: "Code Signing",
-    description: "Manage code signing identities and operations",
+    title: "PKI Code Signing",
+    description: "Manage signers and signing operations",
     actions: [
       { label: "Read", value: "read", description: "View code signers and signing operations" },
       { label: "Create", value: "create", description: "Create new code signers" },

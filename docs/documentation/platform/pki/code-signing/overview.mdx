@@ -14,27 +14,22 @@ In Infisical, Code Signing lets you digitally sign software artifacts (JARs, bin
 sequenceDiagram
     participant Tool as Signing Tool
     participant PKCS as PKCS#11 Module
-    participant API as Infisical API
-    participant KMS as Key Storage
+    participant Infisical as Infisical
 
     Tool->>PKCS: Sign data
-    PKCS->>API: POST /signers/{id}/sign
-    API->>API: Validate grant & policy
-    API->>KMS: Retrieve private key
-    KMS-->>API: Private key
-    API->>API: Compute signature
-    API-->>PKCS: Signature bytes
+    PKCS->>Infisical: POST /signers/{id}/sign
+    Infisical->>Infisical: Validate grant, sign data
+    Infisical-->>PKCS: Signature
     PKCS-->>Tool: Signature
 ```
 
 </div>
 
 1. A **Signer** is created and bound to a certificate with the `codeSigning` extended key usage.
-2. An **Approval Policy** governs who can use the signer and under what conditions.
-3. Users or machine identities **request signing access** through the approval workflow.
-4. Once approved, the caller receives a **grant** that authorizes signing operations.
-5. The signing tool (e.g., jarsigner) calls the Infisical API, either directly or through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module), and the signature is computed server-side.
-6. Every signing operation is recorded as an immutable **audit entry** on the signer.
+2. Optionally, an **Approval Policy** is attached to govern who can use the signer and under what conditions. Without a policy, authorized users and identities can sign immediately.
+3. When a policy is configured, users or machine identities **request signing access** through the approval workflow. Once approved, the caller receives a **grant** that authorizes signing operations.
+4. The signing tool (e.g., jarsigner) calls the Infisical API, either directly or through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module), and the signature is computed server-side.
+5. Every signing operation is recorded as an immutable **audit entry** on the signer.
 
 ## Core Concepts
 
@@ -44,7 +39,7 @@ A [signer](/documentation/platform/pki/code-signing/signers) is a named code-sig
 
 ### Approval Policies
 
-[Approval policies](/documentation/platform/pki/code-signing/approvals) define the rules that must be satisfied before signing can occur. Infisical supports three approval modes:
+[Approval policies](/documentation/platform/pki/code-signing/approval-policies) optionally define the rules that must be satisfied before signing can occur. When a signer has an approval policy, Infisical supports three approval modes:
 
 - **Manual**: Each approval grants exactly one signing operation.
 - **Time Window**: Approval grants signing access for a defined time period.
@@ -64,7 +59,7 @@ The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-m
   <Card title="Create a Signer" href="/documentation/platform/pki/code-signing/signers">
     Set up a code-signing identity and bind it to a certificate.
   </Card>
-  <Card title="Configure Approvals" href="/documentation/platform/pki/code-signing/approvals">
+  <Card title="Configure Approvals" href="/documentation/platform/pki/code-signing/approval-policies">
     Define approval policies to control who can sign and when.
   </Card>
 </CardGroup>

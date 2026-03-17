@@ -37,7 +37,7 @@ export const CodeSigningPolicyTab = () => {
     if (!policyId) return;
 
     await deleteApprovalPolicy({
-      policyType: ApprovalPolicyType.CertManagerCodeSigning,
+      policyType: ApprovalPolicyType.CertCodeSigning,
       policyId
     });
     createNotification({
@@ -52,10 +52,10 @@ export const CodeSigningPolicyTab = () => {
       <div className="mb-4 flex items-center">
         <div className="flex-1">
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Code Signing Approval Policies</p>
+            <p className="text-xl font-medium text-mineshaft-100">Approval Policies</p>
           </div>
           <p className="text-sm text-bunker-300">
-            Define policies that require approval before code signing operations
+            Define policies that require approval before signing operations
           </p>
         </div>
 

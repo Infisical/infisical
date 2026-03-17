@@ -3003,7 +3003,7 @@ export const registerRoutes = async (
     pkiSync: pkiSyncService,
     pkiDiscovery: pkiDiscoveryService,
     pkiInstallation: pkiInstallationService,
-    signer: signerService,
+    pkiSigner: signerService,
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,

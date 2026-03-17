@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const SigningOperationsSchema = z.object({
+export const PkiSigningOperationsSchema = z.object({
   id: z.string().uuid(),
   signerId: z.string().uuid(),
   projectId: z.string(),
@@ -23,6 +23,6 @@ export const SigningOperationsSchema = z.object({
   createdAt: z.date()
 });
 
-export type TSigningOperations = z.infer<typeof SigningOperationsSchema>;
-export type TSigningOperationsInsert = Omit<z.input<typeof SigningOperationsSchema>, TImmutableDBKeys>;
-export type TSigningOperationsUpdate = Partial<Omit<z.input<typeof SigningOperationsSchema>, TImmutableDBKeys>>;
+export type TPkiSigningOperations = z.infer<typeof PkiSigningOperationsSchema>;
+export type TPkiSigningOperationsInsert = Omit<z.input<typeof PkiSigningOperationsSchema>, TImmutableDBKeys>;
+export type TPkiSigningOperationsUpdate = Partial<Omit<z.input<typeof PkiSigningOperationsSchema>, TImmutableDBKeys>>;

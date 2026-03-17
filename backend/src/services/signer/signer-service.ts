@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 import { KeyObject } from "crypto";
-import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -37,8 +36,6 @@ import {
   TUpdateSignerDTO
 } from "./signer-types";
 import { TSigningOperationDALFactory } from "./signing-operation-dal";
-
-const SIGNER_NAME_REGEX = new RE2("^[a-z0-9-]+$");
 
 const MAX_DATA_BYTES = 128;
 
@@ -114,12 +111,6 @@ export const signerServiceFactory = ({
       ProjectPermissionSub.CodeSigners
     );
 
-    if (!SIGNER_NAME_REGEX.test(dto.name)) {
-      throw new BadRequestError({
-        message: "Signer name must contain only lowercase letters, numbers, and hyphens"
-      });
-    }
-
     const certificate = await certificateDAL.findById(dto.certificateId);
     if (!certificate) {
       throw new NotFoundError({ message: `Certificate with ID '${dto.certificateId}' not found` });
@@ -145,17 +136,19 @@ export const signerServiceFactory = ({
       throw new BadRequestError({ message: "Certificate must have an associated private key" });
     }
 
-    const approvalPolicy = await approvalPolicyDAL.findById(dto.approvalPolicyId);
-    if (!approvalPolicy) {
-      throw new NotFoundError({ message: `Approval policy with ID '${dto.approvalPolicyId}' not found` });
-    }
-    if (approvalPolicy.projectId !== dto.projectId) {
-      throw new BadRequestError({ message: "Approval policy must belong to the same project" });
-    }
-    if (approvalPolicy.type !== ApprovalPolicyType.CertManagerCodeSigning) {
-      throw new BadRequestError({
-        message: "Approval policy must be of type cert-manager-code-signing"
-      });
+    if (dto.approvalPolicyId) {
+      const approvalPolicy = await approvalPolicyDAL.findById(dto.approvalPolicyId);
+      if (!approvalPolicy) {
+        throw new NotFoundError({ message: `Approval policy with ID '${dto.approvalPolicyId}' not found` });
+      }
+      if (approvalPolicy.projectId !== dto.projectId) {
+        throw new BadRequestError({ message: "Approval policy must belong to the same project" });
+      }
+      if (approvalPolicy.type !== ApprovalPolicyType.CertCodeSigning) {
+        throw new BadRequestError({
+          message: "Approval policy must be of type cert-code-signing"
+        });
+      }
     }
 
     try {
@@ -164,7 +157,7 @@ export const signerServiceFactory = ({
         name: dto.name,
         description: dto.description,
         certificateId: dto.certificateId,
-        approvalPolicyId: dto.approvalPolicyId,
+        approvalPolicyId: dto.approvalPolicyId ?? null,
         status: SignerStatus.Active
       });
 
@@ -249,12 +242,6 @@ export const signerServiceFactory = ({
       ProjectPermissionSub.CodeSigners
     );
 
-    if (dto.name !== undefined && !SIGNER_NAME_REGEX.test(dto.name)) {
-      throw new BadRequestError({
-        message: "Signer name must contain only lowercase letters, numbers, and hyphens"
-      });
-    }
-
     if (dto.certificateId !== undefined) {
       const certificate = await certificateDAL.findById(dto.certificateId);
       if (!certificate) {
@@ -275,7 +262,7 @@ export const signerServiceFactory = ({
       }
     }
 
-    if (dto.approvalPolicyId !== undefined) {
+    if (dto.approvalPolicyId !== undefined && dto.approvalPolicyId !== null) {
       const approvalPolicy = await approvalPolicyDAL.findById(dto.approvalPolicyId);
       if (!approvalPolicy) {
         throw new NotFoundError({ message: `Approval policy with ID '${dto.approvalPolicyId}' not found` });
@@ -283,9 +270,9 @@ export const signerServiceFactory = ({
       if (approvalPolicy.projectId !== projectId) {
         throw new BadRequestError({ message: "Approval policy must belong to the same project" });
       }
-      if (approvalPolicy.type !== ApprovalPolicyType.CertManagerCodeSigning) {
+      if (approvalPolicy.type !== ApprovalPolicyType.CertCodeSigning) {
         throw new BadRequestError({
-          message: "Approval policy must be of type cert-manager-code-signing"
+          message: "Approval policy must be of type cert-code-signing"
         });
       }
     }
@@ -380,85 +367,93 @@ export const signerServiceFactory = ({
     const keyAlgorithm = getKeyAlgorithm(privateKeyObject);
     validateSigningAlgorithmForKey(dto.signingAlgorithm, keyAlgorithm);
 
+    const requiresApproval = Boolean(signer.approvalPolicyId);
+
     const result = await projectDAL.transaction(async (tx) => {
-      const [userGrants, identityGrants] = await Promise.all([
-        approvalRequestGrantsDAL.find(
-          {
-            granteeUserId: dto.actorId,
-            type: ApprovalPolicyType.CertManagerCodeSigning,
-            status: ApprovalRequestGrantStatus.Active,
-            projectId,
-            revokedAt: null
-          },
-          { tx }
-        ),
-        approvalRequestGrantsDAL.find(
-          {
-            granteeMachineIdentityId: dto.actorId,
-            type: ApprovalPolicyType.CertManagerCodeSigning,
-            status: ApprovalRequestGrantStatus.Active,
-            projectId,
-            revokedAt: null
-          },
-          { tx }
-        )
-      ]);
+      let grantId: string | null = null;
+      let matchedGrantAttrs: TCodeSigningGrantAttributes | null = null;
 
-      const activeGrants = [...userGrants, ...identityGrants];
+      if (requiresApproval) {
+        const [userGrants, identityGrants] = await Promise.all([
+          approvalRequestGrantsDAL.find(
+            {
+              granteeUserId: dto.actorId,
+              type: ApprovalPolicyType.CertCodeSigning,
+              status: ApprovalRequestGrantStatus.Active,
+              projectId,
+              revokedAt: null
+            },
+            { tx }
+          ),
+          approvalRequestGrantsDAL.find(
+            {
+              granteeMachineIdentityId: dto.actorId,
+              type: ApprovalPolicyType.CertCodeSigning,
+              status: ApprovalRequestGrantStatus.Active,
+              projectId,
+              revokedAt: null
+            },
+            { tx }
+          )
+        ]);
 
-      let matchingGrant: (typeof activeGrants)[number] | undefined;
+        const activeGrants = [...userGrants, ...identityGrants];
 
-      const now = new Date();
-      const expiredGrantIds: string[] = [];
+        let matchingGrant: (typeof activeGrants)[number] | undefined;
 
-      for (const grant of activeGrants) {
-        const attrs = grant.attributes as TCodeSigningGrantAttributes | null;
-        if (attrs && attrs.signerId === signer.id) {
-          const windowNotStarted = attrs.windowStart && new Date(attrs.windowStart) > now;
-          if (!windowNotStarted) {
-            if (grant.expiresAt && new Date(grant.expiresAt) < now) {
-              expiredGrantIds.push(grant.id);
-            } else if (!matchingGrant) {
-              matchingGrant = grant;
+        const now = new Date();
+        const expiredGrantIds: string[] = [];
+
+        for (const grant of activeGrants) {
+          const attrs = grant.attributes as TCodeSigningGrantAttributes | null;
+          if (attrs && attrs.signerId === signer.id) {
+            const windowNotStarted = attrs.windowStart && new Date(attrs.windowStart) > now;
+            if (!windowNotStarted) {
+              if (grant.expiresAt && new Date(grant.expiresAt) < now) {
+                expiredGrantIds.push(grant.id);
+              } else if (!matchingGrant) {
+                matchingGrant = grant;
+              }
             }
           }
         }
-      }
 
-      await Promise.all(
-        expiredGrantIds.map((id) =>
-          approvalRequestGrantsDAL.updateById(id, { status: ApprovalRequestGrantStatus.Expired }, tx)
-        )
-      );
+        await Promise.all(
+          expiredGrantIds.map((id) =>
+            approvalRequestGrantsDAL.updateById(id, { status: ApprovalRequestGrantStatus.Expired }, tx)
+          )
+        );
 
-      if (matchingGrant) {
-        const lockedGrant = await approvalRequestGrantsDAL.findByIdForUpdate(matchingGrant.id, tx);
-        if (!lockedGrant || lockedGrant.status !== ApprovalRequestGrantStatus.Active) {
-          matchingGrant = undefined;
-        } else {
-          const matchAttrs = lockedGrant.attributes as TCodeSigningGrantAttributes | null;
-          if (matchAttrs?.maxSignings) {
-            const usedCount = await signingOperationDAL.countByGrantId(matchingGrant.id, tx);
-            if (usedCount >= matchAttrs.maxSignings) {
-              await approvalRequestGrantsDAL.updateById(
-                matchingGrant.id,
-                { status: ApprovalRequestGrantStatus.Expired },
-                tx
-              );
-              matchingGrant = undefined;
+        if (matchingGrant) {
+          const lockedGrant = await approvalRequestGrantsDAL.findByIdForUpdate(matchingGrant.id, tx);
+          if (!lockedGrant || lockedGrant.status !== ApprovalRequestGrantStatus.Active) {
+            matchingGrant = undefined;
+          } else {
+            const matchAttrs = lockedGrant.attributes as TCodeSigningGrantAttributes | null;
+            if (matchAttrs?.maxSignings) {
+              const usedCount = await signingOperationDAL.countByGrantId(matchingGrant.id, tx);
+              if (usedCount >= matchAttrs.maxSignings) {
+                await approvalRequestGrantsDAL.updateById(
+                  matchingGrant.id,
+                  { status: ApprovalRequestGrantStatus.Expired },
+                  tx
+                );
+                matchingGrant = undefined;
+              }
             }
           }
         }
-      }
 
-      if (!matchingGrant) {
-        throw new ForbiddenRequestError({
-          message: "Signing requires approval. Request access and get approved before signing.",
-          name: "ApprovalRequired"
-        });
-      }
+        if (!matchingGrant) {
+          throw new ForbiddenRequestError({
+            message: "Signing requires approval. Request access and get approved before signing.",
+            name: "ApprovalRequired"
+          });
+        }
 
-      const grantId = matchingGrant.id;
+        grantId = matchingGrant.id;
+        matchedGrantAttrs = matchingGrant.attributes as TCodeSigningGrantAttributes | null;
+      }
 
       let signatureBuffer: Buffer;
 
@@ -506,10 +501,9 @@ export const signerServiceFactory = ({
         tx
       );
 
-      const grantAttrs = matchingGrant.attributes as TCodeSigningGrantAttributes | null;
-      if (grantAttrs?.maxSignings) {
+      if (grantId && matchedGrantAttrs?.maxSignings) {
         const newCount = await signingOperationDAL.countByGrantId(grantId, tx);
-        if (newCount >= grantAttrs.maxSignings) {
+        if (newCount >= matchedGrantAttrs.maxSignings) {
           await approvalRequestGrantsDAL.updateById(grantId, { status: ApprovalRequestGrantStatus.Expired }, tx);
         }
       }

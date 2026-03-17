@@ -268,8 +268,8 @@ export enum TableName {
   ApprovalRequestGrants = "approval_request_grants",
 
   // Code Signing
-  Signers = "signers",
-  SigningOperations = "signing_operations",
+  PkiSigners = "pki_signers",
+  PkiSigningOperations = "pki_signing_operations",
 
   QueueJobs = "queue_jobs",
   CaSigningConfig = "ca_signing_configs"

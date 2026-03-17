@@ -9,7 +9,7 @@ export type TCreateSignerDTO = {
   name: string;
   description?: string;
   certificateId: string;
-  approvalPolicyId: string;
+  approvalPolicyId?: string;
 } & TProjectPermission;
 
 export type TUpdateSignerDTO = {
@@ -18,7 +18,7 @@ export type TUpdateSignerDTO = {
   description?: string | null;
   status?: SignerStatus;
   certificateId?: string;
-  approvalPolicyId?: string;
+  approvalPolicyId?: string | null;
 } & TActorPermission;
 
 export type TDeleteSignerDTO = {

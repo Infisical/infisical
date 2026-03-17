@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SignersSchema, SigningOperationsSchema } from "@app/db/schemas";
+import { PkiSignersSchema, PkiSigningOperationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -25,15 +25,15 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         name: slugSchema({ min: 1, max: 64, field: "name" }),
         description: z.string().trim().max(256).optional(),
         certificateId: z.string().uuid(),
-        approvalPolicyId: z.string().uuid()
+        approvalPolicyId: z.string().uuid().optional()
       }),
       response: {
-        200: SignersSchema
+        200: PkiSignersSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const signer = await server.services.signer.create({
+      const signer = await server.services.pkiSigner.create({
         ...req.body,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -45,7 +45,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: signer.projectId,
         event: {
-          type: EventType.CREATE_SIGNER,
+          type: EventType.CREATE_PKI_SIGNER,
           metadata: {
             signerId: signer.id,
             name: signer.name,
@@ -77,7 +77,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           signers: z.array(
-            SignersSchema.extend({
+            PkiSignersSchema.extend({
               certificateCommonName: z.string().nullable().optional(),
               certificateSerialNumber: z.string().nullable().optional(),
               certificateNotAfter: z.date().nullable().optional(),
@@ -90,7 +90,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { signers, totalCount } = await server.services.signer.list({
+      const { signers, totalCount } = await server.services.pkiSigner.list({
         ...req.query,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -102,7 +102,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: req.query.projectId,
         event: {
-          type: EventType.GET_SIGNERS,
+          type: EventType.GET_PKI_SIGNERS,
           metadata: {
             count: signers.length,
             offset: req.query.offset,
@@ -128,7 +128,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         signerId: z.string().uuid()
       }),
       response: {
-        200: SignersSchema.extend({
+        200: PkiSignersSchema.extend({
           certificateCommonName: z.string().nullable().optional(),
           certificateSerialNumber: z.string().nullable().optional(),
           certificateNotAfter: z.date().nullable().optional(),
@@ -142,7 +142,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const signer = await server.services.signer.getById({
+      const signer = await server.services.pkiSigner.getById({
         signerId: req.params.signerId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -154,7 +154,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: signer.projectId,
         event: {
-          type: EventType.GET_SIGNER,
+          type: EventType.GET_PKI_SIGNER,
           metadata: {
             signerId: signer.id,
             name: signer.name
@@ -183,15 +183,15 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         description: z.string().trim().max(256).nullable().optional(),
         status: z.nativeEnum(SignerStatus).optional(),
         certificateId: z.string().uuid().optional(),
-        approvalPolicyId: z.string().uuid().optional()
+        approvalPolicyId: z.string().uuid().nullable().optional()
       }),
       response: {
-        200: SignersSchema
+        200: PkiSignersSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const signer = await server.services.signer.update({
+      const signer = await server.services.pkiSigner.update({
         signerId: req.params.signerId,
         ...req.body,
         actor: req.permission.type,
@@ -204,7 +204,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: signer.projectId,
         event: {
-          type: EventType.UPDATE_SIGNER,
+          type: EventType.UPDATE_PKI_SIGNER,
           metadata: {
             signerId: signer.id,
             name: signer.name
@@ -229,12 +229,12 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         signerId: z.string().uuid()
       }),
       response: {
-        200: SignersSchema
+        200: PkiSignersSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const signer = await server.services.signer.delete({
+      const signer = await server.services.pkiSigner.delete({
         signerId: req.params.signerId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -246,7 +246,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: signer.projectId,
         event: {
-          type: EventType.DELETE_SIGNER,
+          type: EventType.DELETE_PKI_SIGNER,
           metadata: {
             signerId: signer.id,
             name: signer.name
@@ -299,7 +299,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         actorName = req.auth.identityName ?? undefined;
       }
 
-      const result = await server.services.signer.sign({
+      const result = await server.services.pkiSigner.sign({
         signerId: req.params.signerId,
         ...req.body,
         actorName,
@@ -313,7 +313,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: result.projectId,
         event: {
-          type: EventType.SIGNER_SIGN,
+          type: EventType.PKI_SIGNER_SIGN,
           metadata: {
             signerId: req.params.signerId,
             name: result.signerName,
@@ -347,7 +347,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.signer.getPublicKey({
+      const result = await server.services.pkiSigner.getPublicKey({
         signerId: req.params.signerId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -359,7 +359,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: result.projectId,
         event: {
-          type: EventType.GET_SIGNER_PUBLIC_KEY,
+          type: EventType.GET_PKI_SIGNER_PUBLIC_KEY,
           metadata: {
             signerId: req.params.signerId,
             name: result.signerName
@@ -391,7 +391,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           operations: z.array(
-            SigningOperationsSchema.extend({
+            PkiSigningOperationsSchema.extend({
               actorName: z.string().nullable(),
               actorMembershipId: z.string().uuid().nullable()
             })
@@ -402,7 +402,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.signer.listOperations({
+      const result = await server.services.pkiSigner.listOperations({
         signerId: req.params.signerId,
         ...req.query,
         actor: req.permission.type,
@@ -415,7 +415,7 @@ export const registerSignerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: result.projectId,
         event: {
-          type: EventType.GET_SIGNING_OPERATIONS,
+          type: EventType.GET_PKI_SIGNING_OPERATIONS,
           metadata: {
             signerId: req.params.signerId,
             count: result.operations.length

@@ -2,9 +2,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { ApprovalStepsSchema } from "@app/components/approvals";
-import { CodeSigningApprovalMode } from "@app/hooks/api/approvalPolicies";
-
-export { CodeSigningApprovalMode };
 
 const DurationSchema = (
   min = 60,
@@ -28,7 +25,6 @@ export const CodeSigningPolicyFormSchema = z.object({
     "Duration must be between 1 day and 30 days"
   ).nullish(),
   constraints: z.object({
-    approvalMode: z.nativeEnum(CodeSigningApprovalMode),
     maxWindowDuration: DurationSchema().optional(),
     maxSignings: z.coerce.number().int().positive().optional()
   }),

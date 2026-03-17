@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
@@ -5,6 +6,7 @@ import { ChevronLeftIcon } from "lucide-react";
 
 import { EmptyState, PageHeader } from "@app/components/v2";
 import { Badge, UnstablePageLoader } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
@@ -13,6 +15,7 @@ import {
   useGetSigner
 } from "@app/hooks/api/signers";
 
+import { EditSignerModal } from "./components/EditSignerModal";
 import { SignerOverviewSection } from "./components/SignerOverviewSection";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";
 
@@ -20,8 +23,9 @@ export const SignerDetailPage = () => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const { signerId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId"
+    from: ROUTE_PATHS.CertManager.SignerDetailByIDPage.id
   });
 
   const { data: signer, isLoading } = useGetSigner(signerId);
@@ -64,13 +68,23 @@ export const SignerDetailPage = () => {
         />
         <div className="flex flex-col gap-5 lg:flex-row">
           <div className="w-full lg:max-w-[24rem]">
-            <SignerOverviewSection signer={signer} projectId={currentProject.id} />
+            <SignerOverviewSection
+              signer={signer}
+              projectId={currentProject.id}
+              onEdit={() => setIsEditOpen(true)}
+            />
           </div>
           <div className="flex flex-1 flex-col gap-5">
             <SigningOperationsTable signerId={signerId} projectId={currentProject.id} />
           </div>
         </div>
       </div>
+      <EditSignerModal
+        isOpen={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        signer={signer}
+        projectId={currentProject.id}
+      />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
-  CertManagerCodeSigning = "cert-manager-code-signing"
+  CertCodeSigning = "cert-code-signing"
 }
 
 export enum ApproverType {
@@ -37,16 +37,9 @@ export type CertRequestPolicyConditions = {
 
 export type CertRequestPolicyConstraints = Record<string, never>;
 
-export enum CodeSigningApprovalMode {
-  Manual = "manual",
-  TimeWindow = "time-window",
-  NSignings = "n-signings"
-}
-
 export type CodeSigningPolicyConditions = Record<string, never>[];
 
 export type CodeSigningPolicyConstraints = {
-  approvalMode: CodeSigningApprovalMode;
   maxWindowDuration?: string;
   maxSignings?: number;
 };

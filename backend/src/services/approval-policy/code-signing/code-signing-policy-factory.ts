@@ -1,4 +1,3 @@
-import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
 import { ApprovalRequestGrantStatus } from "../approval-policy-enums";
@@ -10,7 +9,6 @@ import {
   TApprovalRequestFactoryValidateConstraints,
   TApprovalResourceFactory
 } from "../approval-policy-types";
-import { CodeSigningApprovalMode } from "./code-signing-policy-schemas";
 import {
   TCodeSigningGrantAttributes,
   TCodeSigningPolicy,
@@ -82,24 +80,25 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
     inputs
   ) => {
     const errors: string[] = [];
-    const { approvalMode, maxWindowDuration, maxSignings } = policy.constraints.constraints;
+    const { maxWindowDuration, maxSignings } = policy.constraints.constraints;
 
-    if (inputs.approvalMode !== approvalMode) {
-      errors.push(`Request approval mode '${inputs.approvalMode}' does not match policy mode '${approvalMode}'`);
-    }
+    const hasTimeConstraint = Boolean(maxWindowDuration);
+    const hasCountConstraint = Boolean(maxSignings);
+    const isManual = !hasTimeConstraint && !hasCountConstraint;
 
-    if (approvalMode === CodeSigningApprovalMode.Manual) {
+    // Manual mode (neither constraint set): no extra parameters allowed
+    if (isManual) {
       if (inputs.requestedWindowStart || inputs.requestedWindowEnd) {
-        errors.push("Manual mode does not accept time-window parameters");
+        errors.push("This policy does not allow time-window parameters");
       }
       if (inputs.requestedSignings) {
-        errors.push("Manual mode does not accept requestedSignings");
+        errors.push("This policy does not allow requestedSignings");
       }
     }
 
-    if (approvalMode === CodeSigningApprovalMode.TimeWindow) {
+    if (hasTimeConstraint && (inputs.requestedWindowStart || inputs.requestedWindowEnd)) {
       if (!inputs.requestedWindowStart || !inputs.requestedWindowEnd) {
-        errors.push("Time-window mode requires requestedWindowStart and requestedWindowEnd");
+        errors.push("Both requestedWindowStart and requestedWindowEnd are required");
       } else {
         const startTime = new Date(inputs.requestedWindowStart).getTime();
         const endTime = new Date(inputs.requestedWindowEnd).getTime();
@@ -115,19 +114,29 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
           errors.push(`Requested window duration exceeds maximum of ${maxWindowDuration}`);
         }
       }
-      if (inputs.requestedSignings) {
-        errors.push("Time-window mode does not accept requestedSignings");
+    }
+
+    if (hasCountConstraint && inputs.requestedSignings) {
+      if (maxSignings && inputs.requestedSignings > maxSignings) {
+        errors.push(`Requested signings (${inputs.requestedSignings}) exceeds maximum of ${maxSignings}`);
       }
     }
 
-    if (approvalMode === CodeSigningApprovalMode.NSignings) {
-      if (!inputs.requestedSignings) {
-        errors.push("Count-limited mode requires requestedSignings");
-      } else if (maxSignings && inputs.requestedSignings > maxSignings) {
-        errors.push(`Requested signings (${inputs.requestedSignings}) exceeds maximum of ${maxSignings}`);
+    if (hasTimeConstraint && !hasCountConstraint) {
+      if (!inputs.requestedWindowStart && !inputs.requestedWindowEnd && !inputs.requestedSignings) {
+        errors.push("This policy requires time-window parameters");
+      }
+      if (inputs.requestedSignings) {
+        errors.push("This policy does not allow requestedSignings");
+      }
+    }
+
+    if (hasCountConstraint && !hasTimeConstraint) {
+      if (!inputs.requestedSignings && !inputs.requestedWindowStart) {
+        errors.push("This policy requires requestedSignings");
       }
       if (inputs.requestedWindowStart || inputs.requestedWindowEnd) {
-        errors.push("Count-limited mode does not accept time-window parameters");
+        errors.push("This policy does not allow time-window parameters");
       }
     }
 
@@ -139,7 +148,6 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
 
   const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (approvalRequestGrantsDAL, request) => {
     const requestData = request.requestData.requestData as TCodeSigningRequestData;
-    const approvalMode = requestData.approvalMode ?? CodeSigningApprovalMode.Manual;
 
     const grantAttributes: TCodeSigningGrantAttributes = {
       signerId: requestData.signerId,
@@ -148,26 +156,19 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
 
     let expiresAt: Date | undefined;
 
-    switch (approvalMode) {
-      case CodeSigningApprovalMode.Manual:
-        grantAttributes.maxSignings = 1;
-        break;
-      case CodeSigningApprovalMode.TimeWindow:
-        if (requestData.requestedWindowStart) {
-          grantAttributes.windowStart = requestData.requestedWindowStart;
-        }
-        if (requestData.requestedWindowEnd) {
-          expiresAt = new Date(requestData.requestedWindowEnd);
-        }
-        break;
-      case CodeSigningApprovalMode.NSignings:
-        if (!requestData.requestedSignings) {
-          throw new BadRequestError({ message: "NSignings mode requires requestedSignings to be set" });
-        }
-        grantAttributes.maxSignings = requestData.requestedSignings;
-        break;
-      default:
-        grantAttributes.maxSignings = 1;
+    if (requestData.requestedSignings) {
+      grantAttributes.maxSignings = requestData.requestedSignings;
+    }
+
+    if (requestData.requestedWindowStart) {
+      grantAttributes.windowStart = requestData.requestedWindowStart;
+    }
+    if (requestData.requestedWindowEnd) {
+      expiresAt = new Date(requestData.requestedWindowEnd);
+    }
+
+    if (!requestData.requestedSignings && !requestData.requestedWindowStart) {
+      grantAttributes.maxSignings = 1;
     }
 
     await approvalRequestGrantsDAL.create({

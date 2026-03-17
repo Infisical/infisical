@@ -18,12 +18,6 @@ export const CodeSigningPolicyInputsSchema = z.object({
 
 export const CodeSigningPolicyConditionsSchema = z.object({}).array();
 
-export enum CodeSigningApprovalMode {
-  Manual = "manual",
-  TimeWindow = "time-window",
-  NSignings = "n-signings"
-}
-
 const WindowDurationSchema = z
   .string()
   .refine(
@@ -37,7 +31,6 @@ const WindowDurationSchema = z
   .optional();
 
 export const CodeSigningPolicyConstraintsSchema = z.object({
-  approvalMode: z.nativeEnum(CodeSigningApprovalMode),
   maxWindowDuration: WindowDurationSchema,
   maxSignings: z.number().int().positive().optional()
 });
@@ -46,7 +39,6 @@ export const CodeSigningPolicyRequestDataSchema = z.object({
   signerId: z.string().uuid(),
   approvalPolicyId: z.string().uuid(),
   signerName: z.string(),
-  approvalMode: z.nativeEnum(CodeSigningApprovalMode),
   justification: z.string().max(512).optional(),
   requestedWindowStart: z.string().datetime().optional(),
   requestedWindowEnd: z.string().datetime().optional(),

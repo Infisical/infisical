@@ -1,4 +1,4 @@
-import { ApprovalPolicyType, ApproverType, CodeSigningApprovalMode } from "../approvalPolicies";
+import { ApprovalPolicyType, ApproverType } from "../approvalPolicies";
 
 export enum ApprovalRequestStatus {
   Pending = "pending",
@@ -86,7 +86,6 @@ export type CodeSigningRequestData = {
   signerId: string;
   approvalPolicyId: string;
   signerName: string;
-  approvalMode: CodeSigningApprovalMode;
   justification?: string;
   requestedWindowStart?: string;
   requestedWindowEnd?: string;

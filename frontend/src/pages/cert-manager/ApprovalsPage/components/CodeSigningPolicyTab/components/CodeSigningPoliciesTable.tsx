@@ -38,15 +38,8 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type CodeSigningConstraints = {
-  approvalMode: string;
   maxWindowDuration?: string;
   maxSignings?: number;
-};
-
-const APPROVAL_MODE_CONFIG: Record<string, { label: string; icon: typeof faClock }> = {
-  manual: { label: "Manual", icon: faHandPointer },
-  "time-window": { label: "Time Window", icon: faClock },
-  "n-signings": { label: "Count-Limited", icon: faHashtag }
 };
 
 type Props = {
@@ -62,7 +55,7 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
 
   const { data: policies = [], isPending: isPoliciesLoading } = useQuery(
     approvalPolicyQuery.list({
-      policyType: ApprovalPolicyType.CertManagerCodeSigning,
+      policyType: ApprovalPolicyType.CertCodeSigning,
       projectId
     })
   );
@@ -75,8 +68,12 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
 
   const getApprovalModeConfig = (policy: TApprovalPolicy) => {
     const constraints = policy.constraints?.constraints as CodeSigningConstraints | undefined;
-    const mode = constraints?.approvalMode ?? "manual";
-    return APPROVAL_MODE_CONFIG[mode] ?? { label: mode, icon: faHandPointer };
+    const hasTime = Boolean(constraints?.maxWindowDuration);
+    const hasCount = Boolean(constraints?.maxSignings);
+    if (hasTime && hasCount) return { label: "Combined", icon: faClock };
+    if (hasTime) return { label: "Time-based", icon: faClock };
+    if (hasCount) return { label: "Count-based", icon: faHashtag };
+    return { label: "Manual", icon: faHandPointer };
   };
 
   return (
@@ -157,7 +154,7 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
         </TBody>
       </Table>
       {!isPoliciesLoading && !sortedPolicies.length && (
-        <EmptyState title="No code signing approval policies found" icon={faFileCircleQuestion} />
+        <EmptyState title="No approval policies found" icon={faFileCircleQuestion} />
       )}
     </TableContainer>
   );

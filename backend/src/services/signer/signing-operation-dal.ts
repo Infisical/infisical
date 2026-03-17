@@ -11,7 +11,7 @@ import { SigningOperationStatus } from "./signer-enums";
 export type TSigningOperationDALFactory = ReturnType<typeof signingOperationDALFactory>;
 
 export const signingOperationDALFactory = (db: TDbClient) => {
-  const orm = ormify(db, TableName.SigningOperations);
+  const orm = ormify(db, TableName.PkiSigningOperations);
 
   const findBySignerId = async (
     signerId: string,
@@ -27,25 +27,25 @@ export const signingOperationDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      let query = (tx || db.replicaNode())(TableName.SigningOperations)
-        .where(`${TableName.SigningOperations}.signerId`, signerId)
+      let query = (tx || db.replicaNode())(TableName.PkiSigningOperations)
+        .where(`${TableName.PkiSigningOperations}.signerId`, signerId)
         .leftJoin(TableName.Users, (qb) => {
           void qb
-            .on(`${TableName.SigningOperations}.actorId`, `${TableName.Users}.id`)
-            .andOn(`${TableName.SigningOperations}.actorType`, db.raw("?", [ActorType.USER]));
+            .on(`${TableName.PkiSigningOperations}.actorId`, `${TableName.Users}.id`)
+            .andOn(`${TableName.PkiSigningOperations}.actorType`, db.raw("?", [ActorType.USER]));
         })
         .leftJoin(TableName.Identity, (qb) => {
           void qb
-            .on(`${TableName.SigningOperations}.actorId`, `${TableName.Identity}.id`)
-            .andOn(`${TableName.SigningOperations}.actorType`, db.raw("?", [ActorType.IDENTITY]));
+            .on(`${TableName.PkiSigningOperations}.actorId`, `${TableName.Identity}.id`)
+            .andOn(`${TableName.PkiSigningOperations}.actorType`, db.raw("?", [ActorType.IDENTITY]));
         })
         .leftJoin(TableName.Membership, (qb) => {
           void qb
             .on(`${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.SigningOperations}.projectId`)
+            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.PkiSigningOperations}.projectId`)
             .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Project]));
         })
-        .select(selectAllTableCols(TableName.SigningOperations))
+        .select(selectAllTableCols(TableName.PkiSigningOperations))
         .select(
           db.ref("email").withSchema(TableName.Users).as("userEmail"),
           db.ref("username").withSchema(TableName.Users).as("userUsername"),
@@ -56,10 +56,13 @@ export const signingOperationDALFactory = (db: TDbClient) => {
         );
 
       if (status) {
-        query = query.where(`${TableName.SigningOperations}.status`, status);
+        query = query.where(`${TableName.PkiSigningOperations}.status`, status);
       }
 
-      const rows = await query.orderBy(`${TableName.SigningOperations}.createdAt`, "desc").offset(offset).limit(limit);
+      const rows = await query
+        .orderBy(`${TableName.PkiSigningOperations}.createdAt`, "desc")
+        .offset(offset)
+        .limit(limit);
 
       return rows.map((row) => {
         const { userEmail, userUsername, userFirstName, userLastName, identityName, membershipId, ...op } =
@@ -98,7 +101,7 @@ export const signingOperationDALFactory = (db: TDbClient) => {
 
   const countBySignerId = async (signerId: string, status?: SigningOperationStatus, tx?: Knex) => {
     try {
-      let query = (tx || db.replicaNode())(TableName.SigningOperations).where({ signerId });
+      let query = (tx || db.replicaNode())(TableName.PkiSigningOperations).where({ signerId });
 
       if (status) {
         query = query.where({ status });
@@ -113,7 +116,7 @@ export const signingOperationDALFactory = (db: TDbClient) => {
 
   const countByGrantId = async (approvalGrantId: string, tx?: Knex) => {
     try {
-      const [result] = await (tx || db)(TableName.SigningOperations)
+      const [result] = await (tx || db)(TableName.PkiSigningOperations)
         .where({ approvalGrantId, status: SigningOperationStatus.Success })
         .count("* as count");
       return Number((result as unknown as { count: string | number }).count);

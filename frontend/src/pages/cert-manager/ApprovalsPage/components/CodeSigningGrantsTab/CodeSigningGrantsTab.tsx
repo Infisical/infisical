@@ -97,7 +97,7 @@ export const CodeSigningGrantsTab = () => {
 
   const { data: grants = [], isPending: isGrantsLoading } = useQuery(
     approvalGrantQuery.list({
-      policyType: ApprovalPolicyType.CertManagerCodeSigning,
+      policyType: ApprovalPolicyType.CertCodeSigning,
       projectId
     })
   );
@@ -181,7 +181,7 @@ export const CodeSigningGrantsTab = () => {
 
     try {
       await revokeGrant({
-        policyType: ApprovalPolicyType.CertManagerCodeSigning,
+        policyType: ApprovalPolicyType.CertCodeSigning,
         grantId: grantToRevoke,
         revocationReason: data.revocationReason
       });
@@ -387,7 +387,7 @@ export const CodeSigningGrantsTab = () => {
                                     approvalRequestId: grant.requestId
                                   }}
                                   search={{
-                                    policyType: ApprovalPolicyType.CertManagerCodeSigning
+                                    policyType: ApprovalPolicyType.CertCodeSigning
                                   }}
                                 >
                                   <DropdownMenuItem icon={<FontAwesomeIcon icon={faInfo} />}>

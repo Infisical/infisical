@@ -20,7 +20,6 @@ import { useProject } from "@app/context";
 import {
   approvalPolicyQuery,
   ApprovalPolicyType,
-  CodeSigningApprovalMode,
   TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
@@ -92,12 +91,15 @@ const Content = ({ onOpenChange }: Props) => {
 
   const { data: policies = [] } = useQuery(
     approvalPolicyQuery.list({
-      policyType: ApprovalPolicyType.CertManagerCodeSigning,
+      policyType: ApprovalPolicyType.CertCodeSigning,
       projectId
     })
   );
 
-  const signers = signersData?.signers ?? [];
+  const signers = useMemo(
+    () => (signersData?.signers ?? []).filter((s) => s.approvalPolicyId),
+    [signersData?.signers]
+  );
 
   const policyMap = useMemo(() => {
     const map = new Map<string, TApprovalPolicy>();
@@ -136,61 +138,62 @@ const Content = ({ onOpenChange }: Props) => {
   );
 
   const selectedPolicy = useMemo(
-    () => (selectedSigner ? policyMap.get(selectedSigner.approvalPolicyId) : undefined),
+    () =>
+      selectedSigner?.approvalPolicyId ? policyMap.get(selectedSigner.approvalPolicyId) : undefined,
     [selectedSigner, policyMap]
   );
 
-  const approvalMode = useMemo(() => {
-    if (!selectedPolicy) return undefined;
+  const { hasTimeConstraint, hasCountConstraint } = useMemo(() => {
+    if (!selectedPolicy) return { hasTimeConstraint: false, hasCountConstraint: false };
     const constraints = selectedPolicy.constraints?.constraints as
-      | { approvalMode?: CodeSigningApprovalMode }
+      | { maxWindowDuration?: string; maxSignings?: number }
       | undefined;
-    return constraints?.approvalMode ?? CodeSigningApprovalMode.Manual;
+    return {
+      hasTimeConstraint: Boolean(constraints?.maxWindowDuration),
+      hasCountConstraint: Boolean(constraints?.maxSignings)
+    };
   }, [selectedPolicy]);
 
   useEffect(() => {
-    if (approvalMode === CodeSigningApprovalMode.TimeWindow) {
-      setValue("requestedSignings", undefined);
+    if (hasTimeConstraint) {
       setValue("windowStart", getDefaultWindowStart());
       setValue("windowEnd", getDefaultWindowEnd());
-    } else if (approvalMode === CodeSigningApprovalMode.NSignings) {
-      setValue("windowStart", undefined);
-      setValue("windowEnd", undefined);
     } else {
-      setValue("requestedSignings", undefined);
       setValue("windowStart", undefined);
       setValue("windowEnd", undefined);
     }
+
+    if (hasCountConstraint) {
+      setValue("requestedSignings", 5);
+    } else {
+      setValue("requestedSignings", undefined);
+    }
+
     trigger();
-  }, [approvalMode, setValue, trigger]);
+  }, [hasTimeConstraint, hasCountConstraint, setValue, trigger]);
 
   const onSubmit = async (formData: FormData) => {
-    if (!selectedSigner || !selectedPolicy || !approvalMode) return;
+    if (!selectedSigner || !selectedPolicy) return;
 
     let requestedWindowStart: string | undefined;
     let requestedWindowEnd: string | undefined;
 
-    if (
-      approvalMode === CodeSigningApprovalMode.TimeWindow &&
-      formData.windowStart &&
-      formData.windowEnd
-    ) {
+    if (hasTimeConstraint && formData.windowStart && formData.windowEnd) {
       requestedWindowStart = new Date(formData.windowStart).toISOString();
       requestedWindowEnd = new Date(formData.windowEnd).toISOString();
     }
 
     await createApprovalRequest({
-      policyType: ApprovalPolicyType.CertManagerCodeSigning,
+      policyType: ApprovalPolicyType.CertCodeSigning,
       projectId,
       justification: formData.justification || null,
       requestData: {
         signerId: selectedSigner.id,
-        approvalPolicyId: selectedSigner.approvalPolicyId,
+        approvalPolicyId: selectedSigner.approvalPolicyId!,
         signerName: selectedSigner.name,
-        approvalMode,
         ...(requestedWindowStart && { requestedWindowStart }),
         ...(requestedWindowEnd && { requestedWindowEnd }),
-        ...(approvalMode === CodeSigningApprovalMode.NSignings &&
+        ...(hasCountConstraint &&
           formData.requestedSignings != null && { requestedSignings: formData.requestedSignings })
       }
     });
@@ -231,8 +234,7 @@ const Content = ({ onOpenChange }: Props) => {
           </FormControl>
         )}
       />
-      {/* Mode-specific fields are shown below based on the policy's approval mode */}
-      {approvalMode === CodeSigningApprovalMode.TimeWindow && (
+      {hasTimeConstraint && (
         <div className="grid grid-cols-2 gap-4">
           <Controller
             name="windowStart"
@@ -262,7 +264,7 @@ const Content = ({ onOpenChange }: Props) => {
           />
         </div>
       )}
-      {approvalMode === CodeSigningApprovalMode.NSignings && (
+      {hasCountConstraint && (
         <Controller
           name="requestedSignings"
           control={control}

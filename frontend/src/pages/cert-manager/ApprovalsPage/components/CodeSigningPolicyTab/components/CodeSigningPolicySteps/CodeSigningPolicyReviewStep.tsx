@@ -7,18 +7,21 @@ import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import { ApproverType } from "@app/hooks/api/approvalPolicies";
 
-import { CodeSigningApprovalMode, TCodeSigningPolicyForm } from "../CodeSigningPolicySchema";
+import { TCodeSigningPolicyForm } from "../CodeSigningPolicySchema";
 
-const APPROVAL_MODE_LABELS: Record<CodeSigningApprovalMode, string> = {
-  [CodeSigningApprovalMode.Manual]: "One time use",
-  [CodeSigningApprovalMode.TimeWindow]: "Time Window",
-  [CodeSigningApprovalMode.NSignings]: "N Signings"
+const deriveApprovalModeLabel = (constraints: TCodeSigningPolicyForm["constraints"]): string => {
+  const hasTime = Boolean(constraints.maxWindowDuration);
+  const hasCount = Boolean(constraints.maxSignings);
+  if (hasTime && hasCount) return "Combined";
+  if (hasTime) return "Time-based";
+  if (hasCount) return "Count-based";
+  return "Manual (single-use)";
 };
 
 const ReviewField = ({ label, value }: { label: string; value: string | number }) => (
-  <div className="flex gap-x-8">
-    <span className="min-w-[140px] text-sm text-mineshaft-400">{label}</span>
-    <span className="text-sm text-mineshaft-200">{value}</span>
+  <div className="flex items-baseline gap-x-4">
+    <span className="w-[180px] shrink-0 text-sm text-mineshaft-400">{label}</span>
+    <span className="text-sm font-medium text-mineshaft-200">{value}</span>
   </div>
 );
 
@@ -56,18 +59,13 @@ export const CodeSigningPolicyReviewStep = () => {
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
           <ReviewField label="Max. Request TTL" value={maxRequestTtl || "Not set"} />
-          <ReviewField
-            label="Approval Mode"
-            value={APPROVAL_MODE_LABELS[constraints.approvalMode] || "Not set"}
-          />
-          {constraints.approvalMode === CodeSigningApprovalMode.TimeWindow &&
-            constraints.maxWindowDuration && (
-              <ReviewField label="Max Window Duration" value={constraints.maxWindowDuration} />
-            )}
-          {constraints.approvalMode === CodeSigningApprovalMode.NSignings &&
-            constraints.maxSignings && (
-              <ReviewField label="Max Signings" value={constraints.maxSignings} />
-            )}
+          <ReviewField label="Approval Mode" value={deriveApprovalModeLabel(constraints)} />
+          {constraints.maxWindowDuration && (
+            <ReviewField label="Max Window Duration" value={constraints.maxWindowDuration} />
+          )}
+          {constraints.maxSignings && (
+            <ReviewField label="Max Signings" value={constraints.maxSignings} />
+          )}
           <ReviewField
             label="Machine Identity Bypass"
             value={bypassForMachineIdentities ? "Enabled" : "Disabled"}

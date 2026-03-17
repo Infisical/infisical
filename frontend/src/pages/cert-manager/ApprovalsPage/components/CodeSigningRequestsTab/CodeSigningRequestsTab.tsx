@@ -105,7 +105,7 @@ export const CodeSigningRequestsTab = () => {
 
   const { data: requests = [], isPending: isRequestsLoading } = useQuery(
     approvalRequestQuery.list({
-      policyType: ApprovalPolicyType.CertManagerCodeSigning,
+      policyType: ApprovalPolicyType.CertCodeSigning,
       projectId
     })
   );
@@ -145,11 +145,9 @@ export const CodeSigningRequestsTab = () => {
       <div className="mb-4 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Code Signing Approval Requests</p>
+            <p className="text-xl font-medium text-mineshaft-100">Approval Requests</p>
           </div>
-          <p className="text-sm text-bunker-300">
-            Review and manage code signing approval requests
-          </p>
+          <p className="text-sm text-bunker-300">Review and manage approval requests</p>
         </div>
         <Button colorSchema="secondary" size="sm" onClick={() => setIsRequestModalOpen(true)}>
           Request Signing Access
@@ -259,7 +257,7 @@ export const CodeSigningRequestsTab = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search code signing requests..."
+          placeholder="Search requests..."
         />
       </div>
       <TableContainer>
@@ -278,10 +276,7 @@ export const CodeSigningRequestsTab = () => {
             {!isRequestsLoading && paginatedRequests.length === 0 && (
               <Tr>
                 <Td colSpan={5}>
-                  <EmptyState
-                    title="No code signing approval requests found"
-                    icon={faFileCircleQuestion}
-                  />
+                  <EmptyState title="No approval requests found" icon={faFileCircleQuestion} />
                 </Td>
               </Tr>
             )}
@@ -301,7 +296,7 @@ export const CodeSigningRequestsTab = () => {
                         approvalRequestId: request.id
                       },
                       search: {
-                        policyType: ApprovalPolicyType.CertManagerCodeSigning
+                        policyType: ApprovalPolicyType.CertCodeSigning
                       }
                     })
                   }

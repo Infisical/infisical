@@ -140,7 +140,7 @@ export const SigningOperationsTable = ({ signerId, projectId }: Props) => {
     <UnstableCard>
       <UnstableCardHeader>
         <UnstableCardTitle>Signing History</UnstableCardTitle>
-        <UnstableCardDescription>Audit trail of signing operations</UnstableCardDescription>
+        <UnstableCardDescription>Trail of signing operations</UnstableCardDescription>
       </UnstableCardHeader>
       <UnstableCardContent>
         <UnstableTable>

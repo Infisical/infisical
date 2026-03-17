@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +5,6 @@ import { z } from "zod";
 
 import {
   Button,
-  FilterableSelect,
   FormControl,
   Input,
   Modal,
@@ -17,40 +15,26 @@ import {
   TextArea
 } from "@app/components/v2";
 import { approvalPolicyQuery, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
-import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
-import { useCreateSigner } from "@app/hooks/api/signers";
+import { TSigner, useUpdateSigner } from "@app/hooks/api/signers";
 import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  signer: TSigner;
   projectId: string;
 };
 
 const formSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
-  description: z.string().trim().max(256).optional(),
-  certificateId: z.string().uuid("Certificate is required"),
+  description: z.string().trim().max(256).optional().or(z.literal("")),
   approvalPolicyId: z.string().uuid().optional().or(z.literal(""))
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-type CertOption = {
-  label: string;
-  value: string;
-};
-
-export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) => {
-  const createSigner = useCreateSigner();
-
-  const { data: certificatesData, isPending: isCertsLoading } = useListWorkspaceCertificates({
-    projectId,
-    offset: 0,
-    limit: 100,
-    status: "active",
-    extendedKeyUsage: "codeSigning"
-  });
+export const EditSignerModal = ({ isOpen, onOpenChange, signer, projectId }: Props) => {
+  const updateSigner = useUpdateSigner();
 
   const { data: policies = [], isPending: isPoliciesLoading } = useQuery(
     approvalPolicyQuery.list({
@@ -58,18 +42,6 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
       projectId
     })
   );
-
-  const certOptions: CertOption[] = useMemo(() => {
-    const certs = certificatesData?.certificates ?? [];
-    return certs.map((cert) => {
-      const display = cert.friendlyName || cert.commonName || cert.id;
-      const subtitle = cert.altNames ? ` (${cert.altNames})` : "";
-      return {
-        label: `${display}${subtitle}`,
-        value: cert.id
-      };
-    });
-  }, [certificatesData?.certificates]);
 
   const {
     control,
@@ -79,32 +51,36 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      certificateId: "",
-      approvalPolicyId: ""
+      name: signer.name,
+      description: signer.description ?? "",
+      approvalPolicyId: signer.approvalPolicyId ?? ""
     }
   });
 
   const handleOpenChange = (open: boolean) => {
-    if (!open) reset();
+    if (!open) {
+      reset({
+        name: signer.name,
+        description: signer.description ?? "",
+        approvalPolicyId: signer.approvalPolicyId ?? ""
+      });
+    }
     onOpenChange(open);
   };
 
   const onSubmit = async (data: FormData) => {
-    await createSigner.mutateAsync({
-      projectId,
+    await updateSigner.mutateAsync({
+      signerId: signer.id,
       name: data.name,
-      description: data.description,
-      certificateId: data.certificateId,
-      ...(data.approvalPolicyId ? { approvalPolicyId: data.approvalPolicyId } : {})
+      description: data.description || null,
+      approvalPolicyId: data.approvalPolicyId || null
     });
     handleOpenChange(false);
   };
 
   return (
     <Modal isOpen={isOpen} onOpenChange={handleOpenChange}>
-      <ModalContent title="Create Signer">
+      <ModalContent title="Edit Signer">
         <form onSubmit={handleSubmit(onSubmit)}>
           <Controller
             name="name"
@@ -121,31 +97,6 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
                 <TextArea {...field} placeholder="Optional description" rows={2} />
-              </FormControl>
-            )}
-          />
-          <Controller
-            name="certificateId"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Certificate"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="Only active certificates with the codeSigning extended key usage are shown"
-              >
-                <FilterableSelect<CertOption>
-                  isLoading={isCertsLoading}
-                  options={certOptions}
-                  value={certOptions.find((opt) => opt.value === field.value) ?? null}
-                  onChange={(selected) => {
-                    const option = selected as CertOption | null;
-                    field.onChange(option?.value ?? "");
-                  }}
-                  placeholder="Search by common name or SAN..."
-                  noOptionsMessage={() => "No code signing certificates found"}
-                  maxMenuHeight={200}
-                />
               </FormControl>
             )}
           />
@@ -183,7 +134,7 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
               Cancel
             </Button>
             <Button type="submit" isLoading={isSubmitting}>
-              Create
+              Save
             </Button>
           </div>
         </form>

@@ -38,7 +38,7 @@ export type TSigner = {
   description?: string | null;
   status: SignerStatus;
   certificateId: string;
-  approvalPolicyId: string;
+  approvalPolicyId?: string | null;
   lastSignedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -91,7 +91,7 @@ export type TCreateSignerDTO = {
   name: string;
   description?: string;
   certificateId: string;
-  approvalPolicyId: string;
+  approvalPolicyId?: string;
 };
 
 export type TUpdateSignerDTO = {
@@ -100,7 +100,7 @@ export type TUpdateSignerDTO = {
   description?: string | null;
   status?: SignerStatus;
   certificateId?: string;
-  approvalPolicyId?: string;
+  approvalPolicyId?: string | null;
 };
 
 export type TDeleteSignerDTO = {
