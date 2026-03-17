@@ -2,7 +2,7 @@
 import RE2 from "re2";
 
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -159,7 +159,7 @@ export const dailyReminderQueueServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.DailyReminders,
-      QueueJobs.DailyReminders,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyReminders}`,
       { pattern: "0 0 * * *" },
       { name: QueueJobs.DailyReminders, opts: { delay: 5000 } }
     );

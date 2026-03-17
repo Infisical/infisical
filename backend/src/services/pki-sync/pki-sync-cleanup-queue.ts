@@ -1,6 +1,6 @@
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
@@ -79,7 +79,7 @@ export const pkiSyncCleanupQueueServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.PkiSyncCleanup,
-      QueueJobs.PkiSyncCleanup,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.PkiSyncCleanup}`,
       { pattern: "0 0 * * *" },
       { name: QueueJobs.PkiSyncCleanup }
     );

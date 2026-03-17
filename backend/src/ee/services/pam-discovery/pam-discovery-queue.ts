@@ -1,7 +1,7 @@
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-service";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -132,7 +132,7 @@ export const pamDiscoveryQueueFactory = ({
     void queueService
       .upsertJobScheduler(
         QueueName.PamDiscoveryScan,
-        "pam-discovery-scheduled-scan",
+        `${JOB_SCHEDULER_PREFIX}:pam-discovery-scheduled-scan`,
         { pattern: "0 3 * * *" },
         { name: QueueJobs.PamDiscoveryScheduledScan }
       )

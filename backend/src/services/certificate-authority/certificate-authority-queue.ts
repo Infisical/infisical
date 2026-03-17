@@ -6,7 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertKeyAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
@@ -122,7 +122,7 @@ export const certificateAuthorityQueueFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.CaCrlRotation,
-      QueueJobs.CaCrlRotation,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.CaCrlRotation}`,
       { pattern: cronPattern },
       { name: QueueJobs.CaCrlRotation, opts: { delay: 5000 } }
     );

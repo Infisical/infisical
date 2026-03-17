@@ -2,7 +2,7 @@
 
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
 import { TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
@@ -220,7 +220,7 @@ export const pkiAlertV2QueueServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.DailyPkiAlertV2Processing,
-      QueueJobs.DailyPkiAlertV2Processing,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyPkiAlertV2Processing}`,
       { pattern: "0 0 * * *" },
       { name: QueueJobs.DailyPkiAlertV2Processing }
     );

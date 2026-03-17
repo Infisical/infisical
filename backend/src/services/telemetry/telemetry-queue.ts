@@ -3,7 +3,7 @@ import { PostHog } from "posthog-node";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TTelemetryDALFactory } from "./telemetry-dal";
@@ -75,7 +75,7 @@ export const telemetryQueueServiceFactory = ({
     if (postHog) {
       await queueService.upsertJobScheduler(
         QueueName.TelemetryInstanceStats,
-        QueueName.TelemetryInstanceStats,
+        `${JOB_SCHEDULER_PREFIX}:${QueueName.TelemetryInstanceStats}`,
         { pattern: "0 0 * * *" },
         { name: QueueJobs.TelemetryInstanceStats }
       );
@@ -95,7 +95,7 @@ export const telemetryQueueServiceFactory = ({
       // Start aggregated events job (runs every five minutes)
       await queueService.upsertJobScheduler(
         QueueName.TelemetryAggregatedEvents,
-        QueueName.TelemetryAggregatedEvents,
+        `${JOB_SCHEDULER_PREFIX}:${QueueName.TelemetryAggregatedEvents}`,
         { pattern: "*/5 * * * *" },
         { name: QueueJobs.TelemetryAggregatedEvents }
       );

@@ -2,7 +2,7 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -142,7 +142,7 @@ export const certificateV3QueueServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.CertificateV3AutoRenewal,
-      QueueJobs.CertificateV3DailyAutoRenewal,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.CertificateV3DailyAutoRenewal}`,
       { pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE },
       { name: QueueJobs.CertificateV3DailyAutoRenewal }
     );

@@ -52,6 +52,11 @@ import { PersistenceQueueStatus } from "./queue-types";
 
 const RECOVERY_BATCH_SIZE = 500;
 
+// Scheduler IDs are prefixed so they never collide with legacy repeatable-job
+// iteration IDs that may still be pending in Redis after the migration.
+// Bump the version if a future migration needs the same trick.
+export const JOB_SCHEDULER_PREFIX = "jsv1";
+
 export enum QueueName {
   // Internal queues for durable queue recovery
   QueueInternalRecovery = "queue-internal-recovery",
@@ -950,7 +955,7 @@ export const queueServiceFactory = (
 
       // Schedule reconciliation job (runs every 2 minutes)
       await queueContainer[QueueName.QueueInternalReconciliation]?.upsertJobScheduler(
-        "queue-reconciliation-cron",
+        `${JOB_SCHEDULER_PREFIX}:queue-reconciliation-cron`,
         { pattern: "*/2 * * * *", utc: true },
         {
           name: QueueJobs.QueueReconciliation,
@@ -1175,7 +1180,7 @@ export const queueServiceFactory = (
     // Stop internal queue scheduler jobs
     try {
       const reconciliationQueue = queueContainer[QueueName.QueueInternalReconciliation];
-      await reconciliationQueue?.removeJobScheduler("queue-reconciliation-cron");
+      await reconciliationQueue?.removeJobScheduler(`${JOB_SCHEDULER_PREFIX}:queue-reconciliation-cron`);
     } catch {
       // Ignore errors during shutdown
     }

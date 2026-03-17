@@ -16,7 +16,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -196,7 +196,7 @@ export const secretRotationV2QueueServiceFactory = async ({
 
   await queueService.upsertJobScheduler(
     QueueName.SecretRotationV2,
-    "secret-rotation-v2-cron",
+    `${JOB_SCHEDULER_PREFIX}:secret-rotation-v2-cron`,
     { pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *" },
     { name: QueueJobs.SecretRotationV2QueueRotations }
   );

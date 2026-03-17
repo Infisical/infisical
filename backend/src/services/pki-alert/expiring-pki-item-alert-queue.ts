@@ -1,5 +1,5 @@
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 
 type TDailyExpiringPkiItemAlertQueueServiceFactoryDep = {
@@ -33,7 +33,7 @@ export const dailyExpiringPkiItemAlertQueueServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.DailyExpiringPkiItemAlert,
-      QueueName.DailyExpiringPkiItemAlert,
+      `${JOB_SCHEDULER_PREFIX}:${QueueName.DailyExpiringPkiItemAlert}`,
       { pattern: "0 0 * * *" },
       { name: QueueJobs.DailyExpiringPkiItemAlert, opts: { delay: 5000 } }
     );

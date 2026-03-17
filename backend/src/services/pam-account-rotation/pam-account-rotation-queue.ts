@@ -1,7 +1,7 @@
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 type TPamAccountRotationServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -42,7 +42,7 @@ export const pamAccountRotationServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.PamAccountRotation,
-      QueueJobs.PamAccountRotation,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.PamAccountRotation}`,
       { pattern: "0 * * * *" },
       { name: QueueJobs.PamAccountRotation }
     );

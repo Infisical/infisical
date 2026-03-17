@@ -4,7 +4,7 @@ import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-d
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TQueueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
@@ -112,7 +112,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.DailyResourceCleanUp,
-      QueueJobs.DailyResourceCleanUp,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyResourceCleanUp}`,
       { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *" },
       { name: QueueJobs.DailyResourceCleanUp }
     );
@@ -139,7 +139,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.FrequentResourceCleanUp,
-      QueueJobs.FrequentResourceCleanUp,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.FrequentResourceCleanUp}`,
       { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *" },
       { name: QueueJobs.FrequentResourceCleanUp }
     );

@@ -7,7 +7,7 @@ import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -186,7 +186,7 @@ export const auditLogQueueServiceFactory = async ({
     // Schedule repeatable job every 5 seconds
     await queueService.upsertJobScheduler(
       QueueName.AuditLogClickHouseBatch,
-      "audit-log-clickhouse-batch",
+      `${JOB_SCHEDULER_PREFIX}:audit-log-clickhouse-batch`,
       { every: 5000 },
       { name: QueueJobs.AuditLogClickHouseBatch }
     );

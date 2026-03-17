@@ -2,7 +2,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 type THealthAlertServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -46,7 +46,7 @@ export const healthAlertServiceFactory = ({
 
     await queueService.upsertJobScheduler(
       QueueName.HealthAlert,
-      QueueJobs.HealthAlert,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.HealthAlert}`,
       { pattern: "*/5 * * * *" },
       { name: QueueJobs.HealthAlert }
     );
