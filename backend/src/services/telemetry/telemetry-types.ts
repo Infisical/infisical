@@ -416,7 +416,7 @@ export type TSecretSharedEvent = {
 export type TSharedSecretViewedEvent = {
   event: PostHogEventTypes.SharedSecretViewed;
   properties: {
-    organizationId: string;
+    organizationId?: string;
     sharedSecretId: string;
     accessType: string;
   };

@@ -685,7 +685,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      if (req.body.secretReminderRepeatDays) {
+      // Only fire reminder event when secretReminderRepeatDays is explicitly provided in the request body,
+      // which indicates the user is intentionally setting or changing the reminder (not just updating other fields)
+      if (req.body.secretReminderRepeatDays !== undefined && req.body.secretReminderRepeatDays !== null) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretReminderCreated,
           distinctId: getTelemetryDistinctId(req),
