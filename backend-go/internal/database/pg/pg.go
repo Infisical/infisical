@@ -70,6 +70,11 @@ func (db *DB) ReplicaNode() *pgxpool.Pool {
 	return db.replicas[rand.IntN(len(db.replicas))]
 }
 
+// Replicas returns all read-replica pools.
+func (db *DB) Replicas() []*pgxpool.Pool {
+	return db.replicas
+}
+
 // Close closes all connection pools (primary + replicas).
 func (db *DB) Close() {
 	db.primary.Close()

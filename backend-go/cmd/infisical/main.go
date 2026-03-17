@@ -11,6 +11,8 @@ import (
 	"syscall"
 
 	"github.com/infisical/api/internal/config"
+	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/internal/pkg/bootstrap"
 	"github.com/infisical/api/internal/server"
 	"github.com/infisical/api/internal/services"
 )
@@ -37,6 +39,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Connect to database.
+	ctx := context.Background()
+	readReplicas := make([]pg.DBReadReplica, len(cfg.ParsedDBReadReplicas))
+	for i, r := range cfg.ParsedDBReadReplicas {
+		readReplicas[i] = pg.DBReadReplica{DBConnectionURI: r.DBConnectionURI, DBRootCert: r.DBRootCert}
+	}
+
+	db, err := pg.NewPostgresDB(ctx, cfg.DBConnectionURI, cfg.DBRootCert, readReplicas)
+	if err != nil {
+		logger.Error("failed to initialize database", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	dbReport := bootstrap.CheckDBConnection(ctx, db)
+	dbReport.PrintReport(logger)
+
 	// Initialize all services.
 	svc := services.NewService(logger)
 	// Create server.
@@ -53,7 +72,7 @@ func main() {
 	}()
 
 	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 
 	// Start HTTP server.
 	srv.Listen(ctx, cfg.Addr(), &wg, errc)
