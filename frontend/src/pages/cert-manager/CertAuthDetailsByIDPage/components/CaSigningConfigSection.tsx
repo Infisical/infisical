@@ -90,7 +90,11 @@ type EditFormData = z.infer<typeof editSchema>;
 const adcsEditSchema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
   template: z.string().min(1, "Certificate template is required"),
-  validityPeriod: z.string().optional().or(z.literal(""))
+  validityPeriod: z
+    .string()
+    .regex(/^\d+d$/, "Must be in days (e.g. 365d)")
+    .optional()
+    .or(z.literal(""))
 });
 
 type AdcsEditFormData = z.infer<typeof adcsEditSchema>;
@@ -372,7 +376,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                     label="Validity Period"
                     errorText={error?.message}
                     isError={Boolean(error)}
-                    helperText="Optional TTL (e.g. 365d, 1y)"
+                    helperText="Optional validity in days (e.g. 365d)"
                   >
                     <Input {...field} placeholder="365d" />
                   </FormControl>
