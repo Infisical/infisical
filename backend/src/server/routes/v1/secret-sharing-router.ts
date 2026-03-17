@@ -166,7 +166,6 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${req.params.id}`,
         organizationId: sharedSecret.orgId ?? undefined,
         properties: {
-          organizationId: sharedSecret.orgId ?? undefined,
           sharedSecretId: req.params.id,
           accessType: sharedSecret.accessType as SecretSharingAccessType
         }
@@ -341,7 +340,6 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          organizationId: req.permission.orgId,
           accessType: req.body.accessType,
           expiresAt: sharedSecret.expiresAt.toISOString(),
           hasPassword: !!req.body.password
