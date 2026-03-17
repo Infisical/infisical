@@ -692,6 +692,11 @@ import {
   TPamDiscoverySourcesUpdate
 } from "@app/db/schemas/pam-discovery-sources";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
+import {
+  TPamResourceFavorites,
+  TPamResourceFavoritesInsert,
+  TPamResourceFavoritesUpdate
+} from "@app/db/schemas/pam-resource-favorites";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
@@ -1545,6 +1550,11 @@ declare module "knex/types/tables" {
     >;
     [TableName.PamFolder]: KnexOriginal.CompositeTableType<TPamFolders, TPamFoldersInsert, TPamFoldersUpdate>;
     [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;
+    [TableName.PamResourceFavorite]: KnexOriginal.CompositeTableType<
+      TPamResourceFavorites,
+      TPamResourceFavoritesInsert,
+      TPamResourceFavoritesUpdate
+    >;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
     [TableName.PamDiscoverySource]: KnexOriginal.CompositeTableType<
