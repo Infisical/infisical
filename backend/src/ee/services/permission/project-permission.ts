@@ -362,6 +362,10 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
   },
   [ProjectPermissionSub.Identity]: {
+    [ProjectPermissionIdentityActions.Read]: ["identityId"],
+    [ProjectPermissionIdentityActions.Create]: ["identityId"],
+    [ProjectPermissionIdentityActions.Edit]: ["identityId"],
+    [ProjectPermissionIdentityActions.Delete]: ["identityId"],
     [ProjectPermissionIdentityActions.GrantPrivileges]: [
       "identityId",
       "assignableRole",
@@ -373,7 +377,12 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
       "identityId",
       "assignableSubject",
       "assignableAction"
-    ]
+    ],
+    [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
+    [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
   },
   [ProjectPermissionSub.Groups]: {
     [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "assignableRole"],
