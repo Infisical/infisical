@@ -193,10 +193,16 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         })
         .where({ isGhost: false });
 
-      return members.map(({ userId, username, email, ...data }) => ({
-        ...data,
-        user: { id: userId, username, email }
-      }));
+      // Post-query filter: only keep members whose username or email exactly matches
+      // a requested identifier. The OR-based query can over-match if a user's email
+      // coincidentally equals another user's username in the same project.
+      const requestedSet = new Set(usernames);
+      return members
+        .filter(({ username: uname, email: uemail }) => requestedSet.has(uname) || (uemail && requestedSet.has(uemail)))
+        .map(({ userId, username, email, ...data }) => ({
+          ...data,
+          user: { id: userId, username, email }
+        }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find members by email" });
     }
