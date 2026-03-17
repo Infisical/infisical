@@ -4,7 +4,7 @@ import handlebars from "handlebars";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretMap, TSyncSecretsResult } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsParameterStoreSyncWithCredentials } from "./aws-parameter-store-sync-types";
 
