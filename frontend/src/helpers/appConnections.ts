@@ -56,6 +56,7 @@ import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-c
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
+import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -154,7 +155,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
   [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" },
   [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
-  [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" }
+  [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
+  [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -255,6 +257,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "SSH Key", icon: faKey };
     case SmbConnectionMethod.Credentials:
       return { name: "Credentials", icon: faLock };
+    case ExternalInfisicalConnectionMethod.MachineIdentity:
+      return { name: "Machine Identity", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
