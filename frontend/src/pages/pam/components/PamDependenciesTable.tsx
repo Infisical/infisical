@@ -248,8 +248,8 @@ export const PamDependenciesTable = ({
                     <CircleHelpIcon className="size-3.5 text-muted" />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs">
-                    When enabled, secret rotation will automatically sync credentials to this
-                    dependency after rotating the account password
+                    When enabled, this dependency&apos;s credentials will be automatically updated
+                    to match whenever the account password is rotated
                   </TooltipContent>
                 </Tooltip>
               </div>

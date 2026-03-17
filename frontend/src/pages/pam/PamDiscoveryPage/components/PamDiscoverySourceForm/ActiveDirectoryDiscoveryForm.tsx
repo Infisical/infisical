@@ -267,9 +267,10 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
               <TriangleAlertIcon />
               <UnstableAlertTitle>Warning</UnstableAlertTitle>
               <UnstableAlertDescription>
-                Windows Services, Scheduled Tasks, and IIS App Pools will be automatically synced
-                during account credential rotation by default. To prevent a dependency from being
-                synced, you must manually disable it on the account&apos;s dependencies tab
+                When an account password is rotated, discovered Windows Services, Scheduled Tasks,
+                and IIS App Pools that run under that account will have their credentials
+                automatically updated to match. You can disable this per-dependency on the
+                account&apos;s dependencies tab.
               </UnstableAlertDescription>
             </UnstableAlert>
           )}
