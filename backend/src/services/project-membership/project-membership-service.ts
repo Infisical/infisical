@@ -278,9 +278,7 @@ export const projectMembershipServiceFactory = ({
     // cases where a user may have multiple membership records (duplicates).
     // Include both username and email in the lookup set since callers may pass either.
     const uniqueUsernames = new Set(usernamesAndEmails);
-    const foundUsernames = new Set(
-      projectMembers.flatMap(({ user }) => [user.username, user.email].filter(Boolean))
-    );
+    const foundUsernames = new Set(projectMembers.flatMap(({ user }) => [user.username, user.email].filter(Boolean)));
     const missingUsernames = [...uniqueUsernames].filter((u) => !foundUsernames.has(u));
 
     if (missingUsernames.length > 0) {
