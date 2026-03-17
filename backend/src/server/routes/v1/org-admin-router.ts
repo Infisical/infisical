@@ -16,6 +16,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
       operationId: "listOrganizationProjects",
       querystring: z.object({
         search: z.string().optional(),
@@ -53,6 +54,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      hide: false,
       operationId: "grantOrganizationAdminProjectAccess",
       params: z.object({
         projectId: z.string()
