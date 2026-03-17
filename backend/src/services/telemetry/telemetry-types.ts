@@ -407,7 +407,7 @@ export type TSecretImportCreatedEvent = {
 export type TSecretSharedEvent = {
   event: PostHogEventTypes.SecretShared;
   properties: {
-    organizationId: string;
+    organizationId?: string;
     accessType: SecretSharingAccessType;
     expiresAt: string;
     hasPassword: boolean;

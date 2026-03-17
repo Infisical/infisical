@@ -230,6 +230,17 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         ...req.body,
         accessType: SecretSharingAccessType.Anyone
       });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretShared,
+        distinctId: `anonymous-${sharedSecret.id}`,
+        properties: {
+          accessType: SecretSharingAccessType.Anyone,
+          expiresAt: sharedSecret.expiresAt.toISOString(),
+          hasPassword: !!req.body.password
+        }
+      });
+
       return { id: sharedSecret.id };
     }
   });
