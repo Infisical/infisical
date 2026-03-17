@@ -519,6 +519,22 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      if (req.body.secretReminderRepeatDays) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretReminderCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secretId: secret.id,
+            reminderRepeatDays: req.body.secretReminderRepeatDays,
+            hasNote: !!req.body.secretReminderNote
+          }
+        });
+      }
+
       return { secret };
     }
   });
@@ -668,6 +684,23 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           actorType: req.permission.type
         }
       });
+
+      if (req.body.secretReminderRepeatDays) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretReminderCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secretId: secret.id,
+            reminderRepeatDays: req.body.secretReminderRepeatDays,
+            hasNote: !!req.body.secretReminderNote
+          }
+        });
+      }
+
       return { secret };
     }
   });

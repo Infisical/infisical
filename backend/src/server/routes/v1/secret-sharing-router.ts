@@ -12,9 +12,11 @@ import {
   readLimit,
   writeLimit
 } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
 
@@ -155,6 +157,17 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
               name: sharedSecret.name || undefined,
               accessType: sharedSecret.accessType
             }
+          }
+        });
+
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SharedSecretViewed,
+          distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${req.params.id}`,
+          organizationId: sharedSecret.orgId,
+          properties: {
+            organizationId: sharedSecret.orgId,
+            sharedSecretId: req.params.id,
+            accessType: sharedSecret.accessType
           }
         });
       }
@@ -309,6 +322,18 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             id: sharedSecret.id,
             usingPassword: !!req.body.password
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretShared,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          organizationId: req.permission.orgId,
+          accessType: req.body.accessType,
+          expiresAt: sharedSecret.expiresAt.toISOString(),
+          hasPassword: !!req.body.password
         }
       });
 
