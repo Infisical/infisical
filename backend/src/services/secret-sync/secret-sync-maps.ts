@@ -284,8 +284,13 @@ export const SECRET_SYNC_RETRY_CONFIG_MAP: Record<SecretSync, TSecretSyncRetryCo
   [SecretSync.OctopusDeploy]: DEFAULT_RETRY_CONFIG,
   [SecretSync.CircleCI]: DEFAULT_RETRY_CONFIG,
   [SecretSync.AzureEntraIdScim]: DEFAULT_RETRY_CONFIG,
-  [SecretSync.ExternalInfisical]: {
-    attempts: 8,
-    backoff: { type: "exponential", delay: 5000 }
-  }
+  [SecretSync.ExternalInfisical]: DEFAULT_RETRY_CONFIG
 };
+
+/**
+ * Destinations that require a daily retry when their last sync has failed.
+ * These providers may be unavailable due to network partitions or temporary
+ * outages that outlast the normal BullMQ retry window, so the resource-cleanup
+ * queue re-enqueues them once per day until they succeed.
+ */
+export const SECRET_SYNC_DAILY_RETRY_DESTINATIONS = new Set<SecretSync>([SecretSync.ExternalInfisical]);
