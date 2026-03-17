@@ -89,18 +89,10 @@ export const pamResourceDALFactory = (db: TDbClient) => {
 
       void query.select(selectAllTableCols(TableName.PamResource));
 
-      if (userId) {
-        void query.select(
-          db.raw(
-            `CASE WHEN "${TableName.PamResourceFavorite}"."id" IS NOT NULL THEN true ELSE false END as "isFavorite"`
-          )
-        );
-      }
-
       const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
 
       if (userId) {
-        void query.orderByRaw(`"isFavorite" DESC`);
+        void query.orderByRaw(`CASE WHEN "${TableName.PamResourceFavorite}"."id" IS NOT NULL THEN 0 ELSE 1 END`);
       }
       void query.orderByRaw(`${TableName.PamResource}.?? COLLATE "en-x-icu" ${direction}`, [orderBy]);
 
@@ -111,7 +103,23 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       const [resources, countResult] = await Promise.all([query, countQuery]);
       const totalCount = Number(countResult?.count || 0);
 
-      return { resources, totalCount };
+      // Resolve favorites in JS so the return type includes `isFavorite` without type assertions
+      let favoriteResourceIds = new Set<string>();
+      if (userId && resources.length > 0) {
+        const favorites = await dbInstance(TableName.PamResourceFavorite)
+          .select("pamResourceId")
+          .where("userId", userId)
+          .whereIn(
+            "pamResourceId",
+            resources.map((r) => r.id)
+          );
+        favoriteResourceIds = new Set(favorites.map((f) => f.pamResourceId));
+      }
+
+      return {
+        resources: resources.map((r) => ({ ...r, isFavorite: favoriteResourceIds.has(r.id) })),
+        totalCount
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PAM resources" });
     }

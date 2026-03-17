@@ -462,8 +462,6 @@ export const pamResourceServiceFactory = ({
     }
   };
 
-  const getIsFavorite = (resource: object): boolean => Boolean((resource as Record<string, unknown>).isFavorite);
-
   const list = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId, ...params }: TListResourcesDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -496,7 +494,7 @@ export const pamResourceServiceFactory = ({
             resources.map(async (resource) => ({
               ...(await decryptResource(resource, projectId, kmsService)),
               metadata: metadataByResourceId[resource.id] || [],
-              isFavorite: getIsFavorite(resource)
+              isFavorite: resource.isFavorite
             }))
           ),
           totalCount
@@ -545,7 +543,7 @@ export const pamResourceServiceFactory = ({
             paginatedResources.map(async (resource) => ({
               ...(await decryptResource(resource, projectId, kmsService)),
               metadata: metadataByResourceId[resource.id] || [],
-              isFavorite: getIsFavorite(resource)
+              isFavorite: resource.isFavorite
             }))
           ),
           totalCount
@@ -606,7 +604,7 @@ export const pamResourceServiceFactory = ({
         paginatedResources.map(async (resource) => ({
           ...(await decryptResource(resource, projectId, kmsService)),
           metadata: metadataByResourceId[resource.id] || [],
-          isFavorite: getIsFavorite(resource)
+          isFavorite: resource.isFavorite
         }))
       ),
       totalCount
