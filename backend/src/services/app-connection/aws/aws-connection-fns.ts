@@ -1,4 +1,6 @@
-import { AssumeRoleCommand, GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import type { AWSError, Response } from "aws-sdk";
+import STS from "aws-sdk/clients/sts";
 import { AxiosError } from "axios";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -85,16 +87,15 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 };
 
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
+  let resp: STS.GetCallerIdentityResponse & {
+    $response: Response<STS.GetCallerIdentityResponse, AWSError>;
+  };
+
   try {
     const awsConfig = await getAwsConnectionConfig(appConnection);
-    const stsClient = new STSClient({
-      region: awsConfig.region,
-      credentials: awsConfig.credentials,
-      useFipsEndpoint: crypto.isFipsModeEnabled(),
-      sha256: CustomAWSHasher
-    });
+    const sts = new STS(awsConfig);
 
-    await stsClient.send(new GetCallerIdentityCommand({}));
+    resp = await sts.getCallerIdentity().promise();
   } catch (error: unknown) {
     logger.error(error, "Error validating AWS connection credentials");
 
@@ -111,6 +112,14 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
       message: `Unable to validate connection: ${message}`
     });
   }
+
+  if (resp?.$response.httpResponse.statusCode !== 200)
+    throw new InternalServerError({
+      message: `Unable to validate credentials: ${
+        resp.$response.error?.message ??
+        `AWS responded with a status code of ${resp.$response.httpResponse.statusCode}. Verify credentials and try again.`
+      }`
+    });
 
   return appConnection.credentials;
 };

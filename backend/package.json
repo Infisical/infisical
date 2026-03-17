@@ -127,16 +127,14 @@
     "tsconfig-paths": "^4.2.0"
   },
   "dependencies": {
-    "@aws-sdk/client-acm": "^3.609.0",
     "@aws-sdk/client-acm-pca": "^3.992.0",
-    "@aws-sdk/client-elastic-load-balancing-v2": "^3.609.0",
     "@aws-sdk/client-elasticache": "^3.637.0",
     "@aws-sdk/client-iam": "^3.525.0",
     "@aws-sdk/client-kms": "^3.609.0",
     "@aws-sdk/client-route-53": "^3.810.0",
     "@aws-sdk/client-secrets-manager": "^3.504.0",
-    "@aws-sdk/client-ssm": "^3.609.0",
     "@aws-sdk/client-sts": "^3.600.0",
+    "aws-sdk": "^2.1553.0",
     "@casl/ability": "^6.5.0",
     "@clickhouse/client": "^1.17.0",
     "@elastic/elasticsearch": "^9.1.1",

@@ -1,18 +1,9 @@
 /* eslint-disable no-await-in-loop */
-import { ACMClient, DeleteCertificateCommand } from "@aws-sdk/client-acm";
-import {
-  AddListenerCertificatesCommand,
-  Certificate,
-  DescribeListenerCertificatesCommand,
-  ElasticLoadBalancingV2Client,
-  ModifyListenerCommand,
-  RemoveListenerCertificatesCommand
-} from "@aws-sdk/client-elastic-load-balancing-v2";
+import ACM from "aws-sdk/clients/acm";
+import ELBv2 from "aws-sdk/clients/elbv2";
 import { z } from "zod";
 
 import { TCertificateSyncs } from "@app/db/schemas";
-import { CustomAWSHasher } from "@app/lib/aws/hashing";
-import { crypto } from "@app/lib/crypto";
 import { delay } from "@app/lib/delay";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -79,7 +70,7 @@ const getAwsElbClient = async (
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-): Promise<ElasticLoadBalancingV2Client> => {
+): Promise<ELBv2> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
   if (!appConnection) {
@@ -123,14 +114,9 @@ const getAwsElbClient = async (
       });
   }
 
-  const config = await getAwsConnectionConfig(awsConnectionConfig, region);
+  const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
 
-  return new ElasticLoadBalancingV2Client({
-    region: config.region,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    sha256: CustomAWSHasher,
-    credentials: config.credentials
-  });
+  return new ELBv2(awsConfig);
 };
 
 const getAwsAcmClient = async (
@@ -138,7 +124,7 @@ const getAwsAcmClient = async (
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-): Promise<ACMClient> => {
+): Promise<ACM> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
   if (!appConnection) {
@@ -182,14 +168,9 @@ const getAwsAcmClient = async (
       });
   }
 
-  const config = await getAwsConnectionConfig(awsConnectionConfig, region);
+  const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
 
-  return new ACMClient({
-    region: config.region,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    sha256: CustomAWSHasher,
-    credentials: config.credentials
-  });
+  return new ACM(awsConfig);
 };
 
 export const awsElasticLoadBalancerPkiSyncFactory = ({
@@ -206,31 +187,28 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
   });
 
   const attachCertificateToListener = async (
-    elbClient: ElasticLoadBalancingV2Client,
+    elbClient: ELBv2,
     listenerArn: string,
     certificateArn: string,
     setAsDefault: boolean,
     syncId: string
   ): Promise<void> => {
     const listenerCertsResponse = await withRateLimitRetry(
-      () => elbClient.send(new DescribeListenerCertificatesCommand({ ListenerArn: listenerArn })),
+      () => elbClient.describeListenerCertificates({ ListenerArn: listenerArn }).promise(),
       { operation: "describe-listener-certificates", syncId }
     );
 
     const existingCerts = listenerCertsResponse.Certificates || [];
-    const isAlreadyAttached = existingCerts.some((cert: Certificate) => cert.CertificateArn === certificateArn);
-    const currentDefault = existingCerts.find((cert: Certificate) => cert.IsDefault);
+    const isAlreadyAttached = existingCerts.some((cert) => cert.CertificateArn === certificateArn);
+    const currentDefault = existingCerts.find((cert) => cert.IsDefault);
     const isAlreadyDefault = currentDefault?.CertificateArn === certificateArn;
 
     if (!isAlreadyAttached) {
       await withRateLimitRetry(
         () =>
-          elbClient.send(
-            new AddListenerCertificatesCommand({
-              ListenerArn: listenerArn,
-              Certificates: [{ CertificateArn: certificateArn }]
-            })
-          ),
+          elbClient
+            .addListenerCertificates({ ListenerArn: listenerArn, Certificates: [{ CertificateArn: certificateArn }] })
+            .promise(),
         { operation: "add-listener-certificates", syncId }
       );
     }
@@ -238,31 +216,25 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
     if (setAsDefault && !isAlreadyDefault) {
       await withRateLimitRetry(
         () =>
-          elbClient.send(
-            new ModifyListenerCommand({
-              ListenerArn: listenerArn,
-              Certificates: [{ CertificateArn: certificateArn }]
-            })
-          ),
+          elbClient
+            .modifyListener({ ListenerArn: listenerArn, Certificates: [{ CertificateArn: certificateArn }] })
+            .promise(),
         { operation: "modify-listener", syncId }
       );
     }
   };
 
   const removeCertificateFromListener = async (
-    elbClient: ElasticLoadBalancingV2Client,
+    elbClient: ELBv2,
     listenerArn: string,
     certificateArn: string,
     syncId: string
   ): Promise<void> => {
     await withRateLimitRetry(
       () =>
-        elbClient.send(
-          new RemoveListenerCertificatesCommand({
-            ListenerArn: listenerArn,
-            Certificates: [{ CertificateArn: certificateArn }]
-          })
-        ),
+        elbClient
+          .removeListenerCertificates({ ListenerArn: listenerArn, Certificates: [{ CertificateArn: certificateArn }] })
+          .promise(),
       { operation: "remove-listener-certificates", syncId }
     );
   };
@@ -382,10 +354,10 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
         for (const listener of listeners) {
           try {
             const response = await withRateLimitRetry(
-              () => elbClient.send(new DescribeListenerCertificatesCommand({ ListenerArn: listener.listenerArn })),
+              () => elbClient.describeListenerCertificates({ ListenerArn: listener.listenerArn }).promise(),
               { operation: "describe-listener-certificates-for-cleanup", syncId: pkiSync.id }
             );
-            const defaultCert = response.Certificates?.find((c: Certificate) => c.IsDefault);
+            const defaultCert = response.Certificates?.find((c) => c.IsDefault);
             if (defaultCert?.CertificateArn) {
               defaultCertsByListener.set(listener.listenerArn, defaultCert.CertificateArn);
             }
@@ -425,7 +397,7 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
             // Remove from ACM
             try {
               await withRateLimitRetry(
-                () => acmClient.send(new DeleteCertificateCommand({ CertificateArn: certificateArn })),
+                () => acmClient.deleteCertificate({ CertificateArn: certificateArn }).promise(),
                 {
                   operation: "delete-orphaned-certificate",
                   syncId: pkiSync.id
@@ -520,13 +492,10 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
 
       // Remove from ACM
       try {
-        await withRateLimitRetry(
-          () => acmClient.send(new DeleteCertificateCommand({ CertificateArn: certificateArn })),
-          {
-            operation: "delete-certificate",
-            syncId: pkiSync.id
-          }
-        );
+        await withRateLimitRetry(() => acmClient.deleteCertificate({ CertificateArn: certificateArn }).promise(), {
+          operation: "delete-certificate",
+          syncId: pkiSync.id
+        });
         await certificateSyncDAL.removeCertificates(pkiSync.id, [certificateId]);
         removedCount += 1;
       } catch (error) {
