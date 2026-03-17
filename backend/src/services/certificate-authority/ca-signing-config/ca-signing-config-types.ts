@@ -15,7 +15,10 @@ export const AzureAdCsDestinationConfigSchema = z.object({
     .string()
     .min(1)
     .regex(/^[^\r\n]+$/, "Template name must not contain newline characters"),
-  validityPeriod: z.string().optional()
+  validityPeriod: z
+    .string()
+    .regex(/^\d+d$/, "Validity period must be in days (e.g. 365d)")
+    .optional()
 });
 
 export type TAzureAdCsDestinationConfig = z.infer<typeof AzureAdCsDestinationConfigSchema>;

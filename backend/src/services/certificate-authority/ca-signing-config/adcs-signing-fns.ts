@@ -93,14 +93,13 @@ export const submitCsrToAdcs = async (params: {
   const certAttribParts: string[] = [`CertificateTemplate:${sanitizedTemplate}`];
 
   if (validityPeriod) {
-    try {
-      const ttlMs = ms(validityPeriod);
-      const expirationDate = new Date(Date.now() + ttlMs);
-      const rfc2616Date = expirationDate.toUTCString();
-      certAttribParts.push(`ExpirationDate:${rfc2616Date}`);
-    } catch {
+    const ttlMs = ms(validityPeriod);
+    if (!ttlMs || ttlMs <= 0) {
       throw new BadRequestError({ message: "Invalid validity period format" });
     }
+    const expirationDate = new Date(Date.now() + ttlMs);
+    const rfc2616Date = expirationDate.toUTCString();
+    certAttribParts.push(`ExpirationDate:${rfc2616Date}`);
   }
 
   const certAttrib = `${certAttribParts.join("\r\n")}\r\n`;
