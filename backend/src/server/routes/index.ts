@@ -2117,7 +2117,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    queueJobsDAL
+    queueJobsDAL,
+    secretSyncQueue
   });
 
   const healthAlert = healthAlertServiceFactory({

@@ -17,6 +17,7 @@ import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretSyncQueueFactory } from "../secret-sync/secret-sync-queue";
 import { TServiceTokenServiceFactory } from "../service-token/service-token-service";
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
@@ -38,6 +39,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
   queueJobsDAL: Pick<TQueueJobsDALFactory, "pruneQueueJobs">;
+  secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueDailyRetryForFailedSyncs">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -60,7 +62,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   approvalRequestDAL,
   approvalRequestGrantsDAL,
   certificateRequestDAL,
-  queueJobsDAL
+  queueJobsDAL,
+  secretSyncQueue
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -90,6 +93,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
         await queueJobsDAL.pruneQueueJobs();
+        await secretSyncQueue.queueDailyRetryForFailedSyncs();
         const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
         if (expiredApprovalRequestIds.length > 0) {
           await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
