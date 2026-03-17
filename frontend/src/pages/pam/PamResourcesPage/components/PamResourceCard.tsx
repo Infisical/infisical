@@ -1,7 +1,7 @@
 import { faCheck, faCopy, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { EllipsisIcon, Star } from "lucide-react";
+import { EllipsisIcon, StarIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -94,7 +94,7 @@ export const PamResourceCard = ({
                   onToggleFavorite(resource);
                 }}
               >
-                <Star
+                <StarIcon
                   className={resource.isFavorite ? "text-yellow-600" : "text-mineshaft-400"}
                   fill={resource.isFavorite ? "currentColor" : "none"}
                   size={14}
