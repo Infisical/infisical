@@ -12,6 +12,7 @@ import {
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
 import { EnforcementLevel } from "@app/lib/types";
+import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
@@ -439,7 +440,7 @@ export type TWebhookCreatedEvent = {
     projectId: string;
     environment: string;
     webhookId: string;
-    type: string;
+    type: WebhookType;
   };
 };
 

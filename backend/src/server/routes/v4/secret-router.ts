@@ -519,7 +519,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      if (req.body.secretReminderRepeatDays) {
+      if (req.body.secretReminderRepeatDays !== undefined && req.body.secretReminderRepeatDays !== null) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretReminderCreated,
           distinctId: getTelemetryDistinctId(req),
