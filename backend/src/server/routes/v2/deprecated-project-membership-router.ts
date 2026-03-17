@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -52,17 +53,29 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     handler: async (req) => {
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
 
-      await server.services.membershipUser.createMembership({
-        permission: req.permission,
-        scopeData: {
-          scope: AccessScope.Organization,
-          orgId: req.permission.orgId
-        },
-        data: {
-          roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
-          usernames: usernamesAndEmails
+      try {
+        await server.services.membershipUser.createMembership({
+          permission: req.permission,
+          scopeData: {
+            scope: AccessScope.Organization,
+            orgId: req.permission.orgId
+          },
+          data: {
+            roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
+            usernames: usernamesAndEmails
+          }
+        });
+      } catch (error) {
+        // When org-level auth is enforced (e.g. SSO/SAML), creating new org memberships
+        // is blocked. If the users are already org members, we can safely proceed to add
+        // them to the project — the project membership guard will verify org membership.
+        // If they are NOT org members, the project membership creation will fail with
+        // a clear "Users not part of organization" error.
+        // Non-auth-enforcement errors are always re-thrown.
+        if (!(error instanceof ForbiddenRequestError)) {
+          throw error;
         }
-      });
+      }
 
       const { memberships } = await server.services.membershipUser.createMembership({
         permission: req.permission,
