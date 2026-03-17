@@ -100,6 +100,16 @@ export const pkiDiscoveryQueueFactory = ({
       }
     });
 
+    // Remove legacy repeatable job
+    void queueService
+      .stopRepeatableJob(
+        QueueName.PkiDiscoveryScan,
+        QueueJobs.PkiDiscoveryScheduledScan,
+        { pattern: "0 2 * * *", utc: true },
+        "pki-discovery-scheduled-scan-cron"
+      )
+      .catch(() => {});
+
     void queueService
       .upsertJobScheduler(
         QueueName.PkiDiscoveryScan,

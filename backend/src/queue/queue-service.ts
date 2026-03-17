@@ -191,7 +191,7 @@ export type TQueueOptions = {
     type: "exponential" | "fixed";
     delay: number;
   };
-  /** @deprecated Use upsertJobScheduler instead. */
+  // @deprecated Use upsertJobScheduler instead.
   repeat?: {
     pattern?: string;
     every?: number;
@@ -600,20 +600,20 @@ export type TQueueServiceFactory = {
     opts: TQueueOptions
   ) => Promise<void>;
   shutdown: () => Promise<void>;
-  /** @deprecated Use removeJobScheduler instead. */
+  // @deprecated Use removeJobScheduler instead.
   stopRepeatableJob: <T extends QueueName>(
     name: T,
     job: TQueueJobTypes[T]["name"],
     repeatOpt: RepeatOptions,
     jobId?: string
   ) => Promise<boolean | undefined>;
-  /** @deprecated Use stopJobById for delayed jobs, or removeJobScheduler for schedulers. */
+  // @deprecated Use stopJobById for delayed jobs. Use removeJobScheduler for schedulers.
   stopRepeatableJobByJobId: <T extends QueueName>(name: T, jobId: string) => Promise<boolean>;
-  /** @deprecated Use removeJobScheduler instead. */
+  // @deprecated Use removeJobScheduler instead.
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
-  /** @deprecated Use getJobSchedulers instead. */
+  // @deprecated Use getJobSchedulers instead.
   getRepeatableJobs: (
     name: QueueName,
     startOffset?: number,
@@ -942,6 +942,11 @@ export const queueServiceFactory = (
         removeOnComplete: true,
         removeOnFail: true
       });
+
+      // Remove legacy repeatable job before switching to job scheduler
+      await queueContainer[QueueName.QueueInternalReconciliation]
+        ?.removeRepeatableByKey("queue-reconciliation-cron")
+        .catch(() => {});
 
       // Schedule reconciliation job (runs every 2 minutes)
       await queueContainer[QueueName.QueueInternalReconciliation]?.upsertJobScheduler(

@@ -32,6 +32,14 @@ export const pamAccountRotationServiceFactory = ({
       }
     });
 
+    // Remove legacy repeatable job
+    await queueService.stopRepeatableJob(
+      QueueName.PamAccountRotation,
+      QueueJobs.PamAccountRotation,
+      { pattern: "0 * * * *", utc: true },
+      QueueName.PamAccountRotation
+    );
+
     await queueService.upsertJobScheduler(
       QueueName.PamAccountRotation,
       QueueJobs.PamAccountRotation,

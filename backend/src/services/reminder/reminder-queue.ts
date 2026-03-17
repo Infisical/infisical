@@ -149,6 +149,14 @@ export const dailyReminderQueueServiceFactory = ({
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
   const startDailyRemindersJob = async () => {
+    // Remove legacy repeatable job
+    await queueService.stopRepeatableJob(
+      QueueName.DailyReminders,
+      QueueJobs.DailyReminders,
+      { pattern: "0 0 * * *", utc: true },
+      QueueName.DailyReminders
+    );
+
     await queueService.upsertJobScheduler(
       QueueName.DailyReminders,
       QueueJobs.DailyReminders,

@@ -112,6 +112,14 @@ export const certificateAuthorityQueueFactory = ({
     // Daily at midnight UTC; only CRLs expiring before next run are rebuilt
     const cronPattern = appCfg.NODE_ENV === "development" ? "*/5 * * * *" : "0 0 * * *";
 
+    // Remove legacy repeatable job
+    await queueService.stopRepeatableJob(
+      QueueName.CaCrlRotation,
+      QueueJobs.CaCrlRotation,
+      { pattern: cronPattern, utc: true },
+      QueueJobs.CaCrlRotation
+    );
+
     await queueService.upsertJobScheduler(
       QueueName.CaCrlRotation,
       QueueJobs.CaCrlRotation,

@@ -69,6 +69,14 @@ export const pkiSyncCleanupQueueServiceFactory = ({
       }
     });
 
+    // Remove legacy repeatable job
+    await queueService.stopRepeatableJob(
+      QueueName.PkiSyncCleanup,
+      QueueJobs.PkiSyncCleanup,
+      { pattern: "0 0 * * *", utc: true },
+      QueueName.PkiSyncCleanup
+    );
+
     await queueService.upsertJobScheduler(
       QueueName.PkiSyncCleanup,
       QueueJobs.PkiSyncCleanup,

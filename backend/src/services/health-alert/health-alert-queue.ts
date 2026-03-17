@@ -36,6 +36,14 @@ export const healthAlertServiceFactory = ({
       }
     });
 
+    // Remove legacy repeatable job
+    await queueService.stopRepeatableJob(
+      QueueName.HealthAlert,
+      QueueJobs.HealthAlert,
+      { pattern: "*/5 * * * *", utc: true },
+      QueueName.HealthAlert
+    );
+
     await queueService.upsertJobScheduler(
       QueueName.HealthAlert,
       QueueJobs.HealthAlert,

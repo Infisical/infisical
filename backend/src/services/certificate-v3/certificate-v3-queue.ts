@@ -132,6 +132,14 @@ export const certificateV3QueueServiceFactory = ({
       }
     });
 
+    // Remove legacy repeatable job
+    await queueService.stopRepeatableJob(
+      QueueName.CertificateV3AutoRenewal,
+      QueueJobs.CertificateV3DailyAutoRenewal,
+      { pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE, utc: true },
+      QueueName.CertificateV3AutoRenewal
+    );
+
     await queueService.upsertJobScheduler(
       QueueName.CertificateV3AutoRenewal,
       QueueJobs.CertificateV3DailyAutoRenewal,
