@@ -11,6 +11,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -271,7 +272,7 @@ export const registerSecretRotationEndpoints = <
             secretPath: req.body.secretPath
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SecretRotationV2Created telemetry event"));
 
       return { secretRotation };
     }
@@ -389,7 +390,7 @@ export const registerSecretRotationEndpoints = <
             secretPath: secretRotation.folder.path
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SecretRotationV2Deleted telemetry event"));
 
       return { secretRotation };
     }
@@ -495,7 +496,7 @@ export const registerSecretRotationEndpoints = <
             secretPath: secretRotation.folder.path
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SecretRotationV2Executed telemetry event"));
 
       return { secretRotation };
     }

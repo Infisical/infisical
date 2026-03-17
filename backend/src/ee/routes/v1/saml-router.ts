@@ -393,7 +393,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             action: "create"
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
 
       return samlCfg;
     }
@@ -458,7 +458,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             action: "update"
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
 
       return samlCfg;
     }

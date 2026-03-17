@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { GatewaysSchema } from "@app/db/schemas";
 import { isValidIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -92,7 +93,7 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
             identityId: req.permission.id
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send GatewayCertExchanged telemetry event"));
 
       return gatewayCertificates;
     }

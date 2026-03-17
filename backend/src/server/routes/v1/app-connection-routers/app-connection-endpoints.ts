@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -334,7 +335,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
             method: method as string
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send AppConnectionCreated telemetry event"));
 
       return { appConnection };
     }
@@ -456,7 +457,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
             app
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send AppConnectionDeleted telemetry event"));
 
       return { appConnection };
     }

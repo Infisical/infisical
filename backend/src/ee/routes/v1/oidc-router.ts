@@ -15,6 +15,7 @@ import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -290,7 +291,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             action: "update"
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
 
       return oidc;
     }
@@ -427,7 +428,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             action: "create"
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
 
       return oidc;
     }

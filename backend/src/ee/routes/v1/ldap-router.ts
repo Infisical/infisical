@@ -234,7 +234,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             action: "create"
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
 
       return ldap;
     }
@@ -295,7 +295,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             action: "update"
           }
         })
-        .catch(() => {});
+        .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
 
       return ldap;
     }
