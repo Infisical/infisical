@@ -51,7 +51,6 @@ import {
 
 const LDAP_TIMEOUT = 30 * 1000;
 const LDAP_PAGE_SIZE = 500;
-const WINRM_PORT = 5985;
 const SERVICE_ACCOUNT_PATTERNS = [new RE2(/^svc[_-]/i), new RE2(/[_-]service$/i), new RE2(/[_-]svc$/i)];
 const BUILTIN_SERVICE_ACCOUNTS = new Set([
   "localsystem",
@@ -406,14 +405,17 @@ const executeLdapEnumeration = async (
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<{ computers: TLdapComputer[]; users: TLdapUser[] }> => {
+  const ldapProtocol = configuration.useLdaps ? "ldaps" : "ldap";
+
   return executeWithGateway(
-    { dcAddress: configuration.dcAddress, port: configuration.port, gatewayId },
+    { dcAddress: configuration.dcAddress, port: configuration.ldapPort, gatewayId },
     gatewayV2Service,
     async (proxyPort) => {
       const client = ldapjs.createClient({
-        url: `ldap://localhost:${proxyPort}`,
+        url: `${ldapProtocol}://localhost:${proxyPort}`,
         connectTimeout: LDAP_TIMEOUT,
-        timeout: LDAP_TIMEOUT
+        timeout: LDAP_TIMEOUT,
+        ...(configuration.useLdaps && { tlsOptions: { rejectUnauthorized: false } })
       });
 
       try {
@@ -511,7 +513,7 @@ const upsertAdServerResource = async (
     connectionDetails: {
       domain: configuration.domainFQDN,
       dcAddress: configuration.dcAddress,
-      port: configuration.port
+      port: configuration.ldapPort
     } as TActiveDirectoryResourceConnectionDetails,
     kmsService
   });
@@ -667,6 +669,8 @@ const executeWinRmLocalAccountEnumeration = async (
   computer: TLdapComputer,
   domainFQDN: string,
   credentials: TAdDiscoveryCredentials,
+  winrmPort: number,
+  useWinrmHttps: boolean,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmLocalUser[]> => {
@@ -674,13 +678,21 @@ const executeWinRmLocalAccountEnumeration = async (
   const targetAddress = computer.resolvedIp || hostname;
 
   return executeWithGateway(
-    { dcAddress: targetAddress, port: WINRM_PORT, gatewayId },
+    { dcAddress: targetAddress, port: winrmPort, gatewayId },
     gatewayV2Service,
     async (proxyPort) => {
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
       const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
       const script = `Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordLastSet, Description, SID | ConvertTo-Json`;
-      const stdout = await runPowershell(script, "localhost", winrmUsername, credentials.password, proxyPort);
+      const stdout = await runPowershell(
+        script,
+        "localhost",
+        winrmUsername,
+        credentials.password,
+        proxyPort,
+        useWinrmHttps,
+        false
+      );
 
       if (!stdout.trim()) {
         return [];
@@ -696,6 +708,8 @@ const executeWinRmDependencyEnumeration = async (
   computer: TLdapComputer,
   domainFQDN: string,
   credentials: TAdDiscoveryCredentials,
+  winrmPort: number,
+  useWinrmHttps: boolean,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmDependencies> => {
@@ -703,7 +717,7 @@ const executeWinRmDependencyEnumeration = async (
   const targetAddress = computer.resolvedIp || hostname;
 
   return executeWithGateway(
-    { dcAddress: targetAddress, port: WINRM_PORT, gatewayId },
+    { dcAddress: targetAddress, port: winrmPort, gatewayId },
     gatewayV2Service,
     async (proxyPort) => {
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
@@ -713,7 +727,9 @@ const executeWinRmDependencyEnumeration = async (
         "localhost",
         winrmUsername,
         credentials.password,
-        proxyPort
+        proxyPort,
+        useWinrmHttps,
+        false
       );
 
       if (!stdout.trim()) {
@@ -866,15 +882,19 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
 > = (_discoveryType, configuration, credentials, gatewayId, projectId, gatewayV2Service) => {
   const validateConnection = async () => {
     try {
+      const ldapProtocol = configuration.useLdaps ? "ldaps" : "ldap";
       await executeWithGateway(
-        { dcAddress: configuration.dcAddress, port: configuration.port, gatewayId },
+        { dcAddress: configuration.dcAddress, port: configuration.ldapPort, gatewayId },
         gatewayV2Service,
         async (proxyPort) => {
           return new Promise<void>((resolve, reject) => {
             const client = ldapjs.createClient({
-              url: `ldap://localhost:${proxyPort}`,
+              url: `${ldapProtocol}://localhost:${proxyPort}`,
               connectTimeout: LDAP_TIMEOUT,
-              timeout: LDAP_TIMEOUT
+              timeout: LDAP_TIMEOUT,
+              ...(configuration.useLdaps && {
+                tlsOptions: { rejectUnauthorized: false }
+              })
             });
 
             client.on("error", (err: Error) => {
@@ -1087,6 +1107,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               computer,
               configuration.domainFQDN,
               credentials,
+              configuration.winrmPort,
+              configuration.useWinrmHttps,
               gatewayId,
               gatewayV2Service
             );
@@ -1135,6 +1157,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                   computer,
                   configuration.domainFQDN,
                   credentials,
+                  configuration.winrmPort,
+                  configuration.useWinrmHttps,
                   gatewayId,
                   gatewayV2Service
                 );

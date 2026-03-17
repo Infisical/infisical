@@ -176,8 +176,28 @@ const DiscoveryConfigurationSection = ({
           <DetailValue>{(source.discoveryConfiguration?.dcAddress as string) || "-"}</DetailValue>
         </Detail>
         <Detail>
-          <DetailLabel>Port</DetailLabel>
-          <DetailValue>{(source.discoveryConfiguration?.port as number) ?? "-"}</DetailValue>
+          <DetailLabel>LDAP Port</DetailLabel>
+          <DetailValue>
+            {(source.discoveryConfiguration?.ldapPort as number) ||
+              (source.discoveryConfiguration?.port as number) ||
+              "-"}
+            {Boolean(source.discoveryConfiguration?.useLdaps) && (
+              <Badge variant="info" className="ml-2">
+                LDAPS
+              </Badge>
+            )}
+          </DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>WinRM Port</DetailLabel>
+          <DetailValue>
+            {(source.discoveryConfiguration?.winrmPort as number) ?? "-"}
+            {Boolean(source.discoveryConfiguration?.useWinrmHttps) && (
+              <Badge variant="info" className="ml-2">
+                HTTPS
+              </Badge>
+            )}
+          </DetailValue>
         </Detail>
         <Detail>
           <DetailLabel>Dependency Discovery</DetailLabel>

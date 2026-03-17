@@ -21,7 +21,10 @@ const formSchema = genericDiscoveryFieldsSchema.extend({
   discoveryConfiguration: z.object({
     domainFQDN: z.string().trim().min(1, "Domain FQDN is required").max(255),
     dcAddress: z.string().trim().min(1, "DC Address is required").max(255),
-    port: z.coerce.number().int().min(1).max(65535),
+    ldapPort: z.coerce.number().int().min(1).max(65535),
+    useLdaps: z.boolean().default(false),
+    winrmPort: z.coerce.number().int().min(1).max(65535),
+    useWinrmHttps: z.boolean().default(false),
     discoverDependencies: z.boolean().default(false)
   }),
   discoveryCredentials: z.object({
@@ -46,7 +49,13 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
           discoveryConfiguration: {
             domainFQDN: (source.discoveryConfiguration?.domainFQDN as string) || "",
             dcAddress: (source.discoveryConfiguration?.dcAddress as string) || "",
-            port: (source.discoveryConfiguration?.port as number) || 389,
+            ldapPort:
+              (source.discoveryConfiguration?.ldapPort as number) ||
+              (source.discoveryConfiguration?.port as number) ||
+              389,
+            useLdaps: Boolean(source.discoveryConfiguration?.useLdaps),
+            winrmPort: (source.discoveryConfiguration?.winrmPort as number) || 5985,
+            useWinrmHttps: Boolean(source.discoveryConfiguration?.useWinrmHttps),
             discoverDependencies: Boolean(source.discoveryConfiguration?.discoverDependencies)
           },
           discoveryCredentials: {
@@ -60,7 +69,10 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
           discoveryConfiguration: {
             domainFQDN: "",
             dcAddress: "",
-            port: 389,
+            ldapPort: 389,
+            useLdaps: false,
+            winrmPort: 5985,
+            useWinrmHttps: false,
             discoverDependencies: false
           },
           discoveryCredentials: {
@@ -109,37 +121,81 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
               </FormControl>
             )}
           />
-          <div className="flex items-start gap-2">
-            <Controller
-              name="discoveryConfiguration.dcAddress"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="flex-1"
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="DC Address"
-                  tooltipText="The hostname or IP address of the Domain Controller to connect to"
-                >
-                  <Input placeholder="dc01.corp.example.com" {...field} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="discoveryConfiguration.port"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="w-28"
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Port"
-                  tooltipText="The LDAP port on the Domain Controller. Default is 389 for LDAP or 636 for LDAPS"
-                >
-                  <Input type="number" {...field} />
-                </FormControl>
-              )}
-            />
+          <Controller
+            name="discoveryConfiguration.dcAddress"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="DC Address"
+                tooltipText="The hostname or IP address of the Domain Controller to connect to"
+              >
+                <Input placeholder="dc01.corp.example.com" {...field} />
+              </FormControl>
+            )}
+          />
+          <div className="grid grid-cols-2">
+            <div className="flex items-start gap-2">
+              <Controller
+                name="discoveryConfiguration.ldapPort"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    className="w-28"
+                    errorText={error?.message}
+                    isError={Boolean(error?.message)}
+                    label="LDAP Port"
+                    tooltipText="The LDAP port on the Domain Controller. Default is 389 for LDAP or 636 for LDAPS"
+                  >
+                    <Input type="number" {...field} />
+                  </FormControl>
+                )}
+              />
+              <div className="mt-8 flex-1">
+                <Controller
+                  name="discoveryConfiguration.useLdaps"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch id="use-ldaps" isChecked={field.value} onCheckedChange={field.onChange}>
+                      Use LDAPS
+                    </Switch>
+                  )}
+                />
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Controller
+                name="discoveryConfiguration.winrmPort"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    className="w-28"
+                    errorText={error?.message}
+                    isError={Boolean(error?.message)}
+                    label="WinRM Port"
+                    tooltipText="The WinRM port on target machines. Default is 5985 for HTTP or 5986 for HTTPS"
+                  >
+                    <Input type="number" {...field} />
+                  </FormControl>
+                )}
+              />
+              <div className="mt-8 flex-1">
+                <Controller
+                  name="discoveryConfiguration.useWinrmHttps"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="use-winrm-https"
+                      isChecked={field.value}
+                      onCheckedChange={field.onChange}
+                    >
+                      Use HTTPS
+                    </Switch>
+                  )}
+                />
+              </div>
+            </div>
           </div>
         </div>
         <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
