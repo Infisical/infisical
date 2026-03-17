@@ -1,14 +1,17 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { subject } from "@casl/ability";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -43,6 +46,10 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
+import {
+  canModifyByGrantConditions,
+  getIdentityAssignPrivilegesConditions
+} from "@app/lib/fn/permission";
 
 import { IdentityProjectAdditionalPrivilegeModifySection } from "./IdentityProjectAdditionalPrivilegeModifySection";
 
@@ -66,6 +73,22 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
     identityId: identityMembershipDetails?.identity?.id,
     projectId
   });
+
+  const assignPrivilegesConditions = useMemo(
+    () => getIdentityAssignPrivilegesConditions(permission),
+    [permission]
+  );
+
+  const canModifyIdentityPrivileges = useMemo(() => {
+    const targetIdentityId = identityMembershipDetails?.identity?.id;
+    if (!targetIdentityId) return false;
+
+    return canModifyByGrantConditions({
+      targetValue: targetIdentityId,
+      allowed: assignPrivilegesConditions?.identityIds,
+      forbidden: assignPrivilegesConditions?.forbiddenIdentityIds
+    });
+  }, [assignPrivilegesConditions, identityMembershipDetails?.identity?.id]);
 
   const handlePrivilegeDelete = async () => {
     const { id } = popUp?.deletePrivilege?.data as { id: string };
@@ -96,19 +119,34 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                   identityId
                 })}
               >
-                {(isAllowed) => (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => {
-                      handlePopUpOpen("modifyPrivilege");
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <PlusIcon />
-                    Add Additional Privileges
-                  </Button>
-                )}
+                {(isAllowed) => {
+                  const isEditDisabled = !isAllowed || !canModifyIdentityPrivileges;
+                  const button = (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => {
+                        handlePopUpOpen("modifyPrivilege");
+                      }}
+                      isDisabled={isEditDisabled}
+                    >
+                      <PlusIcon />
+                      Add Additional Privileges
+                    </Button>
+                  );
+                  return isEditDisabled ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block">{button}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        You don&apos;t have permission to edit this identity&apos;s privileges
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    button
+                  );
+                }}
               </ProjectPermissionCan>
             </UnstableCardAction>
           )}
@@ -162,14 +200,17 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                         </UnstableTableCell>
                         <UnstableTableCell>
                           {isTemporary ? (
-                            <Tooltip content={toolTipText}>
-                              <Badge
-                                className="capitalize"
-                                variant={isExpired ? "danger" : "warning"}
-                              >
-                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                {text}
-                              </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  className="capitalize"
+                                  variant={isExpired ? "danger" : "warning"}
+                                >
+                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                  {text}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{toolTipText}</TooltipContent>
                             </Tooltip>
                           ) : (
                             text
@@ -193,7 +234,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                               >
                                 {(isAllowed) => (
                                   <UnstableDropdownMenuItem
-                                    isDisabled={!isAllowed}
+                                    isDisabled={!isAllowed || !canModifyIdentityPrivileges}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("modifyPrivilege", privilegeDetails);
@@ -213,7 +254,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                               >
                                 {(isAllowed) => (
                                   <UnstableDropdownMenuItem
-                                    isDisabled={!isAllowed}
+                                    isDisabled={!isAllowed || !canModifyIdentityPrivileges}
                                     variant="danger"
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -252,19 +293,34 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                     identityId
                   })}
                 >
-                  {(isAllowed) => (
-                    <Button
-                      variant="project"
-                      size="xs"
-                      onClick={() => {
-                        handlePopUpOpen("modifyPrivilege");
-                      }}
-                      isDisabled={!isAllowed}
-                    >
-                      <PlusIcon />
-                      Add Additional Privileges
-                    </Button>
-                  )}
+                  {(isAllowed) => {
+                    const isEditDisabled = !isAllowed || !canModifyIdentityPrivileges;
+                    const button = (
+                      <Button
+                        variant="project"
+                        size="xs"
+                        onClick={() => {
+                          handlePopUpOpen("modifyPrivilege");
+                        }}
+                        isDisabled={isEditDisabled}
+                      >
+                        <PlusIcon />
+                        Add Additional Privileges
+                      </Button>
+                    );
+                    return isEditDisabled ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-block">{button}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          You don&apos;t have permission to edit this identity&apos;s privileges
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      button
+                    );
+                  }}
                 </ProjectPermissionCan>
               </UnstableEmptyContent>
             </UnstableEmpty>
@@ -285,12 +341,14 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
             onGoBack={() => handlePopUpClose("modifyPrivilege")}
             identityId={identityId}
             privilegeId={(popUp?.modifyPrivilege?.data as { id: string })?.id}
-            isDisabled={permission.cannot(
-              ProjectPermissionIdentityActions.Edit,
-              subject(ProjectPermissionSub.Identity, {
-                identityId
-              })
-            )}
+            isDisabled={
+              permission.cannot(
+                ProjectPermissionIdentityActions.Edit,
+                subject(ProjectPermissionSub.Identity, {
+                  identityId
+                })
+              ) || !canModifyIdentityPrivileges
+            }
             menuPortalContainerRef={modalContainerRef}
           />
         </ModalContent>

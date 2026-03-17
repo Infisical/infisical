@@ -32,6 +32,10 @@ import {
   useUpdateIdentityProjectAdditionalPrivilege
 } from "@app/hooks/api";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
+import {
+  filterByGrantConditions,
+  getIdentityAssignPrivilegesConditions
+} from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -91,6 +95,31 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   const isIdentityEditDisabled = permission.cannot(
     ProjectPermissionIdentityActions.Edit,
     subject(ProjectPermissionSub.Identity, { identityId })
+  );
+
+  const assignPrivilegesConditions = useMemo(
+    () => getIdentityAssignPrivilegesConditions(permission),
+    [permission]
+  );
+
+  const filteredPermissionSubjects = useMemo(
+    () =>
+      filterByGrantConditions(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[], {
+        getKey: (s) => s,
+        allowed: assignPrivilegesConditions?.subjects,
+        forbidden: assignPrivilegesConditions?.forbiddenSubjects
+      }),
+    [assignPrivilegesConditions]
+  );
+
+  const getFilteredActionsForSubject = useMemo(
+    () => (permissionSubject: ProjectPermissionSub) =>
+      filterByGrantConditions(PROJECT_PERMISSION_OBJECT[permissionSubject].actions, {
+        getKey: (action) => `${permissionSubject}:${action.value}`,
+        allowed: assignPrivilegesConditions?.actions,
+        forbidden: assignPrivilegesConditions?.forbiddenActions
+      }),
+    [assignPrivilegesConditions]
   );
 
   const form = useForm<TFormSchema>({
@@ -372,6 +401,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                   isDisabled={isDisabled}
                   projectType={currentProject.type}
                   projectId={projectId}
+                  allowedSubjects={filteredPermissionSubjects}
                 />
               )}
             </div>
@@ -385,11 +415,14 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                 onValueChange={setOpenPolicies}
                 className="overflow-clip rounded-md border border-border bg-container"
               >
-                {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
-                  (permissionSubject) => (
+                {filteredPermissionSubjects.map((permissionSubject) => {
+                  const filteredActions = getFilteredActionsForSubject(permissionSubject);
+                  if (filteredActions.length === 0) return null;
+
+                  return (
                     <GeneralPermissionPolicies
                       subject={permissionSubject}
-                      actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                      actions={filteredActions}
                       title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
                       description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
                       key={`project-permission-${permissionSubject}`}
@@ -399,8 +432,8 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                     >
                       {renderConditionalComponents(permissionSubject, isDisabled)}
                     </GeneralPermissionPolicies>
-                  )
-                )}
+                  );
+                })}
               </UnstableAccordion>
             </div>
           )}

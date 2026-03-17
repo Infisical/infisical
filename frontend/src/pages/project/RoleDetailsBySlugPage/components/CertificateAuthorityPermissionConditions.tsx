@@ -13,7 +13,13 @@ export const CertificateAuthorityPermissionConditions = ({ position = 0, isDisab
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.CertificateAuthorities}
       position={position}
-      selectOptions={[{ value: "name", label: "Name" }]}
+      selectOptions={[
+        {
+          value: "name",
+          label: "Name",
+          description: "The name of the certificate authority"
+        }
+      ]}
     />
   );
 };

@@ -14,12 +14,14 @@ CREATE TABLE IF NOT EXISTS ${tableName}
     userAgentType LowCardinality(String),
     createdAt DateTime64(6) CODEC(DoubleDelta, ZSTD(3)),
     orgId UUID,
-    projectId String
+    projectId String,
+    expiresAt DateTime64(6)
 )
 ENGINE = ${engine}
 PARTITION BY toYYYYMM(createdAt)
 PRIMARY KEY (orgId, projectId, createdAt, id)
 ORDER BY (orgId, projectId, createdAt, id)
+TTL toDateTime(expiresAt)
 `;
 
 export type TEnsureClickHouseSchemaOpts = {

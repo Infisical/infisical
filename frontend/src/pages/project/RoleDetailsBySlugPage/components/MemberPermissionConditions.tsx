@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import {
-  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
@@ -18,11 +18,11 @@ type Props = {
   isDisabled?: boolean;
 };
 
-export const IdentityManagementPermissionConditions = ({ position = 0, isDisabled }: Props) => {
+export const MemberPermissionConditions = ({ position = 0, isDisabled }: Props) => {
   const { control } = useFormContext<TFormSchema>();
   const permissionRule = useWatch({
     control,
-    name: `permissions.${ProjectPermissionSub.Identity}.${position}` as const
+    name: `permissions.${ProjectPermissionSub.Member}.${position}` as const
   });
 
   const selectedActions = useMemo(() => {
@@ -32,50 +32,47 @@ export const IdentityManagementPermissionConditions = ({ position = 0, isDisable
       .filter(
         ([key, value]) =>
           value === true &&
-          Object.values(ProjectPermissionIdentityActions).includes(
-            key as ProjectPermissionIdentityActions
+          Object.values(ProjectPermissionMemberActions).includes(
+            key as ProjectPermissionMemberActions
           )
       )
       .map(([key]) => key);
   }, [permissionRule]);
 
-  const actionLabelsMap = useMemo(
-    () => getActionLabelsForSubject(ProjectPermissionSub.Identity),
-    []
-  );
+  const actionLabelsMap = useMemo(() => getActionLabelsForSubject(ProjectPermissionSub.Member), []);
 
   return (
     <ConditionsFields
       isDisabled={isDisabled}
-      subject={ProjectPermissionSub.Identity}
+      subject={ProjectPermissionSub.Member}
       position={position}
       selectOptions={[
         {
-          value: "identityId",
-          label: "Identity ID",
-          description: "The unique identifier of the target machine identity"
+          value: "userEmail",
+          label: "User Email",
+          description: "The email address of the target user whose roles are being updated"
         },
         {
           value: "assignableRole",
           label: "Assignable Roles",
           description:
-            "The roles that the actor is allowed to assign to the target machine identities. (e.g., admin, developer, viewer)"
+            "The roles that the actor is allowed to assign to the target users. (e.g., admin, developer, viewer)"
         },
         {
           value: "assignableSubject",
           label: "Assignable Subjects",
           description:
-            "The permission subjects that the actor is allowed to grant in additional privileges to the target machine identities. (e.g., secrets, environments, members)"
+            "The permission subjects that the actor is allowed to grant in additional privileges to the target users. (e.g., secrets, environments, members)"
         },
         {
           value: "assignableAction",
           label: "Assignable Actions",
           description:
-            "The specific actions that the actor is allowed to grant in additional privileges to the target machine identities. (e.g., secrets:describeSecret, environments:edit)"
+            "The specific actions that the actor is allowed to grant in additional privileges to the target users. (e.g., secrets:describeSecret, environments:edit)"
         }
       ]}
       selectedActions={selectedActions}
-      actionConditionsMap={ACTION_ALLOWED_CONDITIONS[ProjectPermissionSub.Identity]}
+      actionConditionsMap={ACTION_ALLOWED_CONDITIONS[ProjectPermissionSub.Member]}
       actionLabelsMap={actionLabelsMap}
     />
   );

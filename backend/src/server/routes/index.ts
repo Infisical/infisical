@@ -738,12 +738,12 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     membershipDAL,
     orgDAL,
-    permissionService
+    permissionService,
+    userDAL
   });
 
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
-    keyStore,
     kmsDAL,
     internalKmsDAL,
     orgDAL,
@@ -780,7 +780,8 @@ export const registerRoutes = async (
     projectDAL,
     licenseService,
     auditLogStreamService,
-    clickhouseClient: clickhouse
+    clickhouseClient: clickhouse,
+    keyStore
   });
 
   const notificationQueue = notificationQueueServiceFactory({

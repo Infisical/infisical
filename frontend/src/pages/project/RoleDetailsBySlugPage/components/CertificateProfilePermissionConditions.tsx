@@ -13,7 +13,13 @@ export const CertificateProfilePermissionConditions = ({ position = 0, isDisable
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.CertificateProfiles}
       position={position}
-      selectOptions={[{ value: "slug", label: "Name" }]}
+      selectOptions={[
+        {
+          value: "slug",
+          label: "Name",
+          description: "The slug/name of the certificate profile"
+        }
+      ]}
     />
   );
 };
