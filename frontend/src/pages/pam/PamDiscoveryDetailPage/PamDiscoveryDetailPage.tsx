@@ -199,6 +199,14 @@ const DiscoveryConfigurationSection = ({
             )}
           </DetailValue>
         </Detail>
+        {(source.discoveryConfiguration?.caCert as string) && (
+          <Detail>
+            <DetailLabel>CA Certificate</DetailLabel>
+            <DetailValue>
+              <Badge variant="success">Provided</Badge>
+            </DetailValue>
+          </Detail>
+        )}
         <Detail>
           <DetailLabel>Dependency Discovery</DetailLabel>
           <DetailValue>

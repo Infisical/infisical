@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, Switch } from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose, Switch, TextArea } from "@app/components/v2";
 import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { PamDiscoveryType, TPamDiscoverySource } from "@app/hooks/api/pamDiscovery";
@@ -25,7 +25,12 @@ const formSchema = genericDiscoveryFieldsSchema.extend({
     useLdaps: z.boolean().default(false),
     winrmPort: z.coerce.number().int().min(1).max(65535),
     useWinrmHttps: z.boolean().default(false),
-    discoverDependencies: z.boolean().default(false)
+    discoverDependencies: z.boolean().default(false),
+    caCert: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .optional()
   }),
   discoveryCredentials: z.object({
     username: z.string().trim().min(1, "Username is required").max(255),
@@ -56,7 +61,8 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
             useLdaps: Boolean(source.discoveryConfiguration?.useLdaps),
             winrmPort: (source.discoveryConfiguration?.winrmPort as number) || 5985,
             useWinrmHttps: Boolean(source.discoveryConfiguration?.useWinrmHttps),
-            discoverDependencies: Boolean(source.discoveryConfiguration?.discoverDependencies)
+            discoverDependencies: Boolean(source.discoveryConfiguration?.discoverDependencies),
+            caCert: (source.discoveryConfiguration?.caCert as string) || ""
           },
           discoveryCredentials: {
             username: (source.discoveryCredentials?.username as string) || "",
@@ -73,7 +79,8 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
             useLdaps: false,
             winrmPort: 5985,
             useWinrmHttps: false,
-            discoverDependencies: false
+            discoverDependencies: false,
+            caCert: ""
           },
           discoveryCredentials: {
             username: "",
@@ -90,6 +97,9 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const password = useWatch({ control, name: "discoveryCredentials.password" });
+  const useLdaps = useWatch({ control, name: "discoveryConfiguration.useLdaps" });
+  const useWinrmHttps = useWatch({ control, name: "discoveryConfiguration.useWinrmHttps" });
+  const showCaCert = useLdaps || useWinrmHttps;
   const discoverDependencies = useWatch({
     control,
     name: "discoveryConfiguration.discoverDependencies"
@@ -197,6 +207,28 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
               </div>
             </div>
           </div>
+          {showCaCert && (
+            <Controller
+              name="discoveryConfiguration.caCert"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="CA Certificate"
+                  isOptional
+                  tooltipText="PEM-encoded CA certificate to verify the server's TLS certificate. If not provided, certificate validation will be skipped for LDAPS connections."
+                >
+                  <TextArea
+                    {...field}
+                    value={field.value || ""}
+                    placeholder="-----BEGIN CERTIFICATE-----..."
+                    className="h-14 resize-none! text-xs"
+                  />
+                </FormControl>
+              )}
+            />
+          )}
         </div>
         <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
           <div className="flex items-start gap-2">

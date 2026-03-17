@@ -25,7 +25,12 @@ export const ActiveDirectoryDiscoveryConfigurationSchema = z.object({
   useLdaps: z.boolean(),
   winrmPort: z.coerce.number().int().min(1).max(65535),
   useWinrmHttps: z.boolean(),
-  discoverDependencies: z.boolean()
+  discoverDependencies: z.boolean(),
+  caCert: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional()
 });
 
 export const ActiveDirectoryDiscoveryCredentialsSchema = z.object({

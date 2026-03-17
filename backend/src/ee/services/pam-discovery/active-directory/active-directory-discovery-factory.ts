@@ -415,7 +415,12 @@ const executeLdapEnumeration = async (
         url: `${ldapProtocol}://localhost:${proxyPort}`,
         connectTimeout: LDAP_TIMEOUT,
         timeout: LDAP_TIMEOUT,
-        ...(configuration.useLdaps && { tlsOptions: { rejectUnauthorized: false } })
+        ...(configuration.useLdaps && {
+          tlsOptions: {
+            rejectUnauthorized: !!configuration.caCert,
+            ...(configuration.caCert && { ca: [configuration.caCert] })
+          }
+        })
       });
 
       try {
@@ -893,7 +898,10 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               connectTimeout: LDAP_TIMEOUT,
               timeout: LDAP_TIMEOUT,
               ...(configuration.useLdaps && {
-                tlsOptions: { rejectUnauthorized: false }
+                tlsOptions: {
+                  rejectUnauthorized: !!configuration.caCert,
+                  ...(configuration.caCert && { ca: [configuration.caCert] })
+                }
               })
             });
 
