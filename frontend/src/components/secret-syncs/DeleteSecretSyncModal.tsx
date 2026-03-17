@@ -3,7 +3,7 @@ import { useState } from "react";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, Switch } from "@app/components/v2";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { TSecretSync, useDeleteSecretSync } from "@app/hooks/api/secretSyncs";
+import { TSecretSync, useDeleteSecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
 
 type Props = {
   secretSync?: TSecretSync;
@@ -14,6 +14,7 @@ type Props = {
 
 export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComplete }: Props) => {
   const deleteSync = useDeleteSecretSync();
+  const { syncOption } = useSecretSyncOption(secretSync?.destination);
   const [removeSecrets, setRemoveSecrets] = useState(false);
 
   if (!secretSync) return null;
@@ -47,16 +48,18 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
       deleteKey={name}
       onDeleteApproved={handleDeleteSecretSync}
     >
-      <Switch
-        containerClassName="mt-4"
-        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-red/50"
-        thumbClassName="bg-mineshaft-800"
-        isChecked={removeSecrets}
-        onCheckedChange={setRemoveSecrets}
-        id="remove-secrets"
-      >
-        Remove Synced Secrets
-      </Switch>
+      {syncOption?.canRemoveSecretsOnDeletion && (
+        <Switch
+          containerClassName="mt-4"
+          className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-red/50"
+          thumbClassName="bg-mineshaft-800"
+          isChecked={removeSecrets}
+          onCheckedChange={setRemoveSecrets}
+          id="remove-secrets"
+        >
+          Remove Synced Secrets
+        </Switch>
+      )}
     </DeleteActionModal>
   );
 };

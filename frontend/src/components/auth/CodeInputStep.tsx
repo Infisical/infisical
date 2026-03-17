@@ -4,46 +4,51 @@ import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 
+import {
+  Button,
+  FieldError,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import { useSendVerificationEmail } from "@app/hooks/api";
 
-import Error from "../basic/Error";
-import { Button } from "../v2";
-
-// The style for the verification code input
-const props = {
+// Matches v3 input theme: transparent bg, border (#2b2c30), foreground text (#ebebeb), ring on focus (#2d2f33)
+const codeInputStyle = {
   inputStyle: {
     fontFamily: "monospace",
     margin: "4px",
     MozAppearance: "textfield",
     width: "55px",
-    borderRadius: "5px",
+    borderRadius: "6px",
     fontSize: "24px",
     height: "55px",
     paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid #2d2f33",
+    backgroundColor: "transparent",
+    color: "#ebebeb",
+    border: "1px solid #2b2c30",
     textAlign: "center",
-    outlineColor: "#8ca542",
-    borderColor: "#2d2f33"
+    outlineColor: "#2d2f33",
+    borderColor: "#2b2c30"
   }
 } as const;
-const propsPhone = {
+const codeInputStylePhone = {
   inputStyle: {
     fontFamily: "monospace",
     margin: "4px",
     MozAppearance: "textfield",
     width: "40px",
-    borderRadius: "5px",
+    borderRadius: "6px",
     fontSize: "24px",
     height: "40px",
     paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid #2d2f33",
+    backgroundColor: "transparent",
+    color: "#ebebeb",
+    border: "1px solid #2b2c30",
     textAlign: "center",
-    outlineColor: "#8ca542",
-    borderColor: "#2d2f33"
+    outlineColor: "#2d2f33",
+    borderColor: "#2b2c30"
   }
 } as const;
 
@@ -90,72 +95,71 @@ export default function CodeInputStep({
   };
 
   return (
-    <div className="mx-auto h-full w-full pb-4 md:px-8">
-      <p className="text-md flex justify-center text-bunker-200">{t("signup.step2-message")}</p>
-      <p className="text-md my-1 flex justify-center font-medium text-bunker-200">{email} </p>
-      <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-        <ReactCodeInput
-          name=""
-          inputMode="tel"
-          type="text"
-          fields={6}
-          onChange={setCode}
-          {...props}
-          className="mt-6 mb-2"
-        />
-      </div>
-      <div className="mx-auto mt-4 block w-max md:hidden">
-        <ReactCodeInput
-          name=""
-          inputMode="tel"
-          type="text"
-          fields={6}
-          onChange={setCode}
-          {...propsPhone}
-          className="mt-2 mb-2"
-        />
-      </div>
-      {codeError && <Error text={t("signup.step2-code-error")} />}
-      <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
-        <div className="text-l w-full py-1 text-lg">
-          <Button
-            type="submit"
-            onClick={incrementStep}
-            size="sm"
-            isFullWidth
-            className="h-14"
-            colorSchema="primary"
-            variant="outline_bg"
-            isLoading={isCodeInputCheckLoading}
-          >
-            {" "}
-            {String(t("signup.verify"))}{" "}
-          </Button>
-        </div>
-      </div>
-      <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
-        <div className="flex flex-row items-baseline gap-1 text-sm">
-          <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-          <div className="text-md mt-2 flex flex-row text-bunker-400">
-            <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
-              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-                {isResendingVerificationEmail
-                  ? t("signup.step2-resend-progress")
-                  : t("signup.step2-resend-submit")}
-              </span>
-            </button>
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <UnstableCard className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
+        <UnstableCardHeader className="mb-2 gap-2">
+          <UnstableCardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
+            {t("signup.step2-message")}
+          </UnstableCardTitle>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <p className="text-md my-1 flex justify-center font-medium text-foreground">{email}</p>
+          <div className="mx-auto hidden w-max min-w-[20rem] md:block">
+            <ReactCodeInput
+              name=""
+              inputMode="tel"
+              type="text"
+              fields={6}
+              onChange={setCode}
+              {...codeInputStyle}
+              className="code-input-v3 mt-6 mb-2"
+            />
           </div>
-        </div>
-        <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
-        <p className="text-sm text-bunker-400">
-          <Link
-            to="/login"
-            className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
-          >
-            Have an account? Log in
-          </Link>
-        </p>
-      </div>
+          <div className="mx-auto mt-4 block w-max md:hidden">
+            <ReactCodeInput
+              name=""
+              inputMode="tel"
+              type="text"
+              fields={6}
+              onChange={setCode}
+              {...codeInputStylePhone}
+              className="code-input-v3 mt-2 mb-2"
+            />
+          </div>
+          {codeError && <FieldError>{t("signup.step2-code-error")}</FieldError>}
+          <div className="mt-4 w-full">
+            <Button
+              type="submit"
+              onClick={incrementStep}
+              variant="project"
+              size="lg"
+              isFullWidth
+              isPending={isCodeInputCheckLoading}
+              isDisabled={isCodeInputCheckLoading}
+            >
+              {String(t("signup.verify"))}
+            </Button>
+          </div>
+          <div className="mt-6 flex flex-col items-center gap-1 text-sm text-muted">
+            <div className="flex flex-row items-baseline gap-1">
+              <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
+                <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                  {t("signup.step2-resend-alert")}{" "}
+                  {isResendingVerificationEmail
+                    ? t("signup.step2-resend-progress")
+                    : t("signup.step2-resend-submit")}
+                </span>
+              </button>
+            </div>
+            <Link
+              to="/login"
+              className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2"
+            >
+              Have an account? Log in
+            </Link>
+          </div>
+        </UnstableCardContent>
+      </UnstableCard>
     </div>
   );
 }

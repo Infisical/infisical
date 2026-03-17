@@ -231,6 +231,7 @@ export enum TableName {
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
   PamAccountDependency = "pam_account_dependencies",
+  PamResourceFavorite = "pam_resource_favorites",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
 
@@ -247,6 +248,9 @@ export enum TableName {
   PkiDiscoveryInstallation = "pki_discovery_installations",
   PkiCertificateInstallationCert = "pki_certificate_installation_certs",
   PkiDiscoveryScanHistory = "pki_discovery_scan_history",
+
+  // PKI Cleanup
+  CertificateCleanupConfig = "certificate_cleanup_configs",
 
   // AI
   AiMcpServer = "ai_mcp_servers",
@@ -267,7 +271,8 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
 
-  QueueJobs = "queue_jobs"
+  QueueJobs = "queue_jobs",
+  CaSigningConfig = "ca_signing_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

@@ -6,5 +6,6 @@ export const RENDER_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Render",
   destination: SecretSync.Render,
   connection: AppConnection.Render,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

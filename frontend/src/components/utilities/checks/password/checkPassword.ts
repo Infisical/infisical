@@ -75,19 +75,19 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
     {
       name: "escapeChar",
       validator: (pwd: string) => !escapeCharRegex.test(pwd),
-      errorText: "No escape characters allowed."
+      errorText: "No escape characters allowed"
     },
     {
       name: "lowEntropy",
       validator: (pwd: string) => !lowEntropyRegexes.some((regex) => regex.test(pwd)),
-      errorText: "Password contains personal info."
+      errorText: "Password contains personal info"
     }
   ];
 
   const isBreached = await checkIsPasswordBreached(password);
 
   if (isBreached) {
-    errors.breached = "Password was found in a data breach.";
+    errors.breached = "Password was found in a data breach";
   }
 
   tests.forEach((test) => {

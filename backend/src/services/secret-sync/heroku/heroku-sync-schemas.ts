@@ -45,6 +45,7 @@ export const HerokuSyncListItemSchema = z
     name: z.literal("Heroku"),
     connection: z.literal(AppConnection.Heroku),
     destination: z.literal(SecretSync.Heroku),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Heroku] }));

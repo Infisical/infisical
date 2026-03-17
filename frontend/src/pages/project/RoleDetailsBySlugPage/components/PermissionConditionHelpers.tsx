@@ -10,6 +10,8 @@ export const getConditionOperatorHelperInfo = (type: PermissionConditionOperator
       return "Value should not equal specified value.";
     case PermissionConditionOperators.$IN:
       return "List of comma-separated values that match a given value.";
+    case PermissionConditionOperators.$ALL:
+      return "List of comma-separated values that must all be present.";
     case PermissionConditionOperators.$GLOB:
       return <GlobPermissionInfo />;
     default:
@@ -21,7 +23,12 @@ export const getConditionOperatorHelperInfo = (type: PermissionConditionOperator
 export const renderOperatorSelectItems = (type: string) => {
   switch (type) {
     case "secretTags":
-      return <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>;
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$ALL}>Contains All</SelectItem>
+        </>
+      );
     case "metadataKey":
     case "metadataValue":
       return (

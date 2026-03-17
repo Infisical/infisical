@@ -6,5 +6,6 @@ export const GITHUB_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "GitHub",
   destination: SecretSync.GitHub,
   connection: AppConnection.GitHub,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

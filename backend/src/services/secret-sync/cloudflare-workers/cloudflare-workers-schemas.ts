@@ -56,6 +56,7 @@ export const CloudflareWorkersSyncListItemSchema = z
     name: z.literal("Cloudflare Workers"),
     connection: z.literal(AppConnection.Cloudflare),
     destination: z.literal(SecretSync.CloudflareWorkers),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.CloudflareWorkers] }));

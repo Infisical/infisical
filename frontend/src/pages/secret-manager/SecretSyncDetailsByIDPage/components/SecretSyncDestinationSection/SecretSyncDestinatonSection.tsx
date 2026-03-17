@@ -15,6 +15,7 @@ import { AwsParameterStoreSyncDestinationSection } from "./AwsParameterStoreSync
 import { AwsSecretsManagerSyncDestinationSection } from "./AwsSecretsManagerSyncDestinationSection";
 import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigurationSyncDestinationSection";
 import { AzureDevOpsSyncDestinationSection } from "./AzureDevOpsSyncDestinationSection";
+import { AzureEntraIdScimSyncDestinationSection } from "./AzureEntraIdScimSyncDestinationSection";
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
 import { BitbucketSyncDestinationSection } from "./BitbucketSyncDestinationSection";
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
@@ -166,6 +167,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.CircleCI:
       DestinationComponents = <CircleCISyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.AzureEntraIdScim:
+      DestinationComponents = <AzureEntraIdScimSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

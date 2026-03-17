@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
+import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
+import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { ROUTE_PATHS } from "@app/const/routes";
 
 import { EmailConfirmationStep } from "./components/EmailConfirmationStep";
@@ -67,7 +69,8 @@ export const SignupSsoPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-6">
+      <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -75,17 +78,19 @@ export const SignupSsoPage = () => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <div className="mt-20 mb-4 flex justify-center">
-        <img
-          src="/images/gradientLogo.svg"
-          style={{
-            height: "90px",
-            width: "120px"
-          }}
-          alt="Infisical Logo"
-        />
+      <div className="relative z-10 my-auto flex flex-col items-center py-10">
+        <Link to="/">
+          <div className="mb-4 flex justify-center">
+            <img
+              src="/images/gradientLogo.svg"
+              style={{ height: "90px", width: "120px" }}
+              alt="Infisical logo"
+            />
+          </div>
+        </Link>
+        {renderView()}
       </div>
-      <div>{renderView()}</div>
+      <AuthPageFooter />
     </div>
   );
 };

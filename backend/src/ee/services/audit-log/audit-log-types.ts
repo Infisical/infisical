@@ -35,6 +35,11 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import {
+  TAWSAuthDetails,
+  TKubernetesAuthDetails,
+  TOidcAuthDetails
+} from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
@@ -339,6 +344,12 @@ export enum EventType {
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
+  INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
+  CREATE_CA_SIGNING_CONFIG = "create-ca-signing-config",
+  GET_CA_SIGNING_CONFIG = "get-ca-signing-config",
+  UPDATE_CA_SIGNING_CONFIG = "update-ca-signing-config",
+  GET_CA_AUTO_RENEWAL_CONFIG = "get-ca-auto-renewal-config",
+  UPDATE_CA_AUTO_RENEWAL_CONFIG = "update-ca-auto-renewal-config",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   SIGN_CERT = "sign-cert",
@@ -404,6 +415,8 @@ export enum EventType {
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   UPDATE_CERTIFICATE_METADATA = "update-certificate-metadata",
+  UPDATE_CERTIFICATE_CLEANUP_CONFIG = "update-certificate-cleanup-config",
+  CERTIFICATE_CLEANUP_COMPLETED = "certificate-cleanup-completed",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
   CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
   GET_CERTIFICATE_REQUEST = "get-certificate-request",
@@ -702,6 +715,10 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
   permission?: Record<string, unknown>;
+
+  aws?: TAWSAuthDetails;
+  kubernetes?: TKubernetesAuthDetails;
+  oidc?: TOidcAuthDetails;
 }
 
 interface ScimClientActorMetadata {}
@@ -2553,6 +2570,57 @@ interface GenerateCaCertificate {
     dn: string;
     serialNumber: string;
     parentCaId?: string;
+  };
+}
+
+interface InstallCaCertVenafi {
+  type: EventType.INSTALL_CA_CERT_VENAFI;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface CreateCaSigningConfig {
+  type: EventType.CREATE_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+    signingConfigType: string;
+  };
+}
+
+interface GetCaSigningConfig {
+  type: EventType.GET_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCaSigningConfig {
+  type: EventType.UPDATE_CA_SIGNING_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+    signingConfigType: string;
+  };
+}
+
+interface GetCaAutoRenewalConfig {
+  type: EventType.GET_CA_AUTO_RENEWAL_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCaAutoRenewalConfig {
+  type: EventType.UPDATE_CA_AUTO_RENEWAL_CONFIG;
+  metadata: {
+    caId: string;
+    dn: string;
+    autoRenewalEnabled?: boolean;
   };
 }
 
@@ -4697,6 +4765,24 @@ interface UpdateCertificateMetadataEvent {
   };
 }
 
+interface UpdateCertificateCleanupConfigEvent {
+  type: EventType.UPDATE_CERTIFICATE_CLEANUP_CONFIG;
+  metadata: {
+    projectId: string;
+    isEnabled: boolean;
+    postExpiryRetentionDays: number;
+    skipCertsWithActiveSyncs: boolean;
+  };
+}
+
+interface CertificateCleanupCompletedEvent {
+  type: EventType.CERTIFICATE_CLEANUP_COMPLETED;
+  metadata: {
+    deletedCount: number;
+    certificateSerialNumbers: string[];
+  };
+}
+
 interface DisableCertificateRenewalConfigEvent {
   type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -5449,6 +5535,12 @@ export type Event =
   | ImportCaCert
   | GetCaCrls
   | GenerateCaCertificate
+  | InstallCaCertVenafi
+  | CreateCaSigningConfig
+  | GetCaSigningConfig
+  | UpdateCaSigningConfig
+  | GetCaAutoRenewalConfig
+  | UpdateCaAutoRenewalConfig
   | IssueCert
   | ImportCert
   | SignCert
@@ -5759,4 +5851,6 @@ export type Event =
   | CreateDynamicSecretLeaseEvent
   | DeleteDynamicSecretLeaseEvent
   | RenewDynamicSecretLeaseEvent
-  | GetDynamicSecretLeaseEvent;
+  | GetDynamicSecretLeaseEvent
+  | UpdateCertificateCleanupConfigEvent
+  | CertificateCleanupCompletedEvent;

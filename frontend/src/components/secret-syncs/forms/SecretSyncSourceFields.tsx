@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
 
 import { FilterableSelect, FormControl } from "@app/components/v2";
@@ -9,10 +9,12 @@ import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { SecretSync } from "@app/hooks/api/secretSyncs";
 
+import { AzureEntraIdScimSyncSourceFields } from "./AzureEntraIdScimSyncSourceFields";
 import { TSecretSyncForm } from "./schemas";
 
-export const SecretSyncSourceFields = () => {
+const DefaultSecretSyncSourceFields = () => {
   const { control, watch, setError, clearErrors } = useFormContext<TSecretSyncForm>();
 
   const { permission } = useProjectPermission();
@@ -80,4 +82,16 @@ export const SecretSyncSourceFields = () => {
       />
     </>
   );
+};
+
+export const SecretSyncSourceFields = () => {
+  const { control } = useFormContext<TSecretSyncForm>();
+  const destination = useWatch({ control, name: "destination" });
+
+  switch (destination) {
+    case SecretSync.AzureEntraIdScim:
+      return <AzureEntraIdScimSyncSourceFields />;
+    default:
+      return <DefaultSecretSyncSourceFields />;
+  }
 };

@@ -2101,6 +2101,24 @@ export const CERTIFICATE_AUTHORITIES = {
     caId: "The ID of the CA to get the certificate revocation lists (CRLs) for.",
     id: "The ID of certificate revocation list (CRL).",
     crl: "The certificate revocation list (CRL)."
+  },
+  INSTALL_CERT_VENAFI: {
+    caId: "The ID of the CA to install the certificate for via Venafi."
+  },
+  CREATE_SIGNING_CONFIG: {
+    caId: "The ID of the CA to create a signing configuration for."
+  },
+  GET_SIGNING_CONFIG: {
+    caId: "The ID of the CA to get the signing configuration for."
+  },
+  UPDATE_SIGNING_CONFIG: {
+    caId: "The ID of the CA to update the signing configuration for."
+  },
+  GET_AUTO_RENEWAL: {
+    caId: "The ID of the CA to get the auto-renewal configuration for."
+  },
+  UPDATE_AUTO_RENEWAL: {
+    caId: "The ID of the CA to update the auto-renewal configuration for."
   }
 };
 
@@ -2741,6 +2759,10 @@ export const AppConnections = {
     },
     OPEN_ROUTER: {
       apiKey: "The OpenRouter Provisioning API key used to manage API keys."
+    },
+    VENAFI: {
+      apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
+      region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."
     }
   }
 };
@@ -2843,6 +2865,11 @@ export const SecretSyncs = {
       owner: "The name of the GitHub account owner of the repository.",
       repo: "The name of the GitHub repository.",
       env: "The name of the GitHub environment."
+    },
+    AZURE_ENTRA_ID_SCIM: {
+      servicePrincipalId:
+        "The Object ID of the Azure Entra ID Enterprise Application service principal to sync the SCIM token to.",
+      servicePrincipalDisplayName: "The display name of the Azure Entra ID Enterprise Application service principal."
     },
     AZURE_KEY_VAULT: {
       vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",

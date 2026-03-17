@@ -421,6 +421,14 @@ export const AppConnectionsBrowser = () => {
       path: "/integrations/app-connections/smb",
       description: "Learn how to connect to Windows servers via SMB.",
       category: "Networking & DNS",
+    },
+    {
+      name: "Azure Entra ID",
+      slug: "azure-entra-id",
+      path: "/integrations/app-connections/azure-entra-id",
+      description:
+        "Learn how to connect your Azure Entra ID to manage SCIM tokens with Infisical.",
+      category: "Identity & Auth",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

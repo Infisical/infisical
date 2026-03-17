@@ -6,5 +6,6 @@ export const GITLAB_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "GitLab",
   destination: SecretSync.GitLab,
   connection: AppConnection.GitLab,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };
