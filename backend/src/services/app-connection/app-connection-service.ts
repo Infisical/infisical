@@ -35,6 +35,7 @@ import {
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
+import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -87,6 +88,8 @@ import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean
 import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/dns-made-easy-connection-schema";
 import { dnsMadeEasyConnectionService } from "./dns-made-easy/dns-made-easy-connection-service";
+import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
+import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -152,6 +155,7 @@ export type TAppConnectionServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
+  identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -209,7 +213,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
-  [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema
+  [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
+  [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -222,7 +227,8 @@ export const appConnectionServiceFactory = ({
   gatewayDAL,
   gatewayV2DAL,
   projectDAL,
-  appConnectionCredentialRotationService
+  appConnectionCredentialRotationService,
+  identityUaDAL
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -466,7 +472,8 @@ export const appConnectionServiceFactory = ({
         gatewayId
       } as TAppConnectionConfig,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      { identityUaDAL }
     );
 
     try {
@@ -635,7 +642,8 @@ export const appConnectionServiceFactory = ({
           gatewayId
         } as TAppConnectionConfig,
         gatewayService,
-        gatewayV2Service
+        gatewayV2Service,
+        { identityUaDAL }
       );
 
       if (!updatedCredentials)
@@ -1076,6 +1084,7 @@ export const appConnectionServiceFactory = ({
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),
+    externalInfisical: externalInfisicalConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),

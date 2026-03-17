@@ -2226,7 +2226,8 @@ export const registerRoutes = async (
     gatewayDAL,
     gatewayV2DAL,
     projectDAL,
-    appConnectionCredentialRotationService
+    appConnectionCredentialRotationService,
+    identityUaDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
