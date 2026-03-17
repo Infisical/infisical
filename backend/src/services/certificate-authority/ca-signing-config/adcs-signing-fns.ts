@@ -10,6 +10,24 @@ import { createAdcsHttpClient } from "@app/services/app-connection/azure-adcs/az
 const POLL_INTERVAL_MS = 5000;
 const MAX_POLL_ATTEMPTS = 60;
 
+// Pre-compiled regex patterns
+const RE_NON_BASE64 = new RE2("[^A-Za-z0-9+/=\\s]", "g");
+const RE_WHITESPACE = new RE2("\\s", "g");
+const RE_BASE64_WRAP = new RE2("(.{64})", "g");
+const RE_CSR_BEGIN = new RE2("-----BEGIN CERTIFICATE REQUEST-----", "g");
+const RE_CSR_END = new RE2("-----END CERTIFICATE REQUEST-----", "g");
+const RE_CSR_NEWLINES = new RE2("\\r?\\n", "g");
+const RE_PEM_CERT = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----");
+const RE_ESCAPED_CRLF = new RE2("\\\\r\\\\n", "g");
+const RE_ESCAPED_CR = new RE2("\\\\r", "g");
+const REQUEST_ID_PATTERNS = [
+  new RE2("reqid[=:](\\d+)", "i"),
+  new RE2("request\\s+id[:\\s]+(\\d+)", "i"),
+  new RE2("certificate\\s+request\\s+(\\d+)", "i"),
+  new RE2("\\breqid=(\\d+)\\b", "i"),
+  new RE2("requestid[:\\s]*(\\d+)", "i")
+];
+
 /**
  * Fetch the issuing CA certificate from ADCS web enrollment.
  * Uses the /certsrv/certnew.cer endpoint which returns an X.509 certificate,
@@ -26,26 +44,26 @@ const fetchAdcsCaChain = async (adcsClient: ReturnType<typeof createAdcsHttpClie
   // Already PEM-formatted
   if (caCertData.includes("-----BEGIN CERTIFICATE-----")) {
     const pemCert = caCertData.trim();
-    // Validate it's actually parseable as X.509
-    const parsed = new x509.X509Certificate(pemCert);
-    if (!parsed) throw new BadRequestError({ message: "Failed to parse CA certificate from ADCS" });
+    // Validate it's actually parseable as X.509 (throws on invalid input)
+    // eslint-disable-next-line no-new
+    new x509.X509Certificate(pemCert);
     return pemCert;
   }
 
   // Raw base64 — convert to PEM
   let cleanData = caCertData.trim();
-  cleanData = cleanData.replace(new RE2("[^A-Za-z0-9+/=\\s]", "g"), "").replace(new RE2("\\s", "g"), "");
+  cleanData = cleanData.replace(RE_NON_BASE64, "").replace(RE_WHITESPACE, "");
 
   if (cleanData.length < 100) {
     throw new BadRequestError({ message: "Failed to retrieve CA certificate from ADCS: response too short" });
   }
 
-  const formatted = cleanData.replace(new RE2("(.{64})", "g"), "$1\n").trim();
+  const formatted = cleanData.replace(RE_BASE64_WRAP, "$1\n").trim();
   const pemCert = `-----BEGIN CERTIFICATE-----\n${formatted}\n-----END CERTIFICATE-----`;
 
-  // Validate it's actually parseable as X.509
-  const parsed = new x509.X509Certificate(pemCert);
-  if (!parsed) throw new BadRequestError({ message: "Failed to parse CA certificate from ADCS" });
+  // Validate it's actually parseable as X.509 (throws on invalid input)
+  // eslint-disable-next-line no-new
+  new x509.X509Certificate(pemCert);
 
   return pemCert;
 };
@@ -68,15 +86,10 @@ export const submitCsrToAdcs = async (params: {
   );
 
   // Clean CSR by removing headers and newlines for ADCS submission
-  const cleanCsr = csr
-    .replace(new RE2("-----BEGIN CERTIFICATE REQUEST-----", "g"), "")
-    .replace(new RE2("-----END CERTIFICATE REQUEST-----", "g"), "")
-    .replace(new RE2("\\r?\\n", "g"), "");
+  const cleanCsr = csr.replace(RE_CSR_BEGIN, "").replace(RE_CSR_END, "").replace(RE_CSR_NEWLINES, "");
 
   // Build certificate attributes
-  const certAttribParts: string[] = [];
-
-  certAttribParts.push(`CertificateTemplate:${template.trim()}`);
+  const certAttribParts: string[] = [`CertificateTemplate:${template.trim()}`];
 
   if (validityPeriod) {
     try {
@@ -89,7 +102,7 @@ export const submitCsrToAdcs = async (params: {
     }
   }
 
-  const certAttrib = certAttribParts.length > 0 ? `${certAttribParts.join("\r\n")}\r\n` : "";
+  const certAttrib = `${certAttribParts.join("\r\n")}\r\n`;
 
   const formData = new URLSearchParams({
     Mode: "newreq",
@@ -108,15 +121,7 @@ export const submitCsrToAdcs = async (params: {
   let status: "issued" | "pending" | "denied" = "pending";
   let certificate = "";
 
-  const requestIdMatches = [
-    new RE2("reqid[=:](\\d+)", "i"),
-    new RE2("request\\s+id[:\\s]+(\\d+)", "i"),
-    new RE2("certificate\\s+request\\s+(\\d+)", "i"),
-    new RE2("\\breqid=(\\d+)\\b", "i"),
-    new RE2("requestid[:\\s]*(\\d+)", "i")
-  ];
-
-  for (const regex of requestIdMatches) {
+  for (const regex of REQUEST_ID_PATTERNS) {
     const match = responseText.match(regex);
     if (match) {
       [, requestId] = match;
@@ -125,9 +130,9 @@ export const submitCsrToAdcs = async (params: {
   }
 
   // Check for immediate certificate issuance
-  const certMatch = responseText.match(new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----"));
+  const certMatch = responseText.match(RE_PEM_CERT);
   if (certMatch) {
-    certificate = certMatch[0].replace(new RE2("\\\\r\\\\n", "g"), "\n").replace(new RE2("\\\\r", "g"), "\n").trim();
+    certificate = certMatch[0].replace(RE_ESCAPED_CRLF, "\n").replace(RE_ESCAPED_CR, "\n").trim();
     status = "issued";
   }
 
@@ -184,21 +189,20 @@ export const submitCsrToAdcs = async (params: {
 
       // Handle base64-encoded certificate data
       let cleanCertData = certData.trim();
-      cleanCertData = cleanCertData.replace(new RE2("[^A-Za-z0-9+/=\\s]", "g"), "").replace(new RE2("\\s", "g"), "");
+      cleanCertData = cleanCertData.replace(RE_NON_BASE64, "").replace(RE_WHITESPACE, "");
 
       if (cleanCertData.length < 100) {
         continue;
       }
 
-      const formattedCert = cleanCertData.replace(new RE2("(.{64})", "g"), "$1\n").trim();
+      const formattedCert = cleanCertData.replace(RE_BASE64_WRAP, "$1\n").trim();
       const pemCert = `-----BEGIN CERTIFICATE-----\n${formattedCert}\n-----END CERTIFICATE-----`;
 
-      // Validate the PEM
-      const testCert = new x509.X509Certificate(pemCert);
-      if (testCert) {
-        const certificateChain = await fetchAdcsCaChain(adcsClient);
-        return { certificate: pemCert, certificateChain };
-      }
+      // Validate the PEM (throws on invalid input)
+      // eslint-disable-next-line no-new
+      new x509.X509Certificate(pemCert);
+      const certificateChain = await fetchAdcsCaChain(adcsClient);
+      return { certificate: pemCert, certificateChain };
     } catch (error) {
       if (error instanceof BadRequestError) {
         throw error;

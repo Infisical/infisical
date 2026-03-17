@@ -8,8 +8,9 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaSigningConfigType } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-enums";
 import {
-  TCreateCaSigningConfigDTO,
-  TUpdateCaSigningConfigDTO
+  AzureAdCsDestinationConfigSchema,
+  DestinationConfigSchema,
+  VenafiDestinationConfigSchema
 } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-types";
 import { CaRenewalType, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
@@ -744,12 +745,25 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE_SIGNING_CONFIG.caId)
       }),
-      body: z.object({
-        type: z.nativeEnum(CaSigningConfigType),
-        parentCaId: z.string().uuid().optional(),
-        appConnectionId: z.string().uuid().optional(),
-        destinationConfig: z.record(z.unknown()).optional()
-      }),
+      body: z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal(CaSigningConfigType.Internal),
+          parentCaId: z.string().uuid().optional()
+        }),
+        z.object({
+          type: z.literal(CaSigningConfigType.Manual)
+        }),
+        z.object({
+          type: z.literal(CaSigningConfigType.Venafi),
+          appConnectionId: z.string().uuid(),
+          destinationConfig: VenafiDestinationConfigSchema
+        }),
+        z.object({
+          type: z.literal(CaSigningConfigType.AzureAdCs),
+          appConnectionId: z.string().uuid(),
+          destinationConfig: AzureAdCsDestinationConfigSchema
+        })
+      ]),
       response: {
         200: CaSigningConfigsSchema
       }
@@ -757,10 +771,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     handler: async (req) => {
       const { config, ca } = await server.services.caSigningConfig.createSigningConfig({
         caId: req.params.caId,
-        type: req.body.type,
-        parentCaId: req.body.parentCaId,
-        appConnectionId: req.body.appConnectionId,
-        destinationConfig: req.body.destinationConfig as TCreateCaSigningConfigDTO["destinationConfig"],
+        ...req.body,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -846,7 +857,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       body: z.object({
         parentCaId: z.string().uuid().optional(),
         appConnectionId: z.string().uuid().optional(),
-        destinationConfig: z.record(z.unknown()).optional()
+        destinationConfig: DestinationConfigSchema.optional()
       }),
       response: {
         200: CaSigningConfigsSchema
@@ -857,7 +868,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         caId: req.params.caId,
         parentCaId: req.body.parentCaId,
         appConnectionId: req.body.appConnectionId,
-        destinationConfig: req.body.destinationConfig as TUpdateCaSigningConfigDTO["destinationConfig"],
+        destinationConfig: req.body.destinationConfig,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

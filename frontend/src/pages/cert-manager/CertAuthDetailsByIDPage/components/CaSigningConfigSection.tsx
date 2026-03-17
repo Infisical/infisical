@@ -133,7 +133,9 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
   const selectedApplicationId = watch("applicationId");
 
   const { data: availableVenafiConnections, isPending: isVenafiPending } =
-    useListAvailableAppConnections(AppConnection.Venafi, currentProject.id);
+    useListAvailableAppConnections(AppConnection.Venafi, currentProject.id, {
+      enabled: signingConfig?.type === CaSigningConfigType.VENAFI
+    });
 
   const { data: applications = [], isPending: isApplicationsLoading } =
     useVenafiConnectionListApplications(selectedConnectionId ?? "", {
@@ -150,7 +152,9 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
     );
 
   const { data: availableAdcsConnections, isPending: isAdcsConnectionsPending } =
-    useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id);
+    useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
+      enabled: signingConfig?.type === CaSigningConfigType.AZURE_ADCS
+    });
 
   const {
     control: adcsControl,

@@ -17,6 +17,9 @@ export const AzureAdCsDestinationConfigSchema = z.object({
 
 export type TAzureAdCsDestinationConfig = z.infer<typeof AzureAdCsDestinationConfigSchema>;
 
+// Union of all external CA destination config schemas — extend here when adding new providers
+export const DestinationConfigSchema = VenafiDestinationConfigSchema.or(AzureAdCsDestinationConfigSchema);
+
 export type TCreateCaSigningConfigDTO = {
   caId: string;
   type: CaSigningConfigType;

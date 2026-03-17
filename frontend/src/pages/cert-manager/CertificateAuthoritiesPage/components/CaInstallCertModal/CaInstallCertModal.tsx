@@ -175,7 +175,10 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         if (selectedIntegration === "azure-adcs") {
           return <AdcsCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
         }
-        return <VenafiCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
+        if (selectedIntegration === "venafi") {
+          return <VenafiCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
+        }
+        return null;
       case SigningMethod.Manual:
         return <ExternalCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
       default:
