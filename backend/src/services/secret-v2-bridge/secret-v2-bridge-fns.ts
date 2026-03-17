@@ -1346,8 +1346,12 @@ export const createRelativeImportExpander = ({
             folderDAL.findBySecretPath(projectId, sourceEnvironment, sourcePath)
           ]);
           const [currentSecrets, sourceSecrets] = await Promise.all([
-            currentFolder ? fetchFolderSecretsWithImports({ folderId: currentFolder.id, userId: folderIdArgs.userId }) : [],
-            sourceFolder ? fetchFolderSecretsWithImports({ folderId: sourceFolder.id, userId: folderIdArgs.userId }) : []
+            currentFolder
+              ? fetchFolderSecretsWithImports({ folderId: currentFolder.id, userId: folderIdArgs.userId })
+              : [],
+            sourceFolder
+              ? fetchFolderSecretsWithImports({ folderId: sourceFolder.id, userId: folderIdArgs.userId })
+              : []
           ]);
           // source goes in first (lower priority). current overwrites (higher priority). record the origin of each key so the permission check can use the right env.
           const envMerged = new Map(
