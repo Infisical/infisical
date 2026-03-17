@@ -150,7 +150,8 @@ export const identityAccessTokenServiceFactory = ({
         identityId: decodedToken.identityId,
         clientSecretId: decodedToken.clientSecretId,
         identityAccessTokenId: decodedToken.identityAccessTokenId,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+        identityAuth: decodedToken.identityAuth
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       expiresIn !== undefined ? { expiresIn } : undefined

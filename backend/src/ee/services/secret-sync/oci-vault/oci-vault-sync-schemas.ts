@@ -71,6 +71,7 @@ export const OCIVaultSyncListItemSchema = z
     connection: z.literal(AppConnection.OCI),
     destination: z.literal(SecretSync.OCIVault),
     canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true),
     enterprise: z.boolean()
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.OCIVault] }));

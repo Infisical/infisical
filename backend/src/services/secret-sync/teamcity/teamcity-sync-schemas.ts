@@ -45,6 +45,7 @@ export const TeamCitySyncListItemSchema = z
     name: z.literal("TeamCity"),
     connection: z.literal(AppConnection.TeamCity),
     destination: z.literal(SecretSync.TeamCity),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.TeamCity] }));

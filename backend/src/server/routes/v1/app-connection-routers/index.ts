@@ -11,6 +11,7 @@ import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-confi
 import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-router";
 import { registerAzureDnsConnectionRouter } from "./azure-dns-connection-router";
+import { registerAzureEntraIdConnectionRouter } from "./azure-entra-id-connection-router";
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
@@ -48,6 +49,7 @@ import { registerSshConnectionRouter } from "./ssh-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
+import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
@@ -106,5 +108,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Dbt]: registerDbtConnectionRouter,
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
-    [AppConnection.CircleCI]: registerCircleCIConnectionRouter
+    [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
+    [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
+    [AppConnection.Venafi]: registerVenafiConnectionRouter
   };

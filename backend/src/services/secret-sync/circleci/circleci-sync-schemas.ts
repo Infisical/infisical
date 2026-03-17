@@ -59,6 +59,7 @@ export const CircleCISyncListItemSchema = z
     name: z.literal("CircleCI"),
     connection: z.literal(AppConnection.CircleCI),
     destination: z.literal(SecretSync.CircleCI),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.CircleCI] }));

@@ -44,6 +44,7 @@ export const SupabaseSyncListItemSchema = z
     name: z.literal("Supabase"),
     connection: z.literal(AppConnection.Supabase),
     destination: z.literal(SecretSync.Supabase),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Supabase] }));

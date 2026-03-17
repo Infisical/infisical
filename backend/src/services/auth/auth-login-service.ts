@@ -42,6 +42,8 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { UserAliasType } from "../user-alias/user-alias-types";
 import { enforceUserLockStatus, getAuthMethodAndOrgId, validateProviderAuthToken, verifyCaptcha } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -61,6 +63,7 @@ import {
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "updateById">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
@@ -76,6 +79,7 @@ type TAuthLoginServiceFactoryDep = {
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
 export const authLoginServiceFactory = ({
   userDAL,
+  userAliasDAL,
   tokenService,
   smtpService,
   orgDAL,
@@ -991,10 +995,47 @@ export const authLoginServiceFactory = ({
   /*
    * OAuth2 login for google,github, and other oauth2 provider
    * */
-  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort, orgSlug }: TOauthLoginDTO) => {
-    // akhilmhdh: case sensitive email resolution
-    const usersByUsername = await userDAL.findUserByUsername(email);
-    let user = usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+  const authMethodToAliasType = (method: AuthMethod): UserAliasType => {
+    switch (method) {
+      case AuthMethod.GOOGLE:
+        return UserAliasType.GOOGLE;
+      case AuthMethod.GITHUB:
+        return UserAliasType.GITHUB;
+      case AuthMethod.GITLAB:
+        return UserAliasType.GITLAB;
+      default:
+        throw new BadRequestError({ message: `Unsupported OAuth auth method: ${method}` });
+    }
+  };
+
+  const oauth2Login = async ({
+    email,
+    firstName,
+    lastName,
+    authMethod,
+    callbackPort,
+    orgSlug,
+    providerUserId
+  }: TOauthLoginDTO) => {
+    const aliasType = authMethodToAliasType(authMethod);
+
+    // Step 1: Look up user by provider alias (stable, immutable ID)
+    let user: TUsers | undefined;
+    let isNewAlias = false;
+    const existingAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
+    if (existingAlias) {
+      user = await userDAL.findById(existingAlias.userId);
+    }
+
+    // Step 2: Fall back to email lookup for existing users without an alias yet
+    if (!user) {
+      const usersByUsername = await userDAL.findUserByUsername(email);
+      user = usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+      if (user) {
+        isNewAlias = true;
+      }
+    }
+
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && user) {
@@ -1061,38 +1102,41 @@ export const authLoginServiceFactory = ({
           });
       }
 
-      user = await userDAL.create({
-        username: email.trim().toLowerCase(),
-        email: email.trim().toLowerCase(),
-        isEmailVerified: true,
-        firstName,
-        lastName,
-        authMethods: [authMethod],
-        isGhost: false
-      });
+      user = await userDAL.transaction(async (tx) => {
+        const newUser = await userDAL.create(
+          {
+            username: email.trim().toLowerCase(),
+            email: email.trim().toLowerCase(),
+            isEmailVerified: true,
+            firstName,
+            lastName,
+            authMethods: [authMethod],
+            isGhost: false
+          },
+          tx
+        );
 
-      if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
-        const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
-        if (!defaultOrg) {
-          throw new BadRequestError({
-            message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
+        if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
+          const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
+          if (!defaultOrg) {
+            throw new BadRequestError({
+              message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
+            });
+          }
+          orgId = defaultOrg.id;
+          const existingMembership = await orgDAL.findEffectiveOrgMembership({
+            actorType: ActorType.USER,
+            actorId: newUser.id,
+            orgId,
+            acceptAnyStatus: true
           });
-        }
-        orgId = defaultOrg.id;
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: user.id,
-          orgId,
-          acceptAnyStatus: true
-        });
 
-        if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole);
+          if (!existingMembership) {
+            const { role, roleId } = await getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole);
 
-          await membershipUserDAL.transaction(async (tx) => {
             const membership = await membershipUserDAL.create(
               {
-                actorUserId: user?.id,
+                actorUserId: newUser.id,
                 inviteEmail: email,
                 scopeOrgId: orgId,
                 scope: AccessScope.Organization,
@@ -1109,9 +1153,23 @@ export const authLoginServiceFactory = ({
               },
               tx
             );
-          });
+          }
         }
-      }
+
+        await userAliasDAL.create(
+          {
+            userId: newUser.id,
+            aliasType,
+            externalId: providerUserId,
+            emails: [email],
+            orgId: orgId || null,
+            isEmailVerified: true
+          },
+          tx
+        );
+
+        return newUser;
+      });
     } else {
       const isLinkingRequired = !user?.authMethods?.includes(authMethod);
       if (isLinkingRequired) {
@@ -1121,6 +1179,45 @@ export const authLoginServiceFactory = ({
           authMethods: [...(user.authMethods || []), authMethod],
           firstName: !user.isAccepted ? firstName : undefined,
           lastName: !user.isAccepted ? lastName : undefined
+        });
+      }
+
+      // Sync email/username if the provider email has changed (user found by alias)
+      const normalizedProviderEmail = email.trim().toLowerCase();
+      if (existingAlias && user.email !== normalizedProviderEmail) {
+        const conflictingUsers = await userDAL.findUserByUsername(normalizedProviderEmail);
+        const conflictingUser =
+          conflictingUsers?.length > 1
+            ? conflictingUsers.find((el) => el.username === normalizedProviderEmail)
+            : conflictingUsers?.[0];
+
+        if (conflictingUser && conflictingUser.id !== user.id) {
+          throw new BadRequestError({
+            message:
+              "Unable to complete login: the email associated with your SSO account is already in use by another Infisical user.",
+            name: "Oauth 2 login"
+          });
+        }
+
+        user = await userDAL.transaction(async (tx) => {
+          const updatedUser = await userDAL.updateById(
+            user!.id,
+            {
+              username: normalizedProviderEmail,
+              email: normalizedProviderEmail
+            },
+            tx
+          );
+
+          await userAliasDAL.updateById(
+            existingAlias.id,
+            {
+              emails: [normalizedProviderEmail]
+            },
+            tx
+          );
+
+          return updatedUser;
         });
       }
     }
@@ -1140,6 +1237,27 @@ export const authLoginServiceFactory = ({
         if (orgMembership?.isActive) {
           orgId = org.id;
           orgName = org.name;
+        }
+      }
+    }
+
+    // Self-healing backfill: create alias for existing users found by email fallback
+    if (isNewAlias) {
+      try {
+        await userAliasDAL.create({
+          userId: user.id,
+          aliasType,
+          externalId: providerUserId,
+          emails: [email],
+          orgId: orgId || null,
+          isEmailVerified: true
+        });
+      } catch (err) {
+        // Swallow duplicate key errors from the unique index (race condition: concurrent login already created the alias)
+        if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
+          logger.warn(`OAuth alias backfill for user ${user.id} skipped: alias already exists`);
+        } else {
+          throw err;
         }
       }
     }

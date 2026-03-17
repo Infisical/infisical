@@ -461,15 +461,10 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     ]
   },
   [ProjectPermissionSub.Identity]: {
-    [ProjectPermissionIdentityActions.Read]: [],
+    [ProjectPermissionIdentityActions.Read]: ["identityId"],
     [ProjectPermissionIdentityActions.Create]: [],
-    [ProjectPermissionIdentityActions.Edit]: [],
-    [ProjectPermissionIdentityActions.Delete]: [],
-    [ProjectPermissionIdentityActions.AssumePrivileges]: [],
-    [ProjectPermissionIdentityActions.RevokeAuth]: [],
-    [ProjectPermissionIdentityActions.CreateToken]: [],
-    [ProjectPermissionIdentityActions.GetToken]: [],
-    [ProjectPermissionIdentityActions.DeleteToken]: [],
+    [ProjectPermissionIdentityActions.Edit]: ["identityId"],
+    [ProjectPermissionIdentityActions.Delete]: ["identityId"],
     [ProjectPermissionIdentityActions.GrantPrivileges]: [
       "identityId",
       "assignableRole",
@@ -481,7 +476,12 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
       "identityId",
       "assignableSubject",
       "assignableAction"
-    ]
+    ],
+    [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
+    [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
   },
   [ProjectPermissionSub.Groups]: {
     [ProjectPermissionGroupActions.Read]: [],

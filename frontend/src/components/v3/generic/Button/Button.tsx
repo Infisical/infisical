@@ -82,6 +82,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       isDisabled = false,
       children: _children,
       asChild = false,
+      type = "button",
       ...props
     },
     ref
@@ -105,6 +106,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-slot="button"
         data-variant={variant}
         data-size={size}
+        type={type}
         disabled={isDisabled || isPending}
         className={cn(buttonVariants({ variant, size, className, isPending, isFullWidth }))}
         {...props}

@@ -6,5 +6,6 @@ export const AZURE_DEVOPS_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Azure DevOps",
   destination: SecretSync.AzureDevOps,
   connection: AppConnection.AzureDevOps,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

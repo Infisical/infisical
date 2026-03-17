@@ -64,12 +64,17 @@ Supports conditions and permission inversion.
 | Action             | Description                                    | Condition keys |
 | ------------------ | ---------------------------------------------- | ----- |
 | `read`             | View project identities                        | `identityId` |
-| `create`           | Add new identities to project                  | `identityId` |
+| `create`           | Add new identities to project                  |                                    |
 | `edit`             | Modify project identities                      | `identityId` |
 | `delete`           | Remove identities from project                 | `identityId` |
 | `grant-privileges` | Legacy: Change permission levels of project identities | `identityId`, `assignableRole`, `assignableSubject`, `assignableAction` |
 | `assign-role`      | Assign or update roles for project identities  | `identityId`, `assignableRole` |
 | `assign-additional-privileges` | Grant additional privileges to project identities | `identityId`, `assignableSubject`, `assignableAction` |
+| `assume-privileges` | Temporarily assume another identity's privileges | `identityId` |
+| `revoke-auth` | Revoke authentication for a machine identity | `identityId` |
+| `create-token` | Generate access tokens for machine identities | `identityId` |
+| `get-token` | View existing access tokens | `identityId` |
+| `delete-token` | Revoke access tokens | `identityId` |
 
 #### Subject: `settings`
 

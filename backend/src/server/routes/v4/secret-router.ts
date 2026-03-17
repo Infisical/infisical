@@ -14,7 +14,11 @@ import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { PersonalOverridesBehavior, SecretProtectionType } from "@app/services/secret/secret-types";
+import {
+  PersonalOverridesBehavior,
+  SecretImportReferencesBehavior,
+  SecretProtectionType
+} from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -186,6 +190,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         personalOverridesBehavior: req.query.includePersonalOverrides
           ? PersonalOverridesBehavior.Priority
           : PersonalOverridesBehavior.NeverInclude,
+        secretImportReferencesBehavior: SecretImportReferencesBehavior.Relative,
         expandPersonalOverrides: req.query.includePersonalOverrides,
         actorAuthMethod: req.permission.authMethod,
         projectId,

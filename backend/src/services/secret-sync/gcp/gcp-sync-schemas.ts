@@ -65,6 +65,7 @@ export const GcpSyncListItemSchema = z
     name: z.literal("GCP Secret Manager"),
     connection: z.literal(AppConnection.GCP),
     destination: z.literal(SecretSync.GCPSecretManager),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GCPSecretManager] }));

@@ -218,6 +218,11 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectName;
       secondaryText = "Project";
       break;
+    case SecretSync.AzureEntraIdScim:
+      primaryText =
+        destinationConfig.servicePrincipalDisplayName || destinationConfig.servicePrincipalId;
+      secondaryText = "SCIM Service Principal";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }
