@@ -18,7 +18,7 @@ import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TMembershipUserDALFactory } from "../membership-user-dal";
-import { TMembershipUserScopeFactory } from "../membership-user-types";
+import { ORG_AUTH_ENFORCED_ERROR_MESSAGE, TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TOrgMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -83,7 +83,7 @@ export const newOrgMembershipUserFactory = ({
     if (org?.authEnforced) {
       throw new ForbiddenRequestError({
         name: "InviteUser",
-        message: "Failed to invite user due to org-level auth enforced for organization"
+        message: ORG_AUTH_ENFORCED_ERROR_MESSAGE
       });
     }
 

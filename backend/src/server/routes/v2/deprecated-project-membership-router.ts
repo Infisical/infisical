@@ -4,6 +4,7 @@ import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectMembershi
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
+import { ORG_AUTH_ENFORCED_ERROR_MESSAGE } from "@app/services/membership-user/membership-user-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -78,7 +79,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         const isAuthEnforcedError =
           error instanceof ForbiddenRequestError &&
           !(error instanceof PermissionBoundaryError) &&
-          error.message === "Failed to invite user due to org-level auth enforced for organization";
+          error.message === ORG_AUTH_ENFORCED_ERROR_MESSAGE;
 
         if (!isAuthEnforcedError) {
           throw error;

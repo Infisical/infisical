@@ -24,6 +24,12 @@ export interface TMembershipUserScopeFactory {
   isCustomRole: (role: string) => boolean;
 }
 
+// Shared error message constant used by org-membership-user-factory (throw site) and
+// deprecated-project-membership-router (catch site). Keeping this in one place prevents
+// the catch from silently breaking if the message is ever changed on one side only.
+export const ORG_AUTH_ENFORCED_ERROR_MESSAGE =
+  "Failed to invite user due to org-level auth enforced for organization";
+
 export type TCreateMembershipUserDTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
