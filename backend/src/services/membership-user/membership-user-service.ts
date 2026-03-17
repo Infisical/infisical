@@ -275,7 +275,24 @@ export const membershipUserServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
-      const docs = await membershipUserDAL.insertMany(newMemberships, tx);
+      // Re-check for existing memberships within the transaction to prevent race conditions
+      // where concurrent requests both pass the initial existence check
+      const existingInTx = await membershipUserDAL.find(
+        {
+          scope: scopeData.scope,
+          ...scopeDatabaseFields,
+          $in: {
+            actorUserId: newMembershipUsers.map((el) => el.id)
+          }
+        },
+        { tx }
+      );
+      const existingUserIds = new Set(existingInTx.map((el) => el.actorUserId));
+      const trulyNewMemberships = newMemberships.filter((m) => !existingUserIds.has(m.actorUserId));
+
+      if (trulyNewMemberships.length === 0) return [];
+
+      const docs = await membershipUserDAL.insertMany(trulyNewMemberships, tx);
 
       const roleDocs: TMembershipRolesInsert[] = [];
       docs.forEach((membership) => {
@@ -311,6 +328,8 @@ export const membershipUserServiceFactory = ({
       await membershipRoleDAL.insertMany(roleDocs, tx);
       return docs;
     });
+
+    if (membershipDoc.length === 0) return { memberships: [] };
 
     const { signUpTokens } = await factory.onCreateMembershipComplete(dto, newMembershipUsers);
     return { memberships: membershipDoc, signUpTokens };

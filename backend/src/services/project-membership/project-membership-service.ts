@@ -274,7 +274,13 @@ export const projectMembershipServiceFactory = ({
       ...new Set(usernamesAndEmails.map((element) => element))
     ]);
 
-    if (projectMembers.length !== usernamesAndEmails.length) {
+    // Compare by unique usernames rather than raw membership count to handle
+    // cases where a user may have multiple membership records (duplicates)
+    const uniqueUsernames = new Set(usernamesAndEmails);
+    const foundUsernames = new Set(projectMembers.map(({ user }) => user.username));
+    const missingUsernames = [...uniqueUsernames].filter((u) => !foundUsernames.has(u));
+
+    if (missingUsernames.length > 0) {
       throw new BadRequestError({
         message: "Some users are not part of project",
         name: "Delete project membership"
