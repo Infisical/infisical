@@ -168,7 +168,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         properties: {
           organizationId: sharedSecret.orgId ?? undefined,
           sharedSecretId: req.params.id,
-          accessType: sharedSecret.accessType
+          accessType: sharedSecret.accessType as SecretSharingAccessType
         }
       });
 
