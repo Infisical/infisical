@@ -36,7 +36,14 @@ export const ActiveDirectoryAccountCredentialsSchema = z.object({
 
 // Account metadata
 export const ActiveDirectoryAccountMetadataSchema = z.object({
-  accountType: z.nativeEnum(ActiveDirectoryAccountType)
+  accountType: z.nativeEnum(ActiveDirectoryAccountType),
+  adGuid: z.string().optional(),
+  displayName: z.string().optional(),
+  userPrincipalName: z.string().optional(),
+  servicePrincipalName: z.string().array().optional(),
+  userAccountControl: z.number().optional(),
+  pwdLastSet: z.string().optional(),
+  lastLogonTimestamp: z.string().optional()
 });
 
 export const ActiveDirectoryResourceSchema = BaseActiveDirectoryResourceSchema.extend({

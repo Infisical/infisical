@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  ClipboardPasteIcon,
   FingerprintIcon,
   FolderIcon,
   ImportIcon,
@@ -30,9 +31,11 @@ type Props = {
   onAddSecretRotation: () => void;
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
+  onReplicateSecrets: () => void;
   onImportFromVault: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
+  isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
   hasVaultConnection: boolean;
@@ -46,9 +49,11 @@ export function AddResourceButtons({
   onAddSecretRotation,
   onAddSecretImport,
   onImportSecrets,
+  onReplicateSecrets,
   onImportFromVault,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
+  isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
   hasVaultConnection,
@@ -150,6 +155,29 @@ export function AddResourceButtons({
                   </UnstableDropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">Access Restricted</TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.SecretFolders}
+          >
+            {(isAllowed) => (
+              <Tooltip open={!isReplicateSecretsAvailable || !isAllowed ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <UnstableDropdownMenuItem
+                    onClick={onReplicateSecrets}
+                    isDisabled={!isReplicateSecretsAvailable || !isAllowed}
+                  >
+                    <ClipboardPasteIcon className="text-accent" />
+                    Replicate Secrets
+                  </UnstableDropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {!isReplicateSecretsAvailable
+                    ? "Select a single environment to replicate secrets"
+                    : "Access Denied"}
+                </TooltipContent>
               </Tooltip>
             )}
           </ProjectPermissionCan>

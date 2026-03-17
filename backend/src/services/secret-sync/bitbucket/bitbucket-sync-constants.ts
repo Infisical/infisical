@@ -6,5 +6,6 @@ export const BITBUCKET_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Bitbucket",
   destination: SecretSync.Bitbucket,
   connection: AppConnection.Bitbucket,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

@@ -45,6 +45,7 @@ import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityOrgMembershipRouter } from "./identity-org-membership-router";
 import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
 import { registerIdentityRouter } from "./identity-router";
+import { registerIdentitySpiffeAuthRouter } from "./identity-spiffe-auth-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
 import { registerIdentityUaRouter } from "./identity-universal-auth-router";
@@ -99,6 +100,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityOciAuthRouter);
       await authRouter.register(registerIdentityOidcAuthRouter);
       await authRouter.register(registerIdentityJwtAuthRouter);
+      await authRouter.register(registerIdentitySpiffeAuthRouter);
       await authRouter.register(registerIdentityLdapAuthRouter);
     },
     { prefix: "/auth" }

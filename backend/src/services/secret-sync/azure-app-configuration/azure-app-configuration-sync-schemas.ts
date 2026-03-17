@@ -51,6 +51,7 @@ export const AzureAppConfigurationSyncListItemSchema = z
     name: z.literal("Azure App Configuration"),
     connection: z.literal(AppConnection.AzureAppConfiguration),
     destination: z.literal(SecretSync.AzureAppConfiguration),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureAppConfiguration] }));

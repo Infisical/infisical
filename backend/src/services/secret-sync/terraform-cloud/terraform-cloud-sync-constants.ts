@@ -6,5 +6,6 @@ export const TERRAFORM_CLOUD_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Terraform Cloud",
   destination: SecretSync.TerraformCloud,
   connection: AppConnection.TerraformCloud,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

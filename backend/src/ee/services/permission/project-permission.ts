@@ -1,4 +1,5 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
@@ -76,6 +77,8 @@ export enum ProjectPermissionIdentityActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role",
+  AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
   CreateToken = "create-token",
@@ -89,6 +92,8 @@ export enum ProjectPermissionMemberActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role",
+  AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges"
 }
 
@@ -97,7 +102,8 @@ export enum ProjectPermissionGroupActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  GrantPrivileges = "grant-privileges"
+  GrantPrivileges = "grant-privileges",
+  AssignRole = "assign-role"
 }
 
 export enum ProjectPermissionSshHostActions {
@@ -217,7 +223,8 @@ export enum ProjectPermissionAppConnectionActions {
   Create = "create-app-connections",
   Edit = "edit-app-connections",
   Delete = "delete-app-connections",
-  Connect = "connect-app-connections"
+  Connect = "connect-app-connections",
+  RotateCredentials = "rotate-credentials"
 }
 
 export enum ProjectPermissionSecretScanningFindingActions {
@@ -252,6 +259,14 @@ export enum ProjectPermissionPamAccountActions {
 export enum ProjectPermissionPamSessionActions {
   Read = "read"
   // Terminate = "terminate"
+}
+
+export enum ProjectPermissionPamDiscoveryActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  RunScan = "run-scan"
 }
 
 export enum ProjectPermissionMcpEndpointActions {
@@ -330,6 +345,7 @@ export enum ProjectPermissionSub {
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
+  PamDiscovery = "pam-discovery",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
   ApprovalRequests = "approval-requests",
@@ -343,7 +359,36 @@ export enum ProjectPermissionSub {
 // Actions without restrictions (undefined or not in map) allow all conditions
 export type ActionAllowedConditionsType = Partial<Record<ProjectPermissionSub, Partial<Record<string, string[]>>>>;
 
-export const ActionAllowedConditions: ActionAllowedConditionsType = {};
+export const ActionAllowedConditions: ActionAllowedConditionsType = {
+  [ProjectPermissionSub.Member]: {
+    [ProjectPermissionMemberActions.GrantPrivileges]: [
+      "userEmail",
+      "assignableRole",
+      "assignableSubject",
+      "assignableAction"
+    ],
+    [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
+  },
+  [ProjectPermissionSub.Identity]: {
+    [ProjectPermissionIdentityActions.GrantPrivileges]: [
+      "identityId",
+      "assignableRole",
+      "assignableSubject",
+      "assignableAction"
+    ],
+    [ProjectPermissionIdentityActions.AssignRole]: ["identityId", "assignableRole"],
+    [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: [
+      "identityId",
+      "assignableSubject",
+      "assignableAction"
+    ]
+  },
+  [ProjectPermissionSub.Groups]: {
+    [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "assignableRole"],
+    [ProjectPermissionGroupActions.AssignRole]: ["groupName", "assignableRole"]
+  }
+};
 
 export type SecretSubjectFields = {
   environment: string;
@@ -396,7 +441,22 @@ export type SecretRotationsSubjectFields = {
 };
 
 export type IdentityManagementSubjectFields = {
-  identityId: string;
+  identityId?: string;
+  assignableRole?: string;
+  assignableSubject?: string;
+  assignableAction?: string;
+};
+
+export type MemberSubjectFields = {
+  userEmail?: string;
+  assignableRole?: string;
+  assignableSubject?: string;
+  assignableAction?: string;
+};
+
+export type GroupSubjectFields = {
+  groupName?: string;
+  assignableRole?: string;
 };
 
 export type SshHostSubjectFields = {
@@ -491,8 +551,14 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
-  | [ProjectPermissionMemberActions, ProjectPermissionSub.Member]
-  | [ProjectPermissionGroupActions, ProjectPermissionSub.Groups]
+  | [
+      ProjectPermissionMemberActions,
+      ProjectPermissionSub.Member | (ForcedSubject<ProjectPermissionSub.Member> & MemberSubjectFields)
+    ]
+  | [
+      ProjectPermissionGroupActions,
+      ProjectPermissionSub.Groups | (ForcedSubject<ProjectPermissionSub.Groups> & GroupSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
   | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs]
@@ -582,6 +648,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.PamAccounts | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
   | [
       ProjectPermissionMcpEndpointActions,
       ProjectPermissionSub.McpEndpoints | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
@@ -828,9 +895,203 @@ const SecretConditionV2Schema = z
   })
   .partial();
 
+type SubjectValidationConfig = {
+  allowedSubjects?: Set<string>;
+  forbiddenSubjects?: Set<string>;
+  globPattern?: string;
+};
+
+const validateAssignableActionFormat = (value: string, config: SubjectValidationConfig | null): string | null => {
+  const colonIndex = value.indexOf(":");
+  if (colonIndex === -1 || colonIndex === 0 || colonIndex === value.length - 1) {
+    return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
+  }
+  const subject = value.slice(0, colonIndex).trim();
+  const action = value.slice(colonIndex + 1).trim();
+  if (!subject || !action) {
+    return "Must follow format {subject}:{action} (e.g., secrets:describeSecret)";
+  }
+  if (config?.forbiddenSubjects?.has(subject)) {
+    return `Subject "${subject}" is forbidden by the assignable subject condition`;
+  }
+  if (config?.allowedSubjects && !config.allowedSubjects.has(subject)) {
+    return `Subject "${subject}" is not in the assignable subject list`;
+  }
+  if (config?.globPattern && !picomatch.isMatch(subject, config.globPattern)) {
+    return `Subject "${subject}" does not match the assignable subject pattern "${config.globPattern}"`;
+  }
+  return null;
+};
+
+const extractConditionValues = (value: string | Record<string, unknown> | undefined): string[] => {
+  if (value == null) return [];
+  if (typeof value === "string") return [value.trim()].filter(Boolean);
+  if (typeof value !== "object") return [];
+  const eq = value[PermissionConditionOperators.$EQ];
+  if (typeof eq === "string") return [eq.trim()].filter(Boolean);
+  const ne = value[PermissionConditionOperators.$NEQ];
+  if (typeof ne === "string") return [ne.trim()].filter(Boolean);
+  const inVal = value[PermissionConditionOperators.$IN];
+  if (Array.isArray(inVal))
+    return inVal
+      .filter((v): v is string => typeof v === "string")
+      .map((v) => v.trim())
+      .filter(Boolean);
+  const glob = value[PermissionConditionOperators.$GLOB];
+  if (typeof glob === "string") return [glob.trim()].filter(Boolean);
+  return [];
+};
+
+const refineSubjectActionConditions = (
+  conditions: {
+    assignableAction?: string | Record<string, unknown> | undefined;
+    assignableSubject?: string | Record<string, unknown> | undefined;
+  },
+  ctx: z.RefinementCtx
+) => {
+  const actionValues = extractConditionValues(conditions.assignableAction);
+  if (actionValues.length === 0) return;
+
+  let subjectConfig: SubjectValidationConfig | null = null;
+  const subjectVal = conditions.assignableSubject;
+
+  if (typeof subjectVal === "string") {
+    const trimmed = subjectVal.trim();
+    if (trimmed) subjectConfig = { allowedSubjects: new Set([trimmed]) };
+  } else if (subjectVal != null) {
+    const { $eq, $in, $ne, $glob } = subjectVal;
+    if ($eq != null || $in != null) {
+      const values = extractConditionValues(subjectVal);
+      if (values.length > 0) subjectConfig = { allowedSubjects: new Set(values) };
+    } else if ($ne != null) {
+      const values = extractConditionValues(subjectVal);
+      if (values.length > 0) subjectConfig = { forbiddenSubjects: new Set(values) };
+    } else if (typeof $glob === "string" && $glob.trim()) {
+      subjectConfig = { globPattern: $glob.trim() };
+    }
+  }
+
+  const error = actionValues.map((v) => validateAssignableActionFormat(v, subjectConfig)).find((e) => e !== null);
+  if (error) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: error,
+      path: ["assignableAction"]
+    });
+  }
+};
+
+const MemberConditionSchema = z
+  .object({
+    userEmail: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    assignableRole: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ]),
+    assignableSubject: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    assignableAction: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ])
+  })
+  .partial()
+  .superRefine(refineSubjectActionConditions);
+
 const IdentityManagementConditionSchema = z
   .object({
     identityId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ]),
+    assignableRole: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ]),
+    assignableSubject: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    assignableAction: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ])
+  })
+  .partial()
+  .superRefine(refineSubjectActionConditions);
+
+const GroupConditionSchema = z
+  .object({
+    groupName: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    assignableRole: z.union([
       z.string(),
       z
         .object({
@@ -1126,15 +1387,23 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Member).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionMemberActions).describe(
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_ENUM(Object.values(ProjectPermissionMemberActions) as [string, ...string[]]).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: MemberConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Groups).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionGroupActions).describe(
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_ENUM(Object.values(ProjectPermissionGroupActions) as [string, ...string[]]).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: GroupConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Role).describe("The entity this permission pertains to."),
@@ -1343,6 +1612,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.PamDiscovery).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamDiscoveryActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.McpEndpoints).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionMcpEndpointActions).describe(
@@ -1462,7 +1737,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionIdentityActions).describe(
+    action: CASL_ACTION_SCHEMA_ENUM(Object.values(ProjectPermissionIdentityActions) as [string, ...string[]]).describe(
       "Describe what action an entity can take."
     ),
     conditions: IdentityManagementConditionSchema.describe(

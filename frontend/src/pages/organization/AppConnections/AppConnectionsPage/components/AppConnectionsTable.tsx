@@ -12,6 +12,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { VariablePermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -43,7 +44,12 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { TAppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
+import {
+  TAppConnection,
+  useListAppConnections,
+  useRotateAppConnectionCredentials,
+  useUpdateAppConnection
+} from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -80,6 +86,8 @@ type Props = {
 export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
   const isProjectView = Boolean(projectId);
   const { isPending, data: appConnections = [] } = useListAppConnections(projectId);
+  const rotateCredentials = useRotateAppConnectionCredentials();
+  const updateAppConnection = useUpdateAppConnection();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addConnection",
@@ -206,6 +214,45 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
 
   const handleEditDetails = (appConnection: TAppConnection) =>
     handlePopUpOpen("editDetails", appConnection);
+
+  const handleRotateCredentials = (appConnection: TAppConnection) => {
+    rotateCredentials.mutate(
+      { connectionId: appConnection.id, app: appConnection.app, projectId },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: "Credential rotation has been triggered",
+            type: "success"
+          });
+        },
+        onError: (error) => {
+          createNotification({
+            text: `Failed to trigger credential rotation: ${error.message}`,
+            type: "error"
+          });
+        }
+      }
+    );
+  };
+
+  const handleToggleAutoRotation = (appConnection: TAppConnection) => {
+    const enabling = !appConnection.isAutoRotationEnabled;
+    updateAppConnection.mutate(
+      {
+        connectionId: appConnection.id,
+        app: appConnection.app,
+        isAutoRotationEnabled: enabling
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: `Auto-rotation ${enabling ? "enabled" : "disabled"}`,
+            type: "success"
+          });
+        }
+      }
+    );
+  };
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -415,6 +462,8 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                 onDelete={handleDelete}
                 onEditCredentials={handleEditCredentials}
                 onEditDetails={handleEditDetails}
+                onRotateCredentials={handleRotateCredentials}
+                onToggleAutoRotation={handleToggleAutoRotation}
                 isProjectView={isProjectView}
               />
             ))}

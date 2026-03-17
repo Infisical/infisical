@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faClock, faEdit, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,7 +24,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
@@ -32,6 +32,11 @@ import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { groupBy } from "@app/lib/fn/array";
+import {
+  canModifyByGrantConditions,
+  filterByGrantConditions,
+  getGroupAssignRoleConditions
+} from "@app/lib/fn/permission";
 
 const temporaryRoleFormSchema = z.object({
   temporaryRange: z.string().min(1, "Required")
@@ -198,6 +203,7 @@ type TForm = z.infer<typeof formSchema>;
 export type TMemberRolesProp = {
   disableEdit?: boolean;
   groupId: string;
+  groupName: string;
   className?: string;
   roles: TGroupMembership["roles"];
   popperContentProps?: PopperContentProps;
@@ -371,15 +377,55 @@ export const GroupRoles = ({
   roles = [],
   disableEdit = false,
   groupId,
+  groupName,
   className,
   popperContentProps
 }: TMemberRolesProp) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
 
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
     currentProject?.id ?? ""
   );
+
+  const assignRoleConditions = useMemo(
+    () => getGroupAssignRoleConditions(permission),
+    [permission]
+  );
+
+  const canModifyGroupRoles = useMemo(() => {
+    if (!groupName) return false;
+
+    const hasAnyGroupPrivilegeRule = permission.rules.some((rule) => {
+      if (rule.inverted) return false;
+      const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+      if (!ruleSubjects.includes(ProjectPermissionSub.Groups)) return false;
+      const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
+      return actions.some((a) => String(a) === "grant-privileges" || String(a) === "assign-role");
+    });
+
+    if (!hasAnyGroupPrivilegeRule) return false;
+    if (!assignRoleConditions) return true;
+
+    return canModifyByGrantConditions({
+      targetValue: groupName,
+      allowed: assignRoleConditions.groupNames,
+      forbidden: assignRoleConditions.forbiddenGroupNames
+    });
+  }, [permission, assignRoleConditions, groupName]);
+
+  const filteredProjectRoles = useMemo(
+    () =>
+      filterByGrantConditions(projectRoles ?? [], {
+        getKey: (role) => role.slug,
+        allowed: assignRoleConditions?.roles,
+        forbidden: assignRoleConditions?.forbiddenRoles
+      }),
+    [projectRoles, assignRoleConditions]
+  );
+
+  const isEditDisabled = disableEdit || !canModifyGroupRoles;
 
   return (
     <div className={twMerge("flex items-center space-x-1", className)}>
@@ -450,7 +496,7 @@ export const GroupRoles = ({
             handlePopUpToggle("editRole", isOpen);
           }}
         >
-          {!disableEdit && (
+          {!isEditDisabled && (
             <PopoverTrigger onClick={(e) => e.stopPropagation()}>
               <IconButton size="sm" variant="plain" ariaLabel="update">
                 <FontAwesomeIcon icon={faEdit} />
@@ -469,7 +515,7 @@ export const GroupRoles = ({
               </div>
             ) : (
               <GroupRolesForm
-                projectRoles={projectRoles}
+                projectRoles={filteredProjectRoles}
                 groupId={groupId}
                 roles={roles}
                 onClose={() => handlePopUpToggle("editRole")}

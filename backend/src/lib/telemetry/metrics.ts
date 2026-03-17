@@ -23,7 +23,8 @@ export enum AuthAttemptAuthMethod {
   OCI_AUTH = "oci-auth",
   OIDC_AUTH = "oidc-auth",
   JWT_AUTH = "jwt-auth",
-  LDAP_AUTH = "ldap-auth"
+  LDAP_AUTH = "ldap-auth",
+  SPIFFE_AUTH = "spiffe-auth"
 }
 
 export enum AuthAttemptAuthResult {

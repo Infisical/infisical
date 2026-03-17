@@ -45,6 +45,7 @@ export type SecretV3RawSanitized = {
   secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
   isPending?: boolean;
+  hasPendingValueChange?: boolean;
   pendingAction?: PendingAction;
   reminder?: Reminder;
   isEmpty?: boolean;
@@ -175,6 +176,7 @@ export type TCreateSecretsV3DTO = {
   environment: string;
   type: SecretType;
   tagIds?: string[];
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
 };
 
 export type TUpdateSecretsV3DTO = {

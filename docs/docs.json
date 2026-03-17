@@ -114,6 +114,7 @@
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
                       "integrations/app-connections/azure-dns",
+                      "integrations/app-connections/azure-entra-id",
                       "integrations/app-connections/azure-key-vault",
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
@@ -153,6 +154,7 @@
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
+                      "integrations/app-connections/venafi",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
                       "integrations/app-connections/smb",
@@ -280,6 +282,7 @@
                   "documentation/platform/identities/kubernetes-auth",
                   "documentation/platform/identities/oci-auth",
                   "documentation/platform/identities/token-auth",
+                  "documentation/platform/identities/spiffe-auth",
                   "documentation/platform/identities/tls-cert-auth",
                   "documentation/platform/identities/universal-auth",
                   {
@@ -399,6 +402,7 @@
                 "group": "Contributing to platform",
                 "pages": [
                   "contributing/platform/developing",
+                  "contributing/platform/pam-development",
                   "contributing/platform/backend/how-to-create-a-feature",
                   "contributing/platform/backend/folder-structure"
                 ]
@@ -563,6 +567,7 @@
                       "integrations/secret-syncs/aws-secrets-manager",
                       "integrations/secret-syncs/azure-app-configuration",
                       "integrations/secret-syncs/azure-devops",
+                      "integrations/secret-syncs/azure-entra-id-scim",
                       "integrations/secret-syncs/azure-key-vault",
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
@@ -781,7 +786,8 @@
                   "documentation/platform/pki/ca/digicert",
                   "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
-                  "documentation/platform/pki/ca/aws-pca"
+                  "documentation/platform/pki/ca/aws-pca",
+                  "documentation/platform/pki/ca/venafi"
                 ]
               },
               {
@@ -838,6 +844,8 @@
                           "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/mysql",
+                          "documentation/platform/pam/getting-started/resources/postgresql",
                           "documentation/platform/pam/getting-started/resources/redis",
                           "documentation/platform/pam/getting-started/resources/ssh",
                           "documentation/platform/pam/getting-started/resources/windows-server"
@@ -860,7 +868,8 @@
                     "group": "Web Access",
                     "pages": [
                       "documentation/platform/pam/product-reference/web-access/overview",
-                      "documentation/platform/pam/product-reference/web-access/postgresql"
+                      "documentation/platform/pam/product-reference/web-access/postgresql",
+                      "documentation/platform/pam/product-reference/web-access/ssh"
                     ]
                   }
                 ]
@@ -998,6 +1007,16 @@
                   "api-reference/endpoints/organization-roles/get",
                   "api-reference/endpoints/organization-roles/get-by-slug",
                   "api-reference/endpoints/organization-roles/list"
+                ]
+              },
+              {
+                "group": "Sub Organizations",
+                "pages": [
+                  "api-reference/endpoints/sub-organizations/create",
+                  "api-reference/endpoints/sub-organizations/list",
+                  "api-reference/endpoints/sub-organizations/update",
+                  "api-reference/endpoints/sub-organizations/delete",
+                  "api-reference/endpoints/sub-organizations/memberships"
                 ]
               },
               {
@@ -1288,6 +1307,18 @@
                       "api-reference/endpoints/app-connections/azure-devops/create",
                       "api-reference/endpoints/app-connections/azure-devops/update",
                       "api-reference/endpoints/app-connections/azure-devops/delete"
+                    ]
+                  },
+                  {
+                    "group": "Azure Entra ID",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/azure-entra-id/list",
+                      "api-reference/endpoints/app-connections/azure-entra-id/available",
+                      "api-reference/endpoints/app-connections/azure-entra-id/get-by-id",
+                      "api-reference/endpoints/app-connections/azure-entra-id/get-by-name",
+                      "api-reference/endpoints/app-connections/azure-entra-id/create",
+                      "api-reference/endpoints/app-connections/azure-entra-id/update",
+                      "api-reference/endpoints/app-connections/azure-entra-id/delete"
                     ]
                   },
                   {
@@ -1742,6 +1773,18 @@
                       "api-reference/endpoints/app-connections/terraform-cloud/create",
                       "api-reference/endpoints/app-connections/terraform-cloud/update",
                       "api-reference/endpoints/app-connections/terraform-cloud/delete"
+                    ]
+                  },
+                  {
+                    "group": "Venafi",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/venafi/list",
+                      "api-reference/endpoints/app-connections/venafi/available",
+                      "api-reference/endpoints/app-connections/venafi/get-by-id",
+                      "api-reference/endpoints/app-connections/venafi/get-by-name",
+                      "api-reference/endpoints/app-connections/venafi/create",
+                      "api-reference/endpoints/app-connections/venafi/update",
+                      "api-reference/endpoints/app-connections/venafi/delete"
                     ]
                   },
                   {
@@ -2346,6 +2389,20 @@
                     ]
                   },
                   {
+                    "group": "Azure Entra ID SCIM",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/list",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/get-by-id",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/get-by-name",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Azure Key Vault",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/azure-key-vault/list",
@@ -2791,9 +2848,30 @@
                       "api-reference/endpoints/certificate-authorities/internal/list-ca-certs",
                       "api-reference/endpoints/certificate-authorities/internal/csr",
                       "api-reference/endpoints/certificate-authorities/internal/cert",
-                      "api-reference/endpoints/certificate-authorities/internal/sign-intermediate",
-                      "api-reference/endpoints/certificate-authorities/internal/import-cert",
-                      "api-reference/endpoints/certificate-authorities/internal/crl"
+                      "api-reference/endpoints/certificate-authorities/internal/crl",
+                      {
+                        "group": "Installation",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/internal/sign-intermediate",
+                          "api-reference/endpoints/certificate-authorities/internal/import-cert",
+                          "api-reference/endpoints/certificate-authorities/internal/install-cert-venafi"
+                        ]
+                      },
+                      {
+                        "group": "Signing Config",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/internal/create-signing-config",
+                          "api-reference/endpoints/certificate-authorities/internal/get-signing-config",
+                          "api-reference/endpoints/certificate-authorities/internal/update-signing-config"
+                        ]
+                      },
+                      {
+                        "group": "Auto-Renewal",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/internal/get-auto-renewal",
+                          "api-reference/endpoints/certificate-authorities/internal/update-auto-renewal"
+                        ]
+                      }
                     ]
                   }
                 ]

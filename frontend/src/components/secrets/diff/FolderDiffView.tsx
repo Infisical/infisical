@@ -1,6 +1,7 @@
 import { useRef } from "react";
-import { faCircleCheck, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CircleCheckIcon, CircleXIcon } from "lucide-react";
+
+import { Badge } from "@app/components/v3";
 
 import { MultiLineTextDiffRenderer, SingleLineTextDiffRenderer } from "./FieldDiffRenderers";
 
@@ -33,16 +34,15 @@ export const FolderDiffView = ({ operationType, oldVersion, newVersion }: Folder
   return (
     <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
       {showOldVersion ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
+        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-danger/35 bg-danger/10 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
             <span className="text-md font-medium">Previous Folder</span>
-            <div className="rounded-full bg-red px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
-              <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
-              Previous
-            </div>
+            <Badge variant="danger">
+              <CircleXIcon /> Previous
+            </Badge>
           </div>
           <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Name</div>
+            <div className="mb-0.5 text-xs font-medium text-label">Name</div>
             <SingleLineTextDiffRenderer
               text={oldName}
               oldText={oldName}
@@ -52,7 +52,7 @@ export const FolderDiffView = ({ operationType, oldVersion, newVersion }: Folder
             />
           </div>
           <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Description</div>
+            <div className="mb-0.5 text-xs font-medium text-label">Description</div>
             <MultiLineTextDiffRenderer
               text={oldDescription}
               oldText={oldDescription}
@@ -72,16 +72,15 @@ export const FolderDiffView = ({ operationType, oldVersion, newVersion }: Folder
       )}
 
       {showNewVersion ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
+        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-success/35 bg-success/10 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
             <span className="text-md font-medium">New Folder</span>
-            <div className="rounded-full bg-green-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
-              <FontAwesomeIcon icon={faCircleCheck} className="pr-1 text-white" />
-              New
-            </div>
+            <Badge variant="success">
+              <CircleCheckIcon /> New
+            </Badge>
           </div>
           <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Name</div>
+            <div className="mb-0.5 text-xs font-medium text-label">Name</div>
             <SingleLineTextDiffRenderer
               text={newName}
               oldText={oldName}
@@ -91,7 +90,7 @@ export const FolderDiffView = ({ operationType, oldVersion, newVersion }: Folder
             />
           </div>
           <div className="mb-2">
-            <div className="text-sm font-medium text-mineshaft-300">Description</div>
+            <div className="mb-0.5 text-xs font-medium text-label">Description</div>
             <MultiLineTextDiffRenderer
               text={newDescription}
               oldText={oldDescription}

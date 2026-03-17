@@ -6,5 +6,6 @@ export const HC_VAULT_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Hashicorp Vault",
   destination: SecretSync.HCVault,
   connection: AppConnection.HCVault,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

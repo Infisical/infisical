@@ -11,7 +11,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { getAuth0ConnectionAccessToken } from "@app/services/app-connection/auth0";
+import { getAuth0ConnectionAccessToken } from "@app/services/app-connection/auth0/auth0-connection-fns";
 
 import { generatePassword } from "../shared/utils";
 

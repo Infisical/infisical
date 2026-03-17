@@ -48,6 +48,9 @@ import {
   TWindmillSyncWithCredentials
 } from "@app/services/secret-sync/windmill";
 
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import {
   TOnePassSync,
   TOnePassSyncInput,
@@ -72,6 +75,12 @@ import {
   TAzureDevOpsSyncListItem,
   TAzureDevOpsSyncWithCredentials
 } from "./azure-devops";
+import {
+  TAzureEntraIdScimSync,
+  TAzureEntraIdScimSyncInput,
+  TAzureEntraIdScimSyncListItem,
+  TAzureEntraIdScimSyncWithCredentials
+} from "./azure-entra-id-scim";
 import {
   TAzureKeyVaultSync,
   TAzureKeyVaultSyncInput,
@@ -210,7 +219,8 @@ export type TSecretSync =
   | TNorthflankSync
   | TBitbucketSync
   | TOctopusDeploySync
-  | TCircleCISync;
+  | TCircleCISync
+  | TAzureEntraIdScimSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -247,7 +257,8 @@ export type TSecretSyncWithCredentials =
   | TBitbucketSyncWithCredentials
   | TLaravelForgeSyncWithCredentials
   | TOctopusDeploySyncWithCredentials
-  | TCircleCISyncWithCredentials;
+  | TCircleCISyncWithCredentials
+  | TAzureEntraIdScimSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -284,7 +295,8 @@ export type TSecretSyncInput =
   | TBitbucketSyncInput
   | TLaravelForgeSyncInput
   | TOctopusDeploySyncInput
-  | TCircleCISyncInput;
+  | TCircleCISyncInput
+  | TAzureEntraIdScimSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -321,10 +333,14 @@ export type TSecretSyncListItem =
   | TNorthflankSyncListItem
   | TBitbucketSyncListItem
   | TOctopusDeploySyncListItem
-  | TCircleCISyncListItem;
+  | TCircleCISyncListItem
+  | TAzureEntraIdScimSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
+  canRemoveSecretsOnDeletion?: boolean;
+  supportsKeySchema?: boolean;
+  supportsDisableSecretDeletion?: boolean;
 };
 
 export type TListSecretSyncsByProjectId = {
@@ -455,6 +471,7 @@ export type TSecretMap = Record<
   string,
   {
     value: string;
+    id?: string;
     comment?: string;
     skipMultilineEncoding?: boolean | null | undefined;
     secretMetadata?: ResourceMetadataDTO;
@@ -465,3 +482,30 @@ export type DestinationDuplicateCheckFn = (
   existingConfig: Record<string, unknown>,
   newConfig: Record<string, unknown>
 ) => boolean;
+
+export type TPreSaveTransformDeps = {
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+export type TPreSaveTransformSyncOptionsParams = {
+  syncOptions: Record<string, unknown> | undefined;
+  existingSyncOptions?: Record<string, unknown>;
+  folderId: string;
+};
+
+export type TPreSaveTransformDestinationConfigParams = {
+  destinationConfig: Record<string, unknown> | undefined;
+  connectionId: string;
+};
+
+export type TPreSaveTransformSyncOptionsFn = (
+  params: TPreSaveTransformSyncOptionsParams,
+  deps: TPreSaveTransformDeps
+) => Promise<Record<string, unknown> | undefined>;
+
+export type TPreSaveTransformDestinationConfigFn = (
+  params: TPreSaveTransformDestinationConfigParams,
+  deps: TPreSaveTransformDeps
+) => Promise<Record<string, unknown> | undefined>;

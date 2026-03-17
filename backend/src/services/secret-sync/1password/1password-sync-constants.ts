@@ -6,5 +6,6 @@ export const ONEPASS_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "1Password",
   destination: SecretSync.OnePass,
   connection: AppConnection.OnePass,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

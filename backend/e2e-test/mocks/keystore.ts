@@ -21,6 +21,11 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       store[key] = value;
       return "OK";
     },
+    setItemWithExpiryNX: async (key, _expiryInSeconds, value) => {
+      if (store[key] !== undefined) return null;
+      store[key] = value;
+      return "OK";
+    },
     deleteItem: async (key) => {
       delete store[key];
       return 1;
@@ -134,6 +139,10 @@ export const mockKeyStore = (): TKeyStoreFactory => {
         list = JSON.parse(existing) as string[];
       }
       return list.length;
-    }
+    },
+    streamAdd: async () => null,
+    streamRange: async () => [],
+    streamTrim: async () => 0,
+    streamCollect: async () => ({ entries: [], lastId: null })
   };
 };

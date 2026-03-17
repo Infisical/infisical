@@ -73,8 +73,20 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 lastName: profile?.name?.familyName || "",
                 authMethod: AuthMethod.GOOGLE,
                 callbackPort,
-                orgSlug
+                orgSlug,
+                providerUserId: profile.id
               });
+
+            const googleDistinctId = user.username ?? user.email ?? "";
+            if (googleDistinctId) {
+              void server.services.telemetry.identifyUser(googleDistinctId, {
+                email: user.email ?? undefined,
+                username: user.username,
+                userId: user.id,
+                firstName: user.firstName ?? undefined,
+                lastName: user.lastName ?? undefined
+              });
+            }
 
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
@@ -144,8 +156,20 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 firstName: githubUser.name || githubUser.login,
                 lastName: "",
                 authMethod: AuthMethod.GITHUB,
-                callbackPort
+                callbackPort,
+                providerUserId: String(githubUser.id)
               });
+
+            const githubDistinctId = user.username ?? user.email ?? "";
+            if (githubDistinctId) {
+              void server.services.telemetry.identifyUser(githubDistinctId, {
+                email: user.email ?? undefined,
+                username: user.username,
+                userId: user.id,
+                firstName: user.firstName ?? undefined,
+                lastName: user.lastName ?? undefined
+              });
+            }
 
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
@@ -207,8 +231,20 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 firstName: profile.displayName || profile.username || "",
                 lastName: "",
                 authMethod: AuthMethod.GITLAB,
-                callbackPort
+                callbackPort,
+                providerUserId: String(profile.id)
               });
+
+            const gitlabDistinctId = user.username ?? user.email ?? "";
+            if (gitlabDistinctId) {
+              void server.services.telemetry.identifyUser(gitlabDistinctId, {
+                email: user.email ?? undefined,
+                username: user.username,
+                userId: user.id,
+                firstName: user.firstName ?? undefined,
+                lastName: user.lastName ?? undefined
+              });
+            }
 
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
@@ -554,6 +590,15 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         userAgent,
         providerAuthToken: req.body.providerAuthToken
       });
+
+      const tokenExchangeDistinctId = data.user.username ?? data.user.email ?? "";
+      if (tokenExchangeDistinctId) {
+        void server.services.telemetry.identifyUser(tokenExchangeDistinctId, {
+          email: data.user.email ?? undefined,
+          username: data.user.username,
+          userId: data.user.userId
+        });
+      }
 
       if ([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB].includes(data.decodedProviderToken.authMethod)) {
         void res.setCookie("jid", data.token.refresh, {

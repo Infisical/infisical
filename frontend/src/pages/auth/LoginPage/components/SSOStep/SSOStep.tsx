@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button, Input } from "@app/components/v2";
+import {
+  Button,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableInput
+} from "@app/components/v3";
+import { LoginMethod } from "@app/hooks/api/admin/types";
+import { useLastLogin } from "@app/hooks/useLastLogin";
 
 type Props = {
   setStep: (step: number) => void;
@@ -9,8 +18,14 @@ type Props = {
 };
 
 export const SSOStep = ({ setStep, type }: Props) => {
-  const [ssoIdentifier, setSSOIdentifier] = useState("");
+  const { lastLogin, saveLastLogin } = useLastLogin();
   const { t } = useTranslation();
+
+  const matchingMethod = type === "SAML" ? LoginMethod.SAML : LoginMethod.OIDC;
+  const initialSlug =
+    lastLogin?.method === matchingMethod && lastLogin.orgSlug ? lastLogin.orgSlug : "";
+
+  const [ssoIdentifier, setSSOIdentifier] = useState(initialSlug);
 
   const queryParams = new URLSearchParams(window.location.search);
 
@@ -18,12 +33,14 @@ export const SSOStep = ({ setStep, type }: Props) => {
     e.preventDefault();
     const callbackPort = queryParams.get("callback_port");
     if (type === "SAML") {
+      saveLastLogin({ method: LoginMethod.SAML, orgSlug: ssoIdentifier });
       window.open(
         `/api/v1/sso/redirect/saml2/organizations/${ssoIdentifier}${
           callbackPort ? `?callback_port=${callbackPort}` : ""
         }`
       );
     } else {
+      saveLastLogin({ method: LoginMethod.OIDC, orgSlug: ssoIdentifier });
       window.open(
         `/api/v1/sso/oidc/login?orgSlug=${ssoIdentifier}${
           callbackPort ? `&callbackPort=${callbackPort}` : ""
@@ -35,48 +52,38 @@ export const SSOStep = ({ setStep, type }: Props) => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md md:px-6">
-      <p className="mx-auto mb-8 flex w-max justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-        What&apos;s your organization slug?
-      </p>
-      <form onSubmit={handleSubmission}>
-        <div className="relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
-          <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
-            <Input
+    <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
+      <UnstableCard className="w-full items-stretch gap-0 p-6">
+        <UnstableCardHeader className="mb-4 gap-4">
+          <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+            What&apos;s your organization slug?
+          </UnstableCardTitle>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <div className="w-full">
+            <UnstableInput
               value={ssoIdentifier}
               onChange={(e) => setSSOIdentifier(e.target.value)}
               type="text"
               placeholder="acme-123"
-              isRequired
-              autoComplete="email"
-              id="email"
-              className="h-12"
+              required
+              className="h-10"
             />
           </div>
-        </div>
-        <div className="mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center md:min-w-88 lg:w-1/6">
-          <Button
-            type="submit"
-            colorSchema="primary"
-            variant="outline_bg"
-            isFullWidth
-            className="h-14"
-          >
-            Continue with {type}
-          </Button>
-        </div>
-      </form>
-      <div className="mt-4 flex flex-row items-center justify-center">
-        <button
-          onClick={() => {
-            setStep(0);
-          }}
-          type="button"
-          className="mt-2 cursor-pointer text-sm text-bunker-300 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
-        >
-          {t("login.other-option")}
-        </button>
-      </div>
-    </div>
+          <div className="mt-4 w-full">
+            <Button type="submit" variant="project" size="lg" isFullWidth>
+              Continue with {type}
+            </Button>
+          </div>
+          <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+            <button onClick={() => setStep(0)} type="button">
+              <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                {t("login.other-option")}
+              </span>
+            </button>
+          </div>
+        </UnstableCardContent>
+      </UnstableCard>
+    </form>
   );
 };
