@@ -384,7 +384,9 @@ export const registerSecretRotationEndpoints = <
           properties: {
             rotationId,
             type,
-            projectId: secretRotation.projectId
+            projectId: secretRotation.projectId,
+            environment: secretRotation.environment.slug,
+            secretPath: secretRotation.folder.path
           }
         })
         .catch(() => {});
@@ -488,7 +490,9 @@ export const registerSecretRotationEndpoints = <
           properties: {
             rotationId,
             type,
-            projectId: secretRotation.projectId
+            projectId: secretRotation.projectId,
+            environment: secretRotation.environment.slug,
+            secretPath: secretRotation.folder.path
           }
         })
         .catch(() => {});

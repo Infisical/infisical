@@ -594,6 +594,8 @@ export type TSecretRotationV2DeletedEvent = {
     rotationId: string;
     type: string;
     projectId: string;
+    environment: string;
+    secretPath: string;
   };
 };
 
@@ -603,6 +605,8 @@ export type TSecretRotationV2ExecutedEvent = {
     rotationId: string;
     type: string;
     projectId: string;
+    environment: string;
+    secretPath: string;
   };
 };
 
