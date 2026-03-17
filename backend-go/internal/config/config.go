@@ -13,8 +13,8 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-// DBReadReplica represents a single Postgres read replica connection.
-type DBReadReplica struct {
+// ParsedDBReadReplica represents a single parsed DB read replica from DB_READ_REPLICAS JSON.
+type ParsedDBReadReplica struct {
 	DBConnectionURI string `json:"DB_CONNECTION_URI"`
 	DBRootCert      string `json:"DB_ROOT_CERT,omitempty"`
 }
@@ -368,7 +368,7 @@ type Config struct {
 	IsHsmConfigured                bool
 	IsSecretScanningConfigured     bool
 	IsSecretScanningV2Configured   bool
-	ParsedDBReadReplicas           []DBReadReplica
+	ParsedDBReadReplicas           []ParsedDBReadReplica
 	ParsedRedisSentinelHosts       []RedisHostPort
 	ParsedRedisClusterHosts        []RedisHostPort
 	ParsedRedisReadReplicas        []RedisHostPort

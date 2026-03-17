@@ -61,9 +61,9 @@ func (db *DB) Primary() *pgxpool.Pool {
 	return db.primary
 }
 
-// ReplicaNode returns a random read-replica pool, or the primary if no replicas are configured.
+// Replica returns a random read-replica pool, or the primary if no replicas are configured.
 // Matches the Node.js behavior: Math.floor(Math.random() * readReplicaDbs.length).
-func (db *DB) ReplicaNode() *pgxpool.Pool {
+func (db *DB) Replica() *pgxpool.Pool {
 	if len(db.replicas) == 0 {
 		return db.primary
 	}

@@ -12,7 +12,7 @@ import (
 )
 
 type Server struct {
-	svc    *services.Service
+	svc    *services.Registry
 	logger *slog.Logger
 	mux    goahttp.Muxer
 	dec    func(*http.Request) goahttp.Decoder
@@ -20,7 +20,7 @@ type Server struct {
 	eh     func(context.Context, http.ResponseWriter, error)
 }
 
-func NewServer(svc *services.Service, logger *slog.Logger) *Server {
+func NewServer(svc *services.Registry, logger *slog.Logger) *Server {
 	s := &Server{
 		svc:    svc,
 		logger: logger,
