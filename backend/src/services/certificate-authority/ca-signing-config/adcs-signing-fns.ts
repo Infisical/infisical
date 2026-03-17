@@ -20,6 +20,7 @@ const RE_CSR_NEWLINES = new RE2("\\r?\\n", "g");
 const RE_PEM_CERT = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----");
 const RE_ESCAPED_CRLF = new RE2("\\\\r\\\\n", "g");
 const RE_ESCAPED_CR = new RE2("\\\\r", "g");
+const RE_CRLF = new RE2("[\\r\\n]", "g");
 const REQUEST_ID_PATTERNS = [
   new RE2("reqid[=:](\\d+)", "i"),
   new RE2("request\\s+id[:\\s]+(\\d+)", "i"),
@@ -89,7 +90,7 @@ export const submitCsrToAdcs = async (params: {
   const cleanCsr = csr.replace(RE_CSR_BEGIN, "").replace(RE_CSR_END, "").replace(RE_CSR_NEWLINES, "");
 
   // Build certificate attributes
-  const sanitizedTemplate = template.trim().replace(/[\r\n]/g, "");
+  const sanitizedTemplate = RE_CRLF.replace(template.trim(), "");
   const certAttribParts: string[] = [`CertificateTemplate:${sanitizedTemplate}`];
 
   if (validityPeriod) {
