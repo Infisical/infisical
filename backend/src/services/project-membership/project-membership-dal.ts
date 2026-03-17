@@ -188,7 +188,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users)
         )
-        .where(function () {
+        .where(function filterByUsernameOrEmail() {
           void this.whereIn(`${TableName.Users}.username`, usernames).orWhereIn(`${TableName.Users}.email`, usernames);
         })
         .where({ isGhost: false });
