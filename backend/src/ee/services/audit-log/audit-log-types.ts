@@ -415,6 +415,8 @@ export enum EventType {
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   UPDATE_CERTIFICATE_METADATA = "update-certificate-metadata",
+  UPDATE_CERTIFICATE_CLEANUP_CONFIG = "update-certificate-cleanup-config",
+  CERTIFICATE_CLEANUP_COMPLETED = "certificate-cleanup-completed",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
   CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
   GET_CERTIFICATE_REQUEST = "get-certificate-request",
@@ -4841,6 +4843,24 @@ interface UpdateCertificateMetadataEvent {
   };
 }
 
+interface UpdateCertificateCleanupConfigEvent {
+  type: EventType.UPDATE_CERTIFICATE_CLEANUP_CONFIG;
+  metadata: {
+    projectId: string;
+    isEnabled: boolean;
+    postExpiryRetentionDays: number;
+    skipCertsWithActiveSyncs: boolean;
+  };
+}
+
+interface CertificateCleanupCompletedEvent {
+  type: EventType.CERTIFICATE_CLEANUP_COMPLETED;
+  metadata: {
+    deletedCount: number;
+    certificateSerialNumbers: string[];
+  };
+}
+
 interface DisableCertificateRenewalConfigEvent {
   type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -5917,4 +5937,6 @@ export type Event =
   | CreateDynamicSecretLeaseEvent
   | DeleteDynamicSecretLeaseEvent
   | RenewDynamicSecretLeaseEvent
-  | GetDynamicSecretLeaseEvent;
+  | GetDynamicSecretLeaseEvent
+  | UpdateCertificateCleanupConfigEvent
+  | CertificateCleanupCompletedEvent;

@@ -248,6 +248,9 @@ export enum TableName {
   PkiCertificateInstallationCert = "pki_certificate_installation_certs",
   PkiDiscoveryScanHistory = "pki_discovery_scan_history",
 
+  // PKI Cleanup
+  CertificateCleanupConfig = "certificate_cleanup_configs",
+
   // AI
   AiMcpServer = "ai_mcp_servers",
   AiMcpServerTool = "ai_mcp_server_tools",

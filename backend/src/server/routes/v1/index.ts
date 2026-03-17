@@ -14,6 +14,7 @@ import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerGeneralCertificateAuthorityRouter } from "./certificate-authority-routers/general-certificate-authority-router";
+import { registerCertificateCleanupRouter } from "./certificate-cleanup-router";
 import { registerCertificatePolicyRouter } from "./certificate-policy-router";
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertificateRouter } from "./certificate-router";
@@ -192,6 +193,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       );
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerSignerRouter, { prefix: "/signers" });
+      await pkiRouter.register(registerCertificateCleanupRouter, { prefix: "/certificate-cleanup" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);

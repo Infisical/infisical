@@ -778,6 +778,12 @@
                         ]
                       }
                     ]
+                  },
+                  {
+                    "group": "Settings",
+                    "pages": [
+                      "documentation/platform/pki/settings/certificate-cleanup"
+                    ]
                   }
                 ]
               },
