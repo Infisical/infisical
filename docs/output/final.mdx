@@ -1,0 +1,331 @@
+---
+title: "External Secrets Operator with Kubernetes Auth"
+sidebarTitle: "External Secrets Operator"
+description: "Sync secrets from Infisical into Kubernetes using External Secrets Operator with Kubernetes Auth."
+---
+
+This guide walks you through integrating Infisical with the [External Secrets Operator (ESO)](https://external-secrets.io) using Kubernetes Auth. By the end, your Kubernetes workloads will automatically sync secrets from Infisical into native Kubernetes Secrets via ESO.
+
+<Note>
+  If you are not already using ESO, consider the [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/overview) as an alternative. It provides native CRDs for syncing, pushing, and managing dynamic secrets without requiring a third-party operator.
+</Note>
+
+## Prerequisites
+
+- An Infisical project with secrets stored in it
+- A Kubernetes cluster (v1.16+)
+- [Helm](https://helm.sh) installed
+- `kubectl` configured with access to your cluster
+
+## Step 1: Create a Machine Identity with Kubernetes Auth
+
+A [machine identity](/documentation/platform/identities/machine-identities) is how ESO will authenticate with Infisical. You need to create one and configure it with [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth).
+
+<Steps>
+  <Step title="Create the identity">
+    In Infisical, go to **Organization Settings > Access Control > Identities** and click **Create Identity**. Give it a name (e.g. `eso-identity`) and assign an organization role.
+  </Step>
+
+  <Step title="Configure Kubernetes Auth">
+    On the identity page, edit the **Authentication** section. Remove the default Universal Auth method and add **Kubernetes Auth**.
+
+    Fill in the following fields:
+
+    | Field | Value |
+    |-------|-------|
+    | **Kubernetes Host** | Your Kubernetes API server URL (run `kubectl cluster-info` to find it) |
+    | **Token Reviewer JWT** | The long-lived service account token from [Step 2](#step-2-set-up-the-token-reviewer), or leave empty if using the client JWT method |
+    | **Allowed Service Account Names** | The service account name that ESO will use (e.g. `external-secrets`) |
+    | **Allowed Namespaces** | The namespace where ESO is installed (e.g. `external-secrets`) |
+
+    For a full reference of all configuration fields, see [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth).
+  </Step>
+
+  <Step title="Add the identity to your project">
+    Go to your project's **Settings > Access Control > Machine Identities** and click **Add Identity**. Select the identity you just created and assign it a project role that has read access to your secrets.
+  </Step>
+
+  <Step title="Note the identity ID">
+    Copy the **Identity ID** from the identity page. You will need it when creating the SecretStore.
+  </Step>
+</Steps>
+
+## Step 2: Set Up the Token Reviewer
+
+Infisical needs to validate the service account JWT tokens that ESO presents during authentication. Choose one of the following options:
+
+<Tabs>
+  <Tab title="Dedicated Reviewer Service Account">
+    This approach creates a dedicated service account that Infisical uses to validate tokens via the Kubernetes TokenReview API.
+
+    **2.1.** Create a service account:
+
+    ```yaml infisical-auth-service-account.yaml
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: infisical-auth
+      namespace: default
+    ```
+
+    ```bash
+    kubectl apply -f infisical-auth-service-account.yaml
+    ```
+
+    **2.2.** Bind it to the `system:auth-delegator` ClusterRole:
+
+    ```yaml cluster-role-binding.yaml
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: infisical-token-reviewer-binding
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:auth-delegator
+    subjects:
+      - kind: ServiceAccount
+        name: infisical-auth
+        namespace: default
+    ```
+
+    ```bash
+    kubectl apply -f cluster-role-binding.yaml
+    ```
+
+    **2.3.** Create a long-lived token for the service account:
+
+    ```yaml service-account-token.yaml
+    apiVersion: v1
+    kind: Secret
+    type: kubernetes.io/service-account-token
+    metadata:
+      name: infisical-auth-token
+      annotations:
+        kubernetes.io/service-account.name: infisical-auth
+    ```
+
+    ```bash
+    kubectl apply -f service-account-token.yaml
+    ```
+
+    **2.4.** Retrieve the token and paste it into the **Token Reviewer JWT** field in [Step 1](#step-1-create-a-machine-identity-with-kubernetes-auth):
+
+    ```bash
+    kubectl get secret infisical-auth-token -n default -o=jsonpath='{.data.token}' | base64 --decode
+    ```
+  </Tab>
+
+  <Tab title="Client JWT as Reviewer">
+    This approach skips creating a dedicated reviewer and instead grants ESO's own service account permission to validate tokens.
+
+    Bind the ESO service account to the `system:auth-delegator` ClusterRole:
+
+    ```yaml eso-role-binding.yaml
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: eso-token-reviewer-binding
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:auth-delegator
+    subjects:
+      - kind: ServiceAccount
+        name: external-secrets
+        namespace: external-secrets
+    ```
+
+    ```bash
+    kubectl apply -f eso-role-binding.yaml
+    ```
+
+    When configuring Kubernetes Auth in [Step 1](#step-1-create-a-machine-identity-with-kubernetes-auth), leave the **Token Reviewer JWT** field empty. Infisical will use ESO's own token for validation.
+  </Tab>
+</Tabs>
+
+<Tip>
+  A third option, using an [Infisical Gateway](/documentation/platform/gateways/overview) as the token reviewer, is available on the Enterprise tier. See the [Kubernetes Auth guide](/documentation/platform/identities/kubernetes-auth) for details.
+</Tip>
+
+## Step 3: Install External Secrets Operator
+
+If ESO is not already installed in your cluster, install it with Helm:
+
+```bash
+helm repo add external-secrets https://charts.external-secrets.io
+
+helm install external-secrets \
+  external-secrets/external-secrets \
+  -n external-secrets \
+  --create-namespace
+```
+
+Verify that the ESO pods are running:
+
+```bash
+kubectl get pods -n external-secrets
+```
+
+## Step 4: Create the Credentials Secret
+
+Create a Kubernetes Secret that stores the Infisical machine identity ID. The SecretStore will reference this Secret.
+
+```yaml infisical-credentials.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-credentials
+  namespace: default
+type: Opaque
+stringData:
+  identityId: <your-machine-identity-id>
+```
+
+```bash
+kubectl apply -f infisical-credentials.yaml
+```
+
+Replace `<your-machine-identity-id>` with the identity ID you copied in [Step 1](#step-1-create-a-machine-identity-with-kubernetes-auth).
+
+## Step 5: Create the SecretStore
+
+The SecretStore tells ESO how to connect to Infisical.
+
+```yaml secret-store.yaml
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: infisical
+  namespace: default
+spec:
+  provider:
+    infisical:
+      hostAPI: https://app.infisical.com
+      auth:
+        kubernetesAuthCredentials:
+          identityId:
+            name: infisical-credentials
+            key: identityId
+      secretsScope:
+        projectSlug: <your-project-slug>
+        environmentSlug: <your-environment-slug>
+        secretsPath: /
+```
+
+```bash
+kubectl apply -f secret-store.yaml
+```
+
+Replace `<your-project-slug>` and `<your-environment-slug>` with your Infisical project and environment slugs (e.g. `my-app`, `prod`).
+
+<Note>
+  If you are using a self-hosted Infisical instance, change `hostAPI` to your instance URL (e.g. `https://infisical.example.com`).
+</Note>
+
+### SecretStore Scope Fields
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| **projectSlug** | Yes | — | The slug of your Infisical project |
+| **environmentSlug** | Yes | — | The environment to pull secrets from (e.g. `dev`, `staging`, `prod`) |
+| **secretsPath** | No | `/` | The folder path to pull secrets from |
+| **recursive** | No | `false` | Whether to include secrets from subfolders |
+| **expandSecretReferences** | No | `true` | Whether to expand `${SECRET_NAME}` references |
+
+<Tip>
+  To share the store across namespaces, use a `ClusterSecretStore` instead of a `SecretStore`. When doing so, add a `namespace` field to the credential reference so ESO knows where to find the Secret:
+
+  ```yaml
+  identityId:
+    name: infisical-credentials
+    namespace: default
+    key: identityId
+  ```
+</Tip>
+
+## Step 6: Create the ExternalSecret
+
+The ExternalSecret defines which secrets to sync from Infisical into a Kubernetes Secret.
+
+### Sync Individual Secrets
+
+```yaml external-secret.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: my-app-secrets
+  namespace: default
+spec:
+  secretStoreRef:
+    kind: SecretStore
+    name: infisical
+  target:
+    name: my-app-secrets
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: DATABASE_URL
+    - secretKey: API_KEY
+      remoteRef:
+        key: API_KEY
+```
+
+### Sync All Secrets
+
+To sync every secret in the configured scope:
+
+```yaml external-secret-all.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: my-app-secrets
+  namespace: default
+spec:
+  secretStoreRef:
+    kind: SecretStore
+    name: infisical
+  target:
+    name: my-app-secrets
+  dataFrom:
+    - find:
+        name:
+          regexp: .*
+```
+
+Apply whichever variant fits your use case:
+
+```bash
+kubectl apply -f external-secret.yaml
+```
+
+## Verify It Works
+
+Check that the ExternalSecret has synced successfully:
+
+```bash
+kubectl get externalsecret my-app-secrets -n default
+```
+
+You should see `SecretSynced` in the `STATUS` column. Then verify the Kubernetes Secret was created:
+
+```bash
+kubectl get secret my-app-secrets -n default -o jsonpath='{.data}' | jq
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Kubernetes Auth" icon="key" href="/documentation/platform/identities/kubernetes-auth">
+    Full reference for configuring Kubernetes Auth on machine identities.
+  </Card>
+  <Card title="Machine Identities" icon="computer" href="/documentation/platform/identities/machine-identities">
+    Learn about machine identities and authentication methods.
+  </Card>
+  <Card title="Infisical Kubernetes Operator" icon="dharmachakra" href="/integrations/platforms/kubernetes/overview">
+    Native Kubernetes operator for syncing, pushing, and managing secrets.
+  </Card>
+  <Card title="Kubernetes CSI Provider" icon="hard-drive" href="/integrations/platforms/kubernetes-csi">
+    Mount secrets directly into pods as files using the CSI driver.
+  </Card>
+</CardGroup>

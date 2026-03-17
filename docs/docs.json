@@ -522,7 +522,8 @@
                       "integrations/platforms/kubernetes/overview",
                       "integrations/platforms/kubernetes/infisical-secret-crd",
                       "integrations/platforms/kubernetes/infisical-push-secret-crd",
-                      "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+                      "integrations/platforms/kubernetes/infisical-dynamic-secret-crd",
+                      "output/final"
                     ]
                   },
                   "integrations/platforms/kubernetes-injector",
