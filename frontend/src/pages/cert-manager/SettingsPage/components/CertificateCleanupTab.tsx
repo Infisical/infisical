@@ -14,8 +14,7 @@ import {
 
 const formSchema = z.object({
   isEnabled: z.boolean(),
-  daysBeforeDeletion: z.coerce.number().int().min(1).max(30),
-  includeRevokedCertificates: z.boolean(),
+  postExpiryRetentionDays: z.coerce.number().int().min(1).max(30),
   skipCertsWithActiveSyncs: z.boolean()
 });
 
@@ -38,8 +37,7 @@ export const CertificateCleanupTab = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       isEnabled: false,
-      daysBeforeDeletion: 3,
-      includeRevokedCertificates: false,
+      postExpiryRetentionDays: 3,
       skipCertsWithActiveSyncs: true
     }
   });
@@ -48,8 +46,7 @@ export const CertificateCleanupTab = () => {
     if (config) {
       reset({
         isEnabled: config.isEnabled,
-        daysBeforeDeletion: config.daysBeforeDeletion,
-        includeRevokedCertificates: config.includeRevokedCertificates,
+        postExpiryRetentionDays: config.postExpiryRetentionDays,
         skipCertsWithActiveSyncs: config.skipCertsWithActiveSyncs
       });
     }
@@ -138,10 +135,10 @@ export const CertificateCleanupTab = () => {
 
         <div className="mt-6 flex flex-col gap-5">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-mineshaft-100">Delete certificates after</span>
+            <span className="text-sm text-mineshaft-100">Delete certificates</span>
             <Controller
               control={control}
-              name="daysBeforeDeletion"
+              name="postExpiryRetentionDays"
               render={({ field }) => (
                 <UnstableInput
                   {...field}
@@ -153,33 +150,10 @@ export const CertificateCleanupTab = () => {
                 />
               )}
             />
-            <span className="text-sm text-gray-400">days past expiration</span>
+            <span className="text-sm text-gray-400">days after expiration</span>
           </div>
 
           <div className="flex flex-col divide-y divide-mineshaft-600">
-            <Controller
-              control={control}
-              name="includeRevokedCertificates"
-              render={({ field: { value, onChange } }) => (
-                <div className="flex items-center gap-4 py-4">
-                  <Switch
-                    variant="project"
-                    checked={isEnabled && value}
-                    onCheckedChange={onChange}
-                    disabled={!isEnabled}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-mineshaft-100">
-                      Include Revoked Certificates
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-400">
-                      Also remove revoked certificates even if they haven&apos;t expired yet
-                    </p>
-                  </div>
-                </div>
-              )}
-            />
-
             <Controller
               control={control}
               name="skipCertsWithActiveSyncs"

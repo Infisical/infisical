@@ -55,12 +55,14 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       tags: [ApiDocsTags.PkiCertificates],
       body: z.object({
         projectId: z.string().trim().describe("Project ID"),
-        isEnabled: z.boolean().optional().describe("Enable auto-cleanup"),
-        daysBeforeDeletion: z.number().int().min(1).max(30).optional().describe("Days past expiration before deletion"),
-        includeRevokedCertificates: z
-          .boolean()
+        isEnabled: z.boolean().optional().describe("Enable cleanup"),
+        postExpiryRetentionDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(30)
           .optional()
-          .describe("Also remove revoked certificates even if not yet expired"),
+          .describe("Days after expiration before deletion"),
         skipCertsWithActiveSyncs: z.boolean().optional().describe("Skip certificates with active syncs")
       }),
       response: {
@@ -73,8 +75,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       const config = await server.services.certificateCleanup.updateConfig({
         projectId: req.body.projectId,
         isEnabled: req.body.isEnabled,
-        daysBeforeDeletion: req.body.daysBeforeDeletion,
-        includeRevokedCertificates: req.body.includeRevokedCertificates,
+        postExpiryRetentionDays: req.body.postExpiryRetentionDays,
         skipCertsWithActiveSyncs: req.body.skipCertsWithActiveSyncs,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -90,8 +91,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
           metadata: {
             projectId: req.body.projectId,
             isEnabled: config.isEnabled,
-            daysBeforeDeletion: config.daysBeforeDeletion,
-            includeRevokedCertificates: config.includeRevokedCertificates,
+            postExpiryRetentionDays: config.postExpiryRetentionDays,
             skipCertsWithActiveSyncs: config.skipCertsWithActiveSyncs
           }
         }

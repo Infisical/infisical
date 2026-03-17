@@ -4761,8 +4761,7 @@ interface UpdateCertificateCleanupConfigEvent {
   metadata: {
     projectId: string;
     isEnabled: boolean;
-    daysBeforeDeletion: number;
-    includeRevokedCertificates: boolean;
+    postExpiryRetentionDays: number;
     skipCertsWithActiveSyncs: boolean;
   };
 }
@@ -4771,11 +4770,7 @@ interface CertificateCleanupCompletedEvent {
   type: EventType.CERTIFICATE_CLEANUP_COMPLETED;
   metadata: {
     deletedCount: number;
-    certificates: {
-      serialNumber: string;
-      commonName: string;
-      altNames: string | null;
-    }[];
+    certificateSerialNumbers: string[];
   };
 }
 

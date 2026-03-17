@@ -1,8 +1,7 @@
 export type TCertificateCleanupConfig = {
   projectId: string;
   isEnabled: boolean;
-  daysBeforeDeletion: number;
-  includeRevokedCertificates: boolean;
+  postExpiryRetentionDays: number;
   skipCertsWithActiveSyncs: boolean;
 
   lastRunStatus: string | null;
@@ -14,7 +13,6 @@ export type TCertificateCleanupConfig = {
 export type TUpdateCertificateCleanupConfigDTO = {
   projectId: string;
   isEnabled?: boolean;
-  daysBeforeDeletion?: number;
-  includeRevokedCertificates?: boolean;
+  postExpiryRetentionDays?: number;
   skipCertsWithActiveSyncs?: boolean;
 };

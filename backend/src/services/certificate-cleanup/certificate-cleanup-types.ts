@@ -4,8 +4,7 @@ export type TGetCertificateCleanupConfigDTO = TProjectPermission;
 
 export type TUpdateCertificateCleanupConfigDTO = {
   isEnabled?: boolean;
-  daysBeforeDeletion?: number;
-  includeRevokedCertificates?: boolean;
+  postExpiryRetentionDays?: number;
   skipCertsWithActiveSyncs?: boolean;
 } & TProjectPermission;
 
@@ -15,4 +14,3 @@ export enum CleanupRunStatus {
 }
 
 export const CLEANUP_BATCH_SIZE = 500;
-export const CLEANUP_AUDIT_LOG_CAP = 1000;

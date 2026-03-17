@@ -9,15 +9,16 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { CertStatus } from "../certificate/certificate-types";
+import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateCleanupConfigDALFactory } from "./certificate-cleanup-dal";
-import { CLEANUP_AUDIT_LOG_CAP, CLEANUP_BATCH_SIZE, CleanupRunStatus } from "./certificate-cleanup-types";
+import { CLEANUP_BATCH_SIZE, CleanupRunStatus } from "./certificate-cleanup-types";
 
 type TCertificateCleanupQueueFactoryDep = {
   db: TDbClient;
   queueService: TQueueServiceFactory;
   certificateCleanupConfigDAL: TCertificateCleanupConfigDALFactory;
   certificateDAL: Pick<TCertificateDALFactory, "delete">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "delete">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
@@ -28,6 +29,7 @@ export const certificateCleanupQueueFactory = ({
   queueService,
   certificateCleanupConfigDAL,
   certificateDAL,
+  certificateRequestDAL,
   auditLogService
 }: TCertificateCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
@@ -35,17 +37,16 @@ export const certificateCleanupQueueFactory = ({
   const processProjectCleanup = async (config: {
     id: string;
     projectId: string;
-    daysBeforeDeletion: number;
-    includeRevokedCertificates: boolean;
+    postExpiryRetentionDays: number;
     skipCertsWithActiveSyncs: boolean;
   }) => {
     let deletedCount = 0;
     let offset = 0;
     const errorMessages: string[] = [];
-    let pendingAuditCerts: { serialNumber: string; commonName: string; altNames: string | null }[] = [];
+    let pendingAuditSerials: string[] = [];
 
     const flushAuditLog = async () => {
-      if (pendingAuditCerts.length === 0) return;
+      if (pendingAuditSerials.length === 0) return;
       await auditLogService.createAuditLog({
         projectId: config.projectId,
         actor: {
@@ -56,15 +57,15 @@ export const certificateCleanupQueueFactory = ({
           type: EventType.CERTIFICATE_CLEANUP_COMPLETED,
           metadata: {
             deletedCount,
-            certificates: pendingAuditCerts
+            certificateSerialNumbers: pendingAuditSerials
           }
         }
       });
-      pendingAuditCerts = [];
+      pendingAuditSerials = [];
     };
 
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - config.daysBeforeDeletion);
+    cutoffDate.setDate(cutoffDate.getDate() - config.postExpiryRetentionDays);
 
     let hasMore = true;
 
@@ -72,16 +73,9 @@ export const certificateCleanupQueueFactory = ({
       let query = db
         .replicaNode()(TableName.Certificate)
         .where("projectId", config.projectId)
+        .where("notAfter", "<", cutoffDate)
         .orderBy("id", "asc")
         .select("id");
-
-      if (config.includeRevokedCertificates) {
-        query = query.where(function expiryOrRevoked() {
-          void this.where("notAfter", "<", cutoffDate).orWhere("status", CertStatus.REVOKED);
-        });
-      } else {
-        query = query.where("notAfter", "<", cutoffDate);
-      }
 
       query = query.offset(offset).limit(CLEANUP_BATCH_SIZE);
 
@@ -115,17 +109,16 @@ export const certificateCleanupQueueFactory = ({
 
       if (idsToDelete.length > 0) {
         try {
-          const deleted = await certificateDAL.delete({ $in: { id: idsToDelete } });
+          const deleted = await certificateCleanupConfigDAL.transaction(async (tx) => {
+            await certificateRequestDAL.delete({ $in: { certificateId: idsToDelete } }, tx);
+            return certificateDAL.delete({ $in: { id: idsToDelete } }, tx);
+          });
           deletedCount += deleted.length;
 
           for (const cert of deleted) {
-            pendingAuditCerts.push({
-              serialNumber: cert.serialNumber,
-              commonName: cert.commonName,
-              altNames: cert.altNames ?? null
-            });
+            pendingAuditSerials.push(cert.serialNumber);
 
-            if (pendingAuditCerts.length >= CLEANUP_AUDIT_LOG_CAP) {
+            if (pendingAuditSerials.length >= CLEANUP_BATCH_SIZE) {
               await flushAuditLog();
             }
           }
@@ -190,7 +183,6 @@ export const certificateCleanupQueueFactory = ({
           await certificateCleanupConfigDAL.updateById(config.id, {
             lastRunStatus: CleanupRunStatus.Error,
             lastRunAt: new Date(),
-            lastRunCertsDeleted: 0,
             lastRunMessage: String((err as Error).message || "Unknown error").slice(0, 500)
           });
         }

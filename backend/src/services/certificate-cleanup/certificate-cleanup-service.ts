@@ -48,8 +48,7 @@ export const certificateCleanupServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     isEnabled,
-    daysBeforeDeletion,
-    includeRevokedCertificates,
+    postExpiryRetentionDays,
     skipCertsWithActiveSyncs
   }: TUpdateCertificateCleanupConfigDTO) => {
     const { hasRole } = await permissionService.getProjectPermission({
@@ -65,26 +64,33 @@ export const certificateCleanupServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can modify certificate cleanup configuration" });
     }
 
-    const existing = await certificateCleanupConfigDAL.findOne({ projectId });
+    const config = await certificateCleanupConfigDAL.transaction(async (tx) => {
+      const existing = await certificateCleanupConfigDAL.findOne({ projectId }, tx);
 
-    if (existing) {
-      const updated = await certificateCleanupConfigDAL.updateById(existing.id, {
-        isEnabled,
-        daysBeforeDeletion,
-        includeRevokedCertificates,
-        skipCertsWithActiveSyncs
-      });
-      return updated;
-    }
+      if (existing) {
+        return certificateCleanupConfigDAL.updateById(
+          existing.id,
+          {
+            isEnabled,
+            postExpiryRetentionDays,
+            skipCertsWithActiveSyncs
+          },
+          tx
+        );
+      }
 
-    const created = await certificateCleanupConfigDAL.create({
-      projectId,
-      isEnabled: isEnabled ?? false,
-      daysBeforeDeletion: daysBeforeDeletion ?? 3,
-      includeRevokedCertificates: includeRevokedCertificates ?? false,
-      skipCertsWithActiveSyncs: skipCertsWithActiveSyncs ?? true
+      return certificateCleanupConfigDAL.create(
+        {
+          projectId,
+          isEnabled: isEnabled ?? false,
+          postExpiryRetentionDays: postExpiryRetentionDays ?? 3,
+          skipCertsWithActiveSyncs: skipCertsWithActiveSyncs ?? true
+        },
+        tx
+      );
     });
-    return created;
+
+    return config;
   };
 
   return { getConfig, updateConfig };

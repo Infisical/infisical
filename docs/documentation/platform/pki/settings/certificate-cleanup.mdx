@@ -9,8 +9,6 @@ description: "Learn how to configure automatic cleanup of expired certificates i
 Certificate cleanup is a project-level setting that automatically removes expired certificates on a daily schedule.
 Over time, expired certificates accumulate and add clutter to your certificate inventory. Enabling cleanup keeps your project organized by periodically deleting certificates that have been expired for a configurable number of days.
 
-The cleanup job runs once daily. Each run processes eligible certificates in batches, rebuilds CRLs for any affected CAs, and records the result so you can verify it from the Settings page.
-
 ## Configuring Certificate Cleanup
 
 To configure certificate cleanup, head to your Certificate Management Project > Settings > **Certificate Cleanup**.
@@ -20,11 +18,10 @@ To configure certificate cleanup, head to your Certificate Management Project > 
 ### Fields
 
 - **Enable toggle**: Turns automatic cleanup on or off for the project. When disabled, no certificates are removed.
-- **Delete certificates after N days past expiration**: The number of days a certificate must be expired before it becomes eligible for deletion. For example, setting this to `3` means certificates are removed 3 days after their `notAfter` date. Accepts values between 1 and 30.
+- **Delete certificates N days after expiration**: The number of days a certificate must be expired before it becomes eligible for deletion. For example, setting this to `3` means certificates are removed 3 days after their `notAfter` date. Accepts values between 1 and 30.
 
 ### Options
 
-- **Include Revoked Certificates**: When enabled, revoked certificates are also removed even if they have not yet expired. When disabled, revoked certificates are excluded from cleanup until they expire and exceed the configured retention window like any other certificate.
 - **Skip Certificates with Active Syncs**: When enabled, certificates that are synced to external services (e.g. AWS Certificate Manager, Azure Key Vault) are not removed. This prevents breaking active integrations that depend on the certificate.
 
 ### Last Execution

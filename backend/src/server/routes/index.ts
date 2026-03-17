@@ -2041,6 +2041,7 @@ export const registerRoutes = async (
     queueService,
     certificateCleanupConfigDAL,
     certificateDAL,
+    certificateRequestDAL,
     auditLogService
   });
 

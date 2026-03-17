@@ -10,8 +10,7 @@ export async function up(knex: Knex): Promise<void> {
       tb.string("projectId").notNullable().unique();
       tb.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       tb.boolean("isEnabled").notNullable().defaultTo(false);
-      tb.integer("daysBeforeDeletion").notNullable().defaultTo(3);
-      tb.boolean("includeRevokedCertificates").notNullable().defaultTo(false);
+      tb.integer("postExpiryRetentionDays").notNullable().defaultTo(3);
       tb.boolean("skipCertsWithActiveSyncs").notNullable().defaultTo(true);
       tb.string("lastRunStatus");
       tb.datetime("lastRunAt");
@@ -25,11 +24,11 @@ export async function up(knex: Knex): Promise<void> {
 
   const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?`, [
     TableName.Certificate,
-    "idx_certificates_status_not_after"
+    "idx_certificates_not_after"
   ]);
   if (indexExists.rows.length === 0) {
     await knex.schema.alterTable(TableName.Certificate, (tb) => {
-      tb.index(["status", "notAfter"], "idx_certificates_status_not_after");
+      tb.index(["notAfter"], "idx_certificates_not_after");
     });
   }
 }
@@ -41,11 +40,11 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.Certificate)) {
     const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?`, [
       TableName.Certificate,
-      "idx_certificates_status_not_after"
+      "idx_certificates_not_after"
     ]);
     if (indexExists.rows.length > 0) {
       await knex.schema.alterTable(TableName.Certificate, (tb) => {
-        tb.dropIndex(["status", "notAfter"], "idx_certificates_status_not_after");
+        tb.dropIndex(["notAfter"], "idx_certificates_not_after");
       });
     }
   }
