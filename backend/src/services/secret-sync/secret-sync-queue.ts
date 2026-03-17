@@ -40,6 +40,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import {
+  SECRET_SYNC_DAILY_RETRY_DESTINATIONS,
   SECRET_SYNC_NAME_MAP,
   SECRET_SYNC_RETRY_CONFIG_MAP,
   TSecretSyncRetryConfig
@@ -1188,10 +1189,35 @@ export const secretSyncQueueFactory = ({
     }
   });
 
+  const queueDailyRetryForFailedSyncs = async () => {
+    const failedSyncs = await secretSyncDAL.find({
+      syncStatus: SecretSyncStatus.Failed,
+      isAutoSyncEnabled: true,
+      $in: { destination: [...SECRET_SYNC_DAILY_RETRY_DESTINATIONS] }
+    });
+
+    if (!failedSyncs.length) return;
+
+    await secretSyncDAL.update(
+      { $in: { id: failedSyncs.map((sync) => sync.id) } },
+      { syncStatus: SecretSyncStatus.Pending }
+    );
+
+    await Promise.all(
+      failedSyncs.map((sync) =>
+        queueSecretSyncSyncSecretsById({
+          syncId: sync.id,
+          destination: sync.destination as SecretSync
+        })
+      )
+    );
+  };
+
   return {
     queueSecretSyncSyncSecretsById,
     queueSecretSyncImportSecretsById,
     queueSecretSyncRemoveSecretsById,
-    queueSecretSyncsSyncSecretsByPath
+    queueSecretSyncsSyncSecretsByPath,
+    queueDailyRetryForFailedSyncs
   };
 };
