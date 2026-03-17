@@ -2105,6 +2105,9 @@ export const CERTIFICATE_AUTHORITIES = {
   INSTALL_CERT_VENAFI: {
     caId: "The ID of the CA to install the certificate for via Venafi."
   },
+  INSTALL_CERT_ADCS: {
+    caId: "The ID of the CA to install the certificate for via Azure AD CS."
+  },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
   },

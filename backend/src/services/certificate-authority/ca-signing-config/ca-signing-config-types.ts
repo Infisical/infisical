@@ -11,7 +11,10 @@ export const VenafiDestinationConfigSchema = z.object({
 export type TVenafiDestinationConfig = z.infer<typeof VenafiDestinationConfigSchema>;
 
 export const AzureAdCsDestinationConfigSchema = z.object({
-  template: z.string().min(1),
+  template: z
+    .string()
+    .min(1)
+    .regex(/^[^\r\n]+$/, "Template name must not contain newline characters"),
   validityPeriod: z.string().optional()
 });
 

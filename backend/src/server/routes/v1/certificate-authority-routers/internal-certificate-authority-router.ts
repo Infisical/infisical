@@ -689,7 +689,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Install a CA certificate via Azure AD CS",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_VENAFI.caId)
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS.caId)
       }),
       body: z.object({
         maxPathLength: z.number().min(-1).default(-1)

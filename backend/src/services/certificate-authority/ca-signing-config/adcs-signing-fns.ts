@@ -89,7 +89,8 @@ export const submitCsrToAdcs = async (params: {
   const cleanCsr = csr.replace(RE_CSR_BEGIN, "").replace(RE_CSR_END, "").replace(RE_CSR_NEWLINES, "");
 
   // Build certificate attributes
-  const certAttribParts: string[] = [`CertificateTemplate:${template.trim()}`];
+  const sanitizedTemplate = template.trim().replace(/[\r\n]/g, "");
+  const certAttribParts: string[] = [`CertificateTemplate:${sanitizedTemplate}`];
 
   if (validityPeriod) {
     try {
