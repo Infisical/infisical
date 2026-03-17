@@ -28,16 +28,18 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       try {
         const { decodedToken } = await server.services.authToken.validateRefreshToken(req.cookies.jid);
         await server.services.login.logout(decodedToken.userId, decodedToken.tokenVersionId);
-      } catch {
+      } catch (err) {
         // If token validation fails (e.g. expired/malformed refresh token),
         // we still proceed to clear all session cookies below.
+        req.log.warn(err, "Logout token validation failed; proceeding to clear cookies");
       }
 
       void res.cookie("jid", "", {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
+        secure: appCfg.HTTPS_ENABLED,
+        maxAge: 0
       });
 
       void res.cookie("infisical-project-assume-privileges", "", {
