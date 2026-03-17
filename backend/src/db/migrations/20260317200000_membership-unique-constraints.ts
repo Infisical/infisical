@@ -2,6 +2,8 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
+export const config = { transaction: false };
+
 /**
  * Finds groups of duplicate memberships for a given (actor, scope) combination.
  * Returns the keeper (earliest by createdAt) and the IDs of duplicates to remove.
@@ -146,44 +148,44 @@ export async function up(knex: Knex): Promise<void> {
 
   // Project scope
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_user_project
+    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS membership_unique_user_project
     ON ${TableName.Membership} ("scopeProjectId", "actorUserId")
     WHERE scope = 'project' AND "actorUserId" IS NOT NULL;
   `);
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_identity_project
+    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS membership_unique_identity_project
     ON ${TableName.Membership} ("scopeProjectId", "actorIdentityId")
     WHERE scope = 'project' AND "actorIdentityId" IS NOT NULL;
   `);
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_group_project
+    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS membership_unique_group_project
     ON ${TableName.Membership} ("scopeProjectId", "actorGroupId")
     WHERE scope = 'project' AND "actorGroupId" IS NOT NULL;
   `);
 
   // Org scope
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_user_org
+    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS membership_unique_user_org
     ON ${TableName.Membership} ("scopeOrgId", "actorUserId")
     WHERE scope = 'organization' AND "actorUserId" IS NOT NULL;
   `);
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_identity_org
+    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS membership_unique_identity_org
     ON ${TableName.Membership} ("scopeOrgId", "actorIdentityId")
     WHERE scope = 'organization' AND "actorIdentityId" IS NOT NULL;
   `);
   await knex.schema.raw(`
-    CREATE UNIQUE INDEX IF NOT EXISTS membership_unique_group_org
+    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS membership_unique_group_org
     ON ${TableName.Membership} ("scopeOrgId", "actorGroupId")
     WHERE scope = 'organization' AND "actorGroupId" IS NOT NULL;
   `);
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.raw("DROP INDEX IF EXISTS membership_unique_user_project;");
-  await knex.schema.raw("DROP INDEX IF EXISTS membership_unique_identity_project;");
-  await knex.schema.raw("DROP INDEX IF EXISTS membership_unique_group_project;");
-  await knex.schema.raw("DROP INDEX IF EXISTS membership_unique_user_org;");
-  await knex.schema.raw("DROP INDEX IF EXISTS membership_unique_identity_org;");
-  await knex.schema.raw("DROP INDEX IF EXISTS membership_unique_group_org;");
+  await knex.schema.raw("DROP INDEX CONCURRENTLY IF EXISTS membership_unique_user_project;");
+  await knex.schema.raw("DROP INDEX CONCURRENTLY IF EXISTS membership_unique_identity_project;");
+  await knex.schema.raw("DROP INDEX CONCURRENTLY IF EXISTS membership_unique_group_project;");
+  await knex.schema.raw("DROP INDEX CONCURRENTLY IF EXISTS membership_unique_user_org;");
+  await knex.schema.raw("DROP INDEX CONCURRENTLY IF EXISTS membership_unique_identity_org;");
+  await knex.schema.raw("DROP INDEX CONCURRENTLY IF EXISTS membership_unique_group_org;");
 }
