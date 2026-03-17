@@ -1,0 +1,78 @@
+name: Generate Release Notes
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to generate notes for (e.g. v2.1.0)"
+        required: true
+      previous_tag:
+        description: "Previous tag to diff from (auto-detected if empty)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Hallmark
+        run: |
+          npm install -g hallmark
+
+      - name: Determine tags
+        id: tags
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TO="${{ github.event.inputs.tag }}"
+            FROM="${{ github.event.inputs.previous_tag }}"
+          else
+            TO="${{ github.event.release.tag_name }}"
+            FROM=""
+          fi
+
+          # Auto-detect previous tag if not provided
+          if [ -z "$FROM" ]; then
+            FROM=$(git tag --sort=-v:refname | grep -A1 "^${TO}$" | tail -1)
+          fi
+
+          echo "from=$FROM" >> "$GITHUB_OUTPUT"
+          echo "to=$TO" >> "$GITHUB_OUTPUT"
+          echo "📦 Range: $FROM..$TO"
+
+      - name: Generate release notes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python generate_release_notes.py \
+            --from-tag ${{ steps.tags.outputs.from }} \
+            --to-tag ${{ steps.tags.outputs.to }} \
+            --output github changelog
+
+      - name: Run Hallmark on CHANGELOG
+        run: hallmark fix CHANGELOG.md
+        continue-on-error: true
+
+      - name: Commit CHANGELOG if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --cached --quiet || \
+            git commit -m "Update CHANGELOG for ${{ steps.tags.outputs.to }}" && \
+            git push
