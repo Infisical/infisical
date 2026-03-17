@@ -11,7 +11,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { CertStatus } from "../certificate/certificate-types";
 import { TCertificateCleanupConfigDALFactory } from "./certificate-cleanup-dal";
-import { CLEANUP_BATCH_SIZE, CleanupRunStatus } from "./certificate-cleanup-types";
+import { CLEANUP_AUDIT_LOG_CAP, CLEANUP_BATCH_SIZE, CleanupRunStatus } from "./certificate-cleanup-types";
 
 type TCertificateCleanupQueueFactoryDep = {
   db: TDbClient;
@@ -42,7 +42,26 @@ export const certificateCleanupQueueFactory = ({
     let deletedCount = 0;
     let offset = 0;
     const errorMessages: string[] = [];
-    const deletedCerts: { serialNumber: string; commonName: string; altNames: string | null }[] = [];
+    let pendingAuditCerts: { serialNumber: string; commonName: string; altNames: string | null }[] = [];
+
+    const flushAuditLog = async () => {
+      if (pendingAuditCerts.length === 0) return;
+      await auditLogService.createAuditLog({
+        projectId: config.projectId,
+        actor: {
+          type: ActorType.PLATFORM,
+          metadata: {}
+        },
+        event: {
+          type: EventType.CERTIFICATE_CLEANUP_COMPLETED,
+          metadata: {
+            deletedCount,
+            certificates: pendingAuditCerts
+          }
+        }
+      });
+      pendingAuditCerts = [];
+    };
 
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - config.daysBeforeDeletion);
@@ -50,7 +69,11 @@ export const certificateCleanupQueueFactory = ({
     let hasMore = true;
 
     while (hasMore) {
-      let query = db.replicaNode()(TableName.Certificate).where("projectId", config.projectId).select("id");
+      let query = db
+        .replicaNode()(TableName.Certificate)
+        .where("projectId", config.projectId)
+        .orderBy("id", "asc")
+        .select("id");
 
       if (config.includeRevokedCertificates) {
         query = query.where(function expiryOrRevoked() {
@@ -96,11 +119,15 @@ export const certificateCleanupQueueFactory = ({
           deletedCount += deleted.length;
 
           for (const cert of deleted) {
-            deletedCerts.push({
+            pendingAuditCerts.push({
               serialNumber: cert.serialNumber,
               commonName: cert.commonName,
               altNames: cert.altNames ?? null
             });
+
+            if (pendingAuditCerts.length >= CLEANUP_AUDIT_LOG_CAP) {
+              await flushAuditLog();
+            }
           }
         } catch (err) {
           logger.error(err, "CertificateCleanup: batch delete failed");
@@ -119,28 +146,13 @@ export const certificateCleanupQueueFactory = ({
     const lastRunMessage = errorMessages.length > 0 ? errorMessages.slice(0, 5).join("; ") : null;
 
     await certificateCleanupConfigDAL.updateById(config.id, {
-      lastRunStatus: errorMessages.length > 0 && deletedCount === 0 ? CleanupRunStatus.Error : CleanupRunStatus.Success,
+      lastRunStatus: errorMessages.length > 0 ? CleanupRunStatus.Error : CleanupRunStatus.Success,
       lastRunAt: new Date(),
       lastRunCertsDeleted: deletedCount,
       lastRunMessage
     });
 
-    if (deletedCount > 0) {
-      await auditLogService.createAuditLog({
-        projectId: config.projectId,
-        actor: {
-          type: ActorType.PLATFORM,
-          metadata: {}
-        },
-        event: {
-          type: EventType.CERTIFICATE_CLEANUP_COMPLETED,
-          metadata: {
-            deletedCount,
-            certificates: deletedCerts
-          }
-        }
-      });
-    }
+    await flushAuditLog();
 
     return { deletedCount, errors: errorMessages.length };
   };

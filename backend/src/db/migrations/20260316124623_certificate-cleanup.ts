@@ -35,8 +35,8 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.CertificateCleanupConfig);
   await dropOnUpdateTrigger(knex, TableName.CertificateCleanupConfig);
+  await knex.schema.dropTableIfExists(TableName.CertificateCleanupConfig);
 
   if (await knex.schema.hasTable(TableName.Certificate)) {
     const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?`, [

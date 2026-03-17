@@ -15,3 +15,4 @@ export enum CleanupRunStatus {
 }
 
 export const CLEANUP_BATCH_SIZE = 500;
+export const CLEANUP_AUDIT_LOG_CAP = 1000;
