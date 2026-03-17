@@ -12,6 +12,7 @@ import {
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
 import { EnforcementLevel } from "@app/lib/types";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
@@ -563,7 +564,7 @@ export type TAppConnectionCreatedEvent = {
   event: PostHogEventTypes.AppConnectionCreated;
   properties: {
     appConnectionId: string;
-    app: string;
+    app: AppConnection;
     method: string;
   };
 };
@@ -572,7 +573,7 @@ export type TAppConnectionDeletedEvent = {
   event: PostHogEventTypes.AppConnectionDeleted;
   properties: {
     appConnectionId: string;
-    app: string;
+    app: AppConnection;
   };
 };
 
