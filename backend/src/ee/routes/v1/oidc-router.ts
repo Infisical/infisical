@@ -286,7 +286,6 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.body.organizationId,
           properties: {
-            orgId: req.body.organizationId,
             provider: "oidc",
             action: "update"
           }
@@ -424,7 +423,6 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.body.organizationId,
           properties: {
-            orgId: req.body.organizationId,
             provider: "oidc",
             action: "create"
           }

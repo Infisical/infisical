@@ -262,6 +262,7 @@ export const registerSecretRotationEndpoints = <
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretRotationV2Created,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             rotationId: secretRotation.id,
             type,
@@ -379,6 +380,7 @@ export const registerSecretRotationEndpoints = <
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretRotationV2Deleted,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             rotationId,
             type,
@@ -482,6 +484,7 @@ export const registerSecretRotationEndpoints = <
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretRotationV2Executed,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             rotationId,
             type,

@@ -331,8 +331,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           properties: {
             appConnectionId: appConnection.id,
             app,
-            method: method as string,
-            orgId: req.permission.orgId
+            method: method as string
           }
         })
         .catch(() => {});
@@ -454,8 +453,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           organizationId: req.permission.orgId,
           properties: {
             appConnectionId: connectionId,
-            app,
-            orgId: req.permission.orgId
+            app
           }
         })
         .catch(() => {});

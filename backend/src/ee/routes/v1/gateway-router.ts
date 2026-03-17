@@ -88,9 +88,8 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            gatewayId: gatewayCertificates.serialNumber,
-            identityId: req.permission.id,
-            orgId: req.permission.orgId
+            certificateSerialNumber: gatewayCertificates.serialNumber,
+            identityId: req.permission.id
           }
         })
         .catch(() => {});

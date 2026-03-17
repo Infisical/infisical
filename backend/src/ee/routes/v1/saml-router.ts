@@ -389,7 +389,6 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.body.organizationId,
           properties: {
-            orgId: req.body.organizationId,
             provider: authProvider,
             action: "create"
           }
@@ -456,7 +455,6 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             distinctId: getTelemetryDistinctId(req),
             organizationId: req.body.organizationId,
             properties: {
-              orgId: req.body.organizationId,
               provider: authProvider,
               action: "update"
             }

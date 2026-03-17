@@ -554,7 +554,6 @@ export type TDynamicSecretLeaseRenewedEvent = {
 export type TSSOConfiguredEvent = {
   event: PostHogEventTypes.SSOConfigured;
   properties: {
-    orgId: string;
     provider: string;
     action: "create" | "update";
   };
@@ -566,7 +565,6 @@ export type TAppConnectionCreatedEvent = {
     appConnectionId: string;
     app: string;
     method: string;
-    orgId: string;
   };
 };
 
@@ -575,7 +573,6 @@ export type TAppConnectionDeletedEvent = {
   properties: {
     appConnectionId: string;
     app: string;
-    orgId: string;
   };
 };
 
@@ -611,9 +608,8 @@ export type TSecretRotationV2ExecutedEvent = {
 export type TGatewayCreatedEvent = {
   event: PostHogEventTypes.GatewayCreated;
   properties: {
-    gatewayId: string;
+    certificateSerialNumber: string;
     identityId: string;
-    orgId: string;
   };
 };
 

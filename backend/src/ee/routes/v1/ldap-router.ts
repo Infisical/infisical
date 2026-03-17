@@ -230,7 +230,6 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.body.organizationId,
           properties: {
-            orgId: req.body.organizationId,
             provider: "ldap",
             action: "create"
           }
@@ -292,7 +291,6 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.body.organizationId,
           properties: {
-            orgId: req.body.organizationId,
             provider: "ldap",
             action: "update"
           }
