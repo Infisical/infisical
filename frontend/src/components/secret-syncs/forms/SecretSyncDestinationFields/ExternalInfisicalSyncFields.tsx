@@ -3,7 +3,7 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { FilterableSelect, FormControl, Input } from "@app/components/v2";
 import {
   TRemoteInfisicalEnvironmentFolderTree,
   TRemoteInfisicalProject,
@@ -28,10 +28,13 @@ export const ExternalInfisicalSyncFields = () => {
       enabled: Boolean(connectionId)
     });
 
-  const { data: folderTree = {}, isPending: isFolderTreeLoading } =
-    useExternalInfisicalConnectionGetEnvironmentFolderTree(connectionId, projectId, {
-      enabled: Boolean(connectionId) && Boolean(projectId)
-    });
+  const {
+    data: folderTree = {},
+    isPending: isFolderTreeLoading,
+    isError: isFolderTreeError
+  } = useExternalInfisicalConnectionGetEnvironmentFolderTree(connectionId, projectId, {
+    enabled: Boolean(connectionId) && Boolean(projectId)
+  });
 
   const environments = useMemo(() => {
     return projects.find((p) => p.id === projectId)?.environments ?? [];
@@ -48,6 +51,13 @@ export const ExternalInfisicalSyncFields = () => {
     const folders = envData?.folders ?? [];
     return [root, ...folders];
   }, [folderTree, environmentSlug]);
+
+  // When folder tree fails or returns empty, allow manual path entry, since the target env might not have the API
+  // modified to allow MI access to folder tree yet
+  const showManualPathInput =
+    Boolean(connectionId && projectId && environmentSlug) &&
+    !isFolderTreeLoading &&
+    (isFolderTreeError || folderOptions.length <= 1);
 
   return (
     <>
@@ -123,20 +133,25 @@ export const ExternalInfisicalSyncFields = () => {
             isError={Boolean(error?.message)}
             label="Secret path"
             tooltipText="The folder path on the remote Infisical instance to sync secrets to"
+            helperText={showManualPathInput ? "Enter the path (e.g. / or /my-folder)" : undefined}
           >
-            <FilterableSelect
-              isLoading={isFolderTreeLoading && Boolean(projectId)}
-              isDisabled={!connectionId || !projectId || !environmentSlug}
-              value={folderOptions.find((f) => f.path === value) ?? folderOptions[0]}
-              onChange={(option) => {
-                const v = option as SingleValue<{ path: string; name: string }>;
-                onChange(v?.path ?? "/");
-              }}
-              options={folderOptions}
-              placeholder="Select a path..."
-              getOptionLabel={(option) => option.path}
-              getOptionValue={(option) => option.path}
-            />
+            {showManualPathInput ? (
+              <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="/" />
+            ) : (
+              <FilterableSelect
+                isLoading={isFolderTreeLoading && Boolean(projectId)}
+                isDisabled={!connectionId || !projectId || !environmentSlug}
+                value={folderOptions.find((f) => f.path === value) ?? folderOptions[0]}
+                onChange={(option) => {
+                  const v = option as SingleValue<{ path: string; name: string }>;
+                  onChange(v?.path ?? "/");
+                }}
+                options={folderOptions}
+                placeholder="Select a path..."
+                getOptionLabel={(option) => option.path}
+                getOptionValue={(option) => option.path}
+              />
+            )}
           </FormControl>
         )}
       />
