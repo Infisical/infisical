@@ -16,8 +16,10 @@ import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/servic
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
   id: true,
@@ -277,6 +279,20 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SSOConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.body.organizationId,
+          properties: {
+            orgId: req.body.organizationId,
+            provider: "oidc",
+            action: "update"
+          }
+        })
+        .catch(() => {});
+
       return oidc;
     }
   });
@@ -401,6 +417,20 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SSOConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.body.organizationId,
+          properties: {
+            orgId: req.body.organizationId,
+            provider: "oidc",
+            action: "create"
+          }
+        })
+        .catch(() => {});
+
       return oidc;
     }
   });

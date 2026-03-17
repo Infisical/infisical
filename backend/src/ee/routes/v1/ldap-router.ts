@@ -22,9 +22,11 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedLdapConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerLdapRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -222,6 +224,19 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SSOConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.body.organizationId,
+          properties: {
+            orgId: req.body.organizationId,
+            provider: "ldap",
+            action: "create"
+          }
+        })
+        .catch(() => {});
+
       return ldap;
     }
   });
@@ -270,6 +285,19 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SSOConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.body.organizationId,
+          properties: {
+            orgId: req.body.organizationId,
+            provider: "ldap",
+            action: "update"
+          }
+        })
+        .catch(() => {});
 
       return ldap;
     }

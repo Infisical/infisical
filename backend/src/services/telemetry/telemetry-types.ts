@@ -66,7 +66,14 @@ export enum PostHogEventTypes {
   DynamicSecretCreated = "Dynamic Secret Created",
   DynamicSecretDeleted = "Dynamic Secret Deleted",
   DynamicSecretLeaseCreated = "Dynamic Secret Lease Created",
-  DynamicSecretLeaseRenewed = "Dynamic Secret Lease Renewed"
+  DynamicSecretLeaseRenewed = "Dynamic Secret Lease Renewed",
+  SSOConfigured = "SSO Configured",
+  AppConnectionCreated = "App Connection Created",
+  AppConnectionDeleted = "App Connection Deleted",
+  SecretRotationV2Created = "Secret Rotation V2 Created",
+  SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
+  SecretRotationV2Executed = "Secret Rotation V2 Executed",
+  GatewayCreated = "Gateway Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -544,6 +551,72 @@ export type TDynamicSecretLeaseRenewedEvent = {
   };
 };
 
+export type TSSOConfiguredEvent = {
+  event: PostHogEventTypes.SSOConfigured;
+  properties: {
+    orgId: string;
+    provider: string;
+    action: "create" | "update";
+  };
+};
+
+export type TAppConnectionCreatedEvent = {
+  event: PostHogEventTypes.AppConnectionCreated;
+  properties: {
+    appConnectionId: string;
+    app: string;
+    method: string;
+    orgId: string;
+  };
+};
+
+export type TAppConnectionDeletedEvent = {
+  event: PostHogEventTypes.AppConnectionDeleted;
+  properties: {
+    appConnectionId: string;
+    app: string;
+    orgId: string;
+  };
+};
+
+export type TSecretRotationV2CreatedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Created;
+  properties: {
+    rotationId: string;
+    type: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type TSecretRotationV2DeletedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Deleted;
+  properties: {
+    rotationId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type TSecretRotationV2ExecutedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Executed;
+  properties: {
+    rotationId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type TGatewayCreatedEvent = {
+  event: PostHogEventTypes.GatewayCreated;
+  properties: {
+    gatewayId: string;
+    identityId: string;
+    orgId: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -588,4 +661,11 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TDynamicSecretDeletedEvent
   | TDynamicSecretLeaseCreatedEvent
   | TDynamicSecretLeaseRenewedEvent
+  | TSSOConfiguredEvent
+  | TAppConnectionCreatedEvent
+  | TAppConnectionDeletedEvent
+  | TSecretRotationV2CreatedEvent
+  | TSecretRotationV2DeletedEvent
+  | TSecretRotationV2ExecutedEvent
+  | TGatewayCreatedEvent
 );

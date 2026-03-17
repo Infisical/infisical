@@ -4,12 +4,14 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnection, TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
 import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAppConnectionEndpoints = <T extends TAppConnection, I extends TAppConnectionInput>({
   server,
@@ -321,6 +323,20 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AppConnectionCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            appConnectionId: appConnection.id,
+            app,
+            method: method as string,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
+
       return { appConnection };
     }
   });
@@ -430,6 +446,19 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AppConnectionDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            appConnectionId: connectionId,
+            app,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
 
       return { appConnection };
     }

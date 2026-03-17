@@ -12,8 +12,10 @@ import {
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretRotationEndpoints = <
   T extends TSecretRotationV2,
@@ -256,6 +258,20 @@ export const registerSecretRotationEndpoints = <
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretRotationV2Created,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            rotationId: secretRotation.id,
+            type,
+            projectId: secretRotation.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath
+          }
+        })
+        .catch(() => {});
+
       return { secretRotation };
     }
   });
@@ -359,6 +375,18 @@ export const registerSecretRotationEndpoints = <
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretRotationV2Deleted,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            rotationId,
+            type,
+            projectId: secretRotation.projectId
+          }
+        })
+        .catch(() => {});
+
       return { secretRotation };
     }
   });
@@ -449,6 +477,18 @@ export const registerSecretRotationEndpoints = <
         },
         req.permission
       )) as T;
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretRotationV2Executed,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            rotationId,
+            type,
+            projectId: secretRotation.projectId
+          }
+        })
+        .catch(() => {});
 
       return { secretRotation };
     }

@@ -4,8 +4,10 @@ import { GatewaysSchema } from "@app/db/schemas";
 import { isValidIp } from "@app/lib/ip";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedGatewaySchema = GatewaysSchema.pick({
   id: true,
@@ -79,6 +81,20 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         relayAddress: req.body.relayAddress,
         identityOrgAuthMethod: req.permission.authMethod
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GatewayCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            gatewayId: gatewayCertificates.serialNumber,
+            identityId: req.permission.id,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
+
       return gatewayCertificates;
     }
   });
