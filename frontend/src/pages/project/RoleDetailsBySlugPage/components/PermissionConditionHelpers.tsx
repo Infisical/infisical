@@ -22,10 +22,16 @@ export const renderOperatorSelectItems = (type: string) => {
   switch (type) {
     case "secretTags":
       return <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>;
-    case "identityId":
-    case "connectionId":
     case "metadataKey":
     case "metadataValue":
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+        </>
+      );
+    case "identityId":
+    case "connectionId":
     case "role":
       return (
         <>

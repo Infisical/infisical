@@ -755,14 +755,12 @@ const DynamicSecretConditionV2Schema = z
           key: z
             .object({
               [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
               [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
             })
             .partial(),
           value: z
             .object({
               [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
               [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
             })
             .partial()
@@ -1218,14 +1216,12 @@ const PamAccountConditionSchema = z
           key: z
             .object({
               [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
               [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
             })
             .partial(),
           value: z
             .object({
               [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
               [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
             })
             .partial()
@@ -1254,14 +1250,12 @@ const PamResourceConditionSchema = z
           key: z
             .object({
               [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
               [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
             })
             .partial(),
           value: z
             .object({
               [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
               [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
             })
             .partial()
@@ -1350,14 +1344,12 @@ const CertificateConditionSchema = z
           key: z
             .object({
               [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
               [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
             })
             .partial(),
           value: z
             .object({
               [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
               [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
             })
             .partial()
