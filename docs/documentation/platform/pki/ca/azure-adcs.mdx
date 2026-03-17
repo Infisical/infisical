@@ -227,7 +227,7 @@ In addition to using AD CS as an external CA for direct certificate issuance, yo
 
 1. Infisical generates a CSR for the intermediate CA.
 2. The CSR is submitted to AD CS via Web Enrollment using the configured certificate template.
-3. AD CS signs the certificate (immediately or after approval, depending on template config).
+3. AD CS signs the certificate.
 4. Infisical fetches the issuing CA's certificate to build the chain.
 5. The signed certificate and chain are imported into the intermediate CA.
 
