@@ -27,10 +27,12 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
   const findByResourceId = async (resourceId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.PamAccountDependency)
-        .where({ resourceId })
-        .orderBy("name", "asc");
+        .where(`${TableName.PamAccountDependency}.resourceId`, resourceId)
+        .leftJoin(TableName.PamAccount, `${TableName.PamAccountDependency}.accountId`, `${TableName.PamAccount}.id`)
+        .select(`${TableName.PamAccountDependency}.*`, `${TableName.PamAccount}.name as accountName`)
+        .orderBy(`${TableName.PamAccountDependency}.name`, "asc");
 
-      return docs as TPamAccountDependencies[];
+      return docs as (TPamAccountDependencies & { accountName: string | null })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PAM account dependencies by resource ID" });
     }

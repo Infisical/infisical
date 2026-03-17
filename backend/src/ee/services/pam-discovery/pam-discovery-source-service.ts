@@ -5,6 +5,7 @@ import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamDiscoveryActions,
   ProjectPermissionSub
@@ -17,6 +18,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { decryptResourceMetadata } from "../pam-resource/pam-resource-fns";
 import { TPamAccountDependenciesDALFactory } from "./pam-account-dependencies-dal";
 import { PamDiscoverySourceRunStatus, PamDiscoverySourceStatus, PamDiscoveryType } from "./pam-discovery-enums";
@@ -65,9 +67,16 @@ type TPamDiscoverySourceServiceFactoryDep = {
   pamDiscoverySourceDependenciesDAL: Pick<TPamDiscoverySourceDependenciesDALFactory, "countByDiscoverySourceIds">;
   pamAccountDependenciesDAL: Pick<
     TPamAccountDependenciesDALFactory,
-    "countByAccountIds" | "countByResourceIds" | "findByAccountId" | "findById" | "updateById" | "deleteById"
+    | "countByAccountIds"
+    | "countByResourceIds"
+    | "findByAccountId"
+    | "findByResourceId"
+    | "findById"
+    | "updateById"
+    | "deleteById"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithResourceDetails" | "findMetadataByAccountIds">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
@@ -85,6 +94,7 @@ export const pamDiscoverySourceServiceFactory = ({
   pamDiscoverySourceDependenciesDAL,
   pamAccountDependenciesDAL,
   pamAccountDAL,
+  pamResourceDAL,
   permissionService,
   kmsService,
   gatewayV2DAL,
@@ -672,6 +682,39 @@ export const pamDiscoverySourceServiceFactory = ({
     return pamAccountDependenciesDAL.findByAccountId(accountId);
   };
 
+  const getResourceDependencies = async ({
+    resourceId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    resourceId: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    const resource = await pamResourceDAL.findById(resourceId);
+    if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: resource.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.PamResources, { name: resource.name })
+    );
+
+    return pamAccountDependenciesDAL.findByResourceId(resourceId);
+  };
+
   const updateAccountDependency = async ({
     accountId,
     dependencyId,
@@ -748,6 +791,7 @@ export const pamDiscoverySourceServiceFactory = ({
     getDiscoveredResources,
     getDiscoveredAccounts,
     getAccountDependencies,
+    getResourceDependencies,
     updateAccountDependency,
     deleteAccountDependency,
     listDiscoverySourceOptions

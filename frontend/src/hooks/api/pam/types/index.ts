@@ -211,3 +211,7 @@ export type TPamAccountDependency = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type TPamResourceDependency = TPamAccountDependency & {
+  accountName: string | null;
+};

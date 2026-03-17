@@ -193,6 +193,7 @@ export const useTogglePamAccountDependency = () => {
     },
     onSuccess: (_, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.allResourceDependencies() });
     }
   });
 };
@@ -215,6 +216,7 @@ export const useDeletePamAccountDependency = () => {
     },
     onSuccess: (_, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.allResourceDependencies() });
     }
   });
 };
