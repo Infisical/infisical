@@ -519,7 +519,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      if (req.body.secretReminderRepeatDays !== undefined && req.body.secretReminderRepeatDays !== null) {
+      if (req.body.secretReminderRepeatDays !== undefined && req.body.secretReminderRepeatDays !== null && req.body.secretReminderRepeatDays > 0) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretReminderCreated,
           distinctId: getTelemetryDistinctId(req),
@@ -685,9 +685,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      // Only fire reminder event when secretReminderRepeatDays is explicitly provided in the request body,
-      // which indicates the user is intentionally setting or changing the reminder (not just updating other fields)
-      if (req.body.secretReminderRepeatDays !== undefined && req.body.secretReminderRepeatDays !== null) {
+      // Only fire reminder event when secretReminderRepeatDays is explicitly provided and > 0,
+      // matching the service layer's truthy check that actually creates the reminder
+      if (req.body.secretReminderRepeatDays !== undefined && req.body.secretReminderRepeatDays !== null && req.body.secretReminderRepeatDays > 0) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretReminderCreated,
           distinctId: getTelemetryDistinctId(req),
