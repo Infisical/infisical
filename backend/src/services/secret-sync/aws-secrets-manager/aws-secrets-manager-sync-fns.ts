@@ -30,7 +30,7 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { getKeyWithSchema, matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretMap, TSyncSecretsResult } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
 
@@ -318,7 +318,7 @@ export const AwsSecretsManagerSyncFns = {
     secretSync: TAwsSecretsManagerSyncWithCredentials,
     secretMap: TSecretMap,
     unmodifiedSecretMap: TSecretMap // ie not schematized
-  ): Promise<TSyncSecretsResult> => {
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
 
     const client = await getSecretsManagerClient(secretSync);
