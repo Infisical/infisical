@@ -1,0 +1,14 @@
+# Binary output
+infisical
+*.exe
+
+# Environment
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store

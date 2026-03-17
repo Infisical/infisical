@@ -1,0 +1,332 @@
+swagger: "2.0"
+info:
+    title: Infisical API
+    description: Infisical secret management platform API
+    version: 0.0.1
+host: localhost:8080
+consumes:
+    - application/json
+    - application/xml
+    - application/gob
+produces:
+    - application/json
+    - application/xml
+    - application/gob
+paths:
+    /api/v1/platform/projects:
+        post:
+            tags:
+                - projects
+            summary: createProject projects
+            description: Create a new project.
+            operationId: projects#createProject
+            parameters:
+                - name: CreateProjectRequestBody
+                  in: body
+                  required: true
+                  schema:
+                    $ref: '#/definitions/CreateProjectPayload'
+                    required:
+                        - name
+                        - orgId
+            responses:
+                "201":
+                    description: Created response.
+                    schema:
+                        $ref: '#/definitions/Project'
+            schemes:
+                - http
+    /api/v1/platform/projects/health:
+        get:
+            tags:
+                - projects
+            summary: getHealth projects
+            description: Health check for the projects service.
+            operationId: projects#getHealth
+            responses:
+                "200":
+                    description: OK response.
+                    schema:
+                        type: string
+            schemes:
+                - http
+    /api/v1/secret-manager/secrets:
+        get:
+            tags:
+                - secrets
+            summary: listSecrets secrets
+            description: List secrets for an environment.
+            operationId: secrets#listSecrets
+            parameters:
+                - name: projectId
+                  in: query
+                  description: Project ID
+                  required: true
+                  type: string
+                - name: environment
+                  in: query
+                  description: Environment slug
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: OK response.
+                    schema:
+                        $ref: '#/definitions/SecretsSecretResultResponseCollection'
+            schemes:
+                - http
+        post:
+            tags:
+                - secrets
+            summary: createSecret secrets
+            description: Create a new secret.
+            operationId: secrets#createSecret
+            parameters:
+                - name: CreateSecretRequestBody
+                  in: body
+                  required: true
+                  schema:
+                    $ref: '#/definitions/Secret'
+                    required:
+                        - key
+                        - value
+                        - environment
+                        - projectId
+            responses:
+                "201":
+                    description: Created response.
+                    schema:
+                        $ref: '#/definitions/Secret'
+            schemes:
+                - http
+    /api/v1/secret-manager/secrets/{id}:
+        get:
+            tags:
+                - secrets
+            summary: getSecret secrets
+            description: Get a secret by ID.
+            operationId: secrets#getSecret
+            parameters:
+                - name: id
+                  in: path
+                  description: Secret ID
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: OK response.
+                    schema:
+                        $ref: '#/definitions/Secret'
+            schemes:
+                - http
+        delete:
+            tags:
+                - secrets
+            summary: deleteSecret secrets
+            description: Delete a secret by ID.
+            operationId: secrets#deleteSecret
+            parameters:
+                - name: id
+                  in: path
+                  description: Secret ID
+                  required: true
+                  type: string
+            responses:
+                "204":
+                    description: No Content response.
+            schemes:
+                - http
+        patch:
+            tags:
+                - secrets
+            summary: updateSecret secrets
+            description: Update an existing secret.
+            operationId: secrets#updateSecret
+            parameters:
+                - name: id
+                  in: path
+                  description: Secret ID
+                  required: true
+                  type: string
+                - name: UpdateSecretRequestBody
+                  in: body
+                  required: true
+                  schema:
+                    $ref: '#/definitions/SecretsUpdateSecretRequestBody'
+            responses:
+                "200":
+                    description: OK response.
+                    schema:
+                        $ref: '#/definitions/Secret'
+            schemes:
+                - http
+    /api/v1/secret-manager/secrets/health:
+        get:
+            tags:
+                - secrets
+            summary: getHealth secrets
+            description: Health check for the secrets service.
+            operationId: secrets#getHealth
+            responses:
+                "200":
+                    description: OK response.
+                    schema:
+                        type: string
+            schemes:
+                - http
+definitions:
+    CreateProjectPayload:
+        title: CreateProjectPayload
+        type: object
+        properties:
+            name:
+                type: string
+                description: Project name
+                example: djc
+                minLength: 1
+            orgId:
+                type: string
+                description: Organization ID
+                example: Sequi nobis aut.
+        example:
+            name: 2y8
+            orgId: Soluta assumenda eos et voluptatem porro quod.
+        required:
+            - name
+            - orgId
+    Project:
+        title: 'Mediatype identifier: application/vnd.project; view=default'
+        type: object
+        properties:
+            id:
+                type: string
+                description: Project ID
+                example: Quis repellendus eos sed cum.
+            name:
+                type: string
+                description: Project name
+                example: Quibusdam iure officia amet.
+            orgId:
+                type: string
+                description: Organization ID
+                example: Voluptatem consequatur dolorem itaque suscipit sint ratione.
+        description: CreateProjectResponseBody result type (default view)
+        example:
+            id: Non enim suscipit consequatur.
+            name: Illum architecto aliquid.
+            orgId: Debitis vitae.
+        required:
+            - id
+            - name
+            - orgId
+    Secret:
+        title: 'Mediatype identifier: application/vnd.secret; view=default'
+        type: object
+        properties:
+            environment:
+                type: string
+                description: Environment slug
+                example: Eum adipisci sunt quis praesentium alias.
+            id:
+                type: string
+                description: Secret ID
+                example: Praesentium et sapiente totam unde officiis necessitatibus.
+            key:
+                type: string
+                description: Secret key
+                example: Sit aut.
+            projectId:
+                type: string
+                description: Project ID
+                example: Odit et vel voluptas aut.
+            value:
+                type: string
+                description: Secret value
+                example: Et rerum eaque rem facilis sit.
+        description: CreateSecretResponseBody result type (default view)
+        example:
+            environment: Facilis beatae soluta omnis.
+            id: Perspiciatis excepturi error rerum adipisci quos.
+            key: Dolorem optio blanditiis autem cum totam sint.
+            projectId: Sed blanditiis.
+            value: Accusantium sit dolorum dolor.
+        required:
+            - id
+            - key
+            - value
+            - environment
+            - projectId
+    SecretResultResponse:
+        title: 'Mediatype identifier: application/vnd.secret; view=default'
+        type: object
+        properties:
+            environment:
+                type: string
+                description: Environment slug
+                example: Aut optio consectetur temporibus.
+            id:
+                type: string
+                description: Secret ID
+                example: Maxime est quo iure.
+            key:
+                type: string
+                description: Secret key
+                example: Nisi iusto voluptas non aliquam ipsam consequatur.
+            projectId:
+                type: string
+                description: Project ID
+                example: Dolor fugiat maxime nisi quas expedita.
+            value:
+                type: string
+                description: Secret value
+                example: Suscipit enim.
+        description: SecretResultResponse result type (default view)
+        example:
+            environment: Nulla et.
+            id: Ducimus qui.
+            key: Ut aut.
+            projectId: Sint neque placeat suscipit delectus ea eligendi.
+            value: Qui quasi ducimus vel.
+        required:
+            - id
+            - key
+            - value
+            - environment
+            - projectId
+    SecretsSecretResultResponseCollection:
+        title: 'Mediatype identifier: application/vnd.secret; type=collection; view=default'
+        type: array
+        items:
+            $ref: '#/definitions/SecretResultResponse'
+        description: ListSecretsResponseBody is the result type for an array of SecretResultResponse (default view)
+        example:
+            - environment: Non quaerat laudantium.
+              id: Dolorem libero deleniti molestiae nisi in sunt.
+              key: Voluptas quo et ratione.
+              projectId: Ea voluptatem ut eius dolorum eius qui.
+              value: Qui consequuntur ut sed harum dolore ratione.
+            - environment: Non quaerat laudantium.
+              id: Dolorem libero deleniti molestiae nisi in sunt.
+              key: Voluptas quo et ratione.
+              projectId: Ea voluptatem ut eius dolorum eius qui.
+              value: Qui consequuntur ut sed harum dolore ratione.
+            - environment: Non quaerat laudantium.
+              id: Dolorem libero deleniti molestiae nisi in sunt.
+              key: Voluptas quo et ratione.
+              projectId: Ea voluptatem ut eius dolorum eius qui.
+              value: Qui consequuntur ut sed harum dolore ratione.
+    SecretsUpdateSecretRequestBody:
+        title: SecretsUpdateSecretRequestBody
+        type: object
+        properties:
+            key:
+                type: string
+                description: Secret key
+                example: Dolor modi omnis et non ipsam.
+            value:
+                type: string
+                description: Secret value
+                example: Consequatur est sequi id quidem necessitatibus velit.
+        example:
+            key: Ut repellat et nihil alias veritatis maiores.
+            value: Aliquam impedit sint animi at quia voluptas.
