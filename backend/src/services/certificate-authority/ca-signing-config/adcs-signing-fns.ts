@@ -137,13 +137,15 @@ export const submitCsrToAdcs = async (params: {
     status = "issued";
   }
 
-  // Check disposition message
-  if (responseText.includes("taken under submission") || responseText.includes("pending")) {
-    status = "pending";
-  } else if (responseText.includes("denied") || responseText.includes("rejected")) {
-    status = "denied";
-  } else if (responseText.includes("issued") || certificate) {
-    status = "issued";
+  // Check disposition message (only if we didn't already extract a certificate)
+  if (!certificate) {
+    if (responseText.includes("taken under submission") || responseText.includes("pending")) {
+      status = "pending";
+    } else if (responseText.includes("denied") || responseText.includes("rejected")) {
+      status = "denied";
+    } else if (responseText.includes("issued")) {
+      status = "issued";
+    }
   }
 
   if (status === "denied") {
