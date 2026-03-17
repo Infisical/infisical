@@ -407,7 +407,7 @@ export const projectTemplateServiceFactory = ({
     }
 
     const projectTemplateEnvironments =
-      type === ProjectType.SecretManager && environments === undefined
+      type === ProjectType.SecretManager && (environments === undefined || environments === null)
         ? ProjectTemplateDefaultEnvironments
         : environments;
 
