@@ -16,7 +16,6 @@ echo "$CLOUDSMITH_API_KEY" | helm registry login helm.oci.cloudsmith.io \
 
 for i in *.tgz; do
     [ -f "$i" ] || break
-    cloudsmith push helm --republish infisical/helm-charts "$i"
     helm push "$i" oci://helm.oci.cloudsmith.io/infisical/helm-charts
 done
 
