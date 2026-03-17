@@ -11,7 +11,7 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
-import { EnforcementLevel } from "@app/lib/types";
+import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export enum PostHogEventTypes {
@@ -408,7 +408,7 @@ export type TSecretSharedEvent = {
   event: PostHogEventTypes.SecretShared;
   properties: {
     organizationId: string;
-    accessType: string;
+    accessType: SecretSharingAccessType;
     expiresAt: string;
     hasPassword: boolean;
   };
@@ -419,7 +419,7 @@ export type TSharedSecretViewedEvent = {
   properties: {
     organizationId?: string;
     sharedSecretId: string;
-    accessType: string;
+    accessType: SecretSharingAccessType;
   };
 };
 
