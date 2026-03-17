@@ -48,6 +48,7 @@ export const AzureKeyVaultSyncListItemSchema = z
     name: z.literal("Azure Key Vault"),
     connection: z.literal(AppConnection.AzureKeyVault),
     destination: z.literal(SecretSync.AzureKeyVault),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureKeyVault] }));

@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, TAppConnections } from "@app/db/schemas";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
@@ -64,6 +65,8 @@ import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/a
 import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-service";
 import { ValidateAzureDnsConnectionCredentialsSchema } from "./azure-dns/azure-dns-connection-schema";
 import { azureDnsConnectionService } from "./azure-dns/azure-dns-connection-service";
+import { ValidateAzureEntraIdConnectionCredentialsSchema } from "./azure-entra-id";
+import { azureEntraIdConnectionService } from "./azure-entra-id/azure-entra-id-connection-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
 import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
@@ -75,6 +78,7 @@ import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
+import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
@@ -128,6 +132,8 @@ import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
 import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-cloud";
 import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
+import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
+import { venafiConnectionService } from "./venafi/venafi-connection-service";
 import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
@@ -145,6 +151,7 @@ export type TAppConnectionServiceFactoryDep = {
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
+  appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -200,7 +207,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
   [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema,
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
-  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema
+  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
+  [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
+  [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -212,7 +221,8 @@ export const appConnectionServiceFactory = ({
   gatewayV2Service,
   gatewayDAL,
   gatewayV2DAL,
-  projectDAL
+  projectDAL,
+  appConnectionCredentialRotationService
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -371,7 +381,16 @@ export const appConnectionServiceFactory = ({
   };
 
   const createAppConnection = async (
-    { method, app, credentials, gatewayId, projectId, ...params }: TCreateAppConnectionDTO,
+    {
+      method,
+      app,
+      credentials,
+      gatewayId,
+      projectId,
+      rotation,
+      isAutoRotationEnabled,
+      ...params
+    }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -452,21 +471,39 @@ export const appConnectionServiceFactory = ({
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
-        const encryptedCredentials = await encryptAppConnectionCredentials({
-          credentials: connectionCredentials,
-          orgId: actor.orgId,
-          kmsService,
-          projectId
-        });
+        return appConnectionDAL.transaction(async (tx) => {
+          const encryptedCredentials = await encryptAppConnectionCredentials({
+            credentials: connectionCredentials,
+            orgId: actor.orgId,
+            kmsService,
+            projectId
+          });
 
-        return appConnectionDAL.create({
-          orgId: actor.orgId,
-          encryptedCredentials,
-          method,
-          app,
-          gatewayId,
-          projectId,
-          ...params
+          const appConnection = await appConnectionDAL.create(
+            {
+              orgId: actor.orgId,
+              encryptedCredentials,
+              method,
+              app,
+              gatewayId,
+              projectId,
+              isAutoRotationEnabled,
+              ...params
+            },
+            tx
+          );
+
+          if (isAutoRotationEnabled && rotation) {
+            await appConnectionCredentialRotationService.createRotation(
+              {
+                connectionId: appConnection.id,
+                ...rotation
+              },
+              tx
+            );
+          }
+
+          return appConnection;
         });
       };
 
@@ -504,7 +541,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
-    { connectionId, credentials, gatewayId, ...params }: TUpdateAppConnectionDTO,
+    { connectionId, credentials, gatewayId, isAutoRotationEnabled, rotation, ...params }: TUpdateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
@@ -606,7 +643,7 @@ export const appConnectionServiceFactory = ({
     }
 
     try {
-      const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined) => {
+      const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx?: Knex) => {
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
               credentials: connectionCredentials,
@@ -616,36 +653,113 @@ export const appConnectionServiceFactory = ({
             })
           : undefined;
 
-        return appConnectionDAL.updateById(connectionId, {
-          orgId: actor.orgId,
-          encryptedCredentials,
-          gatewayId,
-          ...params
-        });
+        return appConnectionDAL.updateById(
+          connectionId,
+          {
+            orgId: actor.orgId,
+            encryptedCredentials,
+            gatewayId,
+            ...params
+          },
+          tx
+        );
       };
 
-      let updatedConnection: TAppConnectionRaw;
+      // Check if the connection has an existing rotation
+      const existingRotation = await appConnectionCredentialRotationService.getRotationByConnectionId(connectionId);
 
       if (params.isPlatformManagedCredentials) {
         if (!updatedCredentials)
           // prevent enabling platform managed credentials without re-confirming credentials
           throw new BadRequestError({ message: "Credentials required to transition to platform managed credentials" });
-
-        updatedConnection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
-          {
-            app,
-            orgId: actor.orgId,
-            credentials: updatedCredentials,
-            method,
-            gatewayId
-          } as TAppConnectionConfig,
-          (platformCredentials) => updateConnection(platformCredentials),
-          gatewayService,
-          gatewayV2Service
-        );
-      } else {
-        updatedConnection = await updateConnection(updatedCredentials);
       }
+
+      const updatedConnection = await appConnectionDAL.transaction(async (tx) => {
+        if (credentials && existingRotation) {
+          // Credential change with active rotation: tear down old rotation first
+          await appConnectionCredentialRotationService.updateRotation(
+            { connectionId, isAutoRotationEnabled: false },
+            tx
+          );
+        }
+
+        let connection: TAppConnectionRaw;
+        if (params.isPlatformManagedCredentials) {
+          connection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
+            {
+              app,
+              orgId: actor.orgId,
+              credentials: updatedCredentials,
+              method,
+              gatewayId
+            } as TAppConnectionConfig,
+            (platformCredentials) => updateConnection(platformCredentials, tx),
+            gatewayService,
+            gatewayV2Service
+          );
+        } else {
+          connection = await updateConnection(updatedCredentials, tx);
+        }
+
+        // Handle rotation updates
+        if (isAutoRotationEnabled !== undefined || rotation) {
+          if (isAutoRotationEnabled === false) {
+            // Disabling rotation — preserve config but stop scheduling
+            if (!credentials && existingRotation) {
+              await appConnectionCredentialRotationService.updateRotation(
+                { connectionId, isAutoRotationEnabled: false },
+                tx
+              );
+            }
+          } else if (credentials && existingRotation) {
+            // Credentials were changed and rotation was torn down above — re-enable with updated config
+            await appConnectionCredentialRotationService.updateRotation(
+              {
+                connectionId,
+                isAutoRotationEnabled: true,
+                rotationInterval: rotation?.rotationInterval ?? existingRotation.rotationInterval,
+                rotateAtUtc:
+                  rotation?.rotateAtUtc ?? (existingRotation.rotateAtUtc as { hours: number; minutes: number })
+              },
+              tx
+            );
+          } else if (existingRotation && isAutoRotationEnabled === true) {
+            // Re-enabling rotation on a connection that was previously disabled
+            await appConnectionCredentialRotationService.updateRotation(
+              { connectionId, isAutoRotationEnabled: true, ...rotation },
+              tx
+            );
+          } else if (!existingRotation && isAutoRotationEnabled && rotation) {
+            // Enabling rotation on a connection that never had it
+            if (!rotation.rotationInterval || !rotation.rotateAtUtc) {
+              throw new BadRequestError({
+                message: "Rotation interval and schedule are required when enabling rotation"
+              });
+            }
+            await appConnectionCredentialRotationService.createRotation(
+              { connectionId, rotationInterval: rotation.rotationInterval, rotateAtUtc: rotation.rotateAtUtc },
+              tx
+            );
+            await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true }, tx);
+          } else if (existingRotation && rotation) {
+            // Updating schedule/interval on existing rotation
+            await appConnectionCredentialRotationService.updateRotation({ connectionId, ...rotation }, tx);
+          }
+        } else if (credentials && existingRotation) {
+          // Credentials changed but no rotation fields provided — re-enable with previous config
+          await appConnectionCredentialRotationService.updateRotation(
+            {
+              connectionId,
+              isAutoRotationEnabled: true,
+              rotationInterval: existingRotation.rotationInterval,
+              rotateAtUtc: existingRotation.rotateAtUtc as { hours: number; minutes: number }
+            },
+            tx
+          );
+        }
+
+        return connection;
+      });
 
       return await decryptAppConnection(updatedConnection, kmsService);
     } catch (err) {
@@ -872,6 +986,50 @@ export const appConnectionServiceFactory = ({
     return projectUsage;
   };
 
+  const triggerCredentialRotation = async (
+    { app, connectionId }: { app: AppConnection; connectionId: string },
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+
+    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+
+    if (appConnection.app !== app)
+      throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
+
+    if (appConnection.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId: appConnection.projectId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAppConnectionActions.RotateCredentials,
+        subject(ProjectPermissionSub.AppConnections, { connectionId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: actor.id,
+        actor: actor.type,
+        orgId: appConnection.orgId,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        scope: OrganizationActionScope.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionAppConnectionActions.RotateCredentials,
+        subject(OrgPermissionSubjects.AppConnections, { connectionId })
+      );
+    }
+
+    return appConnectionCredentialRotationService.triggerRotation({ connectionId });
+  };
+
   return {
     listAppConnectionOptions,
     listAppConnections,
@@ -884,6 +1042,7 @@ export const appConnectionServiceFactory = ({
     validateAppConnectionUsageById,
     listAvailableAppConnectionsForUser,
     findAppConnectionUsageById,
+    triggerCredentialRotation,
     github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
@@ -906,6 +1065,7 @@ export const appConnectionServiceFactory = ({
     flyio: flyioConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
+    venafi: venafiConnectionService(connectAppConnectionById),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
@@ -921,6 +1081,7 @@ export const appConnectionServiceFactory = ({
     chef: chefConnectionService(connectAppConnectionById, licenseService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
-    circleci: circleciConnectionService(connectAppConnectionById)
+    circleci: circleciConnectionService(connectAppConnectionById),
+    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };

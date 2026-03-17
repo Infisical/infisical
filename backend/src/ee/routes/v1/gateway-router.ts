@@ -2,10 +2,13 @@ import { z } from "zod";
 
 import { GatewaysSchema } from "@app/db/schemas";
 import { isValidIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedGatewaySchema = GatewaysSchema.pick({
   id: true,
@@ -79,6 +82,19 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         relayAddress: req.body.relayAddress,
         identityOrgAuthMethod: req.permission.authMethod
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GatewayCertExchanged,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            certificateSerialNumber: gatewayCertificates.serialNumber,
+            identityId: req.permission.id
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send GatewayCertExchanged telemetry event"));
+
       return gatewayCertificates;
     }
   });

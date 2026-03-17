@@ -29,18 +29,20 @@ type TClickHouseFindArg = {
 };
 
 // Shape of a row returned from ClickHouse's JSONEachRow format
+// actorMetadata and eventMetadata are String columns — they come back as raw JSON strings
 type TClickHouseAuditLogRow = {
   id: string;
   actor: string;
-  actorMetadata: Record<string, unknown>;
+  actorMetadata: string;
   ipAddress: string;
   eventType: string;
-  eventMetadata: Record<string, unknown>;
+  eventMetadata: string;
   userAgent: string;
   userAgentType: string;
   createdAt: string;
   orgId: string;
   projectId: string;
+  expiresAt?: string;
 };
 
 // Validate JSON path keys to prevent injection
@@ -86,7 +88,7 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
 
     // Optional: actor ID filter - queries the actorMetadata JSON field
     if (arg.actorId) {
-      conditions.push("actorMetadata.userId = {actorId:String}");
+      conditions.push("JSONExtractString(actorMetadata, 'userId') = {actorId:String}");
       params.actorId = arg.actorId;
     }
 
@@ -105,9 +107,11 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
           // eslint-disable-next-line no-continue
           continue;
         }
-        const paramName = `metaVal${metaIdx}`;
-        conditions.push(`eventMetadata.${key} = {${paramName}:String}`);
-        params[paramName] = value;
+        const keyParamName = `metaKey${metaIdx}`;
+        const valParamName = `metaVal${metaIdx}`;
+        conditions.push(`JSONExtractString(eventMetadata, {${keyParamName}:String}) = {${valParamName}:String}`);
+        params[keyParamName] = key;
+        params[valParamName] = value;
         metaIdx += 1;
       }
     }
@@ -118,12 +122,12 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
 
     if (arg.projectId && eventIsSecretType) {
       if (arg.environment) {
-        conditions.push("eventMetadata.environment = {envFilter:String}");
+        conditions.push("JSONExtractString(eventMetadata, 'environment') = {envFilter:String}");
         params.envFilter = arg.environment;
       }
 
       if (arg.secretPath) {
-        conditions.push("eventMetadata.secretPath = {secretPathFilter:String}");
+        conditions.push("JSONExtractString(eventMetadata, 'secretPath') = {secretPathFilter:String}");
         params.secretPathFilter = arg.secretPath;
       }
 
@@ -135,8 +139,8 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         //   { "secrets": [{ "secretKey": "MY_SECRET" }, { "secretKey": "OTHER" }], ... }
         conditions.push(
           `(${[
-            "eventMetadata.secretKey = {secretKeyFilter:String}",
-            "arrayExists(x -> x.secretKey = {secretKeyFilter:String}, CAST(eventMetadata.secrets AS Array(JSON)))"
+            "JSONExtractString(eventMetadata, 'secretKey') = {secretKeyFilter:String}",
+            "arrayExists(x -> JSONExtractString(x, 'secretKey') = {secretKeyFilter:String}, JSONExtractArrayRaw(eventMetadata, 'secrets'))"
           ].join(" OR ")})`
         );
         params.secretKeyFilter = arg.secretKey;
@@ -144,8 +148,11 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
 
     const whereClause = conditions.join(" AND ");
+
     const query = `
-      SELECT *
+      SELECT
+        id, actor, actorMetadata, ipAddress, eventType, eventMetadata,
+        userAgent, userAgentType, orgId, projectId, expiresAt, createdAt
       FROM ${tableName}
       WHERE ${whereClause}
       ORDER BY createdAt DESC
@@ -177,17 +184,17 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
       return rows.map((row) => ({
         id: row.id,
         actor: row.actor,
-        actorMetadata: row.actorMetadata as TAuditLogs["actorMetadata"],
+        actorMetadata: (row.actorMetadata ? JSON.parse(row.actorMetadata) : {}) as TAuditLogs["actorMetadata"],
         ipAddress: row.ipAddress || null,
         eventType: row.eventType,
-        eventMetadata: (row.eventMetadata || null) as TAuditLogs["eventMetadata"],
+        eventMetadata: (row.eventMetadata ? JSON.parse(row.eventMetadata) : null) as TAuditLogs["eventMetadata"],
         userAgent: row.userAgent || null,
         userAgentType: row.userAgentType || null,
         createdAt: new Date(row.createdAt),
         orgId: row.orgId || null,
         projectId: row.projectId || null,
         projectName: projectNameMap[row.projectId] ?? null,
-        expiresAt: null
+        expiresAt: row.expiresAt ? new Date(row.expiresAt) : null
       })) as TAuditLogWithProjectName[];
     } catch (error) {
       logger.error(error, "Failed to query audit logs from ClickHouse");

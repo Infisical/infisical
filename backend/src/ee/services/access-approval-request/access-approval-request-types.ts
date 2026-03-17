@@ -59,6 +59,7 @@ export interface TAccessApprovalRequestServiceFactory {
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
     };
+    projectId: string;
   }>;
   updateAccessApprovalRequest: (arg: TUpdateAccessApprovalRequestDTO) => Promise<{
     request: {
@@ -177,6 +178,7 @@ export interface TAccessApprovalRequestServiceFactory {
     status: string;
     createdAt: Date;
     updatedAt: Date;
+    projectId: string;
   }>;
   getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
     count: {

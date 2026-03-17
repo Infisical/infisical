@@ -71,6 +71,12 @@ import {
   TValidateAzureDnsConnectionCredentialsSchema
 } from "./azure-dns/azure-dns-connection-types";
 import {
+  TAzureEntraIdConnection,
+  TAzureEntraIdConnectionConfig,
+  TAzureEntraIdConnectionInput,
+  TValidateAzureEntraIdConnectionCredentialsSchema
+} from "./azure-entra-id/azure-entra-id-connection-types";
+import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
@@ -282,6 +288,12 @@ import {
   TValidateTerraformCloudConnectionCredentialsSchema
 } from "./terraform-cloud";
 import {
+  TValidateVenafiConnectionCredentialsSchema,
+  TVenafiConnection,
+  TVenafiConnectionConfig,
+  TVenafiConnectionInput
+} from "./venafi";
+import {
   TValidateVercelConnectionCredentialsSchema,
   TVercelConnection,
   TVercelConnectionConfig,
@@ -352,9 +364,15 @@ export type TAppConnection = { id: string } & (
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
+  | TAzureEntraIdConnection
+  | TVenafiConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
+
+export type TAppConnectionRawWithMetadata = Awaited<
+  ReturnType<TAppConnectionDALFactory["findWithProjectDetails"]>
+>[number];
 
 export type TSqlConnection = TPostgresConnection | TMsSqlConnection | TMySqlConnection | TOracleDBConnection;
 
@@ -410,6 +428,8 @@ export type TAppConnectionInput = { id: string } & (
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
+  | TAzureEntraIdConnectionInput
+  | TVenafiConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -420,11 +440,26 @@ export type TSqlConnectionInput =
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
-  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManagedCredentials" | "gatewayId" | "projectId"
+  | "credentials"
+  | "method"
+  | "name"
+  | "app"
+  | "description"
+  | "isPlatformManagedCredentials"
+  | "gatewayId"
+  | "projectId"
+  | "rotation"
+  | "isAutoRotationEnabled"
 >;
 
-export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "method" | "app" | "projectId">> & {
+export type TUpdateAppConnectionDTO = Partial<
+  Omit<TCreateAppConnectionDTO, "method" | "app" | "projectId" | "rotation">
+> & {
   connectionId: string;
+  rotation?: {
+    rotationInterval?: number;
+    rotateAtUtc?: { hours: number; minutes: number };
+  };
 };
 
 export type TGetAppConnectionByNameDTO = {
@@ -485,7 +520,9 @@ export type TAppConnectionConfig =
   | TDbtConnectionConfig
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
-  | TCircleCIConnectionConfig;
+  | TCircleCIConnectionConfig
+  | TAzureEntraIdConnectionConfig
+  | TVenafiConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -538,7 +575,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDbtConnectionCredentialsSchema
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
-  | TValidateCircleCIConnectionCredentialsSchema;
+  | TValidateCircleCIConnectionCredentialsSchema
+  | TValidateAzureEntraIdConnectionCredentialsSchema
+  | TValidateVenafiConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
@@ -576,5 +615,6 @@ export type TAppConnectionTransitionCredentialsToPlatform = (
 
 export type TAppConnectionBaseConfig = {
   supportsPlatformManagedCredentials?: boolean;
+  supportsCredentialRotation?: boolean;
   supportsGateways?: boolean;
 };

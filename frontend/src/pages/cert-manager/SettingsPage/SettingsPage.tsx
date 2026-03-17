@@ -8,11 +8,18 @@ import { useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
+import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
+
 const tabs = [
   {
     name: "General",
     key: "tab-project-general",
     Component: ProjectGeneralTab
+  },
+  {
+    name: "Certificate Cleanup",
+    key: "tab-certificate-cleanup",
+    Component: CertificateCleanupTab
   }
 ];
 

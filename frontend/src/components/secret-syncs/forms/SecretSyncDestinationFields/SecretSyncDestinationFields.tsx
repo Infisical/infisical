@@ -8,6 +8,7 @@ import { AwsParameterStoreSyncFields } from "./AwsParameterStoreSyncFields";
 import { AwsSecretsManagerSyncFields } from "./AwsSecretsManagerSyncFields";
 import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFields";
 import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
+import { AzureEntraIdScimSyncFields } from "./AzureEntraIdScimSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { BitbucketSyncFields } from "./BitbucketSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
@@ -115,6 +116,8 @@ export const SecretSyncDestinationFields = () => {
       return <OctopusDeploySyncFields />;
     case SecretSync.CircleCI:
       return <CircleCISyncFields />;
+    case SecretSync.AzureEntraIdScim:
+      return <AzureEntraIdScimSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

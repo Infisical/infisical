@@ -27,6 +27,7 @@ export const vaultExternalMigrationConfigDALFactory = (db: TDbClient) => {
           db.ref("app").withSchema(TableName.AppConnection).as("appConnectionApp"),
           db.ref("encryptedCredentials").withSchema(TableName.AppConnection).as("appConnectionEncryptedCredentials"),
           db.ref("orgId").withSchema(TableName.AppConnection).as("appConnectionOrgId"),
+          db.ref("isAutoRotationEnabled").withSchema(TableName.AppConnection).as("appConnectionIsAutoRotationEnabled"),
           db.ref("method").withSchema(TableName.AppConnection).as("appConnectionMethod"),
           db.ref("description").withSchema(TableName.AppConnection).as("appConnectionDescription"),
           db.ref("version").withSchema(TableName.AppConnection).as("appConnectionVersion"),
@@ -54,7 +55,8 @@ export const vaultExternalMigrationConfigDALFactory = (db: TDbClient) => {
               gatewayId: result.appConnectionGatewayId,
               projectId: result.appConnectionProjectId,
               createdAt: result.appConnectionCreatedAt,
-              updatedAt: result.appConnectionUpdatedAt
+              updatedAt: result.appConnectionUpdatedAt,
+              isAutoRotationEnabled: result.appConnectionIsAutoRotationEnabled
             }
           : undefined
       };

@@ -307,14 +307,15 @@ The entire config needs to be of string format and needs to be assigned to the `
 </Accordion>
 
 <Accordion title="infisical.auth.type">
-  The authentication type to use to connect to Infisical. Currently only the `kubernetes` authentication type is supported.
-  You can refer to our [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) documentation for more information on how to create a machine identity for Kubernetes Auth.
-  Please note that the pod's default service account will be used to authenticate with Infisical.
+  The authentication type to use to connect to Infisical. Supported types: `kubernetes`, `ldap-auth`, and `aws-iam`.
+  - For `kubernetes`: The pod's default service account will be used to authenticate with Infisical. See [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth).
+  - For `ldap-auth`: LDAP credentials are used. See [LDAP Auth](/documentation/platform/identities/ldap-auth).
+  - For `aws-iam`: The pod's AWS credential chain (IRSA or instance profile) is used to authenticate. See [AWS Auth](/documentation/platform/identities/aws-auth).
 </Accordion>
 
 
 <Accordion title="infisical.auth.config.identity-id">
-  The ID of the machine identity to use for Kubernetes or LDAP authentication. This field is required if the `infisical.auth.type` is set to `kubernetes`.
+  The ID of the machine identity to use for authentication. This field is required when `infisical.auth.type` is set to `kubernetes`, `ldap-auth`, or `aws-iam`.
 </Accordion>
 
 <Accordion title="infisical.auth.config.username">
@@ -385,7 +386,7 @@ The templates hold an array of templates that will be rendered and injected into
 
 
 ### Authentication
-The Infisical Agent Injector supports Machine Identity [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) and [LDAP Auth](/documentation/platform/identities/ldap-auth) authentication.
+The Infisical Agent Injector supports Machine Identity [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth), [LDAP Auth](/documentation/platform/identities/ldap-auth), and [AWS Auth](/documentation/platform/identities/aws-auth) authentication.
 
 
 <AccordionGroup>
@@ -456,6 +457,45 @@ The Infisical Agent Injector supports Machine Identity [Kubernetes Auth](/docume
               identity-id: "<your-infisical-machine-identity-id>"
               username: "<your-ldap-username>"
               password: "<your-ldap-password>"
+        templates:
+          - destination-path: "/path/to/save/secrets/file.txt"
+            template-content: |
+              {{- with secret "<your-project-id>" "dev" "/" }}
+              {{- range . }}
+              {{ .Key }}={{ .Value }}
+              {{- end }}
+              {{- end }}
+    ```
+
+    ```bash
+    kubectl apply -f config-map.yaml
+    ```
+
+  </Accordion>
+  <Accordion title="AWS IAM Auth">
+    To configure AWS IAM Auth, you need to set the `auth.type` field to `aws-iam` and set the `auth.config.identity-id` to the ID of the machine identity you wish to use for authentication. The pod must run in an AWS environment (e.g., EKS with IRSA or EC2 with instance profile) so that the agent can use the pod's ambient AWS credential chain to authenticate with Infisical.
+
+    ```yaml
+    auth:
+      type: "aws-iam"
+      config:
+        identity-id: "<your-infisical-machine-identity-id>"
+    ```
+
+    ### Example ConfigMap
+    ```yaml config-map.yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: demo-config-map
+    data:
+      config.yaml: |
+        infisical:
+          address: "https://app.infisical.com"
+          auth:
+            type: "aws-iam"
+            config:
+              identity-id: "<your-infisical-machine-identity-id>"
         templates:
           - destination-path: "/path/to/save/secrets/file.txt"
             template-content: |

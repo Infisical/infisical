@@ -13,7 +13,6 @@ import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin"
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -26,7 +25,7 @@ import {
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { getAuthToken, isLoggedIn } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
-import { AuthMethod } from "@app/hooks/api/users/types";
+import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
 
@@ -50,9 +49,18 @@ export const SelectOrganizationSection = () => {
   const queryParams = new URLSearchParams(window.location.search);
   const orgId = queryParams.get("org_id");
   const callbackPort = queryParams.get("callback_port");
-  const isAdminLogin = queryParams.get("is_admin_login") === "true";
+  const isBreakglassRoute = queryParams.get("is_admin_login") === "true";
   const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
+
+  const willAutoSelectDefaultOrg = useMemo(() => {
+    if (!defaultSelectedOrg || callbackPort || orgsWithSubOrgs.isPending) return false;
+    const orgEntry = orgsWithSubOrgs.data?.find((o) => o.id === defaultSelectedOrg.id);
+    return (orgEntry?.subOrganizations.length ?? 0) === 0;
+  }, [defaultSelectedOrg, callbackPort, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
+
+  const isLoadingSubOrgCheck =
+    Boolean(defaultSelectedOrg) && !callbackPort && orgsWithSubOrgs.isPending;
 
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
@@ -97,24 +105,14 @@ export const SelectOrganizationSection = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      const isUserOrgAdmin = organization.userRole === OrgMembershipRole.Admin;
-      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isUserOrgAdmin && isAdminLogin;
+      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isBreakglassRoute;
 
-      if (isAdminLogin) {
-        if (!organization.bypassOrgAuthEnabled) {
-          createNotification({
-            text: "This organization does not have bypass org auth enabled",
-            type: "error"
-          });
-          return;
-        }
-        if (!isUserOrgAdmin) {
-          createNotification({
-            text: "Only organization admins can bypass org auth",
-            type: "error"
-          });
-          return;
-        }
+      if (isBreakglassRoute && !organization.bypassOrgAuthEnabled) {
+        createNotification({
+          text: "This organization does not have bypass org auth enabled",
+          type: "error"
+        });
+        return;
       }
 
       if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
@@ -129,13 +127,19 @@ export const SelectOrganizationSection = () => {
             }
           }
         } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
-          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
-            callbackPort ? `&callbackPort=${callbackPort}` : ""
-          }`;
+          if (authToken.authMethod !== AuthMethod.OIDC) {
+            url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
+              callbackPort ? `&callbackPort=${callbackPort}` : ""
+            }`;
+          }
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
-          url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
-          if (callbackPort) {
-            url += `?callback_port=${callbackPort}`;
+          if (
+            !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
+          ) {
+            url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
+            if (callbackPort) {
+              url += `?callback_port=${callbackPort}`;
+            }
           }
         }
 
@@ -282,10 +286,9 @@ export const SelectOrganizationSection = () => {
       orgsWithSubOrgs.data.length === 1 && orgsWithSubOrgs.data[0].subOrganizations.length === 0;
 
     if (onlyOneRootOrgWithNoSubOrgs) {
-      if (callbackPort) {
-        handleCliRedirect();
-        setIsInitialOrgCheckLoading(false);
-      } else {
+      // CLI flow (callbackPort) or no org_id in URL: auto-select the only org.
+      // When defaultSelectedOrg is set without callbackPort, willAutoSelectDefaultOrg handles selection via the second useEffect.
+      if (callbackPort || !defaultSelectedOrg) {
         handleSelectOrganization(organizations.data[0]);
       }
     } else {
@@ -295,7 +298,8 @@ export const SelectOrganizationSection = () => {
     organizations.isPending,
     organizations.data,
     orgsWithSubOrgs.isPending,
-    orgsWithSubOrgs.data
+    orgsWithSubOrgs.data,
+    defaultSelectedOrg
   ]);
 
   useEffect(() => {
@@ -311,10 +315,10 @@ export const SelectOrganizationSection = () => {
       }
     }
 
-    if (defaultSelectedOrg) {
+    if (willAutoSelectDefaultOrg && defaultSelectedOrg) {
       handleSelectOrganization(defaultSelectedOrg);
     }
-  }, [defaultSelectedOrg, mfaPending]);
+  }, [defaultSelectedOrg, mfaPending, willAutoSelectDefaultOrg]);
 
   const renderListContent = () => {
     if (orgsWithSubOrgs.isPending) {
@@ -492,7 +496,8 @@ export const SelectOrganizationSection = () => {
   if (
     userLoading ||
     !user ||
-    ((isInitialOrgCheckLoading || defaultSelectedOrg) && !shouldShowMfa)
+    ((isInitialOrgCheckLoading || willAutoSelectDefaultOrg || isLoadingSubOrgCheck) &&
+      !shouldShowMfa)
   ) {
     return (
       <div className="h-screen w-screen bg-bunker-800">

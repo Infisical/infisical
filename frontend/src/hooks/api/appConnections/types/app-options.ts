@@ -45,6 +45,10 @@ export type TDatabricksConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Databricks;
 };
 
+export type TAzureEntraIdConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureEntraId;
+};
+
 export type TAzureDevOpsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDevOps;
   oauthClientId?: string;
@@ -220,6 +224,10 @@ export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.CircleCI;
 };
 
+export type TVenafiConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Venafi;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -271,7 +279,9 @@ export type TAppConnectionOption =
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
   | TDbtConnectionOption
-  | TSmbConnectionOption;
+  | TSmbConnectionOption
+  | TAzureEntraIdConnectionOption
+  | TVenafiConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -325,4 +335,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Dbt]: TDbtConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
+  [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
+  [AppConnection.Venafi]: TVenafiConnectionOption;
 };

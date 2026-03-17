@@ -22,12 +22,12 @@ export const OrgAdminBreakglassAccessTemplate = ({
 }: OrgAdminBreakglassAccessTemplateProps) => {
   return (
     <BaseEmailWrapper
-      title="Organization Admin has Bypassed SSO"
-      preview="An organization admin has bypassed SSO."
+      title="Organization Member has Bypassed SSO"
+      preview="An organization member has bypassed SSO."
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        The organization admin <strong>{email}</strong> has bypassed enforced SSO login
+        The organization member <strong>{email}</strong> has bypassed enforced SSO login
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[24px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong className="text-[14px]">Timestamp</strong>
@@ -37,7 +37,7 @@ export const OrgAdminBreakglassAccessTemplate = ({
         <strong className="text-[14px]">User Agent</strong>
         <Text className="text-[14px] mt-[4px]">{userAgent}</Text>
         <Text className="text-[14px]">
-          If you'd like to disable Admin SSO Bypass, please visit{" "}
+          If you'd like to disable SSO Bypass, please visit{" "}
           <BaseLink href={`${siteUrl}/organizations/${orgId}/settings`}>Organization Security Settings</BaseLink>.
         </Text>
       </Section>

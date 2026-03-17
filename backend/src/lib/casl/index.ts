@@ -23,6 +23,7 @@ export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export enum PermissionConditionOperators {
   $IN = "$in",
+  $ALL = "$all",
   $EQ = "$eq",
   $NEQ = "$ne",
   $GLOB = "$glob",

@@ -4,13 +4,26 @@ import { z } from "zod";
 import { FormControl, Input, TextArea } from "@app/components/v2";
 import { slugSchema } from "@app/lib/schemas";
 
+export const rotationSchema = z.object({
+  rotationInterval: z
+    .number()
+    .min(1)
+    .max(365 * 2.5),
+  rotateAtUtc: z.object({
+    hours: z.number().min(0).max(23),
+    minutes: z.number().min(0).max(59)
+  })
+});
+
 export const genericAppConnectionFieldsSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
   description: z.string().trim().max(256, "Description cannot exceed 256 characters").nullish(),
   gatewayId: z
     .string()
     .nullish()
-    .transform((v) => (v === "" ? null : v))
+    .transform((v) => (v === "" ? null : v)),
+  isAutoRotationEnabled: z.boolean().optional(),
+  rotation: rotationSchema.optional()
 });
 
 export const GenericAppConnectionsFields = () => {

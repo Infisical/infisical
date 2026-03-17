@@ -4,14 +4,27 @@ import { ArrowDownToLineIcon, RefreshCcwIcon } from "lucide-react";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
+  UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
 import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
-import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
+import {
+  CaRenewalStatus,
+  CaSigningConfigType,
+  CaStatus,
+  CaType,
+  InternalCaType,
+  useGetCa,
+  useGetCaAutoRenewal,
+  useGetCaSigningConfig
+} from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -34,6 +47,13 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
 
   const ca = data as TInternalCertificateAuthority;
 
+  const { data: signingConfig } = useGetCaSigningConfig(caId);
+  const { data: autoRenewal } = useGetCaAutoRenewal(caId, {
+    enabled: Boolean(caId)
+  });
+
+  const isVenafiPending = autoRenewal?.lastRenewalStatus === CaRenewalStatus.PENDING;
+
   const renderActionButton = () => {
     if (!ca) return null;
 
@@ -44,30 +64,39 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
           a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
         >
           {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              variant="project"
-              size="xs"
-              onClick={() => {
-                if (
-                  ca.configuration.type === InternalCaType.INTERMEDIATE &&
-                  !ca.configuration.parentCaId
-                ) {
-                  handlePopUpOpen("installCaCert", {
-                    caId: ca.id,
-                    isParentCaExternal: true
-                  });
-                  return;
-                }
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  isDisabled={!isAllowed || isVenafiPending}
+                  variant="project"
+                  size="xs"
+                  onClick={() => {
+                    // Manual external CAs show the install modal with CSR for manual renewal
+                    if (
+                      ca.configuration.type === InternalCaType.INTERMEDIATE &&
+                      !ca.configuration.parentCaId &&
+                      signingConfig?.type !== CaSigningConfigType.VENAFI
+                    ) {
+                      handlePopUpOpen("installCaCert", {
+                        caId: ca.id,
+                        isParentCaExternal: true
+                      });
+                      return;
+                    }
 
-                handlePopUpOpen("renewCa", {
-                  caId: ca.id
-                });
-              }}
-            >
-              <RefreshCcwIcon />
-              Renew CA
-            </Button>
+                    handlePopUpOpen("renewCa", {
+                      caId: ca.id
+                    });
+                  }}
+                >
+                  <RefreshCcwIcon />
+                  Renew CA
+                </Button>
+              </TooltipTrigger>
+              {isVenafiPending && (
+                <TooltipContent>Certificate installation is in progress</TooltipContent>
+              )}
+            </Tooltip>
           )}
         </ProjectPermissionCan>
       );
@@ -97,19 +126,26 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
               );
             }
             return (
-              <Button
-                isDisabled={!isAllowed}
-                variant="project"
-                size="xs"
-                onClick={() => {
-                  handlePopUpOpen("installCaCert", {
-                    caId: ca.id
-                  });
-                }}
-              >
-                <ArrowDownToLineIcon />
-                Install CA Certificate
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    isDisabled={!isAllowed || isVenafiPending}
+                    variant="project"
+                    size="xs"
+                    onClick={() => {
+                      handlePopUpOpen("installCaCert", {
+                        caId: ca.id
+                      });
+                    }}
+                  >
+                    <ArrowDownToLineIcon />
+                    Install CA Certificate
+                  </Button>
+                </TooltipTrigger>
+                {isVenafiPending && (
+                  <TooltipContent>Certificate installation is in progress</TooltipContent>
+                )}
+              </Tooltip>
             );
           }}
         </ProjectPermissionCan>
@@ -123,6 +159,7 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
     <UnstableCard className="w-full">
       <UnstableCardHeader className="border-b">
         <UnstableCardTitle>CA Certificates</UnstableCardTitle>
+        <UnstableCardDescription>Issued and active certificates</UnstableCardDescription>
         <UnstableCardAction>{renderActionButton()}</UnstableCardAction>
       </UnstableCardHeader>
       <UnstableCardContent>

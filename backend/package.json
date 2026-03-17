@@ -241,7 +241,7 @@
     "pino": "^8.16.2",
     "pkcs11js": "^2.1.6",
     "pkijs": "^3.2.4",
-    "posthog-node": "^3.6.2",
+    "posthog-node": "^5.28.1",
     "probot": "^13.3.8",
     "re2": "^1.21.4",
     "react": "19.1.0",
@@ -258,7 +258,7 @@
     "tsconfig-paths": "^4.2.0",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
-    "uuid": "^9.0.1",
+    "uuid": "^11.1.0",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.24.5"
   }
