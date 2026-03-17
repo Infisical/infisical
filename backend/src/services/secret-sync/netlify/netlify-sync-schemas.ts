@@ -68,6 +68,7 @@ export const NetlifySyncListItemSchema = z
     name: z.literal("Netlify"),
     connection: z.literal(AppConnection.Netlify),
     destination: z.literal(SecretSync.Netlify),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Netlify] }));

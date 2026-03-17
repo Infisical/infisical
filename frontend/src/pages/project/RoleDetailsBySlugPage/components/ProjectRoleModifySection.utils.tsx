@@ -171,7 +171,8 @@ const AppConnectionPolicyActionSchema = z.object({
   [ProjectPermissionAppConnectionActions.Read]: z.boolean().optional(),
   [ProjectPermissionAppConnectionActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAppConnectionActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionAppConnectionActions.Connect]: z.boolean().optional()
+  [ProjectPermissionAppConnectionActions.Connect]: z.boolean().optional(),
+  [ProjectPermissionAppConnectionActions.RotateCredentials]: z.boolean().optional()
 });
 
 const KmipPolicyActionSchema = z.object({
@@ -460,15 +461,10 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     ]
   },
   [ProjectPermissionSub.Identity]: {
-    [ProjectPermissionIdentityActions.Read]: [],
+    [ProjectPermissionIdentityActions.Read]: ["identityId"],
     [ProjectPermissionIdentityActions.Create]: [],
-    [ProjectPermissionIdentityActions.Edit]: [],
-    [ProjectPermissionIdentityActions.Delete]: [],
-    [ProjectPermissionIdentityActions.AssumePrivileges]: [],
-    [ProjectPermissionIdentityActions.RevokeAuth]: [],
-    [ProjectPermissionIdentityActions.CreateToken]: [],
-    [ProjectPermissionIdentityActions.GetToken]: [],
-    [ProjectPermissionIdentityActions.DeleteToken]: [],
+    [ProjectPermissionIdentityActions.Edit]: ["identityId"],
+    [ProjectPermissionIdentityActions.Delete]: ["identityId"],
     [ProjectPermissionIdentityActions.GrantPrivileges]: [
       "identityId",
       "assignableRole",
@@ -480,7 +476,12 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
       "identityId",
       "assignableSubject",
       "assignableAction"
-    ]
+    ],
+    [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
+    [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
   },
   [ProjectPermissionSub.Groups]: {
     [ProjectPermissionGroupActions.Read]: [],
@@ -1176,6 +1177,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canEdit = action.includes(ProjectPermissionAppConnectionActions.Edit);
           const canDelete = action.includes(ProjectPermissionAppConnectionActions.Delete);
           const canConnect = action.includes(ProjectPermissionAppConnectionActions.Connect);
+          const canRotateCredentials = action.includes(
+            ProjectPermissionAppConnectionActions.RotateCredentials
+          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -1184,6 +1188,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionAppConnectionActions.Edit]: canEdit,
             [ProjectPermissionAppConnectionActions.Delete]: canDelete,
             [ProjectPermissionAppConnectionActions.Connect]: canConnect,
+            [ProjectPermissionAppConnectionActions.RotateCredentials]: canRotateCredentials,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -2992,6 +2997,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Connect",
         value: ProjectPermissionAppConnectionActions.Connect,
         description: "Establish connections to external platforms and services"
+      },
+      {
+        label: "Rotate Credentials",
+        value: ProjectPermissionAppConnectionActions.RotateCredentials,
+        description: "Rotate credentials for app connections"
       }
     ]
   },

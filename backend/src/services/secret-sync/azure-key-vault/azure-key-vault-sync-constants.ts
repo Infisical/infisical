@@ -6,5 +6,6 @@ export const AZURE_KEY_VAULT_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Azure Key Vault",
   destination: SecretSync.AzureKeyVault,
   connection: AppConnection.AzureKeyVault,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

@@ -6,5 +6,6 @@ export const AWS_PARAMETER_STORE_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "AWS Parameter Store",
   destination: SecretSync.AWSParameterStore,
   connection: AppConnection.AWS,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

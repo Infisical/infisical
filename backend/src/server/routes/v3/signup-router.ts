@@ -161,16 +161,20 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       const signupDistinctId = user.username ?? user.email ?? "";
       if (signupDistinctId) {
-        void server.services.telemetry.identifyUser(signupDistinctId, {
-          email: user.email ?? undefined,
-          username: user.username,
-          userId: user.id,
-          firstName: user.firstName ?? undefined,
-          lastName: user.lastName ?? undefined,
-          isEmailVerified: user.isEmailVerified ?? undefined,
-          isMfaEnabled: user.isMfaEnabled ?? undefined,
-          superAdmin: user.superAdmin ?? undefined
-        });
+        void server.services.telemetry.identifyUser(
+          signupDistinctId,
+          {
+            email: user.email ?? undefined,
+            username: user.username,
+            userId: user.id,
+            firstName: user.firstName ?? undefined,
+            lastName: user.lastName ?? undefined,
+            isEmailVerified: user.isEmailVerified ?? undefined,
+            isMfaEnabled: user.isMfaEnabled ?? undefined,
+            superAdmin: user.superAdmin ?? undefined
+          },
+          { skipDedup: true }
+        );
       }
 
       void res.setCookie("jid", refreshToken, {
@@ -237,16 +241,20 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       const inviteDistinctId = user.username ?? user.email ?? "";
       if (inviteDistinctId) {
-        void server.services.telemetry.identifyUser(inviteDistinctId, {
-          email: user.email ?? undefined,
-          username: user.username,
-          userId: user.id,
-          firstName: user.firstName ?? undefined,
-          lastName: user.lastName ?? undefined,
-          isEmailVerified: user.isEmailVerified ?? undefined,
-          isMfaEnabled: user.isMfaEnabled ?? undefined,
-          superAdmin: user.superAdmin ?? undefined
-        });
+        void server.services.telemetry.identifyUser(
+          inviteDistinctId,
+          {
+            email: user.email ?? undefined,
+            username: user.username,
+            userId: user.id,
+            firstName: user.firstName ?? undefined,
+            lastName: user.lastName ?? undefined,
+            isEmailVerified: user.isEmailVerified ?? undefined,
+            isMfaEnabled: user.isMfaEnabled ?? undefined,
+            superAdmin: user.superAdmin ?? undefined
+          },
+          { skipDedup: true }
+        );
       }
 
       void res.setCookie("jid", refreshToken, {

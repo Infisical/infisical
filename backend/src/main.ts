@@ -62,6 +62,10 @@ const run = async () => {
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
   const envConfig = await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
 
+  logger.info(
+    `Running Infisical ${envConfig.INFISICAL_PLATFORM_VERSION ? `v${envConfig.INFISICAL_PLATFORM_VERSION}` : "Development Mode"}`
+  );
+
   const auditLogDb = envConfig.AUDIT_LOGS_DB_CONNECTION_URI
     ? initAuditLogDbConnection({
         dbConnectionUri: envConfig.AUDIT_LOGS_DB_CONNECTION_URI,

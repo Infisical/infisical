@@ -81,6 +81,11 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         )
         .leftJoin(TableName.IdentityLdapAuth, `${TableName.Identity}.id`, `${TableName.IdentityLdapAuth}.identityId`)
         .leftJoin(TableName.IdentityJwtAuth, `${TableName.Identity}.id`, `${TableName.IdentityJwtAuth}.identityId`)
+        .leftJoin(
+          TableName.IdentitySpiffeAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentitySpiffeAuth}.identityId`
+        )
         .select(selectAllTableCols(TableName.Membership))
         .select(
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
@@ -120,7 +125,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
           db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
-          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth)
+          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
+          db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
         );
 
       const data = sqlNestRelationships({
@@ -144,7 +150,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
             jwtId,
             ociId,
             ldapId,
-            tlsCertId
+            tlsCertId,
+            spiffeId
           } = el;
           return {
             ...MembershipsSchema.parse(el),
@@ -166,7 +173,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
                 jwtId,
                 ldapId,
                 ociId,
-                tlsCertId
+                tlsCertId,
+                spiffeId
               })
             }
           };

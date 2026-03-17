@@ -51,6 +51,7 @@ export const AzureDevOpsSyncListItemSchema = z
     name: z.literal("Azure DevOps"),
     connection: z.literal(AppConnection.AzureDevOps),
     destination: z.literal(SecretSync.AzureDevOps),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureDevOps] }));

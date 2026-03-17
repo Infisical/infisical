@@ -54,6 +54,7 @@ export const ChecklySyncListItemSchema = z
     name: z.literal("Checkly"),
     connection: z.literal(AppConnection.Checkly),
     destination: z.literal(SecretSync.Checkly),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Checkly] }));

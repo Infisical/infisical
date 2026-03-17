@@ -643,14 +643,18 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       const adminDistinctId = user.user.username ?? user.user.email ?? "";
       if (adminDistinctId) {
-        void server.services.telemetry.identifyUser(adminDistinctId, {
-          email: user.user.email ?? undefined,
-          username: user.user.username,
-          userId: user.user.id,
-          firstName: user.user.firstName ?? undefined,
-          lastName: user.user.lastName ?? undefined,
-          superAdmin: true
-        });
+        void server.services.telemetry.identifyUser(
+          adminDistinctId,
+          {
+            email: user.user.email ?? undefined,
+            username: user.user.username,
+            userId: user.user.id,
+            firstName: user.user.firstName ?? undefined,
+            lastName: user.user.lastName ?? undefined,
+            superAdmin: true
+          },
+          { skipDedup: true }
+        );
       }
 
       void res.setCookie("jid", token.refresh, {
@@ -804,14 +808,18 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       const bootstrapDistinctId = user.user.username ?? user.user.email ?? "";
       if (bootstrapDistinctId) {
-        void server.services.telemetry.identifyUser(bootstrapDistinctId, {
-          email: user.user.email ?? undefined,
-          username: user.user.username,
-          userId: user.user.id,
-          firstName: user.user.firstName ?? undefined,
-          lastName: user.user.lastName ?? undefined,
-          superAdmin: true
-        });
+        void server.services.telemetry.identifyUser(
+          bootstrapDistinctId,
+          {
+            email: user.user.email ?? undefined,
+            username: user.user.username,
+            userId: user.user.id,
+            firstName: user.user.firstName ?? undefined,
+            lastName: user.user.lastName ?? undefined,
+            superAdmin: true
+          },
+          { skipDedup: true }
+        );
       }
 
       return {

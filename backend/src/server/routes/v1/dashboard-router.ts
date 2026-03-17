@@ -22,7 +22,11 @@ import {
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { PersonalOverridesBehavior, SecretsOrderBy } from "@app/services/secret/secret-types";
+import {
+  PersonalOverridesBehavior,
+  SecretImportReferencesBehavior,
+  SecretsOrderBy
+} from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
@@ -468,6 +472,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
           const rawSecrets = await server.services.secret.getSecretsRawMultiEnv({
             personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
+            secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
             viewSecretValue: true,
             actorId: req.permission.id,
             actor: req.permission.type,
@@ -1037,6 +1042,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             const rawSecrets = (
               await server.services.secret.getSecretsRaw({
                 personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
+                secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
                 actorId: req.permission.id,
                 actor: req.permission.type,
                 viewSecretValue: true,
@@ -1488,6 +1494,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       const { secrets } = await server.services.secret.getSecretsRaw({
         personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
+        secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -1524,7 +1531,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environment,
             secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
-            ...req.auditLogInfo
+            ...req.auditLogInfo,
+            actorType: req.permission.type
           }
         });
       }

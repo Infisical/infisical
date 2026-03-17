@@ -61,7 +61,7 @@ const RESERVED_IMPORT_REGEX = new RE2("/__reserve_replication_([a-f0-9-]{36})");
 /**
  * Processes reserved imports by resolving them to their replication source.
  */
-const processReservedImports = async <
+export const processReservedImports = async <
   T extends {
     isReserved?: boolean | null;
     importPath: string;

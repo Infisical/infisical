@@ -29,6 +29,7 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { AzureClientSecretsFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -60,7 +61,8 @@ const clientSecretSchema = baseSchema.extend({
   credentials: z.object({
     clientSecret: z.string().trim().min(1, "Client Secret is required"),
     clientId: z.string().trim().min(1, "Client ID is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required")
+    tenantId: z.string().trim().min(1, "Tenant ID is required"),
+    clientSecretKeyId: z.string().trim().optional()
   })
 });
 
@@ -82,11 +84,21 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
+const defaultRotation = {
+  rotationInterval: 30,
+  rotateAtUtc: {
+    hours: 0,
+    minutes: 0
+  }
+};
+
 const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partial<FormData> => {
   if (!appConnection) {
     return {
       app: AppConnection.AzureClientSecrets,
-      method: AzureClientSecretsConnectionMethod.OAuth
+      method: AzureClientSecretsConnectionMethod.OAuth,
+      isAutoRotationEnabled: false,
+      rotation: defaultRotation
     };
   }
 
@@ -94,7 +106,9 @@ const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partia
     name: appConnection.name,
     description: appConnection.description,
     app: appConnection.app,
-    method: appConnection.method
+    method: appConnection.method,
+    isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
+    rotation: appConnection.rotation ?? defaultRotation
   };
   const { credentials } = appConnection;
 
@@ -109,14 +123,14 @@ const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partia
       }
       break;
     case AzureClientSecretsConnectionMethod.ClientSecret:
-      if ("clientSecret" in credentials && "clientId" in credentials) {
+      if ("clientId" in credentials) {
         return {
           ...base,
           method: AzureClientSecretsConnectionMethod.ClientSecret,
           credentials: {
-            clientSecret: credentials.clientSecret,
             clientId: credentials.clientId,
-            tenantId: credentials.tenantId
+            tenantId: credentials.tenantId,
+            clientSecret: ""
           }
         };
       }
@@ -307,6 +321,23 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
                 </FormControl>
               )}
             />
+
+            <CredentialRotationForm>
+              <Controller
+                name="credentials.clientSecretKeyId"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error?.message)}
+                    label="Client Secret Key ID"
+                    errorText={error?.message}
+                    tooltipText="The Key ID of the client secret provided above. Found in Azure Portal under App Registrations > Certificates & Secrets. Required so Infisical can revoke the original secret after rotation."
+                  >
+                    <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
+                  </FormControl>
+                )}
+              />
+            </CredentialRotationForm>
           </>
         )}
 

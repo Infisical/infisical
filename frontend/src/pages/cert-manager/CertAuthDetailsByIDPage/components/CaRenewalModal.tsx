@@ -1,4 +1,3 @@
-// import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,10 +15,10 @@ import {
 import { useProject } from "@app/context";
 import {
   CaRenewalType,
+  CaSigningConfigType,
+  useGetCaSigningConfig,
+  useInstallCaCertificateVenafi,
   useRenewCa
-  //   useGetCaById,
-  // CaType,
-  //   CaStatus
 } from "@app/hooks/api/ca";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -52,55 +51,82 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
     caId: string;
   };
 
-  //   const { data: ca } = useGetCaById(popUpData?.caId || "");
-  //   const { data: parentCa } = useGetCaById(ca?.parentCaId || "");
+  const caId = popUpData?.caId || "";
+
+  const { data: signingConfig } = useGetCaSigningConfig(caId, {
+    enabled: !!caId
+  });
+
+  const isVenafi = signingConfig?.type === CaSigningConfigType.VENAFI;
+
   const { mutateAsync: renewCa } = useRenewCa();
+  const { mutateAsync: installVenafiCert, isPending: isVenafiRenewing } =
+    useInstallCaCertificateVenafi(currentProject.id);
 
   const {
     control,
     handleSubmit,
     reset,
     formState: { isSubmitting }
-    // setValue
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       type: CaRenewalType.EXISTING,
-      notAfter: "" // TODO: consider setting a default value
+      notAfter: ""
     }
   });
-
-  //   useEffect(() => {
-  //     if (ca && ca.status === CaStatus.ACTIVE) {
-  //       const notBeforeDate = new Date(ca.notBefore as string);
-  //       const notAfterDate = new Date(ca.notAfter as string);
-
-  //       const newNotAfterDate = new Date(
-  //         notAfterDate.getTime() + notAfterDate.getTime() - notBeforeDate.getTime()
-  //       );
-
-  //       setValue("notAfter", newNotAfterDate.toISOString().split("T")[0]);
-  //     }
-  //   }, [ca, parentCa]);
 
   const onFormSubmit = async ({ type, notAfter }: FormData) => {
     if (!projectSlug || !popUpData.caId) return;
 
-    await renewCa({
-      projectSlug,
-      caId: popUpData.caId,
-      notAfter,
-      type
-    });
+    try {
+      await renewCa({
+        projectSlug,
+        caId: popUpData.caId,
+        notAfter,
+        type
+      });
 
-    handlePopUpToggle("renewCa", false);
+      handlePopUpToggle("renewCa", false);
 
-    createNotification({
-      text: "Successfully renewed CA",
-      type: "success"
-    });
+      createNotification({
+        text: "Successfully renewed CA",
+        type: "success"
+      });
 
-    reset();
+      reset();
+    } catch (err) {
+      createNotification({
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          "Failed to renew CA",
+        type: "error"
+      });
+    }
+  };
+
+  const onVenafiRenew = async () => {
+    if (!caId) return;
+
+    try {
+      await installVenafiCert({
+        caId
+      });
+
+      handlePopUpToggle("renewCa", false);
+
+      createNotification({
+        text: "Certificate renewal has been queued",
+        type: "success"
+      });
+    } catch (err) {
+      createNotification({
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          "Failed to renew CA certificate via Venafi",
+        type: "error"
+      });
+    }
   };
 
   return (
@@ -112,66 +138,93 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <ModalContent title="Renew CA">
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
-            control={control}
-            name="type"
-            defaultValue={CaRenewalType.EXISTING}
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="CA Renewal Method"
-                errorText={error?.message}
-                isError={Boolean(error)}
+        {isVenafi ? (
+          <div>
+            <p className="mb-4 text-sm text-mineshaft-300">
+              This CA is configured to use Venafi TLS Protect Cloud for signing. Clicking renew will
+              submit a new CSR to Venafi and install the renewed certificate.
+            </p>
+            <div className="flex items-center">
+              <Button
+                className="mr-4"
+                size="sm"
+                onClick={onVenafiRenew}
+                isLoading={isVenafiRenewing}
+                isDisabled={isVenafiRenewing}
               >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {caRenewalTypes.map(({ label, value }) => (
-                    <SelectItem value={String(value || "")} key={label}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue=""
-            name="notAfter"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Valid Until"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
+                Renew via Venafi
+              </Button>
+              <Button
+                colorSchema="secondary"
+                variant="plain"
+                onClick={() => handlePopUpToggle("renewCa", false)}
               >
-                <Input {...field} placeholder="YYYY-MM-DD" />
-              </FormControl>
-            )}
-          />
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              Renew
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("renewCa", false)}
-            >
-              Cancel
-            </Button>
+                Cancel
+              </Button>
+            </div>
           </div>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit(onFormSubmit)}>
+            <Controller
+              control={control}
+              name="type"
+              defaultValue={CaRenewalType.EXISTING}
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="CA Renewal Method"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    defaultValue={field.value}
+                    {...field}
+                    onValueChange={(e) => onChange(e)}
+                    className="w-full"
+                  >
+                    {caRenewalTypes.map(({ label, value }) => (
+                      <SelectItem value={String(value || "")} key={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
+              name="notAfter"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Valid Until"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  isRequired
+                >
+                  <Input {...field} placeholder="YYYY-MM-DD" />
+                </FormControl>
+              )}
+            />
+            <div className="flex items-center">
+              <Button
+                className="mr-4"
+                size="sm"
+                type="submit"
+                isLoading={isSubmitting}
+                isDisabled={isSubmitting}
+              >
+                Renew
+              </Button>
+              <Button
+                colorSchema="secondary"
+                variant="plain"
+                onClick={() => handlePopUpToggle("renewCa", false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
       </ModalContent>
     </Modal>
   );

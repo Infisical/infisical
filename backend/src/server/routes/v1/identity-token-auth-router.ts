@@ -1,14 +1,17 @@
 import { z } from "zod";
 
-import { IdentityAccessTokensSchema, IdentityTokenAuthsSchema } from "@app/db/schemas";
+import { IdentityAccessTokensSchema, IdentityAuthMethod, IdentityTokenAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TOKEN_AUTH } from "@app/lib/api-docs";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -98,6 +101,21 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityTokenAuth.orgId,
+          properties: {
+            identityId: identityTokenAuth.identityId,
+            orgId: identityTokenAuth.orgId,
+            authMethod: IdentityAuthMethod.TOKEN_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTokenAuth.identityId}]`);
+        });
+
       return {
         identityTokenAuth
       };
@@ -184,6 +202,21 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityTokenAuth.orgId,
+          properties: {
+            identityId: identityTokenAuth.identityId,
+            orgId: identityTokenAuth.orgId,
+            authMethod: IdentityAuthMethod.TOKEN_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTokenAuth.identityId}]`);
+        });
 
       return {
         identityTokenAuth
@@ -288,6 +321,21 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityTokenAuth.orgId,
+          properties: {
+            identityId: identityTokenAuth.identityId,
+            orgId: identityTokenAuth.orgId,
+            authMethod: IdentityAuthMethod.TOKEN_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTokenAuth.identityId}]`);
+        });
+
       return { identityTokenAuth };
     }
   });
@@ -349,6 +397,20 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityTokenCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identity.orgId,
+          properties: {
+            identityId: identityTokenAuth.identityId,
+            orgId: identity.orgId
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTokenAuth.identityId}]`);
+        });
 
       return {
         accessToken,
@@ -606,7 +668,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      await server.services.identityTokenAuth.revokeTokenAuthToken({
+      const { revokedToken } = await server.services.identityTokenAuth.revokeTokenAuthToken({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -614,6 +676,20 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         tokenId: req.params.tokenId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityTokenRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: revokedToken.identityId,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${revokedToken.identityId}]`);
+        });
 
       return {
         message: "Successfully revoked access token"

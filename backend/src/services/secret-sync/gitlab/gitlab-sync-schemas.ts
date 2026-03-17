@@ -97,6 +97,7 @@ export const GitLabSyncListItemSchema = z
     name: z.literal("GitLab"),
     connection: z.literal(AppConnection.GitLab),
     destination: z.literal(SecretSync.GitLab),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GitLab] }));

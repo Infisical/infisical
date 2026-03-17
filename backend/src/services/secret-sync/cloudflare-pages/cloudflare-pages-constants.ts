@@ -6,5 +6,6 @@ export const CLOUDFLARE_PAGES_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Cloudflare Pages",
   destination: SecretSync.CloudflarePages,
   connection: AppConnection.Cloudflare,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

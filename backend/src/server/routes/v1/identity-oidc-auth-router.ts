@@ -1,10 +1,12 @@
 import { z } from "zod";
 
-import { IdentityOidcAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityOidcAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OIDC_AUTH } from "@app/lib/api-docs";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -13,6 +15,7 @@ import {
   validateOidcBoundClaimsField
 } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
   id: true,
@@ -81,6 +84,22 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityLogin,
+          distinctId: `identity-${identityOidcAuth.identityId}`,
+          organizationId: identity.orgId,
+          properties: {
+            identityId: identityOidcAuth.identityId,
+            orgId: identity.orgId,
+            authMethod: IdentityAuthMethod.OIDC_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityOidcAuth.identityId}]`);
+        });
+
       return {
         accessToken,
         tokenType: "Bearer" as const,
@@ -186,6 +205,21 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityOidcAuth.orgId,
+          properties: {
+            identityId: identityOidcAuth.identityId,
+            orgId: identityOidcAuth.orgId,
+            authMethod: IdentityAuthMethod.OIDC_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityOidcAuth.identityId}]`);
+        });
+
       return {
         identityOidcAuth
       };
@@ -288,6 +322,21 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityOidcAuth.orgId,
+          properties: {
+            identityId: identityOidcAuth.identityId,
+            orgId: identityOidcAuth.orgId,
+            authMethod: IdentityAuthMethod.OIDC_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityOidcAuth.identityId}]`);
+        });
+
       return { identityOidcAuth };
     }
   });
@@ -389,6 +438,21 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityOidcAuth.orgId,
+          properties: {
+            identityId: identityOidcAuth.identityId,
+            orgId: identityOidcAuth.orgId,
+            authMethod: IdentityAuthMethod.OIDC_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityOidcAuth.identityId}]`);
+        });
 
       return { identityOidcAuth };
     }

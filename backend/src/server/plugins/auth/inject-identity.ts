@@ -130,6 +130,19 @@ export const injectIdentity = fp(
   async (server: FastifyZodProvider, opt: { shouldForwardWritesToPrimaryInstance?: boolean }) => {
     server.decorateRequest("auth", null);
     server.decorateRequest("shouldForwardWritesToPrimaryInstance", Boolean(opt.shouldForwardWritesToPrimaryInstance));
+
+    // Hoisted outside onRequest hook to avoid per-request function allocation on this hot path
+    const fireIdentifyForUser = (user: TUsers) => {
+      const distinctId = user.username ?? user.email ?? "";
+      if (distinctId) {
+        void server.services.telemetry.identifyUser(distinctId, {
+          email: user.email ?? undefined,
+          username: user.username,
+          userId: user.id
+        });
+      }
+    };
+
     server.addHook("onRequest", async (req) => {
       const appCfg = getConfig();
 
@@ -184,6 +197,7 @@ export const injectIdentity = fp(
             isMfaVerified: token.isMfaVerified,
             token
           };
+          fireIdentifyForUser(user);
           break;
         }
         case AuthMode.MCP_JWT: {
@@ -205,6 +219,7 @@ export const injectIdentity = fp(
             isMfaVerified: token.isMfaVerified,
             token
           };
+          fireIdentifyForUser(user);
           break;
         }
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
@@ -241,6 +256,17 @@ export const injectIdentity = fp(
           }
 
           requestContext.set("identityAuthInfo", identityAuthInfo);
+
+          // Fire-and-forget: enrich PostHog person record for this machine identity
+          void server.services.telemetry
+            .identifyIdentity(identity.identityId, {
+              name: identity.identityName,
+              authMethod: identity.authMethod
+            })
+            .catch((error) => {
+              req.log.error(error, `Failed to enrich PostHog identity [identityId=${identity.identityId}]`);
+            });
+
           break;
         }
         case AuthMode.SERVICE_TOKEN: {
