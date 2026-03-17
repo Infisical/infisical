@@ -4,10 +4,11 @@ import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectMembershi
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
-import { ORG_AUTH_ENFORCED_ERROR_MESSAGE } from "@app/services/membership-user/membership-user-types";
+import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ORG_AUTH_ENFORCED_ERROR_MESSAGE } from "@app/services/membership-user/membership-user-types";
 
 export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -84,6 +85,12 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         if (!isAuthEnforcedError) {
           throw error;
         }
+
+        logger.info(
+          "Suppressed org-level auth enforcement error during project invite; proceeding to project membership guard [orgId=%s, projectId=%s]",
+          req.permission.orgId,
+          req.params.projectId
+        );
       }
 
       const { memberships } = await server.services.membershipUser.createMembership({
