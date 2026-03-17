@@ -39,7 +39,11 @@ import {
 } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
-import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import {
+  SECRET_SYNC_NAME_MAP,
+  SECRET_SYNC_RETRY_CONFIG_MAP,
+  TSecretSyncRetryConfig
+} from "@app/services/secret-sync/secret-sync-maps";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -70,6 +74,11 @@ import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/proje
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
+
+const DEFAULT_SECRET_SYNC_RETRY_CONFIG: TSecretSyncRetryConfig = {
+  attempts: 5,
+  backoff: { type: "exponential", delay: 3000 }
+};
 
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
@@ -346,18 +355,19 @@ export const secretSyncQueueFactory = ({
     return secretMap;
   };
 
-  const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) =>
-    queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncSyncSecrets, payload, {
-      delay: getRequeueDelay(payload.failedToAcquireLockCount), // this is for delaying re-queued jobs if sync is locked
-      attempts: 5,
-      backoff: {
-        type: "exponential",
-        delay: 3000
-      },
+  const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) => {
+    const { attempts, backoff } = payload.destination
+      ? SECRET_SYNC_RETRY_CONFIG_MAP[payload.destination]
+      : DEFAULT_SECRET_SYNC_RETRY_CONFIG;
+    return queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncSyncSecrets, payload, {
+      delay: getRequeueDelay(payload.failedToAcquireLockCount),
+      attempts,
+      backoff,
       removeOnComplete: true,
       removeOnFail: true,
       jobId: randomUUID()
     });
+  };
 
   const queueSecretSyncImportSecretsById = async (payload: TQueueSecretSyncImportSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncImportSecrets, payload, {
@@ -1028,7 +1038,14 @@ export const secretSyncQueueFactory = ({
       }
     );
 
-    await Promise.all(secretSyncs.map((secretSync) => queueSecretSyncSyncSecretsById({ syncId: secretSync.id })));
+    await Promise.all(
+      secretSyncs.map((secretSync) =>
+        queueSecretSyncSyncSecretsById({
+          syncId: secretSync.id,
+          destination: secretSync.destination as SecretSync
+        })
+      )
+    );
   };
 
   const $handleAcquireLockFailure = async (job: SecretSyncActionJob) => {

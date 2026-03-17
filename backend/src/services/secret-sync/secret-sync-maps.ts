@@ -38,7 +38,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Chef]: "Chef",
   [SecretSync.OctopusDeploy]: "Octopus Deploy",
   [SecretSync.CircleCI]: "CircleCI",
-  [SecretSync.AzureEntraIdScim]: "Azure Entra ID SCIM"
+  [SecretSync.AzureEntraIdScim]: "Azure Entra ID SCIM",
+  [SecretSync.ExternalInfisical]: "Infisical"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -77,7 +78,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Chef]: AppConnection.Chef,
   [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
   [SecretSync.CircleCI]: AppConnection.CircleCI,
-  [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId
+  [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
+  [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -116,7 +118,8 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Chef]: SecretSyncPlanType.Enterprise,
   [SecretSync.OctopusDeploy]: SecretSyncPlanType.Regular,
   [SecretSync.CircleCI]: SecretSyncPlanType.Regular,
-  [SecretSync.AzureEntraIdScim]: SecretSyncPlanType.Regular
+  [SecretSync.AzureEntraIdScim]: SecretSyncPlanType.Regular,
+  [SecretSync.ExternalInfisical]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -164,7 +167,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Chef]: [],
   [SecretSync.OctopusDeploy]: [],
   [SecretSync.CircleCI]: [],
-  [SecretSync.AzureEntraIdScim]: []
+  [SecretSync.AzureEntraIdScim]: [],
+  [SecretSync.ExternalInfisical]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
@@ -229,5 +233,59 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Chef]: defaultDuplicateCheck,
   [SecretSync.OctopusDeploy]: defaultDuplicateCheck,
   [SecretSync.CircleCI]: defaultDuplicateCheck,
-  [SecretSync.AzureEntraIdScim]: defaultDuplicateCheck
+  [SecretSync.AzureEntraIdScim]: defaultDuplicateCheck,
+  [SecretSync.ExternalInfisical]: defaultDuplicateCheck
+};
+
+export type TSecretSyncRetryConfig = {
+  attempts: number;
+  backoff: { type: "exponential" | "fixed"; delay: number };
+};
+
+const DEFAULT_RETRY_CONFIG: TSecretSyncRetryConfig = {
+  attempts: 5,
+  backoff: { type: "exponential", delay: 3000 }
+};
+
+export const SECRET_SYNC_RETRY_CONFIG_MAP: Record<SecretSync, TSecretSyncRetryConfig> = {
+  [SecretSync.AWSParameterStore]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.AWSSecretsManager]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.GitHub]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.GCPSecretManager]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.AzureKeyVault]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.AzureAppConfiguration]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.AzureDevOps]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Databricks]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Humanitec]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.TerraformCloud]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Camunda]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Vercel]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Windmill]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.HCVault]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.TeamCity]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.OCIVault]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.OnePass]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Heroku]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Render]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Flyio]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.GitLab]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.CloudflarePages]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.CloudflareWorkers]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Supabase]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Zabbix]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Railway]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Checkly]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.DigitalOceanAppPlatform]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Netlify]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Northflank]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Bitbucket]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.LaravelForge]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.Chef]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.OctopusDeploy]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.CircleCI]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.AzureEntraIdScim]: DEFAULT_RETRY_CONFIG,
+  [SecretSync.ExternalInfisical]: {
+    attempts: 8,
+    backoff: { type: "exponential", delay: 5000 }
+  }
 };

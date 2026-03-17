@@ -117,6 +117,12 @@ import {
   TDigitalOceanAppPlatformSyncListItem,
   TDigitalOceanAppPlatformSyncWithCredentials
 } from "./digital-ocean-app-platform/digital-ocean-app-platform-sync-types";
+import {
+  TExternalInfisicalSync,
+  TExternalInfisicalSyncInput,
+  TExternalInfisicalSyncListItem,
+  TExternalInfisicalSyncWithCredentials
+} from "./external-infisical";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
@@ -220,7 +226,8 @@ export type TSecretSync =
   | TBitbucketSync
   | TOctopusDeploySync
   | TCircleCISync
-  | TAzureEntraIdScimSync;
+  | TAzureEntraIdScimSync
+  | TExternalInfisicalSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -258,7 +265,8 @@ export type TSecretSyncWithCredentials =
   | TLaravelForgeSyncWithCredentials
   | TOctopusDeploySyncWithCredentials
   | TCircleCISyncWithCredentials
-  | TAzureEntraIdScimSyncWithCredentials;
+  | TAzureEntraIdScimSyncWithCredentials
+  | TExternalInfisicalSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -296,7 +304,8 @@ export type TSecretSyncInput =
   | TLaravelForgeSyncInput
   | TOctopusDeploySyncInput
   | TCircleCISyncInput
-  | TAzureEntraIdScimSyncInput;
+  | TAzureEntraIdScimSyncInput
+  | TExternalInfisicalSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -334,7 +343,8 @@ export type TSecretSyncListItem =
   | TBitbucketSyncListItem
   | TOctopusDeploySyncListItem
   | TCircleCISyncListItem
-  | TAzureEntraIdScimSyncListItem;
+  | TAzureEntraIdScimSyncListItem
+  | TExternalInfisicalSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
@@ -417,6 +427,7 @@ export type TQueueSecretSyncSyncSecretsByIdDTO = {
   syncId: string;
   failedToAcquireLockCount?: number;
   auditLogInfo?: AuditLogInfo;
+  destination?: SecretSync;
 };
 
 export type TTriggerSecretSyncSyncSecretsByIdDTO = {
