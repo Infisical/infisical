@@ -84,7 +84,7 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
 
       void server.services.telemetry
         .sendPostHogEvents({
-          event: PostHogEventTypes.GatewayCreated,
+          event: PostHogEventTypes.GatewayCertExchanged,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {

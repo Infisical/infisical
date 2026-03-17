@@ -73,7 +73,7 @@ export enum PostHogEventTypes {
   SecretRotationV2Created = "Secret Rotation V2 Created",
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
-  GatewayCreated = "Gateway Created"
+  GatewayCertExchanged = "Gateway Cert Exchanged"
 }
 
 export type TSecretModifiedEvent = {
@@ -605,8 +605,8 @@ export type TSecretRotationV2ExecutedEvent = {
   };
 };
 
-export type TGatewayCreatedEvent = {
-  event: PostHogEventTypes.GatewayCreated;
+export type TGatewayCertExchangedEvent = {
+  event: PostHogEventTypes.GatewayCertExchanged;
   properties: {
     certificateSerialNumber: string;
     identityId: string;
@@ -663,5 +663,5 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TSecretRotationV2CreatedEvent
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
-  | TGatewayCreatedEvent
+  | TGatewayCertExchangedEvent
 );

@@ -448,19 +448,17 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         orgId: req.body.organizationId
       });
 
-      if (authProvider) {
-        void server.services.telemetry
-          .sendPostHogEvents({
-            event: PostHogEventTypes.SSOConfigured,
-            distinctId: getTelemetryDistinctId(req),
-            organizationId: req.body.organizationId,
-            properties: {
-              provider: authProvider,
-              action: "update"
-            }
-          })
-          .catch(() => {});
-      }
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SSOConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.body.organizationId,
+          properties: {
+            provider: authProvider ?? "saml",
+            action: "update"
+          }
+        })
+        .catch(() => {});
 
       return samlCfg;
     }
