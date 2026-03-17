@@ -107,6 +107,9 @@ import {
   TCertificateBodies,
   TCertificateBodiesInsert,
   TCertificateBodiesUpdate,
+  TCertificateCleanupConfigs,
+  TCertificateCleanupConfigsInsert,
+  TCertificateCleanupConfigsUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -1689,6 +1692,11 @@ declare module "knex/types/tables" {
       TCaSigningConfigs,
       TCaSigningConfigsInsert,
       TCaSigningConfigsUpdate
+    >;
+    [TableName.CertificateCleanupConfig]: KnexOriginal.CompositeTableType<
+      TCertificateCleanupConfigs,
+      TCertificateCleanupConfigsInsert,
+      TCertificateCleanupConfigsUpdate
     >;
   }
 }

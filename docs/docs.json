@@ -747,7 +747,13 @@
                       "documentation/platform/pki/alerting/pagerduty-alerts"
                     ]
                   },
-                  "documentation/platform/pki/approvals"
+                  "documentation/platform/pki/approvals",
+                  {
+                    "group": "Settings",
+                    "pages": [
+                      "documentation/platform/pki/settings/certificate-cleanup"
+                    ]
+                  }
                 ]
               },
               {

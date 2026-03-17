@@ -242,6 +242,9 @@ import { externalCertificateAuthorityDALFactory } from "@app/services/certificat
 import { internalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
 import { InternalCertificateAuthorityFns } from "@app/services/certificate-authority/internal/internal-certificate-authority-fns";
 import { internalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { certificateCleanupConfigDALFactory } from "@app/services/certificate-cleanup/certificate-cleanup-dal";
+import { certificateCleanupQueueFactory } from "@app/services/certificate-cleanup/certificate-cleanup-queue";
+import { certificateCleanupServiceFactory } from "@app/services/certificate-cleanup/certificate-cleanup-service";
 import { certificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
 import { certificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { certificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -1222,6 +1225,7 @@ export const registerRoutes = async (
   const acmeAuthDAL = pkiAcmeAuthDALFactory(db);
   const acmeOrderAuthDAL = pkiAcmeOrderAuthDALFactory(db);
   const acmeChallengeDAL = pkiAcmeChallengeDALFactory(db);
+  const certificateCleanupConfigDAL = certificateCleanupConfigDALFactory(db);
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
@@ -2025,6 +2029,19 @@ export const registerRoutes = async (
     pkiAlertV2Service,
     pkiAlertV2DAL,
     pkiAlertHistoryDAL
+  });
+
+  const certificateCleanupService = certificateCleanupServiceFactory({
+    certificateCleanupConfigDAL,
+    permissionService
+  });
+
+  const certificateCleanupQueue = certificateCleanupQueueFactory({
+    db,
+    queueService,
+    certificateCleanupConfigDAL,
+    certificateDAL,
+    auditLogService
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -2894,6 +2911,7 @@ export const registerRoutes = async (
   await certificateAuthorityQueue.startCaCrlRebuildJob();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await pkiAlertV2Queue.init();
+  await certificateCleanupQueue.init();
   await certificateV3Queue.init();
   await caAutoRenewalQueue.startDailyAutoRenewalJob();
   await microsoftTeamsService.start();
@@ -2961,6 +2979,7 @@ export const registerRoutes = async (
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
     certificate: certificateService,
+    certificateCleanup: certificateCleanupService,
     certificateV3: certificateV3Service,
     certificateRequest: certificateRequestService,
     certificateEstV3: certificateEstV3Service,
