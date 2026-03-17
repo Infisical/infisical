@@ -3,7 +3,7 @@ import { z } from "zod";
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -71,8 +71,16 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         // them to the project — the project membership guard will verify org membership.
         // If they are NOT org members, the project membership creation will fail with
         // a clear "Users not part of organization" error.
-        // Non-auth-enforcement errors are always re-thrown.
-        if (!(error instanceof ForbiddenRequestError)) {
+        //
+        // We only swallow ForbiddenRequestError that is NOT a PermissionBoundaryError
+        // (which extends ForbiddenRequestError) and only when the message matches the
+        // specific auth-enforcement error. All other errors are re-thrown.
+        const isAuthEnforcedError =
+          error instanceof ForbiddenRequestError &&
+          !(error instanceof PermissionBoundaryError) &&
+          error.message === "Failed to invite user due to org-level auth enforced for organization";
+
+        if (!isAuthEnforcedError) {
           throw error;
         }
       }
