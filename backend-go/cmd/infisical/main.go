@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -15,22 +16,29 @@ import (
 )
 
 func main() {
-	// Load configuration.
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		slog.Error("failed to load config", "error", err)
-		os.Exit(1)
-	}
-
 	// Setup structured JSON logger.
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: cfg.SlogLevel(),
+		Level: config.GetConfiguredSlogLevel(),
 	}))
 	slog.SetDefault(logger)
 
+	// Load configuration.
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		var validationErr *config.ValidationError
+		if errors.As(err, &validationErr) {
+			slog.Error("invalid environment variables")
+			for _, issue := range validationErr.Issues {
+				slog.Error("  " + issue)
+			}
+		} else {
+			slog.Error("failed to load config", "error", err)
+		}
+		os.Exit(1)
+	}
+
 	// Initialize all services.
 	svc := services.NewService(logger)
-
 	// Create server.
 	srv := server.NewServer(svc, logger)
 
