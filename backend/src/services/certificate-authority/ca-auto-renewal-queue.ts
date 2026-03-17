@@ -328,15 +328,7 @@ export const caAutoRenewalQueueFactory = ({
 
     logger.info(`${QueueJobs.CaDailyAutoRenewal}: queue task started`);
 
-    // DEV ONLY: advance "now" by N days via CA_AUTO_RENEWAL_ADVANCE_DAYS env var for testing
-    const advanceDays = 4;
     const now = new Date();
-    if (advanceDays > 0) {
-      now.setDate(now.getDate() + advanceDays);
-      logger.info(
-        `${QueueJobs.CaDailyAutoRenewal}: DEV MODE — advancing date by ${advanceDays} days to ${now.toISOString()}`
-      );
-    }
     let offset = 0;
     let totalProcessed = 0;
     let totalRenewed = 0;
@@ -441,20 +433,17 @@ export const caAutoRenewalQueueFactory = ({
   });
 
   const startDailyAutoRenewalJob = async () => {
-    // DEV ONLY: run every minute instead of daily for testing auto-renewal
-    const cronPattern = process.env.CA_AUTO_RENEWAL_CRON ?? "0 0 * * *";
-
     await queueService.stopRepeatableJob(
       QueueName.CaAutoRenewal,
       QueueJobs.CaDailyAutoRenewal,
-      { pattern: cronPattern, utc: true },
+      { pattern: "0 0 * * *", utc: true },
       QueueName.CaAutoRenewal
     );
 
     await queueService.queue(QueueName.CaAutoRenewal, QueueJobs.CaDailyAutoRenewal, undefined, {
       jobId: QueueJobs.CaDailyAutoRenewal,
       repeat: {
-        pattern: cronPattern,
+        pattern: "0 0 * * *",
         utc: true,
         key: QueueJobs.CaDailyAutoRenewal
       },
