@@ -3,18 +3,23 @@ package services
 import (
 	"log/slog"
 
+	"github.com/infisical/api/internal/services/shared"
 	"github.com/infisical/api/internal/services/platform"
 	"github.com/infisical/api/internal/services/secretmanager"
 )
 
-type Service struct {
-	Platform      *platform.Service
-	SecretManager *secretmanager.Service
+type Registry struct {
+	Platform      *platform.Registry
+	SecretManager *secretmanager.Registry
+	Libs          *shared.Libs
 }
 
-func NewService(logger *slog.Logger) *Service {
-	return &Service{
-		Platform:      platform.NewService(logger),
-		SecretManager: secretmanager.NewService(logger),
+func NewRegistry(logger *slog.Logger) *Registry {
+	sharedLibs := shared.NewLibs()
+
+	return &Registry{
+		Libs:          sharedLibs,
+		Platform:      platform.NewRegistry(logger, sharedLibs),
+		SecretManager: secretmanager.NewRegistry(logger, sharedLibs),
 	}
 }

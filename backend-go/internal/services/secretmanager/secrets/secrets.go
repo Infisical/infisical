@@ -5,15 +5,18 @@ import (
 	"log/slog"
 
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
+	"github.com/infisical/api/internal/services/shared"
 )
 
 type service struct {
 	logger *slog.Logger
+	libs   *shared.Libs
 }
 
-func NewService(logger *slog.Logger) gensecrets.Service {
+func NewService(logger *slog.Logger, sharedLibs *shared.Libs) gensecrets.Service {
 	return &service{
 		logger: logger.With("service", "secrets"),
+		libs:   sharedLibs,
 	}
 }
 

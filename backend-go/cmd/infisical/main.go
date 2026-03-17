@@ -12,7 +12,7 @@ import (
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
-	"github.com/infisical/api/internal/pkg/bootstrap"
+	"github.com/infisical/api/internal/libs/bootstrap"
 	"github.com/infisical/api/internal/server"
 	"github.com/infisical/api/internal/services"
 )
@@ -57,7 +57,7 @@ func main() {
 	dbReport.PrintReport(logger)
 
 	// Initialize all services.
-	svc := services.NewService(logger)
+	svc := services.NewRegistry(logger)
 	// Create server.
 	srv := server.NewServer(svc, logger)
 

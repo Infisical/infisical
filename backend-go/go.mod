@@ -16,6 +16,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/akhilmhdh/piccolo v0.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimfeld/httppath v0.0.0-20170720192232-ee938bf73598 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -51,6 +52,7 @@ require (
 )
 
 tool (
+	github.com/akhilmhdh/piccolo
 	github.com/go-jet/jet/v2/cmd/jet
 	goa.design/goa/v3/cmd/goa
 )
