@@ -586,6 +586,24 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         });
       }
 
+      const foldersToCreate = req.body.changes.folders?.create;
+      if (foldersToCreate && foldersToCreate.length > 0) {
+        await Promise.all(
+          foldersToCreate.map((folder) =>
+            server.services.telemetry.sendPostHogEvents({
+              event: PostHogEventTypes.SecretFolderCreated,
+              distinctId: getTelemetryDistinctId(req),
+              organizationId: req.permission.orgId,
+              properties: {
+                projectId: req.body.projectId,
+                environment: req.body.environment,
+                folderName: folder.folderName
+              }
+            })
+          )
+        );
+      }
+
       return { message: "success" };
     }
   });

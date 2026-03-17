@@ -388,8 +388,9 @@ export type TSecretFolderCreatedEvent = {
   properties: {
     projectId: string;
     environment: string;
-    folderPath: string;
-    folderId: string;
+    folderPath?: string;
+    folderId?: string;
+    folderName?: string;
   };
 };
 
@@ -445,12 +446,10 @@ export type TWebhookCreatedEvent = {
 export type TSecretReminderCreatedEvent = {
   event: PostHogEventTypes.SecretReminderCreated;
   properties: {
-    projectId: string;
-    environment: string;
-    secretPath: string;
     secretId: string;
-    reminderRepeatDays: number;
+    reminderRepeatDays?: number | null;
     hasNote: boolean;
+    isOneTime: boolean;
   };
 };
 

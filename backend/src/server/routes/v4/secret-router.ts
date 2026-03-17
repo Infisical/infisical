@@ -529,12 +529,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            projectId: req.body.projectId,
-            environment: req.body.environment,
-            secretPath: req.body.secretPath,
             secretId: secret.id,
             reminderRepeatDays: req.body.secretReminderRepeatDays,
-            hasNote: !!req.body.secretReminderNote
+            hasNote: !!req.body.secretReminderNote,
+            isOneTime: false
           }
         });
       }
@@ -701,12 +699,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            projectId: req.body.projectId,
-            environment: req.body.environment,
-            secretPath: req.body.secretPath,
             secretId: secret.id,
             reminderRepeatDays: req.body.secretReminderRepeatDays,
-            hasNote: !!req.body.secretReminderNote
+            hasNote: !!req.body.secretReminderNote,
+            isOneTime: false
           }
         });
       }
