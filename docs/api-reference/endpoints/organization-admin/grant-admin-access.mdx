@@ -1,0 +1,12 @@
+---
+title: "Grant Admin Access to Project"
+openapi: "POST /api/v1/organization-admin/projects/{projectId}/grant-admin-access"
+---
+
+<Note>
+  This endpoint requires the **Organization Admin Console** permission (`organization-admin-console.access-all-projects`).
+  It grants the calling user admin-level membership on the specified project. If the user is already a member, their role is updated to admin.
+  This endpoint only supports JWT authentication (user login tokens), not machine identity access tokens.
+
+  Existing project admins will be notified via email and in-app notification when this action is performed.
+</Note>

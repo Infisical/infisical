@@ -180,6 +180,7 @@
                 ]
               },
               "documentation/platform/admin-panel/server-admin",
+              "documentation/platform/admin-panel/org-admin-console",
               "documentation/platform/secret-sharing"
             ]
           },
@@ -3144,6 +3145,13 @@
               {
                 "group": "Admin",
                 "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+              },
+              {
+                "group": "Organization Admin",
+                "pages": [
+                  "api-reference/endpoints/organization-admin/list-projects",
+                  "api-reference/endpoints/organization-admin/grant-admin-access"
+                ]
               }
             ]
           }

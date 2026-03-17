@@ -4,25 +4,95 @@ description: "View and manage resources across your organization"
 ---
 
 <Note>
-  The Organization Admin Console can only be accessed by organization members
-  with admin status.
+  The Organization Admin Console features can only be used by organization members
+  with the **Organization Admin Console** permission (`organization-admin-console.access-all-projects`).
+  By default, this permission is granted to org admins.
 </Note>
 
-## Accessing the Organization Admin Console
+## Viewing All Organization Projects
 
-On the sidebar, hover over **Admin** to access the settings dropdown and press the **Organization Admin Console** option.
+Organization admins can view all projects within the organization — including projects they are not a member of — by navigating to the **Organization Overview** page and switching to the **All Projects** tab.
 
-![Access Organization Admin Console](/images/platform/admin-panels/access-org-admin-console.png)
+From the **All Projects** view, you can:
+- Search and filter projects by name or type
+- **Join as Admin**: Click the "Join as Admin" button on any project you are not a member of to grant yourself admin-level access
 
-## Projects Tab
+Existing project admins will be notified via email and in-app notification when an org admin self-issues access to their project.
 
-The Projects tab lists all the projects within your organization, including those which you are not a member of. You can easily filter projects by name or slug using the search bar.
+## API Usage
 
-![Projects Section](/images/platform/admin-panels/org-admin-console-projects.png)
+These endpoints are useful for programmatically bootstrapping access across many projects (e.g., granting a user admin access to all projects so they can then add machine identities).
 
-### Accessing a Project in Your Organization
+### List All Organization Projects
 
-You can access a project that you are not a member of by tapping on the options menu of the project row and pressing the **Access** button.
-Doing so will grant you admin permissions for the selected project and add you as a member.
+Returns all projects in the organization, including those the caller is not a member of. This is different from `GET /api/v2/organizations/{orgId}/workspaces`, which only returns projects the caller has joined.
 
-![Access project](/images/platform/admin-panels/org-admin-console-access.png)
+<Tabs>
+  <Tab title="cURL">
+  ```bash
+  curl --request GET \
+    --url 'https://app.infisical.com/api/v1/organization-admin/projects?limit=50&offset=0' \
+    --header 'Authorization: Bearer <access-token>'
+  ```
+  </Tab>
+</Tabs>
+
+Refer to the [API reference](/api-reference/endpoints/organization-admin/list-projects) for full details on query parameters and response schema.
+
+### Grant Admin Access to a Project
+
+Grants the calling user admin-level membership on the specified project. If the user is already a member, their role is updated to admin.
+
+<Warning>
+  This endpoint only supports **JWT authentication** (user login tokens). Machine identity access tokens are not supported because the endpoint grants access to the calling user.
+</Warning>
+
+<Tabs>
+  <Tab title="cURL">
+  ```bash
+  curl --request POST \
+    --url 'https://app.infisical.com/api/v1/organization-admin/projects/{projectId}/grant-admin-access' \
+    --header 'Authorization: Bearer <access-token>'
+  ```
+  </Tab>
+</Tabs>
+
+Refer to the [API reference](/api-reference/endpoints/organization-admin/grant-admin-access) for full details on parameters and response schema.
+
+### Example: Bootstrap Access to All Projects
+
+The following script demonstrates how to grant yourself admin access to every project in your organization:
+
+```bash
+# 1. Log in to get an access token
+ACCESS_TOKEN=$(curl -s --request POST \
+  --url 'https://app.infisical.com/api/v3/auth/login' \
+  --header 'Content-Type: application/json' \
+  --data '{"email": "you@example.com", "password": "your-password"}' \
+  | jq -r '.accessToken')
+
+# 2. Select your organization to get an org-scoped token
+ORG_TOKEN=$(curl -s --request POST \
+  --url 'https://app.infisical.com/api/v3/auth/select-organization' \
+  --header "Authorization: Bearer $ACCESS_TOKEN" \
+  --header 'Content-Type: application/json' \
+  --data '{"organizationId": "your-org-id"}' \
+  | jq -r '.token')
+
+# 3. List all projects in the organization
+PROJECTS=$(curl -s --request GET \
+  --url 'https://app.infisical.com/api/v1/organization-admin/projects?limit=100&offset=0' \
+  --header "Authorization: Bearer $ORG_TOKEN")
+
+# 4. Grant yourself admin access to each project
+echo "$PROJECTS" | jq -r '.projects[].id' | while read PROJECT_ID; do
+  echo "Granting admin access to project: $PROJECT_ID"
+  curl -s --request POST \
+    --url "https://app.infisical.com/api/v1/organization-admin/projects/$PROJECT_ID/grant-admin-access" \
+    --header "Authorization: Bearer $ORG_TOKEN"
+done
+```
+
+<Tip>
+  You can also copy your current session token directly from the Infisical UI using the **Copy Token** option in the user dropdown menu (top-right), and use it as the Bearer token in API calls.
+</Tip>
