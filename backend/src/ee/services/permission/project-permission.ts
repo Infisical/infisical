@@ -869,7 +869,8 @@ const SecretConditionV2Schema = z
     ]),
     secretTags: z
       .object({
-        [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+        [PermissionConditionOperators.$ALL]: PermissionConditionSchema[PermissionConditionOperators.$ALL]
       })
       .partial(),
     eventType: z.union([
