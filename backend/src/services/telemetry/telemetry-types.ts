@@ -13,6 +13,7 @@ import {
 } from "@app/ee/services/audit-log/audit-log-types";
 import { EnforcementLevel } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
@@ -581,7 +582,7 @@ export type TSecretRotationV2CreatedEvent = {
   event: PostHogEventTypes.SecretRotationV2Created;
   properties: {
     rotationId: string;
-    type: string;
+    type: SecretRotation;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -592,7 +593,7 @@ export type TSecretRotationV2DeletedEvent = {
   event: PostHogEventTypes.SecretRotationV2Deleted;
   properties: {
     rotationId: string;
-    type: string;
+    type: SecretRotation;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -603,7 +604,7 @@ export type TSecretRotationV2ExecutedEvent = {
   event: PostHogEventTypes.SecretRotationV2Executed;
   properties: {
     rotationId: string;
-    type: string;
+    type: SecretRotation;
     projectId: string;
     environment: string;
     secretPath: string;

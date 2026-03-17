@@ -228,7 +228,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.body.organizationId,
+          organizationId: req.permission.orgId,
           properties: {
             provider: "ldap",
             action: "create"
@@ -289,7 +289,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.body.organizationId,
+          organizationId: req.permission.orgId,
           properties: {
             provider: "ldap",
             action: "update"

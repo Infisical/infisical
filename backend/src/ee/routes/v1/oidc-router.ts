@@ -284,7 +284,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.body.organizationId,
+          organizationId: req.permission.orgId,
           properties: {
             provider: "oidc",
             action: "update"
@@ -421,7 +421,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.body.organizationId,
+          organizationId: req.permission.orgId,
           properties: {
             provider: "oidc",
             action: "create"
