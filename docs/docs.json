@@ -690,7 +690,8 @@
                     "pages": [
                       "documentation/platform/pki/concepts/certificate-mgmt",
                       "documentation/platform/pki/concepts/certificate-lifecycle",
-                      "documentation/platform/pki/concepts/certificate-components"
+                      "documentation/platform/pki/concepts/certificate-components",
+                      "documentation/platform/pki/concepts/code-signing"
                     ]
                   },
                   {
@@ -751,6 +752,33 @@
                     ]
                   },
                   "documentation/platform/pki/approvals",
+                  {
+                    "group": "Code Signing",
+                    "pages": [
+                      "documentation/platform/pki/code-signing/overview",
+                      "documentation/platform/pki/code-signing/signers",
+                      {
+                        "group": "Approvals",
+                        "pages": [
+                          "documentation/platform/pki/code-signing/signing-policies",
+                          "documentation/platform/pki/code-signing/signing-requests",
+                          "documentation/platform/pki/code-signing/grants"
+                        ]
+                      },
+                      "documentation/platform/pki/code-signing/pkcs11-module",
+                      {
+                        "group": "Guides",
+                        "pages": [
+                          "documentation/platform/pki/code-signing/guides/pkcs11-jarsigner",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-osslsigncode",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-apksigner",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-cosign",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-openssl",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-gpg"
+                        ]
+                      }
+                    ]
+                  },
                   {
                     "group": "Settings",
                     "pages": [
