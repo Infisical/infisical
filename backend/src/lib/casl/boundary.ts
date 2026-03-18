@@ -30,6 +30,11 @@ const isOperatorsASubset = (parentSet: TPermissionConditionShape, subset: TPermi
   if (subset[PermissionConditionOperators.$EQ] || subset[PermissionConditionOperators.$NEQ]) {
     const subsetOperatorValue = subset[PermissionConditionOperators.$EQ] || subset[PermissionConditionOperators.$NEQ];
     const isInverted = !subset[PermissionConditionOperators.$EQ];
+
+    if (isInverted && (parentSet[PermissionConditionOperators.$EQ] || parentSet[PermissionConditionOperators.$IN])) {
+      return false;
+    }
+
     if (
       parentSet[PermissionConditionOperators.$EQ] &&
       invertTheOperation(isInverted, parentSet[PermissionConditionOperators.$EQ] !== subsetOperatorValue)
