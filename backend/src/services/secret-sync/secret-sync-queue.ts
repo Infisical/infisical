@@ -76,7 +76,7 @@ import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal
 
 const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
   attempts: 5,
-  backoff: { type: "exponential", delay: 3000 }
+  backoff: { type: "exponential" as const, delay: 3000 }
 };
 
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
