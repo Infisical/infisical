@@ -102,14 +102,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       }
     });
 
-    // Remove legacy repeatable job
-    await queueService.stopRepeatableJob(
-      QueueName.DailyResourceCleanUp,
-      QueueJobs.DailyResourceCleanUp,
-      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *", utc: true },
-      QueueJobs.DailyResourceCleanUp
-    );
-
     await queueService.upsertJobScheduler(
       QueueName.DailyResourceCleanUp,
       `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyResourceCleanUp}`,
@@ -128,14 +120,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         throw error;
       }
     });
-
-    // Remove legacy repeatable job
-    await queueService.stopRepeatableJob(
-      QueueName.FrequentResourceCleanUp,
-      QueueJobs.FrequentResourceCleanUp,
-      { pattern: "0 * * * *", utc: true },
-      QueueName.FrequentResourceCleanUp
-    );
 
     await queueService.upsertJobScheduler(
       QueueName.FrequentResourceCleanUp,

@@ -159,14 +159,6 @@ export const pkiSubscriberQueueServiceFactory = ({
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
   const startDailyAutoRenewalJob = async () => {
-    // Remove legacy repeatable job
-    await queueService.stopRepeatableJob(
-      QueueName.PkiSubscriber,
-      QueueJobs.PkiSubscriberDailyAutoRenewal,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.PkiSubscriber
-    );
-
     await queueService.upsertJobScheduler(
       QueueName.PkiSubscriber,
       `${JOB_SCHEDULER_PREFIX}:${QueueName.PkiSubscriber}`,

@@ -175,14 +175,6 @@ export const auditLogQueueServiceFactory = async ({
       }
     });
 
-    // Remove legacy repeatable job
-    await queueService.stopRepeatableJob(
-      QueueName.AuditLogClickHouseBatch,
-      QueueJobs.AuditLogClickHouseBatch,
-      { every: 5000 },
-      "audit-log-clickhouse-batch"
-    );
-
     // Schedule repeatable job every 5 seconds
     await queueService.upsertJobScheduler(
       QueueName.AuditLogClickHouseBatch,

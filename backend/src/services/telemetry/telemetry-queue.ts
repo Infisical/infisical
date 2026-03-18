@@ -64,14 +64,6 @@ export const telemetryQueueServiceFactory = ({
     // this is a fast way to check its cloud or not
     if (appCfg.INFISICAL_CLOUD) return;
 
-    // Remove legacy repeatable job
-    await queueService.stopRepeatableJob(
-      QueueName.TelemetryInstanceStats,
-      QueueJobs.TelemetryInstanceStats,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.TelemetryInstanceStats
-    );
-
     if (postHog) {
       await queueService.upsertJobScheduler(
         QueueName.TelemetryInstanceStats,
@@ -83,14 +75,6 @@ export const telemetryQueueServiceFactory = ({
   };
 
   const startAggregatedEventsJob = async () => {
-    // Remove legacy repeatable job
-    await queueService.stopRepeatableJob(
-      QueueName.TelemetryAggregatedEvents,
-      QueueJobs.TelemetryAggregatedEvents,
-      { pattern: "*/5 * * * *", utc: true },
-      QueueName.TelemetryAggregatedEvents
-    );
-
     if (postHog) {
       // Start aggregated events job (runs every five minutes)
       await queueService.upsertJobScheduler(

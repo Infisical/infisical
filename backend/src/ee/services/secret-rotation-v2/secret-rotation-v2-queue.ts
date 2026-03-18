@@ -186,14 +186,6 @@ export const secretRotationV2QueueServiceFactory = async ({
     }
   });
 
-  // Remove legacy repeatable job
-  await queueService.stopRepeatableJob(
-    QueueName.SecretRotationV2,
-    QueueJobs.SecretRotationV2QueueRotations,
-    { pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *", utc: true },
-    "secret-rotation-v2-cron"
-  );
-
   await queueService.upsertJobScheduler(
     QueueName.SecretRotationV2,
     `${JOB_SCHEDULER_PREFIX}:secret-rotation-v2-cron`,

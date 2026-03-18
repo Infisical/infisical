@@ -118,16 +118,6 @@ export const pamDiscoveryQueueFactory = ({
       }
     });
 
-    // Remove legacy repeatable job
-    void queueService
-      .stopRepeatableJob(
-        QueueName.PamDiscoveryScan,
-        QueueJobs.PamDiscoveryScheduledScan,
-        { pattern: "0 3 * * *", utc: true },
-        "pam-discovery-scheduled-scan-cron"
-      )
-      .catch(() => {});
-
     // runs every day at 3:00 AM
     void queueService
       .upsertJobScheduler(

@@ -215,14 +215,6 @@ export const appConnectionCredentialRotationQueueFactory = async ({
     }
   });
 
-  // Remove legacy repeatable job
-  await queueService.stopRepeatableJob(
-    QueueName.AppConnectionCredentialRotation,
-    QueueJobs.AppConnectionCredentialRotationQueueRotations,
-    { pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *", utc: true },
-    "app-connection-credential-rotation-cron"
-  );
-
   // Schedule the cron job
   await queueService.upsertJobScheduler(
     QueueName.AppConnectionCredentialRotation,

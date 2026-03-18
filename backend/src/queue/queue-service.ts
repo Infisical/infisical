@@ -948,11 +948,6 @@ export const queueServiceFactory = (
         removeOnFail: true
       });
 
-      // Remove legacy repeatable job before switching to job scheduler
-      await queueContainer[QueueName.QueueInternalReconciliation]
-        ?.removeRepeatableByKey("queue-reconciliation-cron")
-        .catch(() => {});
-
       // Schedule reconciliation job (runs every 2 minutes)
       await queueContainer[QueueName.QueueInternalReconciliation]?.upsertJobScheduler(
         `${JOB_SCHEDULER_PREFIX}:queue-reconciliation-cron`,
@@ -1206,6 +1201,20 @@ export const queueServiceFactory = (
   ) => {
     const q = queueContainer[name];
     if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    // Remove legacy repeatable jobs that don't use the job scheduler prefix.
+    // This prevents duplicate execution after migrating from queue.add({repeat}) to upsertJobScheduler.
+    try {
+      const repeatableJobs = await q.getRepeatableJobs();
+      for (const job of repeatableJobs) {
+        if (!job.key.startsWith(JOB_SCHEDULER_PREFIX)) {
+          await q.removeRepeatableByKey(job.key);
+          logger.info({ queue: name, key: job.key }, "Removed legacy repeatable job");
+        }
+      }
+    } catch (err) {
+      logger.error(err, `Failed to clean up legacy repeatable jobs for queue '${name}'`);
+    }
 
     await q.upsertJobScheduler(
       schedulerId,

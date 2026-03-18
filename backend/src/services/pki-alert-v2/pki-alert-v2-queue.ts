@@ -210,14 +210,6 @@ export const pkiAlertV2QueueServiceFactory = ({
       }
     });
 
-    // Remove legacy repeatable job
-    await queueService.stopRepeatableJob(
-      QueueName.DailyPkiAlertV2Processing,
-      QueueJobs.DailyPkiAlertV2Processing,
-      { pattern: "0 0 * * *", utc: true },
-      QueueJobs.DailyPkiAlertV2Processing
-    );
-
     await queueService.upsertJobScheduler(
       QueueName.DailyPkiAlertV2Processing,
       `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyPkiAlertV2Processing}`,

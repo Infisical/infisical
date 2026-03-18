@@ -23,14 +23,6 @@ export const dailyExpiringPkiItemAlertQueueServiceFactory = ({
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
   const startSendingAlerts = async () => {
-    // Remove legacy repeatable job
-    await queueService.stopRepeatableJob(
-      QueueName.DailyExpiringPkiItemAlert,
-      QueueJobs.DailyExpiringPkiItemAlert,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.DailyExpiringPkiItemAlert
-    );
-
     await queueService.upsertJobScheduler(
       QueueName.DailyExpiringPkiItemAlert,
       `${JOB_SCHEDULER_PREFIX}:${QueueName.DailyExpiringPkiItemAlert}`,
