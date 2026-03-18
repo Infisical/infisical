@@ -102,6 +102,36 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const sendHubSpotSignupEvent = async (email: string, signupMethod: string, firstName?: string, lastName?: string) => {
+    const instanceType = licenseService.getInstanceType();
+    if (instanceType === InstanceType.Cloud && appCfg.HUBSPOT_PORTAL_ID && appCfg.HUBSPOT_SIGNUP_FORM_ID) {
+      try {
+        await request.post(
+          `https://api.hsforms.com/submissions/v3/integration/submit/${appCfg.HUBSPOT_PORTAL_ID}/${appCfg.HUBSPOT_SIGNUP_FORM_ID}`,
+          {
+            fields: [
+              { name: "email", value: email },
+              { name: "signup_method", value: signupMethod },
+              ...(firstName ? [{ name: "firstname", value: firstName }] : []),
+              ...(lastName ? [{ name: "lastname", value: lastName }] : [])
+            ],
+            context: {
+              pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
+              pageName: "App Signup"
+            }
+          },
+          {
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        );
+      } catch (error) {
+        logger.error(error, "Failed to send HubSpot signup event");
+      }
+    }
+  };
+
   const getOrgGroupProperties = async (orgId: string, orgName?: string): Promise<Record<string, unknown>> => {
     const properties: Record<string, unknown> = {};
     if (orgName) {
@@ -480,6 +510,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
   return {
     sendLoopsEvent,
+    sendHubSpotSignupEvent,
     sendPostHogEvents,
     identifyUser,
     identifyIdentity,
