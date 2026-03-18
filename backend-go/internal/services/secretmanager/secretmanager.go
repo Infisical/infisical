@@ -4,8 +4,8 @@ import (
 	"log/slog"
 
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
-	"github.com/infisical/api/internal/services/shared"
 	"github.com/infisical/api/internal/services/secretmanager/secrets"
+	"github.com/infisical/api/internal/services/shared"
 )
 
 type Registry struct {
@@ -15,6 +15,6 @@ type Registry struct {
 func NewRegistry(logger *slog.Logger, sharedLibs *shared.Libs) *Registry {
 	l := logger.With("product", "secretmanager")
 	return &Registry{
-		Secrets: secrets.NewService(l, sharedLibs),
+		Secrets: secrets.NewService(l, sharedLibs.Permission),
 	}
 }
