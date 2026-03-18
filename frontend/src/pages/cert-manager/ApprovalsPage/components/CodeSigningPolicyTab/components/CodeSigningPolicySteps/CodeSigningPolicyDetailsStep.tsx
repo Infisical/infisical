@@ -6,7 +6,12 @@ import { Checkbox, FormControl, Input } from "@app/components/v2";
 import { TCodeSigningPolicyForm } from "../CodeSigningPolicySchema";
 
 export const CodeSigningPolicyDetailsStep = () => {
-  const { control } = useFormContext<TCodeSigningPolicyForm>();
+  const {
+    control,
+    formState: { errors }
+  } = useFormContext<TCodeSigningPolicyForm>();
+
+  const constraintsError = errors.constraints?.root?.message;
 
   return (
     <div className="flex flex-col gap-4">
@@ -94,6 +99,8 @@ export const CodeSigningPolicyDetailsStep = () => {
           </FormControl>
         )}
       />
+
+      {constraintsError && <p className="text-xs text-red">{constraintsError}</p>}
 
       <Controller
         control={control}

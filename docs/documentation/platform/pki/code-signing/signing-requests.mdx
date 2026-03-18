@@ -18,9 +18,8 @@ Head to your Certificate Management Project > **Code Signing > Approvals > Signi
 
     Depending on the policy constraints, provide the required parameters:
 
-    - **No constraints**: No additional parameters needed. The grant will allow a single signing operation.
-    - **Time Window**: Specify the **Valid From** and **Valid Until** dates for when you need signing access.
-    - **N-Signings**: Specify the **Allowed Sign Operations** you need.
+    - **Valid From / Valid Until**: If the policy defines a max window duration, specify the time range for when you need signing access.
+    - **Allowed Sign Operations**: If the policy defines a max signings count, specify how many signing operations you need.
     - **Justification**: Optionally provide a reason for the request (e.g., "Release v2.4.0 signing").
 
     ![Request signing access](/images/platform/pki/code-signing/request-access-params.png)

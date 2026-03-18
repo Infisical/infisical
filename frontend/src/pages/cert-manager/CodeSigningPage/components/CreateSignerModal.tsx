@@ -132,7 +132,7 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
                 label="Certificate"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="Only active certificates with the codeSigning extended key usage are shown"
+                helperText="Only active code signing certificates in the project are shown"
               >
                 <FilterableSelect<CertOption>
                   isLoading={isCertsLoading}
@@ -143,7 +143,9 @@ export const CreateSignerModal = ({ isOpen, onOpenChange, projectId }: Props) =>
                     field.onChange(option?.value ?? "");
                   }}
                   placeholder="Search by common name or SAN..."
-                  noOptionsMessage={() => "No code signing certificates found"}
+                  noOptionsMessage={() =>
+                    "No active code signing certificates found in the project"
+                  }
                   maxMenuHeight={200}
                 />
               </FormControl>

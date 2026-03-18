@@ -62,7 +62,7 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
     <div className="flex flex-col gap-5">
       <UnstableCard>
         <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Siger Details</UnstableCardTitle>
+          <UnstableCardTitle>Signer Details</UnstableCardTitle>
           <UnstableCardDescription>Signer configuration and key details</UnstableCardDescription>
           {onEdit && (
             <UnstableCardAction>

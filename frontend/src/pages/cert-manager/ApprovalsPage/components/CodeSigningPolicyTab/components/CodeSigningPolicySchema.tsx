@@ -24,13 +24,20 @@ export const CodeSigningPolicyFormSchema = z.object({
     2592000,
     "Duration must be between 1 day and 30 days"
   ).nullish(),
-  constraints: z.object({
-    maxWindowDuration: DurationSchema().optional(),
-    maxSignings: z.preprocess(
-      (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
-      z.number().int().positive().optional()
-    )
-  }),
+  constraints: z
+    .object({
+      maxWindowDuration: DurationSchema().optional(),
+      maxSignings: z.preprocess(
+        (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
+        z.number().int().positive().optional()
+      )
+    })
+    .refine(
+      (data) => (data.maxWindowDuration && data.maxWindowDuration !== "") || data.maxSignings,
+      {
+        message: "At least one constraint (max window duration or max signings) is required"
+      }
+    ),
   bypassForMachineIdentities: z.boolean().optional().default(false),
   steps: ApprovalStepsSchema
 });

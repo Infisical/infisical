@@ -30,10 +30,14 @@ const WindowDurationSchema = z
   )
   .optional();
 
-export const CodeSigningPolicyConstraintsSchema = z.object({
-  maxWindowDuration: WindowDurationSchema,
-  maxSignings: z.number().int().positive().optional()
-});
+export const CodeSigningPolicyConstraintsSchema = z
+  .object({
+    maxWindowDuration: WindowDurationSchema,
+    maxSignings: z.number().int().positive().optional()
+  })
+  .refine((data) => data.maxWindowDuration || data.maxSignings, {
+    message: "At least one constraint (maxWindowDuration or maxSignings) is required"
+  });
 
 export const CodeSigningPolicyRequestDataSchema = z.object({
   signerId: z.string().uuid(),

@@ -35,16 +35,14 @@ sequenceDiagram
 
 ### Signers
 
-A [signer](/documentation/platform/pki/code-signing/signers) is a named code-signer bound to a certificate. It represents a signing capability within a project. Signers hold no private key material locally. All cryptographic operations happen on the Infisical server.
+A [signer](/documentation/platform/pki/code-signing/signers) is a named code-signer bound to a certificate. It represents a signing capability within a project. Private keys are stored securely on the Infisical server and never leave it. All cryptographic operations are performed server-side.
 
 ### Signing Policies
 
-[Signing policies](/documentation/platform/pki/code-signing/signing-policies) optionally define the rules that must be satisfied before signing can occur. Policies support constraints such as:
+[Signing policies](/documentation/platform/pki/code-signing/signing-policies) optionally define the rules that must be satisfied before signing can occur. Policies support constraints that can be combined:
 
-- **Time Window**: Signing access is granted for a defined time period. The policy can define a maximum window duration.
-- **N-Signings**: Signing access is granted for a fixed number of operations. The policy can define a maximum number of allowed sign operations.
-
-Without any constraints, each approved request grants exactly one signing operation.
+- **Max Window Duration**: Limits how long a signing grant remains valid.
+- **Max Signings**: Limits the total number of signing operations a grant allows.
 
 ### Signing Operations
 

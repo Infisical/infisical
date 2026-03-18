@@ -84,21 +84,10 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
 
     const hasTimeConstraint = Boolean(maxWindowDuration);
     const hasCountConstraint = Boolean(maxSignings);
-    const isManual = !hasTimeConstraint && !hasCountConstraint;
 
-    // Manual mode (neither constraint set): no extra parameters allowed
-    if (isManual) {
-      if (inputs.requestedWindowStart || inputs.requestedWindowEnd) {
-        errors.push("This policy does not allow time-window parameters");
-      }
-      if (inputs.requestedSignings) {
-        errors.push("This policy does not allow requestedSignings");
-      }
-    }
-
-    if (hasTimeConstraint && (inputs.requestedWindowStart || inputs.requestedWindowEnd)) {
+    if (hasTimeConstraint) {
       if (!inputs.requestedWindowStart || !inputs.requestedWindowEnd) {
-        errors.push("Both requestedWindowStart and requestedWindowEnd are required");
+        errors.push("Both requestedWindowStart and requestedWindowEnd are required for this policy");
       } else {
         const startTime = new Date(inputs.requestedWindowStart).getTime();
         const endTime = new Date(inputs.requestedWindowEnd).getTime();
@@ -114,30 +103,18 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
           errors.push(`Requested window duration exceeds maximum of ${maxWindowDuration}`);
         }
       }
+    } else if (inputs.requestedWindowStart || inputs.requestedWindowEnd) {
+      errors.push("This policy does not allow time-window parameters");
     }
 
-    if (hasCountConstraint && inputs.requestedSignings) {
-      if (maxSignings && inputs.requestedSignings > maxSignings) {
+    if (hasCountConstraint) {
+      if (!inputs.requestedSignings) {
+        errors.push("requestedSignings is required for this policy");
+      } else if (maxSignings && inputs.requestedSignings > maxSignings) {
         errors.push(`Requested signings (${inputs.requestedSignings}) exceeds maximum of ${maxSignings}`);
       }
-    }
-
-    if (hasTimeConstraint && !hasCountConstraint) {
-      if (!inputs.requestedWindowStart && !inputs.requestedWindowEnd && !inputs.requestedSignings) {
-        errors.push("This policy requires time-window parameters");
-      }
-      if (inputs.requestedSignings) {
-        errors.push("This policy does not allow requestedSignings");
-      }
-    }
-
-    if (hasCountConstraint && !hasTimeConstraint) {
-      if (!inputs.requestedSignings && !inputs.requestedWindowStart) {
-        errors.push("This policy requires requestedSignings");
-      }
-      if (inputs.requestedWindowStart || inputs.requestedWindowEnd) {
-        errors.push("This policy does not allow time-window parameters");
-      }
+    } else if (inputs.requestedSignings) {
+      errors.push("This policy does not allow requestedSignings");
     }
 
     return {
@@ -165,10 +142,6 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
     }
     if (requestData.requestedWindowEnd) {
       expiresAt = new Date(requestData.requestedWindowEnd);
-    }
-
-    if (!requestData.requestedSignings && !requestData.requestedWindowStart) {
-      grantAttributes.maxSignings = 1;
     }
 
     await approvalRequestGrantsDAL.create({

@@ -17,34 +17,27 @@ Signing policies are recommended when:
 
 ## Policy Constraints
 
-Signing policies support optional constraints that control how signing grants are issued:
+Each signing policy must define at least one constraint that controls the scope of the signing grant issued upon approval. Constraints can be combined to enforce both time and count limits simultaneously.
 
-### Time Window
+### Max Window Duration
 
-Each approved request grants signing access for a **defined time period**. You can sign unlimited times within the window.
+Limits how long a signing grant remains valid. The requester specifies a **Valid From** and **Valid Until** when requesting access, and the policy enforces a maximum duration.
 
-This constraint is recommended for release cycles where a team needs to sign multiple artifacts during a release window (e.g., a 4-hour release deployment).
+This is useful for release cycles where a team needs signing access during a defined window (e.g., a 4-hour deployment).
+
+### Max Signings
+
+Limits the total number of signing operations a grant allows. Once the quota is exhausted, the grant expires automatically.
+
+This is useful for CI pipelines that sign a known number of artifacts per build (e.g., 10 JARs per release).
+
+### Combining Constraints
+
+You can configure both constraints on a single policy. For example, a policy with a **4-hour max window** and **10 max signings** would grant access that expires after 4 hours or 10 signing operations, whichever comes first.
 
 <Note>
-  - The policy defines a **Max. Window Duration** that constrains how long a window can be (from 1 minute to 30 days).
-  - The requester specifies the desired **Valid From** and **Valid Until** dates within that constraint.
+  At least one constraint is required. If you only need single-operation approvals, set **Max Signings** to 1.
 </Note>
-
-### N-Signings
-
-Each approved request grants a **fixed number of signing operations**. Once the quota is exhausted, the grant expires automatically.
-
-This constraint is recommended for CI pipelines that need to sign a known number of artifacts per build (e.g., 10 JARs per release).
-
-<Note>
-  The policy defines a **Max. Signings** count that caps the number of allowed sign operations a requester can ask for.
-</Note>
-
-### No Constraints
-
-When no constraints are configured, each approved request grants exactly **one signing operation**. This is the strictest mode. Every artifact signature requires a separate approval.
-
-This is recommended for high-security environments where each signing operation must be individually authorized.
 
 ## Creating a Signing Policy
 
@@ -56,7 +49,7 @@ Key features of signing policies include:
 - **Flexible approvers**: Assign individual users or groups as eligible approvers for each step.
 - **Required approval count**: Specify how many approvals are needed per step (e.g., require 2 out of 5 eligible approvers).
 - **Request expiration**: Set a maximum time-to-live (TTL) for pending requests.
-- **Optional constraints**: Configure time window or N-signings constraints to control the scope of each grant.
+- **Constraints**: Configure max window duration or max signings (or both) to control the scope of each grant.
 
 To create a signing policy, head to your Certificate Management Project > **Code Signing > Approvals > Signing Policies** and press **Create Policy**.
 
@@ -65,8 +58,8 @@ To create a signing policy, head to your Certificate Management Project > **Code
     Configure the basic policy settings:
 
     - **Policy Name**: A descriptive name for the policy such as `release-signing-approval`.
-    - **Max. Window Duration** (optional): The maximum time window a requester can ask for (e.g., `4h`, `1d`). Leave empty if you do not need time-based grants.
-    - **Max. Signings** (optional): The maximum number of allowed sign operations a requester can ask for. Leave empty if you do not need quota-based grants.
+    - **Max. Window Duration**: The maximum time window a requester can ask for (e.g., `4h`, `1d`).
+    - **Max. Signings**: The maximum number of signing operations a requester can ask for. Set to 1 for single-operation approvals.
     - **Max. Request TTL**: The maximum time a request can remain pending before it expires (optional).
     - **Bypass approval for machine identities**: When enabled, machine identities can sign without requiring approval.
 
