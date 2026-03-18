@@ -1,12 +1,21 @@
 package permission
 
-type Lib struct {
-	dal *DAL
+// piccolo: package internal/services/shared/permission
+// piccolo: struct DAL
+// piccolo: method GetProjectPermission
+type permissionDAL interface {
+	// piccolo:start
+	GetProjectPermission(projectId string) string
+	// piccolo:end
 }
 
-func NewLib() *Lib {
+type Lib struct {
+	dal permissionDAL
+}
+
+func NewLib(dal permissionDAL) *Lib {
 	return &Lib{
-		dal: NewDAL(),
+		dal: dal,
 	}
 }
 

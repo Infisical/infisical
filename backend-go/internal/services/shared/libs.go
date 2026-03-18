@@ -9,7 +9,9 @@ type Libs struct {
 }
 
 func NewLibs() *Libs {
+	permissionDAL := permission.NewDAL()
+
 	return &Libs{
-		Permission: permission.NewLib(),
+		Permission: permission.NewLib(permissionDAL),
 	}
 }
