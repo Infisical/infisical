@@ -124,25 +124,27 @@ export const getSshConnectionClient = async (
   // eslint-disable-next-line no-await-in-loop -- Intentional sequential retry logic
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
-      logger.info(`SSH connection attempt ${attempt}/${maxRetries} to ${targetHost}:${targetPort}`);
+      logger.info(`[host=${targetHost}] [port=${targetPort}] SSH connection attempt ${attempt}/${maxRetries}`);
       // eslint-disable-next-line no-await-in-loop
       const client = await attemptSshConnection(credentials, targetHost, targetPort);
       if (attempt > 1) {
-        logger.info(`SSH connection succeeded on attempt ${attempt}`);
+        logger.info(`[host=${targetHost}] [port=${targetPort}] SSH connection succeeded on attempt ${attempt}`);
       }
       return client;
     } catch (error) {
       lastError = error as Error;
       const errorMessage = lastError.message ?? "";
 
-      logger.info(`SSH connection attempt ${attempt} failed: ${errorMessage}`);
+      logger.info(
+        `[host=${targetHost}] [port=${targetPort}] SSH connection attempt ${attempt} failed: ${errorMessage}`
+      );
 
       if (!isRetryableError(errorMessage)) {
         throw lastError;
       }
 
       if (attempt < maxRetries) {
-        logger.info(`Retrying SSH connection in ${retryDelay}ms...`);
+        logger.info(`[host=${targetHost}] [port=${targetPort}] Retrying SSH connection in ${retryDelay}ms`);
         // eslint-disable-next-line no-await-in-loop
         await delay(retryDelay);
       }
@@ -196,20 +198,22 @@ export const validateSshConnectionCredentials = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials } = config;
-  logger.info(`SSH connection validation: Attempting connection to ${credentials.host}:${credentials.port}`);
+  logger.info(`[host=${credentials.host}] [port=${credentials.port}] SSH connection validation: Attempting connection`);
 
   try {
     await executeWithPotentialGateway(config, gatewayV2Service, async (targetHost, targetPort) => {
-      logger.info(`SSH connection validation: Connecting to ${targetHost}:${targetPort}`);
+      logger.info(`[host=${targetHost}] [port=${targetPort}] SSH connection validation: Connecting`);
       const client = await getSshConnectionClient(config, targetHost, targetPort);
-      logger.info("SSH connection validation: Connection successful");
+      logger.info(`[host=${targetHost}] [port=${targetPort}] SSH connection validation: Connection successful`);
       client.destroy();
     });
 
     return config.credentials;
   } catch (error) {
     const errorMessage = (error as Error)?.message ?? "";
-    logger.info(`SSH connection validation: Failed with error: ${errorMessage}`);
+    logger.info(
+      `[host=${credentials.host}] [port=${credentials.port}] SSH connection validation failed: ${errorMessage}`
+    );
 
     throw new BadRequestError({
       message: `Unable to validate connection: ${errorMessage || "verify credentials"}`

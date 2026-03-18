@@ -84,7 +84,7 @@ const executeIloShell = (conn: Client, command: string): Promise<string> => {
           settled = true;
           conn.end();
           const passwordPattern = new RE2("password=[^\\s]+", "gi");
-          const sanitizedBuffer = buffer.replace(passwordPattern, "password=***");
+          const sanitizedBuffer = passwordPattern.replace(buffer, "password=***");
           reject(new Error(`iLO command failed: ${sanitizedBuffer}`));
         }
       });

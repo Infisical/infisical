@@ -35,7 +35,7 @@ export const HpIloRotationParametersFields = () => {
   >();
 
   const id = watch("id");
-  const rotationMethod = watch("parameters.rotationMethod", HpIloRotationMethod.LoginAsTarget);
+  const rotationMethod = watch("parameters.rotationMethod", HpIloRotationMethod.LoginAsRoot);
   const isUpdate = Boolean(id);
 
   return (
@@ -43,7 +43,7 @@ export const HpIloRotationParametersFields = () => {
       <Controller
         name="parameters.rotationMethod"
         control={control}
-        defaultValue={HpIloRotationMethod.LoginAsTarget}
+        defaultValue={HpIloRotationMethod.LoginAsRoot}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             tooltipText={
