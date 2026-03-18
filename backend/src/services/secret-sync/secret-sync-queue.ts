@@ -39,10 +39,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
-import {
-  SECRET_SYNC_DAILY_RETRY_DESTINATIONS,
-  SECRET_SYNC_NAME_MAP
-} from "@app/services/secret-sync/secret-sync-maps";
+import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -1195,9 +1192,7 @@ export const secretSyncQueueFactory = ({
 
     await secretSyncDAL.update(
       {
-        syncStatus: SecretSyncStatus.Failed,
-        isAutoSyncEnabled: true,
-        $in: { destination: [...SECRET_SYNC_DAILY_RETRY_DESTINATIONS] }
+        $in: { id: failedSyncs.map((sync) => sync.id) }
       },
       { syncStatus: SecretSyncStatus.Pending }
     );

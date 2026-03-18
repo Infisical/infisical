@@ -18,13 +18,8 @@ type TGetAppConnectionFunc = (
 
 export const externalInfisicalConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor): Promise<TRemoteProject[]> => {
-    try {
-      const appConnection = await getAppConnection(AppConnection.ExternalInfisical, connectionId, actor);
-      return await listRemoteProjects(appConnection);
-    } catch (error) {
-      logger.error(error, "Failed to list projects from remote Infisical");
-      return [];
-    }
+    const appConnection = await getAppConnection(AppConnection.ExternalInfisical, connectionId, actor);
+    return listRemoteProjects(appConnection);
   };
 
   const getEnvironmentFolderTree = async (
