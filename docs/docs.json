@@ -427,7 +427,6 @@
                       "documentation/platform/secrets-mgmt/concepts/secrets-mgmt",
                       "documentation/platform/secrets-mgmt/concepts/access-control",
                       "documentation/platform/secrets-mgmt/concepts/secrets-delivery",
-                      "documentation/platform/secrets-mgmt/concepts/secrets-rotation",
                       "documentation/platform/secrets-mgmt/concepts/dynamic-secrets"
                     ]
                   },
@@ -451,31 +450,9 @@
                   "documentation/platform/secrets-mgmt/project",
                   "documentation/platform/folder",
                   "documentation/platform/secret-versioning",
+                  "documentation/platform/rotate-secrets",
                   "documentation/platform/pit-recovery",
                   "documentation/platform/secret-reference",
-                  {
-                    "group": "Secret Rotation",
-                    "pages": [
-                      "integrations/secret-rotations",
-                      "documentation/platform/secret-rotation/overview",
-                      "documentation/platform/secret-rotation/auth0-client-secret",
-                      "documentation/platform/secret-rotation/aws-iam-user-secret",
-                      "documentation/platform/secret-rotation/azure-client-secret",
-                      "documentation/platform/secret-rotation/databricks-service-principal-secret",
-                      "documentation/platform/secret-rotation/dbt-service-token",
-                      "documentation/platform/secret-rotation/ldap-password",
-                      "documentation/platform/secret-rotation/mongodb-credentials",
-                      "documentation/platform/secret-rotation/mssql-credentials",
-                      "documentation/platform/secret-rotation/mysql-credentials",
-                      "documentation/platform/secret-rotation/okta-client-secret",
-                      "documentation/platform/secret-rotation/openrouter-api-key",
-                      "documentation/platform/secret-rotation/oracledb-credentials",
-                      "documentation/platform/secret-rotation/postgres-credentials",
-                      "documentation/platform/secret-rotation/redis-credentials",
-                      "documentation/platform/secret-rotation/unix-linux-local-account",
-                      "documentation/platform/secret-rotation/windows-local-account"
-                    ]
-                  },
                   {
                     "group": "Dynamic Secrets",
                     "pages": [
@@ -849,7 +826,6 @@
                   "documentation/platform/pam/product-reference/access-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
-                  "documentation/platform/pam/product-reference/credential-rotation",
                   {
                     "group": "Web Access",
                     "pages": [
@@ -2093,210 +2069,6 @@
                   "api-reference/endpoints/dynamic-secrets/delete-lease",
                   "api-reference/endpoints/dynamic-secrets/renew-lease",
                   "api-reference/endpoints/dynamic-secrets/get-lease"
-                ]
-              },
-              {
-                "group": "Secret Rotations",
-                "pages": [
-                  "api-reference/endpoints/secret-rotations/list",
-                  "api-reference/endpoints/secret-rotations/options",
-                  {
-                    "group": "Auth0 Client Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/create",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/delete",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/list",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "AWS IAM User Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/create",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/delete",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/list",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "Azure Client Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/create",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/delete",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/list",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "Databricks Service Principal Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/create",
-                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/delete",
-                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/list",
-                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "DBT Service Token",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/create",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/delete",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-by-id",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-by-name",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/list",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/update"
-                    ]
-                  },
-                  {
-                    "group": "LDAP Password",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/ldap-password/create",
-                      "api-reference/endpoints/secret-rotations/ldap-password/delete",
-                      "api-reference/endpoints/secret-rotations/ldap-password/get-by-id",
-                      "api-reference/endpoints/secret-rotations/ldap-password/get-by-name",
-                      "api-reference/endpoints/secret-rotations/ldap-password/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/ldap-password/list",
-                      "api-reference/endpoints/secret-rotations/ldap-password/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/ldap-password/update"
-                    ]
-                  },
-                  {
-                    "group": "Microsoft SQL Server Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/create",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/list",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "MongoDB Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/mongodb-credentials/create",
-                      "api-reference/endpoints/secret-rotations/mongodb-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/mongodb-credentials/list",
-                      "api-reference/endpoints/secret-rotations/mongodb-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/mongodb-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "MySQL Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/create",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/list",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "Okta Client Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/create",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/delete",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/list",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "OracleDB Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/create",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/list",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "PostgreSQL Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/create",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/list",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "Redis Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/redis-credentials/create",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/list",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "Unix/Linux Local Account",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
-                    ]
-                  },
-                  {
-                    "group": "Windows Local Account",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/windows-local-account/create",
-                      "api-reference/endpoints/secret-rotations/windows-local-account/delete",
-                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-id",
-                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-name",
-                      "api-reference/endpoints/secret-rotations/windows-local-account/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/windows-local-account/list",
-                      "api-reference/endpoints/secret-rotations/windows-local-account/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/windows-local-account/update",
-                      "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
-                    ]
-                  }
                 ]
               },
               {
