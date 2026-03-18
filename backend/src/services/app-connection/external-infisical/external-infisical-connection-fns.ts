@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 
 import { AppConnection } from "../app-connection-enums";
@@ -54,6 +55,8 @@ export const validateExternalInfisicalConnectionCredentials = async (
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">
 ) => {
   const { credentials: inputCredentials } = config;
+
+  await blockLocalAndPrivateIpAddresses(inputCredentials.instanceUrl);
 
   const localIdentity = await identityUaDAL.findOne({
     clientId: inputCredentials.machineIdentityClientId
