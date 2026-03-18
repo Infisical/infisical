@@ -131,15 +131,6 @@ export const SecretOverviewSecretRotationRow = ({
             (secretRotation.type === SecretRotation.HpIloLocalAccount &&
               secretRotation.parameters.rotationMethod === HpIloRotationMethod.LoginAsTarget);
 
-          console.log(
-            "showReconcileButton:",
-            showReconcileButton,
-            "type:",
-            secretRotation.type,
-            "rotationMethod:",
-            secretRotation.parameters
-          );
-
           return (
             <Tr key={`secret-rotation-${slug}-${secretRotationName}`}>
               <Td

@@ -33,7 +33,7 @@ const HpIloRotationParametersSchema = z.object({
     .min(1, "Username required")
     .refine(
       (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen, CharacterType.Underscore])(val),
-      "Name can only contain alphanumeric characters, dashes, and underscores"
+      "Username can only contain alphanumeric characters, dashes, and underscores"
     )
     .describe(SecretRotations.PARAMETERS.HP_ILO.username),
   passwordRequirements: PasswordRequirementsSchema.optional(),

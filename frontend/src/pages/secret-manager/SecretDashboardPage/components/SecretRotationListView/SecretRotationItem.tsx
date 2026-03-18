@@ -87,15 +87,6 @@ export const SecretRotationItem = ({
     (secretRotation.type === SecretRotation.HpIloLocalAccount &&
       secretRotation.parameters.rotationMethod === HpIloRotationMethod.LoginAsTarget);
 
-  console.log(
-    "showReconcileButton:",
-    showReconcileButton,
-    "type:",
-    secretRotation.type,
-    "rotationMethod:",
-    secretRotation.parameters
-  );
-
   return (
     <>
       <div
@@ -218,24 +209,21 @@ export const SecretRotationItem = ({
                 renderTooltip
                 allowedLabel="Reconcile Secret"
               >
-                {(isAllowed) => {
-                  console.log("isAllowed for reconcile:", isAllowed);
-                  return (
-                    <IconButton
-                      ariaLabel="Reconcile secret"
-                      variant="plain"
-                      size="sm"
-                      isDisabled={!isAllowed}
-                      className="w-0 overflow-hidden p-0 group-hover:w-5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onReconcile();
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faHandshake} />
-                    </IconButton>
-                  );
-                }}
+                {(isAllowed) => (
+                  <IconButton
+                    ariaLabel="Reconcile secret"
+                    variant="plain"
+                    size="sm"
+                    isDisabled={!isAllowed}
+                    className="w-0 overflow-hidden p-0 group-hover:w-5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReconcile();
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faHandshake} />
+                  </IconButton>
+                )}
               </ProjectPermissionCan>
             )}
           </div>
