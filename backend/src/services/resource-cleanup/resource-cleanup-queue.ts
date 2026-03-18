@@ -16,8 +16,8 @@ import { TOrgServiceFactory } from "../org/org-service";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
-import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretSyncQueueFactory } from "../secret-sync/secret-sync-queue";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TServiceTokenServiceFactory } from "../service-token/service-token-service";
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {

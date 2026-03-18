@@ -237,7 +237,6 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.ExternalInfisical]: defaultDuplicateCheck
 };
 
-
 /**
  * Destinations that require a daily retry when their last sync has failed.
  * These providers may be unavailable due to network partitions or temporary
