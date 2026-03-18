@@ -5,32 +5,31 @@ import (
 	"log/slog"
 
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
-	"github.com/infisical/api/internal/services/shared/permission"
+	permissionLib "github.com/infisical/api/internal/services/shared/permission"
+	"github.com/infisical/api/internal/services/shared/secretmanager/secretfolder"
 )
 
-// piccolo: package internal/services/shared/permission
-// piccolo: struct Lib
-// piccolo: method GetProjectPermission
-type permissionLib interface {
-	// piccolo:start
-	GetProjectPermission(projectId string) string
-	// piccolo:end
+type permissionGetter interface {
+	GetProjectPermission(ctx context.Context, args permissionLib.GetProjectPermissionArgs) (*permissionLib.GetProjectPermissionResult, error)
+}
+
+type secretFolderLib interface {
+	GetSecretFolders(projectID, environment string) *secretfolder.SecretFolder
 }
 
 type service struct {
-	logger     *slog.Logger
-	permission permissionLib
+	logger       *slog.Logger
+	permission   permissionGetter
+	secretFolder secretFolderLib
 }
 
-func NewService(logger *slog.Logger, permission permissionLib) gensecrets.Service {
+func NewService(logger *slog.Logger, permission permissionGetter, secretFolder secretFolderLib) gensecrets.Service {
 	return &service{
-		logger:     logger.With("service", "secrets"),
-		permission: permission,
+		logger:       logger.With("service", "secrets"),
+		permission:   permission,
+		secretFolder: secretFolder,
 	}
 }
-
-// Ensure permission.Lib satisfies the interface at compile time.
-var _ permissionLib = (*permission.Lib)(nil)
 
 func (s *service) GetHealth(ctx context.Context) (string, error) {
 	s.logger.InfoContext(ctx, "health check")
@@ -50,6 +49,14 @@ func (s *service) CreateSecret(ctx context.Context, p *gensecrets.Secret) (*gens
 
 func (s *service) GetSecret(ctx context.Context, p *gensecrets.GetSecretPayload) (*gensecrets.SecretResult, error) {
 	s.logger.InfoContext(ctx, "getting secret", "id", p.ID)
+	_, error := s.permission.GetProjectPermission(ctx, permissionLib.GetProjectPermissionArgs{
+		ProjectID: "",
+	})
+	if error != nil {
+		return nil, error
+	}
+	_ = s.secretFolder.GetSecretFolders("", "")
+
 	return &gensecrets.SecretResult{ID: p.ID, Key: "stub", Value: "stub", Environment: "dev", ProjectID: "proj-1"}, nil
 }
 
