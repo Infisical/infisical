@@ -15,7 +15,7 @@ export async function down(knex: Knex): Promise<void> {
   const hasColumn = await knex.schema.hasColumn(TableName.IdentityAzureAuth, "allowedServicePrincipalIds");
   if (hasColumn) {
     await knex.schema.alterTable(TableName.IdentityAzureAuth, (t) => {
-      t.string("allowedServicePrincipalIds").notNullable().alter();
+      t.string("allowedServicePrincipalIds", 255).notNullable().alter();
     });
   }
 }
