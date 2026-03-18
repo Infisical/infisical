@@ -8,13 +8,8 @@ import (
 	"github.com/infisical/api/internal/services/shared/permission"
 )
 
-// piccolo: package internal/services/shared/permission
-// piccolo: struct Lib
-// piccolo: method GetProjectPermission
 type permissionLib interface {
-	// piccolo:start
-	GetProjectPermission(projectId string) string
-	// piccolo:end
+	GetProjectPermission(ctx context.Context, args permission.GetProjectPermissionArgs) (*permission.GetProjectPermissionResult, error)
 }
 
 type service struct {
