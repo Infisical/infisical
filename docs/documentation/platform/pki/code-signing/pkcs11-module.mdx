@@ -85,6 +85,8 @@ export INFISICAL_PKCS11_CONFIG=/path/to/your/pkcs11.conf
 | `cache.token_ttl_seconds` | No | `300` | Auth token cache duration |
 | `cache.cert_ttl_seconds` | No | `3600` | Certificate data cache duration |
 | `cache.signer_ttl_seconds` | No | `300` | Signer list cache duration |
+| `approval.signing_duration` | No | None | Auto-request signing access with this time window (e.g. `"8h"`, `"30m"`, `"2d"`). Range: 1m to 30d |
+| `approval.signing_count` | No | None | Auto-request signing access for this many signing operations |
 | `log_level` | No | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
 | `log_file` | No | stderr | Path to log file |
 
@@ -125,6 +127,38 @@ To list the objects (private key, certificate, public key) in a slot:
 ```bash
 pkcs11-tool --module /usr/local/lib/libinfisical-pkcs11.so --slot 0 --list-objects
 ```
+
+## Automatic Signing Access Requests
+
+If a signer has a [signing policy](/documentation/platform/pki/code-signing/signing-policies) attached, the module can automatically create a signing request when a sign operation is denied due to a missing grant. This removes the need to manually create requests via the UI or API before signing.
+
+To enable this, add the `approval` section to your config file with at least one of the following:
+
+```json
+{
+  "approval": {
+    "signing_duration": "8h",
+    "signing_count": 10
+  }
+}
+```
+
+- **`signing_duration`**: Requests a time-window grant of the specified duration (e.g. `"30m"`, `"8h"`, `"2d"`). Valid range: 1 minute to 30 days.
+- **`signing_count`**: Requests a grant for a fixed number of signing operations.
+
+You can set one or both depending on the constraints defined in the signing policy.
+
+<Note>
+  The sign operation will fail until an approver approves the request first. Once approved, retrying the sign operation will succeed. The module logs a message indicating that an approval request was created automatically.
+</Note>
+
+### Example Workflow
+
+1. A CI/CD pipeline attempts to sign an artifact
+2. The module detects that no active grant exists for the signer
+3. It automatically creates a signing request with the configured duration/count
+4. An approver reviews and approves the request
+5. The pipeline retries and the sign operation succeeds
 
 ## Troubleshooting
 

@@ -5,7 +5,8 @@ import { z } from "zod";
 import { CodeSigningPage } from "./CodeSigningPage";
 
 const CodeSigningSearchSchema = z.object({
-  tab: z.enum(["signers", "approvals"]).optional()
+  tab: z.enum(["signers", "approvals"]).optional(),
+  subtab: z.enum(["requests", "policies", "grants"]).optional()
 });
 
 export const Route = createFileRoute(

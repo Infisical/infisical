@@ -125,11 +125,12 @@ export const SignerOverviewSection = ({ signer, projectId, onEdit }: Props) => {
               <DetailValue>
                 {signer.approvalPolicyId && signer.approvalPolicyName ? (
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/approvals"
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
                     params={{
                       orgId: currentOrg.id,
                       projectId
                     }}
+                    search={{ tab: "approvals", subtab: "policies" }}
                     className="flex items-center gap-1 text-primary hover:underline"
                   >
                     {signer.approvalPolicyName}

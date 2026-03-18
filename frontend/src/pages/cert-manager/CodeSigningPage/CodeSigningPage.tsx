@@ -27,12 +27,14 @@ enum ApprovalSubTabs {
 export const CodeSigningPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
-  const { tab } = useSearch({ strict: false }) as { tab?: string };
+  const { tab, subtab } = useSearch({ strict: false }) as { tab?: string; subtab?: string };
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(
     tab === "approvals" ? CodeSigningTabs.Approvals : CodeSigningTabs.Signers
   );
-  const [approvalSubTab, setApprovalSubTab] = useState(ApprovalSubTabs.Requests);
+  const [approvalSubTab, setApprovalSubTab] = useState(
+    (subtab as ApprovalSubTabs) || ApprovalSubTabs.Requests
+  );
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">

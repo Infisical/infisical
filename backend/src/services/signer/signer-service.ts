@@ -446,7 +446,7 @@ export const signerServiceFactory = ({
 
         if (!matchingGrant) {
           throw new ForbiddenRequestError({
-            message: "Signing requires approval. Request access and get approved before signing.",
+            message: "Signing requires approval. Get approval before signing.",
             name: "ApprovalRequired"
           });
         }

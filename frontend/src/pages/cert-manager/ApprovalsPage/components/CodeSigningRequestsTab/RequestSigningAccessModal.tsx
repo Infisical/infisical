@@ -48,10 +48,10 @@ const formSchema = z
     justification: z.string().max(512).optional(),
     windowStart: z.string().optional(),
     windowEnd: z.string().optional(),
-    requestedSignings: z
-      .union([z.coerce.number().int().positive(), z.nan(), z.undefined()])
-      .optional()
-      .transform((val) => (typeof val === "number" && !Number.isNaN(val) ? val : undefined))
+    requestedSignings: z.preprocess(
+      (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
+      z.number().int().positive().optional()
+    )
   })
   .superRefine((data, ctx) => {
     if (data.windowStart) {
@@ -117,7 +117,7 @@ const Content = ({ onOpenChange }: Props) => {
       justification: "",
       windowStart: getDefaultWindowStart(),
       windowEnd: getDefaultWindowEnd(),
-      requestedSignings: 5
+      requestedSignings: 1
     }
   });
 
@@ -164,7 +164,7 @@ const Content = ({ onOpenChange }: Props) => {
     }
 
     if (hasCountConstraint) {
-      setValue("requestedSignings", 5);
+      setValue("requestedSignings", 1);
     } else {
       setValue("requestedSignings", undefined);
     }
@@ -276,11 +276,10 @@ const Content = ({ onOpenChange }: Props) => {
               helperText="How many signing operations you need"
             >
               <Input
-                type="number"
-                min={1}
                 placeholder="5"
                 {...field}
-                onChange={(e) => field.onChange(e.target.valueAsNumber || undefined)}
+                value={field.value ?? ""}
+                onChange={(e) => field.onChange(e.target.value)}
               />
             </FormControl>
           )}
