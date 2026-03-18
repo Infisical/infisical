@@ -447,6 +447,7 @@
                   "documentation/platform/secrets-mgmt/project",
                   "documentation/platform/folder",
                   "documentation/platform/secret-versioning",
+                  "output/secret-versioning-remediated",
                   "documentation/platform/pit-recovery",
                   "documentation/platform/secret-reference",
                   {
