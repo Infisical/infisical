@@ -8,6 +8,7 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { BadRequestError } from "@app/lib/errors";
 import {
   executeWithPotentialGateway,
   getSshConnectionClient,
@@ -200,8 +201,8 @@ export const hpIloRotationFactory: TRotationFactory<
     const newPassword = generatePassword(passwordRequirements ?? HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS);
 
     const isSelfRotation = rotationMethod === HpIloRotationMethod.LoginAsTarget;
-    // if (username === credentials.username)
-    //   throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
+    if (username === connection.credentials.username)
+      throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
     const sshConfig: TSshConnectionConfig = {
       method: connection.method,
