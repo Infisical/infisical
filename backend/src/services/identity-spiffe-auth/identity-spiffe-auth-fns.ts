@@ -24,7 +24,7 @@ export const doesSpiffeIdMatchPattern = (spiffeId: string, patterns: string): bo
     .map((p) => p.trim())
     .filter(Boolean);
 
-  return patternList.some((pattern) => picomatch.isMatch(spiffeId, pattern));
+  return patternList.some((pattern) => picomatch.isMatch(spiffeId, pattern, { bash: true }));
 };
 
 const BUNDLE_FETCH_TIMEOUT_MS = 10_000;
