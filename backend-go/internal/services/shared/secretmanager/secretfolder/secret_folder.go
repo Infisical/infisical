@@ -11,13 +11,13 @@ type FolderEnvironment struct {
 	Slug string
 }
 
-// Lib provides secret folder operations scoped to a project and environment.
-type Lib struct {
+// Service provides secret folder operations scoped to a project and environment.
+type SharedService struct {
 }
 
-// NewLib creates a new secret folder library instance.
-func NewLib() *Lib {
-	return &Lib{}
+// NewService creates a new secret folder service instance.
+func NewSharedService() *SharedService {
+	return &SharedService{}
 }
 
 type SecretFolder struct {
@@ -26,7 +26,7 @@ type SecretFolder struct {
 }
 
 // GetSecretFolder returns a scoped SecretFolder handle for the given project and environment.
-func (l *Lib) GetSecretFolders(projectID, environment string) *SecretFolder {
+func (l *SharedService) GetSecretFolders(projectID, environment string) *SecretFolder {
 	return &SecretFolder{
 		projectID:   projectID,
 		environment: environment,

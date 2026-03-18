@@ -32,8 +32,8 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	t.Helper()
 
 	permDAL := permission.NewDAL()
-	permLib := permission.NewLib(permDAL)
-	secretfolderLib := secretfolder.NewLib()
+	permLib := permission.NewSharedService(permDAL)
+	secretfolderLib := secretfolder.NewSharedService()
 
 	svc := secrets.NewService(testutil.NopLogger(), permLib, secretfolderLib)
 

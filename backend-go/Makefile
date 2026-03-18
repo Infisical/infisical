@@ -2,10 +2,6 @@
 test:
 	TESTCONTAINERS_DEBUG=true go test -v ./internal/... -count=1 -race -timeout 300s
 
-# Run unit tests (no Docker needed)
-test-unit:
-	go test ./internal/... -count=1 -race
-
 # Tear down shared test containers and remove state file.
 # Use this if tests misbehave or to free up ports.
 test-cleanup:
