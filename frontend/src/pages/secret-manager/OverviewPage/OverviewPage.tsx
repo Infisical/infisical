@@ -3214,7 +3214,9 @@ const OverviewPageContent = () => {
           ((popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
             SecretRotationV2.UnixLinuxLocalAccount ||
             (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
-              SecretRotationV2.WindowsLocalAccount)
+              SecretRotationV2.WindowsLocalAccount ||
+            (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
+              SecretRotationV2.HpIloLocalAccount)
         }
         secretRotation={popUp.reconcileSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("reconcileSecretRotation", isOpen)}

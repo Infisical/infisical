@@ -30,6 +30,7 @@ import {
   SecretRotationStatus,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
+import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
@@ -119,6 +120,25 @@ export const SecretOverviewSecretRotationRow = ({
           const { type, secrets, environment, folder, description } = secretRotation;
 
           const { name: rotationType, image } = SECRET_ROTATION_MAP[type];
+
+          const showReconcileButton =
+            (secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
+              secretRotation.parameters.rotationMethod ===
+                UnixLinuxLocalAccountRotationMethod.LoginAsTarget) ||
+            (secretRotation.type === SecretRotation.WindowsLocalAccount &&
+              secretRotation.parameters.rotationMethod ===
+                WindowsLocalAccountRotationMethod.LoginAsTarget) ||
+            (secretRotation.type === SecretRotation.HpIloLocalAccount &&
+              secretRotation.parameters.rotationMethod === HpIloRotationMethod.LoginAsTarget);
+
+          console.log(
+            "showReconcileButton:",
+            showReconcileButton,
+            "type:",
+            secretRotation.type,
+            "rotationMethod:",
+            secretRotation.parameters
+          );
 
           return (
             <Tr key={`secret-rotation-${slug}-${secretRotationName}`}>
@@ -218,12 +238,7 @@ export const SecretOverviewSecretRotationRow = ({
                                   </IconButton>
                                 )}
                               </ProjectPermissionCan>
-                              {((secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
-                                secretRotation.parameters.rotationMethod ===
-                                  UnixLinuxLocalAccountRotationMethod.LoginAsTarget) ||
-                                (secretRotation.type === SecretRotation.WindowsLocalAccount &&
-                                  secretRotation.parameters.rotationMethod ===
-                                    WindowsLocalAccountRotationMethod.LoginAsTarget)) && (
+                              {showReconcileButton && (
                                 <ProjectPermissionCan
                                   I={ProjectPermissionSecretRotationActions.RotateSecrets}
                                   a={subject(ProjectPermissionSub.SecretRotation, {

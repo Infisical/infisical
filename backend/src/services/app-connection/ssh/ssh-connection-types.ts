@@ -22,4 +22,8 @@ export type TSshConnectionConfig = DiscriminativePick<
   "method" | "app" | "credentials" | "gatewayId"
 > & {
   orgId: string;
+  algorithms?: {
+    serverHostKey?: string[];
+    kex?: string[];
+  };
 };

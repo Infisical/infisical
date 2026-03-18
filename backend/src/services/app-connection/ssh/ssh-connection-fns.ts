@@ -1,4 +1,4 @@
-import { Client, ConnectConfig } from "ssh2";
+import { Algorithms, Client, ConnectConfig } from "ssh2";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -34,7 +34,7 @@ export const getSshConnectionClient = async (
       port: targetPort,
       readyTimeout: SSH_TIMEOUT,
       tryKeyboard: false,
-      algorithms: {
+      algorithms: (credentials.algorithms as Algorithms) || {
         serverHostKey: ["rsa-sha2-512", "rsa-sha2-256", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp521"]
       }
     };
