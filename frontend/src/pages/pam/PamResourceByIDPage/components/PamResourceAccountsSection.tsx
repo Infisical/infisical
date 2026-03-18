@@ -80,6 +80,9 @@ type Props = {
 const hasAccountType = (resourceType: PamResourceType) =>
   resourceType === PamResourceType.Windows || resourceType === PamResourceType.ActiveDirectory;
 
+const hasAccountsWithDependencies = (resourceType: PamResourceType) =>
+  resourceType === PamResourceType.Windows || resourceType === PamResourceType.ActiveDirectory;
+
 const getAccountType = (account: TPamAccount): string | undefined => {
   if (account.resource.resourceType === PamResourceType.Windows) {
     return (account as TWindowsAccount).internalMetadata?.accountType;
@@ -337,6 +340,9 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
           <UnstableTableHeader>
             <UnstableTableRow>
               <UnstableTableHead>Account Name</UnstableTableHead>
+              {hasAccountsWithDependencies(resource.resourceType) && (
+                <UnstableTableHead>Dependencies</UnstableTableHead>
+              )}
               {hasAccountType(resource.resourceType) && <UnstableTableHead>Type</UnstableTableHead>}
               <UnstableTableHead>Last Rotated</UnstableTableHead>
               <UnstableTableHead className="w-5" />
@@ -346,7 +352,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
             {isPending && (
               <UnstableTableRow>
                 <UnstableTableCell
-                  colSpan={hasAccountType(resource.resourceType) ? 4 : 3}
+                  colSpan={
+                    3 +
+                    (hasAccountType(resource.resourceType) ? 1 : 0) +
+                    (hasAccountsWithDependencies(resource.resourceType) ? 1 : 0)
+                  }
                   className="text-center text-muted"
                 >
                   Loading accounts...
@@ -355,7 +365,13 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
             )}
             {!isPending && accounts.length === 0 && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={hasAccountType(resource.resourceType) ? 4 : 3}>
+                <UnstableTableCell
+                  colSpan={
+                    3 +
+                    (hasAccountType(resource.resourceType) ? 1 : 0) +
+                    (hasAccountsWithDependencies(resource.resourceType) ? 1 : 0)
+                  }
+                >
                   <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                     <UnstableEmptyHeader>
                       <UnstableEmptyTitle>
@@ -407,6 +423,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                       )}
                     </div>
                   </UnstableTableCell>
+                  {hasAccountsWithDependencies(resource.resourceType) && (
+                    <UnstableTableCell>
+                      <span className="text-muted">{account.dependencyCount ?? 0}</span>
+                    </UnstableTableCell>
+                  )}
                   {hasAccountType(resource.resourceType) && (
                     <UnstableTableCell>
                       <span className="capitalize">{getAccountType(account) ?? "-"}</span>

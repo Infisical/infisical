@@ -44,6 +44,7 @@ export const DatabricksSyncListItemSchema = z
     name: z.literal("Databricks"),
     connection: z.literal(AppConnection.Databricks),
     destination: z.literal(SecretSync.Databricks),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Databricks] }));

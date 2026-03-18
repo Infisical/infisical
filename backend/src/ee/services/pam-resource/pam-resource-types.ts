@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { TPamResources } from "@app/db/schemas";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
@@ -69,6 +70,7 @@ export type TPamResource =
   | TRedisResource
   | TWindowsResource
   | TActiveDirectoryResource;
+export type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails

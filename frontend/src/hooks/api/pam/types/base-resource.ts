@@ -5,6 +5,7 @@ export interface TBasePamResource {
   gatewayId: string;
   adServerResourceId?: string | null;
   metadata?: { key: string; value: string }[];
+  isFavorite?: boolean;
   createdAt: string;
   updatedAt: string;
 }

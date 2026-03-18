@@ -6,5 +6,6 @@ export const CHECKLY_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Checkly",
   destination: SecretSync.Checkly,
   connection: AppConnection.Checkly,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

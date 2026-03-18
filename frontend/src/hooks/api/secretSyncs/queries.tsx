@@ -47,7 +47,7 @@ export const useSecretSyncOptions = (
   });
 };
 
-export const useSecretSyncOption = (destination: SecretSync) => {
+export const useSecretSyncOption = (destination?: SecretSync) => {
   const { data: syncOptions, isPending } = useSecretSyncOptions();
   const syncOption = syncOptions?.find((option) => option.destination === destination);
 

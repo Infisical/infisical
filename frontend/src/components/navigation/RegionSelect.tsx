@@ -1,8 +1,6 @@
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useLocation } from "@tanstack/react-router";
 
-import { Modal, ModalContent, ModalTrigger, Select, SelectItem } from "@app/components/v2";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 
 enum Region {
@@ -13,8 +11,12 @@ enum Region {
 const regions = [
   {
     value: Region.US,
-    label: "United States",
-    location: "Virginia, USA",
+    label: "US",
+    bullets: [
+      "Fastest option if you are based in the US",
+      "Data storage compliance for this region",
+      "Hosted in Virginia, USA"
+    ],
     flag: (
       <svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-us" viewBox="0 0 640 480">
         <path fill="#bd3d44" d="M0 0h640v480H0" />
@@ -37,8 +39,12 @@ const regions = [
   },
   {
     value: Region.EU,
-    label: "Europe",
-    location: "Frankfurt, Germany",
+    label: "EU",
+    bullets: [
+      "Fastest option if you are based in Europe",
+      "Data storage compliance for this region",
+      "Hosted in Frankfurt, Germany"
+    ],
     flag: (
       <svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-eu" viewBox="0 0 512 512">
         <defs>
@@ -72,10 +78,14 @@ const regions = [
   }
 ];
 
-export const RegionSelect = () => {
+type RegionSelectProps = {
+  compact?: boolean;
+};
+
+export const RegionSelect = ({ compact }: RegionSelectProps) => {
   const location = useLocation();
 
-  const handleRegionSelect = (value: Region) => {
+  const handleRegionSelect = (value: string) => {
     window.location.assign(`https://${value}.infisical.com/${location.pathname}`);
   };
 
@@ -86,60 +96,46 @@ export const RegionSelect = () => {
   if (!shouldDisplay) return null;
 
   const [subdomain] = window.location.host.split(".");
-
-  // default to US if not eu
   const currentRegion = subdomain === Region.EU ? regions[1] : regions[0];
 
   return (
-    <div className="mb-8 flex flex-col items-center">
-      <Select
-        className="w-44"
-        onValueChange={handleRegionSelect}
-        defaultValue={currentRegion.value}
-      >
-        {regions.map(({ value, label, flag }) => (
-          <SelectItem value={value} key={value}>
-            <div className="flex items-center gap-2">
-              <div className="w-4">{flag}</div>
-              {label}
-            </div>
-          </SelectItem>
-        ))}
-      </Select>
-      <Modal>
-        <ModalTrigger asChild>
-          <button type="button" className="mt-1 text-right text-xs text-mineshaft-400 underline">
-            Help me pick a data region
-          </button>
-        </ModalTrigger>
-        <ModalContent
-          title="Infisical Cloud data regions"
-          subTitle="Select the closest region to you and your team. Contact Infisical if you need to migrate regions."
+    <div className={compact ? "shrink-0" : "mb-8 flex flex-col items-center"}>
+      <Select value={currentRegion.value} onValueChange={handleRegionSelect}>
+        <SelectTrigger className={compact ? "w-20 gap-1 px-2" : "w-full max-w-md"}>
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-5 shrink-0">{currentRegion.flag}</div>
+            <span>{currentRegion.label}</span>
+          </div>
+        </SelectTrigger>
+        <SelectContent
+          position="popper"
+          align="start"
+          side="right"
+          sideOffset={4}
+          className="max-w-md min-w-[var(--radix-select-trigger-width)]"
         >
-          {regions.map(({ value, label, location: regionLocation, flag }) => (
-            <div className="mb-6" key={value}>
-              <p className="font-medium">
-                <span className="mr-2 inline-block w-4">{flag}</span>
-                {value.toUpperCase()} Region
-              </p>
-              <ul className="mt-2 ml-6 flex flex-col gap-1">
-                <li>
-                  <FontAwesomeIcon size="xs" className="mr-0.5 text-green" icon={faCheck} /> Fastest
-                  option if you are based in {value === Region.US ? "the" : ""} {label}
-                </li>
-                <li>
-                  <FontAwesomeIcon size="xs" className="mr-0.5 text-green" icon={faCheck} /> Data
-                  storage compliance for this region
-                </li>
-                <li>
-                  <FontAwesomeIcon size="xs" className="mr-0.5 text-green" icon={faCheck} /> Hosted
-                  in {regionLocation}
-                </li>
-              </ul>
-            </div>
+          {regions.map(({ value, label, bullets, flag }) => (
+            <SelectItem
+              checkIconClassName="top-3"
+              value={value}
+              key={value}
+              className="overflow-visible whitespace-normal"
+            >
+              <div className="flex flex-col gap-2 py-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-5 shrink-0">{flag}</div>
+                  <span className="font-medium">{label}</span>
+                </div>
+                <ul className="ml-4 flex list-disc flex-col gap-1 text-sm text-mineshaft-300">
+                  {bullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
+              </div>
+            </SelectItem>
           ))}
-        </ModalContent>
-      </Modal>
+        </SelectContent>
+      </Select>
     </div>
   );
 };

@@ -207,7 +207,7 @@ export type TPamAccountDependency = {
   state?: string | null;
   data: Record<string, unknown>;
   source: string;
-  isEnabled?: boolean | null;
+  isRotationSyncEnabled: boolean;
   syncStatus?: string | null;
   lastSyncedAt?: string | null;
   resourceName?: string | null;
@@ -252,4 +252,8 @@ export type TDeletePamRotationRuleDTO = {
 export type TReorderPamRotationRulesDTO = {
   resourceId: string;
   ruleIds: string[];
+};
+
+export type TPamResourceDependency = TPamAccountDependency & {
+  accountName: string | null;
 };

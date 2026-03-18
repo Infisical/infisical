@@ -19,7 +19,7 @@ export const PamAccountDependenciesSchema = z.object({
   state: z.string().nullable().optional(),
   data: z.unknown(),
   source: z.string(),
-  isEnabled: z.boolean().default(false).nullable().optional(),
+  isRotationSyncEnabled: z.boolean().default(false).nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   syncStatus: z.string().nullable().optional(),

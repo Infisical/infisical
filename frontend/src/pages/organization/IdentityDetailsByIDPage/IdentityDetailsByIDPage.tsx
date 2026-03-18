@@ -169,24 +169,29 @@ const Page = () => {
                       </UnstableAlertTitle>
                       <UnstableAlertDescription>
                         <p>
-                          This machine identity&apos;s authentication methods are managed by your
-                          organization. <br /> To make changes,{" "}
+                          This machine identity&apos;s authentication methods are managed by your{" "}
+                          organization
                           <OrgPermissionCan
                             I={OrgPermissionIdentityActions.Read}
                             an={OrgPermissionSubjects.Identity}
                           >
                             {(isAllowed) =>
                               isAllowed ? (
-                                <Link
-                                  to="/organizations/$orgId/identities/$identityId"
-                                  className="inline-block cursor-pointer text-foreground underline underline-offset-2"
-                                  params={{
-                                    identityId,
-                                    orgId: data.identity.orgId
-                                  }}
-                                >
-                                  go to organization access control
-                                </Link>
+                                <>
+                                  <span>
+                                    <br /> To make changes,{" "}
+                                  </span>
+                                  <Link
+                                    to="/organizations/$orgId/identities/$identityId"
+                                    className="inline-block cursor-pointer text-foreground underline underline-offset-2"
+                                    params={{
+                                      identityId,
+                                      orgId: data.identity.orgId
+                                    }}
+                                  >
+                                    go to organization access control
+                                  </Link>
+                                </>
                               ) : null
                             }
                           </OrgPermissionCan>

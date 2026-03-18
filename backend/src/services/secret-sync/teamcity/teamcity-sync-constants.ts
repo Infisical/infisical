@@ -6,5 +6,6 @@ export const TEAMCITY_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "TeamCity",
   destination: SecretSync.TeamCity,
   connection: AppConnection.TeamCity,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

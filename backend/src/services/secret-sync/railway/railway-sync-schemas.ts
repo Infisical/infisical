@@ -57,6 +57,7 @@ export const RailwaySyncListItemSchema = z
     name: z.literal("Railway"),
     connection: z.literal(AppConnection.Railway),
     destination: z.literal(SecretSync.Railway),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Railway] }));

@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { cn } from "../../utils";
 
@@ -136,8 +137,9 @@ function SelectLabel({ className, ...props }: React.ComponentProps<typeof Select
 function SelectItem({
   className,
   children,
+  checkIconClassName,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Item>) {
+}: React.ComponentProps<typeof SelectPrimitive.Item> & { checkIconClassName?: string }) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -147,7 +149,12 @@ function SelectItem({
       )}
       {...props}
     >
-      <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
+      <span
+        className={twMerge(
+          "pointer-events-none absolute right-2 flex size-4 items-center justify-center",
+          checkIconClassName
+        )}
+      >
         <SelectPrimitive.ItemIndicator>
           <CheckIcon className="pointer-events-none" />
         </SelectPrimitive.ItemIndicator>

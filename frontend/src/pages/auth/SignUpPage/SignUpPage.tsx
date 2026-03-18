@@ -2,8 +2,10 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
+import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
+import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
 import EnterEmailStep from "@app/components/auth/EnterEmailStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
@@ -125,7 +127,8 @@ export const SignUpPage = () => {
   };
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-6">
+      <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -133,10 +136,21 @@ export const SignUpPage = () => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <div className="mt-20 mb-4 flex justify-center">
-        <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
+      <div className="relative z-10 my-auto flex flex-col items-center py-10">
+        <Link to="/">
+          <div className="mb-4 flex justify-center">
+            <img
+              src="/images/gradientLogo.svg"
+              style={{ height: "90px", width: "120px" }}
+              alt="Infisical logo"
+            />
+          </div>
+        </Link>
+        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
+          {renderView(step)}
+        </form>
       </div>
-      <form onSubmit={(e) => e.preventDefault()}>{renderView(step)}</form>
+      <AuthPageFooter />
     </div>
   );
 };

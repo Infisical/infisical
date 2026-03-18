@@ -51,7 +51,6 @@ import {
 
 const LDAP_TIMEOUT = 30 * 1000;
 const LDAP_PAGE_SIZE = 500;
-const WINRM_PORT = 5985;
 const SERVICE_ACCOUNT_PATTERNS = [new RE2(/^svc[_-]/i), new RE2(/[_-]service$/i), new RE2(/[_-]svc$/i)];
 const BUILTIN_SERVICE_ACCOUNTS = new Set([
   "localsystem",
@@ -406,14 +405,22 @@ const executeLdapEnumeration = async (
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<{ computers: TLdapComputer[]; users: TLdapUser[] }> => {
+  const ldapProtocol = configuration.useLdaps ? "ldaps" : "ldap";
+
   return executeWithGateway(
-    { dcAddress: configuration.dcAddress, port: configuration.port, gatewayId },
+    { dcAddress: configuration.dcAddress, port: configuration.ldapPort, gatewayId },
     gatewayV2Service,
     async (proxyPort) => {
       const client = ldapjs.createClient({
-        url: `ldap://localhost:${proxyPort}`,
+        url: `${ldapProtocol}://localhost:${proxyPort}`,
         connectTimeout: LDAP_TIMEOUT,
-        timeout: LDAP_TIMEOUT
+        timeout: LDAP_TIMEOUT,
+        ...(configuration.useLdaps && {
+          tlsOptions: {
+            rejectUnauthorized: !!configuration.caCert,
+            ...(configuration.caCert && { ca: [configuration.caCert] })
+          }
+        })
       });
 
       try {
@@ -511,7 +518,7 @@ const upsertAdServerResource = async (
     connectionDetails: {
       domain: configuration.domainFQDN,
       dcAddress: configuration.dcAddress,
-      port: configuration.port
+      port: configuration.ldapPort
     } as TActiveDirectoryResourceConnectionDetails,
     kmsService
   });
@@ -667,6 +674,8 @@ const executeWinRmLocalAccountEnumeration = async (
   computer: TLdapComputer,
   domainFQDN: string,
   credentials: TAdDiscoveryCredentials,
+  winrmPort: number,
+  useWinrmHttps: boolean,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmLocalUser[]> => {
@@ -674,13 +683,21 @@ const executeWinRmLocalAccountEnumeration = async (
   const targetAddress = computer.resolvedIp || hostname;
 
   return executeWithGateway(
-    { dcAddress: targetAddress, port: WINRM_PORT, gatewayId },
+    { dcAddress: targetAddress, port: winrmPort, gatewayId },
     gatewayV2Service,
     async (proxyPort) => {
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
       const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
       const script = `Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordLastSet, Description, SID | ConvertTo-Json`;
-      const stdout = await runPowershell(script, "localhost", winrmUsername, credentials.password, proxyPort);
+      const stdout = await runPowershell(
+        script,
+        "localhost",
+        winrmUsername,
+        credentials.password,
+        proxyPort,
+        useWinrmHttps,
+        false
+      );
 
       if (!stdout.trim()) {
         return [];
@@ -696,6 +713,8 @@ const executeWinRmDependencyEnumeration = async (
   computer: TLdapComputer,
   domainFQDN: string,
   credentials: TAdDiscoveryCredentials,
+  winrmPort: number,
+  useWinrmHttps: boolean,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmDependencies> => {
@@ -703,7 +722,7 @@ const executeWinRmDependencyEnumeration = async (
   const targetAddress = computer.resolvedIp || hostname;
 
   return executeWithGateway(
-    { dcAddress: targetAddress, port: WINRM_PORT, gatewayId },
+    { dcAddress: targetAddress, port: winrmPort, gatewayId },
     gatewayV2Service,
     async (proxyPort) => {
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
@@ -713,7 +732,9 @@ const executeWinRmDependencyEnumeration = async (
         "localhost",
         winrmUsername,
         credentials.password,
-        proxyPort
+        proxyPort,
+        useWinrmHttps,
+        false
       );
 
       if (!stdout.trim()) {
@@ -866,15 +887,22 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
 > = (_discoveryType, configuration, credentials, gatewayId, projectId, gatewayV2Service) => {
   const validateConnection = async () => {
     try {
+      const ldapProtocol = configuration.useLdaps ? "ldaps" : "ldap";
       await executeWithGateway(
-        { dcAddress: configuration.dcAddress, port: configuration.port, gatewayId },
+        { dcAddress: configuration.dcAddress, port: configuration.ldapPort, gatewayId },
         gatewayV2Service,
         async (proxyPort) => {
           return new Promise<void>((resolve, reject) => {
             const client = ldapjs.createClient({
-              url: `ldap://localhost:${proxyPort}`,
+              url: `${ldapProtocol}://localhost:${proxyPort}`,
               connectTimeout: LDAP_TIMEOUT,
-              timeout: LDAP_TIMEOUT
+              timeout: LDAP_TIMEOUT,
+              ...(configuration.useLdaps && {
+                tlsOptions: {
+                  rejectUnauthorized: !!configuration.caCert,
+                  ...(configuration.caCert && { ca: [configuration.caCert] })
+                }
+              })
             });
 
             client.on("error", (err: Error) => {
@@ -1087,6 +1115,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               computer,
               configuration.domainFQDN,
               credentials,
+              configuration.winrmPort,
+              configuration.useWinrmHttps,
               gatewayId,
               gatewayV2Service
             );
@@ -1128,123 +1158,126 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             }
 
             // Dependency discovery (services, scheduled tasks, IIS app pools)
-            try {
-              // eslint-disable-next-line no-await-in-loop
-              const dependencies = await executeWinRmDependencyEnumeration(
-                computer,
-                configuration.domainFQDN,
-                credentials,
-                gatewayId,
-                gatewayV2Service
-              );
-
-              const depItems: {
-                type: PamAccountDependencyType;
-                name: string;
-                displayName: string | null;
-                state: string | null;
-                runAsUser: string;
-                data: Record<string, unknown>;
-              }[] = [];
-
-              for (const svc of dependencies.services) {
-                const startName = (svc.StartName || "").toLowerCase();
-                if (!startName || BUILTIN_SERVICE_ACCOUNTS.has(startName) || startName.startsWith("nt service\\")) {
-                  // eslint-disable-next-line no-continue
-                  continue;
-                }
-                depItems.push({
-                  type: PamAccountDependencyType.WindowsService,
-                  name: svc.Name,
-                  displayName: svc.DisplayName,
-                  state: svc.State,
-                  runAsUser: svc.StartName,
-                  data: {
-                    startMode: svc.StartMode,
-                    processId: svc.ProcessId,
-                    pathName: svc.PathName,
-                    description: svc.Description,
-                    runAsAccount: svc.StartName
-                  }
-                });
-              }
-
-              for (const task of dependencies.scheduledTasks) {
-                depItems.push({
-                  type: PamAccountDependencyType.ScheduledTask,
-                  name: task.TaskName,
-                  displayName: null,
-                  state: task.State,
-                  runAsUser: task.UserId,
-                  data: {
-                    taskPath: task.TaskPath,
-                    logonType: task.LogonType,
-                    runLevel: task.RunLevel,
-                    lastRunTime: task.LastRunTime,
-                    nextRunTime: task.NextRunTime,
-                    lastTaskResult: task.LastTaskResult,
-                    runAsAccount: task.UserId,
-                    triggers: task.Triggers ?? [],
-                    actions: task.Actions ?? []
-                  }
-                });
-              }
-
-              for (const pool of dependencies.iisAppPools) {
-                depItems.push({
-                  type: PamAccountDependencyType.IisAppPool,
-                  name: pool.Name,
-                  displayName: null,
-                  state: pool.State,
-                  runAsUser: pool.Username,
-                  data: {
-                    identityType: pool.IdentityType,
-                    managedRuntimeVersion: pool.ManagedRuntimeVersion,
-                    managedPipelineMode: pool.ManagedPipelineMode,
-                    autoStart: pool.AutoStart,
-                    runAsAccount: pool.Username
-                  }
-                });
-              }
-
-              for (const dep of depItems) {
-                const accountId = resolveAccountForDependency(
-                  dep.runAsUser,
+            if (configuration.discoverDependencies)
+              try {
+                // eslint-disable-next-line no-await-in-loop
+                const dependencies = await executeWinRmDependencyEnumeration(
+                  computer,
                   configuration.domainFQDN,
-                  domainAccountMap,
-                  localAccountMap
+                  credentials,
+                  configuration.winrmPort,
+                  configuration.useWinrmHttps,
+                  gatewayId,
+                  gatewayV2Service
                 );
 
-                if (accountId) {
-                  try {
-                    // eslint-disable-next-line no-await-in-loop
-                    const dependency = await upsertDiscoveredDependency(
-                      dep.type,
-                      dep.name,
-                      dep.displayName,
-                      dep.state,
-                      dep.data,
-                      accountId,
-                      windowsResourceId,
-                      discoverySourceId,
-                      run.id,
-                      pamAccountDependenciesDAL,
-                      pamDiscoverySourceDependenciesDAL
-                    );
+                const depItems: {
+                  type: PamAccountDependencyType;
+                  name: string;
+                  displayName: string | null;
+                  state: string | null;
+                  runAsUser: string;
+                  data: Record<string, unknown>;
+                }[] = [];
 
-                    dependenciesDiscoveredCount += 1;
-
-                    if (dependency.isNew) {
-                      newDependenciesCount += 1;
+                for (const svc of dependencies.services) {
+                  const startName = (svc.StartName || "").toLowerCase();
+                  if (!startName || BUILTIN_SERVICE_ACCOUNTS.has(startName) || startName.startsWith("nt service\\")) {
+                    // eslint-disable-next-line no-continue
+                    continue;
+                  }
+                  depItems.push({
+                    type: PamAccountDependencyType.WindowsService,
+                    name: svc.Name,
+                    displayName: svc.DisplayName,
+                    state: svc.State,
+                    runAsUser: svc.StartName,
+                    data: {
+                      startMode: svc.StartMode,
+                      processId: svc.ProcessId,
+                      pathName: svc.PathName,
+                      description: svc.Description,
+                      runAsAccount: svc.StartName
                     }
-                  } catch (err) {
-                    logger.warn(err, `Failed to import dependency [dependency=${dep.name}] [computer=${hostname}]`);
+                  });
+                }
+
+                for (const task of dependencies.scheduledTasks) {
+                  depItems.push({
+                    type: PamAccountDependencyType.ScheduledTask,
+                    name: task.TaskName,
+                    displayName: null,
+                    state: task.State,
+                    runAsUser: task.UserId,
+                    data: {
+                      taskPath: task.TaskPath,
+                      logonType: task.LogonType,
+                      runLevel: task.RunLevel,
+                      lastRunTime: task.LastRunTime,
+                      nextRunTime: task.NextRunTime,
+                      lastTaskResult: task.LastTaskResult,
+                      runAsAccount: task.UserId,
+                      triggers: task.Triggers ?? [],
+                      actions: task.Actions ?? []
+                    }
+                  });
+                }
+
+                for (const pool of dependencies.iisAppPools) {
+                  depItems.push({
+                    type: PamAccountDependencyType.IisAppPool,
+                    name: pool.Name,
+                    displayName: null,
+                    state: pool.State,
+                    runAsUser: pool.Username,
+                    data: {
+                      identityType: pool.IdentityType,
+                      managedRuntimeVersion: pool.ManagedRuntimeVersion,
+                      managedPipelineMode: pool.ManagedPipelineMode,
+                      autoStart: pool.AutoStart,
+                      runAsAccount: pool.Username
+                    }
+                  });
+                }
+
+                for (const dep of depItems) {
+                  const accountId = resolveAccountForDependency(
+                    dep.runAsUser,
+                    configuration.domainFQDN,
+                    domainAccountMap,
+                    localAccountMap
+                  );
+
+                  if (accountId) {
+                    try {
+                      // eslint-disable-next-line no-await-in-loop
+                      const dependency = await upsertDiscoveredDependency(
+                        dep.type,
+                        dep.name,
+                        dep.displayName,
+                        dep.state,
+                        dep.data,
+                        accountId,
+                        windowsResourceId,
+                        discoverySourceId,
+                        run.id,
+                        pamAccountDependenciesDAL,
+                        pamDiscoverySourceDependenciesDAL
+                      );
+
+                      dependenciesDiscoveredCount += 1;
+
+                      if (dependency.isNew) {
+                        newDependenciesCount += 1;
+                      }
+                    } catch (err) {
+                      logger.warn(err, `Failed to import dependency [dependency=${dep.name}] [computer=${hostname}]`);
+                    }
                   }
                 }
+              } catch (err) {
+                logger.warn(err, `WinRM dependency enumeration failed for machine [computer=${hostname}]`);
               }
-            } catch (err) {
-              logger.warn(err, `WinRM dependency enumeration failed for machine [computer=${hostname}]`);
-            }
 
             scannedMachines += 1;
           } catch (err) {

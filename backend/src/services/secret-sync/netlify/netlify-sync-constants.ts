@@ -6,6 +6,7 @@ export const NETLIFY_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Netlify",
   destination: SecretSync.Netlify,
   connection: AppConnection.Netlify,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };
 

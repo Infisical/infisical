@@ -77,6 +77,57 @@ export const useDeletePamResource = () => {
   });
 };
 
+// Favorites
+export type TSetPamResourceFavoriteDTO = {
+  projectId: string;
+  resourceId: string;
+  isFavorite: boolean;
+};
+
+export const useSetPamResourceFavorite = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, resourceId, isFavorite }: TSetPamResourceFavoriteDTO) => {
+      await apiRequest.put("/api/v1/pam/resources/favorites", {
+        projectId,
+        resourceId,
+        isFavorite
+      });
+    },
+    onMutate: async ({ projectId, resourceId, isFavorite }) => {
+      await queryClient.cancelQueries({ queryKey: pamKeys.listResources({ projectId }) });
+
+      const previousQueries = queryClient.getQueriesData<{
+        resources: TPamResource[];
+        totalCount: number;
+      }>({
+        queryKey: pamKeys.listResources({ projectId })
+      });
+
+      queryClient.setQueriesData<{ resources: TPamResource[]; totalCount: number }>(
+        { queryKey: pamKeys.listResources({ projectId }) },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            resources: old.resources.map((r) => (r.id === resourceId ? { ...r, isFavorite } : r))
+          };
+        }
+      );
+
+      return { previousQueries };
+    },
+    onError: (_err, _vars, context) => {
+      context?.previousQueries.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+    },
+    onSettled: (_data, _err, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
+    }
+  });
+};
+
 // Accounts
 export const useCreatePamAccount = () => {
   const queryClient = useQueryClient();
@@ -183,21 +234,22 @@ export const useTogglePamAccountDependency = () => {
     mutationFn: async ({
       accountId,
       dependencyId,
-      isEnabled
+      isRotationSyncEnabled
     }: {
       accountId: string;
       dependencyId: string;
-      isEnabled: boolean;
+      isRotationSyncEnabled: boolean;
     }) => {
       const { data } = await apiRequest.patch(
         `/api/v1/pam/accounts/${accountId}/dependencies/${dependencyId}`,
-        { isEnabled }
+        { isRotationSyncEnabled }
       );
 
       return data.dependency;
     },
     onSuccess: (_, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.allResourceDependencies() });
     }
   });
 };
@@ -220,6 +272,7 @@ export const useDeletePamAccountDependency = () => {
     },
     onSuccess: (_, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.allResourceDependencies() });
     }
   });
 };

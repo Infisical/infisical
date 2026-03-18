@@ -27,10 +27,12 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
   const findByResourceId = async (resourceId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.PamAccountDependency)
-        .where({ resourceId })
-        .orderBy("name", "asc");
+        .where(`${TableName.PamAccountDependency}.resourceId`, resourceId)
+        .leftJoin(TableName.PamAccount, `${TableName.PamAccountDependency}.accountId`, `${TableName.PamAccount}.id`)
+        .select(`${TableName.PamAccountDependency}.*`, `${TableName.PamAccount}.name as accountName`)
+        .orderBy(`${TableName.PamAccountDependency}.name`, "asc");
 
-      return docs as TPamAccountDependencies[];
+      return docs as (TPamAccountDependencies & { accountName: string | null })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PAM account dependencies by resource ID" });
     }
@@ -83,14 +85,14 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
       const [doc] = await knex(TableName.PamAccountDependency)
         .insert({
           ...data,
-          isEnabled: false
+          isRotationSyncEnabled: true
         })
         .onConflict(["accountId", "resourceId", "dependencyType", "name"])
         .merge({
           displayName: data.displayName,
           state: data.state,
           data: data.data
-          // Note: isEnabled is NOT merged - preserves admin's explicit enable/disable
+          // Note: isRotationSyncEnabled is NOT merged - preserves admin's explicit enable/disable
         })
         .returning(["*", knex.raw('(xmax = 0) as "isNew"')]);
 

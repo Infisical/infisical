@@ -50,6 +50,7 @@ export const FlyioSyncListItemSchema = z
     name: z.literal("Fly.io"),
     connection: z.literal(AppConnection.Flyio),
     destination: z.literal(SecretSync.Flyio),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Flyio] }));

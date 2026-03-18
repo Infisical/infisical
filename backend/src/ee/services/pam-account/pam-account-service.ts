@@ -95,7 +95,10 @@ type TPamAccountServiceFactoryDep = {
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "findByAccountId" | "updateById">;
+  pamAccountDependenciesDAL: Pick<
+    TPamAccountDependenciesDALFactory,
+    "findByAccountId" | "updateById" | "countByAccountIds"
+  >;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -517,10 +520,16 @@ export const pamAccountServiceFactory = ({
       }
     }
 
+    // Fetch dependency counts for all permitted accounts
+    const permittedAccountIds = decryptedAndPermittedAccounts.map((a) => a.id);
+    const dependencyCountMap =
+      permittedAccountIds.length > 0 ? await pamAccountDependenciesDAL.countByAccountIds(permittedAccountIds) : {};
+
     return {
       accounts: decryptedAndPermittedAccounts.map((a) => ({
         ...a,
-        metadata: metadataByAccountId[a.id] || []
+        metadata: metadataByAccountId[a.id] || [],
+        dependencyCount: dependencyCountMap[a.id] || 0
       })),
       totalCount
     };

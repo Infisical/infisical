@@ -1,0 +1,287 @@
+import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import { createNotification } from "@app/components/notifications";
+import {
+  Button,
+  FilterableSelect,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from "@app/components/v2";
+import { useProject } from "@app/context";
+import {
+  CaSigningConfigType,
+  useCreateCaSigningConfig,
+  useGetCaSigningConfig,
+  useInstallCaCertificateVenafi,
+  useUpdateCaSigningConfig
+} from "@app/hooks/api";
+import {
+  TAvailableAppConnection,
+  useListAvailableAppConnections
+} from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import {
+  TVenafiApplication,
+  TVenafiIssuingTemplate,
+  useVenafiConnectionListApplications,
+  useVenafiConnectionListIssuingTemplates
+} from "@app/hooks/api/appConnections/venafi";
+import { UsePopUpState } from "@app/hooks/usePopUp";
+
+const schema = z.object({
+  appConnectionId: z.string().min(1, "App connection is required"),
+  applicationId: z.string().min(1, "Application is required"),
+  issuingTemplateId: z.string().min(1, "Issuing Template is required"),
+  validityPeriod: z.coerce
+    .number()
+    .int()
+    .min(1, "Must be at least 1 day")
+    .optional()
+    .or(z.literal("")),
+  maxPathLength: z.string()
+});
+
+type FormData = z.infer<typeof schema>;
+
+type Props = {
+  caId: string;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["installCaCert"]>, state?: boolean) => void;
+};
+
+export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
+  const { currentProject } = useProject();
+
+  const { data: availableVenafiConnections, isPending: isVenafiPending } =
+    useListAvailableAppConnections(AppConnection.Venafi, currentProject.id);
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { isSubmitting }
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      maxPathLength: "-1"
+    }
+  });
+
+  const selectedConnectionId = watch("appConnectionId");
+  const selectedApplicationId = watch("applicationId");
+
+  const { data: applications = [], isPending: isApplicationsLoading } =
+    useVenafiConnectionListApplications(selectedConnectionId ?? "", {
+      enabled: !!selectedConnectionId
+    });
+
+  const { data: issuingTemplates = [], isPending: isTemplatesLoading } =
+    useVenafiConnectionListIssuingTemplates(
+      selectedConnectionId ?? "",
+      selectedApplicationId ?? "",
+      {
+        enabled: !!selectedConnectionId && !!selectedApplicationId
+      }
+    );
+
+  const { data: existingSigningConfig } = useGetCaSigningConfig(caId, { enabled: !!caId });
+  const { mutateAsync: createSigningConfig } = useCreateCaSigningConfig();
+  const { mutateAsync: updateSigningConfig } = useUpdateCaSigningConfig();
+  const { mutateAsync: installVenafiCert } = useInstallCaCertificateVenafi(currentProject.id);
+
+  const onFormSubmit = async ({
+    appConnectionId,
+    applicationId,
+    issuingTemplateId,
+    validityPeriod,
+    maxPathLength
+  }: FormData) => {
+    if (!caId) return;
+
+    try {
+      const signingConfigPayload = {
+        applicationId,
+        issuingTemplateId,
+        ...(typeof validityPeriod === "number" && { validityPeriod })
+      };
+
+      if (existingSigningConfig?.type === CaSigningConfigType.VENAFI) {
+        await updateSigningConfig({
+          caId,
+          appConnectionId,
+          destinationConfig: signingConfigPayload
+        });
+      } else {
+        await createSigningConfig({
+          caId,
+          type: CaSigningConfigType.VENAFI,
+          appConnectionId,
+          destinationConfig: signingConfigPayload
+        });
+      }
+
+      await installVenafiCert({
+        caId,
+        maxPathLength: Number(maxPathLength)
+      });
+
+      reset();
+      handlePopUpToggle("installCaCert", false);
+      createNotification({
+        text: "Certificate installation has been queued",
+        type: "success"
+      });
+    } catch (err) {
+      createNotification({
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          "Failed to install certificate via Venafi",
+        type: "error"
+      });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      <Controller
+        control={control}
+        name="appConnectionId"
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <FormControl
+            label="Venafi Connection"
+            errorText={error?.message}
+            isError={Boolean(error)}
+            isRequired
+          >
+            <FilterableSelect
+              isLoading={isVenafiPending}
+              value={(availableVenafiConnections || []).find((conn) => conn.id === value)}
+              onChange={(option) => {
+                const selected = option as SingleValue<TAvailableAppConnection>;
+                onChange(selected?.id ?? "");
+                setValue("applicationId", "");
+                setValue("issuingTemplateId", "");
+              }}
+              options={availableVenafiConnections || []}
+              placeholder="Select a Venafi connection..."
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.id}
+            />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="applicationId"
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <FormControl
+            label="Application"
+            errorText={error?.message}
+            isError={Boolean(error)}
+            isRequired
+          >
+            <FilterableSelect
+              isLoading={isApplicationsLoading && !!selectedConnectionId}
+              isDisabled={!selectedConnectionId}
+              value={applications.find((app) => app.id === value)}
+              onChange={(option) => {
+                const selected = option as SingleValue<TVenafiApplication>;
+                onChange(selected?.id ?? "");
+                setValue("issuingTemplateId", "");
+              }}
+              options={applications}
+              placeholder={
+                selectedConnectionId ? "Select an application..." : "Select a connection first"
+              }
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.id}
+            />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="issuingTemplateId"
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <FormControl
+            label="Issuing Template"
+            errorText={error?.message}
+            isError={Boolean(error)}
+            isRequired
+          >
+            <FilterableSelect
+              isLoading={isTemplatesLoading && !!selectedApplicationId}
+              isDisabled={!selectedApplicationId}
+              value={issuingTemplates.find((tmpl) => tmpl.id === value)}
+              onChange={(option) => {
+                const selected = option as SingleValue<TVenafiIssuingTemplate>;
+                onChange(selected?.id ?? "");
+              }}
+              options={issuingTemplates}
+              placeholder={
+                selectedApplicationId
+                  ? "Select an issuing template..."
+                  : "Select an application first"
+              }
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.id}
+            />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="validityPeriod"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Validity Period (Days)"
+            errorText={error?.message}
+            isError={Boolean(error)}
+            helperText="Number of days the certificate should be valid"
+          >
+            <Input {...field} type="number" placeholder="365" />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="maxPathLength"
+        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+          <FormControl label="Path Length" errorText={error?.message} isError={Boolean(error)}>
+            <Select {...field} onValueChange={onChange} className="w-full">
+              {[-1, 0, 1, 2, 3].map((value) => (
+                <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
+                  {String(value)}
+                </SelectItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+      />
+      <div className="flex items-center">
+        <Button
+          className="mr-4"
+          size="sm"
+          type="submit"
+          isLoading={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          Install
+        </Button>
+        <Button
+          colorSchema="secondary"
+          variant="plain"
+          onClick={() => handlePopUpToggle("installCaCert", false)}
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+};

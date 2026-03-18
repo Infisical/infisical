@@ -47,6 +47,7 @@ export const DigitalOceanAppPlatformSyncListItemSchema = z
     name: z.literal("Digital Ocean App Platform"),
     connection: z.literal(AppConnection.DigitalOcean),
     destination: z.literal(SecretSync.DigitalOceanAppPlatform),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.DigitalOceanAppPlatform] }));

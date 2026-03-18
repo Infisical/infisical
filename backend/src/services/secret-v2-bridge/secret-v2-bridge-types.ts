@@ -4,7 +4,11 @@ import { SecretType, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { PersonalOverridesBehavior, SecretsOrderBy } from "@app/services/secret/secret-types";
+import {
+  PersonalOverridesBehavior,
+  SecretImportReferencesBehavior,
+  SecretsOrderBy
+} from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
@@ -34,6 +38,7 @@ export enum SecretUpdateMode {
 export type TGetSecretsDTO = {
   expandSecretReferences?: boolean;
   personalOverridesBehavior: PersonalOverridesBehavior;
+  secretImportReferencesBehavior: SecretImportReferencesBehavior;
   expandPersonalOverrides?: boolean;
   path: string;
   environment: string;

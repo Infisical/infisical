@@ -295,7 +295,7 @@ export const secretSyncQueueFactory = ({
           value: secretValue,
           secretKey
         });
-        secretMap[secretKey] = { value: expandedSecretValue || "" };
+        secretMap[secretKey] = { value: expandedSecretValue || "", id: secret.id };
 
         if (secret.encryptedComment) {
           const commentValue = decryptSecretValue(secret.encryptedComment);
@@ -335,6 +335,7 @@ export const secretSyncQueueFactory = ({
               skipMultilineEncoding: importedSecret.skipMultilineEncoding,
               comment: importedSecret.secretComment,
               value: importedSecret.secretValue || "",
+              id: importedSecret.id,
               secretMetadata: importedSecret.secretMetadata
             };
           }

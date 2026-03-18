@@ -3,6 +3,8 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 
+import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
+import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { isLoggedIn } from "@app/hooks/api/reactQuery";
 
 import { InitialStep, SSOStep } from "./components";
@@ -64,7 +66,8 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   };
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-6">
+      <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -72,19 +75,22 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
-      <Link to="/">
-        <div className="mt-20 mb-4 flex justify-center">
-          <img
-            src="/images/gradientLogo.svg"
-            style={{
-              height: "90px",
-              width: "120px"
-            }}
-            alt="Infisical logo"
-          />
-        </div>
-      </Link>
-      <div className="pb-28">{renderView()}</div>
+      <div className="relative z-10 my-auto flex flex-col items-center py-10">
+        <Link to="/">
+          <div className="mb-4 flex justify-center">
+            <img
+              src="/images/gradientLogo.svg"
+              style={{
+                height: "90px",
+                width: "120px"
+              }}
+              alt="Infisical logo"
+            />
+          </div>
+        </Link>
+        {renderView()}
+      </div>
+      <AuthPageFooter />
     </div>
   );
 };
