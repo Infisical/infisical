@@ -108,17 +108,7 @@ const executeIloShell = (conn: Client, command: string): Promise<string> => {
 };
 
 const createIloConnection = (config: TSshConnectionConfig, targetHost: string, targetPort: number): Promise<Client> => {
-  return getSshConnectionClient(
-    {
-      ...config,
-      algorithms: {
-        serverHostKey: ["ssh-rsa"],
-        kex: ["diffie-hellman-group14-sha1", "diffie-hellman-group1-sha1"]
-      }
-    },
-    targetHost,
-    targetPort
-  );
+  return getSshConnectionClient(config, targetHost, targetPort);
 };
 
 const rotateIloPasswordAsTarget = async (
