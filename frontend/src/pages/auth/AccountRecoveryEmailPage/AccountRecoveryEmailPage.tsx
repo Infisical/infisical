@@ -81,7 +81,7 @@ export const AccountRecoveryEmailPage = () => {
                 </UnstableCardTitle>
               </UnstableCardHeader>
               <UnstableCardContent>
-                <p className="mb-4 text-sm text-muted">
+                <p className="mb-4 text-sm text-label">
                   Enter your email to start the recovery process. You will receive an email with
                   instructions.
                 </p>
@@ -101,9 +101,9 @@ export const AccountRecoveryEmailPage = () => {
                     Continue
                   </Button>
                 </div>
-                <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+                <div className="mt-6 flex flex-row justify-center text-xs text-label">
                   <Link to="/login">
-                    <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                    <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                       Back to Login
                     </span>
                   </Link>
@@ -124,9 +124,9 @@ export const AccountRecoveryEmailPage = () => {
                 If the email is in our system, you will receive an email at{" "}
                 <span className="italic">{email}</span> to initiate the account recovery process.
               </p>
-              <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+              <div className="mt-6 flex flex-row justify-center text-xs text-label">
                 <Link to="/login">
-                  <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                  <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                     Back to Login
                   </span>
                 </Link>
