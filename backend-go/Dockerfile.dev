@@ -1,0 +1,15 @@
+FROM golang:1.26-alpine
+
+RUN apk add --no-cache git && \
+    go install github.com/air-verse/air@latest
+
+WORKDIR /app
+
+# Cache dependencies first.
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Source is volume-mounted at runtime for live reload.
+COPY . .
+
+ENTRYPOINT ["air", "-c", ".air.toml"]

@@ -20,6 +20,10 @@ gen-goa:
 gen-db:
 	go run ./cmd/dev/pg_gen/main.go
 
+# Start Go backend with hot-reload (uses root docker-compose.dev.yml)
+dev:
+	cd .. && docker compose -f docker-compose.dev.yml --profile go up --build backend-go
+
 # Build the server binary
 build:
 	go build -o infisical ./cmd/infisical/...
