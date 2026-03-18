@@ -427,7 +427,6 @@ export type TQueueSecretSyncSyncSecretsByIdDTO = {
   syncId: string;
   failedToAcquireLockCount?: number;
   auditLogInfo?: AuditLogInfo;
-  destination?: SecretSync;
 };
 
 export type TTriggerSecretSyncSyncSecretsByIdDTO = {

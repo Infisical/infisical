@@ -41,9 +41,7 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import {
   SECRET_SYNC_DAILY_RETRY_DESTINATIONS,
-  SECRET_SYNC_NAME_MAP,
-  SECRET_SYNC_RETRY_CONFIG_MAP,
-  TSecretSyncRetryConfig
+  SECRET_SYNC_NAME_MAP
 } from "@app/services/secret-sync/secret-sync-maps";
 import {
   SecretSyncAction,
@@ -76,7 +74,7 @@ import { TNotificationServiceFactory } from "../notification/notification-servic
 import { NotificationType } from "../notification/notification-types";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 
-const DEFAULT_SECRET_SYNC_RETRY_CONFIG: TSecretSyncRetryConfig = {
+const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
   attempts: 5,
   backoff: { type: "exponential", delay: 3000 }
 };
@@ -357,9 +355,7 @@ export const secretSyncQueueFactory = ({
   };
 
   const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) => {
-    const { attempts, backoff } = payload.destination
-      ? SECRET_SYNC_RETRY_CONFIG_MAP[payload.destination]
-      : DEFAULT_SECRET_SYNC_RETRY_CONFIG;
+    const { attempts, backoff } = DEFAULT_SECRET_SYNC_RETRY_CONFIG;
     return queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncSyncSecrets, payload, {
       delay: getRequeueDelay(payload.failedToAcquireLockCount),
       attempts,
@@ -1042,8 +1038,7 @@ export const secretSyncQueueFactory = ({
     await Promise.all(
       secretSyncs.map((secretSync) =>
         queueSecretSyncSyncSecretsById({
-          syncId: secretSync.id,
-          destination: secretSync.destination as SecretSync
+          syncId: secretSync.id
         })
       )
     );
@@ -1206,8 +1201,7 @@ export const secretSyncQueueFactory = ({
     await Promise.all(
       failedSyncs.map((sync) =>
         queueSecretSyncSyncSecretsById({
-          syncId: sync.id,
-          destination: sync.destination as SecretSync
+          syncId: sync.id
         })
       )
     );
