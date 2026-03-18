@@ -420,8 +420,7 @@ export const secretSyncServiceFactory = ({
 
       if (secretSync.isAutoSyncEnabled)
         await secretSyncQueue.queueSecretSyncSyncSecretsById({
-          syncId: secretSync.id,
-          destination: params.destination as SecretSync
+          syncId: secretSync.id
         });
 
       return secretSync as TSecretSync;
@@ -603,8 +602,7 @@ export const secretSyncServiceFactory = ({
 
       if (updatedSecretSync.isAutoSyncEnabled)
         await secretSyncQueue.queueSecretSyncSyncSecretsById({
-          syncId: secretSync.id,
-          destination: secretSync.destination as SecretSync
+          syncId: secretSync.id
         });
 
       return updatedSecretSync as TSecretSync;
@@ -726,7 +724,7 @@ export const secretSyncServiceFactory = ({
     if (isSyncJobRunning)
       throw new BadRequestError({ message: `A job for this sync is already in progress. Please try again shortly.` });
 
-    await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId, destination, ...params });
+    await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId, ...params });
 
     const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
       syncStatus: SecretSyncStatus.Pending
