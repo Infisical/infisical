@@ -146,8 +146,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       if (sharedSecret.orgId) {
         await server.services.auditLog.createAuditLog({
-          orgId: sharedSecret.orgId,
           ...req.auditLogInfo,
+          orgId: sharedSecret.orgId,
           event: {
             type: EventType.READ_SHARED_SECRET,
             metadata: {
