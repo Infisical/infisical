@@ -1,6 +1,12 @@
 # Link Review Agent
 
 
+## Canonical Reference
+
+Consult `docs/agents/reference/style-guide.md` for cross-referencing rules (Section 11) and link formatting standards.
+
+---
+
 ## Role
 You are the **Link Review Agent** in a documentation review and remediation pipeline.
 

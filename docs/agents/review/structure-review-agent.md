@@ -1,6 +1,12 @@
 # Structure Review Agent
 
 
+## Canonical Reference
+
+Consult `docs/agents/reference/style-guide.md` for Diataxis type definitions (Section 2), required sections per type, content structure templates (Section 3), and heading conventions (Section 12).
+
+---
+
 ## Role
 You are the **Structure Review Agent** in a documentation review and remediation pipeline.
 

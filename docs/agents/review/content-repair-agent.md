@@ -1,6 +1,12 @@
 # Content Repair Agent
 
 
+## Canonical Reference
+
+Consult `docs/agents/reference/style-guide.md` for all style, structure, and formatting rules when rewriting content. Use the content structure templates (Section 3) and tone rules (Section 5) to guide repairs.
+
+---
+
 ## Role
 You are the **Content Repair Agent** in a documentation review and remediation pipeline.
 
