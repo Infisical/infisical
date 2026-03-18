@@ -5,13 +5,26 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { SshConnectionMethod } from "./ssh-connection-enums";
 import { TSshConnectionConfig } from "./ssh-connection-types";
 
-const SSH_TIMEOUT = 15_000;
+const SSH_TIMEOUT = 45_000;
+const SSH_RETRY_DELAY = 5_000;
+const SSH_MAX_RETRIES = 2;
+
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+export type TSshConnectionOptions = {
+  maxRetries?: number;
+  retryDelay?: number;
+};
 
 export const getSshConnectionListItem = () => {
   return {
@@ -21,7 +34,7 @@ export const getSshConnectionListItem = () => {
   };
 };
 
-export const getSshConnectionClient = async (
+const attemptSshConnection = (
   credentials: TSshConnectionConfig,
   targetHost: string,
   targetPort: number
@@ -39,7 +52,6 @@ export const getSshConnectionClient = async (
     client.on("error", (err: Error) => {
       client.destroy();
       if (err instanceof Error) {
-        // Check for common authentication failure messages
         if (
           err.message.includes("authentication") ||
           err.message.includes("All configured authentication methods failed") ||
@@ -94,6 +106,52 @@ export const getSshConnectionClient = async (
   });
 };
 
+const isRetryableError = (errorMessage: string): boolean => {
+  return errorMessage.toLowerCase().includes("timeout");
+};
+
+export const getSshConnectionClient = async (
+  credentials: TSshConnectionConfig,
+  targetHost: string,
+  targetPort: number,
+  options?: TSshConnectionOptions
+): Promise<Client> => {
+  const maxRetries = options?.maxRetries ?? SSH_MAX_RETRIES;
+  const retryDelay = options?.retryDelay ?? SSH_RETRY_DELAY;
+
+  let lastError: Error | null = null;
+
+  // eslint-disable-next-line no-await-in-loop -- Intentional sequential retry logic
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+    try {
+      logger.info(`SSH connection attempt ${attempt}/${maxRetries} to ${targetHost}:${targetPort}`);
+      // eslint-disable-next-line no-await-in-loop
+      const client = await attemptSshConnection(credentials, targetHost, targetPort);
+      if (attempt > 1) {
+        logger.info(`SSH connection succeeded on attempt ${attempt}`);
+      }
+      return client;
+    } catch (error) {
+      lastError = error as Error;
+      const errorMessage = lastError.message ?? "";
+
+      logger.info(`SSH connection attempt ${attempt} failed: ${errorMessage}`);
+
+      if (!isRetryableError(errorMessage)) {
+        throw lastError;
+      }
+
+      if (attempt < maxRetries) {
+        logger.info(`Retrying SSH connection in ${retryDelay}ms...`);
+        // eslint-disable-next-line no-await-in-loop
+        await delay(retryDelay);
+      }
+    }
+  }
+
+  throw lastError ?? new Error("SSH connection failed after all retries");
+};
+
 export const executeWithPotentialGateway = async <T>(
   config: TSshConnectionConfig,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
@@ -137,16 +195,24 @@ export const validateSshConnectionCredentials = async (
   _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
+  const { credentials } = config;
+  logger.info(`SSH connection validation: Attempting connection to ${credentials.host}:${credentials.port}`);
+
   try {
     await executeWithPotentialGateway(config, gatewayV2Service, async (targetHost, targetPort) => {
+      logger.info(`SSH connection validation: Connecting to ${targetHost}:${targetPort}`);
       const client = await getSshConnectionClient(config, targetHost, targetPort);
-      client.destroy(); // Clean up after successful connection
+      logger.info("SSH connection validation: Connection successful");
+      client.destroy();
     });
 
     return config.credentials;
   } catch (error) {
+    const errorMessage = (error as Error)?.message ?? "";
+    logger.info(`SSH connection validation: Failed with error: ${errorMessage}`);
+
     throw new BadRequestError({
-      message: `Unable to validate connection: ${(error as Error)?.message ?? "verify credentials"}`
+      message: `Unable to validate connection: ${errorMessage || "verify credentials"}`
     });
   }
 };
