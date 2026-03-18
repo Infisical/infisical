@@ -13,8 +13,8 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-// ParsedDBReadReplica represents a single parsed DB read replica from DB_READ_REPLICAS JSON.
-type ParsedDBReadReplica struct {
+// DBReadReplica represents a single parsed DB read replica from DB_READ_REPLICAS JSON.
+type DBReadReplica struct {
 	DBConnectionURI string `json:"DB_CONNECTION_URI"`
 	DBRootCert      string `json:"DB_ROOT_CERT,omitempty"`
 }
@@ -56,7 +56,7 @@ type Config struct {
 	DBUser                  string `koanf:"DB_USER"`
 	DBPassword              string `koanf:"DB_PASSWORD"`
 	DBName                  string `koanf:"DB_NAME"`
-	DBReadReplicas          string `koanf:"DB_READ_REPLICAS"`
+	DBReadReplicasRaw       string `koanf:"DB_READ_REPLICAS"`
 	AuditLogsDBConnectionURI string `koanf:"AUDIT_LOGS_DB_CONNECTION_URI"`
 	AuditLogsDBRootCert     string `koanf:"AUDIT_LOGS_DB_ROOT_CERT"`
 
@@ -368,7 +368,7 @@ type Config struct {
 	IsHsmConfigured                bool
 	IsSecretScanningConfigured     bool
 	IsSecretScanningV2Configured   bool
-	ParsedDBReadReplicas           []ParsedDBReadReplica
+	DBReadReplicas           []DBReadReplica
 	ParsedRedisSentinelHosts       []RedisHostPort
 	ParsedRedisClusterHosts        []RedisHostPort
 	ParsedRedisReadReplicas        []RedisHostPort
@@ -516,8 +516,8 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Parse DB_READ_REPLICAS JSON: [{ "DB_CONNECTION_URI": "...", "DB_ROOT_CERT": "..." }, ...]
-	if cfg.DBReadReplicas != "" {
-		if err := json.Unmarshal([]byte(cfg.DBReadReplicas), &cfg.ParsedDBReadReplicas); err != nil {
+	if cfg.DBReadReplicasRaw != "" {
+		if err := json.Unmarshal([]byte(cfg.DBReadReplicasRaw), &cfg.DBReadReplicas); err != nil {
 			return nil, fmt.Errorf("parsing DB_READ_REPLICAS: %w", err)
 		}
 	}

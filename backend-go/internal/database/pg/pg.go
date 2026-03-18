@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"math/rand/v2"
@@ -11,23 +12,23 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/infisical/api/internal/config"
 )
 
-// DBReadReplica holds connection details for a single read replica.
-type DBReadReplica struct {
-	DBConnectionURI string
-	DBRootCert      string
-}
-
-// DB wraps a primary pgxpool and zero or more read-replica pools.
+// DB wraps a primary pgxpool and zero or more read-replica pools,
+// exposing them as *sql.DB for compatibility with go-jet and database/sql consumers.
 type DB struct {
-	primary  *pgxpool.Pool
-	replicas []*pgxpool.Pool
+	primary     *pgxpool.Pool
+	replicas    []*pgxpool.Pool
+	primarySQL  *sql.DB
+	replicaSQL  []*sql.DB
 }
 
 // NewPostgresDB creates a connection pool for the primary database and optional read replicas.
 // primaryRootCert is used as fallback for replicas that don't specify their own cert.
-func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, readReplicas []DBReadReplica) (*DB, error) {
+func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, readReplicas []config.DBReadReplica) (*DB, error) {
 	primaryPool, err := openPool(ctx, primaryURI, primaryRootCert)
 	if err != nil {
 		return nil, fmt.Errorf("primary db: %w", err)
@@ -53,30 +54,51 @@ func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, read
 		replicaPools = append(replicaPools, pool)
 	}
 
-	return &DB{primary: primaryPool, replicas: replicaPools}, nil
+	// Wrap pgxpool.Pool as *sql.DB for go-jet / database/sql compatibility.
+	primarySQLDB := stdlib.OpenDBFromPool(primaryPool)
+	replicaSQLDBs := make([]*sql.DB, len(replicaPools))
+	for i, p := range replicaPools {
+		replicaSQLDBs[i] = stdlib.OpenDBFromPool(p)
+	}
+
+	return &DB{
+		primary:    primaryPool,
+		replicas:   replicaPools,
+		primarySQL: primarySQLDB,
+		replicaSQL: replicaSQLDBs,
+	}, nil
 }
 
-// Primary returns the primary connection pool.
-func (db *DB) Primary() *pgxpool.Pool {
+// Primary returns the primary database as *sql.DB.
+func (db *DB) Primary() *sql.DB {
+	return db.primarySQL
+}
+
+// Replica returns a random read-replica as *sql.DB, or the primary if no replicas are configured.
+// Matches the Node.js behavior: Math.floor(Math.random() * readReplicaDbs.length).
+func (db *DB) Replica() *sql.DB {
+	if len(db.replicaSQL) == 0 {
+		return db.primarySQL
+	}
+	return db.replicaSQL[rand.IntN(len(db.replicaSQL))]
+}
+
+// ReplicaCount returns the number of read replicas configured.
+func (db *DB) ReplicaCount() int {
+	return len(db.replicas)
+}
+
+// PrimaryPool returns the underlying primary pgxpool.Pool for operations that need it directly.
+func (db *DB) PrimaryPool() *pgxpool.Pool {
 	return db.primary
 }
 
-// Replica returns a random read-replica pool, or the primary if no replicas are configured.
-// Matches the Node.js behavior: Math.floor(Math.random() * readReplicaDbs.length).
-func (db *DB) Replica() *pgxpool.Pool {
-	if len(db.replicas) == 0 {
-		return db.primary
-	}
-	return db.replicas[rand.IntN(len(db.replicas))]
-}
-
-// Replicas returns all read-replica pools.
-func (db *DB) Replicas() []*pgxpool.Pool {
-	return db.replicas
-}
-
-// Close closes all connection pools (primary + replicas).
+// Close closes all connection pools (primary + replicas) and their sql.DB wrappers.
 func (db *DB) Close() {
+	db.primarySQL.Close()
+	for _, s := range db.replicaSQL {
+		s.Close()
+	}
 	db.primary.Close()
 	for _, r := range db.replicas {
 		r.Close()
