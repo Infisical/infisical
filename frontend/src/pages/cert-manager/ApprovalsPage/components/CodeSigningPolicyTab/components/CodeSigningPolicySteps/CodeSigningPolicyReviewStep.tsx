@@ -9,15 +9,6 @@ import { ApproverType } from "@app/hooks/api/approvalPolicies";
 
 import { TCodeSigningPolicyForm } from "../CodeSigningPolicySchema";
 
-const deriveApprovalModeLabel = (constraints: TCodeSigningPolicyForm["constraints"]): string => {
-  const hasTime = Boolean(constraints.maxWindowDuration);
-  const hasCount = Boolean(constraints.maxSignings);
-  if (hasTime && hasCount) return "Combined";
-  if (hasTime) return "Time-based";
-  if (hasCount) return "Count-based";
-  return "Manual (single-use)";
-};
-
 const ReviewField = ({ label, value }: { label: string; value: string | number }) => (
   <div className="flex items-baseline gap-x-4">
     <span className="w-[180px] shrink-0 text-sm text-mineshaft-400">{label}</span>
@@ -54,12 +45,11 @@ export const CodeSigningPolicyReviewStep = () => {
     <div className="space-y-6">
       <div>
         <div className="mb-3 border-b border-mineshaft-600 pb-2">
-          <h3 className="text-sm font-medium text-mineshaft-200">Policy Configuration</h3>
+          <h3 className="text-sm font-medium text-mineshaft-200">Signing Policy Configuration</h3>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
           <ReviewField label="Max. Request TTL" value={maxRequestTtl || "Not set"} />
-          <ReviewField label="Approval Mode" value={deriveApprovalModeLabel(constraints)} />
           {constraints.maxWindowDuration && (
             <ReviewField label="Max Window Duration" value={constraints.maxWindowDuration} />
           )}

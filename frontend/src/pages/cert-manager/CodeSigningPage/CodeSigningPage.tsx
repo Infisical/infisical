@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useProject } from "@app/context";
@@ -26,8 +27,11 @@ enum ApprovalSubTabs {
 export const CodeSigningPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
+  const { tab } = useSearch({ strict: false }) as { tab?: string };
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(CodeSigningTabs.Signers);
+  const [activeTab, setActiveTab] = useState(
+    tab === "approvals" ? CodeSigningTabs.Approvals : CodeSigningTabs.Signers
+  );
   const [approvalSubTab, setApprovalSubTab] = useState(ApprovalSubTabs.Requests);
 
   return (

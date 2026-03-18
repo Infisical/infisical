@@ -26,8 +26,8 @@ sequenceDiagram
 </div>
 
 1. A **Signer** is created and bound to a certificate with the `codeSigning` extended key usage.
-2. Optionally, an **Approval Policy** is attached to govern who can use the signer and under what conditions. Without a policy, authorized users and identities can sign immediately.
-3. When a policy is configured, users or machine identities **request signing access** through the approval workflow. Once approved, the caller receives a **grant** that authorizes signing operations.
+2. Optionally, a **Signing Policy** is attached to govern who can use the signer and under what conditions. Without a policy, authorized users and identities can sign immediately.
+3. When a policy is configured, users or machine identities **request signing access** through the signing workflow. Once approved, the caller receives a **grant** that authorizes signing operations.
 4. The signing tool (e.g., jarsigner) calls the Infisical API, either directly or through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module), and the signature is computed server-side.
 5. Every signing operation is recorded as an immutable **audit entry** on the signer.
 
@@ -35,15 +35,16 @@ sequenceDiagram
 
 ### Signers
 
-A [signer](/documentation/platform/pki/code-signing/signers) is a named code-signing identity bound to a certificate. It represents a signing capability within a project. Signers hold no private key material locally. All cryptographic operations happen on the Infisical server.
+A [signer](/documentation/platform/pki/code-signing/signers) is a named code-signer bound to a certificate. It represents a signing capability within a project. Signers hold no private key material locally. All cryptographic operations happen on the Infisical server.
 
-### Approval Policies
+### Signing Policies
 
-[Approval policies](/documentation/platform/pki/code-signing/approval-policies) optionally define the rules that must be satisfied before signing can occur. When a signer has an approval policy, Infisical supports three approval modes:
+[Signing policies](/documentation/platform/pki/code-signing/signing-policies) optionally define the rules that must be satisfied before signing can occur. Policies support constraints such as:
 
-- **Manual**: Each approval grants exactly one signing operation.
-- **Time Window**: Approval grants signing access for a defined time period.
-- **N-Signings**: Approval grants a fixed number of signing operations.
+- **Time Window**: Signing access is granted for a defined time period. The policy can define a maximum window duration.
+- **N-Signings**: Signing access is granted for a fixed number of operations. The policy can define a maximum number of allowed sign operations.
+
+Without any constraints, each approved request grants exactly one signing operation.
 
 ### Signing Operations
 
@@ -57,9 +58,9 @@ The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-m
 
 <CardGroup cols={2}>
   <Card title="Create a Signer" href="/documentation/platform/pki/code-signing/signers">
-    Set up a code-signing identity and bind it to a certificate.
+    Set up a code-signer and bind it to a certificate.
   </Card>
-  <Card title="Configure Approvals" href="/documentation/platform/pki/code-signing/approval-policies">
-    Define approval policies to control who can sign and when.
+  <Card title="Configure Signing Policies" href="/documentation/platform/pki/code-signing/signing-policies">
+    Define signing policies to control who can sign and when.
   </Card>
 </CardGroup>

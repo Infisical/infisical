@@ -1,26 +1,26 @@
 ---
-title: "Approval Requests"
-sidebarTitle: "Approval Requests"
-description: "Learn how to request, approve, and reject signing access through approval workflows."
+title: "Signing Requests"
+sidebarTitle: "Signing Requests"
+description: "Learn how to request, approve, and reject signing access through signing workflows."
 ---
 
 ## Requesting Signing Access
 
-When a user or machine identity needs to sign artifacts, they must first request signing access through the approval workflow.
+When a user or machine identity needs to sign artifacts, they must first request signing access through the signing workflow.
 
-Head to your Certificate Management Project > **Code Signing > Approvals > Requests** and press **Request Signing Access**.
+Head to your Certificate Management Project > **Code Signing > Approvals > Signing Requests** and press **Request Signing Access**.
 
-![Approval requests page](/images/platform/pki/code-signing/approval-requests.png)
+![Signing requests page](/images/platform/pki/code-signing/approval-requests.png)
 
 <Steps>
   <Step title="Selecting a signer and configuring parameters">
-    Select the signer you want to use. The form will automatically load the approval mode associated with that signer's policy.
+    Select the signer you want to use. The form will automatically load the constraints associated with that signer's policy.
 
-    Depending on the approval mode, provide the required parameters:
+    Depending on the policy constraints, provide the required parameters:
 
-    - **Manual**: No additional parameters needed.
-    - **Time Window**: Specify the **Window Start** and **Window End** for when you need signing access.
-    - **N-Signings**: Specify the **Number of Signings** you need.
+    - **No constraints**: No additional parameters needed. The grant will allow a single signing operation.
+    - **Time Window**: Specify the **Valid From** and **Valid Until** dates for when you need signing access.
+    - **N-Signings**: Specify the **Allowed Sign Operations** you need.
     - **Justification**: Optionally provide a reason for the request (e.g., "Release v2.4.0 signing").
 
     ![Request signing access](/images/platform/pki/code-signing/request-access-params.png)
@@ -32,7 +32,7 @@ Head to your Certificate Management Project > **Code Signing > Approvals > Reque
 
 ## Viewing Requests
 
-Head to **Code Signing > Approvals > Requests** to view all approval requests. You can filter requests by status:
+Head to **Code Signing > Approvals > Signing Requests** to view all signing requests. You can filter requests by status:
 
 - **Open**: Requests currently pending approval
 - **Approved**: Requests that have been approved and grants issued
@@ -46,13 +46,13 @@ Head to **Code Signing > Approvals > Requests** to view all approval requests. Y
   <Step title="Opening the request">
     Press on a pending request to view its details.
 
-    ![Approval request detail](/images/platform/pki/code-signing/approval-request-detail.png)
+    ![Signing request detail](/images/platform/pki/code-signing/approval-request-detail.png)
   </Step>
   <Step title="Reviewing the request details">
     Review the signing access request information including:
     - Requester name
     - Signer name and certificate
-    - Approval mode and parameters (time window, signing count, etc.)
+    - Grant parameters (valid from/until, allowed sign operations, etc.)
     - Justification
   </Step>
   <Step title="Approve or add comments">

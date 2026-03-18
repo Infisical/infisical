@@ -52,7 +52,7 @@ export const CodeSigningPolicyTab = () => {
       <div className="mb-4 flex items-center">
         <div className="flex-1">
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Approval Policies</p>
+            <p className="text-xl font-medium text-mineshaft-100">Signing Policies</p>
           </div>
           <p className="text-sm text-bunker-300">
             Define policies that require approval before signing operations
@@ -74,7 +74,7 @@ export const CodeSigningPolicyTab = () => {
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
         deleteKey="delete"
-        title="Are you sure you want to delete this policy?"
+        title="Are you sure you want to delete this signing policy?"
         onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
         onDeleteApproved={handleDeletePolicy}
       />

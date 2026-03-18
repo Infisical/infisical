@@ -200,13 +200,6 @@ export const CodeSigningGrantsTab = () => {
     }
   };
 
-  const getGrantModeLabel = (attrs: CodeSigningGrantAttributes) => {
-    if (attrs.maxSignings === 1) return "Manual";
-    if (attrs.maxSignings && attrs.maxSignings > 1) return `${attrs.maxSignings} signings`;
-    if (attrs.windowStart) return "Time Window";
-    return "-";
-  };
-
   const isTableFiltered = filter !== ApprovalGrantStatus.Active;
 
   return (
@@ -303,7 +296,6 @@ export const CodeSigningGrantsTab = () => {
               <Tr>
                 <Th>Grantee</Th>
                 <Th>Signer</Th>
-                <Th>Mode</Th>
                 <Th>Status</Th>
                 <Th>Granted</Th>
                 <Th>Expires</Th>
@@ -311,7 +303,7 @@ export const CodeSigningGrantsTab = () => {
               </Tr>
             </THead>
             <TBody>
-              {isGrantsLoading && <TableSkeleton columns={7} innerKey="cs-grants" />}
+              {isGrantsLoading && <TableSkeleton columns={6} innerKey="cs-grants" />}
               {!isGrantsLoading &&
                 paginatedGrants.map((grant) => {
                   const attrs = grant.attributes as CodeSigningGrantAttributes;
@@ -323,11 +315,6 @@ export const CodeSigningGrantsTab = () => {
                       <Td>
                         <span className="text-sm text-mineshaft-200">
                           {attrs.signerName || "-"}
-                        </span>
-                      </Td>
-                      <Td>
-                        <span className="text-sm text-mineshaft-200">
-                          {getGrantModeLabel(attrs)}
                         </span>
                       </Td>
                       <Td>

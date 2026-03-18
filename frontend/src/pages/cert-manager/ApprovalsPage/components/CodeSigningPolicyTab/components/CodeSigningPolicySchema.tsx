@@ -26,7 +26,10 @@ export const CodeSigningPolicyFormSchema = z.object({
   ).nullish(),
   constraints: z.object({
     maxWindowDuration: DurationSchema().optional(),
-    maxSignings: z.coerce.number().int().positive().optional()
+    maxSignings: z.preprocess(
+      (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
+      z.number().int().positive().optional()
+    )
   }),
   bypassForMachineIdentities: z.boolean().optional().default(false),
   steps: ApprovalStepsSchema

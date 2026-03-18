@@ -241,7 +241,7 @@ const Content = ({ onOpenChange }: Props) => {
             control={control}
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Window Start"
+                label="Valid From"
                 errorText={error?.message}
                 isError={Boolean(error?.message)}
               >
@@ -254,7 +254,7 @@ const Content = ({ onOpenChange }: Props) => {
             control={control}
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Window End"
+                label="Valid Until"
                 errorText={error?.message}
                 isError={Boolean(error?.message)}
               >

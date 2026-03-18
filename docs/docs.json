@@ -760,8 +760,8 @@
                       {
                         "group": "Approvals",
                         "pages": [
-                          "documentation/platform/pki/code-signing/approval-policies",
-                          "documentation/platform/pki/code-signing/approval-requests",
+                          "documentation/platform/pki/code-signing/signing-policies",
+                          "documentation/platform/pki/code-signing/signing-requests",
                           "documentation/platform/pki/code-signing/grants"
                         ]
                       },

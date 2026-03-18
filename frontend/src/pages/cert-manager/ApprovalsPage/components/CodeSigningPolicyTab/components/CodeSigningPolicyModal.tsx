@@ -54,7 +54,7 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       name: "",
       maxRequestTtl: null,
       constraints: {
-        maxWindowDuration: undefined,
+        maxWindowDuration: "",
         maxSignings: undefined
       },
       bypassForMachineIdentities: false,
@@ -81,7 +81,7 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
         name: policyData.policy.name,
         maxRequestTtl: policyData.policy.maxRequestTtl,
         constraints: {
-          maxWindowDuration: constraints.maxWindowDuration,
+          maxWindowDuration: constraints.maxWindowDuration ?? "",
           maxSignings: constraints.maxSignings
         },
         bypassForMachineIdentities: policyData.policy.bypassForMachineIdentities ?? false,
@@ -115,11 +115,19 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onSubmit = async (data: TCodeSigningPolicyForm) => {
     if (!currentProject?.id) return;
 
+    const cleanedData = {
+      ...data,
+      constraints: {
+        maxWindowDuration: data.constraints.maxWindowDuration || undefined,
+        maxSignings: data.constraints.maxSignings || undefined
+      }
+    };
+
     if (policyData?.policyId) {
       await updatePolicy({
         policyType: ApprovalPolicyType.CertCodeSigning,
         policyId: policyData.policyId,
-        ...data
+        ...cleanedData
       });
       createNotification({
         text: "Successfully updated policy",
@@ -130,7 +138,7 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
         policyType: ApprovalPolicyType.CertCodeSigning,
         projectId: currentProject.id,
         conditions: [],
-        ...data
+        ...cleanedData
       });
       createNotification({
         text: "Successfully created policy",
@@ -183,12 +191,8 @@ export const CodeSigningPolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={(open) => handlePopUpToggle("policy", open)}>
       <ModalContent
-        title={
-          policyData?.policyId
-            ? "Edit Code Signing Approval Policy"
-            : "Create Code Signing Approval Policy"
-        }
-        subTitle="Configure a code signing approval policy requiring approval before signing operations"
+        title={policyData?.policyId ? "Edit Signing Policy" : "Create Signing Policy"}
+        subTitle="Configure a signing policy requiring approval before signing operations"
         className="max-w-3xl"
       >
         <FormProvider {...formMethods}>

@@ -63,19 +63,13 @@ export const CodeSigningPolicyDetailsStep = () => {
             label="Max Window Duration"
             isError={Boolean(error)}
             errorText={error?.message}
-            helperText="Maximum signing window duration (e.g., 1h, 1d). Leave empty for single-use approval."
+            helperText="Maximum signing window duration (e.g., 1h, 1d)"
           >
             <Input
               {...field}
-              value={field.value || ""}
+              value={field.value ?? ""}
               placeholder="e.g., 1h"
-              onChange={(e) => {
-                if (!e.target.value || e.target.value === "") {
-                  field.onChange(undefined);
-                  return;
-                }
-                field.onChange(e.target.value);
-              }}
+              onChange={(e) => field.onChange(e.target.value)}
             />
           </FormControl>
         )}
@@ -89,20 +83,13 @@ export const CodeSigningPolicyDetailsStep = () => {
             label="Max Signings"
             isError={Boolean(error)}
             errorText={error?.message}
-            helperText="Maximum number of signings per approved request. Leave empty for unlimited within the time window."
+            helperText="Maximum number of signings per approved request"
           >
             <Input
               {...field}
-              type="number"
               value={field.value ?? ""}
               placeholder="e.g., 10"
-              onChange={(e) => {
-                if (!e.target.value || e.target.value === "") {
-                  field.onChange(undefined);
-                  return;
-                }
-                field.onChange(Number(e.target.value));
-              }}
+              onChange={(e) => field.onChange(e.target.value)}
             />
           </FormControl>
         )}

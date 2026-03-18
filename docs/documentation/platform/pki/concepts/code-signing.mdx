@@ -23,7 +23,7 @@ Without code signing, there is no cryptographic proof that a piece of software i
 Infisical provides a managed code signing workflow built on top of its PKI infrastructure:
 
 1. **[Signers](/documentation/platform/pki/code-signing/signers)** are identities bound to a certificate with the `codeSigning` extended key usage. Private keys never leave Infisical; signing operations happen server-side.
-2. **[Approval policies](/documentation/platform/pki/code-signing/approval-policies)** optionally add a human review step before signing is allowed, enforcing separation of duties.
+2. **[Signing policies](/documentation/platform/pki/code-signing/signing-policies)** optionally add a human review step before signing is allowed, enforcing separation of duties.
 3. **[Grants](/documentation/platform/pki/code-signing/grants)** are time-limited or count-limited authorizations issued after approval, controlling exactly when and how many times a user can sign.
 4. **[PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module)** lets standard signing tools (jarsigner, osslsigncode, cosign, etc.) use Infisical signers without code changes.
 

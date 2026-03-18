@@ -39,8 +39,12 @@ export const ApprovalsPage = () => {
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={currentProject.type}
-          title={isCodeSigning ? "Code Signing Approvals" : "Certificate Approvals"}
-          description="Manage approval workflows, update policy settings, and monitor request statuses."
+          title={isCodeSigning ? "Code Signing" : "Certificate Approvals"}
+          description={
+            isCodeSigning
+              ? "Manage signing policies, review signing requests, and monitor grants."
+              : "Manage approval workflows, update policy settings, and monitor request statuses."
+          }
         />
 
         {!isCodeSigning && (
@@ -74,10 +78,10 @@ export const ApprovalsPage = () => {
           >
             <TabList>
               <Tab variant="project" value={CodeSigningApprovalTabs.Requests}>
-                Requests
+                Signing Requests
               </Tab>
               <Tab variant="project" value={CodeSigningApprovalTabs.Policies}>
-                Policies
+                Signing Policies
               </Tab>
               <Tab variant="project" value={CodeSigningApprovalTabs.Grants}>
                 Grants

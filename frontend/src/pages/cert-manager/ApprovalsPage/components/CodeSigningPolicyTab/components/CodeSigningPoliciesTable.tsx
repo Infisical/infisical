@@ -1,11 +1,8 @@
 import { useMemo } from "react";
 import {
-  faClock,
   faEdit,
   faEllipsisV,
   faFileCircleQuestion,
-  faHandPointer,
-  faHashtag,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -37,11 +34,6 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-type CodeSigningConstraints = {
-  maxWindowDuration?: string;
-  maxSignings?: number;
-};
-
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["policy", "deletePolicy"]>,
@@ -66,46 +58,24 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
     );
   }, [policies]);
 
-  const getApprovalModeConfig = (policy: TApprovalPolicy) => {
-    const constraints = policy.constraints?.constraints as CodeSigningConstraints | undefined;
-    const hasTime = Boolean(constraints?.maxWindowDuration);
-    const hasCount = Boolean(constraints?.maxSignings);
-    if (hasTime && hasCount) return { label: "Combined", icon: faClock };
-    if (hasTime) return { label: "Time-based", icon: faClock };
-    if (hasCount) return { label: "Count-based", icon: faHashtag };
-    return { label: "Manual", icon: faHandPointer };
-  };
-
   return (
     <TableContainer>
       <Table>
         <THead>
           <Tr>
             <Th>Policy Name</Th>
-            <Th>Approval Mode</Th>
             <Th>Approval Steps</Th>
             <Th>Created</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
         <TBody>
-          {isPoliciesLoading && <TableSkeleton columns={5} innerKey="cs-approval-policies" />}
+          {isPoliciesLoading && <TableSkeleton columns={4} innerKey="cs-approval-policies" />}
           {!isPoliciesLoading &&
             sortedPolicies.map((policy) => (
               <Tr key={policy.id} className="group">
                 <Td>
                   <div className="text-sm font-medium text-mineshaft-100">{policy.name}</div>
-                </Td>
-                <Td>
-                  {(() => {
-                    const config = getApprovalModeConfig(policy);
-                    return (
-                      <span className="inline-flex items-center gap-1.5 rounded bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-200">
-                        <FontAwesomeIcon icon={config.icon} className="h-3 w-3" />
-                        {config.label}
-                      </span>
-                    );
-                  })()}
                 </Td>
                 <Td>
                   <span className="text-sm text-mineshaft-200">
@@ -154,7 +124,7 @@ export const CodeSigningPoliciesTable = ({ handlePopUpOpen }: Props) => {
         </TBody>
       </Table>
       {!isPoliciesLoading && !sortedPolicies.length && (
-        <EmptyState title="No approval policies found" icon={faFileCircleQuestion} />
+        <EmptyState title="No signing policies found" icon={faFileCircleQuestion} />
       )}
     </TableContainer>
   );

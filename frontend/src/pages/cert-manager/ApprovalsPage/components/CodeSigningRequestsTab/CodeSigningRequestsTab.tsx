@@ -13,6 +13,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -38,6 +39,10 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import {
+  ProjectPermissionCodeSigningActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext";
 import { usePagination } from "@app/hooks";
 import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
 import {
@@ -145,13 +150,25 @@ export const CodeSigningRequestsTab = () => {
       <div className="mb-4 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Approval Requests</p>
+            <p className="text-xl font-medium text-mineshaft-100">Signing Requests</p>
           </div>
-          <p className="text-sm text-bunker-300">Review and manage approval requests</p>
+          <p className="text-sm text-bunker-300">Review and manage signing requests</p>
         </div>
-        <Button colorSchema="secondary" size="sm" onClick={() => setIsRequestModalOpen(true)}>
-          Request Signing Access
-        </Button>
+        <ProjectPermissionCan
+          I={ProjectPermissionCodeSigningActions.Sign}
+          a={ProjectPermissionSub.CodeSigners}
+        >
+          {(isAllowed) => (
+            <Button
+              colorSchema="secondary"
+              size="sm"
+              isDisabled={!isAllowed}
+              onClick={() => setIsRequestModalOpen(true)}
+            >
+              Request Signing Access
+            </Button>
+          )}
+        </ProjectPermissionCan>
       </div>
       <div className="mb-4 flex gap-2">
         <DropdownMenu>
@@ -276,7 +293,7 @@ export const CodeSigningRequestsTab = () => {
             {!isRequestsLoading && paginatedRequests.length === 0 && (
               <Tr>
                 <Td colSpan={5}>
-                  <EmptyState title="No approval requests found" icon={faFileCircleQuestion} />
+                  <EmptyState title="No signing requests found" icon={faFileCircleQuestion} />
                 </Td>
               </Tr>
             )}
