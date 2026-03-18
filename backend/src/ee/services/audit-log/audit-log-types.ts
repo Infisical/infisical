@@ -3578,6 +3578,9 @@ interface SecretSyncSyncSecretsEvent {
     syncMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+    createdSecretKeys?: string[];
+    updatedSecretKeys?: string[];
+    deletedSecretKeys?: string[];
   };
 }
 
