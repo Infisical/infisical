@@ -6,12 +6,14 @@ import { Link, useNavigate } from "@tanstack/react-router";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
+import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
 import EnterEmailStep from "@app/components/auth/EnterEmailStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { Button } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -127,7 +129,7 @@ export const SignUpPage = () => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-6">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
       <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
@@ -136,16 +138,12 @@ export const SignUpPage = () => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
+      <AuthPageHeader>
+        <Button asChild>
+          <Link to="/login">Log In</Link>
+        </Button>
+      </AuthPageHeader>
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <Link to="/">
-          <div className="mb-4 flex justify-center">
-            <img
-              src="/images/gradientLogo.svg"
-              style={{ height: "90px", width: "120px" }}
-              alt="Infisical logo"
-            />
-          </div>
-        </Link>
         <form className="w-full" onSubmit={(e) => e.preventDefault()}>
           {renderView(step)}
         </form>
