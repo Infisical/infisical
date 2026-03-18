@@ -144,6 +144,8 @@ export * from "./pki-discovery-configs";
 export * from "./pki-discovery-installations";
 export * from "./pki-discovery-scan-history";
 export * from "./pki-est-enrollment-configs";
+export * from "./pki-signers";
+export * from "./pki-signing-operations";
 export * from "./pki-subscribers";
 export * from "./pki-syncs";
 export * from "./project-bots";

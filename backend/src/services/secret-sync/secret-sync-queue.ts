@@ -54,7 +54,8 @@ import {
   TSecretSyncRemoveSecretsDTO,
   TSecretSyncSyncSecretsDTO,
   TSecretSyncWithCredentials,
-  TSendSecretSyncFailedNotificationsJobDTO
+  TSendSecretSyncFailedNotificationsJobDTO,
+  TSyncSecretsResult
 } from "@app/services/secret-sync/secret-sync-types";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -525,6 +526,7 @@ export const secretSyncQueueFactory = ({
     let isSynced = false;
     let syncMessage: string | null = null;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
+    let syncResult: TSyncSecretsResult | undefined;
 
     try {
       const {
@@ -566,12 +568,14 @@ export const secretSyncQueueFactory = ({
         });
       }
 
-      await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
+      const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
         appConnectionDAL,
         kmsService,
         gatewayService,
         gatewayV2Service
       });
+
+      syncResult = result ?? undefined;
 
       isSynced = true;
     } catch (err) {
@@ -624,7 +628,10 @@ export const secretSyncQueueFactory = ({
             jobRanAt: ranAt,
             jobId: job.id!,
             syncStatus,
-            syncMessage
+            syncMessage,
+            createdSecretKeys: syncResult?.createdSecretKeys,
+            updatedSecretKeys: syncResult?.updatedSecretKeys,
+            deletedSecretKeys: syncResult?.deletedSecretKeys
           }
         }
       });

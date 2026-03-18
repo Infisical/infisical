@@ -420,6 +420,7 @@ import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { signerDALFactory, signerServiceFactory, signingOperationDALFactory } from "@app/services/signer";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
@@ -1246,6 +1247,9 @@ export const registerRoutes = async (
   const pkiDiscoveryInstallationDAL = pkiDiscoveryInstallationDALFactory(db);
   const pkiCertificateInstallationCertDAL = pkiCertificateInstallationCertDALFactory(db);
   const pkiDiscoveryScanHistoryDAL = pkiDiscoveryScanHistoryDALFactory(db);
+
+  const signerDAL = signerDALFactory(db);
+  const signingOperationDAL = signingOperationDALFactory(db);
 
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
@@ -2644,6 +2648,18 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const signerService = signerServiceFactory({
+    signerDAL,
+    signingOperationDAL,
+    certificateDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    approvalPolicyDAL,
+    approvalRequestGrantsDAL
+  });
+
   const pkiTemplateService = pkiTemplatesServiceFactory({
     pkiTemplatesDAL,
     certificateAuthorityDAL,
@@ -3025,6 +3041,7 @@ export const registerRoutes = async (
     pkiSync: pkiSyncService,
     pkiDiscovery: pkiDiscoveryService,
     pkiInstallation: pkiInstallationService,
+    pkiSigner: signerService,
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,

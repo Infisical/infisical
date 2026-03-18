@@ -1,0 +1,217 @@
+---
+title: "Sign Git Commits and Tags with GPG"
+sidebarTitle: "GPG"
+description: "Use the Infisical PKCS#11 module with GnuPG to sign git commits, tags, and packages."
+---
+
+In the following steps, we explore how to use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd`. This enables signing git commits and tags, RPM/DEB packages, and any other artifact that uses GPG signatures, all backed by keys stored securely in Infisical.
+
+## Prerequisites
+
+- An Infisical project with a [signer](/documentation/platform/pki/code-signing/signers) configured (RSA keys recommended for GPG compatibility)
+- An active [signing grant](/documentation/platform/pki/code-signing/grants) for the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- The Infisical PKCS#11 module [installed and configured](/documentation/platform/pki/code-signing/pkcs11-module)
+- GnuPG 2.2 or later
+- `gnupg-pkcs11-scd` (the PKCS#11 smart card daemon bridge)
+
+## Step 1: Install gnupg-pkcs11-scd
+
+<Tabs>
+  <Tab title="Ubuntu / Debian">
+    ```bash
+    sudo apt-get update
+    sudo apt-get install -y gnupg2 gnupg-pkcs11-scd opensc
+    ```
+  </Tab>
+  <Tab title="macOS (Homebrew)">
+    ```bash
+    brew install gnupg gnupg-pkcs11-scd opensc
+    ```
+  </Tab>
+  <Tab title="RHEL / Fedora">
+    ```bash
+    sudo dnf install gnupg2 gnupg-pkcs11-scd opensc
+    ```
+  </Tab>
+</Tabs>
+
+## Step 2: Configure gnupg-pkcs11-scd
+
+Create `~/.gnupg/gnupg-pkcs11-scd.conf`:
+
+```
+providers infisical
+provider-infisical-library /usr/local/lib/libinfisical-pkcs11.so
+```
+
+<Note>
+  On macOS, use the `.dylib` extension: `provider-infisical-library /usr/local/lib/libinfisical-pkcs11.dylib`
+</Note>
+
+Configure GnuPG to use the PKCS#11 smart card daemon. Edit `~/.gnupg/gpg-agent.conf`:
+
+```
+scdaemon-program /usr/bin/gnupg-pkcs11-scd
+```
+
+<Note>
+  The path to `gnupg-pkcs11-scd` varies by platform. On macOS with Homebrew, use `/opt/homebrew/bin/gnupg-pkcs11-scd`. Run `which gnupg-pkcs11-scd` to find the correct path.
+</Note>
+
+Restart the GPG agent to apply the changes:
+
+```bash
+gpgconf --kill gpg-agent
+```
+
+## Step 3: Import the PKCS#11 Key into GPG
+
+List the available keys from the PKCS#11 token:
+
+```bash
+gpg --card-status
+```
+
+The output shows your signer's key information. To use the key for signing, you need to learn the key grip and create a GPG key stub:
+
+```bash
+# List key grips from the PKCS#11 token
+gpg-connect-agent "SCD LEARN" /bye
+```
+
+Look for lines starting with `KEY-FRIEDNLY` or `KEYPAIRINFO`. These show the available keys and their key grips (40-character hex strings). Note the key grip for the signer you want to use.
+
+<Warning>
+  If multiple signers use the same certificate/key, they will share the same key grip. GPG will attempt to sign using the first matching slot. Ensure the signer in the first slot has an active signing grant, or configure your project so each key is used by only one signer.
+</Warning>
+
+Then generate a key stub:
+
+You can generate the key stub interactively:
+
+```bash
+gpg --expert --full-gen-key
+# Select option: (13) Existing key
+# Enter the key grip from the previous step
+```
+
+Or use batch mode for CI/CD environments:
+
+```bash
+cat > /tmp/gpg-keygen.txt <<EOF
+Key-Type: RSA
+Key-Length: 3072
+Key-Grip: <KEY-GRIP-FROM-PREVIOUS-STEP>
+Name-Real: Release Signing
+Name-Email: signing@example.com
+Expire-Date: 0
+%no-protection
+%commit
+EOF
+
+gpg --batch --gen-key /tmp/gpg-keygen.txt
+```
+
+Note the key ID from the output (shown as a 40-character hex string). You'll use it for signing.
+
+## Step 4: Sign Git Commits
+
+Configure git to use your GPG key:
+
+```bash
+# Set the signing key
+git config --global user.signingkey <KEY-ID>
+
+# Enable commit signing by default
+git config --global commit.gpgsign true
+
+# Enable tag signing by default
+git config --global tag.gpgsign true
+```
+
+Now every commit and tag will be signed automatically:
+
+```bash
+# Signed commit
+git commit -m "feat: add new feature"
+
+# Signed tag
+git tag -s v1.0.0 -m "Release v1.0.0"
+```
+
+### Verify Signatures
+
+```bash
+# Verify a commit signature
+git log --show-signature -1
+
+# Verify a tag signature
+git tag -v v1.0.0
+```
+
+## Step 5: Sign Arbitrary Files
+
+Use GPG to create detached signatures for any file:
+
+```bash
+# Create a detached signature
+gpg --detach-sign --armor -u <KEY-ID> release-v1.0.0.tar.gz
+
+# Verify
+gpg --verify release-v1.0.0.tar.gz.asc release-v1.0.0.tar.gz
+```
+
+## CI/CD Integration
+
+For CI pipelines, configure the GPG agent in non-interactive mode. You need to create the key stub on each run since `GNUPGHOME` is ephemeral:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_CLIENT_SECRET}"
+export INFISICAL_PKCS11_CONFIG="/path/to/pkcs11.conf"
+
+# Set up ephemeral GPG home directory
+export GNUPGHOME=$(mktemp -d)
+cp /path/to/gnupg-pkcs11-scd.conf "$GNUPGHOME/"
+cp /path/to/gpg-agent.conf "$GNUPGHOME/"
+
+# Discover available keys from the PKCS#11 token
+gpg-connect-agent "SCD LEARN" /bye
+
+# Create a key stub pointing to the PKCS#11 key
+# Replace KEY-GRIP with the grip from the SCD LEARN output (KEYPAIRINFO line)
+cat > /tmp/gpg-keygen.txt <<EOF
+Key-Type: RSA
+Key-Length: 3072
+Key-Grip: <KEY-GRIP>
+Name-Real: CI Signing
+Name-Email: ci@example.com
+Expire-Date: 0
+%no-protection
+%commit
+EOF
+gpg --batch --gen-key /tmp/gpg-keygen.txt
+
+# Sign the artifact using the generated key
+gpg --detach-sign --armor artifact.tar.gz
+```
+
+<Note>
+  - The `Key-Length` in the batch keygen must match your signer's key size (e.g., 2048, 3072, or 4096 for RSA).
+  - The Infisical auth environment variables must be set before the GPG agent starts, as the agent inherits the environment when `gpg-connect-agent` launches it.
+  - For repeated CI runs, you can hardcode the key grip value since it doesn't change for a given signer.
+</Note>
+
+## Troubleshooting
+
+For any issue, enable debug logging in your config file (`"log_level": "debug"`, `"log_file": "/tmp/infisical-pkcs11.log"`) to get detailed output.
+
+<AccordionGroup>
+  <Accordion title="Card error or signing failures">
+    Ensure `gnupg-pkcs11-scd` is installed and the path in `gpg-agent.conf` is correct. If the key stub is missing, run `gpg --card-status` to refresh, then `gpg -K` to verify. Restart the agent with `gpgconf --kill gpg-agent` if needed.
+  </Accordion>
+  <Accordion title="ECDSA keys not working">
+    GPG has limited ECDSA curve support via PKCS#11. RSA keys (2048, 3072, 4096) are recommended for GPG signing.
+  </Accordion>
+</AccordionGroup>

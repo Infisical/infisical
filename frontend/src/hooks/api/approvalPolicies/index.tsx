@@ -10,6 +10,7 @@ export {
   ApprovalPolicyType,
   ApproverType,
   type CertRequestPolicyConditions,
+  type CodeSigningPolicyConstraints,
   type PamAccessPolicyConditions,
   type PamAccessPolicyConstraints,
   type TApprovalPolicy,

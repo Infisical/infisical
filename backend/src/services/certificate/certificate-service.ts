@@ -10,7 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -286,7 +286,23 @@ export const certificateServiceFactory = ({
       })
     );
 
-    const deletedCert = await certificateDAL.deleteById(cert.id);
+    let deletedCert;
+    try {
+      deletedCert = await certificateDAL.deleteById(cert.id);
+    } catch (err) {
+      const innerError = err instanceof DatabaseError ? (err.error as { code?: string; constraint?: string }) : null;
+      if (innerError?.code === "23503") {
+        if (innerError.constraint === "pki_signers_certificateid_foreign") {
+          throw new BadRequestError({
+            message: "Cannot delete certificate because it is currently in use by a code signing signer"
+          });
+        }
+        throw new BadRequestError({
+          message: "Cannot delete certificate because it is referenced by another resource"
+        });
+      }
+      throw err;
+    }
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {

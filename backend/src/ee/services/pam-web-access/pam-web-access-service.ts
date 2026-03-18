@@ -39,10 +39,12 @@ import {
   TPostgresAccountCredentials,
   TPostgresResourceConnectionDetails
 } from "../pam-resource/postgres/postgres-resource-types";
+import { TRedisAccountCredentials, TRedisResourceConnectionDetails } from "../pam-resource/redis/redis-resource-types";
 import { TSSHAccountCredentials, TSSHResourceConnectionDetails } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { handlePostgresSession } from "./pam-postgres-session-handler";
+import { handleRedisSession } from "./pam-redis-session-handler";
 import { handleSSHSession } from "./pam-ssh-session-handler";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
@@ -58,7 +60,7 @@ import {
   WsMessageType
 } from "./pam-web-access-types";
 
-const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH];
+const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH, PamResource.Redis];
 
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findMetadataByAccountIds">;
@@ -527,6 +529,11 @@ export const pamWebAccessServiceFactory = ({
         handlerResult = await handleSSHSession(ctx, {
           connectionDetails: resourceConnectionDetails as TSSHResourceConnectionDetails,
           credentials: accountCredentials as TSSHAccountCredentials
+        });
+      } else if (resource.resourceType === PamResource.Redis) {
+        handlerResult = await handleRedisSession(ctx, {
+          connectionDetails: resourceConnectionDetails as TRedisResourceConnectionDetails,
+          credentials: accountCredentials as TRedisAccountCredentials
         });
       }
 

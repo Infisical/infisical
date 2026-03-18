@@ -11,6 +11,7 @@ import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
+  ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
@@ -303,6 +304,17 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiCertificateInstallationActions.Delete
     ],
     ProjectPermissionSub.PkiCertificateInstallations
+  );
+
+  can(
+    [
+      ProjectPermissionCodeSigningActions.Read,
+      ProjectPermissionCodeSigningActions.Create,
+      ProjectPermissionCodeSigningActions.Edit,
+      ProjectPermissionCodeSigningActions.Delete,
+      ProjectPermissionCodeSigningActions.Sign
+    ],
+    ProjectPermissionSub.CodeSigners
   );
 
   can(
@@ -634,6 +646,10 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionPkiDiscoveryActions.Read], ProjectPermissionSub.PkiDiscovery);
   can([ProjectPermissionPkiCertificateInstallationActions.Read], ProjectPermissionSub.PkiCertificateInstallations);
+  can(
+    [ProjectPermissionCodeSigningActions.Read, ProjectPermissionCodeSigningActions.Sign],
+    ProjectPermissionSub.CodeSigners
+  );
 
   can(
     [
@@ -720,6 +736,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
   can(ProjectPermissionPkiDiscoveryActions.Read, ProjectPermissionSub.PkiDiscovery);
   can(ProjectPermissionPkiCertificateInstallationActions.Read, ProjectPermissionSub.PkiCertificateInstallations);
+  can(ProjectPermissionCodeSigningActions.Read, ProjectPermissionSub.CodeSigners);
   can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
 
   can(
