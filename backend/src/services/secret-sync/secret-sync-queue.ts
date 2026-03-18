@@ -1194,7 +1194,11 @@ export const secretSyncQueueFactory = ({
     if (!failedSyncs.length) return;
 
     await secretSyncDAL.update(
-      { $in: { id: failedSyncs.map((sync) => sync.id) } },
+      {
+        syncStatus: SecretSyncStatus.Failed,
+        isAutoSyncEnabled: true,
+        $in: { destination: [...SECRET_SYNC_DAILY_RETRY_DESTINATIONS] }
+      },
       { syncStatus: SecretSyncStatus.Pending }
     );
 
