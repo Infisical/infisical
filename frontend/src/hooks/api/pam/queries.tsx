@@ -10,8 +10,8 @@ import {
   TPamAccount,
   TPamAccountDependency,
   TPamResource,
-  TPamRotationRule,
   TPamResourceDependency,
+  TPamRotationRule,
   TPamSession
 } from "./types";
 

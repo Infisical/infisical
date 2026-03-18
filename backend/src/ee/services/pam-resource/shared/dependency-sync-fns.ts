@@ -73,7 +73,7 @@ export const syncDependenciesAfterRotation = async ({
   formatWinrmUsername
 }: TSyncDependenciesParams) => {
   const allDeps = await ctx.pamAccountDependenciesDAL.findByAccountId(accountId);
-  const enabledDeps = allDeps.filter((d) => d.isEnabled);
+  const enabledDeps = allDeps.filter((d) => d.isRotationSyncEnabled);
   if (!enabledDeps.length) return;
 
   const grouped = groupBy(enabledDeps, (d) => d.resourceId);

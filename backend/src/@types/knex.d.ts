@@ -693,15 +693,15 @@ import {
 } from "@app/db/schemas/pam-discovery-sources";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
 import {
-  TPamResourceRotationRules,
-  TPamResourceRotationRulesInsert,
-  TPamResourceRotationRulesUpdate
-} from "@app/db/schemas/pam-resource-rotation-rules";
-import {
   TPamResourceFavorites,
   TPamResourceFavoritesInsert,
   TPamResourceFavoritesUpdate
 } from "@app/db/schemas/pam-resource-favorites";
+import {
+  TPamResourceRotationRules,
+  TPamResourceRotationRulesInsert,
+  TPamResourceRotationRulesUpdate
+} from "@app/db/schemas/pam-resource-rotation-rules";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
