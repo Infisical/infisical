@@ -3,10 +3,7 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { appConnectionKeys } from "@app/hooks/api/appConnections";
 
-import {
-  TRemoteInfisicalEnvironmentFolderTree,
-  TRemoteInfisicalProject
-} from "./types";
+import { TRemoteInfisicalEnvironmentFolderTree, TRemoteInfisicalProject } from "./types";
 
 const externalInfisicalConnectionKeys = {
   all: [...appConnectionKeys.all, "external-infisical"] as const,
