@@ -12,7 +12,7 @@ type Registry struct {
 	Projects genprojects.Service
 }
 
-func NewRegistry(logger *slog.Logger, sharedLibs *shared.Libs) *Registry {
+func NewRegistry(logger *slog.Logger, sharedLibs *shared.SharedServices) *Registry {
 	l := logger.With("product", "platform")
 	return &Registry{
 		Projects: projects.NewService(l, sharedLibs.Permission),

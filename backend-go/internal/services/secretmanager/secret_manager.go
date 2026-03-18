@@ -13,10 +13,10 @@ type Registry struct {
 	Secrets gensecrets.Service
 }
 
-func NewRegistry(logger *slog.Logger, sharedLibs *shared.Libs) *Registry {
+func NewRegistry(logger *slog.Logger, sharedLibs *shared.SharedServices) *Registry {
 	l := logger.With("product", "secretmanager")
 
-	secretFolderLib := secretfolder.NewLib()
+	secretFolderLib := secretfolder.NewSharedService()
 
 	return &Registry{
 		Secrets: secrets.NewService(l, sharedLibs.Permission, secretFolderLib),

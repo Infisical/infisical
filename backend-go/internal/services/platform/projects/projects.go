@@ -8,24 +8,21 @@ import (
 	"github.com/infisical/api/internal/services/shared/permission"
 )
 
-type permissionLib interface {
+type permissionGetter interface {
 	GetProjectPermission(ctx context.Context, args permission.GetProjectPermissionArgs) (*permission.GetProjectPermissionResult, error)
 }
 
 type service struct {
 	logger     *slog.Logger
-	permission permissionLib
+	permission permissionGetter
 }
 
-func NewService(logger *slog.Logger, permission permissionLib) genprojects.Service {
+func NewService(logger *slog.Logger, permission permissionGetter) genprojects.Service {
 	return &service{
 		logger:     logger.With("service", "projects"),
 		permission: permission,
 	}
 }
-
-// Ensure permission.Lib satisfies the interface at compile time.
-var _ permissionLib = (*permission.Lib)(nil)
 
 func (s *service) GetHealth(ctx context.Context) (string, error) {
 	s.logger.InfoContext(ctx, "health check")

@@ -27,7 +27,7 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	t.Helper()
 
 	permDAL := permission.NewDAL()
-	permLib := permission.NewLib(permDAL)
+	permLib := permission.NewSharedService(permDAL)
 
 	svc := projects.NewService(testutil.NopLogger(), permLib)
 
