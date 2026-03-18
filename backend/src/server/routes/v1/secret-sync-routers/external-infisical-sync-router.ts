@@ -1,6 +1,8 @@
 import {
   CreateExternalInfisicalSyncSchema,
   ExternalInfisicalSyncSchema,
+  TExternalInfisicalSync,
+  TExternalInfisicalSyncInput,
   UpdateExternalInfisicalSyncSchema
 } from "@app/services/secret-sync/external-infisical";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -8,7 +10,7 @@ import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { registerSyncSecretsEndpoints } from "./secret-sync-endpoints";
 
 export const registerExternalInfisicalSyncRouter = async (server: FastifyZodProvider) =>
-  registerSyncSecretsEndpoints({
+  registerSyncSecretsEndpoints<TExternalInfisicalSync, TExternalInfisicalSyncInput>({
     destination: SecretSync.ExternalInfisical,
     server,
     responseSchema: ExternalInfisicalSyncSchema,

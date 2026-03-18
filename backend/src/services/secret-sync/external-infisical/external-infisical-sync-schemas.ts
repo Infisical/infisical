@@ -27,7 +27,6 @@ const ExternalInfisicalSyncDestinationConfigSchema = z.object({
     .string()
     .trim()
     .min(1, "Secret path is required")
-    .default("/")
     .describe(SecretSyncs.DESTINATION_CONFIG.EXTERNAL_INFISICAL.secretPath)
 });
 
@@ -45,14 +44,16 @@ export const ExternalInfisicalSyncSchema = BaseSecretSyncSchema(
 
 export const CreateExternalInfisicalSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.ExternalInfisical,
-  ExternalInfisicalSyncOptionsConfig
+  ExternalInfisicalSyncOptionsConfig,
+  z.object({})
 ).extend({
   destinationConfig: ExternalInfisicalSyncDestinationConfigSchema
 });
 
 export const UpdateExternalInfisicalSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.ExternalInfisical,
-  ExternalInfisicalSyncOptionsConfig
+  ExternalInfisicalSyncOptionsConfig,
+  z.object({})
 ).extend({
   destinationConfig: ExternalInfisicalSyncDestinationConfigSchema.optional()
 });
