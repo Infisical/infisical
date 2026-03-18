@@ -124,6 +124,35 @@ const DependencyRow = ({
           )}
         </UnstableTableCell>
         <UnstableTableCell>
+          {dep.syncStatus ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant={
+                    ({ success: "success", failed: "danger", pending: "warning" } as const)[
+                      dep.syncStatus
+                    ] ?? "neutral"
+                  }
+                >
+                  {(
+                    { success: "Synced", failed: "Failed", pending: "Pending" } as Record<
+                      string,
+                      string
+                    >
+                  )[dep.syncStatus] ?? dep.syncStatus}
+                </Badge>
+              </TooltipTrigger>
+              {dep.lastSyncedAt && (
+                <TooltipContent side="top">
+                  Last synced: {format(new Date(dep.lastSyncedAt), "MMM d, yyyy HH:mm")}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          ) : (
+            <span className="text-xs text-muted">-</span>
+          )}
+        </UnstableTableCell>
+        <UnstableTableCell>
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>
               <UnstableIconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
@@ -254,6 +283,7 @@ export const PamDependenciesTable = ({
                 </Tooltip>
               </div>
             </UnstableTableHead>
+            <UnstableTableHead>Sync Status</UnstableTableHead>
             <UnstableTableHead className="w-5" />
           </UnstableTableRow>
         </UnstableTableHeader>
