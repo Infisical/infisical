@@ -41,12 +41,7 @@ func main() {
 
 	// Connect to database.
 	ctx := context.Background()
-	readReplicas := make([]pg.DBReadReplica, len(cfg.ParsedDBReadReplicas))
-	for i, r := range cfg.ParsedDBReadReplicas {
-		readReplicas[i] = pg.DBReadReplica{DBConnectionURI: r.DBConnectionURI, DBRootCert: r.DBRootCert}
-	}
-
-	db, err := pg.NewPostgresDB(ctx, cfg.DBConnectionURI, cfg.DBRootCert, readReplicas)
+	db, err := pg.NewPostgresDB(ctx, cfg.DBConnectionURI, cfg.DBRootCert, cfg.DBReadReplicas)
 	if err != nil {
 		logger.Error("failed to initialize database", "error", err)
 		os.Exit(1)

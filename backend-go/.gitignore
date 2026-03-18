@@ -16,3 +16,6 @@ infisical
 # Test infra shared state (delete these if tests misbehave)
 .test-infra-state.json
 .test-infra.lock
+
+# Air hot-reload temp dir
+tmp/

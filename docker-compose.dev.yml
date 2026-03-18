@@ -152,6 +152,27 @@ services:
       - ./frontend/public:/app/public
     env_file: .env
 
+  backend-go:
+    container_name: infisical-dev-api-go
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.dev
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+    ports:
+      - 8081:8081
+    volumes:
+      - ./backend-go:/app
+    environment:
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - ENCRYPTION_KEY=a984ecdf82ec779e55dbcc21303a900f
+      - AUTH_SECRET=test-auth-secret-long-enough-for-jwt
+    profiles: [go]
+
   pgadmin:
     image: dpage/pgadmin4
     restart: always
