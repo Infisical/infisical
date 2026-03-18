@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { Client, ClientChannel } from "ssh2";
 
 import {
@@ -81,12 +82,18 @@ const executeIloShell = (conn: Client, command: string): Promise<string> => {
           clearTimeout(timeout);
           settled = true;
           conn.end();
-          reject(new Error(`iLO command failed: ${buffer}`));
+          const passwordPattern = new RE2("password=[^\\s]+", "gi");
+          const sanitizedBuffer = buffer.replace(passwordPattern, "password=***");
+          reject(new Error(`iLO command failed: ${sanitizedBuffer}`));
         }
       });
 
       stream.on("close", () => {
         clearTimeout(timeout);
+        if (!settled) {
+          settled = true;
+          reject(new Error("iLO shell closed unexpectedly"));
+        }
       });
 
       stream.stderr.on("data", (data: Buffer) => {

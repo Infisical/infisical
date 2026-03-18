@@ -2,6 +2,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalClose, ModalContent } from "@app/components/v2";
 import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { useReconcileLocalAccountRotation } from "@app/hooks/api/secretRotationsV2/mutations";
+import { THpIloRotation } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 import { TUnixLinuxLocalAccountRotation } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { TWindowsLocalAccountRotation } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
@@ -12,14 +13,14 @@ type Props = {
 };
 
 type ContentProps = {
-  secretRotation: TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation;
+  secretRotation: TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation | THpIloRotation;
   onComplete: () => void;
 };
 
 const getRotationTypeName = (type: SecretRotation): string => {
-  return type === SecretRotation.UnixLinuxLocalAccount
-    ? "Unix/Linux Local Account"
-    : "Windows Local Account";
+  if (type === SecretRotation.UnixLinuxLocalAccount) return "Unix/Linux Local Account";
+  if (type === SecretRotation.WindowsLocalAccount) return "Windows Local Account";
+  return "HP iLO Local Account";
 };
 
 const Content = ({ secretRotation, onComplete }: ContentProps) => {
@@ -31,7 +32,10 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
   const handleReconcile = async () => {
     const result = await reconcileLocalAccount.mutateAsync({
       rotationId,
-      type: type as SecretRotation.UnixLinuxLocalAccount | SecretRotation.WindowsLocalAccount,
+      type: type as
+        | SecretRotation.UnixLinuxLocalAccount
+        | SecretRotation.WindowsLocalAccount
+        | SecretRotation.HpIloLocalAccount,
       projectId,
       secretPath: folder.path
     });
@@ -83,7 +87,8 @@ export const ReconcileLocalAccountRotationModal = ({
   if (
     !secretRotation ||
     (secretRotation.type !== SecretRotation.UnixLinuxLocalAccount &&
-      secretRotation.type !== SecretRotation.WindowsLocalAccount)
+      secretRotation.type !== SecretRotation.WindowsLocalAccount &&
+      secretRotation.type !== SecretRotation.HpIloLocalAccount)
   )
     return null;
 
@@ -97,7 +102,10 @@ export const ReconcileLocalAccountRotationModal = ({
       >
         <Content
           secretRotation={
-            secretRotation as TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation
+            secretRotation as
+              | TUnixLinuxLocalAccountRotation
+              | TWindowsLocalAccountRotation
+              | THpIloRotation
           }
           onComplete={() => onOpenChange(false)}
         />
