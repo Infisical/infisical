@@ -78,18 +78,18 @@ type permissionDAL interface {
 	// TODO: Define DAL methods as the permission system is fleshed out.
 }
 
-// Lib provides project and org permission checks.
-type Lib struct {
+// Service provides project and org permission checks.
+type SharedService struct {
 	dal permissionDAL
 }
 
-// NewLib creates a new permission library instance.
-func NewLib(dal permissionDAL) *Lib {
-	return &Lib{dal: dal}
+// NewService creates a new permission service instance.
+func NewSharedService(dal permissionDAL) *SharedService {
+	return &SharedService{dal: dal}
 }
 
 // GetProjectPermission resolves the effective permissions for an actor within a project.
 // TODO: Implement the full permission resolution logic (role lookup, CASL rule building, etc.).
-func (p *Lib) GetProjectPermission(ctx context.Context, args GetProjectPermissionArgs) (*GetProjectPermissionResult, error) {
+func (p *SharedService) GetProjectPermission(ctx context.Context, args GetProjectPermissionArgs) (*GetProjectPermissionResult, error) {
 	panic("not implemented")
 }

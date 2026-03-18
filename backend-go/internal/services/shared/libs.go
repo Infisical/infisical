@@ -4,14 +4,14 @@ import (
 	"github.com/infisical/api/internal/services/shared/permission"
 )
 
-type Libs struct {
-	Permission *permission.Lib
+type SharedServices struct {
+	Permission *permission.SharedService
 }
 
-func NewLibs() *Libs {
+func NewSharedServices() *SharedServices {
 	permissionDAL := permission.NewDAL()
 
-	return &Libs{
-		Permission: permission.NewLib(permissionDAL),
+	return &SharedServices{
+		Permission: permission.NewSharedService(permissionDAL),
 	}
 }
