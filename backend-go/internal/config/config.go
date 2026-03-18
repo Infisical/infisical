@@ -35,8 +35,8 @@ const (
 
 type Config struct {
 	// Server
-	InfisicalPlatformVersion              string  `koanf:"INFISICAL_PLATFORM_VERSION"`
-	KubernetesAutoFetchServiceAccountToken bool   `koanf:"KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN"`
+	InfisicalPlatformVersion               string  `koanf:"INFISICAL_PLATFORM_VERSION"`
+	KubernetesAutoFetchServiceAccountToken bool    `koanf:"KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN"`
 	NodeEnv                                NodeEnv `koanf:"NODE_ENV"`
 	Port                                   int     `koanf:"PORT"`
 	Host                                   string  `koanf:"HOST"`
@@ -49,51 +49,51 @@ type Config struct {
 	LogLevel string `koanf:"LOG_LEVEL"`
 
 	// Database
-	DBConnectionURI         string `koanf:"DB_CONNECTION_URI"`
-	DBRootCert              string `koanf:"DB_ROOT_CERT"`
-	DBHost                  string `koanf:"DB_HOST"`
-	DBPort                  string `koanf:"DB_PORT"`
-	DBUser                  string `koanf:"DB_USER"`
-	DBPassword              string `koanf:"DB_PASSWORD"`
-	DBName                  string `koanf:"DB_NAME"`
-	DBReadReplicasRaw       string `koanf:"DB_READ_REPLICAS"`
+	DBConnectionURI          string `koanf:"DB_CONNECTION_URI"`
+	DBRootCert               string `koanf:"DB_ROOT_CERT"`
+	DBHost                   string `koanf:"DB_HOST"`
+	DBPort                   string `koanf:"DB_PORT"`
+	DBUser                   string `koanf:"DB_USER"`
+	DBPassword               string `koanf:"DB_PASSWORD"`
+	DBName                   string `koanf:"DB_NAME"`
+	DBReadReplicasRaw        string `koanf:"DB_READ_REPLICAS"`
 	AuditLogsDBConnectionURI string `koanf:"AUDIT_LOGS_DB_CONNECTION_URI"`
-	AuditLogsDBRootCert     string `koanf:"AUDIT_LOGS_DB_ROOT_CERT"`
+	AuditLogsDBRootCert      string `koanf:"AUDIT_LOGS_DB_ROOT_CERT"`
 
 	// ClickHouse
-	ClickhouseURL                   string `koanf:"CLICKHOUSE_URL"`
-	ClickhouseAuditLogEngine        string `koanf:"CLICKHOUSE_AUDIT_LOG_ENGINE"`
-	ClickhouseAuditLogTableName     string `koanf:"CLICKHOUSE_AUDIT_LOG_TABLE_NAME"`
-	ClickhouseAuditLogEnabled       bool   `koanf:"CLICKHOUSE_AUDIT_LOG_ENABLED"`
-	ClickhouseAuditLogQueryEnabled  bool   `koanf:"CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED"`
+	ClickhouseURL                    string `koanf:"CLICKHOUSE_URL"`
+	ClickhouseAuditLogEngine         string `koanf:"CLICKHOUSE_AUDIT_LOG_ENGINE"`
+	ClickhouseAuditLogTableName      string `koanf:"CLICKHOUSE_AUDIT_LOG_TABLE_NAME"`
+	ClickhouseAuditLogEnabled        bool   `koanf:"CLICKHOUSE_AUDIT_LOG_ENABLED"`
+	ClickhouseAuditLogQueryEnabled   bool   `koanf:"CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED"`
 	ClickhouseAuditLogInsertSettings string `koanf:"CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS"`
 
 	// Redis
-	RedisURL                                  string `koanf:"REDIS_URL"`
-	RedisUsername                              string `koanf:"REDIS_USERNAME"`
-	RedisPassword                              string `koanf:"REDIS_PASSWORD"`
-	RedisSentinelHosts                         string `koanf:"REDIS_SENTINEL_HOSTS"`
-	RedisSentinelMasterName                    string `koanf:"REDIS_SENTINEL_MASTER_NAME"`
-	RedisSentinelEnableTLS                     bool   `koanf:"REDIS_SENTINEL_ENABLE_TLS"`
-	RedisSentinelUsername                      string `koanf:"REDIS_SENTINEL_USERNAME"`
-	RedisSentinelPassword                      string `koanf:"REDIS_SENTINEL_PASSWORD"`
-	RedisClusterHosts                          string `koanf:"REDIS_CLUSTER_HOSTS"`
-	RedisClusterEnableTLS                      bool   `koanf:"REDIS_CLUSTER_ENABLE_TLS"`
-	RedisClusterAWSElastiCacheDNSLookupMode    bool   `koanf:"REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE"`
-	RedisReadReplicas                          string `koanf:"REDIS_READ_REPLICAS"`
+	RedisURL                                string `koanf:"REDIS_URL"`
+	RedisUsername                           string `koanf:"REDIS_USERNAME"`
+	RedisPassword                           string `koanf:"REDIS_PASSWORD"`
+	RedisSentinelHosts                      string `koanf:"REDIS_SENTINEL_HOSTS"`
+	RedisSentinelMasterName                 string `koanf:"REDIS_SENTINEL_MASTER_NAME"`
+	RedisSentinelEnableTLS                  bool   `koanf:"REDIS_SENTINEL_ENABLE_TLS"`
+	RedisSentinelUsername                   string `koanf:"REDIS_SENTINEL_USERNAME"`
+	RedisSentinelPassword                   string `koanf:"REDIS_SENTINEL_PASSWORD"`
+	RedisClusterHosts                       string `koanf:"REDIS_CLUSTER_HOSTS"`
+	RedisClusterEnableTLS                   bool   `koanf:"REDIS_CLUSTER_ENABLE_TLS"`
+	RedisClusterAWSElastiCacheDNSLookupMode bool   `koanf:"REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE"`
+	RedisReadReplicas                       string `koanf:"REDIS_READ_REPLICAS"`
 
 	// Encryption
 	EncryptionKey     string `koanf:"ENCRYPTION_KEY"`
 	RootEncryptionKey string `koanf:"ROOT_ENCRYPTION_KEY"`
 
 	// Auth
-	AuthSecret            string `koanf:"AUTH_SECRET"`
-	CookieSecretSignKey   string `koanf:"COOKIE_SECRET_SIGN_KEY"`
-	JWTAuthLifetime       string `koanf:"JWT_AUTH_LIFETIME"`
-	JWTSignupLifetime     string `koanf:"JWT_SIGNUP_LIFETIME"`
-	JWTRefreshLifetime    string `koanf:"JWT_REFRESH_LIFETIME"`
-	JWTInviteLifetime     string `koanf:"JWT_INVITE_LIFETIME"`
-	JWTMfaLifetime        string `koanf:"JWT_MFA_LIFETIME"`
+	AuthSecret              string `koanf:"AUTH_SECRET"`
+	CookieSecretSignKey     string `koanf:"COOKIE_SECRET_SIGN_KEY"`
+	JWTAuthLifetime         string `koanf:"JWT_AUTH_LIFETIME"`
+	JWTSignupLifetime       string `koanf:"JWT_SIGNUP_LIFETIME"`
+	JWTRefreshLifetime      string `koanf:"JWT_REFRESH_LIFETIME"`
+	JWTInviteLifetime       string `koanf:"JWT_INVITE_LIFETIME"`
+	JWTMfaLifetime          string `koanf:"JWT_MFA_LIFETIME"`
 	JWTProviderAuthLifetime string `koanf:"JWT_PROVIDER_AUTH_LIFETIME"`
 
 	// Site
@@ -111,21 +111,21 @@ type Config struct {
 	OTELTelemetryCollectionEnabled bool   `koanf:"OTEL_TELEMETRY_COLLECTION_ENABLED"`
 	OTELExportOTLPEndpoint         string `koanf:"OTEL_EXPORT_OTLP_ENDPOINT"`
 	OTELOTLPPushInterval           int    `koanf:"OTEL_OTLP_PUSH_INTERVAL"`
-	OTELCollectorBasicAuthUsername  string `koanf:"OTEL_COLLECTOR_BASIC_AUTH_USERNAME"`
-	OTELCollectorBasicAuthPassword  string `koanf:"OTEL_COLLECTOR_BASIC_AUTH_PASSWORD"`
-	OTELExportType                  string `koanf:"OTEL_EXPORT_TYPE"`
+	OTELCollectorBasicAuthUsername string `koanf:"OTEL_COLLECTOR_BASIC_AUTH_USERNAME"`
+	OTELCollectorBasicAuthPassword string `koanf:"OTEL_COLLECTOR_BASIC_AUTH_PASSWORD"`
+	OTELExportType                 string `koanf:"OTEL_EXPORT_TYPE"`
 
 	// SMTP
-	SMTPHost                 string `koanf:"SMTP_HOST"`
-	SMTPPort                 int    `koanf:"SMTP_PORT"`
-	SMTPUsername             string `koanf:"SMTP_USERNAME"`
-	SMTPPassword             string `koanf:"SMTP_PASSWORD"`
-	SMTPFromAddress          string `koanf:"SMTP_FROM_ADDRESS"`
-	SMTPFromName             string `koanf:"SMTP_FROM_NAME"`
-	SMTPIgnoreTLS            bool   `koanf:"SMTP_IGNORE_TLS"`
-	SMTPRequireTLS           bool   `koanf:"SMTP_REQUIRE_TLS"`
-	SMTPTLSRejectUnauthorized bool  `koanf:"SMTP_TLS_REJECT_UNAUTHORIZED"`
-	SMTPCustomCACert         string `koanf:"SMTP_CUSTOM_CA_CERT"`
+	SMTPHost                  string `koanf:"SMTP_HOST"`
+	SMTPPort                  int    `koanf:"SMTP_PORT"`
+	SMTPUsername              string `koanf:"SMTP_USERNAME"`
+	SMTPPassword              string `koanf:"SMTP_PASSWORD"`
+	SMTPFromAddress           string `koanf:"SMTP_FROM_ADDRESS"`
+	SMTPFromName              string `koanf:"SMTP_FROM_NAME"`
+	SMTPIgnoreTLS             bool   `koanf:"SMTP_IGNORE_TLS"`
+	SMTPRequireTLS            bool   `koanf:"SMTP_REQUIRE_TLS"`
+	SMTPTLSRejectUnauthorized bool   `koanf:"SMTP_TLS_REJECT_UNAUTHORIZED"`
+	SMTPCustomCACert          string `koanf:"SMTP_CUSTOM_CA_CERT"`
 
 	// Crypto
 	SaltRounds int `koanf:"SALT_ROUNDS"`
@@ -204,9 +204,9 @@ type Config struct {
 	SecretScanningGitAppSlug    string `koanf:"SECRET_SCANNING_GIT_APP_SLUG"`
 
 	// License
-	LicenseServerURL string `koanf:"LICENSE_SERVER_URL"`
-	LicenseServerKey string `koanf:"LICENSE_SERVER_KEY"`
-	LicenseKey       string `koanf:"LICENSE_KEY"`
+	LicenseServerURL  string `koanf:"LICENSE_SERVER_URL"`
+	LicenseServerKey  string `koanf:"LICENSE_SERVER_KEY"`
+	LicenseKey        string `koanf:"LICENSE_KEY"`
 	LicenseKeyOffline string `koanf:"LICENSE_KEY_OFFLINE"`
 
 	// Captcha
@@ -214,20 +214,20 @@ type Config struct {
 	CaptchaSiteKey string `koanf:"CAPTCHA_SITE_KEY"`
 
 	// Misc
-	InitialOrganizationName string `koanf:"INITIAL_ORGANIZATION_NAME"`
-	MaxLeaseLimit           int    `koanf:"MAX_LEASE_LIMIT"`
-	IntercomID              string `koanf:"INTERCOM_ID"`
-	CDNHost                 string `koanf:"CDN_HOST"`
-	LoopsAPIKey             string `koanf:"LOOPS_API_KEY"`
-	GithubAPIToken          string `koanf:"GITHUB_API_TOKEN"`
-	PylonAPIKey             string `koanf:"PYLON_API_KEY"`
-	DisableAuditLogGeneration bool `koanf:"DISABLE_AUDIT_LOG_GENERATION"`
-	DisableAuditLogStorage    bool `koanf:"DISABLE_AUDIT_LOG_STORAGE"`
-	GenerateSanitizedSchema   bool `koanf:"GENERATE_SANITIZED_SCHEMA"`
+	InitialOrganizationName   string `koanf:"INITIAL_ORGANIZATION_NAME"`
+	MaxLeaseLimit             int    `koanf:"MAX_LEASE_LIMIT"`
+	IntercomID                string `koanf:"INTERCOM_ID"`
+	CDNHost                   string `koanf:"CDN_HOST"`
+	LoopsAPIKey               string `koanf:"LOOPS_API_KEY"`
+	GithubAPIToken            string `koanf:"GITHUB_API_TOKEN"`
+	PylonAPIKey               string `koanf:"PYLON_API_KEY"`
+	DisableAuditLogGeneration bool   `koanf:"DISABLE_AUDIT_LOG_GENERATION"`
+	DisableAuditLogStorage    bool   `koanf:"DISABLE_AUDIT_LOG_STORAGE"`
+	GenerateSanitizedSchema   bool   `koanf:"GENERATE_SANITIZED_SCHEMA"`
 	SanitizedSchemaRole       string `koanf:"SANITIZED_SCHEMA_ROLE"`
 
 	// TLS / Certificates
-	SSLClientCertificateHeaderKey               string `koanf:"SSL_CLIENT_CERTIFICATE_HEADER_KEY"`
+	SSLClientCertificateHeaderKey                 string `koanf:"SSL_CLIENT_CERTIFICATE_HEADER_KEY"`
 	IdentityTLSCertAuthClientCertificateHeaderKey string `koanf:"IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY"`
 
 	// Slack
@@ -258,9 +258,9 @@ type Config struct {
 	RelayAuthSecret                 string `koanf:"RELAY_AUTH_SECRET"`
 
 	// Dynamic Secrets
-	DynamicSecretAllowInternalIP      bool   `koanf:"DYNAMIC_SECRET_ALLOW_INTERNAL_IP"`
-	DynamicSecretAWSAccessKeyID       string `koanf:"DYNAMIC_SECRET_AWS_ACCESS_KEY_ID"`
-	DynamicSecretAWSSecretAccessKey   string `koanf:"DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY"`
+	DynamicSecretAllowInternalIP    bool   `koanf:"DYNAMIC_SECRET_ALLOW_INTERNAL_IP"`
+	DynamicSecretAWSAccessKeyID     string `koanf:"DYNAMIC_SECRET_AWS_ACCESS_KEY_ID"`
+	DynamicSecretAWSSecretAccessKey string `koanf:"DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY"`
 
 	// PAM AWS
 	PAMAWSAccessKeyID     string `koanf:"PAM_AWS_ACCESS_KEY_ID"`
@@ -285,11 +285,11 @@ type Config struct {
 	InfAppConnectionGithubAppID           string `koanf:"INF_APP_CONNECTION_GITHUB_APP_ID"`
 
 	// App Connection - GitHub Radar App
-	InfAppConnectionGithubRadarAppClientID     string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID"`
-	InfAppConnectionGithubRadarAppClientSecret string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET"`
-	InfAppConnectionGithubRadarAppPrivateKey   string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY"`
-	InfAppConnectionGithubRadarAppSlug         string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG"`
-	InfAppConnectionGithubRadarAppID           string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_ID"`
+	InfAppConnectionGithubRadarAppClientID      string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID"`
+	InfAppConnectionGithubRadarAppClientSecret  string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET"`
+	InfAppConnectionGithubRadarAppPrivateKey    string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY"`
+	InfAppConnectionGithubRadarAppSlug          string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG"`
+	InfAppConnectionGithubRadarAppID            string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_ID"`
 	InfAppConnectionGithubRadarAppWebhookSecret string `koanf:"INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET"`
 
 	// App Connection - GitLab OAuth
@@ -324,8 +324,8 @@ type Config struct {
 	InfAppConnectionHerokuOAuthClientSecret string `koanf:"INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET"`
 
 	// Datadog
-	ShouldUseDatadogTracer bool   `koanf:"SHOULD_USE_DATADOG_TRACER"`
-	DatadogProfilingEnabled bool  `koanf:"DATADOG_PROFILING_ENABLED"`
+	ShouldUseDatadogTracer  bool   `koanf:"SHOULD_USE_DATADOG_TRACER"`
+	DatadogProfilingEnabled bool   `koanf:"DATADOG_PROFILING_ENABLED"`
 	DatadogEnv              string `koanf:"DATADOG_ENV"`
 	DatadogService          string `koanf:"DATADOG_SERVICE"`
 	DatadogHostname         string `koanf:"DATADOG_HOSTNAME"`
@@ -345,33 +345,33 @@ type Config struct {
 	InternalRegion string `koanf:"INTERNAL_REGION"`
 
 	// Development flags
-	RotationDevelopmentMode                  bool `koanf:"ROTATION_DEVELOPMENT_MODE"`
-	DailyResourceCleanUpDevelopmentMode      bool `koanf:"DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE"`
-	BDDNockAPIEnabled                        bool `koanf:"BDD_NOCK_API_ENABLED"`
-	ACMEDevelopmentMode                      bool `koanf:"ACME_DEVELOPMENT_MODE"`
-	ACMESkipUpstreamValidation               bool `koanf:"ACME_SKIP_UPSTREAM_VALIDATION"`
+	RotationDevelopmentMode                     bool   `koanf:"ROTATION_DEVELOPMENT_MODE"`
+	DailyResourceCleanUpDevelopmentMode         bool   `koanf:"DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE"`
+	BDDNockAPIEnabled                           bool   `koanf:"BDD_NOCK_API_ENABLED"`
+	ACMEDevelopmentMode                         bool   `koanf:"ACME_DEVELOPMENT_MODE"`
+	ACMESkipUpstreamValidation                  bool   `koanf:"ACME_SKIP_UPSTREAM_VALIDATION"`
 	ACMEDevelopmentHTTP01ChallengeHostOverrides string `koanf:"ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES"`
-	ACMEDNSResolverServers                   string `koanf:"ACME_DNS_RESOLVER_SERVERS"`
-	ACMEDNSResolveResolverServersHostEnabled bool   `koanf:"ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED"`
-	DNSMadeEasySandboxEnabled                bool   `koanf:"DNS_MADE_EASY_SANDBOX_ENABLED"`
+	ACMEDNSResolverServers                      string `koanf:"ACME_DNS_RESOLVER_SERVERS"`
+	ACMEDNSResolveResolverServersHostEnabled    bool   `koanf:"ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED"`
+	DNSMadeEasySandboxEnabled                   bool   `koanf:"DNS_MADE_EASY_SANDBOX_ENABLED"`
 
 	// Derived (not from env)
-	IsCloud                        bool
-	IsSmtpConfigured               bool
-	IsRedisConfigured              bool
-	IsClickHouseConfigured         bool
-	IsDevelopmentMode              bool
-	IsTestMode                     bool
-	IsProductionMode               bool
-	IsRedisSentinelMode            bool
-	IsSecondaryInstance            bool
-	IsHsmConfigured                bool
-	IsSecretScanningConfigured     bool
-	IsSecretScanningV2Configured   bool
-	DBReadReplicas           []DBReadReplica
-	ParsedRedisSentinelHosts       []RedisHostPort
-	ParsedRedisClusterHosts        []RedisHostPort
-	ParsedRedisReadReplicas        []RedisHostPort
+	IsCloud                      bool
+	IsSmtpConfigured             bool
+	IsRedisConfigured            bool
+	IsClickHouseConfigured       bool
+	IsDevelopmentMode            bool
+	IsTestMode                   bool
+	IsProductionMode             bool
+	IsRedisSentinelMode          bool
+	IsSecondaryInstance          bool
+	IsHsmConfigured              bool
+	IsSecretScanningConfigured   bool
+	IsSecretScanningV2Configured bool
+	DBReadReplicas               []DBReadReplica
+	ParsedRedisSentinelHosts     []RedisHostPort
+	ParsedRedisClusterHosts      []RedisHostPort
+	ParsedRedisReadReplicas      []RedisHostPort
 }
 
 func (c *Config) Addr() string {
@@ -396,8 +396,8 @@ func LoadConfig() (*Config, error) {
 
 	// Defaults matching the Node.js backend.
 	k.Set("NODE_ENV", string(NodeEnvProduction))
-	k.Set("PORT", 4000)
-	k.Set("HOST", "localhost")
+	k.Set("PORT", 4040)
+	k.Set("HOST", "0.0.0.0")
 	k.Set("LOG_LEVEL", "info")
 	k.Set("DB_PORT", "5432")
 	k.Set("SMTP_PORT", 587)
