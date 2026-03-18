@@ -12,3 +12,7 @@ infisical
 
 # OS
 .DS_Store
+
+# Test infra shared state (delete these if tests misbehave)
+.test-infra-state.json
+.test-infra.lock

@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: infisical
+      POSTGRES_USER: infisical
+      POSTGRES_DB: infisical
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infisical"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend-nodejs:
+    image: infisical/infisical:latest
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - ENCRYPTION_KEY=a984ecdf82ec779e55dbcc21303a900f
+      - AUTH_SECRET=test-auth-secret-long-enough-for-jwt
+      - SITE_URL=http://localhost:8080
+      - TELEMETRY_ENABLED=false
