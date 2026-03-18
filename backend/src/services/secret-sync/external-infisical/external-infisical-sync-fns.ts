@@ -36,16 +36,22 @@ type TRemoteSecret = {
   type: string;
 };
 
-const getAccessTokenAndBaseUrl = async (secretSync: TExternalInfisicalSyncWithCredentials) => {
-  const { connection } = secretSync;
-  const { credentials } = connection;
+type TRemoteContext = {
+  accessToken: string;
+  baseUrl: string;
+};
+
+const getRemoteContext = async (secretSync: TExternalInfisicalSyncWithCredentials): Promise<TRemoteContext> => {
+  const { credentials } = secretSync.connection;
   const accessToken = await getExternalInfisicalAccessToken(credentials);
   const baseUrl = credentials.instanceUrl.replace(/\/$/, "");
   return { accessToken, baseUrl };
 };
 
-const fetchRemoteSecrets = async (secretSync: TExternalInfisicalSyncWithCredentials): Promise<TRemoteSecret[]> => {
-  const { accessToken, baseUrl } = await getAccessTokenAndBaseUrl(secretSync);
+const fetchRemoteSecrets = async (
+  secretSync: TExternalInfisicalSyncWithCredentials,
+  { accessToken, baseUrl }: TRemoteContext
+): Promise<TRemoteSecret[]> => {
   const { destinationConfig } = secretSync;
 
   const { data } = await request.get<{ secrets: TRemoteSecret[] }>(`${baseUrl}/api/v3/secrets/raw`, {
@@ -62,11 +68,11 @@ const fetchRemoteSecrets = async (secretSync: TExternalInfisicalSyncWithCredenti
 
 const batchCreateSecrets = async (
   secretSync: TExternalInfisicalSyncWithCredentials,
-  secrets: Array<{ secretKey: string; secretValue: string }>
+  secrets: Array<{ secretKey: string; secretValue: string }>,
+  { accessToken, baseUrl }: TRemoteContext
 ) => {
   if (secrets.length === 0) return;
 
-  const { accessToken, baseUrl } = await getAccessTokenAndBaseUrl(secretSync);
   const { destinationConfig } = secretSync;
 
   await request.post(
@@ -89,11 +95,11 @@ const batchCreateSecrets = async (
 
 const batchUpdateSecrets = async (
   secretSync: TExternalInfisicalSyncWithCredentials,
-  secrets: Array<{ secretKey: string; secretValue: string }>
+  secrets: Array<{ secretKey: string; secretValue: string }>,
+  { accessToken, baseUrl }: TRemoteContext
 ) => {
   if (secrets.length === 0) return;
 
-  const { accessToken, baseUrl } = await getAccessTokenAndBaseUrl(secretSync);
   const { destinationConfig } = secretSync;
 
   await request.patch(
@@ -114,10 +120,13 @@ const batchUpdateSecrets = async (
   );
 };
 
-const batchDeleteSecrets = async (secretSync: TExternalInfisicalSyncWithCredentials, secretKeys: string[]) => {
+const batchDeleteSecrets = async (
+  secretSync: TExternalInfisicalSyncWithCredentials,
+  secretKeys: string[],
+  { accessToken, baseUrl }: TRemoteContext
+) => {
   if (secretKeys.length === 0) return;
 
-  const { accessToken, baseUrl } = await getAccessTokenAndBaseUrl(secretSync);
   const { destinationConfig } = secretSync;
 
   await request.delete(`${baseUrl}/api/v3/secrets/batch/raw`, {
@@ -134,7 +143,8 @@ const batchDeleteSecrets = async (secretSync: TExternalInfisicalSyncWithCredenti
 export const ExternalInfisicalSyncFns = {
   syncSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials, secretMap: TSecretMap) =>
     withExternalInfisicalErrorHandling(async () => {
-      const remoteSecrets = await fetchRemoteSecrets(secretSync);
+      const ctx = await getRemoteContext(secretSync);
+      const remoteSecrets = await fetchRemoteSecrets(secretSync, ctx);
       const environmentSlug = secretSync.environment?.slug || "";
       const { disableSecretDeletion, keySchema } = secretSync.syncOptions;
 
@@ -165,20 +175,22 @@ export const ExternalInfisicalSyncFns = {
         }
       }
 
-      await batchCreateSecrets(secretSync, secretsToCreate);
-      await batchUpdateSecrets(secretSync, secretsToUpdate);
-      await batchDeleteSecrets(secretSync, secretsToDelete);
+      await batchCreateSecrets(secretSync, secretsToCreate, ctx);
+      await batchUpdateSecrets(secretSync, secretsToUpdate, ctx);
+      await batchDeleteSecrets(secretSync, secretsToDelete, ctx);
     }),
 
   getSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials): Promise<TSecretMap> =>
     withExternalInfisicalErrorHandling(async () => {
-      const remoteSecrets = await fetchRemoteSecrets(secretSync);
+      const ctx = await getRemoteContext(secretSync);
+      const remoteSecrets = await fetchRemoteSecrets(secretSync, ctx);
       return Object.fromEntries(remoteSecrets.map((s) => [s.secretKey, { value: s.secretValue ?? "" }]));
     }),
 
   removeSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials, secretMap: TSecretMap) =>
     withExternalInfisicalErrorHandling(async () => {
+      const ctx = await getRemoteContext(secretSync);
       const secretsToDelete = Object.keys(secretMap);
-      await batchDeleteSecrets(secretSync, secretsToDelete);
+      await batchDeleteSecrets(secretSync, secretsToDelete, ctx);
     })
 };
