@@ -868,6 +868,13 @@
                       "documentation/platform/pam/getting-started/accounts"
                     ]
                   },
+                  {
+                    "group": "Discovery",
+                    "pages": [
+                      "documentation/platform/pam/discovery/overview",
+                      "documentation/platform/pam/discovery/active-directory"
+                    ]
+                  },
                   "documentation/platform/pam/architecture"
                 ]
               },

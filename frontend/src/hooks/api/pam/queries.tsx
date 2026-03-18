@@ -8,7 +8,9 @@ import {
   TListPamAccountsDTO,
   TListPamResourcesDTO,
   TPamAccount,
+  TPamAccountDependency,
   TPamResource,
+  TPamResourceDependency,
   TPamSession
 } from "./types";
 
@@ -31,6 +33,13 @@ export const pamKeys = {
     resourceId
   ],
   listRelatedResources: (resourceId: string) => [...pamKeys.resource(), "related", resourceId],
+  allResourceDependencies: () => [...pamKeys.resource(), "dependencies"] as const,
+  resourceDependencies: (resourceType: string, resourceId: string) => [
+    ...pamKeys.resource(),
+    "dependencies",
+    resourceType,
+    resourceId
+  ],
   listAccounts: ({ projectId, ...params }: TListPamAccountsDTO) => [
     ...pamKeys.account(),
     "list",
@@ -38,6 +47,7 @@ export const pamKeys = {
     params
   ],
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
+  accountDependencies: (accountId: string) => [...pamKeys.account(), "dependencies", accountId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
@@ -155,6 +165,22 @@ export const useListRelatedResources = (
   });
 };
 
+export const useGetPamResourceDependencies = (
+  resourceType?: PamResourceType,
+  resourceId?: string
+) => {
+  return useQuery({
+    queryKey: pamKeys.resourceDependencies(resourceType || "", resourceId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ dependencies: TPamResourceDependency[] }>(
+        `/api/v1/pam/resources/${resourceType}/${resourceId}/dependencies`
+      );
+      return data.dependencies;
+    },
+    enabled: !!resourceType && !!resourceId
+  });
+};
+
 // Accounts
 type TListPamAccountsResponse = {
   accounts: TPamAccount[];
@@ -212,6 +238,19 @@ export const useGetPamAccountById = (
     },
     enabled: !!accountId && (options?.enabled ?? true),
     ...options
+  });
+};
+
+export const useGetPamAccountDependencies = (accountId?: string) => {
+  return useQuery({
+    queryKey: pamKeys.accountDependencies(accountId!),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ dependencies: TPamAccountDependency[] }>(
+        `/api/v1/pam/accounts/${accountId}/dependencies`
+      );
+      return data.dependencies;
+    },
+    enabled: !!accountId
   });
 };
 
