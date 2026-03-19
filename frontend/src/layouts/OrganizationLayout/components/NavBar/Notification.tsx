@@ -21,7 +21,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
         "group relative flex cursor-pointer items-start border-b border-mineshaft-600 p-2 transition-colors",
         notification.link ? "hover:bg-mineshaft-700" : "cursor-default",
         !notification.isRead && "bg-mineshaft-800",
-        isCritical && !notification.isRead && "border-l-2 border-l-red-500"
+        isCritical && !notification.isRead && "border-l-2 border-l-red-700"
       )}
     >
       <div className="flex w-full min-w-0 flex-col p-1">
@@ -32,7 +32,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
                 icon={faCircle}
                 className={twMerge(
                   "size-2 shrink-0",
-                  isCritical ? "text-red-500" : "text-yellow-400"
+                  isCritical ? "text-red-700" : "text-yellow-400"
                 )}
               />
             </div>

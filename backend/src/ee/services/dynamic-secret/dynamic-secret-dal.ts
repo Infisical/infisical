@@ -42,7 +42,7 @@ export interface TDynamicSecretDALFactory extends Omit<TOrmify<TableName.Dynamic
       name: string;
       folderId: string;
       projectId: string;
-      projectName: string | null;
+      projectName: string;
       environmentSlug: string;
     }>
   >;

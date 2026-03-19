@@ -49,7 +49,7 @@ export const NotificationDropdown = () => {
             <span
               className={twMerge(
                 "absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px]",
-                hasCritical ? "bg-red-500 text-white" : "bg-yellow-400 text-black"
+                hasCritical ? "bg-red-700 text-white" : "bg-yellow-400 text-black"
               )}
             >
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -67,7 +67,7 @@ export const NotificationDropdown = () => {
             <div className="flex items-center gap-2">
               <span className="font-medium text-white">Notifications</span>
               {hasCritical && (
-                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <span className="rounded-full bg-red-700 px-1.5 py-0.5 text-[10px] font-medium text-white">
                   {criticalCount > 99 ? "99+" : criticalCount} critical
                 </span>
               )}

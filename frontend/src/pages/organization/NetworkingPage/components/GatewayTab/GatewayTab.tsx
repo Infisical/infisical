@@ -5,7 +5,6 @@ import {
   faEdit,
   faEllipsisV,
   faInfoCircle,
-  faLink,
   faMagnifyingGlass,
   faPlus,
   faSearch,
@@ -109,9 +108,8 @@ const GatewayConnectedCell = ({ gatewayId, isV1, onClick }: GatewayConnectedCell
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1.5 text-primary-400 hover:text-primary-300"
+      className="flex cursor-pointer items-center gap-1.5 text-mineshaft-200 underline decoration-mineshaft-400 underline-offset-2 hover:text-mineshaft-100 hover:decoration-mineshaft-300"
     >
-      <FontAwesomeIcon icon={faLink} className="h-3 w-3" />
       <span>
         {totalCount} resource{totalCount !== 1 ? "s" : ""}
       </span>

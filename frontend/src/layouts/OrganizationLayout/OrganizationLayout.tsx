@@ -43,7 +43,7 @@ export const OrganizationLayout = () => {
           {!isLoading && !isInsideProject && !serverDetails?.emailConfigured && <SmtpBanner />}
           {!isLoading && !isInsideProject && subscription.auditLogs && <AuditLogBanner />}
           {!window.isSecureContext && !isInsideProject && <InsecureConnectionBanner />}
-          <NetworkHealthBanner />
+          {!isInsideProject && <NetworkHealthBanner />}
           <main
             className={twMerge(
               "flex-1 overflow-x-hidden bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark",
