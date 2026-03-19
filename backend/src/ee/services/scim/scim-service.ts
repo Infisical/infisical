@@ -983,22 +983,21 @@ export const scimServiceFactory = ({
     // no mapping, user will have default org membership
     if (!externalGroupMapping) return;
 
-    // only get org memberships that are new (invites)
-    const newOrgMemberships = await membershipUserDAL.find({
-      status: "invited",
+    // get org memberships for members being added to the group
+    const orgMemberships = await membershipUserDAL.find({
       scope: AccessScope.Organization,
       $in: {
         id: members.map((member) => member.value)
       }
     });
 
-    if (!newOrgMemberships.length) return;
+    if (!orgMemberships.length) return;
 
-    // set new membership roles to group mapping value
+    // set membership roles to group mapping value
     await membershipRoleDAL.update(
       {
         $in: {
-          membershipId: newOrgMemberships.map((membership) => membership.id)
+          membershipId: orgMemberships.map((membership) => membership.id)
         }
       },
       {
