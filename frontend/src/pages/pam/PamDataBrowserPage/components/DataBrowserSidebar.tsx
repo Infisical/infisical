@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { DatabaseIcon, SearchIcon, TableIcon, ViewIcon } from "lucide-react";
 
+import { Select, SelectItem } from "@app/components/v2";
 import { UnstableInput } from "@app/components/v3/generic/Input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@app/components/v3/generic/Select";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { cn } from "@app/components/v3/utils";
 
@@ -58,18 +52,18 @@ export const DataBrowserSidebar = ({
         {isLoadingSchemas ? (
           <Skeleton className="h-8 w-full" />
         ) : (
-          <Select value={selectedSchema} onValueChange={onSchemaChange}>
-            <SelectTrigger className="h-8 w-full justify-start text-xs text-mineshaft-200">
-              <DatabaseIcon className="size-3 text-mineshaft-400" />
-              <SelectValue placeholder="Select schema" />
-            </SelectTrigger>
-            <SelectContent>
-              {schemas.map((s) => (
-                <SelectItem key={s.name} value={s.name}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
+          <Select
+            value={selectedSchema}
+            onValueChange={onSchemaChange}
+            className="w-full text-xs"
+            LucideIcon={DatabaseIcon}
+            iconClassName="text-mineshaft-400"
+          >
+            {schemas.map((s) => (
+              <SelectItem key={s.name} value={s.name}>
+                {s.name}
+              </SelectItem>
+            ))}
           </Select>
         )}
         <div className="relative">

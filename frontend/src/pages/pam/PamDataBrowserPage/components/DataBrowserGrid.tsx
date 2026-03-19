@@ -281,13 +281,12 @@ export const DataBrowserGrid = ({
     setPage(1);
   }, []);
 
-  // Change tracking
+  // Change tracking — use index-based comparison so edits to PK columns are detected
   const changeCount = useMemo(() => {
     let count = newRowTempIds.size;
-    currentData.forEach((row) => {
-      const key = row.tempRowId ? String(row.tempRowId) : getRowKey(row, primaryKeys);
-      if (newRowTempIds.has(key)) return;
-      const original = originalData.find((o) => getRowKey(o, primaryKeys) === key);
+    currentData.forEach((row, idx) => {
+      if (row.tempRowId && newRowTempIds.has(String(row.tempRowId))) return;
+      const original = originalData[idx];
       if (!original) return;
       const hasChanges = tableColumns.some(
         (col) => String(row[col.name] ?? "") !== String(original[col.name] ?? "")
@@ -295,7 +294,7 @@ export const DataBrowserGrid = ({
       if (hasChanges) count += 1;
     });
     return count;
-  }, [currentData, originalData, newRowTempIds, primaryKeys, tableColumns]);
+  }, [currentData, originalData, newRowTempIds, tableColumns]);
 
   useEffect(() => {
     onChangeCountUpdate?.(changeCount);
@@ -406,11 +405,10 @@ export const DataBrowserGrid = ({
         statements.push(buildInsertQuery({ schema, table, row: values }));
       });
 
-      // Updates (changed rows)
-      currentData.forEach((row) => {
+      // Updates (changed rows) — use index-based lookup so PK edits are detected
+      currentData.forEach((row, idx) => {
         if (row.tempRowId) return;
-        const key = getRowKey(row, primaryKeys);
-        const original = originalData.find((o) => getRowKey(o, primaryKeys) === key);
+        const original = originalData[idx];
         if (!original) return;
         const changes: Record<string, unknown> = {};
         tableColumns.forEach((col) => {
