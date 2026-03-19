@@ -79,7 +79,7 @@ const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
 type TSecretSyncQueueFactoryDep = {
-  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
+  queueService: Pick<TQueueServiceFactory, "queue" | "start" | "stopRepeatableJob">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
@@ -96,7 +96,10 @@ type TSecretSyncQueueFactoryDep = {
     | "invalidateSecretCacheByProjectId"
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
-  secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
+  secretSyncDAL: Pick<
+    TSecretSyncDALFactory,
+    "findById" | "find" | "updateById" | "deleteById" | "update" | "updateAndReturnIds"
+  >;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: TProjectDALFactory;
@@ -1207,7 +1210,7 @@ export const secretSyncQueueFactory = ({
       QueueName.DailySecretSyncRetry,
       QueueJobs.DailySecretSyncRetry,
       { pattern: "0 0 * * *", utc: true },
-      QueueName.DailySecretSyncRetry
+      QueueName.DailySecretSyncRetry as string
     );
 
     await queueService.queue(QueueName.DailySecretSyncRetry, QueueJobs.DailySecretSyncRetry, undefined, {
