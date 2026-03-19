@@ -985,6 +985,7 @@ export const scimServiceFactory = ({
 
     // get org memberships for members being added to the group
     const orgMemberships = await membershipUserDAL.find({
+      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: group.orgId,
       scope: AccessScope.Organization,
       $in: {
         id: members.map((member) => member.value)
@@ -1291,12 +1292,17 @@ export const scimServiceFactory = ({
         });
       }
 
-      return group;
+      return { group, toAddUserIds };
     });
 
-    await $syncNewMembersRoles(group, members);
+    if (updatedGroup.toAddUserIds.length) {
+      await $syncNewMembersRoles(
+        group,
+        updatedGroup.toAddUserIds.map((m) => ({ value: m.id }))
+      );
+    }
 
-    return updatedGroup;
+    return updatedGroup.group;
   };
 
   const replaceScimGroup: TScimServiceFactory["replaceScimGroup"] = async ({
