@@ -73,7 +73,10 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       resource === PamResourceType.CockroachDB ||
       resource === PamResourceType.Elasticsearch ||
       resource === PamResourceType.Snowflake ||
-      resource === PamResourceType.DynamoDB
+      resource === PamResourceType.DynamoDB ||
+      resource === PamResourceType.OracleDB ||
+      resource === PamResourceType.SQLite ||
+      resource === PamResourceType.MsSQL
     ) {
       handlePopUpOpen("upgradePlan", {
         text: "Your current plan does not include access to this resource type. To unlock this feature, please upgrade to Infisical Enterprise plan.",
