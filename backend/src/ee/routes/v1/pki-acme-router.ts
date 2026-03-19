@@ -158,7 +158,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
           profileId: req.params.profileId,
           alg,
           jwk: jwk!,
-          payload
+          payload,
+          auditLogInfo: req.auditLogInfo
         })
       );
     }
@@ -230,7 +231,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         await server.services.pkiAcme.createAcmeOrder({
           profileId,
           accountId,
-          payload
+          payload,
+          auditLogInfo: req.auditLogInfo
         })
       );
     }
@@ -304,7 +306,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
           profileId,
           accountId,
           orderId: req.params.orderId,
-          payload
+          payload,
+          auditLogInfo: req.auditLogInfo
         })
       );
     }
@@ -373,7 +376,12 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       return sendAcmeResponse(
         res,
         profileId,
-        await server.services.pkiAcme.downloadAcmeCertificate({ profileId, accountId, orderId: req.params.orderId })
+        await server.services.pkiAcme.downloadAcmeCertificate({
+          profileId,
+          accountId,
+          orderId: req.params.orderId,
+          auditLogInfo: req.auditLogInfo
+        })
       );
     }
   });
@@ -444,7 +452,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
           profileId,
           accountId,
           authzId: req.params.authzId,
-          challengeId: req.params.challengeId
+          challengeId: req.params.challengeId,
+          auditLogInfo: req.auditLogInfo
         })
       );
     }
