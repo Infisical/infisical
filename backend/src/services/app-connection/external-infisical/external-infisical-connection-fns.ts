@@ -86,6 +86,7 @@ export const validateExternalInfisicalConnectionCredentials = async (
 };
 
 const getAuthHeaders = async (connection: TExternalInfisicalConnection) => {
+  await blockLocalAndPrivateIpAddresses(connection.credentials.instanceUrl);
   const token = await getExternalInfisicalAccessToken(connection.credentials);
   return { Authorization: `Bearer ${token}` };
 };
