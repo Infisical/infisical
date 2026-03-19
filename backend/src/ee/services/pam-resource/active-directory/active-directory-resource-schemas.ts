@@ -42,8 +42,8 @@ export const ActiveDirectoryAccountMetadataSchema = z.object({
   userPrincipalName: z.string().optional(),
   servicePrincipalName: z.string().array().optional(),
   userAccountControl: z.number().optional(),
-  pwdLastSet: z.string().optional(),
-  lastLogonTimestamp: z.string().optional()
+  passwordLastSet: z.string().optional(),
+  lastLogon: z.string().optional()
 });
 
 export const ActiveDirectoryResourceSchema = BaseActiveDirectoryResourceSchema.extend({

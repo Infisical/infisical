@@ -24,6 +24,10 @@ export type TWindowsCredentials = {
 
 export type TWindowsAccountMetadata = {
   accountType: WindowsAccountType;
+  lastLogon?: string;
+  passwordLastSet?: string;
+  sid?: string;
+  enabled?: boolean;
 };
 
 // Resources

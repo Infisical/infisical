@@ -1,0 +1,60 @@
+---
+title: "Redis Web Access"
+sidebarTitle: "Redis"
+description: "Run Redis commands directly from your browser with an interactive REPL."
+---
+
+The Redis web access terminal provides a `redis-cli`-like experience in your browser. It is designed for light, ad-hoc usage — quick lookups, debugging, and administrative tasks — not as a replacement for a full Redis client or long-running workloads.
+
+## Connecting
+
+<Steps>
+  <Step title="Navigate to Account">
+    Go to the **Resources** tab in your PAM project, open the Redis resource, and find the account you want to access. Click the **Connect** button next to the account.
+
+    ![Account Connect Button](/images/pam/product-reference/web-access/redis-account-connect-button.png)
+
+    Alternatively, if you are on the account page, click the **Access** button.
+
+    ![Account Page Access Button](/images/pam/product-reference/web-access/redis-account-page-access-button.png)
+  </Step>
+
+  <Step title="Connect in Browser">
+    In the connect modal, click **Connect in Browser** to open the web access terminal.
+
+    ![Connect in Browser](/images/pam/product-reference/web-access/redis-connect-in-browser.png)
+  </Step>
+
+  <Step title="End Session">
+    Click the **Disconnect** button from the web access terminal status bar or type `quit` or `exit`. You can reconnect from the same page.
+  </Step>
+</Steps>
+
+![Web Access Terminal](/images/pam/product-reference/web-access/redis-web-access-terminal.png)
+
+## Usage
+
+Once connected, you'll see a `>` prompt. Type Redis commands as you would in `redis-cli`:
+
+```
+> SET greeting "Hello, World!"
+OK
+> GET greeting
+"Hello, World!"
+> KEYS *
+1) "greeting"
+> DEL greeting
+(integer) 1
+```
+
+## Limits
+
+See the [common session limits](/documentation/platform/pam/product-reference/web-access/overview#session-limits) that apply to all web access sessions.
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Is this an actual redis-cli session?">
+        No. The web access terminal is not a `redis-cli` client. It is a custom REPL that connects directly to Redis and provides a `redis-cli`-like experience, including familiar prompts and reply formatting.
+    </Accordion>
+</AccordionGroup>

@@ -287,6 +287,10 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
       route("/installations/$installationId", "cert-manager/InstallationDetailsByIDPage/route.tsx")
     ]),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
+    route("/code-signing", [
+      index("cert-manager/CodeSigningPage/route.tsx"),
+      route("/$signerId", "cert-manager/SignerDetailPage/route.tsx")
+    ]),
     route("/approvals", "cert-manager/ApprovalsPage/route.tsx"),
     route(
       "/approval-requests/$approvalRequestId",

@@ -9,6 +9,7 @@ import { useProject } from "@app/context";
 import {
   ApprovalPolicyType,
   PamAccessPolicyConditions,
+  PamAccessPolicyConstraints,
   TApprovalPolicy,
   useCreateApprovalPolicy,
   useUpdateApprovalPolicy
@@ -80,7 +81,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
           resourceNames: c.resourceNames || [],
           accountNames: c.accountNames || []
         })),
-        constraints: policyData.policy.constraints.constraints,
+        constraints: policyData.policy.constraints.constraints as PamAccessPolicyConstraints,
         steps: policyData.policy.steps.map((step) => ({
           ...step,
           name: step.name || ""

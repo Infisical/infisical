@@ -523,7 +523,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
   const flushAll = async () => {
     if (postHog) {
-      await postHog.shutdownAsync();
+      await postHog.shutdown();
     }
   };
 

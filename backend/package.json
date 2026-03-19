@@ -79,6 +79,7 @@
     "@react-email/preview-server": "^5.0.6",
     "@smithy/types": "^4.3.1",
     "@types/bcrypt": "^5.0.2",
+    "@types/dns-packet": "^5.6.5",
     "@types/jmespath": "^0.15.2",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.5",
@@ -195,6 +196,7 @@
     "connect-redis": "^7.1.1",
     "cron": "^3.1.7",
     "dd-trace": "^5.40.0",
+    "dns-packet": "^5.6.1",
     "dotenv": "^16.4.1",
     "fastify": "^4.29.1",
     "fastify-plugin": "^4.5.1",
@@ -241,7 +243,7 @@
     "pino": "^8.16.2",
     "pkcs11js": "^2.1.6",
     "pkijs": "^3.2.4",
-    "posthog-node": "^3.6.2",
+    "posthog-node": "^5.28.1",
     "probot": "^13.3.8",
     "re2": "^1.21.4",
     "react": "19.1.0",
@@ -259,6 +261,7 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^11.1.0",
+    "winrm-client": "0.0.12",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.24.5"
   }

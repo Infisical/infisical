@@ -57,6 +57,7 @@ import { useGetWorkspaceUsers } from "@app/hooks/api";
 import {
   approvalGrantQuery,
   ApprovalGrantStatus,
+  PamAccessGrantAttributes,
   useRevokeApprovalGrant
 } from "@app/hooks/api/approvalGrants";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -119,10 +120,11 @@ export const RequestGrantTab = () => {
     if (search) {
       filtered = filtered.filter((grant) => {
         if (grant.type !== ApprovalPolicyType.PamAccess) return false;
+        const attrs = grant.attributes as PamAccessGrantAttributes;
         const searchLower = search.toLowerCase();
         return (
-          grant.attributes.resourceName?.toLowerCase().includes(searchLower) ||
-          grant.attributes.accountName?.toLowerCase().includes(searchLower) ||
+          attrs.resourceName?.toLowerCase().includes(searchLower) ||
+          attrs.accountName?.toLowerCase().includes(searchLower) ||
           grant.id.toLowerCase().includes(searchLower)
         );
       });
@@ -289,6 +291,7 @@ export const RequestGrantTab = () => {
               {!isGrantsLoading &&
                 paginatedGrants.map((grant) => {
                   if (grant.type !== ApprovalPolicyType.PamAccess) return null;
+                  const attrs = grant.attributes as PamAccessGrantAttributes;
                   const isActive = grant.status === ApprovalGrantStatus.Active;
 
                   return (
@@ -298,18 +301,16 @@ export const RequestGrantTab = () => {
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-200">
-                          {grant.attributes.resourceName || "-"}
+                          {attrs.resourceName || "-"}
                         </span>
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-200">
-                          {grant.attributes.accountName || "-"}
+                          {attrs.accountName || "-"}
                         </span>
                       </Td>
                       <Td>
-                        <span className="text-sm text-mineshaft-200">
-                          {grant.attributes.accessDuration}
-                        </span>
+                        <span className="text-sm text-mineshaft-200">{attrs.accessDuration}</span>
                       </Td>
                       <Td>
                         <Badge

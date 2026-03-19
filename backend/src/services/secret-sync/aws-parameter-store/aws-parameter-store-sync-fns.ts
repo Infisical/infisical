@@ -359,6 +359,10 @@ export const AwsParameterStoreSyncFns = {
       Boolean(syncOptions.tags?.length || syncOptions.syncSecretMetadataAsTags)
     );
 
+    const createdSecretKeys: string[] = [];
+    const updatedSecretKeys: string[] = [];
+    const deletedSecretKeys: string[] = [];
+
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value, secretMetadata }] = entry;
 
@@ -370,12 +374,12 @@ export const AwsParameterStoreSyncFns = {
 
       const keyId = syncOptions.keyId ?? "alias/aws/ssm";
 
-      // create parameter or update if changed
-      if (
-        !(key in awsParameterStoreSecretsRecord) ||
-        value !== awsParameterStoreSecretsRecord[key].Value ||
-        keyId !== awsParameterStoreMetadataRecord[key]?.KeyId
-      ) {
+      const isNew = !(key in awsParameterStoreSecretsRecord);
+      const isChanged =
+        !isNew &&
+        (value !== awsParameterStoreSecretsRecord[key].Value || keyId !== awsParameterStoreMetadataRecord[key]?.KeyId);
+
+      if (isNew || isChanged) {
         try {
           await putParameter(ssm, {
             Name: `${destinationConfig.path}${key}`,
@@ -384,6 +388,8 @@ export const AwsParameterStoreSyncFns = {
             Overwrite: true,
             KeyId: keyId
           });
+          if (isNew) createdSecretKeys.push(key);
+          else updatedSecretKeys.push(key);
         } catch (error) {
           throw new SecretSyncError({
             error,
@@ -433,7 +439,7 @@ export const AwsParameterStoreSyncFns = {
       }
     }
 
-    if (syncOptions.disableSecretDeletion) return;
+    if (syncOptions.disableSecretDeletion) return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
 
     const parametersToDelete: AWS.SSM.Parameter[] = [];
 
@@ -445,10 +451,13 @@ export const AwsParameterStoreSyncFns = {
 
       if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);
+        deletedSecretKeys.push(parameter.Name!);
       }
     }
 
     await deleteParametersBatch(ssm, parametersToDelete);
+
+    return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
   },
   getSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials): Promise<TSecretMap> => {
     const { destinationConfig, syncOptions, environment } = secretSync;
