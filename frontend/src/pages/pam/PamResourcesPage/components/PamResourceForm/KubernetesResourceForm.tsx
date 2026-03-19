@@ -40,7 +40,10 @@ export const KubernetesResourceForm = ({ resource, onSubmit, closeSheet }: Props
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: resource
-      ? { ...resource, gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined }
+      ? {
+          ...resource,
+          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined
+        }
       : {
           resourceType: PamResourceType.Kubernetes,
           gateway: undefined,
@@ -59,7 +62,10 @@ export const KubernetesResourceForm = ({ resource, onSubmit, closeSheet }: Props
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit((data) => onSubmit(data as FormData))} className="flex flex-1 flex-col overflow-hidden">
+      <form
+        onSubmit={handleSubmit((data) => onSubmit(data as FormData))}
+        className="flex flex-1 flex-col overflow-hidden"
+      >
         <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
           <GenericResourceFields />
           <KubernetesResourceFields />
