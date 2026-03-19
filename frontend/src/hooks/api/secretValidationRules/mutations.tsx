@@ -15,7 +15,7 @@ export const useCreateSecretValidationRule = () => {
   return useMutation({
     mutationFn: async ({ projectId, ...body }: TCreateSecretValidationRuleDTO) => {
       const { data } = await apiRequest.post<{ rule: TSecretValidationRule }>(
-        `/api/v1/${projectId}/secret-validation-rules`,
+        `/api/v1/projects/${projectId}/secret-validation-rules`,
         body
       );
       return data.rule;
@@ -31,7 +31,7 @@ export const useUpdateSecretValidationRule = () => {
   return useMutation({
     mutationFn: async ({ projectId, ruleId, ...body }: TUpdateSecretValidationRuleDTO) => {
       const { data } = await apiRequest.patch<{ rule: TSecretValidationRule }>(
-        `/api/v1/${projectId}/secret-validation-rules/${ruleId}`,
+        `/api/v1/projects/${projectId}/secret-validation-rules/${ruleId}`,
         body
       );
       return data.rule;
@@ -47,7 +47,7 @@ export const useDeleteSecretValidationRule = () => {
   return useMutation({
     mutationFn: async ({ projectId, ruleId }: TDeleteSecretValidationRuleDTO) => {
       const { data } = await apiRequest.delete<{ rule: TSecretValidationRule }>(
-        `/api/v1/${projectId}/secret-validation-rules/${ruleId}`
+        `/api/v1/projects/${projectId}/secret-validation-rules/${ruleId}`
       );
       return data.rule;
     },

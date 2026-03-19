@@ -32,7 +32,7 @@ export type TSecretValidationRuleInputs = TStaticSecretsInputs;
 export type TCreateSecretValidationRuleDTO = {
   name: string;
   description?: string | null;
-  environmentSlug: string;
+  environmentSlug?: string;
   secretPath: string;
   type: SecretValidationRuleType;
   inputs: TSecretValidationRuleInputs;

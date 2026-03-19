@@ -307,12 +307,14 @@ export const SecretValidationRulesTab = () => {
   const updateRule = useUpdateSecretValidationRule();
   const deleteRule = useDeleteSecretValidationRule();
 
-  const resolveEnvSlug = (envId: string) => {
+  const resolveEnvSlug = (envId: string | null) => {
+    if (!envId) return null;
     const env = currentProject.environments.find((e) => e.id === envId);
     return env?.slug ?? null;
   };
 
-  const resolveEnvName = (envId: string) => {
+  const resolveEnvName = (envId: string | null) => {
+    if (!envId) return "All Environments";
     const env = currentProject.environments.find((e) => e.id === envId);
     return env?.name ?? envId;
   };
@@ -350,7 +352,7 @@ export const SecretValidationRulesTab = () => {
           projectId: currentProject.id,
           name: data.name,
           description: data.description,
-          environmentSlug: data.environment ?? "",
+          environmentSlug: data.environment ?? undefined,
           secretPath: data.folderPath,
           rule: {
             type: data.enforcement.type as string as SecretValidationRuleType,

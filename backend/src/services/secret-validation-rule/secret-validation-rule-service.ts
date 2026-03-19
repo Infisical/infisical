@@ -7,6 +7,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
+import { checkForOverlappingRules, enforceSecretValidationRules } from "./secret-validation-rule-fns";
 import { parseSecretValidationRuleInputs } from "./secret-validation-rule-schemas";
 import {
   SecretValidationRuleType,
@@ -78,18 +79,31 @@ export const secretValidationRuleServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Settings);
 
-    const env = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
-    if (!env) {
-      throw new NotFoundError({ message: `Environment with slug '${environmentSlug}' not found in project` });
+    let envId: string | null = null;
+    if (environmentSlug) {
+      const env = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
+      if (!env) {
+        throw new NotFoundError({ message: `Environment with slug '${environmentSlug}' not found in project` });
+      }
+      envId = env.id;
     }
 
     const parsedInputs = parseSecretValidationRuleInputs(type, inputs);
+
+    const existingRules = await secretValidationRuleDAL.find({ projectId });
+    checkForOverlappingRules({
+      ruleType: type,
+      envId,
+      secretPath,
+      inputs: parsedInputs,
+      existingRules
+    });
 
     const rule = await secretValidationRuleDAL.create({
       name,
       description,
       projectId,
-      envId: env.id,
+      envId,
       secretPath,
       type,
       inputs: parsedInputs
@@ -124,21 +138,38 @@ export const secretValidationRuleServiceFactory = ({
       throw new NotFoundError({ message: `Secret validation rule with ID ${ruleId} not found` });
     }
 
-    let envId: string | undefined;
+    let envId: string | null | undefined;
     if (environmentSlug !== undefined) {
-      const env = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
-      if (!env) {
-        throw new NotFoundError({ message: `Environment with slug '${environmentSlug}' not found in project` });
+      if (environmentSlug) {
+        const env = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
+        if (!env) {
+          throw new NotFoundError({ message: `Environment with slug '${environmentSlug}' not found in project` });
+        }
+        envId = env.id;
+      } else {
+        envId = null;
       }
-      envId = env.id;
     }
 
     const ruleType = dto.type ?? existingRule.type;
     const ruleInputs = inputs ?? existingRule.inputs;
     const parsedInputs = parseSecretValidationRuleInputs(ruleType, ruleInputs);
 
+    const finalEnvId = envId !== undefined ? envId : (existingRule.envId as string | null);
+    const finalSecretPath = dto.secretPath ?? existingRule.secretPath;
+
+    const existingRules = await secretValidationRuleDAL.find({ projectId });
+    checkForOverlappingRules({
+      ruleType: ruleType as SecretValidationRuleType,
+      envId: finalEnvId,
+      secretPath: finalSecretPath,
+      inputs: parsedInputs,
+      existingRules,
+      excludeRuleId: ruleId
+    });
+
     const updatedRule = await secretValidationRuleDAL.updateById(ruleId, {
-      ...(Boolean(envId) && { envId }),
+      ...(envId !== undefined && { envId }),
       ...(Boolean(inputs) && { inputs: parsedInputs }),
       ...dto
     });
@@ -181,10 +212,42 @@ export const secretValidationRuleServiceFactory = ({
     };
   };
 
+  /**
+   * Fetch all rules for a project and enforce them against the given secrets.
+   * Called by secret write paths before the DB transaction starts.
+   */
+  const validateSecrets = async ({
+    projectId,
+    envId,
+    secretPath,
+    secrets
+  }: {
+    projectId: string;
+    envId: string;
+    secretPath: string;
+    secrets: { key: string; value?: string }[];
+  }) => {
+    if (!secrets.length) return;
+
+    const rules = await secretValidationRuleDAL.find({ projectId });
+    if (!rules.length) return;
+
+    enforceSecretValidationRules({
+      projectRules: rules.map((r) => ({
+        ...r,
+        isActive: r.isActive ?? true
+      })),
+      envId,
+      secretPath,
+      secrets
+    });
+  };
+
   return {
     listByProjectId,
     createRule,
     updateRule,
-    deleteRule
+    deleteRule,
+    validateSecrets
   };
 };

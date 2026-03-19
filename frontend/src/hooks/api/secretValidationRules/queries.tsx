@@ -25,7 +25,7 @@ export const useListSecretValidationRules = (
     queryKey: secretValidationRuleKeys.list(projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ rules: TSecretValidationRule[] }>(
-        `/api/v1/${projectId}/secret-validation-rules`
+        `/api/v1/projects/${projectId}/secret-validation-rules`
       );
       return data.rules;
     },

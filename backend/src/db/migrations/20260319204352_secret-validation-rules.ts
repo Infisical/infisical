@@ -11,7 +11,7 @@ export async function up(knex: Knex): Promise<void> {
       tb.string("description").nullable();
       tb.string("projectId").notNullable();
       tb.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-      tb.uuid("envId").notNullable();
+      tb.uuid("envId").nullable();
       tb.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       tb.string("secretPath").notNullable().defaultTo("/");
       tb.string("type").notNullable();

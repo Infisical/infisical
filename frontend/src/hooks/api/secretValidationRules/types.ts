@@ -32,7 +32,7 @@ export type TSecretValidationRule = {
   name: string;
   description?: string | null;
   projectId: string;
-  envId: string;
+  envId: string | null;
   secretPath: string;
   type: SecretValidationRuleType;
   inputs: TSecretValidationRuleInputs;
@@ -49,7 +49,7 @@ export type TCreateSecretValidationRuleDTO = {
   projectId: string;
   name: string;
   description?: string | null;
-  environmentSlug: string;
+  environmentSlug?: string;
   secretPath: string;
   rule: {
     type: SecretValidationRuleType;

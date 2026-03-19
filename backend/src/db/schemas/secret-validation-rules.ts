@@ -12,7 +12,7 @@ export const SecretValidationRulesSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   projectId: z.string(),
-  envId: z.string().uuid(),
+  envId: z.string().uuid().nullable().optional(),
   secretPath: z.string().default("/"),
   type: z.string(),
   inputs: z.unknown(),

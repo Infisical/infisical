@@ -1623,7 +1623,8 @@ export const registerRoutes = async (
     snapshotService,
     resourceMetadataDAL,
     reminderService,
-    keyStore
+    keyStore,
+    secretValidationRuleService
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
