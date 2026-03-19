@@ -948,8 +948,24 @@ export const queueServiceFactory = (
         removeOnFail: true
       });
 
+      // Clean up legacy repeatable jobs for the reconciliation queue
+      const reconciliationQueue = queueContainer[QueueName.QueueInternalReconciliation];
+      if (reconciliationQueue) {
+        try {
+          const legacyJobs = await reconciliationQueue.getRepeatableJobs();
+          for (const job of legacyJobs) {
+            if (!job.key.startsWith(JOB_SCHEDULER_PREFIX)) {
+              await reconciliationQueue.removeRepeatableByKey(job.key);
+              logger.info({ queue: QueueName.QueueInternalReconciliation, key: job.key }, "Removed legacy repeatable job");
+            }
+          }
+        } catch (err) {
+          logger.error(err, "Failed to clean up legacy repeatable jobs for internal reconciliation queue");
+        }
+      }
+
       // Schedule reconciliation job (runs every 2 minutes)
-      await queueContainer[QueueName.QueueInternalReconciliation]?.upsertJobScheduler(
+      await reconciliationQueue?.upsertJobScheduler(
         `${JOB_SCHEDULER_PREFIX}:queue-reconciliation-cron`,
         { pattern: "*/2 * * * *", utc: true },
         {
