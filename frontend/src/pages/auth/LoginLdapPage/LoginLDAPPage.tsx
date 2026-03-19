@@ -5,6 +5,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
+import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -73,7 +74,7 @@ export const LoginLdapPage = () => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-6">
+    <div className="relative flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
       <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
@@ -82,16 +83,12 @@ export const LoginLdapPage = () => {
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
+      <AuthPageHeader>
+        <Button asChild>
+          <Link to="/signup">Sign Up</Link>
+        </Button>
+      </AuthPageHeader>
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <Link to="/">
-          <div className="mb-4 flex justify-center">
-            <img
-              src="/images/gradientLogo.svg"
-              style={{ height: "90px", width: "120px" }}
-              alt="Infisical logo"
-            />
-          </div>
-        </Link>
         <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
           <UnstableCard className="w-full items-stretch gap-0 p-6">
             <UnstableCardHeader className="mb-4 gap-4">
