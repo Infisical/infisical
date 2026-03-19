@@ -40,7 +40,7 @@ const baseSchema = genericAppConnectionFieldsSchema.extend({
 });
 
 const oauthSchema = baseSchema.extend({
-  tenantId: z.string().trim().min(1, "Tenant ID is required"),
+  tenantId: z.string().trim().optional(),
   method: z.literal(AzureKeyVaultConnectionMethod.OAuth)
 });
 
@@ -312,7 +312,12 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
             type="submit"
             colorSchema="secondary"
             isLoading={isSubmitting || isRedirecting}
-            isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
+            isDisabled={
+              isSubmitting ||
+              (!isUpdate && !isDirty && selectedMethod !== AzureKeyVaultConnectionMethod.OAuth) ||
+              isMissingConfig ||
+              isRedirecting
+            }
           >
             {isUpdate ? "Reconnect to Azure" : "Connect to Azure"}
           </Button>
