@@ -12,7 +12,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { SshConnectionMethod } from "./ssh-connection-enums";
 import { TSshConnectionConfig } from "./ssh-connection-types";
 
-const SSH_TIMEOUT = 45_000;
+const SSH_TIMEOUT = 50_000;
 const SSH_RETRY_DELAY = 5_000;
 const SSH_MAX_RETRIES = 2;
 
@@ -107,7 +107,8 @@ const attemptSshConnection = (
 };
 
 const isRetryableError = (errorMessage: string): boolean => {
-  return errorMessage.toLowerCase().includes("timeout");
+  const lowerMessage = errorMessage.toLowerCase();
+  return lowerMessage.includes("timeout") || lowerMessage.includes("timed out");
 };
 
 export const getSshConnectionClient = async (
