@@ -1,6 +1,6 @@
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
@@ -58,13 +58,6 @@ export const pkiSyncCleanupQueueServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.PkiSyncCleanup,
-      QueueJobs.PkiSyncCleanup,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.PkiSyncCleanup // just a job id
-    );
-
     queueService.start(QueueName.PkiSyncCleanup, async () => {
       try {
         logger.info(`${QueueName.PkiSyncCleanup}: queue task started`);
@@ -76,13 +69,12 @@ export const pkiSyncCleanupQueueServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.PkiSyncCleanup, QueueJobs.PkiSyncCleanup, undefined, {
-      jobId: QueueJobs.PkiSyncCleanup,
-      repeat: {
-        pattern: "0 0 * * *",
-        key: QueueJobs.PkiSyncCleanup
-      }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.PkiSyncCleanup,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.PkiSyncCleanup}`,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.PkiSyncCleanup }
+    );
   };
 
   return {
