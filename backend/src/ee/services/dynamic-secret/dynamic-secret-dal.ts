@@ -197,9 +197,9 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
 
   const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
     const docs = await (tx || db.replicaNode())(TableName.DynamicSecret)
-      .leftJoin(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
-      .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-      .leftJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.DynamicSecret}.gatewayV2Id`, gatewayId)
       .select(
         db.ref("id").withSchema(TableName.DynamicSecret),
