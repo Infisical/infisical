@@ -113,9 +113,24 @@ export const pamDiscoverySourceDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamDiscoverySource)
+      .leftJoin(TableName.Project, `${TableName.PamDiscoverySource}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.PamDiscoverySource}.gatewayId`, gatewayId)
+      .select(
+        db.ref("id").withSchema(TableName.PamDiscoverySource),
+        db.ref("name").withSchema(TableName.PamDiscoverySource),
+        db.ref("projectId").withSchema(TableName.PamDiscoverySource),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
   return {
     ...orm,
     findByProjectId,
-    findDueForScan
+    findDueForScan,
+    findByGatewayId
   };
 };

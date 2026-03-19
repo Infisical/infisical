@@ -5,6 +5,7 @@ import {
   faEdit,
   faEllipsisV,
   faInfoCircle,
+  faLink,
   faMagnifyingGlass,
   faPlus,
   faSearch,
@@ -45,9 +46,13 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
-import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
+import {
+  useDeleteGatewayV2ById,
+  useGetGatewayConnectedResources
+} from "@app/hooks/api/gateways-v2";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
+import { GatewayConnectedResourcesDrawer } from "./components/GatewayConnectedResourcesDrawer";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 
 const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
@@ -69,15 +74,65 @@ const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   );
 };
 
+type GatewayConnectedCellProps = {
+  gatewayId: string;
+  isV1: boolean;
+  onClick: () => void;
+};
+
+const GatewayConnectedCell = ({ gatewayId, isV1, onClick }: GatewayConnectedCellProps) => {
+  const { data: resources, isPending } = useGetGatewayConnectedResources(isV1 ? "" : gatewayId);
+
+  if (isV1) {
+    return <span className="text-mineshaft-400">—</span>;
+  }
+
+  if (isPending) {
+    return <span className="text-mineshaft-400">...</span>;
+  }
+
+  const totalCount = resources
+    ? resources.appConnections.length +
+      resources.dynamicSecrets.length +
+      resources.pamResources.length +
+      resources.pamDiscoverySources.length +
+      resources.kubernetesAuths.length +
+      resources.mcpServers.length +
+      resources.pkiDiscoveryConfigs.length
+    : 0;
+
+  if (totalCount === 0) {
+    return <span className="text-mineshaft-400">—</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 text-primary-400 hover:text-primary-300"
+    >
+      <FontAwesomeIcon icon={faLink} className="h-3 w-3" />
+      <span>
+        {totalCount} resource{totalCount !== 1 ? "s" : ""}
+      </span>
+    </button>
+  );
+};
+
 export const GatewayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
+    const [selectedGateway, setSelectedGateway] = useState<{
+      id: string;
+      name: string;
+    } | null>(null);
     const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
       "deleteGateway",
-      "editDetails"
+      "editDetails",
+      "connectedResources"
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
@@ -135,7 +190,8 @@ export const GatewayTab = withPermission(
             <Table>
               <THead>
                 <Tr>
-                  <Th className="w-1/2">Name</Th>
+                  <Th className="w-1/3">Name</Th>
+                  <Th>Connected</Th>
                   <Th>
                     Health Check
                     <Tooltip
@@ -151,7 +207,7 @@ export const GatewayTab = withPermission(
               </THead>
               <TBody>
                 {isGatewaysLoading && (
-                  <TableSkeleton innerKey="gateway-table" columns={4} key="gateway-table" />
+                  <TableSkeleton innerKey="gateway-table" columns={5} key="gateway-table" />
                 )}
                 {filteredGateway?.map((el) => (
                   <Tr key={el.id}>
@@ -162,6 +218,16 @@ export const GatewayTab = withPermission(
                           Gateway v{el.isV1 ? "1" : "2"}
                         </span>
                       </div>
+                    </Td>
+                    <Td>
+                      <GatewayConnectedCell
+                        gatewayId={el.id}
+                        isV1={el.isV1}
+                        onClick={() => {
+                          setSelectedGateway({ id: el.id, name: el.name });
+                          handlePopUpOpen("connectedResources");
+                        }}
+                      />
                     </Td>
                     <Td>
                       <GatewayHealthStatus heartbeat={el.heartbeat} />
@@ -259,6 +325,17 @@ export const GatewayTab = withPermission(
               isOpen={popUp.deployGateway.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
             />
+            {selectedGateway && (
+              <GatewayConnectedResourcesDrawer
+                isOpen={popUp.connectedResources.isOpen}
+                onOpenChange={(isOpen) => {
+                  handlePopUpToggle("connectedResources", isOpen);
+                  if (!isOpen) setSelectedGateway(null);
+                }}
+                gatewayId={selectedGateway.id}
+                gatewayName={selectedGateway.name}
+              />
+            )}
           </TableContainer>
         </div>
       </div>
