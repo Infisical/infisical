@@ -57,7 +57,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -452,12 +452,14 @@ export const pkiAcmeServiceFactory = ({
     profileId,
     alg,
     jwk,
-    payload: { onlyReturnExisting, contact, externalAccountBinding }
+    payload: { onlyReturnExisting, contact, externalAccountBinding },
+    auditLogInfo
   }: {
     profileId: string;
     alg: string;
     jwk: JsonWebKey;
     payload: TCreateAcmeAccountPayload;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
@@ -505,6 +507,7 @@ export const pkiAcmeServiceFactory = ({
     }
     if (existingAccount) {
       await auditLogService.createAuditLog({
+        ...auditLogInfo,
         projectId: profile.projectId,
         actor: {
           type: ActorType.ACME_PROFILE,
@@ -597,6 +600,7 @@ export const pkiAcmeServiceFactory = ({
     });
 
     await auditLogService.createAuditLog({
+      ...auditLogInfo,
       projectId: profile.projectId,
       actor: {
         type: ActorType.ACME_PROFILE,
@@ -656,11 +660,13 @@ export const pkiAcmeServiceFactory = ({
   const createAcmeOrder = async ({
     profileId,
     accountId,
-    payload
+    payload,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     payload: TCreateAcmeOrderPayload;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     const profile = await validateAcmeProfile(profileId);
     const skipDnsOwnershipVerification = profile.acmeConfig?.skipDnsOwnershipVerification ?? false;
@@ -745,6 +751,7 @@ export const pkiAcmeServiceFactory = ({
         tx
       );
       await auditLogService.createAuditLog({
+        ...auditLogInfo,
         projectId: profile.projectId,
         actor: {
           type: ActorType.ACME_ACCOUNT,
@@ -952,12 +959,14 @@ export const pkiAcmeServiceFactory = ({
     profileId,
     accountId,
     orderId,
-    payload
+    payload,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     const profile = (await certificateProfileDAL.findByIdWithConfigs(profileId))!;
 
@@ -1243,6 +1252,7 @@ export const pkiAcmeServiceFactory = ({
       }
       order = updatedOrder;
       await auditLogService.createAuditLog({
+        ...auditLogInfo,
         projectId: profile.projectId,
         actor: {
           type: ActorType.ACME_ACCOUNT,
@@ -1275,11 +1285,13 @@ export const pkiAcmeServiceFactory = ({
   const downloadAcmeCertificate = async ({
     profileId,
     accountId,
-    orderId
+    orderId,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     orderId: string;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<string>> => {
     const profile = await validateAcmeProfile(profileId);
     const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
@@ -1318,6 +1330,7 @@ export const pkiAcmeServiceFactory = ({
     const certChain = certificateChain.trim().replace("\n", "\r\n");
 
     await auditLogService.createAuditLog({
+      ...auditLogInfo,
       projectId: profile.projectId,
       actor: {
         type: ActorType.ACME_ACCOUNT,
@@ -1409,12 +1422,14 @@ export const pkiAcmeServiceFactory = ({
     profileId,
     accountId,
     authzId,
-    challengeId
+    challengeId,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     authzId: string;
     challengeId: string;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     const result = await acmeChallengeDAL.findByAccountAuthAndChallengeId(accountId, authzId, challengeId);
@@ -1425,6 +1440,7 @@ export const pkiAcmeServiceFactory = ({
     await pkiAcmeQueueService.queueChallengeValidation(challengeId);
     const challenge = (await acmeChallengeDAL.findByIdForChallengeValidation(challengeId))!;
     await auditLogService.createAuditLog({
+      ...auditLogInfo,
       projectId: profile.projectId,
       actor: {
         type: ActorType.ACME_ACCOUNT,
