@@ -1182,25 +1182,21 @@ export const secretSyncQueueFactory = ({
   });
 
   const queueDailyRetryForFailedSyncs = async () => {
-    const failedSyncs = await secretSyncDAL.find({
-      syncStatus: SecretSyncStatus.Failed,
-      isAutoSyncEnabled: true,
-      $in: { destination: [...SECRET_SYNC_DAILY_RETRY_DESTINATIONS] }
-    });
-
-    if (!failedSyncs.length) return;
-
-    await secretSyncDAL.update(
+    const updatedIds = await secretSyncDAL.updateAndReturnIds(
       {
-        $in: { id: failedSyncs.map((sync) => sync.id) }
+        syncStatus: SecretSyncStatus.Failed,
+        isAutoSyncEnabled: true,
+        $in: { destination: [...SECRET_SYNC_DAILY_RETRY_DESTINATIONS] }
       },
       { syncStatus: SecretSyncStatus.Pending }
     );
 
+    if (!updatedIds.length) return;
+
     await Promise.all(
-      failedSyncs.map((sync) =>
+      updatedIds.map((syncId) =>
         queueSecretSyncSyncSecretsById({
-          syncId: sync.id
+          syncId
         })
       )
     );
