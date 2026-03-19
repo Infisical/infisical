@@ -2,7 +2,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, ModalClose } from "@app/components/v2";
+import { Button, SheetFooter } from "@app/components/v3";
 import { PamResourceType, TMySQLAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
@@ -17,6 +17,7 @@ type Props = {
   resourceId?: string;
   resourceType?: PamResourceType;
   onSubmit: (formData: FormData) => Promise<void>;
+  closeSheet: () => void;
 };
 
 const formSchema = genericAccountFieldsSchema.extend({
@@ -26,7 +27,7 @@ const formSchema = genericAccountFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const MySQLAccountForm = ({ account, onSubmit }: Props) => {
+export const MySQLAccountForm = ({ account, onSubmit, closeSheet }: Props) => {
   const isUpdate = Boolean(account);
 
   const form = useForm<FormData>({
@@ -49,28 +50,26 @@ export const MySQLAccountForm = ({ account, onSubmit }: Props) => {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <GenericAccountFields />
-        <SqlAccountFields isUpdate={isUpdate} />
-        <RequireMfaField />
-        <MetadataFields />
-        <div className="mt-6 flex items-center">
+      <form className="flex flex-1 flex-col overflow-hidden" onSubmit={handleSubmit(onSubmit)}>
+        <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
+          <GenericAccountFields />
+          <SqlAccountFields isUpdate={isUpdate} />
+          <RequireMfaField />
+          <MetadataFields />
+        </div>
+        <SheetFooter className="shrink-0 border-t">
           <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
+            variant="neutral"
+            type="submit"
           >
             {isUpdate ? "Update Account" : "Create Account"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button onClick={() => closeSheet()} variant="outline" className="mr-auto" type="button">
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

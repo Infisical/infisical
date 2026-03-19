@@ -1,4 +1,4 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { TPamAccount } from "@app/hooks/api/pam";
 
 import { PamAccountForm } from "./PamAccountForm/PamAccountForm";
@@ -13,14 +13,18 @@ export const PamUpdateAccountModal = ({ isOpen, onOpenChange, account }: Props) 
   if (!account) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent className="max-w-2xl" title="Edit Account" subTitle="Update account details.">
+    <Sheet open={isOpen} onOpenChange={onOpenChange} modal={false}>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
+        <SheetHeader className="border-b">
+          <SheetTitle>Edit Account</SheetTitle>
+          <SheetDescription>Update account details.</SheetDescription>
+        </SheetHeader>
         <PamAccountForm
-          onComplete={() => onOpenChange(false)}
+          closeSheet={() => onOpenChange(false)}
           account={account}
           projectId={account.projectId}
         />
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 };

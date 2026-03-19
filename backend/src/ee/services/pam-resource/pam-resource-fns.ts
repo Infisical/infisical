@@ -11,6 +11,7 @@ import { TPamResource, TPamResourceConnectionDetails, TPamResourceInternalMetada
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 import { getRedisResourceListItem } from "./redis/redis-resource-fns";
 import { getWindowsResourceListItem } from "./windows-server/windows-server-resource-fns";
+import { getSshResourceListItem } from "./ssh/ssh-resource-fns";
 
 export const listResourceOptions = () => {
   return [
@@ -19,6 +20,7 @@ export const listResourceOptions = () => {
     getAwsIamResourceListItem(),
     getKubernetesResourceListItem(),
     getRedisResourceListItem(),
+    getSshResourceListItem(),
     getWindowsResourceListItem(),
     getActiveDirectoryResourceListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));

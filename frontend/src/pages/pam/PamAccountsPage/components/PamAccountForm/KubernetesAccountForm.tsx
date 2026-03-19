@@ -2,7 +2,8 @@ import { Controller, FormProvider, useForm, useFormContext } from "react-hook-fo
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, ModalClose, TextArea } from "@app/components/v2";
+import { FormControl, TextArea } from "@app/components/v2";
+import { Button, SheetFooter } from "@app/components/v3";
 import { KubernetesAuthMethod, PamResourceType, TKubernetesAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
@@ -14,6 +15,7 @@ type Props = {
   resourceId?: string;
   resourceType?: PamResourceType;
   onSubmit: (formData: FormData) => Promise<void>;
+  closeSheet: () => void;
 };
 
 const KubernetesServiceAccountTokenCredentialsSchema = z.object({
@@ -60,7 +62,7 @@ const KubernetesAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   );
 };
 
-export const KubernetesAccountForm = ({ account, onSubmit }: Props) => {
+export const KubernetesAccountForm = ({ account, onSubmit, closeSheet }: Props) => {
   const isUpdate = Boolean(account);
 
   const form = useForm<FormData>({
@@ -91,30 +93,29 @@ export const KubernetesAccountForm = ({ account, onSubmit }: Props) => {
   return (
     <FormProvider {...form}>
       <form
+        className="flex flex-1 flex-col overflow-hidden"
         onSubmit={(e) => {
           handleSubmit(onSubmit)(e);
         }}
       >
-        <GenericAccountFields />
-        <KubernetesAccountFields isUpdate={isUpdate} />
-        <MetadataFields />
-        <div className="mt-6 flex items-center">
+        <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
+          <GenericAccountFields />
+          <KubernetesAccountFields isUpdate={isUpdate} />
+          <MetadataFields />
+        </div>
+        <SheetFooter className="shrink-0 border-t">
           <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
+            variant="neutral"
+            type="submit"
           >
             {isUpdate ? "Update Account" : "Create Account"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button onClick={() => closeSheet()} variant="outline" className="mr-auto" type="button">
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

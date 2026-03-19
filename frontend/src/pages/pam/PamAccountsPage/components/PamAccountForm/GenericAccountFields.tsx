@@ -1,7 +1,14 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { z } from "zod";
 
-import { FormControl, Input, TextArea } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  TextArea,
+  UnstableInput
+} from "@app/components/v3";
 import { slugSchema } from "@app/lib/schemas";
 
 export const genericAccountFieldsSchema = z.object({
@@ -23,34 +30,41 @@ export const GenericAccountFields = () => {
   }>();
 
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <Controller
-        name="name"
         control={control}
+        name="name"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            helperText="Name must be slug-friendly"
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Name"
-          >
-            <Input autoFocus placeholder="my-account" {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel>Name</FieldLabel>
+            <FieldContent>
+              <div className="relative">
+                <UnstableInput
+                  {...field}
+                  autoFocus
+                  isError={Boolean(error)}
+                  placeholder="my-discovery-source"
+                />
+              </div>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
+
       <Controller
         name="description"
         control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Description"
-          >
-            <TextArea {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel>Description</FieldLabel>
+            <FieldContent>
+              <TextArea {...field} className="max-h-32" />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </div>
   );
 };

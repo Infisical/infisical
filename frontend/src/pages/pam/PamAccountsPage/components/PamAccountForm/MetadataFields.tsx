@@ -4,5 +4,5 @@ import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/comp
 
 export const MetadataFields = () => {
   const { control } = useFormContext();
-  return <MetadataForm control={control} />;
+  return <MetadataForm control={control} title={undefined} />;
 };

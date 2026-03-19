@@ -581,7 +581,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("addAccount", isOpen)}
         projectId={projectId!}
         currentFolderId={null}
-        defaultResource={resource}
+        resource={resource}
       />
 
       <PamAccessAccountModal

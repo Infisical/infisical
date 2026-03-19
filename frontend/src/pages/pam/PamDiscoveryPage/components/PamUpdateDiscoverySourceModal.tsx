@@ -1,10 +1,4 @@
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle
-} from "@app/components/v3";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { PAM_DISCOVERY_TYPE_MAP, TPamDiscoverySource } from "@app/hooks/api/pamDiscovery";
 
 import { PamDiscoverySourceForm } from "./PamDiscoverySourceForm/PamDiscoverySourceForm";
@@ -25,7 +19,7 @@ export const PamUpdateDiscoverySourceModal = ({ isOpen, onOpenChange, source }: 
           <SheetTitle>Edit Discovery Source</SheetTitle>
           <SheetDescription>
             Update details for this {PAM_DISCOVERY_TYPE_MAP[source.discoveryType].name} discovery
-            source.
+            source
           </SheetDescription>
         </SheetHeader>
         <PamDiscoverySourceForm
