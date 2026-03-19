@@ -94,6 +94,18 @@ You receive:
 
 ---
 
+### 6. Researchability
+
+For each gap or unverifiable claim, assess:
+
+- Could this be resolved by searching the codebase?
+- If yes → what specific question would need to be answered?
+- If no → why not? (requires business decision, external system access, visual asset, etc.)
+
+This assessment feeds directly into **Research Directives** in your Remediation Guidance.
+
+---
+
 ## Issue Classification
 
 You MUST classify ALL issues:
@@ -109,7 +121,12 @@ An issue is **BLOCKING** if:
 - The workflow is broken or incomplete  
 - Structural failure prevents usability  
 - Critical links are broken or missing  
-- Unverified claims introduce risk  
+- Unverified claims introduce risk
+
+NOTE: An issue being blocking does NOT automatically mean it requires human review.
+If the information to resolve it likely exists in the codebase, it should be flagged
+for research, not escalation. Only issues that cannot be resolved through research
+AND remediation should trigger escalation.
 
 ---
 
@@ -227,9 +244,22 @@ Return ONE structured report:
 
 ### Remediation Guidance (if applicable)
 
+#### Fixes Required
 - [What needs to be fixed]
 - [Which sections are impacted]
 - [Priority areas]
+
+#### Research Directives
+
+For each gap that could be resolved with codebase research, specify:
+
+- **Question:** [The specific question to answer — e.g., "What permission roles can create access request policies?" not "Check permissions"]
+- **Section:** [Which document section this applies to]
+- **Suggested search location:** [Where in the codebase to look — e.g., "backend/src/ee/services/access-approval/", "frontend access request components"]
+- **Why needed:** [What the document is missing or what claim is unverifiable]
+
+#### Items NOT resolvable by research
+- [Items that genuinely require human input, with explanation of why]
 
 ---
 

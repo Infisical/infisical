@@ -117,3 +117,4 @@ The output is considered successful if:
 - Truth > completeness
 - Safe but incomplete > complete but wrong
 - This is a **repair system**, not just a review system
+- The pipeline includes a **Research Agent** that can look up information in the codebase to resolve gaps. Provide an accurate Source Scope to enable effective research. Items that can be resolved through codebase research will NOT be deferred to the human review checklist.

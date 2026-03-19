@@ -50,6 +50,9 @@ You receive:
   - Syntax Agent
   - Link Review Agent
   - Editorial Review Agent
+- Research Findings (if Phase 1.5 was triggered)
+  - Contains verified answers to specific questions with source citations
+  - Each finding includes: status, answer, source file paths, and applicable document section
 
 ---
 
@@ -87,6 +90,20 @@ You MUST follow:
 
 - Only use VERIFIED information
 - NEVER introduce new unverified claims
+
+### What counts as verified:
+- Information confirmed by the Verification Agent
+- Research Findings with status **RESOLVED** and source citations
+- Information already present in the document that was not flagged
+
+### What does NOT count as verified:
+- Research Findings with status UNRESOLVED
+- Research Findings flagged as `[ASSUMED]` or `[UNKNOWN]`
+- Your own knowledge or inference
+
+If a Research Finding has status **PARTIALLY_RESOLVED**:
+→ Use the resolved portion as verified
+→ Flag the unresolved portion as `[UNVERIFIED]` or `[ASSUMED]`
 
 If a claim cannot be verified:
 
@@ -149,6 +166,10 @@ You MAY:
 - Improve flow
 - Fill gaps using verified data
 - Improve section transitions
+- Add NEW content sections when Research Findings provide verified information
+  for gaps identified by Phase 1 agents (e.g., missing policy options, missing
+  configuration details, missing prerequisite specifics)
+- Replace `[UNVERIFIED]` or `[ASSUMED]` flags with verified content from Research Findings
 
 ---
 
@@ -156,10 +177,12 @@ You MAY:
 
 You MUST NOT:
 
-- Invent product behavior  
-- Assume defaults or behavior  
-- Add content not grounded in evidence  
-- Remove uncertainty without justification  
+- Invent product behavior
+- Assume defaults or behavior
+- Add content not grounded in evidence
+- Remove uncertainty without justification
+- Add content from Research Findings that have status UNRESOLVED
+- Treat Research Agent's `[ASSUMED]` findings as verified
 
 ---
 
@@ -195,6 +218,9 @@ Return TWO sections:
 
 ### Flags Introduced
 - [List new flags]
+
+### Research-Sourced Additions
+- [List content added based on Research Findings, with the question and source]
 
 ---
 

@@ -45,6 +45,33 @@ Run:
 
 ---
 
+### Phase 1.5 — Research (Conditional)
+
+Trigger ONLY if:
+
+- Editorial Review identifies missing content, unverifiable claims, or vague descriptions
+  that COULD be resolved with codebase research
+- OR Verification Agent flagged claims as `[UNVERIFIED]` or `[ASSUMED]` where the information
+  is likely in the codebase
+- OR Editorial Review's Remediation Guidance contains **Research Directives**
+
+Then:
+
+1. Extract specific questions from Phase 1 agent reports (primarily Editorial Review's
+   Research Directives and Verification Agent's flagged items)
+2. Build a **Research Request** listing each question with its document section context
+   and suggested search locations
+3. Run: **Research Agent**
+4. Validate Research Findings — check that answers include source citations
+
+Do NOT trigger if:
+
+- All issues are stylistic or structural (no information gaps)
+- Issues require business/product decisions not determinable from code
+- Issues involve only visual assets (screenshots, diagrams)
+
+---
+
 ### Phase 2 — Remediation (Conditional)
 
 Trigger ONLY if:
@@ -54,7 +81,7 @@ Trigger ONLY if:
 
 Then run:
 
-6. Content Repair Agent  
+6. Content Repair Agent (with Research Findings from Phase 1.5 if available)
 
 ---
 
@@ -94,6 +121,19 @@ All issues must be categorized as:
 - Style issues
 - Minor clarity problems
 - Optional improvements
+
+---
+
+### Research Trigger
+
+Research MUST occur if:
+- ANY `[UNVERIFIED]` or `[ASSUMED]` flag exists on a product-specific claim
+  AND the claim is about behavior likely documented in source code
+- OR Editorial Review's Remediation Guidance contains Research Directives
+
+Research MUST NOT occur if:
+- All issues are style, structure, or syntax only
+- The only unresolved items require human judgment (business decisions, visual verification)
 
 ---
 
@@ -221,6 +261,7 @@ You MUST track:
 ### Document Versions
 - Original
 - Post-Review
+- Post-Research (Research Findings attached, if Phase 1.5 triggered)
 - Post-Remediation
 
 ### Flags
@@ -248,6 +289,8 @@ You MUST:
 - Pass the full document between agents
 - Preserve flags and annotations
 - Track all agent outputs and decisions
+- Build a Research Request from Phase 1 outputs when research is triggered
+- Pass Research Findings to the Content Repair Agent alongside other inputs
 
 You MUST NOT:
 
@@ -322,8 +365,9 @@ Include:
 
 Include:
 
-- Phases executed
-- Agents executed
+- Phases executed (including Phase 1.5 Research if triggered)
+- Agents executed (including Research Agent if used)
+- Whether research occurred and question resolution counts
 - Whether remediation occurred
 - Number of issues found
 - Number of issues resolved
