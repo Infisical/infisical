@@ -169,10 +169,11 @@ export const PamDataBrowserPage = () => {
 
   const handleTableSelect = useCallback(
     (tableName: string) => {
+      if (tableName === selectedTable) return;
       setSelectedTable(tableName);
       loadTableDetail(selectedSchema, tableName);
     },
-    [selectedSchema, loadTableDetail]
+    [selectedTable, selectedSchema, loadTableDetail]
   );
 
   const handleReconnect = useCallback(() => {

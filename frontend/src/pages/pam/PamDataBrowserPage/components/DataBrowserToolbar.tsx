@@ -39,6 +39,7 @@ type DataBrowserToolbarProps = {
   executionTimeMs: number | null;
   hasPrimaryKey: boolean;
   onRefresh: () => void;
+  isRefreshing?: boolean;
 };
 
 export const DataBrowserToolbar = ({
@@ -61,7 +62,8 @@ export const DataBrowserToolbar = ({
   onPageSizeChange,
   executionTimeMs,
   hasPrimaryKey,
-  onRefresh
+  onRefresh,
+  isRefreshing = false
 }: DataBrowserToolbarProps) => {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -155,9 +157,10 @@ export const DataBrowserToolbar = ({
         <button
           type="button"
           onClick={onRefresh}
-          className="rounded p-1 text-mineshaft-400 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-200"
+          disabled={isRefreshing}
+          className="rounded p-1 text-mineshaft-400 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-200 disabled:opacity-50"
         >
-          <RefreshCwIcon className="size-3.5" />
+          <RefreshCwIcon className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
         </button>
       </div>
     </div>

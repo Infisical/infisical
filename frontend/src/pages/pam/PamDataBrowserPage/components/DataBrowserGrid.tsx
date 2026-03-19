@@ -116,6 +116,7 @@ export const DataBrowserGrid = ({
   const [containerHeight, setContainerHeight] = useState(600);
   const containerRef = useRef<HTMLDivElement>(null);
   const newRowCounterRef = useRef(0);
+  const hasLoadedRef = useRef(false);
 
   const primaryKeys = tableDetail?.primaryKeys ?? [];
   const tableColumns = tableDetail?.columns ?? [];
@@ -164,6 +165,7 @@ export const DataBrowserGrid = ({
         setTotalCount(Number(countResult.rows[0]?.count ?? 0));
         setDeletedRowKeys(new Set());
         setNewRowTempIds(new Set());
+        hasLoadedRef.current = true;
       } catch (err) {
         createNotification({
           title: "Failed to load data",
@@ -179,8 +181,15 @@ export const DataBrowserGrid = ({
 
   // Fetch data when table/filters/sorts/pagination change
   const prevFetchKeyRef = useRef("");
-  const fetchKey = `${schema}.${table}.${page}.${pageSize}.${JSON.stringify(filters)}.${JSON.stringify(sorts)}`;
+  const prevTableKeyRef = useRef("");
+  const tableKey = `${schema}.${table}`;
+  const fetchKey = `${tableKey}.${page}.${pageSize}.${JSON.stringify(filters)}.${JSON.stringify(sorts)}`;
   if (fetchKey !== prevFetchKeyRef.current && tableDetail && !isLoading) {
+    // Reset hasLoaded when switching to a different table so skeleton shows for initial load
+    if (tableKey !== prevTableKeyRef.current) {
+      hasLoadedRef.current = false;
+      prevTableKeyRef.current = tableKey;
+    }
     prevFetchKeyRef.current = fetchKey;
     fetchData(page, pageSize, filters, sorts);
   }
@@ -409,6 +418,7 @@ export const DataBrowserGrid = ({
         executionTimeMs={executionTimeMs}
         hasPrimaryKey={hasPrimaryKey}
         onRefresh={() => fetchData(page, pageSize, filters, sorts)}
+        isRefreshing={isDataLoading && hasLoadedRef.current}
       />
 
       {!hasPrimaryKey && (
@@ -422,7 +432,7 @@ export const DataBrowserGrid = ({
         ref={containerRef}
         className="data-browser-grid flex-1 overflow-hidden text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800"
       >
-        {isDataLoading && (
+        {isDataLoading && !hasLoadedRef.current && (
           <div className="space-y-1 p-4">
             {Array.from({ length: 10 }).map((_, i) => (
               // eslint-disable-next-line react/no-array-index-key
@@ -438,7 +448,7 @@ export const DataBrowserGrid = ({
             </UnstableEmptyDescription>
           </UnstableEmpty>
         )}
-        {!isDataLoading && currentData.length > 0 && (
+        {currentData.length > 0 && (
           <DataGrid {...gridProps} height={containerHeight} stretchColumns />
         )}
       </div>
