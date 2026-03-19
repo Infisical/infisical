@@ -310,7 +310,7 @@ const RunExpandedContent = ({
       <div className="flex gap-10">
         {adEnum && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wider text-muted uppercase">
+            <span className="text-xs font-medium tracking-wider text-label uppercase">
               AD Enumeration
             </span>
             <Badge
@@ -326,7 +326,7 @@ const RunExpandedContent = ({
         )}
         {depScan && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wider text-muted uppercase">
+            <span className="text-xs font-medium tracking-wider text-label uppercase">
               Dependency Scan
             </span>
             <Badge
@@ -359,7 +359,7 @@ const RunExpandedContent = ({
       )}
       {hasMachineErrors && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium tracking-wider text-muted uppercase">
+          <span className="text-xs font-medium tracking-wider text-label uppercase">
             Machine Errors
           </span>
           <div className="mb-0.5 flex items-center gap-2 rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
@@ -376,7 +376,7 @@ const RunExpandedContent = ({
                 className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs"
               >
                 <span className="font-semibold text-foreground">{host}</span>
-                <span className="ml-2 text-muted">{err}</span>
+                <span className="ml-2 whitespace-pre-wrap text-label">{err}</span>
               </div>
             ))}
           </div>

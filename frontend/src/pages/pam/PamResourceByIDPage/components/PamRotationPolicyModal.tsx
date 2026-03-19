@@ -6,8 +6,8 @@ import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { FormControl, Input, Modal, ModalContent, Switch } from "@app/components/v2";
-import { Button, UnstableIconButton } from "@app/components/v3";
+import { FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, Label, Switch, UnstableIconButton } from "@app/components/v3";
 import { TPamResource, TPamRotationRule, useUpdatePamResource } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import {
@@ -90,77 +90,75 @@ const RuleCard = ({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-mineshaft-700/30 p-4">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="flex gap-2 rounded-lg border border-border bg-mineshaft-700/30 p-4">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-medium text-muted">{index + 1}</span>
-          <span className="text-muted">•</span>
+          <span className="mr-1 text-lg font-medium text-muted">{index + 1}</span>
           <Switch
             id={`rule-enabled-${rule.id}`}
-            isChecked={rule.enabled}
+            checked={rule.enabled}
             onCheckedChange={(checked) => onUpdate({ enabled: checked })}
-            className="ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-            thumbClassName="bg-mineshaft-800"
+            variant="project"
           />
           {rule.enabled ? (
-            <span className="text-sm font-medium text-green">Rotate</span>
+            <Label>Rotate</Label>
           ) : (
-            <span className="text-sm font-medium text-red">Do Not Rotate</span>
+            <Label className="opacity-50">Do Not Rotate</Label>
           )}
         </div>
-        <div className="flex items-center gap-1">
-          <UnstableIconButton variant="ghost" size="xs" onClick={onMoveUp} isDisabled={index === 0}>
-            <ArrowUpIcon className="size-3.5" />
-          </UnstableIconButton>
-          <UnstableIconButton
-            variant="ghost"
-            size="xs"
-            onClick={onMoveDown}
-            isDisabled={index >= totalRules - 1}
-          >
-            <ArrowDownIcon className="size-3.5" />
-          </UnstableIconButton>
-          <UnstableIconButton variant="ghost" size="xs" onClick={onDelete}>
-            <TrashIcon className="size-3.5 text-red" />
-          </UnstableIconButton>
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-3">
+          <div>
+            <span className="mb-1 block text-xs font-medium text-muted">Rule Name</span>
+            <Input
+              value={localName}
+              onChange={(e) => setLocalName(e.target.value)}
+              onBlur={handleNameBlur}
+              placeholder="e.g., Service accounts"
+              className="h-8 text-sm"
+            />
+          </div>
+          <div>
+            <span className="mb-1 block text-xs font-medium text-muted">Account Pattern</span>
+            <Input
+              value={localPattern}
+              onChange={(e) => setLocalPattern(e.target.value)}
+              onBlur={handlePatternBlur}
+              placeholder="*"
+              className="h-8 font-mono text-sm"
+            />
+          </div>
+          <div>
+            <span className="mb-1 block text-xs font-medium text-muted">Interval</span>
+            <div className="flex items-center gap-1">
+              <Input
+                value={localInterval}
+                onChange={(e) => setLocalInterval(e.target.value)}
+                onBlur={handleIntervalBlur}
+                className={twMerge("h-8 w-16 text-center text-sm", !rule.enabled && "opacity-50")}
+                isDisabled={!rule.enabled}
+                disabled={!rule.enabled}
+              />
+              <span className="text-xs text-muted">days</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_1fr_auto] gap-3">
-        <div>
-          <span className="mb-1 block text-xs font-medium text-muted">Rule Name</span>
-          <Input
-            value={localName}
-            onChange={(e) => setLocalName(e.target.value)}
-            onBlur={handleNameBlur}
-            placeholder="e.g., Service accounts"
-            className="h-8 text-sm"
-          />
-        </div>
-        <div>
-          <span className="mb-1 block text-xs font-medium text-muted">Account Pattern</span>
-          <Input
-            value={localPattern}
-            onChange={(e) => setLocalPattern(e.target.value)}
-            onBlur={handlePatternBlur}
-            placeholder="*"
-            className="h-8 font-mono text-sm"
-          />
-        </div>
-        <div>
-          <span className="mb-1 block text-xs font-medium text-muted">Interval</span>
-          <div className="flex items-center gap-1">
-            <Input
-              value={localInterval}
-              onChange={(e) => setLocalInterval(e.target.value)}
-              onBlur={handleIntervalBlur}
-              className={twMerge("h-8 w-16 text-center text-sm", !rule.enabled && "opacity-50")}
-              isDisabled={!rule.enabled}
-              disabled={!rule.enabled}
-            />
-            <span className="text-xs text-muted">days</span>
-          </div>
-        </div>
+      <div className="flex flex-col gap-1">
+        <UnstableIconButton variant="ghost" size="xs" onClick={onDelete}>
+          <TrashIcon className="text-danger" />
+        </UnstableIconButton>
+        <UnstableIconButton variant="ghost" size="xs" onClick={onMoveUp} isDisabled={index === 0}>
+          <ArrowUpIcon />
+        </UnstableIconButton>
+        <UnstableIconButton
+          variant="ghost"
+          size="xs"
+          onClick={onMoveDown}
+          isDisabled={index >= totalRules - 1}
+        >
+          <ArrowDownIcon />
+        </UnstableIconButton>
       </div>
     </div>
   );

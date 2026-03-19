@@ -233,7 +233,7 @@ type PamDependenciesTableProps = {
   getContextValue: (dep: TDependencyItem) => string | null | undefined;
 };
 
-const COL_COUNT = 7;
+const COL_COUNT = 8;
 
 export const PamDependenciesTable = ({
   dependencies,
