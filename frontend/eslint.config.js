@@ -18,7 +18,7 @@ const compat = new FlatCompat({
 });
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"] },
   {
     extends: [
       ...pluginRouter.configs["flat/recommended"],

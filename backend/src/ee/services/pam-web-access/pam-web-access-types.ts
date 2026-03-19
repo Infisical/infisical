@@ -33,6 +33,11 @@ export enum SessionEndReason {
   IdleTimeout = "Session closed due to inactivity."
 }
 
+export enum WebAccessMode {
+  Terminal = "terminal",
+  DataBrowser = "data-browser"
+}
+
 const WebSocketOutputMessageSchema = z.object({
   type: z.enum([WsMessageType.Ready, WsMessageType.Output]),
   data: z.string(),
@@ -56,12 +61,136 @@ export const WebSocketClientMessageSchema = z.object({
   data: z.string()
 });
 
+// --- Data Browser message schemas ---
+
+export const DataBrowserClientMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("pg-get-schemas"), id: z.string() }),
+  z.object({ type: z.literal("pg-get-tables"), id: z.string(), schema: z.string() }),
+  z.object({
+    type: z.literal("pg-get-table-detail"),
+    id: z.string(),
+    schema: z.string(),
+    table: z.string()
+  }),
+  z.object({ type: z.literal("pg-query"), id: z.string(), sql: z.string() })
+]);
+
+export type TDataBrowserClientMessage = z.infer<typeof DataBrowserClientMessageSchema>;
+
+const DataBrowserSchemasMessageSchema = z.object({
+  type: z.literal("pg-schemas"),
+  id: z.string(),
+  data: z.array(z.object({ name: z.string() }))
+});
+
+const DataBrowserTablesMessageSchema = z.object({
+  type: z.literal("pg-tables"),
+  id: z.string(),
+  data: z.array(z.object({ name: z.string(), tableType: z.string() }))
+});
+
+const DataBrowserTableDetailMessageSchema = z.object({
+  type: z.literal("pg-table-detail"),
+  id: z.string(),
+  data: z.object({
+    columns: z.array(
+      z.object({
+        name: z.string(),
+        type: z.string(),
+        typeOid: z.number(),
+        nullable: z.boolean(),
+        defaultValue: z.string().nullable(),
+        isIdentity: z.boolean(),
+        identityGeneration: z.string().nullable(),
+        isArray: z.boolean(),
+        maxLength: z.number().nullable()
+      })
+    ),
+    primaryKeys: z.array(z.string()),
+    foreignKeys: z.array(
+      z.object({
+        constraintName: z.string(),
+        columns: z.array(z.string()),
+        targetSchema: z.string(),
+        targetTable: z.string(),
+        targetColumns: z.array(z.string())
+      })
+    ),
+    enums: z.record(z.string(), z.array(z.string()))
+  })
+});
+
+const DataBrowserQueryResultMessageSchema = z.object({
+  type: z.literal("pg-query-result"),
+  id: z.string(),
+  rows: z.array(z.record(z.string(), z.unknown())),
+  fields: z.array(
+    z.object({
+      name: z.string(),
+      dataTypeID: z.number()
+    })
+  ),
+  rowCount: z.number().nullable(),
+  command: z.string(),
+  executionTimeMs: z.number()
+});
+
+const DataBrowserErrorMessageSchema = z.object({
+  type: z.literal("pg-error"),
+  id: z.string(),
+  error: z.string(),
+  detail: z.string().optional(),
+  hint: z.string().optional()
+});
+
+export const DataBrowserServerMessageSchema = z.discriminatedUnion("type", [
+  DataBrowserSchemasMessageSchema,
+  DataBrowserTablesMessageSchema,
+  DataBrowserTableDetailMessageSchema,
+  DataBrowserQueryResultMessageSchema,
+  DataBrowserErrorMessageSchema
+]);
+
+export type TDataBrowserServerMessage = z.infer<typeof DataBrowserServerMessageSchema>;
+
+export const parseDataBrowserClientMessage = (
+  rawData: Buffer | ArrayBuffer | Buffer[]
+): TDataBrowserClientMessage | null => {
+  let data: string;
+  if (Buffer.isBuffer(rawData)) data = rawData.toString();
+  else if (Array.isArray(rawData)) data = Buffer.concat(rawData).toString();
+  else data = Buffer.from(rawData).toString();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  const result = DataBrowserClientMessageSchema.safeParse(parsed);
+  return result.success ? result.data : null;
+};
+
+// --- End Data Browser schemas ---
+
 export type TSessionContext = {
   socket: WebSocket;
   relayPort: number;
   resourceName: string;
   sessionId: string;
   sendMessage: (msg: TWebSocketServerMessage) => void;
+  sendSessionEnd: (reason: SessionEndReason) => void;
+  isNearSessionExpiry: () => boolean;
+  onCleanup: () => void;
+};
+
+export type TDataBrowserSessionContext = {
+  socket: WebSocket;
+  relayPort: number;
+  resourceName: string;
+  sessionId: string;
+  sendMessage: (msg: TDataBrowserServerMessage) => void;
+  sendReady: () => void;
   sendSessionEnd: (reason: SessionEndReason) => void;
   isNearSessionExpiry: () => boolean;
   onCleanup: () => void;
@@ -101,4 +230,5 @@ export type TIssueWebSocketTicketDTO = {
   actorName: string;
   auditLogInfo: AuditLogInfo;
   mfaSessionId?: string;
+  mode?: WebAccessMode;
 };

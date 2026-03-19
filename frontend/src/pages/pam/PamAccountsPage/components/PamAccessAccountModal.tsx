@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
-import { faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faDatabase, faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import ms from "ms";
@@ -92,6 +92,8 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
     account.resource.resourceType === PamResourceType.SSH ||
     account.resource.resourceType === PamResourceType.Redis;
 
+  const showDataBrowser = account.resource.resourceType === PamResourceType.Postgres;
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -157,21 +159,40 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
             <div className="py-1">
               <p className="text-sm font-medium text-mineshaft-400">Browser</p>
               <p className="mb-2 text-xs text-mineshaft-400">Connect directly from your browser</p>
-              <Link
-                to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
-                params={{
-                  orgId: currentOrg.id,
-                  projectId,
-                  resourceType: account.resource.resourceType,
-                  resourceId: account.resource.id,
-                  accountId: account.id
-                }}
-                target="_blank"
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
-              >
-                <FontAwesomeIcon icon={faTerminal} />
-                Connect in Browser
-              </Link>
+              <div className="flex flex-col gap-2">
+                <Link
+                  to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId,
+                    resourceType: account.resource.resourceType,
+                    resourceId: account.resource.id,
+                    accountId: account.id
+                  }}
+                  target="_blank"
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
+                >
+                  <FontAwesomeIcon icon={faTerminal} />
+                  Open Terminal
+                </Link>
+                {showDataBrowser && (
+                  <Link
+                    to={ROUTE_PATHS.Pam.PamDataBrowserPage.path}
+                    params={{
+                      orgId: currentOrg.id,
+                      projectId,
+                      resourceType: account.resource.resourceType,
+                      resourceId: account.resource.id,
+                      accountId: account.id
+                    }}
+                    target="_blank"
+                    className="flex w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                  >
+                    <FontAwesomeIcon icon={faDatabase} />
+                    Open Data Browser
+                  </Link>
+                )}
+              </div>
             </div>
           </>
         )}
