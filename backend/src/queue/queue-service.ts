@@ -948,31 +948,13 @@ export const queueServiceFactory = (
         removeOnFail: true
       });
 
-      // Clean up legacy repeatable jobs for the reconciliation queue
-      const reconciliationQueue = queueContainer[QueueName.QueueInternalReconciliation];
-      if (reconciliationQueue) {
-        try {
-          const legacyJobs = await reconciliationQueue.getRepeatableJobs();
-          const legacyToRemove = legacyJobs.filter((job) => !job.key.startsWith(JOB_SCHEDULER_PREFIX));
-          await Promise.all(
-            legacyToRemove.map((job) =>
-              reconciliationQueue.removeRepeatableByKey(job.key).then(() => {
-                logger.info(
-                  { queue: QueueName.QueueInternalReconciliation, key: job.key },
-                  "Removed legacy repeatable job"
-                );
-              })
-            )
-          );
-        } catch (err) {
-          logger.error(err, "Failed to clean up legacy repeatable jobs for internal reconciliation queue");
-        }
-      }
-
       // Schedule reconciliation job (runs every 2 minutes)
-      await reconciliationQueue?.upsertJobScheduler(
+      // Uses the wrapper which handles legacy repeatable + orphaned delayed job cleanup.
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      await upsertJobScheduler(
+        QueueName.QueueInternalReconciliation,
         `${JOB_SCHEDULER_PREFIX}:queue-reconciliation-cron`,
-        { pattern: "*/2 * * * *", utc: true },
+        { pattern: "*/2 * * * *" },
         {
           name: QueueJobs.QueueReconciliation,
           opts: { removeOnComplete: true, removeOnFail: true }
@@ -1239,6 +1221,38 @@ export const queueServiceFactory = (
       logger.error(err, `Failed to clean up legacy repeatable jobs for queue '${name}'`);
     }
 
+    // Remove orphaned delayed jobs left behind by legacy repeatable schedules.
+    // removeRepeatableByKey cleans up the ZSET entry and its delayed job, but workers may
+    // have already processed the old delayed job and re-created the next iteration before
+    // the ZSET entry was removed. Runs before and after upsert to handle the race window.
+    const $removeLegacyDelayedJobs = async () => {
+      const delayedJobs = await q.getDelayed();
+      const legacyDelayedJobs = delayedJobs.filter(
+        (job) => job?.id?.startsWith("repeat:") && !job.id.includes(JOB_SCHEDULER_PREFIX)
+      );
+      await Promise.all(
+        legacyDelayedJobs.map((job) =>
+          job
+            .remove()
+            .then(() => {
+              logger.info({ queue: name, jobId: job.id }, "Removed orphaned legacy delayed job");
+            })
+            .catch((removeErr: unknown) => {
+              logger.warn(
+                { queue: name, jobId: job.id, error: removeErr },
+                "Failed to remove orphaned legacy delayed job"
+              );
+            })
+        )
+      );
+    };
+
+    try {
+      await $removeLegacyDelayedJobs();
+    } catch (err) {
+      logger.error(err, `Failed to clean up orphaned legacy delayed jobs for queue '${name}'`);
+    }
+
     await q.upsertJobScheduler(
       schedulerId,
       { ...repeatConfig, utc: true },
@@ -1252,6 +1266,12 @@ export const queueServiceFactory = (
         }
       }
     );
+
+    try {
+      await $removeLegacyDelayedJobs();
+    } catch (err) {
+      logger.error(err, `Failed second-pass cleanup of orphaned legacy delayed jobs for queue '${name}'`);
+    }
   };
 
   const removeJobScheduler: TQueueServiceFactory["removeJobScheduler"] = async (name, schedulerId) => {
