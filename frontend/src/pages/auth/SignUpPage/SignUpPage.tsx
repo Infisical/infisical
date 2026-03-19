@@ -8,7 +8,6 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
-import EnterEmailStep from "@app/components/auth/EnterEmailStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
@@ -29,7 +28,6 @@ export const SignUpPage = () => {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
   const { data: serverDetails } = useFetchServerStatus();
-  const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { t } = useTranslation();
   const { mutateAsync } = useVerifySignupEmailVerificationCode();
@@ -83,12 +81,8 @@ export const SignUpPage = () => {
   }, [step]);
 
   const renderView = (registerStep: number) => {
-    if (isSignupWithEmail && registerStep === 1) {
-      return <EnterEmailStep email={email} setEmail={setEmail} incrementStep={incrementStep} />;
-    }
-
-    if (!isSignupWithEmail && registerStep === 1) {
-      return <InitialSignupStep setIsSignupWithEmail={setIsSignupWithEmail} />;
+    if (registerStep === 1) {
+      return <InitialSignupStep email={email} setEmail={setEmail} incrementStep={incrementStep} />;
     }
 
     if (registerStep === 2) {
