@@ -39,11 +39,7 @@ type DataBrowserGridProps = {
 
 const ROW_KEY_PREFIX = "__new_";
 
-function pgTypeToCellOpts(col: ColumnInfo): CellOpts {
-  const t = col.type.toLowerCase();
-  // Multi-line editing for large text/JSON fields
-  if (t === "json" || t === "jsonb" || t === "text" || t === "xml") return { variant: "long-text" };
-  // Everything else as plain text — SQL handles type coercion, backend validates
+function pgTypeToCellOpts(): CellOpts {
   return { variant: "short-text" };
 }
 
@@ -132,7 +128,7 @@ function buildColumnDefs(cols: ColumnInfo[]): ColumnDef<Record<string, unknown>>
     meta: {
       label: col.name,
       typeLabel: col.type,
-      cell: pgTypeToCellOpts(col)
+      cell: pgTypeToCellOpts()
     },
     size: getColumnSize(col),
     minSize: 80,
