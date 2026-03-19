@@ -1,5 +1,6 @@
-/* eslint-disable */
-// @ts-nocheck -- vendored Dice UI component, API compatibility fixes pending
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck -- vendored Dice UI component, large file with complex generic types pending cleanup
+/* eslint-disable no-restricted-syntax, no-nested-ternary, no-continue, no-param-reassign, @typescript-eslint/no-shadow, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
 
 import * as React from "react";
 import { Check, Upload, X } from "lucide-react";
@@ -181,7 +182,7 @@ export function ShortTextCell<TData>({
       {isNull && !isEditing ? (
         <span
           data-slot="grid-cell-content"
-          className="select-none text-xs italic text-muted-foreground/50"
+          className="text-xs text-muted-foreground/50 italic select-none"
         >
           NULL
         </span>
@@ -917,7 +918,7 @@ export function SelectCell<TData>({
         >
           <SelectTrigger
             size="sm"
-            className="size-full items-start border-none p-0 shadow-none focus-visible:ring-0 dark:bg-transparent [&_svg]:hidden"
+            className="size-full items-start border-none bg-transparent p-0 shadow-none focus-visible:ring-0 [&_svg]:hidden"
           >
             {displayLabel ? (
               <Badge variant="secondary" className="px-1.5 py-px whitespace-pre-wrap">
@@ -1192,7 +1193,7 @@ export function MultiSelectCell<TData>({
                     <CommandGroup>
                       <CommandItem
                         onSelect={clearAll}
-                        className="text-muted-foreground justify-center"
+                        className="justify-center text-muted-foreground"
                       >
                         Clear all
                       </CommandItem>
@@ -1212,7 +1213,7 @@ export function MultiSelectCell<TData>({
             </Badge>
           ))}
           {hiddenBadgeCount > 0 && (
-            <Badge variant="outline" className="text-muted-foreground px-1.5 py-px">
+            <Badge variant="outline" className="px-1.5 py-px text-muted-foreground">
               +{hiddenBadgeCount}
             </Badge>
           )}
@@ -1864,14 +1865,14 @@ export function FileCell<TData>({
                 onDrop={onDropzoneDrop}
                 onKeyDown={onDropzoneKeyDown}
               >
-                <Upload className="text-muted-foreground size-8" />
+                <Upload className="size-8 text-muted-foreground" />
                 <div className="text-center text-sm">
                   <p className="font-medium">
                     {isDragging ? "Drop files here" : "Drag files here"}
                   </p>
-                  <p className="text-muted-foreground text-xs">or click to browse</p>
+                  <p className="text-xs text-muted-foreground">or click to browse</p>
                 </div>
-                <p id={descriptionId} className="text-muted-foreground text-xs">
+                <p id={descriptionId} className="text-xs text-muted-foreground">
                   {maxFileSize
                     ? `Max size: ${formatFileSize(maxFileSize)}${maxFiles ? ` • Max ${maxFiles} files` : ""}`
                     : maxFiles
@@ -1892,14 +1893,14 @@ export function FileCell<TData>({
               {files.length > 0 && (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-muted-foreground text-xs font-medium">
+                    <p className="text-xs font-medium text-muted-foreground">
                       {files.length} {files.length === 1 ? "file" : "files"}
                     </p>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="text-muted-foreground h-6 text-xs"
+                      className="h-6 text-xs text-muted-foreground"
                       onClick={clearAll}
                       disabled={isPending}
                     >
@@ -1920,11 +1921,11 @@ export function FileCell<TData>({
                           className="flex items-center gap-2 rounded-md border bg-muted/50 px-2 py-1.5 data-pending:opacity-60"
                         >
                           {FileIcon && (
-                            <FileIcon className="text-muted-foreground size-4 shrink-0" />
+                            <FileIcon className="size-4 shrink-0 text-muted-foreground" />
                           )}
                           <div className="flex-1 overflow-hidden">
                             <p className="truncate text-sm">{file.name}</p>
-                            <p className="text-muted-foreground text-xs">
+                            <p className="text-xs text-muted-foreground">
                               {isFileUploading
                                 ? "Uploading..."
                                 : isFileDeleting
@@ -1960,6 +1961,7 @@ export function FileCell<TData>({
       ) : files.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1 overflow-hidden">
           {visibleFiles.map((file) => {
+            // eslint-disable-next-line @typescript-eslint/no-shadow
             const isUploading = uploadingFiles.has(file.id);
 
             if (isUploading) {
@@ -1984,7 +1986,7 @@ export function FileCell<TData>({
             );
           })}
           {hiddenFileCount > 0 && (
-            <Badge variant="outline" className="text-muted-foreground px-1.5 py-px">
+            <Badge variant="outline" className="px-1.5 py-px text-muted-foreground">
               +{hiddenFileCount}
             </Badge>
           )}

@@ -77,7 +77,7 @@ export const SortPopover = ({ columns, sorts, onSortsChange }: SortPopoverProps)
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search..."
-              className="h-7 w-full rounded border border-mineshaft-600 bg-transparent pl-7 pr-2 text-xs text-mineshaft-200 outline-none placeholder:text-mineshaft-500 focus:border-mineshaft-400"
+              className="h-7 w-full rounded border border-mineshaft-600 bg-transparent pr-2 pl-7 text-xs text-mineshaft-200 outline-none placeholder:text-mineshaft-500 focus:border-mineshaft-400"
             />
           </div>
         </div>

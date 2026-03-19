@@ -1,6 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck -- vendored Dice UI component, API compatibility fixes pending
-
 import * as React from "react";
 import { SearchIcon, XIcon } from "lucide-react";
 
@@ -32,6 +29,7 @@ interface DataGridKeyboardShortcutsProps {
   enableSearch?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-use-before-define
 export const DataGridKeyboardShortcuts = React.memo(DataGridKeyboardShortcutsImpl, (prev, next) => {
   return prev.enableSearch === next.enableSearch;
 });
@@ -244,7 +242,7 @@ function DataGridKeyboardShortcutsImpl({ enableSearch = false }: DataGridKeyboar
         showCloseButton={false}
       >
         <DialogClose className="absolute top-6 right-6" asChild>
-          <Button variant="ghost" size="icon" className="size-6">
+          <Button variant="ghost" size="xs" className="size-6">
             <XIcon />
           </Button>
         </DialogClose>
@@ -257,7 +255,7 @@ function DataGridKeyboardShortcutsImpl({ enableSearch = false }: DataGridKeyboar
         </DialogHeader>
         <div className="px-6">
           <div className="relative">
-            <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
+            <SearchIcon className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={inputRef}
               placeholder="Search shortcuts..."
@@ -276,7 +274,7 @@ function DataGridKeyboardShortcutsImpl({ enableSearch = false }: DataGridKeyboar
               </div>
               <div className="flex flex-col gap-1">
                 <div className="text-lg font-medium tracking-tight">No shortcuts found</div>
-                <p className="text-muted-foreground text-sm">Try searching for a different term.</p>
+                <p className="text-sm text-muted-foreground">Try searching for a different term.</p>
               </div>
             </div>
           ) : (
@@ -286,7 +284,9 @@ function DataGridKeyboardShortcutsImpl({ enableSearch = false }: DataGridKeyboar
                   <h3 className="text-sm font-semibold text-foreground">{shortcutGroup.title}</h3>
                   <div className="divide-y divide-border rounded-md border">
                     {shortcutGroup.shortcuts.map((shortcut, index) => (
+                      // eslint-disable-next-line @typescript-eslint/no-use-before-define
                       <ShortcutCard
+                        // eslint-disable-next-line react/no-array-index-key
                         key={index}
                         keys={shortcut.keys}
                         description={shortcut.description}
@@ -310,7 +310,7 @@ function ShortcutCard({ keys, description }: ShortcutGroup["shortcuts"][number])
       <KbdGroup className="shrink-0">
         {keys.map((key, index) => (
           <React.Fragment key={key}>
-            {index > 0 && <span className="text-muted-foreground text-xs">+</span>}
+            {index > 0 && <span className="text-xs text-muted-foreground">+</span>}
             <Kbd>{key}</Kbd>
           </React.Fragment>
         ))}

@@ -1,6 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck -- vendored Dice UI component, API compatibility fixes pending
-
 import * as React from "react";
 
 import { cn } from "@app/components/v3/utils";
@@ -34,7 +31,7 @@ export function DataGridCellWrapper<TData>({
 
   const onCellChange = React.useCallback(
     (node: HTMLDivElement | null) => {
-      if (!cellMapRef) return;
+      if (!cellMapRef?.current) return;
 
       const cellKey = getCellKey(rowIndex, columnId);
 
@@ -47,7 +44,7 @@ export function DataGridCellWrapper<TData>({
     [rowIndex, columnId, cellMapRef]
   );
 
-  const composedRef = useComposedRefs(ref, onCellChange);
+  const composedRef = useComposedRefs(ref as React.Ref<HTMLDivElement> | undefined, onCellChange);
 
   const onClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -158,11 +155,11 @@ export function DataGridCellWrapper<TData>({
       {...props}
       ref={composedRef}
       className={cn(
-        "size-full px-2 py-1.5 text-start text-sm outline-none has-data-[slot=checkbox]:pt-2.5",
+        "size-full px-3 py-1.5 text-start text-sm text-mineshaft-200 outline-none has-data-[slot=checkbox]:pt-2.5",
         {
           "ring-1 ring-ring ring-inset": isFocused,
-          "bg-yellow-100 dark:bg-yellow-900/30": isSearchMatch && !isActiveSearchMatch,
-          "bg-orange-200 dark:bg-orange-900/50": isActiveSearchMatch,
+          "bg-yellow-900/30": isSearchMatch && !isActiveSearchMatch,
+          "bg-orange-900/50": isActiveSearchMatch,
           "bg-primary/10": isSelected && !isEditing,
           "cursor-default": !isEditing,
           "**:data-[slot=grid-cell-content]:line-clamp-1": !isEditing && rowHeight === "short",

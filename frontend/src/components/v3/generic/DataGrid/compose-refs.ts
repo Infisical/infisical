@@ -1,5 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck -- vendored Dice UI component, API compatibility fixes pending
 /**
  * @see https://github.com/radix-ui/primitives/blob/main/packages/react/compose-refs/src/compose-refs.tsx
  */
@@ -12,12 +10,15 @@ type PossibleRef<T> = React.Ref<T> | undefined;
  * Set a given ref to a given value
  * This utility takes care of different types of refs: callback refs and RefObject(s)
  */
+// eslint-disable-next-line consistent-return
 function setRef<T>(ref: PossibleRef<T>, value: T) {
   if (typeof ref === "function") {
     return ref(value);
   }
 
   if (ref !== null && ref !== undefined) {
+    // @ts-expect-error -- React 19 makes RefObject.current read-only, but this vendored Radix utility needs to write it
+    // eslint-disable-next-line no-param-reassign
     ref.current = value;
   }
 }
@@ -27,6 +28,7 @@ function setRef<T>(ref: PossibleRef<T>, value: T) {
  * Accepts callback refs and RefObject(s)
  */
 function composeRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
+  // eslint-disable-next-line consistent-return
   return (node) => {
     let hasCleanup = false;
     const cleanups = refs.map((ref) => {
@@ -43,9 +45,11 @@ function composeRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
     // using the cleanup functionality added in React 19.
     if (hasCleanup) {
       return () => {
+        // eslint-disable-next-line no-plusplus
         for (let i = 0; i < cleanups.length; i++) {
           const cleanup = cleanups[i];
           if (typeof cleanup === "function") {
+            // @ts-expect-error -- cleanup type narrowing issue with React 19 ref callback return types
             cleanup();
           } else {
             setRef(refs[i], null);

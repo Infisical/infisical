@@ -1,4 +1,3 @@
-/* eslint-disable */
 import type * as React from "react";
 import type { Column, Table } from "@tanstack/react-table";
 import {
@@ -145,12 +144,15 @@ export function getColumnPinningStyle<TData>(params: {
   const rightPosition = isPinned === "right" ? `${column.getAfter("right")}px` : undefined;
 
   return {
+    // eslint-disable-next-line no-nested-ternary
     boxShadow: withBorder
-      ? isLastLeftPinnedColumn
+      ? // eslint-disable-next-line no-nested-ternary
+        isLastLeftPinnedColumn
         ? isRtl
           ? "4px 0 4px -4px var(--border) inset"
           : "-4px 0 4px -4px var(--border) inset"
-        : isFirstRightPinnedColumn
+        : // eslint-disable-next-line no-nested-ternary
+          isFirstRightPinnedColumn
           ? isRtl
             ? "-4px 0 4px -4px var(--border) inset"
             : "4px 0 4px -4px var(--border) inset"
@@ -160,7 +162,7 @@ export function getColumnPinningStyle<TData>(params: {
     right: isRtl ? leftPosition : rightPosition,
     opacity: isPinned ? 0.97 : 1,
     position: isPinned ? "sticky" : "relative",
-    background: isPinned ? "var(--background)" : "var(--background)",
+    background: isPinned ? "var(--container)" : "var(--container)",
     width: column.getSize(),
     zIndex: isPinned ? 1 : undefined
   };

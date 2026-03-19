@@ -271,7 +271,7 @@ export const SecretMetadataForm = ({
       )}
 
       {!canEditSecret && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           You do not have permission to edit metadata on this secret.
         </p>
       )}

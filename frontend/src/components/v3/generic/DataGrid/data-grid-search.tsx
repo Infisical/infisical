@@ -1,6 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck -- vendored Dice UI component, API compatibility fixes pending
-
 import * as React from "react";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 
@@ -11,8 +8,10 @@ import { useAsRef } from "./hooks/use-as-ref";
 import { useDebouncedCallback } from "./hooks/use-debounced-callback";
 import type { SearchState } from "./data-grid-types";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface DataGridSearchProps extends SearchState {}
 
+// eslint-disable-next-line @typescript-eslint/no-use-before-define
 export const DataGridSearch = React.memo(DataGridSearchImpl, (prev, next) => {
   if (prev.searchOpen !== next.searchOpen) return false;
 
@@ -24,6 +23,7 @@ export const DataGridSearch = React.memo(DataGridSearchImpl, (prev, next) => {
 
   if (prev.searchMatches.length !== next.searchMatches.length) return false;
 
+  // eslint-disable-next-line no-plusplus
   for (let i = 0; i < prev.searchMatches.length; i++) {
     const prevMatch = prev.searchMatches[i];
     const nextMatch = next.searchMatches[i];
@@ -68,7 +68,7 @@ function DataGridSearchImpl({
   }, [searchOpen]);
 
   React.useEffect(() => {
-    if (!searchOpen) return;
+    if (!searchOpen) return undefined;
 
     function onEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -177,7 +177,7 @@ function DataGridSearchImpl({
           <Button
             aria-label="Previous match"
             variant="ghost"
-            size="icon"
+            size="xs"
             className="size-7"
             onClick={onPrevMatch}
             onPointerDown={onPrevMatchPointerDown}
@@ -188,7 +188,7 @@ function DataGridSearchImpl({
           <Button
             aria-label="Next match"
             variant="ghost"
-            size="icon"
+            size="xs"
             className="size-7"
             onClick={onNextMatch}
             onPointerDown={onNextMatchPointerDown}
@@ -199,7 +199,7 @@ function DataGridSearchImpl({
           <Button
             aria-label="Close search"
             variant="ghost"
-            size="icon"
+            size="xs"
             className="size-7"
             onClick={onClose}
           >
@@ -207,7 +207,8 @@ function DataGridSearchImpl({
           </Button>
         </div>
       </div>
-      <div className="text-muted-foreground flex items-center gap-1 text-xs whitespace-nowrap">
+      <div className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
+        {/* eslint-disable-next-line no-nested-ternary */}
         {searchMatches.length > 0 ? (
           <span>
             {matchIndex + 1} of {searchMatches.length}

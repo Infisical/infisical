@@ -70,14 +70,14 @@ export const DataBrowserToolbar = ({
   const rangeEnd = Math.min(page * pageSize, totalCount);
 
   return (
-    <div className="flex items-center justify-between border-b border-mineshaft-600 px-3 py-1.5">
+    <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
       <div className="flex items-center gap-2">
         <FilterPopover columns={columns} filters={filters} onFiltersChange={onFiltersChange} />
         <SortPopover columns={columns} sorts={sorts} onSortsChange={onSortsChange} />
 
         {hasPrimaryKey && (
           <>
-            <div className="h-4 w-px bg-mineshaft-600" />
+            <div className="h-4 w-px bg-border" />
             <Button variant="outline" size="xs" onClick={onAddRecord} className="gap-1">
               <PlusIcon className="size-3" />
               Add record
@@ -86,12 +86,7 @@ export const DataBrowserToolbar = ({
         )}
 
         {selectedRowCount > 0 && hasPrimaryKey && (
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={onDeleteSelected}
-            className="gap-1 text-red-400 hover:text-red-300"
-          >
+          <Button variant="danger" size="xs" onClick={onDeleteSelected} className="gap-1">
             <Trash2Icon className="size-3" />
             Delete {selectedRowCount} record{selectedRowCount !== 1 ? "s" : ""}
           </Button>
@@ -99,7 +94,7 @@ export const DataBrowserToolbar = ({
 
         {changeCount > 0 && (
           <>
-            <div className="h-4 w-px bg-mineshaft-600" />
+            <div className="h-4 w-px bg-border" />
             <Button
               variant="info"
               size="xs"
@@ -120,21 +115,23 @@ export const DataBrowserToolbar = ({
 
       <div className="flex items-center gap-2">
         {executionTimeMs !== null && (
-          <span className="flex items-center gap-1 text-xs text-mineshaft-400">
+          <span className="flex items-center gap-1 text-xs text-accent">
             <ClockIcon className="size-3" />
             {executionTimeMs}ms
           </span>
         )}
 
         {/* Pagination */}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="rounded p-1 text-mineshaft-400 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-200 disabled:opacity-30"
+          className="size-7 p-0"
         >
           <ChevronLeftIcon className="size-3.5" />
-        </button>
+        </Button>
+        {/* eslint-disable-next-line @typescript-eslint/no-use-before-define */}
         <LimitOffsetPopover
           totalCount={totalCount}
           rangeStart={rangeStart}
@@ -144,24 +141,26 @@ export const DataBrowserToolbar = ({
           onPageSizeChange={onPageSizeChange}
           onPageChange={onPageChange}
         />
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="rounded p-1 text-mineshaft-400 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-200 disabled:opacity-30"
+          className="size-7 p-0"
         >
           <ChevronRightIcon className="size-3.5" />
-        </button>
+        </Button>
 
         {/* Refresh */}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="rounded p-1 text-mineshaft-400 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-200 disabled:opacity-50"
+          className="size-7 p-0"
         >
           <RefreshCwIcon className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -212,35 +211,32 @@ const LimitOffsetPopover = ({
   return (
     <Popover open={open} onOpenChange={handleOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="rounded px-2 py-0.5 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-700"
-        >
+        <Button variant="ghost" size="xs" className="text-muted-foreground">
           {rangeStart} - {rangeEnd} of {totalCount}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-3" align="center">
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-center gap-1">
-            <span className="text-[10px] font-medium text-mineshaft-400">Limit</span>
+            <span className="text-[10px] font-medium text-accent">Limit</span>
             <input
               type="number"
               value={limitInput}
               onChange={(e) => setLimitInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && applyChanges()}
-              className="h-8 w-16 rounded border border-mineshaft-600 bg-transparent text-center text-sm text-mineshaft-200 outline-none focus:border-mineshaft-400"
+              className="h-8 w-16 rounded border border-border bg-transparent text-center text-sm text-mineshaft-200 outline-none focus:border-ring"
               min={1}
               max={1000}
             />
           </div>
           <div className="flex flex-col items-center gap-1">
-            <span className="text-[10px] font-medium text-mineshaft-400">Offset</span>
+            <span className="text-[10px] font-medium text-accent">Offset</span>
             <input
               type="number"
               value={offsetInput}
               onChange={(e) => setOffsetInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && applyChanges()}
-              className="h-8 w-16 rounded border border-mineshaft-600 bg-transparent text-center text-sm text-mineshaft-200 outline-none focus:border-mineshaft-400"
+              className="h-8 w-16 rounded border border-border bg-transparent text-center text-sm text-mineshaft-200 outline-none focus:border-ring"
               min={0}
             />
           </div>

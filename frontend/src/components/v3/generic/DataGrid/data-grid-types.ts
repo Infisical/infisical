@@ -1,4 +1,3 @@
-/* eslint-disable */
 import type { Cell, RowData, TableMeta } from "@tanstack/react-table";
 
 export type Direction = "ltr" | "rtl";
@@ -57,12 +56,14 @@ export interface CellUpdate {
 }
 
 declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
     typeLabel?: string;
     cell?: CellOpts;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface TableMeta<TData extends RowData> {
     dataGridRef?: React.RefObject<HTMLElement | null>;
     cellMapRef?: React.RefObject<Map<string, HTMLDivElement>>;

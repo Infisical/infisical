@@ -1,6 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck -- vendored Dice UI component, API compatibility fixes pending
-
 import * as React from "react";
 import type { ColumnPinningState, Row, TableMeta, VisibilityState } from "@tanstack/react-table";
 import type { VirtualItem } from "@tanstack/react-virtual";
@@ -38,6 +35,7 @@ interface DataGridRowProps<TData> extends React.ComponentProps<"div"> {
   adjustLayout: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-use-before-define
 export const DataGridRow = React.memo(DataGridRowImpl, (prev, next) => {
   const prevRowIndex = prev.virtualItem.index;
   const nextRowIndex = next.virtualItem.index;
@@ -181,7 +179,7 @@ function DataGridRowImpl<TData>({
     [virtualRowIndex, measureElement, rowMapRef]
   );
 
-  const rowRef = useComposedRefs(ref, onRowChange);
+  const rowRef = useComposedRefs(ref as React.Ref<HTMLDivElement> | undefined, onRowChange);
 
   const isRowSelected = row.getIsSelected();
 
@@ -205,7 +203,7 @@ function DataGridRowImpl<TData>({
       {...props}
       ref={rowRef}
       className={cn(
-        "absolute flex w-full border-b",
+        "absolute flex w-full border-b border-border",
         !adjustLayout && "will-change-transform",
         className
       )}

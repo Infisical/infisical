@@ -1,11 +1,9 @@
-/* eslint-disable */
 import * as React from "react";
 import type { Header, Table } from "@tanstack/react-table";
 
 import { cn } from "@app/components/v3/utils";
 
-interface DataGridColumnHeaderProps<TData, TValue>
-  extends React.ComponentProps<"div"> {
+interface DataGridColumnHeaderProps<TData, TValue> extends React.ComponentProps<"div"> {
   header: Header<TData, TValue>;
   table: Table<TData>;
 }
@@ -17,6 +15,7 @@ export function DataGridColumnHeader<TData, TValue>({
   ...props
 }: DataGridColumnHeaderProps<TData, TValue>) {
   const { column } = header;
+  // eslint-disable-next-line no-nested-ternary
   const label = column.columnDef.meta?.label
     ? column.columnDef.meta.label
     : typeof column.columnDef.header === "string"
@@ -27,7 +26,7 @@ export function DataGridColumnHeader<TData, TValue>({
     <>
       <div
         className={cn(
-          "flex size-full items-center gap-2 p-2 text-sm",
+          "flex size-full items-center gap-2 px-3 py-1.5 text-xs text-accent select-none",
           className
         )}
         {...props}
@@ -35,19 +34,21 @@ export function DataGridColumnHeader<TData, TValue>({
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <span className="truncate">{label}</span>
           {column.columnDef.meta?.typeLabel && (
-            <span className="text-muted-foreground shrink-0 text-xs font-normal">
+            <span className="shrink-0 text-xs font-normal text-muted-foreground">
               {column.columnDef.meta.typeLabel}
             </span>
           )}
         </div>
       </div>
       {header.column.getCanResize() && (
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
         <DataGridColumnResizer header={header} table={table} label={label} />
       )}
     </>
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-use-before-define
 const DataGridColumnResizer = React.memo(DataGridColumnResizerImpl, (prev, next) => {
   const prevColumn = prev.header.column;
   const nextColumn = next.header.column;
@@ -75,6 +76,7 @@ function DataGridColumnResizerImpl<TData, TValue>({
   table,
   label
 }: DataGridColumnResizerProps<TData, TValue>) {
+  // eslint-disable-next-line no-underscore-dangle
   const defaultColumnDef = table._getDefaultColumnDef();
 
   const onDoubleClick = React.useCallback(() => {
@@ -82,6 +84,7 @@ function DataGridColumnResizerImpl<TData, TValue>({
   }, [header.column]);
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex
     <div
       role="separator"
       aria-orientation="vertical"
@@ -89,7 +92,7 @@ function DataGridColumnResizerImpl<TData, TValue>({
       aria-valuenow={header.column.getSize()}
       aria-valuemin={defaultColumnDef.minSize}
       aria-valuemax={defaultColumnDef.maxSize}
-      tabIndex={0}
+      tabIndex={0} // eslint-disable-line jsx-a11y/no-noninteractive-tabindex
       className={cn(
         "absolute -end-px top-0 z-50 h-full w-0.5 cursor-ew-resize touch-none bg-border transition-opacity select-none after:absolute after:inset-y-0 after:start-1/2 after:h-full after:w-[18px] after:-translate-x-1/2 after:content-[''] hover:bg-primary focus:bg-primary focus:outline-none",
         header.column.getIsResizing() ? "bg-primary" : "opacity-0 hover:opacity-100"

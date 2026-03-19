@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
 
 import { createNotification } from "@app/components/notifications";
+import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 import {
@@ -64,20 +65,14 @@ type SelectionMeta = {
 
 function SelectHeader({ table: t }: HeaderContext<RowData, unknown>) {
   const meta = t.options.meta as SelectionMeta | undefined;
+  const isAllSelected = t.getIsAllRowsSelected();
+  const isSomeSelected = t.getIsSomeRowsSelected();
   return (
-    <input
-      type="checkbox"
-      className="cursor-pointer accent-primary"
-      checked={t.getIsAllRowsSelected()}
-      ref={(el) => {
-        if (el) {
-          // eslint-disable-next-line no-param-reassign
-          el.indeterminate = t.getIsSomeRowsSelected();
-        }
-      }}
-      onChange={(e) => {
-        t.getToggleAllRowsSelectedHandler()(e);
-        // Notify parent after TanStack processes the toggle
+    <Checkbox
+      isChecked={isAllSelected || isSomeSelected}
+      isIndeterminate={isSomeSelected && !isAllSelected}
+      onCheckedChange={() => {
+        t.toggleAllRowsSelected(!isAllSelected);
         requestAnimationFrame(() => meta?.onSelectionCountChange?.());
       }}
     />
@@ -86,22 +81,16 @@ function SelectHeader({ table: t }: HeaderContext<RowData, unknown>) {
 
 function SelectCell({ row, table: t }: CellContext<RowData, unknown>) {
   const meta = t.options.meta as SelectionMeta | undefined;
+  const isSelected = row.getIsSelected();
   return (
-    <input
-      type="checkbox"
-      className="cursor-pointer accent-primary"
-      checked={row.getIsSelected()}
-      onChange={(e) => {
+    <Checkbox
+      isChecked={isSelected}
+      onCheckedChange={(checked) => {
         if (meta?.onRowSelect) {
-          meta.onRowSelect(
-            row.index,
-            e.target.checked,
-            e.nativeEvent instanceof MouseEvent && (e.nativeEvent as MouseEvent).shiftKey
-          );
+          meta.onRowSelect(row.index, Boolean(checked), false);
         } else {
-          row.toggleSelected(e.target.checked);
+          row.toggleSelected(Boolean(checked));
         }
-        // Notify parent after TanStack processes the toggle
         requestAnimationFrame(() => meta?.onSelectionCountChange?.());
       }}
     />

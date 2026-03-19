@@ -1,4 +1,3 @@
-/* eslint-disable */
 import * as React from "react";
 
 const badgeWidthCache = new Map<string, number>();
@@ -95,7 +94,7 @@ export function useBadgeOverflow<T>({
   const [containerWidth, setContainerWidth] = React.useState(0);
 
   React.useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) return undefined;
 
     function measureWidth() {
       if (containerRef.current) {
@@ -123,6 +122,7 @@ export function useBadgeOverflow<T>({
     let currentLine = 1;
     const visible: T[] = [];
 
+    // eslint-disable-next-line no-restricted-syntax
     for (const item of items) {
       const label = getLabel(item);
       const cacheKey = cacheKeyPrefix ? `${cacheKeyPrefix}:${label}` : label;
@@ -139,6 +139,7 @@ export function useBadgeOverflow<T>({
         currentLineWidth += widthWithGap;
         visible.push(item);
       } else if (currentLine < lineCount) {
+        // eslint-disable-next-line no-plusplus
         currentLine++;
         currentLineWidth = widthWithGap;
         visible.push(item);

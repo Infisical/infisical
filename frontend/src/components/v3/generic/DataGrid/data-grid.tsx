@@ -1,4 +1,3 @@
-/* eslint-disable */
 import * as React from "react";
 import { Plus } from "lucide-react";
 
@@ -101,7 +100,7 @@ export function DataGrid<TData>({
         data-slot="grid"
         tabIndex={0}
         ref={dataGridRef}
-        className="relative grid overflow-auto rounded-md border select-none focus:outline-none"
+        className="relative grid thin-scrollbar overflow-auto rounded-md border border-border bg-container select-none focus:outline-none"
         style={{
           ...columnSizeVars,
           maxHeight: `${height}px`
@@ -112,7 +111,7 @@ export function DataGrid<TData>({
           role="rowgroup"
           data-slot="grid-header"
           ref={headerRef}
-          className="sticky top-0 z-10 grid border-b bg-background"
+          className="sticky top-0 z-10 grid border-b border-border bg-container"
         >
           {table.getHeaderGroups().map((headerGroup, rowIndex) => (
             <div
@@ -143,11 +142,12 @@ export function DataGrid<TData>({
                     role="columnheader"
                     aria-colindex={colIndex + 1}
                     aria-sort={
+                      // eslint-disable-next-line no-nested-ternary
                       currentSort?.desc === false
                         ? "ascending"
-                        : currentSort?.desc === true
+                        : currentSort?.desc === true // eslint-disable-line no-nested-ternary
                           ? "descending"
-                          : isSortable
+                          : isSortable // eslint-disable-line no-nested-ternary
                             ? "none"
                             : undefined
                     }
@@ -163,6 +163,7 @@ export function DataGrid<TData>({
                       width: `calc(var(--header-${header.id}-size) * 1px)`
                     }}
                   >
+                    {/* eslint-disable-next-line no-nested-ternary */}
                     {header.isPlaceholder ? null : typeof header.column.columnDef.header ===
                       "function" ? (
                       <div className="size-full px-3 py-1.5">
@@ -225,7 +226,7 @@ export function DataGrid<TData>({
             role="rowgroup"
             data-slot="grid-footer"
             ref={footerRef}
-            className="sticky bottom-0 z-10 grid border-t bg-background"
+            className="sticky bottom-0 z-10 grid border-t border-border bg-container"
           >
             <div
               role="row"
@@ -245,7 +246,7 @@ export function DataGrid<TData>({
                 onClick={onRowAdd}
                 onKeyDown={onFooterCellKeyDown}
               >
-                <div className="text-muted-foreground sticky start-0 flex items-center gap-2 px-3">
+                <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
                   <Plus className="size-3.5" />
                   <span className="text-sm">Add row</span>
                 </div>

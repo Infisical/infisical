@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import {
-  AlertTriangleIcon,
-  DatabaseIcon,
-  ShieldCheckIcon,
-  WifiOffIcon
-} from "lucide-react";
+import { AlertTriangleIcon, DatabaseIcon, ShieldCheckIcon, WifiOffIcon } from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
 import {

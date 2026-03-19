@@ -1,4 +1,3 @@
-/* eslint-disable */
 import * as React from "react";
 import type { TableMeta } from "@tanstack/react-table";
 
@@ -31,6 +30,7 @@ export function DataGridPasteDialog<TData>({
   if (!pasteDialog.open) return null;
 
   return (
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     <PasteDialog
       pasteDialog={pasteDialog}
       onPasteDialogOpenChange={onPasteDialogOpenChange}
@@ -43,6 +43,7 @@ interface PasteDialogProps
   extends Pick<TableMeta<unknown>, "onPasteDialogOpenChange" | "onCellsPaste">,
     Required<Pick<TableMeta<unknown>, "pasteDialog">> {}
 
+// eslint-disable-next-line @typescript-eslint/no-use-before-define
 const PasteDialog = React.memo(PasteDialogImpl, (prev, next) => {
   if (prev.pasteDialog.open !== next.pasteDialog.open) return false;
   if (!next.pasteDialog.open) return true;
@@ -85,21 +86,25 @@ function PasteDialogImpl({ pasteDialog, onPasteDialogOpenChange, onCellsPaste }:
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 py-1">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="flex cursor-pointer items-start gap-3">
+            {/* eslint-disable-next-line @typescript-eslint/no-use-before-define */}
             <RadioItem ref={expandRadioRef} name="expand-option" value="expand" defaultChecked />
             <div className="flex flex-col gap-1">
               <span className="text-sm leading-none font-medium">Create new rows</span>
-              <span className="text-muted-foreground text-sm">
+              <span className="text-sm text-muted-foreground">
                 Add {pasteDialog.rowsNeeded} new row
                 {pasteDialog.rowsNeeded !== 1 ? "s" : ""} to the table and paste all data
               </span>
             </div>
           </label>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="flex cursor-pointer items-start gap-3">
+            {/* eslint-disable-next-line @typescript-eslint/no-use-before-define */}
             <RadioItem name="expand-option" value="no-expand" />
             <div className="flex flex-col gap-1">
               <span className="text-sm leading-none font-medium">Keep current rows</span>
-              <span className="text-muted-foreground text-sm">
+              <span className="text-sm text-muted-foreground">
                 Paste only what fits in the existing rows
               </span>
             </div>
@@ -116,6 +121,7 @@ function PasteDialogImpl({ pasteDialog, onPasteDialogOpenChange, onCellsPaste }:
   );
 }
 
+// eslint-disable-next-line react/prop-types
 function RadioItem({ className, ...props }: React.ComponentProps<"input">) {
   return (
     <input
@@ -125,7 +131,7 @@ function RadioItem({ className, ...props }: React.ComponentProps<"input">) {
         "text-primary focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "disabled:cursor-not-allowed disabled:opacity-50",
         "checked:before:absolute checked:before:start-1/2 checked:before:top-1/2 checked:before:size-2 checked:before:-translate-x-1/2 checked:before:-translate-y-1/2 checked:before:rounded-full checked:before:bg-primary checked:before:content-['']",
-        "dark:bg-input/30",
+        "bg-input/30",
         className
       )}
       {...props}

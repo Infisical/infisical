@@ -1,4 +1,3 @@
-/* eslint-disable */
 import * as React from "react";
 
 import {
@@ -14,6 +13,7 @@ import {
 } from "./data-grid-cell-variants";
 import type { DataGridCellProps } from "./data-grid-types";
 
+// eslint-disable-next-line @typescript-eslint/no-use-before-define
 export const DataGridCell = React.memo(DataGridCellImpl, (prev, next) => {
   // Fast path: check stable primitive props first
   if (prev.isFocused !== next.isFocused) return false;
