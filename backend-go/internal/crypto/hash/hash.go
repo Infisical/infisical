@@ -14,6 +14,16 @@ import (
 	"hash"
 )
 
+// Algorithm identifies a hash function.
+type Algorithm string
+
+const (
+	AlgoSHA1   Algorithm = "sha1"
+	AlgoSHA256 Algorithm = "sha256"
+	AlgoSHA384 Algorithm = "sha384"
+	AlgoSHA512 Algorithm = "sha512"
+)
+
 // SHA256 returns the raw SHA-256 digest (32 bytes).
 func SHA256(data []byte) []byte {
 	h := sha256.Sum256(data)
@@ -72,34 +82,32 @@ func computeHMAC(newHash func() hash.Hash, key, data []byte) []byte {
 	return mac.Sum(nil)
 }
 
-// NewHasher returns a hash.Hash for the given algorithm name.
-// Supported: "sha256", "sha384", "sha512", "sha1".
-func NewHasher(algorithm string) (hash.Hash, error) {
+// NewHasher returns a hash.Hash for the given algorithm.
+func NewHasher(algorithm Algorithm) (hash.Hash, error) {
 	switch algorithm {
-	case "sha256":
+	case AlgoSHA256:
 		return sha256.New(), nil
-	case "sha384":
+	case AlgoSHA384:
 		return sha512.New384(), nil
-	case "sha512":
+	case AlgoSHA512:
 		return sha512.New(), nil
-	case "sha1":
+	case AlgoSHA1:
 		return sha1.New(), nil //nolint:gosec
 	default:
 		return nil, fmt.Errorf("unsupported hash algorithm: %s", algorithm)
 	}
 }
 
-// NewHMAC returns an HMAC hash.Hash for the given algorithm name and key.
-// Supported: "sha256", "sha384", "sha512", "sha1".
-func NewHMAC(algorithm string, key []byte) (hash.Hash, error) {
+// NewHMAC returns an HMAC hash.Hash for the given algorithm and key.
+func NewHMAC(algorithm Algorithm, key []byte) (hash.Hash, error) {
 	switch algorithm {
-	case "sha256":
+	case AlgoSHA256:
 		return hmac.New(sha256.New, key), nil
-	case "sha384":
+	case AlgoSHA384:
 		return hmac.New(sha512.New384, key), nil
-	case "sha512":
+	case AlgoSHA512:
 		return hmac.New(sha512.New, key), nil
-	case "sha1":
+	case AlgoSHA1:
 		return hmac.New(sha1.New, key), nil //nolint:gosec
 	default:
 		return nil, fmt.Errorf("unsupported HMAC algorithm: %s", algorithm)
