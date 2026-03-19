@@ -19,7 +19,8 @@ export const ApprovalRequestGrantsSchema = z.object({
   attributes: z.unknown(),
   createdAt: z.date().nullable().optional(),
   expiresAt: z.date().nullable().optional(),
-  revokedAt: z.date().nullable().optional()
+  revokedAt: z.date().nullable().optional(),
+  granteeMachineIdentityId: z.string().uuid().nullable().optional()
 });
 
 export type TApprovalRequestGrants = z.infer<typeof ApprovalRequestGrantsSchema>;

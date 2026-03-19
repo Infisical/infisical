@@ -1,0 +1,75 @@
+---
+title: "Signing Requests"
+sidebarTitle: "Signing Requests"
+description: "Learn how to request, approve, and reject signing access through signing workflows."
+---
+
+## Requesting Signing Access
+
+When a user or machine identity needs to sign artifacts, they must first request signing access through the signing workflow.
+
+Head to your Certificate Management Project > **Code Signing > Approvals > Signing Requests** and press **Request Signing Access**.
+
+![Signing requests page](/images/platform/pki/code-signing/approval-requests.png)
+
+<Steps>
+  <Step title="Selecting a signer and configuring parameters">
+    Select the signer you want to use. The form will automatically load the constraints associated with that signer's policy.
+
+    Depending on the policy constraints, provide the required parameters:
+
+    - **Valid From / Valid Until**: If the policy defines a max window duration, specify the time range for when you need signing access.
+    - **Allowed Sign Operations**: If the policy defines a max signings count, specify how many signing operations you need.
+    - **Justification**: Optionally provide a reason for the request (e.g., "Release v2.4.0 signing").
+
+    ![Request signing access](/images/platform/pki/code-signing/request-access-params.png)
+  </Step>
+  <Step title="Submitting the request">
+    Press **Submit** to create the request. Eligible approvers will be notified.
+  </Step>
+</Steps>
+
+## Viewing Requests
+
+Head to **Code Signing > Approvals > Signing Requests** to view all signing requests. You can filter requests by status:
+
+- **Open**: Requests currently pending approval
+- **Approved**: Requests that have been approved and grants issued
+- **Rejected**: Requests that were rejected by an approver
+- **Cancelled**: Requests cancelled by the requester
+- **Expired**: Requests that exceeded their maximum TTL
+
+## Approving a Request
+
+<Steps>
+  <Step title="Opening the request">
+    Press on a pending request to view its details.
+
+    ![Signing request detail](/images/platform/pki/code-signing/approval-request-detail.png)
+  </Step>
+  <Step title="Reviewing the request details">
+    Review the signing access request information including:
+    - Requester name
+    - Signer name and certificate
+    - Grant parameters (valid from/until, allowed sign operations, etc.)
+    - Justification
+  </Step>
+  <Step title="Approve or add comments">
+    If you are an eligible approver for the current step, press **Approve** to approve the request.
+  </Step>
+</Steps>
+
+Once all required approvals for all steps are obtained, a signing grant is automatically issued and the requester can begin signing.
+
+## Rejecting a Request
+
+<Steps>
+  <Step title="Opening the request">
+    Press on a pending request to view its details.
+  </Step>
+  <Step title="Rejecting with reason">
+    If you are an eligible approver for the current step, press **Reject** to reject the request. Optionally add a comment explaining the rejection.
+  </Step>
+</Steps>
+
+When a request is rejected, no signing grant is issued.

@@ -136,7 +136,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, organizationId } =
+      const { user, accessToken, refreshToken, organizationId, authMethod } =
         await server.services.signup.completeEmailAccountSignup({
           ...req.body,
           ip: req.realIp,
@@ -146,6 +146,12 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+        void server.services.telemetry.sendHubSpotSignupEvent(
+          user.email,
+          authMethod,
+          user.firstName || "",
+          user.lastName || ""
+        );
       }
 
       void server.services.telemetry.sendPostHogEvents({
@@ -226,6 +232,12 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+        void server.services.telemetry.sendHubSpotSignupEvent(
+          user.email,
+          "invite",
+          user.firstName || "",
+          user.lastName || ""
+        );
       }
 
       void server.services.telemetry.sendPostHogEvents({

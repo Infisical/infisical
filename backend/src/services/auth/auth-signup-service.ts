@@ -337,7 +337,13 @@ export const authSignupServiceFactory = ({
       { expiresIn: refreshTokenExpiresIn }
     );
 
-    return { user: updateduser.info, accessToken, refreshToken, organizationId };
+    return {
+      user: updateduser.info,
+      accessToken,
+      refreshToken,
+      organizationId,
+      authMethod: authMethod || AuthMethod.EMAIL
+    };
   };
 
   /*

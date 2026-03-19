@@ -333,6 +333,10 @@ export const AwsSecretsManagerSyncFns = {
 
     const keyId = syncOptions.keyId ?? "alias/aws/secretsmanager";
 
+    const createdSecretKeys: string[] = [];
+    const updatedSecretKeys: string[] = [];
+    const deletedSecretKeys: string[] = [];
+
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       for await (const entry of Object.entries(secretMap)) {
         const [key, { value, secretMetadata }] = entry;
@@ -352,6 +356,7 @@ export const AwsSecretsManagerSyncFns = {
                 SecretString: value,
                 KmsKeyId: keyId
               });
+              updatedSecretKeys.push(key);
             } catch (error) {
               throw new SecretSyncError({
                 error,
@@ -366,6 +371,7 @@ export const AwsSecretsManagerSyncFns = {
               SecretString: value,
               KmsKeyId: keyId
             });
+            createdSecretKeys.push(key);
           } catch (error) {
             throw new SecretSyncError({
               error,
@@ -411,7 +417,7 @@ export const AwsSecretsManagerSyncFns = {
         }
       }
 
-      if (syncOptions.disableSecretDeletion) return;
+      if (syncOptions.disableSecretDeletion) return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         // eslint-disable-next-line no-continue
@@ -420,6 +426,7 @@ export const AwsSecretsManagerSyncFns = {
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
             await deleteSecret(client, secretKey);
+            deletedSecretKeys.push(secretKey);
           } catch (error) {
             throw new SecretSyncError({
               error,
@@ -441,18 +448,24 @@ export const AwsSecretsManagerSyncFns = {
         schema: syncOptions.keySchema
       });
 
-      if (awsSecretsRecord[secretName]) {
+      const secretExists = Boolean(awsSecretsRecord[secretName]);
+      const hasValueChanged = awsValuesRecord[secretName]?.SecretString !== secretValue;
+      const hasKmsKeyChanged = keyId !== awsDescriptionsRecord[secretName]?.KmsKeyId;
+
+      if (secretExists && (hasValueChanged || hasKmsKeyChanged)) {
         await updateSecret(client, {
           SecretId: secretName,
           SecretString: secretValue,
           KmsKeyId: keyId
         });
-      } else {
+        updatedSecretKeys.push(secretName);
+      } else if (!secretExists) {
         await createSecret(client, {
           Name: secretName,
           SecretString: secretValue,
           KmsKeyId: keyId
         });
+        createdSecretKeys.push(secretName);
       }
 
       if (syncOptions.tags !== undefined) {
@@ -486,6 +499,8 @@ export const AwsSecretsManagerSyncFns = {
         }
       }
     }
+
+    return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
   },
   getSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<TSecretMap> => {
     const client = await getSecretsManagerClient(secretSync);

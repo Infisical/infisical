@@ -16,6 +16,14 @@ import {
   TCertRequestRequestData
 } from "./cert-request/cert-request-policy-types";
 import {
+  TCodeSigningPolicy,
+  TCodeSigningPolicyConditions,
+  TCodeSigningPolicyConstraints,
+  TCodeSigningPolicyInputs,
+  TCodeSigningRequest,
+  TCodeSigningRequestData
+} from "./code-signing/code-signing-policy-types";
+import {
   TPamAccessPolicy,
   TPamAccessPolicyConditions,
   TPamAccessPolicyConstraints,
@@ -24,13 +32,19 @@ import {
   TPamAccessRequestData
 } from "./pam-access/pam-access-policy-types";
 
-export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy;
-export type TApprovalPolicyInputs = TPamAccessPolicyInputs | TCertRequestPolicyInputs;
-export type TApprovalPolicyConditions = TPamAccessPolicyConditions | TCertRequestPolicyConditions;
-export type TApprovalPolicyConstraints = TPamAccessPolicyConstraints | TCertRequestPolicyConstraints;
+export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy;
+export type TApprovalPolicyInputs = TPamAccessPolicyInputs | TCertRequestPolicyInputs | TCodeSigningPolicyInputs;
+export type TApprovalPolicyConditions =
+  | TPamAccessPolicyConditions
+  | TCertRequestPolicyConditions
+  | TCodeSigningPolicyConditions;
+export type TApprovalPolicyConstraints =
+  | TPamAccessPolicyConstraints
+  | TCertRequestPolicyConstraints
+  | TCodeSigningPolicyConstraints;
 
-export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest;
-export type TApprovalRequestData = TPamAccessRequestData | TCertRequestRequestData;
+export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest;
+export type TApprovalRequestData = TPamAccessRequestData | TCertRequestRequestData | TCodeSigningRequestData;
 
 export interface ApprovalPolicyStep {
   name?: string | null;

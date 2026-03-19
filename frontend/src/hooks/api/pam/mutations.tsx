@@ -222,6 +222,56 @@ export const useAccessPamAccount = () => {
   });
 };
 
+// Account Dependencies
+export const useTogglePamAccountDependency = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accountId,
+      dependencyId,
+      isRotationSyncEnabled
+    }: {
+      accountId: string;
+      dependencyId: string;
+      isRotationSyncEnabled: boolean;
+    }) => {
+      const { data } = await apiRequest.patch(
+        `/api/v1/pam/accounts/${accountId}/dependencies/${dependencyId}`,
+        { isRotationSyncEnabled }
+      );
+
+      return data.dependency;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.allResourceDependencies() });
+    }
+  });
+};
+
+export const useDeletePamAccountDependency = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accountId,
+      dependencyId
+    }: {
+      accountId: string;
+      dependencyId: string;
+    }) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/pam/accounts/${accountId}/dependencies/${dependencyId}`
+      );
+
+      return data.dependency;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.allResourceDependencies() });
+    }
+  });
+};
+
 // Folders
 export const useCreatePamFolder = () => {
   const queryClient = useQueryClient();

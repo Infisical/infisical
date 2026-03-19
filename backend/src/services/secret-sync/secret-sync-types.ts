@@ -405,6 +405,12 @@ export enum SecretSyncAction {
   RemoveSecrets = "remove-secrets"
 }
 
+export type TSyncSecretsResult = {
+  createdSecretKeys: string[];
+  updatedSecretKeys: string[];
+  deletedSecretKeys: string[];
+};
+
 export type TSecretSyncRaw = NonNullable<Awaited<ReturnType<TSecretSyncDALFactory["findById"]>>>;
 
 export type TQueueSecretSyncsByPathDTO = {
