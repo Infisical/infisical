@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { join } from "path";
 import picomatch from "picomatch";
 import RE2 from "re2";
@@ -33,9 +33,8 @@ export const listSecretScanningDataSourceOptions = () => {
 };
 
 export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository): Promise<void> => {
-  const command = `git clone ${cloneUrl} ${repoPath} --bare`;
   return new Promise((resolve, reject) => {
-    exec(command, (error) => {
+    execFile("git", ["clone", cloneUrl, repoPath, "--bare"], (error) => {
       if (error) {
         reject(error);
       } else {
@@ -47,8 +46,11 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
 
 export function scanDirectory(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `cd ${inputPath} && infisical scan --exit-code=77 -r "${outputPath}" ${configPath ? `-c ${configPath}` : ""}`;
-    exec(command, (error) => {
+    const args = ["scan", "--exit-code=77", "-r", outputPath];
+    if (configPath) {
+      args.push("-c", configPath);
+    }
+    execFile("infisical", args, { cwd: inputPath }, (error) => {
       if (error && error.code !== 77) {
         reject(error);
       } else {
@@ -60,8 +62,11 @@ export function scanDirectory(inputPath: string, outputPath: string, configPath?
 
 export function scanFile(inputPath: string, configPath?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `infisical scan --exit-code=77 --source "${inputPath}" --no-git ${configPath ? `-c ${configPath}` : ""}`;
-    exec(command, (error) => {
+    const args = ["scan", "--exit-code=77", "--source", inputPath, "--no-git"];
+    if (configPath) {
+      args.push("-c", configPath);
+    }
+    execFile("infisical", args, (error) => {
       if (error && error.code === 77) {
         reject(error);
       } else {
