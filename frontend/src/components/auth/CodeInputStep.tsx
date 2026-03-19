@@ -140,10 +140,10 @@ export default function CodeInputStep({
               {String(t("signup.verify"))}
             </Button>
           </div>
-          <div className="mt-6 flex flex-col items-center gap-1 text-sm text-muted">
+          <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
             <div className="flex flex-row items-baseline gap-1">
               <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
-                <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                   {t("signup.step2-resend-alert")}{" "}
                   {isResendingVerificationEmail
                     ? t("signup.step2-resend-progress")
@@ -153,7 +153,7 @@ export default function CodeInputStep({
             </div>
             <Link
               to="/login"
-              className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2"
+              className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2"
             >
               Have an account? Log in
             </Link>

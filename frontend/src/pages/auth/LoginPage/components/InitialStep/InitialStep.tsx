@@ -283,7 +283,7 @@ export const InitialStep = ({
                 </InputGroup>
               </div>
               {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
-                <div className="mt-4 flex justify-center">
+                <div className="mt-4 flex justify-center [&>div]:!w-full">
                   <HCaptcha
                     theme="dark"
                     sitekey={envConfig.CAPTCHA_SITE_KEY}
@@ -377,9 +377,9 @@ export const InitialStep = ({
             shouldDisplayLoginMethod(LoginMethod.GOOGLE) ||
             shouldDisplayLoginMethod(LoginMethod.GITHUB) ||
             shouldDisplayLoginMethod(LoginMethod.GITLAB)) ? (
-            <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+            <div className="mt-6 flex flex-row justify-center text-xs text-label">
               <Link to="/signup">
-                <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                   Don&apos;t have an account yet? {t("login.create-account")}
                 </span>
               </Link>
@@ -388,9 +388,9 @@ export const InitialStep = ({
             <div className="mt-4" />
           )}
           {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
-            <div className="mt-2 flex flex-row justify-center text-xs text-muted">
+            <div className="mt-2 flex flex-row justify-center text-xs text-label">
               <Link to="/account-recovery">
-                <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                   Recover your account
                 </span>
               </Link>
