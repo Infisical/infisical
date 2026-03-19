@@ -257,8 +257,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "SSH Key", icon: faKey };
     case SmbConnectionMethod.Credentials:
       return { name: "Credentials", icon: faLock };
-    case ExternalInfisicalConnectionMethod.MachineIdentity:
-      return { name: "Machine Identity", icon: faKey };
+    case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
+      return { name: "Machine Identity - Universal Auth", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

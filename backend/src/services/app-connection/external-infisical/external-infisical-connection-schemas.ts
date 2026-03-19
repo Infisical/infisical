@@ -35,20 +35,20 @@ const BaseExternalInfisicalConnectionSchema = BaseAppConnectionSchema.extend({
 });
 
 export const ExternalInfisicalConnectionSchema = BaseExternalInfisicalConnectionSchema.extend({
-  method: z.literal(ExternalInfisicalConnectionMethod.MachineIdentity),
+  method: z.literal(ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth),
   credentials: ExternalInfisicalConnectionMachineIdentityCredentialsSchema
 });
 
 export const SanitizedExternalInfisicalConnectionSchema = z.discriminatedUnion("method", [
   BaseExternalInfisicalConnectionSchema.extend({
-    method: z.literal(ExternalInfisicalConnectionMethod.MachineIdentity),
+    method: z.literal(ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth),
     credentials: ExternalInfisicalConnectionMachineIdentityCredentialsSchema.pick({
       instanceUrl: true,
       machineIdentityClientId: true
     })
   }).describe(
     JSON.stringify({
-      title: `${APP_CONNECTION_NAME_MAP[AppConnection.ExternalInfisical]} (Machine Identity)`
+      title: `${APP_CONNECTION_NAME_MAP[AppConnection.ExternalInfisical]} (Machine Identity - Universal Auth)`
     })
   )
 ]);
@@ -56,7 +56,7 @@ export const SanitizedExternalInfisicalConnectionSchema = z.discriminatedUnion("
 export const ValidateExternalInfisicalConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
-      .literal(ExternalInfisicalConnectionMethod.MachineIdentity)
+      .literal(ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth)
       .describe(AppConnections.CREATE(AppConnection.ExternalInfisical).method),
     credentials: ExternalInfisicalConnectionMachineIdentityCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.ExternalInfisical).credentials

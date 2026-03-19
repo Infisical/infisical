@@ -34,7 +34,7 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(ExternalInfisicalConnectionMethod.MachineIdentity),
+    method: z.literal(ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth),
     credentials: z.object({
       instanceUrl: z.string().trim().url("Must be a valid URL").min(1, "Instance URL is required"),
       machineIdentityClientId: z
@@ -64,7 +64,7 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
         }
       : {
           app: AppConnection.ExternalInfisical,
-          method: ExternalInfisicalConnectionMethod.MachineIdentity
+          method: ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth
         }
   });
 

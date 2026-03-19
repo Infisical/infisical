@@ -1,3 +1,3 @@
 export enum ExternalInfisicalConnectionMethod {
-  MachineIdentity = "machine-identity"
+  MachineIdentityUniversalAuth = "machine-identity-universal-auth"
 }

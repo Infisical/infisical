@@ -28,7 +28,7 @@ export const getExternalInfisicalConnectionListItem = () => {
   return {
     name: "Infisical" as const,
     app: AppConnection.ExternalInfisical as const,
-    methods: Object.values(ExternalInfisicalConnectionMethod) as [ExternalInfisicalConnectionMethod.MachineIdentity]
+    methods: Object.values(ExternalInfisicalConnectionMethod) as [ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth]
   };
 };
 

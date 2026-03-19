@@ -524,8 +524,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
-    case ExternalInfisicalConnectionMethod.MachineIdentity:
-      return "Machine Identity";
+    case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
+      return "Machine Identity - Universal Auth";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
