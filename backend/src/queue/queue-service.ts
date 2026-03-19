@@ -953,12 +953,17 @@ export const queueServiceFactory = (
       if (reconciliationQueue) {
         try {
           const legacyJobs = await reconciliationQueue.getRepeatableJobs();
-          for (const job of legacyJobs) {
-            if (!job.key.startsWith(JOB_SCHEDULER_PREFIX)) {
-              await reconciliationQueue.removeRepeatableByKey(job.key);
-              logger.info({ queue: QueueName.QueueInternalReconciliation, key: job.key }, "Removed legacy repeatable job");
-            }
-          }
+          const legacyToRemove = legacyJobs.filter((job) => !job.key.startsWith(JOB_SCHEDULER_PREFIX));
+          await Promise.all(
+            legacyToRemove.map((job) =>
+              reconciliationQueue.removeRepeatableByKey(job.key).then(() => {
+                logger.info(
+                  { queue: QueueName.QueueInternalReconciliation, key: job.key },
+                  "Removed legacy repeatable job"
+                );
+              })
+            )
+          );
         } catch (err) {
           logger.error(err, "Failed to clean up legacy repeatable jobs for internal reconciliation queue");
         }
@@ -1222,12 +1227,14 @@ export const queueServiceFactory = (
     // This prevents duplicate execution after migrating from queue.add({repeat}) to upsertJobScheduler.
     try {
       const repeatableJobs = await q.getRepeatableJobs();
-      for (const job of repeatableJobs) {
-        if (!job.key.startsWith(JOB_SCHEDULER_PREFIX)) {
-          await q.removeRepeatableByKey(job.key);
-          logger.info({ queue: name, key: job.key }, "Removed legacy repeatable job");
-        }
-      }
+      const legacyJobs = repeatableJobs.filter((job) => !job.key.startsWith(JOB_SCHEDULER_PREFIX));
+      await Promise.all(
+        legacyJobs.map((job) =>
+          q.removeRepeatableByKey(job.key).then(() => {
+            logger.info({ queue: name, key: job.key }, "Removed legacy repeatable job");
+          })
+        )
+      );
     } catch (err) {
       logger.error(err, `Failed to clean up legacy repeatable jobs for queue '${name}'`);
     }
