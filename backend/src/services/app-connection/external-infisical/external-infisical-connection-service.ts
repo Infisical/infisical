@@ -1,4 +1,3 @@
-import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
@@ -27,13 +26,8 @@ export const externalInfisicalConnectionService = (getAppConnection: TGetAppConn
     projectId: string,
     actor: OrgServiceActor
   ): Promise<TRemoteEnvironmentFolderTree> => {
-    try {
-      const appConnection = await getAppConnection(AppConnection.ExternalInfisical, connectionId, actor);
-      return await getRemoteEnvironmentFolderTree(appConnection, projectId);
-    } catch (error) {
-      logger.error(error, "Failed to get environment folder tree from remote Infisical");
-      return {};
-    }
+    const appConnection = await getAppConnection(AppConnection.ExternalInfisical, connectionId, actor);
+    return getRemoteEnvironmentFolderTree(appConnection, projectId);
   };
 
   return {
