@@ -16,7 +16,8 @@ type UseAuditLogActorSuggestionsResult = {
 };
 
 export const useAuditLogActorSuggestions = (
-  actorType?: ActorType
+  actorType?: ActorType,
+  enabled = false
 ): UseAuditLogActorSuggestionsResult => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
@@ -24,12 +25,12 @@ export const useAuditLogActorSuggestions = (
   const { data: orgUsers = [], isLoading: isLoadingUsers } = useQuery({
     queryKey: userKeys.getOrgUsers(orgId),
     queryFn: () => fetchOrgUsers(orgId),
-    enabled: Boolean(orgId) && (!actorType || actorType === ActorType.USER)
+    enabled: enabled && Boolean(orgId) && (!actorType || actorType === ActorType.USER)
   });
 
   const { data: orgIdentities, isLoading: isLoadingIdentities } = useQuery({
     ...orgIdentityQuery.list({ limit: 100 }),
-    enabled: actorType === ActorType.IDENTITY
+    enabled: enabled && actorType === ActorType.IDENTITY
   });
 
   const suggestions = useMemo<ActorSuggestion[]>(() => {

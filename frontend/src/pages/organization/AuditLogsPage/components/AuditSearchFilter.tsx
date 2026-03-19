@@ -73,7 +73,6 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
   const currentActorType = filters.find((f) => f.property === "actor")?.value as
     | ActorType
     | undefined;
-  const { suggestions: actorIdSuggestions } = useAuditLogActorSuggestions(currentActorType);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -92,6 +91,11 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
   const isComposing = isTypingValue && (propertyDef || isFreetext);
   const hasProjectFilter =
     hasProjectContext || filters.some((filter) => filter.property === "project");
+  const hasActorId = propertyKey === "actor_id" || filters.some((f) => f.property === "actor_id");
+  const { suggestions: actorIdSuggestions } = useAuditLogActorSuggestions(
+    currentActorType,
+    hasActorId
+  );
 
   const valueSuggestions = useMemo(() => {
     const suggestions = propertyKey === "actor_id" ? actorIdSuggestions : propertyDef?.suggestions;

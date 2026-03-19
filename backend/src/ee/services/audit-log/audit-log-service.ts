@@ -13,7 +13,7 @@ import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../perm
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
-import { EventType, TAuditLogServiceFactory } from "./audit-log-types";
+import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } from "./audit-log-types";
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -64,6 +64,12 @@ export const auditLogServiceFactory = ({
         OrgPermissionAuditLogsActions.Read,
         OrgPermissionSubjects.AuditLogs
       );
+    }
+
+    if (filter.auditLogActorId && filter.actorType && !ACTOR_TYPE_TO_METADATA_ID_KEY[filter.actorType]) {
+      throw new BadRequestError({
+        message: `Actor type '${filter.actorType}' does not support filtering by actor ID`
+      });
     }
 
     const appCfg = getConfig();
