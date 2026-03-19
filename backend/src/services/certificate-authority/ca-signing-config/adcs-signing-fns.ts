@@ -4,11 +4,10 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ms } from "@app/lib/ms";
 import { createAdcsHttpClient } from "@app/services/app-connection/azure-adcs/azure-adcs-connection-fns";
 
 const POLL_INTERVAL_MS = 5000;
-const MAX_POLL_ATTEMPTS = 60;
+const MAX_POLL_ATTEMPTS = 120;
 
 // Pre-compiled regex patterns
 const RE_NON_BASE64 = new RE2("[^A-Za-z0-9+/=\\s]", "g");
@@ -21,6 +20,32 @@ const RE_PEM_CERT = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTI
 const RE_ESCAPED_CRLF = new RE2("\\\\r\\\\n", "g");
 const RE_ESCAPED_CR = new RE2("\\\\r", "g");
 const RE_CRLF = new RE2("[\\r\\n]", "g");
+// Error detail extraction patterns for ADCS error pages
+const RE_DISPOSITION_INLINE = new RE2('disposition\\s+message\\s+is\\s+"([^"]+)"', "i");
+const RE_RESULT_FIELD = new RE2("<b>Result:</b>[^<]*(?:<[^>]*>)*\\s*([^<]+)", "i");
+const RE_COM_ERROR = new RE2("<b>COM Error Info:</b>[^<]*(?:<[^>]*>)*\\s*([^<]+)", "i");
+const RE_DISPOSITION_DD = new RE2("<b>Disposition message:</b>[^<]*(?:<[^>]*>)*\\s*([^<]+)", "i");
+const RE_SUGGESTED_CAUSE = new RE2("<b>Suggested Cause:</b>[^<]*(?:<[^>]*>)*\\s*([^<]+)", "i");
+
+const ADCS_ERROR_PATTERNS = [
+  RE_DISPOSITION_INLINE,
+  RE_DISPOSITION_DD,
+  RE_RESULT_FIELD,
+  RE_COM_ERROR,
+  RE_SUGGESTED_CAUSE
+];
+
+const extractAdcsErrorDetail = (html: string): string => {
+  for (const re of ADCS_ERROR_PATTERNS) {
+    const match = html.match(re);
+    const val = match?.[1]?.trim();
+    if (val && !val.startsWith("(")) {
+      return val;
+    }
+  }
+  return "";
+};
+
 const REQUEST_ID_PATTERNS = [
   new RE2("reqid[=:](\\d+)", "i"),
   new RE2("request\\s+id[:\\s]+(\\d+)", "i"),
@@ -74,7 +99,7 @@ export const submitCsrToAdcs = async (params: {
   adcsUrl: string;
   csr: string;
   template: string;
-  validityPeriod?: string;
+  validityPeriod?: number;
 }): Promise<{ certificate: string; certificateChain: string }> => {
   const { credentials, adcsUrl, csr, template, validityPeriod } = params;
 
@@ -94,10 +119,7 @@ export const submitCsrToAdcs = async (params: {
   const certAttribParts: string[] = [`CertificateTemplate:${sanitizedTemplate}`];
 
   if (validityPeriod) {
-    const ttlMs = ms(validityPeriod);
-    if (!ttlMs || ttlMs <= 0) {
-      throw new BadRequestError({ message: "Invalid validity period format" });
-    }
+    const ttlMs = validityPeriod * 86400000;
     const expirationDate = new Date(Date.now() + ttlMs);
     const rfc2616Date = expirationDate.toUTCString();
     certAttribParts.push(`ExpirationDate:${rfc2616Date}`);
@@ -149,7 +171,10 @@ export const submitCsrToAdcs = async (params: {
   }
 
   if (status === "denied") {
-    throw new BadRequestError({ message: "Certificate request was denied by ADCS" });
+    const detail = extractAdcsErrorDetail(responseText);
+    throw new BadRequestError({
+      message: detail ? `Certificate request was denied by ADCS: ${detail}` : "Certificate request was denied by ADCS"
+    });
   }
 
   if (status === "issued" && certificate) {
@@ -159,8 +184,11 @@ export const submitCsrToAdcs = async (params: {
 
   // If pending, poll for the certificate
   if (!requestId) {
+    const detail = extractAdcsErrorDetail(responseText);
     throw new BadRequestError({
-      message: "Certificate request failed: could not parse request ID or certificate from ADCS response"
+      message: detail
+        ? `Certificate request failed: ${detail}`
+        : "Certificate request failed: could not parse request ID or certificate from ADCS response"
     });
   }
 

@@ -4,7 +4,6 @@ import { z } from "zod";
 import { CaSigningConfigType } from "./ca-signing-config-enums";
 
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
-const RE_DAYS_FORMAT = new RE2("^\\d+d$");
 
 export const VenafiDestinationConfigSchema = z.object({
   applicationId: z.string().uuid(),
@@ -19,10 +18,7 @@ export const AzureAdCsDestinationConfigSchema = z.object({
     .string()
     .min(1)
     .refine((v) => RE_NO_NEWLINES.test(v), "Template name must not contain newline characters"),
-  validityPeriod: z
-    .string()
-    .refine((v) => RE_DAYS_FORMAT.test(v), "Validity period must be in days (e.g. 365d)")
-    .optional()
+  validityPeriod: z.number().int().positive().optional()
 });
 
 export type TAzureAdCsDestinationConfig = z.infer<typeof AzureAdCsDestinationConfigSchema>;

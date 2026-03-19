@@ -47,6 +47,7 @@ import {
   TAvailableAppConnection,
   useListAvailableAppConnections
 } from "@app/hooks/api/appConnections";
+import { useAzureAdcsConnectionListTemplates } from "@app/hooks/api/appConnections/azure-adcs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   TVenafiApplication,
@@ -90,9 +91,10 @@ type EditFormData = z.infer<typeof editSchema>;
 const adcsEditSchema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
   template: z.string().min(1, "Certificate template is required"),
-  validityPeriod: z
-    .string()
-    .regex(/^\d+d$/, "Must be in days (e.g. 365d)")
+  validityPeriod: z.coerce
+    .number()
+    .int()
+    .min(1, "Must be at least 1 day")
     .optional()
     .or(z.literal(""))
 });
@@ -164,15 +166,23 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
     control: adcsControl,
     handleSubmit: handleAdcsSubmit,
     reset: adcsReset,
+    watch: adcsWatch,
     formState: { isSubmitting: isAdcsSubmitting }
   } = useForm<AdcsEditFormData>({
     resolver: zodResolver(adcsEditSchema),
     values: {
       appConnectionId: signingConfig?.appConnectionId ?? "",
       template: (signingConfig?.destinationConfig?.template as string) ?? "",
-      validityPeriod: (signingConfig?.destinationConfig?.validityPeriod as string) ?? ""
+      validityPeriod: (signingConfig?.destinationConfig?.validityPeriod as number | undefined) ?? ""
     }
   });
+
+  const selectedAdcsConnectionId = adcsWatch("appConnectionId");
+
+  const { data: adcsTemplates = [], isPending: isAdcsTemplatesLoading } =
+    useAzureAdcsConnectionListTemplates(selectedAdcsConnectionId ?? "", {
+      enabled: !!selectedAdcsConnectionId && popUp.editSigningConfig.isOpen
+    });
 
   if (!ca || ca.status === CaStatus.PENDING_CERTIFICATE || !signingConfig) {
     return null;
@@ -284,7 +294,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                   <Detail>
                     <DetailLabel>Validity Period</DetailLabel>
                     <DetailValue>
-                      {signingConfig.destinationConfig.validityPeriod as string}
+                      {signingConfig.destinationConfig.validityPeriod as number} days
                     </DetailValue>
                   </Detail>
                 )}
@@ -312,7 +322,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                       appConnectionId,
                       destinationConfig: {
                         template,
-                        ...(validityPeriod && { validityPeriod })
+                        ...(typeof validityPeriod === "number" && { validityPeriod })
                       }
                     });
                     createNotification({
@@ -357,14 +367,32 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
               <Controller
                 control={adcsControl}
                 name="template"
-                render={({ field, fieldState: { error } }) => (
+                render={({ field: { onChange, value }, fieldState: { error } }) => (
                   <FormControl
                     label="Certificate Template"
                     errorText={error?.message}
                     isError={Boolean(error)}
                     isRequired
                   >
-                    <Input {...field} placeholder="SubCA" />
+                    <FilterableSelect
+                      isLoading={isAdcsTemplatesLoading && !!selectedAdcsConnectionId}
+                      isDisabled={!selectedAdcsConnectionId}
+                      value={
+                        adcsTemplates.find((t) => t === value) ? { label: value, value } : null
+                      }
+                      onChange={(option) => {
+                        const selected = option as SingleValue<{ label: string; value: string }>;
+                        onChange(selected?.value ?? "");
+                      }}
+                      options={adcsTemplates.map((t) => ({ label: t, value: t }))}
+                      placeholder={
+                        selectedAdcsConnectionId
+                          ? "Select a template..."
+                          : "Select a connection first"
+                      }
+                      getOptionLabel={(option) => option.label}
+                      getOptionValue={(option) => option.value}
+                    />
                   </FormControl>
                 )}
               />
@@ -373,12 +401,12 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                 name="validityPeriod"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="Validity Period"
+                    label="Validity Period (Days)"
                     errorText={error?.message}
                     isError={Boolean(error)}
-                    helperText="Optional validity in days (e.g. 365d)"
+                    helperText="Number of days the certificate should be valid"
                   >
-                    <Input {...field} placeholder="365d" />
+                    <Input {...field} type="number" placeholder="365" />
                   </FormControl>
                 )}
               />
