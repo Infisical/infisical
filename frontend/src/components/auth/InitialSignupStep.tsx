@@ -194,7 +194,7 @@ export default function InitialSignupStep({
               href="https://infisical.com/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foregrond cursor-pointer underline underline-offset-2 duration-200 hover:decoration-project/45"
+              className="hover:text-foreground cursor-pointer underline underline-offset-2 duration-200 hover:decoration-project/45"
             >
               Privacy Policy
             </a>
