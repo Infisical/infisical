@@ -26,10 +26,16 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle }: Props) => {
     ProjectPermissionSub.Certificates
   );
 
-  // useGetCertBundle fails unless user has the correct permissions
-  const { data: bundleData } = useGetCertBundle(serialNumber);
+  // Only attempt to fetch the bundle (which includes the private key) if the
+  // generic permission check passes. This avoids unnecessary 403s.
+  // With metadata-based RBAC conditions the generic check may be overly
+  // optimistic, so we always fetch the cert body as a fallback.
+  const { data: bundleData } = useGetCertBundle(canReadPrivateKey ? serialNumber : "");
   const { data: bodyData } = useGetCertBody(serialNumber);
 
+  // Prefer bundle data (cert + key) when available, otherwise fall back to
+  // body data (cert only). This ensures the certificate is always shown even
+  // when the bundle request is skipped or 403s.
   const data:
     | {
         certificate: string;
@@ -37,7 +43,7 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         serialNumber: string;
         privateKey?: string | null;
       }
-    | undefined = canReadPrivateKey ? bundleData : bodyData;
+    | undefined = bundleData ?? bodyData;
 
   return (
     <Modal

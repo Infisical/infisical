@@ -449,7 +449,7 @@ export const ConditionsFields = ({
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent position="popper">
-                                    {renderOperatorSelectItems(condition.lhs)}
+                                    {renderOperatorSelectItems(condition.lhs, subject)}
                                   </SelectContent>
                                 </Select>
                               )}
