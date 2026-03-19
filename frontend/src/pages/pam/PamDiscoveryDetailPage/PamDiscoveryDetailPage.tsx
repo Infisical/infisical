@@ -199,9 +199,17 @@ const DiscoveryConfigurationSection = ({
             )}
           </DetailValue>
         </Detail>
-        {(source.discoveryConfiguration?.caCert as string) && (
+        {(source.discoveryConfiguration?.ldapCaCert as string) && (
           <Detail>
-            <DetailLabel>CA Certificate</DetailLabel>
+            <DetailLabel>LDAP CA Certificate</DetailLabel>
+            <DetailValue>
+              <Badge variant="success">Provided</Badge>
+            </DetailValue>
+          </Detail>
+        )}
+        {(source.discoveryConfiguration?.winrmCaCert as string) && (
+          <Detail>
+            <DetailLabel>WinRM CA Certificate</DetailLabel>
             <DetailValue>
               <Badge variant="success">Provided</Badge>
             </DetailValue>

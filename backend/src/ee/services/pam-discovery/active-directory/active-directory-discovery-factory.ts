@@ -417,8 +417,12 @@ const executeLdapEnumeration = async (
         timeout: LDAP_TIMEOUT,
         ...(configuration.useLdaps && {
           tlsOptions: {
-            rejectUnauthorized: !!configuration.caCert,
-            ...(configuration.caCert && { ca: [configuration.caCert] })
+            rejectUnauthorized: configuration.ldapRejectUnauthorized,
+            ...(configuration.ldapCaCert && {
+              ca: [configuration.ldapCaCert],
+              servername: configuration.dcAddress,
+              checkServerIdentity: () => undefined
+            })
           }
         })
       });
@@ -676,6 +680,7 @@ const executeWinRmLocalAccountEnumeration = async (
   credentials: TAdDiscoveryCredentials,
   winrmPort: number,
   useWinrmHttps: boolean,
+  winrmRejectUnauthorized: boolean,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmLocalUser[]> => {
@@ -696,7 +701,7 @@ const executeWinRmLocalAccountEnumeration = async (
         credentials.password,
         proxyPort,
         useWinrmHttps,
-        false
+        winrmRejectUnauthorized
       );
 
       if (!stdout.trim()) {
@@ -715,6 +720,7 @@ const executeWinRmDependencyEnumeration = async (
   credentials: TAdDiscoveryCredentials,
   winrmPort: number,
   useWinrmHttps: boolean,
+  winrmRejectUnauthorized: boolean,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmDependencies> => {
@@ -734,7 +740,7 @@ const executeWinRmDependencyEnumeration = async (
         credentials.password,
         proxyPort,
         useWinrmHttps,
-        false
+        winrmRejectUnauthorized
       );
 
       if (!stdout.trim()) {
@@ -899,8 +905,12 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               timeout: LDAP_TIMEOUT,
               ...(configuration.useLdaps && {
                 tlsOptions: {
-                  rejectUnauthorized: !!configuration.caCert,
-                  ...(configuration.caCert && { ca: [configuration.caCert] })
+                  rejectUnauthorized: configuration.ldapRejectUnauthorized,
+                  ...(configuration.ldapCaCert && {
+                    ca: [configuration.ldapCaCert],
+                    servername: configuration.dcAddress,
+                    checkServerIdentity: () => undefined
+                  })
                 }
               })
             });
@@ -1117,6 +1127,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               credentials,
               configuration.winrmPort,
               configuration.useWinrmHttps,
+              configuration.winrmRejectUnauthorized,
               gatewayId,
               gatewayV2Service
             );
@@ -1167,6 +1178,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                   credentials,
                   configuration.winrmPort,
                   configuration.useWinrmHttps,
+                  configuration.winrmRejectUnauthorized,
                   gatewayId,
                   gatewayV2Service
                 );

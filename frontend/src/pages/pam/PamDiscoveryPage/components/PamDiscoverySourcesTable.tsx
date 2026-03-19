@@ -120,7 +120,7 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
         >
           {(isAllowed) => (
             <Button
-              variant="neutral"
+              variant="project"
               onClick={() => handlePopUpOpen("addSource")}
               isDisabled={!isAllowed}
             >
