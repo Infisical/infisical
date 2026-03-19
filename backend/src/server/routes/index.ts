@@ -416,6 +416,8 @@ import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-
 import { secretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { secretValidationRuleDALFactory } from "@app/services/secret-validation-rule/secret-validation-rule-dal";
+import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
@@ -508,6 +510,7 @@ export const registerRoutes = async (
 
   const secretDAL = secretDALFactory(db);
   const secretTagDAL = secretTagDALFactory(db);
+  const secretValidationRuleDAL = secretValidationRuleDALFactory(db);
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretImportDAL = secretImportDALFactory(db);
@@ -1564,6 +1567,11 @@ export const registerRoutes = async (
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
+  const secretValidationRuleService = secretValidationRuleServiceFactory({
+    secretValidationRuleDAL,
+    projectEnvDAL,
+    permissionService
+  });
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDAL,
@@ -2948,6 +2956,7 @@ export const registerRoutes = async (
     secret: secretService,
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
+    secretValidationRule: secretValidationRuleService,
     rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,

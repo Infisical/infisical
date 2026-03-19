@@ -721,6 +721,11 @@ import {
   TSecretReminderRecipientsUpdate
 } from "@app/db/schemas/secret-reminder-recipients";
 import {
+  TSecretValidationRules,
+  TSecretValidationRulesInsert,
+  TSecretValidationRulesUpdate
+} from "@app/db/schemas/secret-validation-rules";
+import {
   TUserNotifications,
   TUserNotificationsInsert,
   TUserNotificationsUpdate
@@ -1707,6 +1712,11 @@ declare module "knex/types/tables" {
       TCertificateCleanupConfigs,
       TCertificateCleanupConfigsInsert,
       TCertificateCleanupConfigsUpdate
+    >;
+    [TableName.SecretValidationRule]: KnexOriginal.CompositeTableType<
+      TSecretValidationRules,
+      TSecretValidationRulesInsert,
+      TSecretValidationRulesUpdate
     >;
   }
 }

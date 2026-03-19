@@ -1,1 +1,1 @@
-export { SecretEnforcementTab } from "./SecretEnforcementTab";
+export { SecretValidationRulesTab } from "./SecretValidationRulesTab";
