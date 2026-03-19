@@ -54,7 +54,7 @@ func TestTimingSafeEqual(t *testing.T) {
 }
 
 func TestNewHasher(t *testing.T) {
-	for _, algo := range []string{"sha256", "sha384", "sha512", "sha1"} {
+	for _, algo := range []hash.Algorithm{hash.AlgoSHA256, hash.AlgoSHA384, hash.AlgoSHA512, hash.AlgoSHA1} {
 		h, err := hash.NewHasher(algo)
 		if err != nil {
 			t.Fatalf("NewHasher(%q): %v", algo, err)
@@ -73,7 +73,7 @@ func TestNewHasher(t *testing.T) {
 
 func TestNewHMAC(t *testing.T) {
 	key := []byte("key")
-	for _, algo := range []string{"sha256", "sha384", "sha512", "sha1"} {
+	for _, algo := range []hash.Algorithm{hash.AlgoSHA256, hash.AlgoSHA384, hash.AlgoSHA512, hash.AlgoSHA1} {
 		h, err := hash.NewHMAC(algo, key)
 		if err != nil {
 			t.Fatalf("NewHMAC(%q): %v", algo, err)
