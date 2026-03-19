@@ -125,7 +125,7 @@ const LogsSectionComponent = ({
             refetchInterval={refetchInterval}
             filter={{
               eventMetadata: logFilter?.eventMetadata,
-              actor: logFilter?.actor,
+              actor: searchDerived.actor || logFilter?.actor,
               projectId: project?.id || searchDerived.projectId || logFilter?.project?.id,
               actorType: searchDerived.actorType || presets?.actorType,
               eventType:

@@ -1417,7 +1417,10 @@ export const AUDIT_LOGS = {
     endDate: "The date to end the export at.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th audit log.",
     limit: "The number of audit logs to return.",
-    actor: "The actor to filter the audit logs by."
+    actor:
+      "The ID of a specific actor to filter audit logs by. For user actors this is the userId; for identity actors this is the identityId. When filtering non-user actor types, the actorType parameter must also be provided.",
+    actorType:
+      "The type of actor to filter audit logs by. Must be provided when the actor parameter targets a non-user actor type (e.g. identity, kmipClient)."
   }
 } as const;
 

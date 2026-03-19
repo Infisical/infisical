@@ -11,7 +11,7 @@ import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { EventType, filterableSecretEvents } from "./audit-log-types";
+import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
 
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
@@ -93,7 +93,12 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Special case: Filter by actor ID
       if (actorId) {
-        void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object('userId', ?::text)`, [actorId]);
+        const metadataKey = actorType
+          ? ACTOR_TYPE_TO_METADATA_ID_KEY[actorType]
+          : ACTOR_TYPE_TO_METADATA_ID_KEY[ActorType.USER];
+        if (metadataKey) {
+          void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object(?::text, ?::text)`, [metadataKey, actorId]);
+        }
       }
 
       // Special case: Filter by key/value pairs in eventMetadata field

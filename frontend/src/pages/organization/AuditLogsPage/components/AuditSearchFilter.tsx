@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tooltip } from "@app/components/v2";
 import { eventToNameMap, userAgentTypeToNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { useAuditLogActorSuggestions } from "@app/hooks/api/auditLogs/useAuditLogActorSuggestions";
 
 export interface AppliedFilter {
   property: string;
@@ -36,6 +37,11 @@ const FILTER_PROPERTIES: FilterProperty[] = [
     suggestions: Object.values(ActorType).map((val) => ({ value: val, label: val }))
   },
   {
+    key: "actor_id",
+    displayLabel: "actor id",
+    hints: "filter by specific user or identity ID"
+  },
+  {
     key: "source",
     hints: "web, cli, k8-operator, terraform, ...",
     suggestions: Object.entries(userAgentTypeToNameMap).map(([value, label]) => ({
@@ -64,6 +70,10 @@ type Props = {
 };
 
 export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext }: Props) => {
+  const currentActorType = filters.find((f) => f.property === "actor")?.value as
+    | ActorType
+    | undefined;
+  const { suggestions: actorIdSuggestions } = useAuditLogActorSuggestions(currentActorType);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -84,15 +94,14 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
     hasProjectContext || filters.some((filter) => filter.property === "project");
 
   const valueSuggestions = useMemo(() => {
-    if (!propertyDef?.suggestions) return [];
-    if (!typedValue) return propertyDef.suggestions;
+    const suggestions = propertyKey === "actor_id" ? actorIdSuggestions : propertyDef?.suggestions;
+    if (!suggestions?.length) return [];
+    if (!typedValue) return suggestions;
     const lower = typedValue.toLowerCase();
-    return propertyDef.suggestions.filter(
-      (suggestion) =>
-        suggestion.value.toLowerCase().includes(lower) ||
-        suggestion.label.toLowerCase().includes(lower)
+    return suggestions.filter(
+      (s) => s.value.toLowerCase().includes(lower) || s.label.toLowerCase().includes(lower)
     );
-  }, [propertyDef, typedValue]);
+  }, [propertyKey, propertyDef, actorIdSuggestions, typedValue]);
 
   const filteredProperties = useMemo(
     () =>
@@ -214,7 +223,10 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
 
   const showPropertyDropdown = isOpen && !isTypingValue;
   const showSuggestionDropdown =
-    isOpen && isTypingValue && !isFreetext && valueSuggestions.length > 0;
+    isOpen &&
+    isTypingValue &&
+    valueSuggestions.length > 0 &&
+    (propertyKey === "actor_id" || !isFreetext);
 
   const dropdownRowClass = (active: boolean) =>
     `flex w-full items-center gap-3 px-3 py-1.5 text-sm transition-colors ${
@@ -253,19 +265,36 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
     </span>
   );
 
+  const actorIdMismatch = useMemo(() => {
+    const actorIdFilter = filters.find((f) => f.property === "actor_id");
+    // Only warn for values picked from suggestions (they have a label)
+    if (!actorIdFilter?.label) return false;
+    return !actorIdSuggestions.some((s) => s.value === actorIdFilter.value);
+  }, [filters, actorIdSuggestions]);
+
+  const getChipWarning = (filter: AppliedFilter): string | null => {
+    if (!hasProjectFilter && PROJECT_DEPENDENT_KEYS.has(filter.property)) {
+      return "Requires a project ID filter to take effect";
+    }
+    if (filter.property === "actor_id" && actorIdMismatch) {
+      return "This ID does not match the selected actor type and may not return results";
+    }
+    return null;
+  };
+
   const renderChip = (filter: AppliedFilter, index: number) => {
-    const isOrphaned = !hasProjectFilter && PROJECT_DEPENDENT_KEYS.has(filter.property);
+    const warning = getChipWarning(filter);
 
     const chip = (
       <span
         key={`${filter.property}-${filter.value}`}
         className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 font-mono text-xs ${
-          isOrphaned
+          warning
             ? "border-yellow-700/60 bg-yellow-900/20"
             : "border-mineshaft-500 bg-mineshaft-700"
         }`}
       >
-        {isOrphaned && <FontAwesomeIcon icon={faWarning} className="h-2.5 w-2.5 text-yellow-600" />}
+        {warning && <FontAwesomeIcon icon={faWarning} className="h-2.5 w-2.5 text-yellow-600" />}
         <button
           type="button"
           className="text-bunker-200 transition-colors hover:text-mineshaft-100"
@@ -290,13 +319,9 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
       </span>
     );
 
-    if (isOrphaned) {
+    if (warning) {
       return (
-        <Tooltip
-          key={`${filter.property}-${filter.value}`}
-          content="Requires a project ID filter to take effect"
-          size="sm"
-        >
+        <Tooltip key={`${filter.property}-${filter.value}`} content={warning} size="sm">
           {chip}
         </Tooltip>
       );
@@ -418,6 +443,7 @@ export const appliedFiltersToLogFilter = (
   eventType: EventType[];
   userAgentType?: UserAgentType;
   actorType?: ActorType;
+  actor?: string;
   projectId?: string;
   environment?: string;
   secretPath?: string;
@@ -454,6 +480,9 @@ export const appliedFiltersToLogFilter = (
       case "secret_key":
         result.secretKey = value;
         break;
+      case "actor_id":
+        result.actor = value;
+        break;
       default:
         break;
     }
@@ -466,12 +495,14 @@ export const logFilterToAppliedFilters = (filter: {
   eventType?: EventType[];
   userAgentType?: UserAgentType;
   actorType?: ActorType;
+  actor?: string;
 }): AppliedFilter[] => {
   const chips: AppliedFilter[] = [];
 
   filter.eventType?.forEach((eventType) => chips.push({ property: "event", value: eventType }));
   if (filter.userAgentType) chips.push({ property: "source", value: filter.userAgentType });
   if (filter.actorType) chips.push({ property: "actor", value: filter.actorType });
+  if (filter.actor) chips.push({ property: "actor_id", value: filter.actor });
 
   return chips;
 };

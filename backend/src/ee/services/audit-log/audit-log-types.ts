@@ -698,6 +698,16 @@ export enum EventType {
   PKI_SIGNER_SIGN = "pki-signer-sign"
 }
 
+export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> = {
+  [ActorType.USER]: "userId",
+  [ActorType.IDENTITY]: "identityId",
+  [ActorType.KMIP_CLIENT]: "clientId",
+  [ActorType.SERVICE]: "serviceId",
+  [ActorType.ACME_PROFILE]: "profileId",
+  [ActorType.ACME_ACCOUNT]: "accountId",
+  [ActorType.EST_ACCOUNT]: "profileId"
+};
+
 export const filterableSecretEvents: EventType[] = [
   EventType.GET_SECRET,
   EventType.DELETE_SECRETS,
