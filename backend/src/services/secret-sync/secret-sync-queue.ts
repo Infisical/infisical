@@ -1181,7 +1181,7 @@ export const secretSyncQueueFactory = ({
     }
   });
 
-  const queueDailyRetryForFailedSyncs = async () => {
+  queueService.start(QueueName.DailySecretSyncRetry, async () => {
     const updatedIds = await secretSyncDAL.updateAndReturnIds(
       {
         syncStatus: SecretSyncStatus.Failed,
@@ -1200,6 +1200,20 @@ export const secretSyncQueueFactory = ({
         })
       )
     );
+  });
+
+  const startDailySecretSyncRetryJob = async () => {
+    await queueService.stopRepeatableJob(
+      QueueName.DailySecretSyncRetry,
+      QueueJobs.DailySecretSyncRetry,
+      { pattern: "0 0 * * *", utc: true },
+      QueueName.DailySecretSyncRetry
+    );
+
+    await queueService.queue(QueueName.DailySecretSyncRetry, QueueJobs.DailySecretSyncRetry, undefined, {
+      jobId: QueueName.DailySecretSyncRetry,
+      repeat: { pattern: "0 0 * * *", utc: true, key: QueueJobs.DailySecretSyncRetry }
+    });
   };
 
   return {
@@ -1207,6 +1221,6 @@ export const secretSyncQueueFactory = ({
     queueSecretSyncImportSecretsById,
     queueSecretSyncRemoveSecretsById,
     queueSecretSyncsSyncSecretsByPath,
-    queueDailyRetryForFailedSyncs
+    startDailySecretSyncRetryJob
   };
 };

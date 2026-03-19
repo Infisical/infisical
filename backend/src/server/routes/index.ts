@@ -2117,8 +2117,7 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    queueJobsDAL,
-    secretSyncQueue
+    queueJobsDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2915,6 +2914,7 @@ export const registerRoutes = async (
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
+  await secretSyncQueue.startDailySecretSyncRetryJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await certificateAuthorityQueue.startCaCrlRebuildJob();
