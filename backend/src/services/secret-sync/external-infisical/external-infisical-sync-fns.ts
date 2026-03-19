@@ -2,6 +2,7 @@
 import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getExternalInfisicalAccessToken } from "@app/services/app-connection/external-infisical";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema, parseSyncErrorMessage } from "@app/services/secret-sync/secret-sync-fns";
@@ -43,6 +44,7 @@ type TRemoteContext = {
 
 const getRemoteContext = async (secretSync: TExternalInfisicalSyncWithCredentials): Promise<TRemoteContext> => {
   const { credentials } = secretSync.connection;
+  await blockLocalAndPrivateIpAddresses(credentials.instanceUrl);
   const accessToken = await getExternalInfisicalAccessToken(credentials);
   const baseUrl = credentials.instanceUrl.replace(/\/$/, "");
   return { accessToken, baseUrl };
