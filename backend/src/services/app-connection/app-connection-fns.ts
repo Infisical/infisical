@@ -16,7 +16,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
   transferSqlConnectionCredentialsToPlatform,
@@ -366,7 +366,7 @@ export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  deps?: { identityUaDAL?: Pick<TIdentityUaDALFactory, "findOne"> }
+  deps: { identityUaDAL: Pick<TIdentityUaDALFactory, "findOne"> }
 ): Promise<TAppConnection["credentials"]> => {
   const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
     [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -424,17 +424,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) => {
-      if (!deps?.identityUaDAL) {
-        throw new InternalServerError({
-          message: "identityUaDAL is required to validate External Infisical connection credentials"
-        });
-      }
-      return validateExternalInfisicalConnectionCredentials(
+    [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) =>
+      validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
         deps.identityUaDAL
-      );
-    }) as TAppConnectionCredentialsValidator
+      )) as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
