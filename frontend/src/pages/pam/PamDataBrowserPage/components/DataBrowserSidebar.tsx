@@ -40,15 +40,15 @@ export const DataBrowserSidebar = ({
 
   const getTableIcon = useCallback((tableType: string) => {
     if (tableType === "view" || tableType === "materialized_view") {
-      return <ViewIcon className="size-3.5 shrink-0 text-mineshaft-400" />;
+      return <ViewIcon className="size-3.5 shrink-0 text-accent" />;
     }
-    return <TableIcon className="size-3.5 shrink-0 text-mineshaft-400" />;
+    return <TableIcon className="size-3.5 shrink-0 text-accent" />;
   }, []);
 
   return (
-    <div className="flex h-full w-64 shrink-0 flex-col border-r border-mineshaft-600 bg-mineshaft-900">
+    <div className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-container">
       {/* Schema selector + Search */}
-      <div className="space-y-2 border-b border-mineshaft-600 p-3">
+      <div className="space-y-2 border-b border-border p-3">
         {isLoadingSchemas ? (
           <Skeleton className="h-8 w-full" />
         ) : (
@@ -57,7 +57,7 @@ export const DataBrowserSidebar = ({
             onValueChange={onSchemaChange}
             className="w-full text-xs"
             LucideIcon={DatabaseIcon}
-            iconClassName="text-mineshaft-400"
+            iconClassName="text-accent"
           >
             {schemas.map((s) => (
               <SelectItem key={s.name} value={s.name}>
@@ -67,18 +67,18 @@ export const DataBrowserSidebar = ({
           </Select>
         )}
         <div className="relative">
-          <SearchIcon className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-mineshaft-400" />
+          <SearchIcon className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-accent" />
           <UnstableInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tables..."
-            className="h-8 pl-7 text-xs text-mineshaft-200"
+            className="h-8 pl-7 text-xs text-foreground"
           />
         </div>
       </div>
 
       {/* Table list */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="thin-scrollbar flex-1 overflow-y-auto">
         {isLoadingTables && (
           <div className="space-y-1 p-2">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -88,7 +88,7 @@ export const DataBrowserSidebar = ({
           </div>
         )}
         {!isLoadingTables && filteredTables.length === 0 && (
-          <div className="p-4 text-center text-xs text-mineshaft-400">
+          <div className="p-4 text-center text-xs text-accent">
             {search ? "No matching tables" : "No tables in this schema"}
           </div>
         )}
@@ -100,8 +100,8 @@ export const DataBrowserSidebar = ({
                 type="button"
                 onClick={() => onTableSelect(t.name)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-700",
-                  selectedTable === t.name && "bg-mineshaft-700 text-mineshaft-100"
+                  "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-container-hover",
+                  selectedTable === t.name && "bg-container-hover text-foreground"
                 )}
               >
                 {getTableIcon(t.tableType)}
@@ -113,7 +113,7 @@ export const DataBrowserSidebar = ({
       </div>
 
       {/* Table count */}
-      <div className="border-t border-mineshaft-600 px-3 py-2 text-xs text-mineshaft-400">
+      <div className="border-t border-border px-3 py-2 text-xs text-accent">
         {tables.length} table{tables.length !== 1 ? "s" : ""}
       </div>
     </div>

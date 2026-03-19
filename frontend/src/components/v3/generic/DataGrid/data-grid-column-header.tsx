@@ -32,9 +32,9 @@ export function DataGridColumnHeader<TData, TValue>({
         {...props}
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <span className="truncate">{label}</span>
+          <span className="truncate text-mineshaft-200">{label}</span>
           {column.columnDef.meta?.typeLabel && (
-            <span className="shrink-0 text-xs font-normal text-muted-foreground">
+            <span className="shrink-0 font-normal text-accent">
               {column.columnDef.meta.typeLabel}
             </span>
           )}
