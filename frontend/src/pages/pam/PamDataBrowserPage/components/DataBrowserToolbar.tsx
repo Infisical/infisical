@@ -93,7 +93,7 @@ export const DataBrowserToolbar = ({
             className="gap-1 text-red-400 hover:text-red-300"
           >
             <Trash2Icon className="size-3" />
-            Delete {selectedRowCount}
+            Delete {selectedRowCount} record{selectedRowCount !== 1 ? "s" : ""}
           </Button>
         )}
 

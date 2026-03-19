@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
 
 import { createNotification } from "@app/components/notifications";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
@@ -58,6 +58,72 @@ function getColumnSize(col: ColumnInfo): number {
   return Math.max(140, Math.min(250, col.name.length * 10 + 80));
 }
 
+type RowData = Record<string, unknown>;
+
+type SelectionMeta = {
+  onRowSelect?: (rowIndex: number, checked: boolean, shiftKey: boolean) => void;
+  onSelectionCountChange?: () => void;
+};
+
+function SelectHeader({ table: t }: HeaderContext<RowData, unknown>) {
+  const meta = t.options.meta as SelectionMeta | undefined;
+  return (
+    <input
+      type="checkbox"
+      className="cursor-pointer accent-primary"
+      checked={t.getIsAllRowsSelected()}
+      ref={(el) => {
+        if (el) {
+          // eslint-disable-next-line no-param-reassign
+          el.indeterminate = t.getIsSomeRowsSelected();
+        }
+      }}
+      onChange={(e) => {
+        t.getToggleAllRowsSelectedHandler()(e);
+        // Notify parent after TanStack processes the toggle
+        requestAnimationFrame(() => meta?.onSelectionCountChange?.());
+      }}
+    />
+  );
+}
+
+function SelectCell({ row, table: t }: CellContext<RowData, unknown>) {
+  const meta = t.options.meta as SelectionMeta | undefined;
+  return (
+    <input
+      type="checkbox"
+      className="cursor-pointer accent-primary"
+      checked={row.getIsSelected()}
+      onChange={(e) => {
+        if (meta?.onRowSelect) {
+          meta.onRowSelect(
+            row.index,
+            e.target.checked,
+            e.nativeEvent instanceof MouseEvent && (e.nativeEvent as MouseEvent).shiftKey
+          );
+        } else {
+          row.toggleSelected(e.target.checked);
+        }
+        // Notify parent after TanStack processes the toggle
+        requestAnimationFrame(() => meta?.onSelectionCountChange?.());
+      }}
+    />
+  );
+}
+
+const SELECT_COLUMN: ColumnDef<RowData> = {
+  id: "select",
+  header: SelectHeader,
+  cell: SelectCell,
+  size: 40,
+  minSize: 40,
+  maxSize: 40,
+  enableSorting: false,
+  enableHiding: false,
+  enablePinning: false,
+  enableResizing: false
+};
+
 function buildColumnDefs(cols: ColumnInfo[]): ColumnDef<Record<string, unknown>>[] {
   return cols.map((col) => ({
     id: col.name,
@@ -111,7 +177,6 @@ export const DataBrowserGrid = ({
   const [executionTimeMs, setExecutionTimeMs] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(false);
-  const [deletedRowKeys, setDeletedRowKeys] = useState<Set<string>>(new Set());
   const [newRowTempIds, setNewRowTempIds] = useState<Set<string>>(new Set());
   const [containerHeight, setContainerHeight] = useState(600);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -136,7 +201,13 @@ export const DataBrowserGrid = ({
   }, []);
 
   // Build TanStack Table column definitions from PG metadata
-  const columnDefs = useMemo(() => buildColumnDefs(tableColumns), [tableColumns]);
+  const columnDefs = useMemo(
+    () =>
+      hasPrimaryKey
+        ? [SELECT_COLUMN, ...buildColumnDefs(tableColumns)]
+        : buildColumnDefs(tableColumns),
+    [hasPrimaryKey, tableColumns]
+  );
 
   const fetchData = useCallback(
     async (p: number, ps: number, f: FilterCondition[], s: SortCondition[]) => {
@@ -163,7 +234,6 @@ export const DataBrowserGrid = ({
         setCurrentData(dataResult.rows);
         setExecutionTimeMs(dataResult.executionTimeMs);
         setTotalCount(Number(countResult.rows[0]?.count ?? 0));
-        setDeletedRowKeys(new Set());
         setNewRowTempIds(new Set());
         hasLoadedRef.current = true;
       } catch (err) {
@@ -215,10 +285,10 @@ export const DataBrowserGrid = ({
 
   // Change tracking
   const changeCount = useMemo(() => {
-    let count = newRowTempIds.size + deletedRowKeys.size;
+    let count = newRowTempIds.size;
     currentData.forEach((row) => {
       const key = row.tempRowId ? String(row.tempRowId) : getRowKey(row, primaryKeys);
-      if (newRowTempIds.has(key) || deletedRowKeys.has(key)) return;
+      if (newRowTempIds.has(key)) return;
       const original = originalData.find((o) => getRowKey(o, primaryKeys) === key);
       if (!original) return;
       const hasChanges = tableColumns.some(
@@ -227,7 +297,7 @@ export const DataBrowserGrid = ({
       if (hasChanges) count += 1;
     });
     return count;
-  }, [currentData, originalData, newRowTempIds, deletedRowKeys, primaryKeys, tableColumns]);
+  }, [currentData, originalData, newRowTempIds, primaryKeys, tableColumns]);
 
   const handleAddRecord = useCallback(() => {
     newRowCounterRef.current += 1;
@@ -242,27 +312,73 @@ export const DataBrowserGrid = ({
   }, [tableColumns]);
 
   const handleRowsDelete = useCallback(
-    (_rows: Record<string, unknown>[], rowIndices: number[]) => {
-      const keysToDelete: string[] = [];
+    async (_rows: Record<string, unknown>[], rowIndices: number[]) => {
+      const tempIdsToRemove: string[] = [];
+      const deleteStatements: string[] = [];
+      const rowsToDelete: Record<string, unknown>[] = [];
+
       rowIndices.forEach((idx) => {
         const row = currentData[idx];
         if (!row) return;
         const tempId = row.tempRowId ? String(row.tempRowId) : null;
-        const rowKey = tempId ?? getRowKey(row, primaryKeys);
-        keysToDelete.push(rowKey);
+        if (tempId) {
+          tempIdsToRemove.push(tempId);
+        } else {
+          rowsToDelete.push(row);
+          deleteStatements.push(
+            buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
+          );
+        }
       });
-      setDeletedRowKeys((prev) => {
-        const next = new Set(prev);
-        keysToDelete.forEach((key) => next.add(key));
-        return next;
-      });
+
+      // Remove unsaved new rows from local state immediately
+      if (tempIdsToRemove.length > 0) {
+        const tempIdSet = new Set(tempIdsToRemove);
+        setCurrentData((prev) =>
+          prev.filter((r) => !r.tempRowId || !tempIdSet.has(String(r.tempRowId)))
+        );
+        setNewRowTempIds((prev) => {
+          const next = new Set(prev);
+          tempIdsToRemove.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+
+      // Execute DELETE SQL for persisted rows immediately
+      if (deleteStatements.length > 0) {
+        try {
+          const sql = wrapInTransaction(deleteStatements);
+          await executeQuery(sql);
+          createNotification({
+            text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
+            type: "success"
+          });
+          await fetchData(page, pageSize, filters, sorts);
+        } catch (err) {
+          createNotification({
+            title: "Delete failed",
+            text: err instanceof Error ? err.message : "Unknown error",
+            type: "error"
+          });
+        }
+      }
     },
-    [currentData, primaryKeys]
+    [
+      currentData,
+      primaryKeys,
+      schema,
+      table,
+      executeQuery,
+      fetchData,
+      page,
+      pageSize,
+      filters,
+      sorts
+    ]
   );
 
   const handleDiscard = useCallback(() => {
     setCurrentData(originalData);
-    setDeletedRowKeys(new Set());
     setNewRowTempIds(new Set());
   }, [originalData]);
 
@@ -292,7 +408,6 @@ export const DataBrowserGrid = ({
       currentData.forEach((row) => {
         if (row.tempRowId) return;
         const key = getRowKey(row, primaryKeys);
-        if (deletedRowKeys.has(key)) return;
         const original = originalData.find((o) => getRowKey(o, primaryKeys) === key);
         if (!original) return;
         const changes: Record<string, unknown> = {};
@@ -311,13 +426,6 @@ export const DataBrowserGrid = ({
             })
           );
         }
-      });
-
-      // Deletes
-      deletedRowKeys.forEach((key) => {
-        if (key.startsWith(ROW_KEY_PREFIX)) return;
-        const pkMatch = JSON.parse(key) as Record<string, unknown>;
-        statements.push(buildDeleteQuery({ schema, table, primaryKeyMatch: pkMatch }));
       });
 
       if (statements.length === 0) {
@@ -347,7 +455,6 @@ export const DataBrowserGrid = ({
     currentData,
     originalData,
     newRowTempIds,
-    deletedRowKeys,
     tableColumns,
     primaryKeys,
     schema,
@@ -374,6 +481,22 @@ export const DataBrowserGrid = ({
     [primaryKeys]
   );
 
+  const [selectedRowCount, setSelectedRowCount] = useState(0);
+  const gridRef = useRef<ReturnType<typeof useDataGrid<Record<string, unknown>>>["table"] | null>(
+    null
+  );
+  // Snapshot selected rows so the toolbar delete button can use them even after
+  // the DataGrid's outside-click handler clears row selection on mousedown.
+  const selectedRowsRef = useRef<Record<string, unknown>[]>([]);
+
+  const syncSelectionCount = useCallback(() => {
+    if (gridRef.current) {
+      const { rows } = gridRef.current.getSelectedRowModel();
+      setSelectedRowCount(rows.length);
+      selectedRowsRef.current = rows.map((r) => r.original as Record<string, unknown>);
+    }
+  }, []);
+
   // Dice UI DataGrid
   const gridProps = useDataGrid<Record<string, unknown>>({
     data: currentData,
@@ -384,8 +507,66 @@ export const DataBrowserGrid = ({
     rowHeight: "short",
     enableSearch: true,
     enablePaste: hasPrimaryKey,
-    onRowsDelete: hasPrimaryKey ? handleRowsDelete : undefined
+    onRowsDelete: hasPrimaryKey ? handleRowsDelete : undefined,
+    meta: { onSelectionCountChange: syncSelectionCount } as Record<string, unknown>
   });
+  gridRef.current = gridProps.table;
+
+  const handleDeleteSelected = useCallback(async () => {
+    // Use the snapshot captured at selection time — by the time this click handler
+    // fires, the DataGrid's outside-click listener has already cleared rowSelection.
+    const rows = selectedRowsRef.current;
+    if (rows.length === 0) return;
+
+    const tempIdsToRemove: string[] = [];
+    const deleteStatements: string[] = [];
+
+    rows.forEach((row) => {
+      const tempId = row.tempRowId ? String(row.tempRowId) : null;
+      if (tempId) {
+        tempIdsToRemove.push(tempId);
+      } else {
+        deleteStatements.push(
+          buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
+        );
+      }
+    });
+
+    // Remove unsaved new rows from local state immediately
+    if (tempIdsToRemove.length > 0) {
+      const tempIdSet = new Set(tempIdsToRemove);
+      setCurrentData((prev) =>
+        prev.filter((r) => !r.tempRowId || !tempIdSet.has(String(r.tempRowId)))
+      );
+      setNewRowTempIds((prev) => {
+        const next = new Set(prev);
+        tempIdsToRemove.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+
+    // Execute DELETE SQL for persisted rows
+    if (deleteStatements.length > 0) {
+      try {
+        const sql = wrapInTransaction(deleteStatements);
+        await executeQuery(sql);
+        createNotification({
+          text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
+          type: "success"
+        });
+        await fetchData(page, pageSize, filters, sorts);
+      } catch (err) {
+        createNotification({
+          title: "Delete failed",
+          text: err instanceof Error ? err.message : "Unknown error",
+          type: "error"
+        });
+      }
+    }
+
+    selectedRowsRef.current = [];
+    setSelectedRowCount(0);
+  }, [schema, table, primaryKeys, executeQuery, fetchData, page, pageSize, filters, sorts]);
 
   if (isLoading || !tableDetail) {
     return (
@@ -408,8 +589,8 @@ export const DataBrowserGrid = ({
         onDiscard={handleDiscard}
         isSaving={isSaving}
         onAddRecord={handleAddRecord}
-        selectedRowCount={0}
-        onDeleteSelected={() => {}}
+        selectedRowCount={selectedRowCount}
+        onDeleteSelected={handleDeleteSelected}
         totalCount={totalCount}
         page={page}
         pageSize={pageSize}
