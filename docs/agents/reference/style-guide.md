@@ -61,7 +61,7 @@ Every Infisical document MUST be classified as exactly ONE of the four Diataxis 
 - Assumptions about prior knowledge without stating prerequisites
 - Steps that do not produce a visible result
 
-**Gold standard:** [`/documentation/guides/kubernetes-operator`](/documentation/guides/kubernetes-operator) — Clear learning outcomes, 11 sequential steps with verification, comprehensive prerequisites.
+**Pattern example — step verification:** [`/documentation/guides/kubernetes-operator`](/documentation/guides/kubernetes-operator) demonstrates verification checkpoints after key steps and explicit learning outcomes in the intro.
 
 ---
 
@@ -100,7 +100,7 @@ Every Infisical document MUST be classified as exactly ONE of the four Diataxis 
 - Unnecessary context before the first step (get to the point)
 - Conceptual explanations after the final step (link instead)
 
-**Gold standard:** [`/documentation/platform/pki/ca/acme-ca`](/documentation/platform/pki/ca/acme-ca) — Clear goal, progressive disclosure, UI + API tabs, DNS provider variants, advanced section, FAQ accordion.
+**Pattern example — progressive disclosure:** [`/documentation/platform/pki/ca/acme-ca`](/documentation/platform/pki/ca/acme-ca) demonstrates using Tabs to separate provider variants and an Advanced section to keep the core flow clean.
 
 ---
 
@@ -138,7 +138,7 @@ Every Infisical document MUST be classified as exactly ONE of the four Diataxis 
 - Incomplete parameter documentation (reference MUST be exhaustive)
 - Inconsistent structure across items (every item follows the same format)
 
-**Gold standard:** [`/documentation/platform/pki/certificates/request-cert-csr`](/documentation/platform/pki/certificates/request-cert-csr) — Comprehensive requirements table, multiple code examples, consistent structure, FAQ for edge cases.
+**Pattern example — exhaustive structure:** [`/documentation/platform/pki/certificates/request-cert-csr`](/documentation/platform/pki/certificates/request-cert-csr) demonstrates consistent repeating structure across items with a requirements table and multiple code variants.
 
 ---
 
@@ -176,7 +176,7 @@ Every Infisical document MUST be classified as exactly ONE of the four Diataxis 
 - Parameter tables or API specs (link to Reference)
 - "Just do X" instructions without context
 
-**Gold standard:** [`/documentation/platform/secret-rotation/overview`](/documentation/platform/secret-rotation/overview) — Mermaid lifecycle diagram, dual-phase vs single-phase comparison via tabs, clear "why this matters" framing.
+**Pattern example — concept visualization:** [`/documentation/platform/secret-rotation/overview`](/documentation/platform/secret-rotation/overview) demonstrates using Mermaid diagrams to illustrate lifecycles and Tabs to compare related concepts (dual-phase vs single-phase).
 
 ---
 
@@ -977,61 +977,21 @@ Explicit blocklist for review agents. Each item has a severity label.
 
 ---
 
-## 15. Gold Standard Examples
+## 15. Pattern Examples
 
-These existing docs best exemplify the style guide. Reference them when evaluating quality.
+These existing docs demonstrate specific techniques well. Reference them for the named pattern only — not as holistic templates.
 
-### How-to Guide (with progressive disclosure)
+> **Important:** Do not treat any single doc as a model to replicate wholesale. Each pattern example demonstrates one technique. Apply the technique when the content calls for it, not because an example doc used it.
 
-**[`/documentation/platform/pki/ca/acme-ca`](/documentation/platform/pki/ca/acme-ca)**
-
-Why it's good:
-- Clear concept section with Mermaid protocol diagram
-- Multi-provider support via tabs (Route53, Cloudflare, Azure DNS, DNS Made Easy)
-- Advanced feature section (DNS CNAME delegation) separated from core flow
-- Comprehensive FAQ accordion
-- Reusable imported component (`RequestCertSetup`)
-
-### How-to Guide (with reference elements)
-
-**[`/documentation/platform/pki/certificates/request-cert-csr`](/documentation/platform/pki/certificates/request-cert-csr)**
-
-Why it's good:
-- Multiple OpenSSL code examples (new key, existing key, SANs, ECDSA)
-- Requirements table with algorithm specs
-- CSR validation step
-- Both UI and API paths
-- Comprehensive FAQ addressing edge cases
-
-### Tutorial
-
-**[`/documentation/guides/kubernetes-operator`](/documentation/guides/kubernetes-operator)**
-
-Why it's good:
-- Explicit learning outcomes ("In this guide, we'll walk through how to...")
-- 11 sequential steps with verification at key milestones
-- Comprehensive prerequisites
-- Screenshots showing exact UI state at each step
-
-### Explanation
-
-**[`/documentation/platform/secret-rotation/overview`](/documentation/platform/secret-rotation/overview)**
-
-Why it's good:
-- Mermaid lifecycle diagram
-- Dual-phase vs single-phase comparison via tabs
-- Clear "why this matters" framing
-- Implementation considerations section
-
-### Integration Guide
-
-**[`/documentation/platform/pki/ca/azure-adcs`](/documentation/platform/pki/ca/azure-adcs)**
-
-Why it's good:
-- Comprehensive prerequisites including network/IP requirements
-- Template system explanation
-- Clear limitations documented upfront
-- Extensive troubleshooting section with specific error messages
+| Pattern | Example doc | What to learn from it |
+|---------|-------------|----------------------|
+| **Step verification** | [`kubernetes-operator`](/documentation/guides/kubernetes-operator) | Verification checkpoints after key steps; explicit learning outcomes in the intro |
+| **Progressive disclosure** | [`acme-ca`](/documentation/platform/pki/ca/acme-ca) | Tabs to separate provider variants; Advanced section isolated from core flow |
+| **Dual-path (UI + API)** | [`request-cert-csr`](/documentation/platform/pki/certificates/request-cert-csr) | Tabs to offer both UI and API workflows; requirements table with algorithm specs |
+| **Concept visualization** | [`secret-rotation/overview`](/documentation/platform/secret-rotation/overview) | Mermaid diagram for lifecycle; Tabs to compare related concepts |
+| **Integration prerequisites** | [`azure-adcs`](/documentation/platform/pki/ca/azure-adcs) | Network/IP requirements upfront; limitations documented before steps; troubleshooting with specific error messages |
+| **FAQ for edge cases** | [`request-cert-csr`](/documentation/platform/pki/certificates/request-cert-csr) | Accordion FAQ addressing common failure scenarios without cluttering the main flow |
+| **Reusable components** | [`acme-ca`](/documentation/platform/pki/ca/acme-ca) | Imported shared component (`RequestCertSetup`) for steps that appear in multiple docs |
 
 ---
 
