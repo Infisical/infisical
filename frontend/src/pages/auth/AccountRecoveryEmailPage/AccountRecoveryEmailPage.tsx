@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
+import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { EmailServiceSetupModal } from "@app/components/v2";
 import {
   Button,
@@ -50,7 +51,7 @@ export const AccountRecoveryEmailPage = () => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-6">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
       <AuthPageBackground />
       <Helmet>
         <title>Account Recovery</title>
@@ -62,16 +63,12 @@ export const AccountRecoveryEmailPage = () => {
           content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
         />
       </Helmet>
+      <AuthPageHeader>
+        <Button asChild>
+          <Link to="/login">Log In</Link>
+        </Button>
+      </AuthPageHeader>
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <Link to="/">
-          <div className="mb-4 flex justify-center">
-            <img
-              src="/images/gradientLogo.svg"
-              style={{ height: "90px", width: "120px" }}
-              alt="Infisical Logo"
-            />
-          </div>
-        </Link>
         {step === 1 && (
           <form onSubmit={onSubmit} className="mx-auto w-full max-w-sm">
             <UnstableCard className="w-full items-stretch gap-0 p-6">

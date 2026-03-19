@@ -139,9 +139,9 @@ export const LoginLdapPage = () => {
                   {t("login.login")}
                 </Button>
               </div>
-              <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+              <div className="mt-6 flex flex-row justify-center text-xs text-label">
                 <button onClick={() => navigate({ to: "/login" })} type="button">
-                  <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                  <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                     {t("login.other-option")}
                   </span>
                 </button>
