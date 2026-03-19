@@ -6,5 +6,6 @@ export const DATABRICKS_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Databricks",
   destination: SecretSync.Databricks,
   connection: AppConnection.Databricks,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

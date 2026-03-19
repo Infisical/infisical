@@ -36,7 +36,11 @@ export const WindowsAccountCredentialsSchema = z.object({
 
 // Account metadata
 export const WindowsAccountMetadataSchema = z.object({
-  accountType: z.nativeEnum(WindowsAccountType)
+  accountType: z.nativeEnum(WindowsAccountType),
+  lastLogon: z.string().optional(),
+  passwordLastSet: z.string().optional(),
+  sid: z.string().optional(),
+  enabled: z.boolean().optional()
 });
 
 // Resource Metadata

@@ -173,6 +173,7 @@ export const AwsSecretsManagerSyncListItemSchema = z
     name: z.literal("AWS Secrets Manager"),
     connection: z.literal(AppConnection.AWS),
     destination: z.literal(SecretSync.AWSSecretsManager),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSSecretsManager] }));

@@ -6,5 +6,6 @@ export const CAMUNDA_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Camunda",
   destination: SecretSync.Camunda,
   connection: AppConnection.Camunda,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

@@ -45,6 +45,7 @@ export const OnePassSyncListItemSchema = z
     name: z.literal("1Password"),
     connection: z.literal(AppConnection.OnePass),
     destination: z.literal(SecretSync.OnePass),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.OnePass] }));

@@ -16,6 +16,7 @@ import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
+  ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
@@ -171,7 +172,8 @@ const AppConnectionPolicyActionSchema = z.object({
   [ProjectPermissionAppConnectionActions.Read]: z.boolean().optional(),
   [ProjectPermissionAppConnectionActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAppConnectionActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionAppConnectionActions.Connect]: z.boolean().optional()
+  [ProjectPermissionAppConnectionActions.Connect]: z.boolean().optional(),
+  [ProjectPermissionAppConnectionActions.RotateCredentials]: z.boolean().optional()
 });
 
 const KmipPolicyActionSchema = z.object({
@@ -460,15 +462,10 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     ]
   },
   [ProjectPermissionSub.Identity]: {
-    [ProjectPermissionIdentityActions.Read]: [],
+    [ProjectPermissionIdentityActions.Read]: ["identityId"],
     [ProjectPermissionIdentityActions.Create]: [],
-    [ProjectPermissionIdentityActions.Edit]: [],
-    [ProjectPermissionIdentityActions.Delete]: [],
-    [ProjectPermissionIdentityActions.AssumePrivileges]: [],
-    [ProjectPermissionIdentityActions.RevokeAuth]: [],
-    [ProjectPermissionIdentityActions.CreateToken]: [],
-    [ProjectPermissionIdentityActions.GetToken]: [],
-    [ProjectPermissionIdentityActions.DeleteToken]: [],
+    [ProjectPermissionIdentityActions.Edit]: ["identityId"],
+    [ProjectPermissionIdentityActions.Delete]: ["identityId"],
     [ProjectPermissionIdentityActions.GrantPrivileges]: [
       "identityId",
       "assignableRole",
@@ -480,7 +477,12 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
       "identityId",
       "assignableSubject",
       "assignableAction"
-    ]
+    ],
+    [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
+    [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
   },
   [ProjectPermissionSub.Groups]: {
     [ProjectPermissionGroupActions.Read]: [],
@@ -713,6 +715,16 @@ export const projectRoleFormSchema = z.object({
           read: z.boolean().optional(),
           edit: z.boolean().optional(),
           delete: z.boolean().optional()
+        })
+        .array()
+        .default([]),
+      [ProjectPermissionSub.CodeSigners]: z
+        .object({
+          read: z.boolean().optional(),
+          create: z.boolean().optional(),
+          edit: z.boolean().optional(),
+          delete: z.boolean().optional(),
+          sign: z.boolean().optional()
         })
         .array()
         .default([]),
@@ -1176,6 +1188,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canEdit = action.includes(ProjectPermissionAppConnectionActions.Edit);
           const canDelete = action.includes(ProjectPermissionAppConnectionActions.Delete);
           const canConnect = action.includes(ProjectPermissionAppConnectionActions.Connect);
+          const canRotateCredentials = action.includes(
+            ProjectPermissionAppConnectionActions.RotateCredentials
+          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -1184,6 +1199,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionAppConnectionActions.Edit]: canEdit,
             [ProjectPermissionAppConnectionActions.Delete]: canDelete,
             [ProjectPermissionAppConnectionActions.Connect]: canConnect,
+            [ProjectPermissionAppConnectionActions.RotateCredentials]: canRotateCredentials,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1413,6 +1429,23 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         formVal[subject]![0][ProjectPermissionPkiCertificateInstallationActions.Edit] = true;
       if (canDelete)
         formVal[subject]![0][ProjectPermissionPkiCertificateInstallationActions.Delete] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.CodeSigners) {
+      const canRead = action.includes(ProjectPermissionCodeSigningActions.Read);
+      const canCreate = action.includes(ProjectPermissionCodeSigningActions.Create);
+      const canEdit = action.includes(ProjectPermissionCodeSigningActions.Edit);
+      const canDelete = action.includes(ProjectPermissionCodeSigningActions.Delete);
+      const canSign = action.includes(ProjectPermissionCodeSigningActions.Sign);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionCodeSigningActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionCodeSigningActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionCodeSigningActions.Edit] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionCodeSigningActions.Delete] = true;
+      if (canSign) formVal[subject]![0][ProjectPermissionCodeSigningActions.Sign] = true;
       return;
     }
 
@@ -1739,8 +1772,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
-      // Map actions to the keys defined in ApprovalPolicyActionSchema
-      if (canRead) formVal[subject]![0][ProjectPermissionPamAccountActions.Read] = true;
+      if (canRead) formVal[subject]![0][ProjectPermissionPamSessionActions.Read] = true;
     }
 
     if (subject === ProjectPermissionSub.PamDiscovery) {
@@ -2834,6 +2866,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove", value: "delete", description: "Remove certificate installation records" }
     ]
   },
+  [ProjectPermissionSub.CodeSigners]: {
+    title: "PKI Code Signing",
+    description: "Manage signers and signing operations",
+    actions: [
+      { label: "Read", value: "read", description: "View code signers and signing operations" },
+      { label: "Create", value: "create", description: "Create new code signers" },
+      { label: "Modify", value: "edit", description: "Update code signer configuration" },
+      { label: "Remove", value: "delete", description: "Delete code signers" },
+      { label: "Sign", value: "sign", description: "Perform code signing operations" }
+    ]
+  },
   [ProjectPermissionSub.Kmip]: {
     title: "KMIP",
     description: "Manage keys via KMIP protocol",
@@ -2992,6 +3035,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Connect",
         value: ProjectPermissionAppConnectionActions.Connect,
         description: "Establish connections to external platforms and services"
+      },
+      {
+        label: "Rotate Credentials",
+        value: ProjectPermissionAppConnectionActions.RotateCredentials,
+        description: "Rotate credentials for app connections"
       }
     ]
   },
@@ -3262,7 +3310,8 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.CertificatePolicies]: enabled,
   [ProjectPermissionSub.Certificates]: enabled,
   [ProjectPermissionSub.PkiDiscovery]: enabled,
-  [ProjectPermissionSub.PkiCertificateInstallations]: enabled
+  [ProjectPermissionSub.PkiCertificateInstallations]: enabled,
+  [ProjectPermissionSub.CodeSigners]: enabled
 });
 
 const SshPermissionSubjects = (enabled = false) => ({

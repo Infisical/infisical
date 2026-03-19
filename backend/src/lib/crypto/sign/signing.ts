@@ -328,10 +328,13 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       // it'll throw if the verification was not successful
       return true;
     } catch (error) {
-      const err = error as { stdout: string };
+      const err = error as { stderr: string };
 
-      if (!err?.stdout?.toLowerCase()?.includes("signature verification failure")) {
-        logger.error(error, "KMS: Failed to verify signature");
+      if (
+        !err?.stderr?.toLowerCase()?.includes("signature verification failure") &&
+        !err?.stderr?.toLowerCase()?.includes("bad signature")
+      ) {
+        logger.error(error, "KMS: Failed to verify RSA signature");
       }
       return false;
     } finally {

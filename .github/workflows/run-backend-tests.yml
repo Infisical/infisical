@@ -14,7 +14,7 @@ jobs:
   check-be-pr:
     name: Run integration test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Free up disk space
         run: |
@@ -23,7 +23,7 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           docker system prune -af
-          
+
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - uses: KengoTODA/actions-setup-docker-compose@v1
@@ -62,4 +62,3 @@ jobs:
       - name: cleanup
         run: |
           docker compose -f "docker-compose.dev.yml" down
-

@@ -90,6 +90,14 @@ export enum ProjectPermissionPkiCertificateInstallationActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCodeSigningActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Sign = "sign"
+}
+
 export enum ProjectPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -224,7 +232,8 @@ export enum ProjectPermissionAppConnectionActions {
   Create = "create-app-connections",
   Edit = "edit-app-connections",
   Delete = "delete-app-connections",
-  Connect = "connect-app-connections"
+  Connect = "connect-app-connections",
+  RotateCredentials = "rotate-credentials"
 }
 
 export enum PermissionConditionOperators {
@@ -398,6 +407,7 @@ export enum ProjectPermissionSub {
   PkiSyncs = "pki-syncs",
   PkiDiscovery = "pki-discovery",
   PkiCertificateInstallations = "pki-certificate-installations",
+  CodeSigners = "code-signers",
   Kmip = "kmip",
   Commits = "commits",
   SecretScanningDataSources = "secret-scanning-data-sources",
@@ -642,6 +652,7 @@ export type ProjectPermissionSet =
       ProjectPermissionPkiCertificateInstallationActions,
       ProjectPermissionSub.PkiCertificateInstallations
     ]
+  | [ProjectPermissionCodeSigningActions, ProjectPermissionSub.CodeSigners]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]

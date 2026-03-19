@@ -44,6 +44,9 @@ import {
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
+  TAppConnectionCredentialRotations,
+  TAppConnectionCredentialRotationsInsert,
+  TAppConnectionCredentialRotationsUpdate,
   TAppConnections,
   TAppConnectionsInsert,
   TAppConnectionsUpdate,
@@ -86,6 +89,9 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TCaSigningConfigs,
+  TCaSigningConfigsInsert,
+  TCaSigningConfigsUpdate,
   TCertificateAuthorities,
   TCertificateAuthoritiesInsert,
   TCertificateAuthoritiesUpdate,
@@ -101,6 +107,9 @@ import {
   TCertificateBodies,
   TCertificateBodiesInsert,
   TCertificateBodiesUpdate,
+  TCertificateCleanupConfigs,
+  TCertificateCleanupConfigsInsert,
+  TCertificateCleanupConfigsUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -359,6 +368,12 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiSigners,
+  TPkiSignersInsert,
+  TPkiSignersUpdate,
+  TPkiSigningOperations,
+  TPkiSigningOperationsInsert,
+  TPkiSigningOperationsUpdate,
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
@@ -642,6 +657,11 @@ import {
   TIdentityLdapAuthsUpdate
 } from "@app/db/schemas/identity-ldap-auths";
 import {
+  TIdentitySpiffeAuths,
+  TIdentitySpiffeAuthsInsert,
+  TIdentitySpiffeAuthsUpdate
+} from "@app/db/schemas/identity-spiffe-auths";
+import {
   TMicrosoftTeamsIntegrations,
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
@@ -678,6 +698,11 @@ import {
   TPamDiscoverySourcesUpdate
 } from "@app/db/schemas/pam-discovery-sources";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
+import {
+  TPamResourceFavorites,
+  TPamResourceFavoritesInsert,
+  TPamResourceFavoritesUpdate
+} from "@app/db/schemas/pam-resource-favorites";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
@@ -926,6 +951,12 @@ declare module "knex/types/tables" {
       TPkiDiscoveryScanHistoryInsert,
       TPkiDiscoveryScanHistoryUpdate
     >;
+    [TableName.PkiSigners]: KnexOriginal.CompositeTableType<TPkiSigners, TPkiSignersInsert, TPkiSignersUpdate>;
+    [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
+      TPkiSigningOperations,
+      TPkiSigningOperationsInsert,
+      TPkiSigningOperationsUpdate
+    >;
     [TableName.CertificateSync]: KnexOriginal.CompositeTableType<
       TCertificateSyncs,
       TCertificateSyncsInsert,
@@ -1099,6 +1130,11 @@ declare module "knex/types/tables" {
       TIdentityLdapAuths,
       TIdentityLdapAuthsInsert,
       TIdentityLdapAuthsUpdate
+    >;
+    [TableName.IdentitySpiffeAuth]: KnexOriginal.CompositeTableType<
+      TIdentitySpiffeAuths,
+      TIdentitySpiffeAuthsInsert,
+      TIdentitySpiffeAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,
@@ -1526,6 +1562,11 @@ declare module "knex/types/tables" {
     >;
     [TableName.PamFolder]: KnexOriginal.CompositeTableType<TPamFolders, TPamFoldersInsert, TPamFoldersUpdate>;
     [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;
+    [TableName.PamResourceFavorite]: KnexOriginal.CompositeTableType<
+      TPamResourceFavorites,
+      TPamResourceFavoritesInsert,
+      TPamResourceFavoritesUpdate
+    >;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
     [TableName.PamDiscoverySource]: KnexOriginal.CompositeTableType<
@@ -1664,5 +1705,20 @@ declare module "knex/types/tables" {
     >;
 
     [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
+    [TableName.AppConnectionCredentialRotation]: KnexOriginal.CompositeTableType<
+      TAppConnectionCredentialRotations,
+      TAppConnectionCredentialRotationsInsert,
+      TAppConnectionCredentialRotationsUpdate
+    >;
+    [TableName.CaSigningConfig]: KnexOriginal.CompositeTableType<
+      TCaSigningConfigs,
+      TCaSigningConfigsInsert,
+      TCaSigningConfigsUpdate
+    >;
+    [TableName.CertificateCleanupConfig]: KnexOriginal.CompositeTableType<
+      TCertificateCleanupConfigs,
+      TCertificateCleanupConfigsInsert,
+      TCertificateCleanupConfigsUpdate
+    >;
   }
 }

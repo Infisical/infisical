@@ -103,6 +103,7 @@ export enum TableName {
   IdentityJwtAuth = "identity_jwt_auths",
   IdentityLdapAuth = "identity_ldap_auths",
   IdentityTlsCertAuth = "identity_tls_cert_auths",
+  IdentitySpiffeAuth = "identity_spiffe_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
@@ -173,6 +174,7 @@ export enum TableName {
   SlackIntegrations = "slack_integrations",
   ProjectSlackConfigs = "project_slack_configs",
   AppConnection = "app_connections",
+  AppConnectionCredentialRotation = "app_connection_credential_rotations",
   SecretSync = "secret_syncs",
   PkiSync = "pki_syncs",
   CertificateSync = "certificate_syncs",
@@ -229,6 +231,7 @@ export enum TableName {
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
   PamAccountDependency = "pam_account_dependencies",
+  PamResourceFavorite = "pam_resource_favorites",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
 
@@ -245,6 +248,9 @@ export enum TableName {
   PkiDiscoveryInstallation = "pki_discovery_installations",
   PkiCertificateInstallationCert = "pki_certificate_installation_certs",
   PkiDiscoveryScanHistory = "pki_discovery_scan_history",
+
+  // PKI Cleanup
+  CertificateCleanupConfig = "certificate_cleanup_configs",
 
   // AI
   AiMcpServer = "ai_mcp_servers",
@@ -265,7 +271,12 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
 
-  QueueJobs = "queue_jobs"
+  // Code Signing
+  PkiSigners = "pki_signers",
+  PkiSigningOperations = "pki_signing_operations",
+
+  QueueJobs = "queue_jobs",
+  CaSigningConfig = "ca_signing_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -349,7 +360,8 @@ export enum IdentityAuthMethod {
   OCI_AUTH = "oci-auth",
   OIDC_AUTH = "oidc-auth",
   JWT_AUTH = "jwt-auth",
-  LDAP_AUTH = "ldap-auth"
+  LDAP_AUTH = "ldap-auth",
+  SPIFFE_AUTH = "spiffe-auth"
 }
 
 export enum ProjectType {

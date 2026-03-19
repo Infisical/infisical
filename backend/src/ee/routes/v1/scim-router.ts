@@ -25,7 +25,7 @@ const ScimUserSchema = z.object({
     )
     .optional(),
   displayName: z.string().trim(),
-  active: z.boolean()
+  active: z.union([z.boolean(), z.string().transform((v) => v.toLowerCase() === "true")])
 });
 
 const ScimGroupSchema = z.object({

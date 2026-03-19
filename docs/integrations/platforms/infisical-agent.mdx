@@ -47,19 +47,19 @@ The secret template functions is what you will use to fetch resources such as st
 
 
 <AccordionGroup>
-  <Accordion title="secret">
+  <Accordion title="listSecrets">
     ```bash
-      secret "<project-id>" "environment-slug" "<secret-path>" "<optional-modifier>"
+      listSecrets "<project-id>" "environment-slug" "<secret-path>" "<optional-modifier>"
     ```
       ```bash example-template-usage-1
-    {{- with secret "6553ccb2b7da580d7f6e7260" "dev" "/" `{"recursive": false, "expandSecretReferences": true}` }}
+    {{- with listSecrets "6553ccb2b7da580d7f6e7260" "dev" "/" `{"recursive": false, "expandSecretReferences": true}` }}
     {{- range . }}
     {{ .Key }}={{ .Value }}
     {{- end }}
     {{- end }}
     ```
     ```bash example-template-usage-2
-  {{- with secret "da8056c8-01e2-4d24-b39f-cb4e004b8d44" "staging" "/" `{"recursive": true, "expandSecretReferences": true}` }}
+  {{- with listSecrets "da8056c8-01e2-4d24-b39f-cb4e004b8d44" "staging" "/" `{"recursive": true, "expandSecretReferences": true}` }}
   {{- range . }}
   {{- if eq .SecretPath "/"}}
   {{ .Key }}={{ .Value }}
@@ -72,7 +72,7 @@ The secret template functions is what you will use to fetch resources such as st
 
     
 
-  **Function name**: `secret`
+  **Function name**: `listSecrets`
 
   **Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
 
@@ -82,6 +82,43 @@ The secret template functions is what you will use to fetch resources such as st
   **Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, SecretPath, Type, ID, and Comment`
 
   </Accordion>
+
+    <Accordion title="listSecretsByProjectSlug">
+    ```bash
+      listSecretsByProjectSlug "<project-slug>" "environment-slug" "<secret-path>" "<optional-modifier>"
+    ```
+      ```bash example-template-usage-1
+    {{- with listSecretsByProjectSlug "my-project" "dev" "/" `{"recursive": false, "expandSecretReferences": true}` }}
+    {{- range . }}
+    {{ .Key }}={{ .Value }}
+    {{- end }}
+    {{- end }}
+    ```
+    ```bash example-template-usage-2
+  {{- with listSecretsByProjectSlug "my-project" "staging" "/" `{"recursive": true, "expandSecretReferences": true}` }}
+  {{- range . }}
+  {{- if eq .SecretPath "/"}}
+  {{ .Key }}={{ .Value }}
+  {{- else}}
+  {{ .SecretPath }}/{{ .Key }}={{ .Value }}
+  {{- end}}
+  {{- end }}
+  {{- end }}
+    ```
+
+    
+
+  **Function name**: `listSecretsByProjectSlug`
+
+  **Description**: This function can be used to render the full list of secrets within a given project slug, environment and secret path. 
+
+  An optional JSON argument is also available. It includes the properties `recursive`, which defaults to false, and `expandSecretReferences`, which defaults to true and expands the returned secrets.
+
+
+  **Returns**: A list of secret objects, each with the following keys `Key, WorkspaceId, Value, SecretPath, Type, ID, and Comment`
+
+  </Accordion>
+
 
   <Accordion title="getSecretByName">
     ```bash
@@ -104,19 +141,19 @@ The secret template functions is what you will use to fetch resources such as st
 
   </Accordion>
 
-  <Accordion title="dynamic_secret">
+  <Accordion title="dynamicSecret">
     ```bash
-    dynamic_secret "<project-slug>" "<environment-slug>" "<secret-path>" "<dynamic-secret-name>" "<lease-ttl>"
+    dynamicSecret "<project-slug>" "<environment-slug>" "<secret-path>" "<dynamic-secret-name>" "<lease-ttl>"
     ```
 
     ```bash example-redis-dynamic-secret
-      {{ with dynamic_secret "aaa-o7en-s5qm" "dev" "/" "redis" "1m" }}
+      {{ with dynamicSecret "aaa-o7en-s5qm" "dev" "/" "redis" "1m" }}
       {{ .DB_USERNAME }}={{ .DB_PASSWORD }}
       {{- end }}
 
     ```
 
-    **Function Name**: `dynamic_secret`
+    **Function Name**: `dynamicSecret`
 
     **Description**: This function can be used to render a dynamic secret lease credentials. The credentials are automatically renewed before they expire, ensuring that the rendered credentials are always up-to-date.
 
@@ -465,11 +502,11 @@ templates:
         command: ./reload-app.sh
 ```
 
-The secret template below will be used to render the secrets with the key and the value separated by `=` sign. You'll notice that a custom function named `secret` is used to fetch the secrets.
-This function takes the following arguments: `secret "<project-id>" "<environment-slug>" "<secret-path>"`.
+The secret template below will be used to render the secrets with the key and the value separated by `=` sign. You'll notice that a custom function named `listSecrets` is used to fetch the secrets.
+This function takes the following arguments: `listSecrets "<project-id>" "<environment-slug>" "<secret-path>"`.
 
 ```text my-dot-ev-secret-template
-{{- with secret "6553ccb2b7da580d7f6e7260" "dev" "/" }}
+{{- with listSecrets "6553ccb2b7da580d7f6e7260" "dev" "/" }}
 {{- range . }}
 {{ .Key }}={{ .Value }}
 {{- end }}

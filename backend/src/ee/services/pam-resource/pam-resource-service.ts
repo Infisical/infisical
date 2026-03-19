@@ -12,7 +12,7 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
@@ -23,6 +23,7 @@ import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-acc
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
 import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
+import { TPamResourceFavoriteDALFactory } from "./pam-resource-favorite-dal";
 import {
   decryptResource,
   decryptResourceConnectionDetails,
@@ -37,6 +38,7 @@ import { TWindowsResource } from "./windows-server/windows-server-resource-types
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
+  pamResourceFavoriteDAL: TPamResourceFavoriteDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithResourceDetails" | "findMetadataByAccountIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -51,6 +53,7 @@ export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFac
 
 export const pamResourceServiceFactory = ({
   pamResourceDAL,
+  pamResourceFavoriteDAL,
   pamAccountDAL,
   permissionService,
   kmsService,
@@ -479,14 +482,19 @@ export const pamResourceServiceFactory = ({
 
       if (!hasConditions) {
         // TIER 1: Unconditional access — fast path with DB pagination (existing behavior)
-        const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
+        const { resources, totalCount } = await pamResourceDAL.findByProjectId({
+          projectId,
+          userId: actorId,
+          ...params
+        });
         const resourceIds = resources.map((r) => r.id);
         const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds(resourceIds);
         return {
           resources: await Promise.all(
             resources.map(async (resource) => ({
               ...(await decryptResource(resource, projectId, kmsService)),
-              metadata: metadataByResourceId[resource.id] || []
+              metadata: metadataByResourceId[resource.id] || [],
+              isFavorite: resource.isFavorite
             }))
           ),
           totalCount
@@ -497,6 +505,7 @@ export const pamResourceServiceFactory = ({
     // Fetch all resources once for both Tier 2 and Tier 3
     const { resources: allResources } = await pamResourceDAL.findByProjectId({
       projectId,
+      userId: actorId,
       search: params.search,
       orderBy: params.orderBy,
       orderDirection: params.orderDirection,
@@ -533,7 +542,8 @@ export const pamResourceServiceFactory = ({
           resources: await Promise.all(
             paginatedResources.map(async (resource) => ({
               ...(await decryptResource(resource, projectId, kmsService)),
-              metadata: metadataByResourceId[resource.id] || []
+              metadata: metadataByResourceId[resource.id] || [],
+              isFavorite: resource.isFavorite
             }))
           ),
           totalCount
@@ -593,7 +603,8 @@ export const pamResourceServiceFactory = ({
       resources: await Promise.all(
         paginatedResources.map(async (resource) => ({
           ...(await decryptResource(resource, projectId, kmsService)),
-          metadata: metadataByResourceId[resource.id] || []
+          metadata: metadataByResourceId[resource.id] || [],
+          isFavorite: resource.isFavorite
         }))
       ),
       totalCount
@@ -710,6 +721,53 @@ export const pamResourceServiceFactory = ({
     );
   };
 
+  const setUserResourceFavorite = async ({
+    projectId,
+    resourceId,
+    isFavorite,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TProjectPermission & {
+    resourceId: string;
+    isFavorite: boolean;
+  }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorAuthMethod,
+      actorId,
+      actorOrgId,
+      projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const userId = actorId;
+
+    const resource = await pamResourceDAL.findById(resourceId);
+    if (!resource || resource.projectId !== projectId) {
+      throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
+    }
+
+    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        metadata: metadataByResourceId[resource.id] || []
+      })
+    );
+
+    if (isFavorite) {
+      await pamResourceFavoriteDAL.upsert(
+        [{ userId, pamResourceId: resourceId, projectId }],
+        ["userId", "pamResourceId"]
+      );
+    } else {
+      await pamResourceFavoriteDAL.delete({ userId, pamResourceId: resourceId });
+    }
+  };
+
   return {
     getById,
     create,
@@ -718,6 +776,7 @@ export const pamResourceServiceFactory = ({
     list,
     listResourceOptions,
     getOrCreateSshCa,
-    listRelatedResources
+    listRelatedResources,
+    setUserResourceFavorite
   };
 };
