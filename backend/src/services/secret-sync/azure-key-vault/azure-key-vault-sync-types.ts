@@ -21,7 +21,7 @@ export type TAzureKeyVaultSyncWithCredentials = TAzureKeyVaultSync & {
 export interface GetAzureKeyVaultSecret {
   id: string; // secret URI
   value: string;
-  contentType?: string;
+  contentType?: "application/x-pkcs12" | "application/x-pem-file";
   attributes: {
     enabled: boolean;
     created: number;
