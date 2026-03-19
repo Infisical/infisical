@@ -1,0 +1,68 @@
+---
+title: "Access Requests"
+sidebarTitle: "Access Requests Remediated"
+description: "Learn how to configure access request policies and request access to sensitive resources in Infisical."
+---
+
+This guide shows you how to set up access request policies and request access to sensitive environments or folders in Infisical.
+
+## Prerequisites
+
+- An Infisical account with a [project](/documentation/platform/project) set up
+- Admin or appropriate permissions to create access policies (for policy setup)
+
+## Set up an access request policy
+
+A project administrator creates an access policy that assigns approvers to a sensitive folder or environment.
+
+<Steps>
+  <Step title="Create an access request policy">
+    Navigate to your project's **Approvals** page and create a new access request policy. Assign approvers (users or groups) to the environments and secret paths you want to protect.
+
+    ![Create access request policy modal showing environment and approver fields](/images/platform/access-controls/create-access-request-policy.png)
+
+    <Note>
+      A step policy enables a sequential approval workflow in which approvals
+      must follow the designated chain.
+    </Note>
+
+    ![Access request policies list](/images/platform/access-controls/access-request-policies.png)
+  </Step>
+</Steps>
+
+## Request access to a resource
+
+<Steps>
+  <Step title="Submit an access request">
+    When you need access to a sensitive environment or folder, submit an access request from the dashboard. The corresponding approvers receive notifications about the request.
+
+    ![Access request creation form](/images/platform/access-controls/request-access.png)
+    ![Access request dashboard showing pending requests](/images/platform/access-controls/access-requests-pending.png)
+  </Step>
+  <Step title="Wait for approval">
+    An eligible approver can approve or reject the access request.
+
+    ![Access request bypass option](/images/platform/access-controls/access-request-bypass.png)
+
+    <Note>
+      Approvers can edit the duration of an access request to reduce how long access is granted by clicking the **Edit** icon next to the duration. Editing the duration resets all existing approvals, requiring approvers to re-review the request.
+
+      ![Edit access request duration](/images/platform/access-controls/edit-access-request.png)
+    </Note>
+
+    <Info>
+      If the access request matches a policy with [soft enforcement](/documentation/platform/access-controls/overview) that allows break-glass bypasses, the requester may bypass the policy and gain access without full approval. A bypass reason is required.
+    </Info>
+  </Step>
+</Steps>
+
+## Verify the result
+
+Once the request is approved, the requested [additional privileges](/documentation/platform/access-controls/additional-privileges) are granted automatically. You can verify access by navigating to the environment or folder you requested access to.
+
+## Related resources
+
+- [Additional Privileges](/documentation/platform/access-controls/additional-privileges)
+- [Temporary Access](/documentation/platform/access-controls/temporary-access)
+- [Project Access Requests](/documentation/platform/access-controls/project-access-requests)
+- [Approval Workflows](/documentation/platform/pr-workflows)
