@@ -8,6 +8,16 @@ import {
 } from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@app/components/v3/generic/AlertDialog";
 import { Button } from "@app/components/v3/generic/Button";
 import { useGetPamAccountById } from "@app/hooks/api/pam";
 
@@ -36,6 +46,8 @@ export const PamDataBrowserPage = () => {
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [hasDisconnected, setHasDisconnected] = useState(false);
+  const unsavedChangeCountRef = useRef(0);
+  const [pendingTableSwitch, setPendingTableSwitch] = useState<string | null>(null);
 
   const {
     isConnected,
@@ -170,11 +182,27 @@ export const PamDataBrowserPage = () => {
   const handleTableSelect = useCallback(
     (tableName: string) => {
       if (tableName === selectedTable) return;
+      if (unsavedChangeCountRef.current > 0) {
+        setPendingTableSwitch(tableName);
+        return;
+      }
       setSelectedTable(tableName);
       loadTableDetail(selectedSchema, tableName);
     },
     [selectedTable, selectedSchema, loadTableDetail]
   );
+
+  const handleDiscardAndSwitch = useCallback(() => {
+    if (!pendingTableSwitch) return;
+    unsavedChangeCountRef.current = 0;
+    setSelectedTable(pendingTableSwitch);
+    loadTableDetail(selectedSchema, pendingTableSwitch);
+    setPendingTableSwitch(null);
+  }, [pendingTableSwitch, selectedSchema, loadTableDetail]);
+
+  const handleChangeCountUpdate = useCallback((count: number) => {
+    unsavedChangeCountRef.current = count;
+  }, []);
 
   const handleReconnect = useCallback(() => {
     setHasDisconnected(false);
@@ -305,6 +333,7 @@ export const PamDataBrowserPage = () => {
             table={selectedTable}
             executeQuery={executeQuery}
             isLoading={isLoadingDetail}
+            onChangeCountUpdate={handleChangeCountUpdate}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center">
@@ -345,6 +374,28 @@ export const PamDataBrowserPage = () => {
           </span>
         </div>
       </div>
+
+      <AlertDialog
+        open={pendingTableSwitch !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTableSwitch(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              Table contains unsaved changes. Do you want to discard them?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={handleDiscardAndSwitch}>
+              Discard changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

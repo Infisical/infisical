@@ -35,6 +35,7 @@ type DataBrowserGridProps = {
     executionTimeMs: number;
   }>;
   isLoading: boolean;
+  onChangeCountUpdate?: (count: number) => void;
 };
 
 const ROW_KEY_PREFIX = "__new_";
@@ -161,7 +162,8 @@ export const DataBrowserGrid = ({
   schema,
   table,
   executeQuery,
-  isLoading
+  isLoading,
+  onChangeCountUpdate
 }: DataBrowserGridProps) => {
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
@@ -294,6 +296,10 @@ export const DataBrowserGrid = ({
     });
     return count;
   }, [currentData, originalData, newRowTempIds, primaryKeys, tableColumns]);
+
+  useEffect(() => {
+    onChangeCountUpdate?.(changeCount);
+  }, [changeCount, onChangeCountUpdate]);
 
   const handleAddRecord = useCallback(() => {
     newRowCounterRef.current += 1;
@@ -564,7 +570,7 @@ export const DataBrowserGrid = ({
     setSelectedRowCount(0);
   }, [schema, table, primaryKeys, executeQuery, fetchData, page, pageSize, filters, sorts]);
 
-  if (isLoading || !tableDetail) {
+  if (!tableDetail) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <Skeleton className="h-64 w-96" />
