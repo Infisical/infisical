@@ -68,7 +68,7 @@ export function ShortTextCell<TData>({
     prevInitialValueRef.current = initialValue;
     setValue(initialValue);
     if (cellRef.current && !isEditing) {
-      cellRef.current.textContent = initialValue;
+      cellRef.current.textContent = initialValue ?? "";
     }
   }
 
@@ -159,6 +159,7 @@ export function ShortTextCell<TData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
 
+  const isNull = value === null || value === undefined;
   const displayValue = !isEditing ? (value ?? "") : "";
 
   return (
@@ -177,21 +178,30 @@ export function ShortTextCell<TData>({
       readOnly={readOnly}
       onKeyDown={onWrapperKeyDown}
     >
-      <div
-        role="textbox"
-        data-slot="grid-cell-content"
-        contentEditable={isEditing}
-        tabIndex={-1}
-        ref={cellRef}
-        onBlur={onBlur}
-        onInput={onInput}
-        suppressContentEditableWarning
-        className={cn("size-full overflow-hidden outline-none", {
-          "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden": isEditing
-        })}
-      >
-        {displayValue}
-      </div>
+      {isNull && !isEditing ? (
+        <span
+          data-slot="grid-cell-content"
+          className="select-none text-xs italic text-muted-foreground/50"
+        >
+          NULL
+        </span>
+      ) : (
+        <div
+          role="textbox"
+          data-slot="grid-cell-content"
+          contentEditable={isEditing}
+          tabIndex={-1}
+          ref={cellRef}
+          onBlur={onBlur}
+          onInput={onInput}
+          suppressContentEditableWarning
+          className={cn("size-full overflow-hidden outline-none", {
+            "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden": isEditing
+          })}
+        >
+          {displayValue}
+        </div>
+      )}
     </DataGridCellWrapper>
   );
 }

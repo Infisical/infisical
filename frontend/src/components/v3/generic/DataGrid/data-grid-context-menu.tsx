@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { ColumnDef, TableMeta } from "@tanstack/react-table";
-import { CopyIcon, EraserIcon, ScissorsIcon, Trash2Icon } from "lucide-react";
+import { CircleOffIcon, EraserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAsRef } from "./hooks/use-as-ref";
@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "./ui/dropdown-menu";
 import type { CellUpdate, ContextMenuState } from "./data-grid-types";
@@ -176,6 +175,23 @@ function ContextMenuImpl<TData>({
     toast.success(`${updates.length} cell${updates.length !== 1 ? "s" : ""} cleared`);
   }, [propsRef]);
 
+  const onSetNull = React.useCallback(() => {
+    const { selectionState, onDataUpdate } = propsRef.current;
+
+    if (!selectionState?.selectedCells || selectionState.selectedCells.size === 0) return;
+
+    const updates: Array<CellUpdate> = [];
+
+    for (const cellKey of selectionState.selectedCells) {
+      const { rowIndex, columnId } = parseCellKey(cellKey);
+      updates.push({ rowIndex, columnId, value: null });
+    }
+
+    onDataUpdate?.(updates);
+
+    toast.success(`${updates.length} cell${updates.length !== 1 ? "s" : ""} set to NULL`);
+  }, [propsRef]);
+
   const onDelete = React.useCallback(async () => {
     const { selectionState, onRowsDelete } = propsRef.current;
 
@@ -201,30 +217,17 @@ function ContextMenuImpl<TData>({
       <DropdownMenuContent
         data-grid-popover=""
         align="start"
-        className="w-48"
+        className="min-w-[140px] p-0.5 [&_[role=menuitem]]:gap-1.5 [&_[role=menuitem]]:px-2 [&_[role=menuitem]]:py-1 [&_[role=menuitem]]:text-xs [&_svg]:size-3"
         onCloseAutoFocus={onCloseAutoFocus}
       >
-        <DropdownMenuItem onSelect={onCopy}>
-          <CopyIcon />
-          Copy
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onCut} disabled={tableMeta?.readOnly}>
-          <ScissorsIcon />
-          Cut
-        </DropdownMenuItem>
         <DropdownMenuItem onSelect={onClear} disabled={tableMeta?.readOnly}>
           <EraserIcon />
           Clear
         </DropdownMenuItem>
-        {onRowsDelete && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-              <Trash2Icon />
-              Delete rows
-            </DropdownMenuItem>
-          </>
-        )}
+        <DropdownMenuItem onSelect={onSetNull} disabled={tableMeta?.readOnly}>
+          <CircleOffIcon />
+          Set NULL
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -66,11 +66,9 @@ export function DataGridCellWrapper<TData>({
 
   const onContextMenu = React.useCallback(
     (event: React.MouseEvent) => {
-      if (!isEditing) {
-        tableMeta?.onCellContextMenu?.(rowIndex, columnId, event);
-      }
+      tableMeta?.onCellContextMenu?.(rowIndex, columnId, event);
     },
-    [tableMeta, rowIndex, columnId, isEditing]
+    [tableMeta, rowIndex, columnId]
   );
 
   const onDoubleClick = React.useCallback(
