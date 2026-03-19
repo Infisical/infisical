@@ -14,6 +14,9 @@ import {
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { EnforcementLevel } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { AuthMethod } from "@app/services/auth/auth-type";
+
+export type HubSpotSignupMethod = AuthMethod | "invite";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
