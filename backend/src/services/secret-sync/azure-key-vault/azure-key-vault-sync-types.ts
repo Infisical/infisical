@@ -21,6 +21,7 @@ export type TAzureKeyVaultSyncWithCredentials = TAzureKeyVaultSync & {
 export interface GetAzureKeyVaultSecret {
   id: string; // secret URI
   value: string;
+  contentType?: string;
   attributes: {
     enabled: boolean;
     created: number;
