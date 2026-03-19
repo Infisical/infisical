@@ -1,0 +1,1 @@
+export { SecretEnforcementTab } from "./SecretEnforcementTab";
