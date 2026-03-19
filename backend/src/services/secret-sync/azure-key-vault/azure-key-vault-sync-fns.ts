@@ -16,9 +16,9 @@ type TAzureKeyVaultSyncFactoryDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
-export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzureKeyVaultSyncFactoryDeps) => {
-  const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "application/x-pem-file"];
+const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "application/x-pem-file"] as const;
 
+export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzureKeyVaultSyncFactoryDeps) => {
   const $getAzureKeyVaultSecrets = async (
     accessToken: string,
     vaultBaseUrl: string,
@@ -49,7 +49,10 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
     // filter them out at the list stage if the option is enabled (avoids fetching their values too)
     const visibleSecrets = disableCertificateImport
       ? getAzureKeyVaultSecrets.filter(
-          (secret) => !AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES.includes(secret.contentType ?? "")
+          (secret) =>
+            !AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES.includes(
+              secret.contentType as (typeof AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES)[number]
+            )
         )
       : getAzureKeyVaultSecrets;
 
