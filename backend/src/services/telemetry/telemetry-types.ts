@@ -12,6 +12,9 @@ import {
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
 import { EnforcementLevel } from "@app/lib/types";
+import { AuthMethod } from "@app/services/auth/auth-type";
+
+export type HubSpotSignupMethod = AuthMethod | "invite";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
