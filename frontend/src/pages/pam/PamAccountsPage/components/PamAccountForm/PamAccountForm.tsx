@@ -50,7 +50,6 @@ const CreateForm = ({
     }
   ) => {
     const { internalMetadata, ...rest } = formData;
-    console.log(rest);
     const account = await createPamAccount.mutateAsync({
       ...rest,
       folderId,
@@ -157,7 +156,6 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
     }
   ) => {
     const { internalMetadata, ...rest } = formData;
-    console.log(rest);
     const updatedAccount = await updatePamAccount.mutateAsync({
       accountId: account.id,
       resourceType: account.resource.resourceType,

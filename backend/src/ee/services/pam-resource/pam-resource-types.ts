@@ -157,6 +157,12 @@ export type TPamResourceFactory<
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;
   rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<C>;
-  postRotate?: (accountId: string, newCredentials: C, projectId: string, ctx: TPostRotateContext) => Promise<void>;
+  postRotate?: (
+    accountId: string,
+    newCredentials: C,
+    projectId: string,
+    ctx: TPostRotateContext,
+    rotationAccountCredentials: C
+  ) => Promise<void>;
   handleOverwritePreventionForCensoredValues: (updatedAccountCredentials: C, currentCredentials: C) => Promise<C>;
 };

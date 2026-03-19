@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import picomatch from "picomatch";
 
-import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamResources } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TableName, TPamAccounts, TPamResources } from "@app/db/schemas";
 import {
   extractAwsAccountIdFromArn,
   generateConsoleFederationUrl,
@@ -1110,10 +1110,16 @@ export const pamAccountServiceFactory = ({
     let logResourceType = "unknown";
     try {
       // Atomically claim rotation lock, only proceeds if not already rotating
-      const [claimed] = await pamAccountDAL.update(
-        { id: account.id, $notEqual: { rotationStatus: PamAccountRotationStatus.Rotating } },
-        { rotationStatus: PamAccountRotationStatus.Rotating }
-      );
+      const claimed = await pamAccountDAL.transaction(async (tx) => {
+        const updated = await tx(TableName.PamAccount)
+          .where({ id: account.id })
+          .where((qb) => {
+            void qb.whereNull("rotationStatus").orWhereNot("rotationStatus", PamAccountRotationStatus.Rotating);
+          })
+          .update({ rotationStatus: PamAccountRotationStatus.Rotating })
+          .returning("*");
+        return updated[0];
+      });
       if (!claimed) return;
 
       // Read resource
@@ -1178,11 +1184,13 @@ export const pamAccountServiceFactory = ({
       // Run post-rotate hook
       if (factory.postRotate) {
         try {
-          await factory.postRotate(account.id, newCredentials, account.projectId, {
-            pamAccountDependenciesDAL,
-            pamResourceDAL,
-            kmsService
-          });
+          await factory.postRotate(
+            account.id,
+            newCredentials,
+            account.projectId,
+            { pamAccountDependenciesDAL, pamResourceDAL, kmsService },
+            rotationAccountCredentials
+          );
         } catch (postRotateError) {
           logger.error(postRotateError, `Post-rotation hook failed for account [accountId=${account.id}]`);
         }

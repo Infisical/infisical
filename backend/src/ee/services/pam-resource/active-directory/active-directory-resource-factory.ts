@@ -7,13 +7,17 @@ import { logger } from "@app/lib/logger";
 
 import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
+import { generatePassword } from "../../secret-rotation-v2/shared/utils";
 import { PamResource } from "../pam-resource-enums";
 import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
   TPamResourceFactoryValidateAccountCredentials,
-  TPamResourceInternalMetadata
+  TPamResourceInternalMetadata,
+  TPostRotateContext
 } from "../pam-resource-types";
+import { syncDependenciesAfterRotation } from "../shared/dependency-sync-fns";
+import { resolveDnsTcp } from "../shared/dns-over-dc";
 import {
   TActiveDirectoryAccountCredentials,
   TActiveDirectoryResourceConnectionDetails
@@ -66,9 +70,7 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
   TPamResourceInternalMetadata
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
-    if (!gatewayId) {
-      throw new BadRequestError({ message: "Gateway ID is required" });
-    }
+    if (!gatewayId) throw new BadRequestError({ message: "Gateway is required for connection validation" });
 
     try {
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (proxyPort) => {
@@ -117,39 +119,44 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
   const validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<
     TActiveDirectoryAccountCredentials
   > = async (credentials) => {
-    if (!gatewayId) {
-      throw new BadRequestError({ message: "Gateway ID is required" });
-    }
+    if (!gatewayId) throw new BadRequestError({ message: "Gateway is required for credential validation" });
 
     try {
-      await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (proxyPort) => {
-        return new Promise<void>((resolve, reject) => {
-          // Bind DN uses UPN format: username@domain
-          const bindDn = `${credentials.username}@${connectionDetails.domain}`;
+      await executeWithGateway(
+        { connectionDetails, gatewayId, resourceType, targetPortOverride: 636 },
+        gatewayV2Service,
+        async (proxyPort) => {
+          return new Promise<void>((resolve, reject) => {
+            const bindDn = `${credentials.username}@${connectionDetails.domain}`;
 
-          const client = ldapjs.createClient({
-            url: `ldap://localhost:${proxyPort}`,
-            connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
-            timeout: EXTERNAL_REQUEST_TIMEOUT
-          });
+            const client = ldapjs.createClient({
+              url: `ldaps://localhost:${proxyPort}`,
+              connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
+              timeout: EXTERNAL_REQUEST_TIMEOUT,
+              tlsOptions: {
+                rejectUnauthorized: false
+              }
+            });
 
-          client.on("error", (err: Error) => {
-            client.unbind();
-            reject(err);
-          });
-
-          client.bind(bindDn, credentials.password, (err) => {
-            if (err) {
+            client.on("error", (err: Error) => {
               client.unbind();
-              reject(new Error("LDAP bind failed: invalid credentials"));
-            } else {
-              logger.info("[Active Directory Resource Factory] LDAP credential validation successful");
-              client.unbind();
-              resolve();
-            }
+              reject(err);
+            });
+
+            client.bind(bindDn, credentials.password, (err) => {
+              if (err) {
+                client.unbind();
+                logger.warn(err, "[Active Directory Resource Factory] LDAP bind failed during credential validation");
+                reject(new Error(`LDAP bind failed: ${err.message}`));
+              } else {
+                logger.info("[Active Directory Resource Factory] LDAP credential validation successful");
+                client.unbind();
+                resolve();
+              }
+            });
           });
-        });
-      });
+        }
+      );
     } catch (error) {
       throw new BadRequestError({
         message: `Unable to validate credentials for ${resourceType}: ${(error as Error).message || String(error)}`
@@ -161,9 +168,144 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
 
   const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<
     TActiveDirectoryAccountCredentials
-  > = async () => {
-    throw new BadRequestError({
-      message: "Credential rotation is not yet supported for Active Directory resources"
+  > = async (rotationAccountCredentials, currentCredentials) => {
+    if (!gatewayId) throw new BadRequestError({ message: "Gateway is required for AD credential rotation" });
+
+    const newPassword = generatePassword();
+
+    // AD requires LDAPS (port 636) for unicodePwd changes
+    await executeWithGateway(
+      { connectionDetails, gatewayId, resourceType, targetPortOverride: 636 },
+      gatewayV2Service,
+      async (proxyPort) => {
+        return new Promise<void>((resolve, reject) => {
+          const client = ldapjs.createClient({
+            url: `ldaps://localhost:${proxyPort}`,
+            connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
+            timeout: EXTERNAL_REQUEST_TIMEOUT,
+            tlsOptions: {
+              rejectUnauthorized: false
+            }
+          });
+
+          client.on("error", (err: Error) => {
+            client.unbind();
+            reject(err);
+          });
+
+          // Bind as rotation account (admin)
+          const bindDn = `${rotationAccountCredentials.username}@${connectionDetails.domain}`;
+          client.bind(bindDn, rotationAccountCredentials.password, (bindErr) => {
+            if (bindErr) {
+              client.unbind();
+              reject(new Error(`Rotation account bind failed: ${bindErr.message}`));
+              return;
+            }
+
+            // Search for target user's DN by sAMAccountName
+            const searchBase = connectionDetails.domain
+              .split(".")
+              .map((dc) => `DC=${dc}`)
+              .join(",");
+
+            client.search(
+              searchBase,
+              {
+                filter: new ldapjs.EqualityFilter({ attribute: "sAMAccountName", value: currentCredentials.username }),
+                scope: "sub",
+                attributes: ["dn"]
+              },
+              (searchErr, searchRes) => {
+                if (searchErr) {
+                  client.unbind();
+                  reject(new Error(`LDAP search failed: ${searchErr.message}`));
+                  return;
+                }
+
+                let userDn: string | null = null;
+
+                searchRes.on("searchEntry", (entry) => {
+                  userDn = entry.objectName;
+                });
+
+                searchRes.on("error", (err) => {
+                  client.unbind();
+                  reject(new Error(`LDAP search error: ${err.message}`));
+                });
+
+                searchRes.on("end", () => {
+                  if (!userDn) {
+                    client.unbind();
+                    reject(new Error(`User '${currentCredentials.username}' not found in AD`));
+                    return;
+                  }
+
+                  // Admin reset: use "replace" operation on unicodePwd
+                  const encodedPassword = Buffer.from(`"${newPassword}"`, "utf16le");
+                  const change = new ldapjs.Change({
+                    operation: "replace",
+                    modification: { type: "unicodePwd", values: [encodedPassword] }
+                  });
+
+                  client.modify(userDn, change, (modifyErr) => {
+                    client.unbind();
+                    if (modifyErr) {
+                      reject(new Error(`AD password reset failed: ${modifyErr.message}`));
+                    } else {
+                      logger.info(
+                        `[AD Rotation] Password rotated for ${currentCredentials.username} on ${connectionDetails.domain}`
+                      );
+                      resolve();
+                    }
+                  });
+                });
+              }
+            );
+          });
+        });
+      }
+    );
+
+    return { username: currentCredentials.username, password: newPassword };
+  };
+
+  const postRotate = async (
+    accountId: string,
+    newCredentials: TActiveDirectoryAccountCredentials,
+    projectId: string,
+    ctx: TPostRotateContext,
+    rotationAccountCredentials: TActiveDirectoryAccountCredentials
+  ) => {
+    if (!gatewayId) return;
+
+    await syncDependenciesAfterRotation({
+      accountId,
+      newCredentials,
+      projectId,
+      ctx,
+      gatewayV2Service,
+      rotationCredentials: rotationAccountCredentials,
+      gatewayId,
+      resolveHostname: async (hostname) => {
+        // Resolve via DC's DNS through the gateway
+        return executeWithGateway(
+          { connectionDetails, gatewayId, resourceType, targetPortOverride: 53 },
+          gatewayV2Service,
+          async (proxyPort) => {
+            const ip = await resolveDnsTcp(hostname, proxyPort);
+            if (ip) {
+              logger.info(`[AD DependencySync] Resolved ${hostname} -> ${ip}`);
+              return ip;
+            }
+            logger.warn(`[AD DependencySync] DNS resolution failed for ${hostname}, using original`);
+            return hostname;
+          }
+        );
+      },
+      formatWinrmUsername: (rotationUsername) => {
+        const netbiosDomain = connectionDetails.domain.split(".")[0].toUpperCase();
+        return `${netbiosDomain}\\${rotationUsername}`;
+      }
     });
   };
 
@@ -185,6 +327,7 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
     validateConnection,
     validateAccountCredentials,
     rotateAccountCredentials,
+    postRotate,
     handleOverwritePreventionForCensoredValues
   };
 };

@@ -210,6 +210,7 @@ export type TPamAccountDependency = {
   isRotationSyncEnabled: boolean;
   syncStatus?: string | null;
   lastSyncedAt?: string | null;
+  lastSyncMessage?: string | null;
   resourceName?: string | null;
   createdAt: string;
   updatedAt: string;

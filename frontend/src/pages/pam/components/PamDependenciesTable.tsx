@@ -142,9 +142,14 @@ const DependencyRow = ({
                   )[dep.syncStatus] ?? dep.syncStatus}
                 </Badge>
               </TooltipTrigger>
-              {dep.lastSyncedAt && (
-                <TooltipContent side="top">
-                  Last synced: {format(new Date(dep.lastSyncedAt), "MMM d, yyyy HH:mm")}
+              {(dep.lastSyncedAt || dep.lastSyncMessage) && (
+                <TooltipContent side="top" className="max-w-xs">
+                  {dep.lastSyncedAt && (
+                    <p>Last synced: {format(new Date(dep.lastSyncedAt), "MMM d, yyyy HH:mm")}</p>
+                  )}
+                  {dep.syncStatus === "failed" && dep.lastSyncMessage && (
+                    <p className="mt-1 text-danger">{dep.lastSyncMessage}</p>
+                  )}
                 </TooltipContent>
               )}
             </Tooltip>

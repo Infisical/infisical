@@ -1,6 +1,5 @@
 import net from "node:net";
 
-import * as dnsPacket from "dns-packet";
 import { Knex } from "knex";
 import ldapjs from "ldapjs";
 import RE2 from "re2";
@@ -27,6 +26,7 @@ import {
 import { TPamResourceDALFactory } from "../../pam-resource/pam-resource-dal";
 import { PamResource } from "../../pam-resource/pam-resource-enums";
 import { encryptResourceConnectionDetails, encryptResourceInternalMetadata } from "../../pam-resource/pam-resource-fns";
+import { resolveDnsTcp } from "../../pam-resource/shared/dns-over-dc";
 import { WindowsAccountType, WindowsProtocol } from "../../pam-resource/windows-server/windows-server-resource-enums";
 import {
   TWindowsAccountCredentials,
@@ -287,56 +287,6 @@ const executeWithGateway = async <T>(
       relay: platformConnectionDetails.relay
     }
   );
-};
-
-// Resolve a single hostname to an IP via DNS-over-TCP through the gateway proxy
-const resolveDnsTcp = (hostname: string, port: number): Promise<string | null> => {
-  return new Promise((resolve) => {
-    const query = dnsPacket.streamEncode({
-      type: "query",
-      flags: dnsPacket.RECURSION_DESIRED,
-      questions: [{ type: "A", name: hostname }]
-    });
-
-    const socket = net.connect({ host: "127.0.0.1", port }, () => {
-      socket.write(query);
-    });
-
-    // Max legitimate DNS-over-TCP response: 2-byte length prefix + 65535 bytes payload
-    const MAX_DNS_TCP_SIZE = 2 + 65535;
-    let responseData = Buffer.alloc(0);
-
-    socket.on("data", (chunk: Buffer) => {
-      responseData = Buffer.concat([responseData, chunk]);
-
-      if (responseData.length > MAX_DNS_TCP_SIZE) {
-        socket.destroy();
-        resolve(null);
-        return;
-      }
-
-      // DNS-over-TCP frames each message with a 2-byte big-endian length prefix
-      // wait until we have the full frame before decoding
-      if (responseData.length >= 2) {
-        const msgLen = responseData.readUInt16BE(0);
-        if (responseData.length >= 2 + msgLen) {
-          const response = dnsPacket.streamDecode(responseData);
-          const aRecord = response.answers?.find((a) => a.type === "A");
-          socket.destroy();
-          resolve(aRecord && "data" in aRecord ? (aRecord.data as string) : null);
-        }
-      }
-    });
-
-    socket.on("error", () => {
-      resolve(null);
-    });
-
-    socket.setTimeout(5000, () => {
-      socket.destroy();
-      resolve(null);
-    });
-  });
 };
 
 // Resolve AD hostnames to IP addresses by querying DNS over TCP through the DC
@@ -924,7 +874,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             client.bind(bindDn, credentials.password, (err) => {
               if (err) {
                 client.unbind();
-                reject(new Error("LDAP bind failed: invalid credentials"));
+                logger.warn(err, "PAM AD discovery LDAP bind failed during connection validation");
+                reject(new Error(`LDAP bind failed: ${err.message}`));
               } else {
                 client.unbind();
                 resolve();

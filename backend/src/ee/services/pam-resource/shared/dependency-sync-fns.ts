@@ -14,7 +14,8 @@ import { PamAccountDependencyType } from "../../pam-discovery/pam-discovery-enum
 import { decryptResource } from "../pam-resource-fns";
 import { TPostRotateContext } from "../pam-resource-types";
 
-export const WINRM_PORT = 5985;
+export const WINRM_DEFAULT_HTTP_PORT = 5985;
+export const WINRM_DEFAULT_HTTPS_PORT = 5986;
 
 // Escape a string for use inside PowerShell single-quoted strings (doubles single quotes)
 export const escapePowershellSingleQuote = (value: string) => new RE2("'", "g").replace(value, "''");
@@ -61,6 +62,11 @@ type TSyncDependenciesParams = {
   projectId: string;
   ctx: TPostRotateContext;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  rotationCredentials: { username: string; password: string };
+  gatewayId: string;
+  winrmPort?: number;
+  useWinrmHttps?: boolean;
+  resolveHostname?: (hostname: string) => Promise<string>;
   formatWinrmUsername?: (rotationUsername: string, hostname: string, resourceType: string) => string;
 };
 
@@ -70,15 +76,21 @@ export const syncDependenciesAfterRotation = async ({
   projectId,
   ctx,
   gatewayV2Service,
+  rotationCredentials,
+  gatewayId,
+  winrmPort,
+  useWinrmHttps = false,
+  resolveHostname,
   formatWinrmUsername
 }: TSyncDependenciesParams) => {
+  const effectiveWinrmPort = winrmPort ?? (useWinrmHttps ? WINRM_DEFAULT_HTTPS_PORT : WINRM_DEFAULT_HTTP_PORT);
   const allDeps = await ctx.pamAccountDependenciesDAL.findByAccountId(accountId);
   const enabledDeps = allDeps.filter((d) => d.isRotationSyncEnabled);
   if (!enabledDeps.length) return;
 
   const grouped = groupBy(enabledDeps, (d) => d.resourceId);
 
-  // Batch-fetch all target resources in a single query
+  // Batch-fetch all target resources to get their hostnames
   const resourceIds = Object.keys(grouped);
   const resources = await ctx.pamResourceDAL.find({ $in: { id: resourceIds } });
   const resourceMap = new Map(resources.map((r) => [r.id, r]));
@@ -104,18 +116,10 @@ export const syncDependenciesAfterRotation = async ({
         return;
       }
 
-      let rotationCredentials: { username: string; password: string } | null = null;
-      let depGatewayId: string | null = null;
+      // Get hostname from the target resource's connection details
       let hostname: string | null = null;
-
       try {
         const decrypted = await decryptResource(resource, projectId, ctx.kmsService);
-        rotationCredentials = decrypted.rotationAccountCredentials as {
-          username: string;
-          password: string;
-        } | null;
-        depGatewayId = decrypted.gatewayId ?? null;
-
         const connDetails = decrypted.connectionDetails as { hostname?: string; domain?: string };
         hostname = connDetails.hostname ?? connDetails.domain ?? null;
       } catch (err) {
@@ -123,8 +127,8 @@ export const syncDependenciesAfterRotation = async ({
         return;
       }
 
-      if (!rotationCredentials || !depGatewayId || !hostname) {
-        logger.warn(`[DependencySync] Missing rotation credentials or gateway for resource ${resourceId}, skipping`);
+      if (!hostname) {
+        logger.warn(`[DependencySync] No hostname found for resource ${resourceId}, skipping`);
         return;
       }
 
@@ -132,23 +136,21 @@ export const syncDependenciesAfterRotation = async ({
         ? formatWinrmUsername(rotationCredentials.username, hostname, resource.resourceType)
         : rotationCredentials.username;
 
-      // Resolve host and gateway connection once per resource group
+      // Resolve hostname — use custom resolver (e.g. DC DNS) if provided, otherwise use as-is
+      let resolvedHost = hostname;
+      if (resolveHostname) {
+        try {
+          resolvedHost = await resolveHostname(hostname);
+        } catch (err) {
+          logger.warn(err, `[DependencySync] Failed to resolve hostname ${hostname}, using original`);
+        }
+      }
+
       const [targetHost] = await verifyHostInputValidity({
-        host: hostname,
+        host: resolvedHost,
         isGateway: true,
         isDynamicSecret: false
       });
-
-      const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-        gatewayId: depGatewayId,
-        targetHost,
-        targetPort: WINRM_PORT
-      });
-
-      if (!platformConnectionDetails) {
-        logger.warn(`[DependencySync] Unable to connect to gateway for resource ${resourceId}, skipping`);
-        return;
-      }
 
       // eslint-disable-next-line no-restricted-syntax
       for (const dep of deps) {
@@ -159,15 +161,36 @@ export const syncDependenciesAfterRotation = async ({
           const script = buildDependencySyncScript(dep, newCredentials.username, newCredentials.password);
 
           // eslint-disable-next-line no-await-in-loop
+          const depConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+            gatewayId,
+            targetHost,
+            targetPort: effectiveWinrmPort
+          });
+
+          if (!depConnectionDetails) {
+            logger.warn(`[DependencySync] Unable to get gateway connection for dep ${dep.name}, skipping`);
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
+          // eslint-disable-next-line no-await-in-loop
           await withGatewayV2Proxy(
             async (proxyPort) => {
-              await runPowershell(script, "localhost", winrmUsername, rotationCredentials!.password, proxyPort);
+              await runPowershell(
+                script,
+                "localhost",
+                winrmUsername,
+                rotationCredentials.password,
+                proxyPort,
+                useWinrmHttps,
+                false
+              );
             },
             {
               protocol: GatewayProxyProtocol.Tcp,
-              relayHost: platformConnectionDetails.relayHost,
-              gateway: platformConnectionDetails.gateway,
-              relay: platformConnectionDetails.relay
+              relayHost: depConnectionDetails.relayHost,
+              gateway: depConnectionDetails.gateway,
+              relay: depConnectionDetails.relay
             }
           );
 
