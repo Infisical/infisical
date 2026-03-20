@@ -421,7 +421,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   const TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify";
-  const TELEMETRY_IDENTIFY_CACHE_TTL = 600; // 10 minutes
+  const TELEMETRY_IDENTIFY_CACHE_TTL = 86400; // 24 hours
 
   // In-memory fallback dedup set to limit blast radius during Redis outages
   const inMemoryIdentifyDedup = new Set<string>();
