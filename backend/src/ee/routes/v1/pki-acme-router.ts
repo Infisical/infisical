@@ -100,8 +100,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => server.services.pkiAcme.getAcmeDirectory(req.params.profileId)
   });
 
-  // HEAD /api/v1/cert-manager/acme/profiles/<profile_id>/new-nonce
-  // New Nonce (RFC 8555 Section 7.2)
+  // HEAD & GET /api/v1/cert-manager/acme/profiles/<profile_id>/new-nonce
+  // New Nonce (RFC 8555 Section 7.2) - HEAD returns 200, GET returns 204
   server.route({
     method: "HEAD",
     url: "/profiles/:profileId/new-nonce",
@@ -123,7 +123,33 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
       res.header("Replay-Nonce", nonce);
+      res.header("Cache-Control", "no-store");
       return "";
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/profiles/:profileId/new-nonce",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAcme],
+      description: "ACME New Nonce (GET) - generate a new nonce and return in Replay-Nonce header with 204 No Content",
+      params: z.object({
+        profileId: z.string().uuid()
+      }),
+      response: {
+        204: z.string().length(0)
+      }
+    },
+    handler: async (req, res) => {
+      const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
+      res.header("Replay-Nonce", nonce);
+      res.header("Cache-Control", "no-store");
+      void res.status(204).send("");
     }
   });
 
