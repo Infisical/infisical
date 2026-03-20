@@ -21,7 +21,8 @@ import {
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
-import AWS, { AWSError } from "aws-sdk";
+import type { AWSError } from "aws-sdk";
+import SSM from "aws-sdk/clients/ssm";
 import { AxiosError } from "axios";
 import https from "https";
 import sodium from "libsodium-wrappers";
@@ -827,7 +828,8 @@ const syncSecretsAWSParameterStore = async ({
     secretAccessKey = accessToken;
   }
 
-  const config = new AWS.Config({
+  const ssm = new SSM({
+    apiVersion: "2014-11-06",
     region: integration.region as string,
     credentials: {
       accessKeyId,
@@ -836,14 +838,8 @@ const syncSecretsAWSParameterStore = async ({
     }
   });
 
-  const ssm = new AWS.SSM({
-    apiVersion: "2014-11-06",
-    region: integration.region as string
-  });
-  ssm.config.update(config);
-
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
-  const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter & { KeyId?: string }> = {};
+  const awsParameterStoreSecretsObj: Record<string, SSM.Parameter & { KeyId?: string }> = {};
   logger.info(
     `getIntegrationSecrets: integration sync triggered for ssm with [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [shouldDisableDelete=${metadata.shouldDisableDelete}]`
   );
