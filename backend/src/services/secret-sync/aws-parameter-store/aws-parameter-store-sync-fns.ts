@@ -1,4 +1,5 @@
-import AWS, { AWSError } from "aws-sdk";
+import type { AWSError } from "aws-sdk";
+import SSM from "aws-sdk/clients/ssm";
 import handlebars from "handlebars";
 
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
@@ -8,8 +9,8 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsParameterStoreSyncWithCredentials } from "./aws-parameter-store-sync-types";
 
-type TAWSParameterStoreRecord = Record<string, AWS.SSM.Parameter>;
-type TAWSParameterStoreMetadataRecord = Record<string, AWS.SSM.ParameterMetadata>;
+type TAWSParameterStoreRecord = Record<string, SSM.Parameter>;
+type TAWSParameterStoreMetadataRecord = Record<string, SSM.ParameterMetadata>;
 type TAWSParameterStoreTagsRecord = Record<string, Record<string, string>>;
 
 const MAX_RETRIES = 10;
@@ -20,7 +21,7 @@ const getSSM = async (secretSync: TAwsParameterStoreSyncWithCredentials) => {
 
   const config = await getAwsConnectionConfig(connection, destinationConfig.region);
 
-  const ssm = new AWS.SSM({
+  const ssm = new SSM({
     apiVersion: "2014-11-06",
     region: destinationConfig.region
   });
@@ -62,7 +63,7 @@ const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema
 };
 
 const getParametersByPath = async (
-  ssm: AWS.SSM,
+  ssm: SSM,
   path: string,
   keySchema: string | undefined,
   environment: string
@@ -118,7 +119,7 @@ const getParametersByPath = async (
 };
 
 const getParameterMetadataByPath = async (
-  ssm: AWS.SSM,
+  ssm: SSM,
   path: string,
   keySchema: string | undefined,
   environment: string
@@ -178,7 +179,7 @@ const getParameterMetadataByPath = async (
 };
 
 const getParameterStoreTagsRecord = async (
-  ssm: AWS.SSM,
+  ssm: SSM,
   awsParameterStoreSecretsRecord: TAWSParameterStoreRecord,
   needsTagsPermissions: boolean
 ): Promise<{ shouldManageTags: boolean; awsParameterStoreTagsRecord: TAWSParameterStoreTagsRecord }> => {
@@ -230,7 +231,7 @@ const processParameterTags = ({
   syncTagsRecord: Record<string, string>;
   awsTagsRecord: Record<string, string>;
 }) => {
-  const tagsToAdd: AWS.SSM.TagList = [];
+  const tagsToAdd: SSM.TagList = [];
   const tagKeysToRemove: string[] = [];
 
   for (const syncEntry of Object.entries(syncTagsRecord)) {
@@ -248,10 +249,10 @@ const processParameterTags = ({
 };
 
 const putParameter = async (
-  ssm: AWS.SSM,
-  params: AWS.SSM.PutParameterRequest,
+  ssm: SSM,
+  params: SSM.PutParameterRequest,
   attempt = 0
-): Promise<AWS.SSM.PutParameterResult> => {
+): Promise<SSM.PutParameterResult> => {
   try {
     return await ssm.putParameter(params).promise();
   } catch (error) {
@@ -266,10 +267,10 @@ const putParameter = async (
 };
 
 const addTagsToParameter = async (
-  ssm: AWS.SSM,
-  params: Omit<AWS.SSM.AddTagsToResourceRequest, "ResourceType">,
+  ssm: SSM,
+  params: Omit<SSM.AddTagsToResourceRequest, "ResourceType">,
   attempt = 0
-): Promise<AWS.SSM.AddTagsToResourceResult> => {
+): Promise<SSM.AddTagsToResourceResult> => {
   try {
     return await ssm.addTagsToResource({ ...params, ResourceType: "Parameter" }).promise();
   } catch (error) {
@@ -284,10 +285,10 @@ const addTagsToParameter = async (
 };
 
 const removeTagsFromParameter = async (
-  ssm: AWS.SSM,
-  params: Omit<AWS.SSM.RemoveTagsFromResourceRequest, "ResourceType">,
+  ssm: SSM,
+  params: Omit<SSM.RemoveTagsFromResourceRequest, "ResourceType">,
   attempt = 0
-): Promise<AWS.SSM.RemoveTagsFromResourceResult> => {
+): Promise<SSM.RemoveTagsFromResourceResult> => {
   try {
     return await ssm.removeTagsFromResource({ ...params, ResourceType: "Parameter" }).promise();
   } catch (error) {
@@ -302,11 +303,11 @@ const removeTagsFromParameter = async (
 };
 
 const deleteParametersBatch = async (
-  ssm: AWS.SSM,
-  parameters: AWS.SSM.Parameter[],
+  ssm: SSM,
+  parameters: SSM.Parameter[],
   attempt = 0
-): Promise<AWS.SSM.DeleteParameterResult[]> => {
-  const results: AWS.SSM.DeleteParameterResult[] = [];
+): Promise<SSM.DeleteParameterResult[]> => {
+  const results: SSM.DeleteParameterResult[] = [];
   let remainingParams = [...parameters];
 
   while (remainingParams.length > 0) {
@@ -441,7 +442,7 @@ export const AwsParameterStoreSyncFns = {
 
     if (syncOptions.disableSecretDeletion) return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
 
-    const parametersToDelete: AWS.SSM.Parameter[] = [];
+    const parametersToDelete: SSM.Parameter[] = [];
 
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, parameter] = entry;
@@ -487,7 +488,7 @@ export const AwsParameterStoreSyncFns = {
       environment!.slug
     );
 
-    const parametersToDelete: AWS.SSM.Parameter[] = [];
+    const parametersToDelete: SSM.Parameter[] = [];
 
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, param] = entry;
