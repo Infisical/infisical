@@ -29,6 +29,7 @@ type DataBrowserToolbarProps = {
   onDiscard: () => void;
   isSaving: boolean;
   onAddRecord: () => void;
+  hasNewRow: boolean;
   selectedRowCount: number;
   onDeleteSelected: () => void;
   totalCount: number;
@@ -53,6 +54,7 @@ export const DataBrowserToolbar = ({
   onDiscard,
   isSaving,
   onAddRecord,
+  hasNewRow,
   selectedRowCount,
   onDeleteSelected,
   totalCount,
@@ -78,7 +80,7 @@ export const DataBrowserToolbar = ({
         {hasPrimaryKey && (
           <>
             <div className="h-4 w-px bg-border" />
-            <Button variant="outline" size="xs" onClick={onAddRecord} className="gap-1">
+            <Button variant="outline" size="xs" onClick={onAddRecord} disabled={hasNewRow} className="gap-1">
               <PlusIcon className="size-3" />
               Add record
             </Button>

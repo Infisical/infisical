@@ -173,6 +173,8 @@ export const DataBrowserGrid = ({
   const primaryKeys = tableDetail?.primaryKeys ?? [];
   const tableColumns = tableDetail?.columns ?? [];
   const hasPrimaryKey = primaryKeys.length > 0;
+  const primaryKeysRef = useRef(primaryKeys);
+  primaryKeysRef.current = primaryKeys;
 
   // Measure container height for the virtualized grid
   useEffect(() => {
@@ -270,12 +272,27 @@ export const DataBrowserGrid = ({
     setPage(1);
   }, []);
 
-  // Change tracking — use index-based comparison so edits to PK columns are detected
+  // PK-based lookup map for O(1) original row matching (avoids index misalignment after prepend)
+  const originalDataByPk = useMemo(() => {
+    if (primaryKeys.length === 0) return null;
+    const map = new Map<string, Record<string, unknown>>();
+    originalData.forEach((row) => {
+      map.set(getRowKey(row, primaryKeys), row);
+    });
+    return map;
+  }, [originalData, primaryKeys]);
+
+  const originalDataByPkRef = useRef(originalDataByPk);
+  originalDataByPkRef.current = originalDataByPk;
+
+  // Change tracking — use PK-based lookup so new row prepends don't misalign indices
   const changeCount = useMemo(() => {
     let count = newRowTempIds.size;
-    currentData.forEach((row, idx) => {
+    if (!originalDataByPk) return count;
+    currentData.forEach((row) => {
       if (row.tempRowId && newRowTempIds.has(String(row.tempRowId))) return;
-      const original = originalData[idx];
+      const key = getRowKey(row, primaryKeys);
+      const original = originalDataByPk.get(key);
       if (!original) return;
       const hasChanges = tableColumns.some(
         (col) => String(row[col.name] ?? "") !== String(original[col.name] ?? "")
@@ -283,7 +300,7 @@ export const DataBrowserGrid = ({
       if (hasChanges) count += 1;
     });
     return count;
-  }, [currentData, originalData, newRowTempIds, tableColumns]);
+  }, [currentData, originalDataByPk, primaryKeys, newRowTempIds, tableColumns]);
 
   useEffect(() => {
     onChangeCountUpdate?.(changeCount);
@@ -394,10 +411,11 @@ export const DataBrowserGrid = ({
         statements.push(buildInsertQuery({ schema, table, row: values }));
       });
 
-      // Updates (changed rows) — use index-based lookup so PK edits are detected
-      currentData.forEach((row, idx) => {
+      // Updates (changed rows) — use PK-based lookup so prepends don't misalign
+      const pkMap = originalDataByPk;
+      currentData.forEach((row) => {
         if (row.tempRowId) return;
-        const original = originalData[idx];
+        const original = pkMap ? pkMap.get(getRowKey(row, primaryKeys)) : undefined;
         if (!original) return;
         const changes: Record<string, unknown> = {};
         tableColumns.forEach((col) => {
@@ -442,7 +460,7 @@ export const DataBrowserGrid = ({
     }
   }, [
     currentData,
-    originalData,
+    originalDataByPk,
     newRowTempIds,
     tableColumns,
     primaryKeys,
@@ -464,8 +482,6 @@ export const DataBrowserGrid = ({
   // while always reading the latest data.
   const currentDataRef = useRef(currentData);
   currentDataRef.current = currentData;
-  const originalDataRef = useRef(originalData);
-  originalDataRef.current = originalData;
   const newRowTempIdsRef = useRef(newRowTempIds);
   newRowTempIdsRef.current = newRowTempIds;
 
@@ -474,7 +490,10 @@ export const DataBrowserGrid = ({
       const row = currentDataRef.current[rowIndex];
       if (!row) return false;
       if (row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId))) return true;
-      const original = originalDataRef.current[rowIndex];
+      const pkMap = originalDataByPkRef.current;
+      if (!pkMap) return false;
+      const key = getRowKey(row, primaryKeysRef.current);
+      const original = pkMap.get(key);
       if (!original) return false;
       return String(row[columnId] ?? "") !== String(original[columnId] ?? "");
     },
@@ -599,6 +618,7 @@ export const DataBrowserGrid = ({
         onDiscard={handleDiscard}
         isSaving={isSaving}
         onAddRecord={handleAddRecord}
+        hasNewRow={newRowTempIds.size > 0}
         selectedRowCount={selectedRowCount}
         onDeleteSelected={handleDeleteSelected}
         totalCount={totalCount}
