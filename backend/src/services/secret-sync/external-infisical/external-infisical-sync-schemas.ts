@@ -63,6 +63,7 @@ export const ExternalInfisicalSyncListItemSchema = z
     name: z.literal("Infisical"),
     connection: z.literal(AppConnection.ExternalInfisical),
     destination: z.literal(SecretSync.ExternalInfisical),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.ExternalInfisical] }));
