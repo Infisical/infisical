@@ -48,7 +48,7 @@ export const ExternalInfisicalSyncFields = () => {
     // Remote API may key by env slug or by env id; support both
     const envData =
       tree[environmentSlug] ?? Object.values(tree).find((env) => env.slug === environmentSlug);
-    const folders = envData?.folders ?? [];
+    const folders = (envData?.folders ?? []).filter((f) => f.path !== "/");
     return [root, ...folders];
   }, [folderTree, environmentSlug]);
 
