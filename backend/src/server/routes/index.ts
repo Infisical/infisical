@@ -1343,7 +1343,8 @@ export const registerRoutes = async (
     externalCertificateAuthorityDAL,
     permissionService,
     kmsService,
-    projectDAL
+    projectDAL,
+    resourceMetadataDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({

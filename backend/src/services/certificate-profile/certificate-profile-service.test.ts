@@ -232,6 +232,10 @@ describe("CertificateProfileService", () => {
     findOne: vi.fn()
   } as unknown as Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
 
+  const mockResourceMetadataDAL = {
+    find: vi.fn().mockResolvedValue([])
+  };
+
   const mockCertificatePolicyService = {
     validateRequestAgainstPolicy: vi.fn().mockReturnValue({ isValid: true, errors: [], warnings: [] })
   };
@@ -260,7 +264,8 @@ describe("CertificateProfileService", () => {
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
-      projectDAL: mockProjectDAL
+      projectDAL: mockProjectDAL,
+      resourceMetadataDAL: mockResourceMetadataDAL
     });
   });
 

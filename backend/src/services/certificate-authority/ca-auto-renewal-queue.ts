@@ -3,7 +3,7 @@ import RE2 from "re2";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
@@ -324,23 +324,12 @@ export const caAutoRenewalQueueFactory = ({
   });
 
   const startDailyAutoRenewalJob = async () => {
-    await queueService.stopRepeatableJob(
+    await queueService.upsertJobScheduler(
       QueueName.CaAutoRenewal,
-      QueueJobs.CaDailyAutoRenewal,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.CaAutoRenewal
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.CaDailyAutoRenewal}`,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.CaDailyAutoRenewal }
     );
-
-    await queueService.queue(QueueName.CaAutoRenewal, QueueJobs.CaDailyAutoRenewal, undefined, {
-      jobId: QueueJobs.CaDailyAutoRenewal,
-      repeat: {
-        pattern: "0 0 * * *",
-        utc: true,
-        key: QueueJobs.CaDailyAutoRenewal
-      },
-      removeOnComplete: true,
-      removeOnFail: true
-    });
   };
 
   const queueVenafiInstall = async (caId: string, maxPathLength?: number) => {
