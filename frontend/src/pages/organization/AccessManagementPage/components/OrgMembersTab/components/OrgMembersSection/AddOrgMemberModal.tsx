@@ -109,7 +109,7 @@ export const AddOrgMemberModal = ({
   const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
     singleSelectedProjectId ?? ""
   );
-  const projectRoles = singleSelectedProjectId ? fetchedProjectRoles : BUILT_IN_PROJECT_ROLES;
+  const projectRoles = fetchedProjectRoles ?? BUILT_IN_PROJECT_ROLES;
 
   useEffect(() => {
     setValue("projectRole", DEFAULT_PROJECT_ROLE);
