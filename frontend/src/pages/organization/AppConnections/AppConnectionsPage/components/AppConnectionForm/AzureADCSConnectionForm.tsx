@@ -172,7 +172,7 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     isError={Boolean(error?.message)}
                     label="ADCS URL"
                   >
-                    <Input {...field} placeholder="https://your-adcs-server.com/certsrv" />
+                    <Input {...field} placeholder="https://your-adcs-server.com" />
                   </FormControl>
                 )}
               />

@@ -58,6 +58,7 @@ import { auth0ConnectionService } from "./auth0/auth0-connection-service";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";
+import { azureAdcsConnectionService } from "./azure-adcs/azure-adcs-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
 import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-client-secrets";
 import { azureClientSecretsConnectionService } from "./azure-client-secrets/azure-client-secrets-service";
@@ -1066,6 +1067,7 @@ export const appConnectionServiceFactory = ({
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     venafi: venafiConnectionService(connectAppConnectionById),
+    azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),

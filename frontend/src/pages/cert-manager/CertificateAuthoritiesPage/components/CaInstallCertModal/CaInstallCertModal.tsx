@@ -11,6 +11,7 @@ import { Modal, ModalContent } from "@app/components/v2";
 import { Badge, Button } from "@app/components/v3";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { AdcsCaInstallForm } from "./AdcsCaInstallForm";
 import { ExternalCaInstallForm } from "./ExternalCaInstallForm";
 import { InternalCaInstallForm } from "./InternalCaInstallForm";
 import { VenafiCaInstallForm } from "./VenafiCaInstallForm";
@@ -70,6 +71,12 @@ const INTEGRATIONS: TIntegration[] = [
     name: "Venafi TLS Protect Cloud",
     description: "Automated certificate lifecycle management",
     image: "/images/integrations/Venafi.png"
+  },
+  {
+    id: "azure-adcs",
+    name: "Azure AD CS",
+    description: "Microsoft Active Directory Certificate Services",
+    image: "/images/integrations/Microsoft Azure.png"
   }
 ];
 
@@ -165,7 +172,13 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
       case SigningMethod.Internal:
         return <InternalCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
       case SigningMethod.Automated:
-        return <VenafiCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
+        if (selectedIntegration === "azure-adcs") {
+          return <AdcsCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
+        }
+        if (selectedIntegration === "venafi") {
+          return <VenafiCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
+        }
+        return null;
       case SigningMethod.Manual:
         return <ExternalCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
       default:
