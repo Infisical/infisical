@@ -1,4 +1,5 @@
 import { join } from "path";
+import RE2 from "re2";
 
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
@@ -40,6 +41,8 @@ import {
   TBitbucketDataSourceWithConnection,
   TQueueBitbucketResourceDiffScan
 } from "./bitbucket-secret-scanning-types";
+
+const GitCommitShaRegex = new RE2(/^[a-f0-9]{7,40}$/);
 
 export const BitbucketSecretScanningFactory = () => {
   const initialize: TSecretScanningFactoryInitialize<
@@ -120,7 +123,7 @@ export const BitbucketSecretScanningFactory = () => {
 
     try {
       await request.delete(
-        `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${config.workspaceSlug}/hooks/${webhookId}`,
+        `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodeURIComponent(config.workspaceSlug)}/hooks/${webhookId}`,
         {
           headers: {
             Authorization: authHeader,
@@ -212,6 +215,10 @@ export const BitbucketSecretScanningFactory = () => {
 
     for (const change of push.changes) {
       for (const commit of change.commits) {
+        if (!GitCommitShaRegex.test(commit.hash)) {
+          throw new Error("Invalid commit hash");
+        }
+
         // eslint-disable-next-line no-await-in-loop
         const { data: diffstat } = await request.get<{
           values: {
@@ -219,12 +226,15 @@ export const BitbucketSecretScanningFactory = () => {
             new?: { path: string };
             old?: { path: string };
           }[];
-        }>(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${repository.full_name}/diffstat/${commit.hash}`, {
-          headers: {
-            Authorization: authHeader,
-            Accept: "application/json"
+        }>(
+          `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(repository.full_name)}/diffstat/${commit.hash}`,
+          {
+            headers: {
+              Authorization: authHeader,
+              Accept: "application/json"
+            }
           }
-        });
+        );
 
         // eslint-disable-next-line no-continue
         if (!diffstat.values) continue;
@@ -235,7 +245,7 @@ export const BitbucketSecretScanningFactory = () => {
 
             // eslint-disable-next-line no-await-in-loop
             const { data: patch } = await request.get<string>(
-              `https://api.bitbucket.org/2.0/repositories/${repository.full_name}/diff/${commit.hash}`,
+              `https://api.bitbucket.org/2.0/repositories/${encodeURIComponent(repository.full_name)}/diff/${commit.hash}`,
               {
                 params: {
                   path: filePath
