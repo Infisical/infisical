@@ -195,7 +195,9 @@ export const syncDependenciesAfterRotation = async ({
               const enc = await getEncryptor();
               const { cipherTextBlob } = enc({ plainText: Buffer.from(msg) });
               encryptedLastSyncMessage = cipherTextBlob;
-            } catch {}
+            } catch (err) {
+              logger.error(err, `[DependencySync] Failed to encrypt error message for [depId=${dep.id}]`);
+            }
 
             // eslint-disable-next-line no-await-in-loop
             await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
@@ -252,7 +254,9 @@ export const syncDependenciesAfterRotation = async ({
               plainText: Buffer.from(errorMessage)
             });
             encryptedLastSyncMessage = cipherTextBlob;
-          } catch {}
+          } catch (err) {
+            logger.error(err, `[DependencySync] Failed to encrypt error message for [depId=${dep.id}]`);
+          }
 
           // eslint-disable-next-line no-await-in-loop
           await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
