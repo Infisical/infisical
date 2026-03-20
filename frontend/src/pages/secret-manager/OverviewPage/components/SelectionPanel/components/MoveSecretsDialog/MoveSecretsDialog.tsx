@@ -29,7 +29,9 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  UnstableAlert,
+  UnstableAlertDescription
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
@@ -571,6 +573,12 @@ const MultiEnvContent = ({
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <UnstableAlert variant="info" className="mb-4">
+        <InfoIcon />
+        <UnstableAlertDescription>
+          Select a single environment to move secrets across environments.
+        </UnstableAlertDescription>
+      </UnstableAlert>
       <Field>
         <FieldLabel>Secret Path</FieldLabel>
         <FieldContent>
@@ -661,7 +669,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         else onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-lg overflow-visible">
+      <DialogContent className="max-w-xl overflow-visible">
         <DialogHeader>
           <DialogTitle>Move Secrets</DialogTitle>
           <DialogDescription>
