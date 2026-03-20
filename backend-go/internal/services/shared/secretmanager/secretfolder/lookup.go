@@ -1,6 +1,7 @@
 package secretfolder
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -148,6 +149,52 @@ func (l *FolderLookup) GetEnv(id uuid.UUID) (*FolderEnv, bool) {
 func (l *FolderLookup) GetEnvBySlug(slug string) (*FolderEnv, bool) {
 	env, ok := l.envsBySlug[slug]
 	return env, ok
+}
+
+// GetSubTreeByPathEnvSlug resolves envSlug + path to a node and returns it along
+// with all its descendants in depth-first pre-order (parent before children).
+func (l *FolderLookup) GetSubTreeByPathEnvSlug(envSlug string, path string) ([]*FolderNode, bool) {
+	node, ok := l.GetByPathEnvSlug(envSlug, path)
+	if !ok {
+		return nil, false
+	}
+	return collectTree(node), true
+}
+
+// GetSubTreeByPathEnvID resolves envID + path to a node and returns it along
+// with all its descendants in depth-first pre-order.
+func (l *FolderLookup) GetSubTreeByPathEnvID(envID uuid.UUID, path string) ([]*FolderNode, bool) {
+	node, ok := l.GetByPathEnvID(envID, path)
+	if !ok {
+		return nil, false
+	}
+	return collectTree(node), true
+}
+
+func collectTree(root *FolderNode) []*FolderNode {
+	var result []*FolderNode
+	stack := []*FolderNode{root}
+
+	for len(stack) > 0 {
+		node := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		result = append(result, node)
+
+		// Sort children by name, then push in reverse so that
+		// alphabetically first child is popped first (DFS pre-order).
+		names := make([]string, 0, len(node.children))
+		for name := range node.children {
+			names = append(names, name)
+		}
+		sort.Sort(sort.Reverse(sort.StringSlice(names)))
+
+		for _, name := range names {
+			stack = append(stack, node.children[name])
+		}
+	}
+
+	return result
 }
 
 func walkPath(root *FolderNode, path string) (*FolderNode, bool) {
