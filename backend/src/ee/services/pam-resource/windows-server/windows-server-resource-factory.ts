@@ -125,7 +125,7 @@ export const windowsResourceFactory: TPamResourceFactory<
       });
     } catch (error) {
       throw new BadRequestError({
-        message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+        message: `Unable to validate connection to windows: ${(error as Error).message || String(error)}`
       });
     }
 
@@ -150,8 +150,11 @@ export const windowsResourceFactory: TPamResourceFactory<
     const escapedNewPassword = escapePowershellSingleQuote(newPassword);
     const escapedUsername = escapePowershellSingleQuote(currentCredentials.username);
 
+    const winrmPort = connectionDetails.winrmPort ?? WINRM_DEFAULT_HTTP_PORT;
+    const useWinrmHttps = connectionDetails.useWinrmHttps ?? false;
+
     await executeWithGateway(
-      { connectionDetails, gatewayId, resourceType, targetPortOverride: WINRM_DEFAULT_HTTP_PORT },
+      { connectionDetails, gatewayId, resourceType, targetPortOverride: winrmPort },
       gatewayV2Service,
       async (proxyPort) => {
         const script = [
@@ -164,7 +167,10 @@ export const windowsResourceFactory: TPamResourceFactory<
           "localhost",
           rotationAccountCredentials.username,
           rotationAccountCredentials.password,
-          proxyPort
+          proxyPort,
+          useWinrmHttps,
+          useWinrmHttps ? (connectionDetails.winrmRejectUnauthorized ?? false) : undefined,
+          connectionDetails.winrmCaCert
         );
 
         logger.info(
@@ -192,7 +198,10 @@ export const windowsResourceFactory: TPamResourceFactory<
       ctx,
       gatewayV2Service,
       rotationCredentials: rotationAccountCredentials,
-      gatewayId
+      gatewayId,
+      winrmPort: connectionDetails.winrmPort,
+      useWinrmHttps: connectionDetails.useWinrmHttps,
+      winrmCaCert: connectionDetails.winrmCaCert
     });
   };
 

@@ -1,5 +1,6 @@
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
@@ -8,7 +9,13 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  Label,
   SheetFooter,
+  Switch,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableInput
 } from "@app/components/v3";
 import { PamResourceType, TActiveDirectoryResource } from "@app/hooks/api/pam";
@@ -27,7 +34,14 @@ const formSchema = genericResourceFieldsSchema.extend({
   connectionDetails: z.object({
     domain: z.string().trim().min(1, "Domain is required"),
     dcAddress: z.string().trim().min(1, "DC address is required"),
-    port: z.coerce.number().int().min(1).max(65535)
+    port: z.coerce.number().int().min(1).max(65535),
+    useLdaps: z.boolean().default(false),
+    ldapRejectUnauthorized: z.boolean().default(true),
+    ldapCaCert: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .optional()
   })
 });
 
@@ -41,7 +55,13 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
     defaultValues: resource
       ? {
           ...resource,
-          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined
+          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined,
+          connectionDetails: {
+            ...resource.connectionDetails,
+            useLdaps: resource.connectionDetails.useLdaps ?? false,
+            ldapRejectUnauthorized: resource.connectionDetails.ldapRejectUnauthorized ?? true,
+            ldapCaCert: resource.connectionDetails.ldapCaCert ?? ""
+          }
         }
       : {
           resourceType: PamResourceType.ActiveDirectory,
@@ -49,7 +69,10 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
           connectionDetails: {
             domain: "",
             dcAddress: "",
-            port: 389
+            port: 389,
+            useLdaps: false,
+            ldapRejectUnauthorized: true,
+            ldapCaCert: ""
           }
         }
   });
@@ -59,6 +82,8 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
     handleSubmit,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  const useLdaps = useWatch({ control, name: "connectionDetails.useLdaps" });
 
   return (
     <FormProvider {...form}>
@@ -113,6 +138,72 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
                     <UnstableInput type="number" {...field} isError={Boolean(error)} />
                     <FieldError errors={[error]} />
                   </FieldContent>
+                </Field>
+              )}
+            />
+          </div>
+          <div className="flex flex-col gap-3">
+            <Label>LDAP</Label>
+
+            <Controller
+              name="connectionDetails.useLdaps"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field orientation="horizontal">
+                  <FieldLabel>Enable LDAPS</FieldLabel>
+                  <Switch
+                    variant="project"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+
+            <Controller
+              name="connectionDetails.ldapCaCert"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>CA Certificate</FieldLabel>
+                  <FieldContent>
+                    <TextArea
+                      {...field}
+                      className="max-h-32"
+                      disabled={!useLdaps}
+                      placeholder="-----BEGIN CERTIFICATE-----..."
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+
+            <Controller
+              name="connectionDetails.ldapRejectUnauthorized"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field orientation="horizontal">
+                  <FieldLabel>
+                    Reject Unauthorized
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        If enabled, Infisical will only connect to the Domain Controller if it has a
+                        valid, trusted TLS certificate
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Switch
+                    variant="project"
+                    disabled={!useLdaps}
+                    checked={useLdaps ? field.value : false}
+                    onCheckedChange={field.onChange}
+                  />
+                  <FieldError errors={[error]} />
                 </Field>
               )}
             />

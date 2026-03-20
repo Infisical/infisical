@@ -69,6 +69,22 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
   TActiveDirectoryAccountCredentials,
   TPamResourceInternalMetadata
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
+  const ldapProtocol = connectionDetails.useLdaps ? "ldaps" : "ldap";
+
+  const buildLdapTlsOptions = () => {
+    if (!connectionDetails.useLdaps) return {};
+    return {
+      tlsOptions: {
+        rejectUnauthorized: connectionDetails.ldapRejectUnauthorized ?? false,
+        ...(connectionDetails.ldapCaCert && {
+          ca: [connectionDetails.ldapCaCert],
+          servername: connectionDetails.dcAddress,
+          checkServerIdentity: () => undefined
+        })
+      }
+    };
+  };
+
   const validateConnection = async () => {
     if (!gatewayId) throw new BadRequestError({ message: "Gateway is required for connection validation" });
 
@@ -76,9 +92,10 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (proxyPort) => {
         return new Promise<void>((resolve, reject) => {
           const client = ldapjs.createClient({
-            url: `ldap://localhost:${proxyPort}`,
+            url: `${ldapProtocol}://localhost:${proxyPort}`,
             connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
-            timeout: EXTERNAL_REQUEST_TIMEOUT
+            timeout: EXTERNAL_REQUEST_TIMEOUT,
+            ...buildLdapTlsOptions()
           });
 
           client.on("error", (err: Error) => {
@@ -122,41 +139,35 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
     if (!gatewayId) throw new BadRequestError({ message: "Gateway is required for credential validation" });
 
     try {
-      await executeWithGateway(
-        { connectionDetails, gatewayId, resourceType, targetPortOverride: 636 },
-        gatewayV2Service,
-        async (proxyPort) => {
-          return new Promise<void>((resolve, reject) => {
-            const bindDn = `${credentials.username}@${connectionDetails.domain}`;
+      await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (proxyPort) => {
+        return new Promise<void>((resolve, reject) => {
+          const bindDn = `${credentials.username}@${connectionDetails.domain}`;
 
-            const client = ldapjs.createClient({
-              url: `ldaps://localhost:${proxyPort}`,
-              connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
-              timeout: EXTERNAL_REQUEST_TIMEOUT,
-              tlsOptions: {
-                rejectUnauthorized: false
-              }
-            });
-
-            client.on("error", (err: Error) => {
-              client.unbind();
-              reject(err);
-            });
-
-            client.bind(bindDn, credentials.password, (err) => {
-              if (err) {
-                client.unbind();
-                logger.warn(err, "[Active Directory Resource Factory] LDAP bind failed during credential validation");
-                reject(new Error(`LDAP bind failed: ${err.message}`));
-              } else {
-                logger.info("[Active Directory Resource Factory] LDAP credential validation successful");
-                client.unbind();
-                resolve();
-              }
-            });
+          const client = ldapjs.createClient({
+            url: `${ldapProtocol}://localhost:${proxyPort}`,
+            connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
+            timeout: EXTERNAL_REQUEST_TIMEOUT,
+            ...buildLdapTlsOptions()
           });
-        }
-      );
+
+          client.on("error", (err: Error) => {
+            client.unbind();
+            reject(err);
+          });
+
+          client.bind(bindDn, credentials.password, (err) => {
+            if (err) {
+              client.unbind();
+              logger.warn(err, "[Active Directory Resource Factory] LDAP bind failed during credential validation");
+              reject(new Error(`LDAP bind failed: ${err.message}`));
+            } else {
+              logger.info("[Active Directory Resource Factory] LDAP credential validation successful");
+              client.unbind();
+              resolve();
+            }
+          });
+        });
+      });
     } catch (error) {
       throw new BadRequestError({
         message: `Unable to validate credentials for ${resourceType}: ${(error as Error).message || String(error)}`
@@ -173,98 +184,97 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
 
     const newPassword = generatePassword();
 
-    // AD requires LDAPS (port 636) for unicodePwd changes
-    await executeWithGateway(
-      { connectionDetails, gatewayId, resourceType, targetPortOverride: 636 },
-      gatewayV2Service,
-      async (proxyPort) => {
-        return new Promise<void>((resolve, reject) => {
-          const client = ldapjs.createClient({
-            url: `ldaps://localhost:${proxyPort}`,
-            connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
-            timeout: EXTERNAL_REQUEST_TIMEOUT,
-            tlsOptions: {
-              rejectUnauthorized: false
-            }
-          });
+    if (!connectionDetails.useLdaps) {
+      throw new BadRequestError({
+        message: "LDAPS must be enabled on this Active Directory resource to perform password rotation"
+      });
+    }
 
-          client.on("error", (err: Error) => {
+    await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (proxyPort) => {
+      return new Promise<void>((resolve, reject) => {
+        const client = ldapjs.createClient({
+          url: `ldaps://localhost:${proxyPort}`,
+          connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
+          timeout: EXTERNAL_REQUEST_TIMEOUT,
+          ...buildLdapTlsOptions()
+        });
+
+        client.on("error", (err: Error) => {
+          client.unbind();
+          reject(err);
+        });
+
+        // Bind as rotation account (admin)
+        const bindDn = `${rotationAccountCredentials.username}@${connectionDetails.domain}`;
+        client.bind(bindDn, rotationAccountCredentials.password, (bindErr) => {
+          if (bindErr) {
             client.unbind();
-            reject(err);
-          });
+            reject(new Error(`Rotation account bind failed: ${bindErr.message}`));
+            return;
+          }
 
-          // Bind as rotation account (admin)
-          const bindDn = `${rotationAccountCredentials.username}@${connectionDetails.domain}`;
-          client.bind(bindDn, rotationAccountCredentials.password, (bindErr) => {
-            if (bindErr) {
-              client.unbind();
-              reject(new Error(`Rotation account bind failed: ${bindErr.message}`));
-              return;
-            }
+          // Search for target user's DN by sAMAccountName
+          const searchBase = connectionDetails.domain
+            .split(".")
+            .map((dc) => `DC=${dc}`)
+            .join(",");
 
-            // Search for target user's DN by sAMAccountName
-            const searchBase = connectionDetails.domain
-              .split(".")
-              .map((dc) => `DC=${dc}`)
-              .join(",");
+          client.search(
+            searchBase,
+            {
+              filter: new ldapjs.EqualityFilter({ attribute: "sAMAccountName", value: currentCredentials.username }),
+              scope: "sub",
+              attributes: ["dn"]
+            },
+            (searchErr, searchRes) => {
+              if (searchErr) {
+                client.unbind();
+                reject(new Error(`LDAP search failed: ${searchErr.message}`));
+                return;
+              }
 
-            client.search(
-              searchBase,
-              {
-                filter: new ldapjs.EqualityFilter({ attribute: "sAMAccountName", value: currentCredentials.username }),
-                scope: "sub",
-                attributes: ["dn"]
-              },
-              (searchErr, searchRes) => {
-                if (searchErr) {
+              let userDn: string | null = null;
+
+              searchRes.on("searchEntry", (entry) => {
+                userDn = entry.objectName;
+              });
+
+              searchRes.on("error", (err) => {
+                client.unbind();
+                reject(new Error(`LDAP search error: ${err.message}`));
+              });
+
+              searchRes.on("end", () => {
+                if (!userDn) {
                   client.unbind();
-                  reject(new Error(`LDAP search failed: ${searchErr.message}`));
+                  reject(new Error(`User '${currentCredentials.username}' not found in AD`));
                   return;
                 }
 
-                let userDn: string | null = null;
-
-                searchRes.on("searchEntry", (entry) => {
-                  userDn = entry.objectName;
+                // Admin reset: use "replace" operation on unicodePwd
+                const encodedPassword = Buffer.from(`"${newPassword}"`, "utf16le");
+                const change = new ldapjs.Change({
+                  operation: "replace",
+                  modification: { type: "unicodePwd", values: [encodedPassword] }
                 });
 
-                searchRes.on("error", (err) => {
+                client.modify(userDn, change, (modifyErr) => {
                   client.unbind();
-                  reject(new Error(`LDAP search error: ${err.message}`));
-                });
-
-                searchRes.on("end", () => {
-                  if (!userDn) {
-                    client.unbind();
-                    reject(new Error(`User '${currentCredentials.username}' not found in AD`));
-                    return;
+                  if (modifyErr) {
+                    reject(new Error(`AD password reset failed: ${modifyErr.message}`));
+                  } else {
+                    logger.info(
+                      `[AD Rotation] Password rotated for ${currentCredentials.username} on ${connectionDetails.domain}`
+                    );
+                    resolve();
                   }
-
-                  // Admin reset: use "replace" operation on unicodePwd
-                  const encodedPassword = Buffer.from(`"${newPassword}"`, "utf16le");
-                  const change = new ldapjs.Change({
-                    operation: "replace",
-                    modification: { type: "unicodePwd", values: [encodedPassword] }
-                  });
-
-                  client.modify(userDn, change, (modifyErr) => {
-                    client.unbind();
-                    if (modifyErr) {
-                      reject(new Error(`AD password reset failed: ${modifyErr.message}`));
-                    } else {
-                      logger.info(
-                        `[AD Rotation] Password rotated for ${currentCredentials.username} on ${connectionDetails.domain}`
-                      );
-                      resolve();
-                    }
-                  });
                 });
-              }
-            );
-          });
+              });
+            }
+          );
         });
-      }
-    );
+      });
+    });
 
     return { username: currentCredentials.username, password: newPassword };
   };

@@ -1,14 +1,44 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowDownIcon, ArrowUpIcon, EyeIcon, EyeOffIcon, PlusIcon, TrashIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  EyeIcon,
+  EyeOffIcon,
+  InfoIcon,
+  PlusIcon,
+  TrashIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { Button, Label, Switch, UnstableIconButton } from "@app/components/v3";
-import { TPamResource, TPamRotationRule, useUpdatePamResource } from "@app/hooks/api/pam";
+import {
+  Button,
+  Field,
+  FieldContent,
+  FieldLabel,
+  Label,
+  Switch,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableAlert,
+  UnstableAlertDescription,
+  UnstableAlertTitle,
+  UnstableIconButton,
+  UnstableInput
+} from "@app/components/v3";
+import {
+  PamResourceType,
+  TPamResource,
+  TPamRotationRule,
+  useUpdatePamResource
+} from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import {
   useCreatePamRotationRule,
@@ -211,6 +241,21 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // WinRM config for Windows Server resources (stored in connectionDetails)
+  const isWindowsResource = resource.resourceType === PamResourceType.Windows;
+  const connDetails = resource.connectionDetails as {
+    winrmPort?: number;
+    useWinrmHttps?: boolean;
+    winrmRejectUnauthorized?: boolean;
+    winrmCaCert?: string;
+  };
+  const [winrmPort, setWinrmPort] = useState(connDetails.winrmPort ?? 5985);
+  const [useWinrmHttps, setUseWinrmHttps] = useState(connDetails.useWinrmHttps ?? false);
+  const [winrmRejectUnauthorized, setWinrmRejectUnauthorized] = useState(
+    connDetails.winrmRejectUnauthorized ?? true
+  );
+  const [winrmCaCert, setWinrmCaCert] = useState(connDetails.winrmCaCert ?? "");
+
   // Local working copy of rules — only persisted on save
   const [localRules, setLocalRules] = useState<LocalRule[]>([]);
   const [deletedRuleIds, setDeletedRuleIds] = useState<string[]>([]);
@@ -245,7 +290,11 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
       password: hasRotationCredentials ? UNCHANGED_PASSWORD_SENTINEL : ""
     });
     setShowPassword(false);
-  }, [rules, resource, hasRotationCredentials, resetCred]);
+    setWinrmPort(connDetails.winrmPort ?? 5985);
+    setUseWinrmHttps(connDetails.useWinrmHttps ?? false);
+    setWinrmRejectUnauthorized(connDetails.winrmRejectUnauthorized ?? true);
+    setWinrmCaCert(connDetails.winrmCaCert ?? "");
+  }, [rules, resource, hasRotationCredentials, resetCred, connDetails]);
 
   useEffect(() => {
     if (isOpen) {
@@ -301,16 +350,34 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   const handleSave = async (credData: CredentialsFormData) => {
     setIsSaving(true);
     try {
-      // Save credentials if changed (send null to remove)
+      // Save credentials and WinRM config if changed
+      const clearingCredentials =
+        isCredDirty && credData.username === "" && credData.password === "";
+      const updatePayload: Record<string, unknown> = {
+        resourceId: resource.id,
+        resourceType: resource.resourceType
+      };
+
       if (isCredDirty) {
-        const clearingCredentials = credData.username === "" && credData.password === "";
-        await updateResource.mutateAsync({
-          resourceId: resource.id,
-          resourceType: resource.resourceType,
-          rotationAccountCredentials: clearingCredentials
-            ? null
-            : { username: credData.username, password: credData.password }
-        });
+        updatePayload.rotationAccountCredentials = clearingCredentials
+          ? null
+          : { username: credData.username, password: credData.password };
+      }
+
+      if (isWindowsResource) {
+        updatePayload.connectionDetails = {
+          ...(resource.connectionDetails as Record<string, unknown>),
+          winrmPort,
+          useWinrmHttps,
+          winrmRejectUnauthorized,
+          winrmCaCert: winrmCaCert || undefined
+        };
+      }
+
+      if (isCredDirty || isWindowsResource) {
+        await updateResource.mutateAsync(
+          updatePayload as Parameters<typeof updateResource.mutateAsync>[0]
+        );
       }
 
       // Delete removed rules (sequential to avoid race conditions)
@@ -396,6 +463,18 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
         subTitle="Configure automatic password rotation for accounts under this resource."
       >
         <div className="flex flex-col gap-6">
+          {resource.resourceType === PamResourceType.ActiveDirectory &&
+            !(resource.connectionDetails as { useLdaps?: boolean }).useLdaps && (
+              <UnstableAlert variant="info">
+                <TriangleAlertIcon />
+                <UnstableAlertTitle>LDAPS Required for Rotation</UnstableAlertTitle>
+                <UnstableAlertDescription>
+                  Active Directory requires LDAPS (TLS) to change passwords. Enable LDAPS in the
+                  resource connection settings before configuring rotation.
+                </UnstableAlertDescription>
+              </UnstableAlert>
+            )}
+
           {/* Section: Rotation Credentials */}
           <div>
             <h4 className="mb-1 text-sm font-semibold">Rotation Credentials</h4>
@@ -461,6 +540,83 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
               </p>
             )}
           </div>
+
+          {/* Section: WinRM Config (Windows Server only) */}
+          {isWindowsResource && (
+            <div className="flex flex-col gap-3">
+              <div>
+                <h4 className="text-sm font-semibold">WinRM Configuration</h4>
+                <p className="text-xs text-mineshaft-400">
+                  WinRM is used to execute password rotation commands on the Windows machine
+                </p>
+              </div>
+
+              <Field>
+                <FieldLabel>
+                  Port
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      The WinRM port on this machine. Default is 5985 for HTTP or 5986 for HTTPS
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <UnstableInput
+                    type="number"
+                    value={winrmPort}
+                    onChange={(e) => setWinrmPort(Number(e.target.value))}
+                    placeholder="5985"
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field orientation="horizontal">
+                <FieldLabel>Enable HTTPS</FieldLabel>
+                <Switch
+                  variant="project"
+                  checked={useWinrmHttps}
+                  onCheckedChange={setUseWinrmHttps}
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>CA Certificate</FieldLabel>
+                <FieldContent>
+                  <TextArea
+                    value={winrmCaCert}
+                    onChange={(e) => setWinrmCaCert(e.target.value)}
+                    className="max-h-32"
+                    disabled={!useWinrmHttps}
+                    placeholder="-----BEGIN CERTIFICATE-----..."
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field orientation="horizontal">
+                <FieldLabel>
+                  Reject Unauthorized
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      If enabled, Infisical will only connect if the machine has a valid, trusted
+                      TLS certificate
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Switch
+                  variant="project"
+                  disabled={!useWinrmHttps}
+                  checked={useWinrmHttps ? winrmRejectUnauthorized : false}
+                  onCheckedChange={setWinrmRejectUnauthorized}
+                />
+              </Field>
+            </div>
+          )}
 
           {/* Section: Rotation Rules */}
           <div>

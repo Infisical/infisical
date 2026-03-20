@@ -11,6 +11,9 @@ export type TActiveDirectoryConnectionDetails = {
   domain: string;
   dcAddress: string;
   port: number;
+  useLdaps?: boolean;
+  ldapRejectUnauthorized?: boolean;
+  ldapCaCert?: string;
 };
 
 export type TActiveDirectoryCredentials = {
