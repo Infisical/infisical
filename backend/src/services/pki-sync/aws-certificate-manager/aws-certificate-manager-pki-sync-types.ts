@@ -1,4 +1,4 @@
-import ACM from "aws-sdk/clients/acm";
+import ACM from "aws-sdk/clients/acm.js";
 import { z } from "zod";
 
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";

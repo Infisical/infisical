@@ -1,4 +1,4 @@
-import IAM from "aws-sdk/clients/iam";
+import IAM from "aws-sdk/clients/iam.js";
 
 import {
   TAwsIamUserSecretRotationGeneratedCredentials,

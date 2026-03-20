@@ -1,6 +1,6 @@
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import type { AWSError, Response } from "aws-sdk";
-import STS from "aws-sdk/clients/sts";
+import STS from "aws-sdk/clients/sts.js";
 import { AxiosError } from "axios";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";

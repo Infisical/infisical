@@ -1,5 +1,5 @@
 import type { AWSError } from "aws-sdk";
-import SSM from "aws-sdk/clients/ssm";
+import SSM from "aws-sdk/clients/ssm.js";
 import handlebars from "handlebars";
 
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";

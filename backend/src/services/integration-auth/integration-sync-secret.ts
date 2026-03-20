@@ -22,7 +22,7 @@ import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import type { AWSError } from "aws-sdk";
-import SSM from "aws-sdk/clients/ssm";
+import SSM from "aws-sdk/clients/ssm.js";
 import { AxiosError } from "axios";
 import https from "https";
 import sodium from "libsodium-wrappers";

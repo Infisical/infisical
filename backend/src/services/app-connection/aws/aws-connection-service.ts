@@ -1,6 +1,6 @@
-import ELBv2 from "aws-sdk/clients/elbv2";
-import IAM from "aws-sdk/clients/iam";
-import KMS from "aws-sdk/clients/kms";
+import ELBv2 from "aws-sdk/clients/elbv2.js";
+import IAM from "aws-sdk/clients/iam.js";
+import KMS from "aws-sdk/clients/kms.js";
 
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
