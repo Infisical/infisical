@@ -109,7 +109,7 @@ export const AddOrgMemberModal = ({
   const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
     singleSelectedProjectId ?? ""
   );
-  const projectRoles = fetchedProjectRoles ?? BUILT_IN_PROJECT_ROLES;
+  const projectRoles = fetchedProjectRoles?.length ? fetchedProjectRoles : BUILT_IN_PROJECT_ROLES;
 
   useEffect(() => {
     setValue("projectRole", DEFAULT_PROJECT_ROLE);
@@ -347,6 +347,7 @@ export const AddOrgMemberModal = ({
                         getOptionValue={(option) => option.slug}
                         getOptionLabel={(option) => option.name}
                         placeholder="Select role..."
+                        components={{ Option: RoleOption }}
                       />
                     </FormControl>
                   )}
