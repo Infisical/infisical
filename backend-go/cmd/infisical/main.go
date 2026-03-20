@@ -15,6 +15,7 @@ import (
 	"github.com/infisical/api/internal/libs/bootstrap"
 	"github.com/infisical/api/internal/server"
 	"github.com/infisical/api/internal/services"
+	"github.com/infisical/api/internal/services/shared"
 )
 
 func main() {
@@ -51,8 +52,14 @@ func main() {
 	dbReport := bootstrap.CheckDBConnection(ctx, db)
 	dbReport.PrintReport(logger)
 
-	// Initialize all services.
-	svc := services.NewRegistry(logger)
+	svc, err := services.NewRegistry(logger, shared.SharedServicesDeps{
+		Config: cfg,
+		DB:     db,
+	})
+	if err != nil {
+		logger.Error("failed to initialize services", "error", err)
+		os.Exit(1)
+	}
 	// Create server.
 	srv := server.NewServer(svc, logger)
 

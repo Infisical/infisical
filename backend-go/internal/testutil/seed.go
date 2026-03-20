@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"testing"
@@ -94,7 +95,12 @@ func (infra *TestInfra) MustCreateProject(name string) *ProjectSeed {
 func (infra *TestInfra) CreateProject(t *testing.T, name string) *ProjectSeed {
 	t.Helper()
 
-	slug := fmt.Sprintf("test-%s-%s", name, t.Name())
+	b := make([]byte, 4)
+	rand.Read(b)
+	slug := fmt.Sprintf("t-%s-%x", name, b)
+	if len(slug) > 36 {
+		slug = slug[:36]
+	}
 
 	var projectResp map[string]any
 	resp, err := infra.client.R().
@@ -114,8 +120,8 @@ func (infra *TestInfra) CreateProject(t *testing.T, name string) *ProjectSeed {
 	}
 
 	return &ProjectSeed{
-		ID:      jsonStr(projectResp, "id"),
-		Slug:    jsonStr(projectResp, "slug"),
+		ID:      jsonStr(projectResp, "project.id"),
+		Slug:    jsonStr(projectResp, "project.slug"),
 		EnvSlug: "dev",
 	}
 }
