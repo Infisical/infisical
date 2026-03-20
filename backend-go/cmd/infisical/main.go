@@ -52,10 +52,11 @@ func main() {
 	dbReport := bootstrap.CheckDBConnection(ctx, db)
 	dbReport.PrintReport(logger)
 
-	svc, err := services.NewRegistry(logger, shared.SharedServicesDeps{
+	svc, err := services.NewRegistry(logger, db, shared.SharedServicesDeps{
 		Config: cfg,
 		DB:     db,
 	})
+
 	if err != nil {
 		logger.Error("failed to initialize services", "error", err)
 		os.Exit(1)

@@ -2,39 +2,26 @@ package secretfolder
 
 import (
 	"context"
+	"fmt"
 )
 
-// FolderEnvironment holds the environment info associated with a folder.
-type FolderEnvironment struct {
-	ID   string
-	Name string
-	Slug string
+type dal interface {
+	GetFoldersByProjectID(ctx context.Context, projectID string) ([]folderRow, error)
 }
 
-// Service provides secret folder operations scoped to a project and environment.
 type SharedService struct {
+	dal dal
 }
 
-// NewService creates a new secret folder service instance.
-func NewSharedService() *SharedService {
-	return &SharedService{}
+func NewSharedService(dal dal) *SharedService {
+	return &SharedService{dal: dal}
 }
 
-type SecretFolder struct {
-	projectID   string
-	environment string
-}
-
-// GetSecretFolder returns a scoped SecretFolder handle for the given project and environment.
-func (l *SharedService) GetSecretFolders(projectID, environment string) *SecretFolder {
-	return &SecretFolder{
-		projectID:   projectID,
-		environment: environment,
+// LoadProjectFolders fetches all folders for a project and builds an in-memory lookup tree.
+func (s *SharedService) LoadProjectFolders(ctx context.Context, projectID string) (*FolderLookup, error) {
+	rows, err := s.dal.GetFoldersByProjectID(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("get folders for project %s: %w", projectID, err)
 	}
-}
-
-// GetFolderIdByPath resolves a folder path (e.g. "/prod/backend") to its ID.
-// TODO: Implement the actual path resolution logic.
-func (sf *SecretFolder) GetFolderIdByPath(ctx context.Context, path string) (string, error) {
-	panic("not implemented")
+	return newFolderLookup(rows), nil
 }

@@ -13,9 +13,11 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/go-resty/resty/v2"
 	"github.com/gofrs/flock"
-	"github.com/jackc/pgx/v5/pgxpool"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/infisical/api/internal/config"
+	"github.com/infisical/api/internal/database/pg"
 )
 
 // TestInfra holds references to the test infrastructure and bootstrapped credentials.
@@ -23,7 +25,8 @@ type TestInfra struct {
 	DBURI     string
 	RedisURL  string
 	NodeJSURL string
-	DB        *pgxpool.Pool
+	DB        pg.DB
+	Config    *config.Config
 	compose   tc.ComposeStack
 	client    *resty.Client
 
@@ -112,12 +115,15 @@ func SetupInfra() *TestInfra {
 	if state, err := loadState(statePath); err == nil {
 		if checkHealth(state.NodeJSURL) {
 			log.Println("testutil.SetupInfra: reusing existing infra")
-			pool := mustConnectDB(state.DBURI)
+			setTestEnv(state.DBURI, state.RedisURL)
+			cfg := mustLoadConfig()
+			db := mustConnectDB(cfg)
 			return &TestInfra{
 				DBURI:         state.DBURI,
 				RedisURL:      state.RedisURL,
 				NodeJSURL:     state.NodeJSURL,
-				DB:            pool,
+				DB:            db,
+				Config:        cfg,
 				client:        resty.New().SetBaseURL(state.NodeJSURL),
 				isOwner:       false,
 				OrgID:         state.OrgID,
@@ -199,39 +205,49 @@ func startCompose(root string) *TestInfra {
 
 	log.Printf("testutil.startCompose: db=%s redis=%s nodejs=%s", dbURI, redisURL, nodejsURL)
 
-	pool := mustConnectDB(dbURI)
+	setTestEnv(dbURI, redisURL)
+	cfg := mustLoadConfig()
+	db := mustConnectDB(cfg)
 
 	return &TestInfra{
 		DBURI:     dbURI,
 		RedisURL:  redisURL,
 		NodeJSURL: nodejsURL,
-		DB:        pool,
+		DB:        db,
+		Config:    cfg,
 		compose:   compose,
 		client:    resty.New().SetBaseURL(nodejsURL),
 	}
 }
 
-// mustConnectDB creates a pgxpool connection or fatals.
-func mustConnectDB(dbURI string) *pgxpool.Pool {
+// setTestEnv sets the environment variables needed for config.LoadConfig() in tests.
+func setTestEnv(dbURI, redisURL string) {
+	os.Setenv("DB_CONNECTION_URI", dbURI)
+	os.Setenv("REDIS_URL", redisURL)
+	os.Setenv("AUTH_SECRET", AuthSecret)
+	os.Setenv("ENCRYPTION_KEY", EncryptionKey)
+	os.Setenv("NODE_ENV", NodeEnv)
+}
+
+// mustLoadConfig loads the application config or fatals.
+func mustLoadConfig() *config.Config {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("testutil.mustLoadConfig: %v", err)
+	}
+	return cfg
+}
+
+// mustConnectDB creates a pg.DB connection via pg.NewPostgresDB or fatals.
+func mustConnectDB(cfg *config.Config) pg.DB {
 	ctx := context.Background()
 
-	poolCfg, err := pgxpool.ParseConfig(dbURI)
+	db, err := pg.NewPostgresDB(ctx, cfg.DBConnectionURI, cfg.DBRootCert, cfg.DBReadReplicas)
 	if err != nil {
-		log.Fatalf("testutil.mustConnectDB: failed to parse db config: %v", err)
-	}
-	poolCfg.MinConns = 0
-	poolCfg.MaxConns = 10
-
-	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
-	if err != nil {
-		log.Fatalf("testutil.mustConnectDB: failed to create db pool: %v", err)
+		log.Fatalf("testutil.mustConnectDB: %v", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("testutil.mustConnectDB: failed to ping db: %v", err)
-	}
-
-	return pool
+	return db
 }
 
 // Teardown cleans up resources for this test package.

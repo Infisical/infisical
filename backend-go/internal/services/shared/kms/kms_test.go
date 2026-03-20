@@ -2,19 +2,15 @@ package kms_test
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"os"
 	"sync"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
-	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/services/shared/kms"
 	"github.com/infisical/api/internal/testutil"
@@ -22,39 +18,12 @@ import (
 
 var orgID uuid.UUID
 
-var (
-	infra *testutil.TestInfra
-	cfg   *config.Config
-)
-
-// testDB satisfies pg.DB using a single pool for both primary and replica.
-type testDB struct {
-	pool  *pgxpool.Pool
-	sqlDB *sql.DB
-}
-
-func (d *testDB) Primary() *sql.DB           { return d.sqlDB }
-func (d *testDB) Replica() *sql.DB           { return d.sqlDB }
-func (d *testDB) ReplicaCount() int          { return 0 }
-func (d *testDB) PrimaryPool() *pgxpool.Pool { return d.pool }
-func (d *testDB) Close()                     { d.sqlDB.Close() }
+var infra *testutil.TestInfra
 
 func TestMain(m *testing.M) {
 	infra = testutil.SetupInfra()
 
-	// Set env vars matching docker-compose.test.yml so config.LoadConfig() works.
-	os.Setenv("DB_CONNECTION_URI", infra.DBURI)
-	os.Setenv("REDIS_URL", infra.RedisURL)
-	os.Setenv("AUTH_SECRET", testutil.AuthSecret)
-	os.Setenv("ENCRYPTION_KEY", testutil.EncryptionKey)
-	os.Setenv("NODE_ENV", testutil.NodeEnv)
-
 	var err error
-	cfg, err = config.LoadConfig()
-	if err != nil {
-		log.Fatalf("kms_test: loading config: %v", err)
-	}
-
 	orgID, err = uuid.Parse(infra.OrgID)
 	if err != nil {
 		log.Fatalf("kms_test: parsing org ID: %v", err)
@@ -69,20 +38,15 @@ func TestMain(m *testing.M) {
 func setupService(t *testing.T) *kms.SharedService {
 	t.Helper()
 
-	sqlDB := stdlib.OpenDBFromPool(infra.DB)
-	t.Cleanup(func() { sqlDB.Close() })
-
-	db := &testDB{pool: infra.DB, sqlDB: sqlDB}
-
 	opts, err := redis.ParseURL(infra.RedisURL)
 	require.NoError(t, err)
 	redisClient := redis.NewClient(opts)
 	t.Cleanup(func() { redisClient.Close() })
 
-	ks := keystore.NewKeyStore(redisClient, sqlDB)
-	dal := kms.NewDAL(db, ks)
+	ks := keystore.NewKeyStore(redisClient, infra.DB.Primary())
+	dal := kms.NewDAL(infra.DB, ks)
 
-	svc, err := kms.NewSharedService(dal, nil, cfg)
+	svc, err := kms.NewSharedService(dal, nil, infra.Config)
 	require.NoError(t, err)
 	return svc
 }
