@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
-import AWS from "aws-sdk";
+import ACM from "aws-sdk/clients/acm";
+import ELBv2 from "aws-sdk/clients/elbv2";
 import { z } from "zod";
 
 import { TCertificateSyncs } from "@app/db/schemas";
@@ -69,7 +70,7 @@ const getAwsElbClient = async (
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-): Promise<AWS.ELBv2> => {
+): Promise<ELBv2> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
   if (!appConnection) {
@@ -115,7 +116,7 @@ const getAwsElbClient = async (
 
   const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
 
-  return new AWS.ELBv2(awsConfig);
+  return new ELBv2(awsConfig);
 };
 
 const getAwsAcmClient = async (
@@ -123,7 +124,7 @@ const getAwsAcmClient = async (
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-): Promise<AWS.ACM> => {
+): Promise<ACM> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
   if (!appConnection) {
@@ -169,7 +170,7 @@ const getAwsAcmClient = async (
 
   const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
 
-  return new AWS.ACM(awsConfig);
+  return new ACM(awsConfig);
 };
 
 export const awsElasticLoadBalancerPkiSyncFactory = ({
@@ -186,7 +187,7 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
   });
 
   const attachCertificateToListener = async (
-    elbClient: AWS.ELBv2,
+    elbClient: ELBv2,
     listenerArn: string,
     certificateArn: string,
     setAsDefault: boolean,
@@ -224,7 +225,7 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
   };
 
   const removeCertificateFromListener = async (
-    elbClient: AWS.ELBv2,
+    elbClient: ELBv2,
     listenerArn: string,
     certificateArn: string,
     syncId: string

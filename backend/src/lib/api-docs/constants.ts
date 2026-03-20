@@ -71,6 +71,7 @@ export enum ApiDocsTags {
   PkiAlerting = "PKI Alerting",
   PkiDiscovery = "PKI Discovery",
   PkiInstallations = "PKI Installations",
+  PkiSigners = "PKI Signers",
   PkiSubscribers = "PKI Subscribers",
   PkiAcme = "PKI ACME",
   SshCertificates = "SSH Certificates",
@@ -1022,7 +1023,9 @@ export const PROJECTS = {
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
     metadata:
-      "Filter by metadata key-value pairs. Each entry should have a key (required) and optionally a value to match against."
+      "Filter by metadata key-value pairs. Each entry should have a key (required) and optionally a value to match against.",
+    extendedKeyUsage:
+      "Filter by extended key usage. Only certificates containing this EKU will be returned (e.g. 'codeSigning', 'serverAuth')."
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."

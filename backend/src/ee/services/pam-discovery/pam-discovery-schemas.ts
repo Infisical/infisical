@@ -58,7 +58,8 @@ export const DiscoveredResourceSchema = PamDiscoverySourceResourcesSchema.extend
   resourceType: z.nativeEnum(PamResource),
   resourceInternalMetadata: z
     .union([SSHResourceInternalMetadataSchema, WindowsResourceInternalMetadataSchema])
-    .optional()
+    .optional(),
+  dependencyCount: z.number().default(0)
 });
 
 export const DiscoveredAccountSchema = PamDiscoverySourceAccountsSchema.extend({
@@ -66,5 +67,6 @@ export const DiscoveredAccountSchema = PamDiscoverySourceAccountsSchema.extend({
   resourceName: z.string(),
   resourceId: z.string().uuid(),
   accountName: z.string(),
-  internalMetadata: z.union([ActiveDirectoryAccountMetadataSchema, WindowsAccountMetadataSchema])
+  internalMetadata: z.union([ActiveDirectoryAccountMetadataSchema, WindowsAccountMetadataSchema]),
+  dependencyCount: z.number().default(0)
 });

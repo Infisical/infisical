@@ -28,6 +28,14 @@ export const CertificatePermissionConditions = ({ position = 0, isDisabled }: Pr
           value: "serialNumber",
           label: "Serial Number",
           description: "The serial number of the certificate"
+        },
+        {
+          value: "metadataKey",
+          label: "Metadata Key"
+        },
+        {
+          value: "metadataValue",
+          label: "Metadata Value"
         }
       ]}
     />

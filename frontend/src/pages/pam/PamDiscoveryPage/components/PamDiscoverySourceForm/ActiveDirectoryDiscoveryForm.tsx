@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose, Switch, TextArea } from "@app/components/v2";
+import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { PamDiscoveryType, TPamDiscoverySource } from "@app/hooks/api/pamDiscovery";
 
@@ -19,7 +21,16 @@ const formSchema = genericDiscoveryFieldsSchema.extend({
   discoveryConfiguration: z.object({
     domainFQDN: z.string().trim().min(1, "Domain FQDN is required").max(255),
     dcAddress: z.string().trim().min(1, "DC Address is required").max(255),
-    port: z.coerce.number().int().min(1).max(65535)
+    ldapPort: z.coerce.number().int().min(1).max(65535),
+    useLdaps: z.boolean().default(false),
+    winrmPort: z.coerce.number().int().min(1).max(65535),
+    useWinrmHttps: z.boolean().default(false),
+    discoverDependencies: z.boolean().default(false),
+    caCert: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .optional()
   }),
   discoveryCredentials: z.object({
     username: z.string().trim().min(1, "Username is required").max(255),
@@ -43,7 +54,15 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
           discoveryConfiguration: {
             domainFQDN: (source.discoveryConfiguration?.domainFQDN as string) || "",
             dcAddress: (source.discoveryConfiguration?.dcAddress as string) || "",
-            port: (source.discoveryConfiguration?.port as number) || 389
+            ldapPort:
+              (source.discoveryConfiguration?.ldapPort as number) ||
+              (source.discoveryConfiguration?.port as number) ||
+              389,
+            useLdaps: Boolean(source.discoveryConfiguration?.useLdaps),
+            winrmPort: (source.discoveryConfiguration?.winrmPort as number) || 5985,
+            useWinrmHttps: Boolean(source.discoveryConfiguration?.useWinrmHttps),
+            discoverDependencies: Boolean(source.discoveryConfiguration?.discoverDependencies),
+            caCert: (source.discoveryConfiguration?.caCert as string) || ""
           },
           discoveryCredentials: {
             username: (source.discoveryCredentials?.username as string) || "",
@@ -56,7 +75,12 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
           discoveryConfiguration: {
             domainFQDN: "",
             dcAddress: "",
-            port: 389
+            ldapPort: 389,
+            useLdaps: false,
+            winrmPort: 5985,
+            useWinrmHttps: false,
+            discoverDependencies: false,
+            caCert: ""
           },
           discoveryCredentials: {
             username: "",
@@ -73,6 +97,13 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const password = useWatch({ control, name: "discoveryCredentials.password" });
+  const useLdaps = useWatch({ control, name: "discoveryConfiguration.useLdaps" });
+  const useWinrmHttps = useWatch({ control, name: "discoveryConfiguration.useWinrmHttps" });
+  const showCaCert = useLdaps || useWinrmHttps;
+  const discoverDependencies = useWatch({
+    control,
+    name: "discoveryConfiguration.discoverDependencies"
+  });
 
   useEffect(() => {
     if (password === UNCHANGED_PASSWORD_SENTINEL) {
@@ -100,38 +131,104 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
               </FormControl>
             )}
           />
-          <div className="flex items-start gap-2">
-            <Controller
-              name="discoveryConfiguration.dcAddress"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="flex-1"
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="DC Address"
-                  tooltipText="The hostname or IP address of the Domain Controller to connect to"
-                >
-                  <Input placeholder="dc01.corp.example.com" {...field} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="discoveryConfiguration.port"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="w-28"
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Port"
-                  tooltipText="The LDAP port on the Domain Controller. Default is 389 for LDAP or 636 for LDAPS"
-                >
-                  <Input type="number" {...field} />
-                </FormControl>
-              )}
-            />
+          <Controller
+            name="discoveryConfiguration.dcAddress"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="DC Address"
+                tooltipText="The hostname or IP address of the Domain Controller to connect to"
+              >
+                <Input placeholder="dc01.corp.example.com" {...field} />
+              </FormControl>
+            )}
+          />
+          <div className="grid grid-cols-2">
+            <div className="flex items-start gap-2">
+              <Controller
+                name="discoveryConfiguration.ldapPort"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    className="w-28"
+                    errorText={error?.message}
+                    isError={Boolean(error?.message)}
+                    label="LDAP Port"
+                    tooltipText="The LDAP port on the Domain Controller. Default is 389 for LDAP or 636 for LDAPS"
+                  >
+                    <Input type="number" {...field} />
+                  </FormControl>
+                )}
+              />
+              <div className="mt-8 flex-1">
+                <Controller
+                  name="discoveryConfiguration.useLdaps"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch id="use-ldaps" isChecked={field.value} onCheckedChange={field.onChange}>
+                      Use LDAPS
+                    </Switch>
+                  )}
+                />
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Controller
+                name="discoveryConfiguration.winrmPort"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    className="w-28"
+                    errorText={error?.message}
+                    isError={Boolean(error?.message)}
+                    label="WinRM Port"
+                    tooltipText="The WinRM port on target machines. Default is 5985 for HTTP or 5986 for HTTPS"
+                  >
+                    <Input type="number" {...field} />
+                  </FormControl>
+                )}
+              />
+              <div className="mt-8 flex-1">
+                <Controller
+                  name="discoveryConfiguration.useWinrmHttps"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="use-winrm-https"
+                      isChecked={field.value}
+                      onCheckedChange={field.onChange}
+                    >
+                      Use HTTPS
+                    </Switch>
+                  )}
+                />
+              </div>
+            </div>
           </div>
+          {showCaCert && (
+            <Controller
+              name="discoveryConfiguration.caCert"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="CA Certificate"
+                  isOptional
+                  tooltipText="PEM-encoded CA certificate to verify the server's TLS certificate. If not provided, certificate validation will be skipped for LDAPS connections."
+                >
+                  <TextArea
+                    {...field}
+                    value={field.value || ""}
+                    placeholder="-----BEGIN CERTIFICATE-----..."
+                    className="h-14 resize-none! text-xs"
+                  />
+                </FormControl>
+              )}
+            />
+          )}
         </div>
         <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
           <div className="flex items-start gap-2">
@@ -182,6 +279,33 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit }: Props) => {
               )}
             />
           </div>
+        </div>
+        <div className="mb-4">
+          <Controller
+            name="discoveryConfiguration.discoverDependencies"
+            control={control}
+            render={({ field }) => (
+              <Switch
+                id="discover-dependencies"
+                isChecked={field.value}
+                onCheckedChange={field.onChange}
+              >
+                Discover Dependencies
+              </Switch>
+            )}
+          />
+          {discoverDependencies && (
+            <UnstableAlert variant="org" className="mt-3">
+              <TriangleAlertIcon />
+              <UnstableAlertTitle>Warning</UnstableAlertTitle>
+              <UnstableAlertDescription>
+                When an account password is rotated, discovered Windows Services, Scheduled Tasks,
+                and IIS App Pools that run under that account will have their credentials
+                automatically updated to match. You can disable this per-dependency on the
+                account&apos;s dependencies tab.
+              </UnstableAlertDescription>
+            </UnstableAlert>
+          )}
         </div>
         <div className="mt-6 flex items-center">
           <Button

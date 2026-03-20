@@ -22,8 +22,8 @@ export type TActiveDirectoryAccountInternalMetadata = {
   accountType: ActiveDirectoryAccountType;
   adGuid?: string;
   userPrincipalName?: string;
-  pwdLastSet?: string;
-  lastLogonTimestamp?: string;
+  passwordLastSet?: string;
+  lastLogon?: string;
 };
 
 // Resources

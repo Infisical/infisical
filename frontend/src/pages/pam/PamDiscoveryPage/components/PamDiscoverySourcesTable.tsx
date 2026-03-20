@@ -140,6 +140,7 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
               <UnstableTableHead>Schedule</UnstableTableHead>
               <UnstableTableHead>Resources</UnstableTableHead>
               <UnstableTableHead>Accounts</UnstableTableHead>
+              <UnstableTableHead>Dependencies</UnstableTableHead>
               <UnstableTableHead>Status</UnstableTableHead>
               <UnstableTableHead>Last Run</UnstableTableHead>
               <UnstableTableHead className="w-5" />
@@ -148,14 +149,14 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
           <UnstableTableBody>
             {isPending && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={8} className="text-center text-muted">
+                <UnstableTableCell colSpan={9} className="text-center text-muted">
                   Loading discovery sources...
                 </UnstableTableCell>
               </UnstableTableRow>
             )}
             {!isPending && sources.length === 0 && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={8}>
+                <UnstableTableCell colSpan={9}>
                   <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                     <UnstableEmptyHeader>
                       <UnstableEmptyTitle>
@@ -195,6 +196,9 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
                   </UnstableTableCell>
                   <UnstableTableCell className="text-muted">
                     {source.totalAccounts}
+                  </UnstableTableCell>
+                  <UnstableTableCell className="text-muted">
+                    {source.totalDependencies}
                   </UnstableTableCell>
                   <UnstableTableCell>
                     <Badge variant={STATUS_BADGE_MAP[source.status] || "info"}>

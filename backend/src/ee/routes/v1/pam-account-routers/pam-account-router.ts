@@ -1,6 +1,7 @@
 import type WebSocket from "ws";
 import { z } from "zod";
 
+import { PamAccountDependenciesSchema } from "@app/db/schemas";
 import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedActiveDirectoryAccountWithResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
@@ -35,7 +36,8 @@ const SanitizedAccountSchema = z
   ])
   .and(
     z.object({
-      credentialsConfigured: z.boolean()
+      credentialsConfigured: z.boolean(),
+      dependencyCount: z.number().default(0)
     })
   );
 
@@ -45,6 +47,111 @@ const ListPamAccountsResponseSchema = z.object({
 });
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/:accountId/dependencies",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get PAM account dependencies",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          dependencies: PamAccountDependenciesSchema.extend({
+            resourceName: z.string().nullable().optional()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependencies = await server.services.pamDiscoverySource.getAccountDependencies({
+        accountId: req.params.accountId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependencies };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:accountId/dependencies/:dependencyId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Update a PAM account dependency",
+      params: z.object({
+        accountId: z.string().uuid(),
+        dependencyId: z.string().uuid()
+      }),
+      body: z.object({
+        isRotationSyncEnabled: z.boolean()
+      }),
+      response: {
+        200: z.object({
+          dependency: PamAccountDependenciesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependency = await server.services.pamDiscoverySource.updateAccountDependency({
+        accountId: req.params.accountId,
+        dependencyId: req.params.dependencyId,
+        isRotationSyncEnabled: req.body.isRotationSyncEnabled,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependency };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accountId/dependencies/:dependencyId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Delete a PAM account dependency",
+      params: z.object({
+        accountId: z.string().uuid(),
+        dependencyId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          dependency: z.object({
+            id: z.string().uuid()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependency = await server.services.pamDiscoverySource.deleteAccountDependency({
+        accountId: req.params.accountId,
+        dependencyId: req.params.dependencyId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependency };
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/:accountId",

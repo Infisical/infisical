@@ -27,7 +27,8 @@ import {
   TPreSaveTransformSyncOptionsParams,
   TSecretMap,
   TSecretSyncListItem,
-  TSecretSyncWithCredentials
+  TSecretSyncWithCredentials,
+  TSyncSecretsResult
 } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -282,7 +283,7 @@ export const SecretSyncFns = {
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
     { kmsService, appConnectionDAL, gatewayService, gatewayV2Service }: TSyncSecretDeps
-  ): Promise<void> => {
+  ): Promise<TSyncSecretsResult | void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
     switch (secretSync.destination) {

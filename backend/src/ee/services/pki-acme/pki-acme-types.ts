@@ -2,6 +2,7 @@ import { JWSHeaderParameters } from "jose";
 import { z } from "zod";
 
 import { TPkiAcmeChallenges } from "@app/db/schemas/pki-acme-challenges";
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 
 import {
   AcmeOrderResourceSchema,
@@ -94,12 +95,14 @@ export type TPkiAcmeServiceFactory = {
     profileId,
     alg,
     jwk,
-    payload
+    payload,
+    auditLogInfo
   }: {
     profileId: string;
     alg: string;
     jwk: JsonWebKey;
     payload: TCreateAcmeAccountPayload;
+    auditLogInfo: AuditLogInfo;
   }) => Promise<TAcmeResponse<TCreateAcmeAccountResponse>>;
   deactivateAcmeAccount: ({
     profileId,
@@ -113,11 +116,13 @@ export type TPkiAcmeServiceFactory = {
   createAcmeOrder: ({
     profileId,
     accountId,
-    payload
+    payload,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     payload: TCreateAcmeOrderPayload;
+    auditLogInfo: AuditLogInfo;
   }) => Promise<TAcmeResponse<TAcmeOrderResource>>;
   getAcmeOrder: ({
     profileId,
@@ -132,21 +137,25 @@ export type TPkiAcmeServiceFactory = {
     profileId,
     accountId,
     orderId,
-    payload
+    payload,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
+    auditLogInfo: AuditLogInfo;
   }) => Promise<TAcmeResponse<TAcmeOrderResource>>;
   downloadAcmeCertificate: ({
     profileId,
     accountId,
-    orderId
+    orderId,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     orderId: string;
+    auditLogInfo: AuditLogInfo;
   }) => Promise<TAcmeResponse<string>>;
   listAcmeOrders: ({
     profileId,
@@ -168,12 +177,14 @@ export type TPkiAcmeServiceFactory = {
     profileId,
     accountId,
     authzId,
-    challengeId
+    challengeId,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     authzId: string;
     challengeId: string;
+    auditLogInfo: AuditLogInfo;
   }) => Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>>;
 };
 
