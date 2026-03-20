@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -16,8 +17,8 @@ type Registry struct {
 	Libs          *shared.SharedServices
 }
 
-func NewRegistry(logger *slog.Logger, db pg.DB, sharedDeps shared.SharedServicesDeps) (*Registry, error) {
-	sharedLibs, err := shared.NewSharedServices(sharedDeps)
+func NewRegistry(ctx context.Context, logger *slog.Logger, db pg.DB, sharedDeps shared.SharedServicesDeps) (*Registry, error) {
+	sharedLibs, err := shared.NewSharedServices(ctx, sharedDeps)
 	if err != nil {
 		return nil, fmt.Errorf("shared services: %w", err)
 	}
