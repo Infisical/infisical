@@ -525,7 +525,7 @@ const upsertWindowsServerResource = async (
       projectId,
       connectionDetails: {
         protocol: WindowsProtocol.RDP,
-        hostname,
+        hostname: computer.resolvedIp || hostname,
         port: 3389
       } as TWindowsResourceConnectionDetails,
       kmsService
