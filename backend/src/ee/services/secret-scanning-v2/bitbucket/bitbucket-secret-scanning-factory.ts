@@ -43,6 +43,7 @@ import {
 } from "./bitbucket-secret-scanning-types";
 
 const GitCommitShaRegex = new RE2(/^[a-f0-9]{7,40}$/);
+const ExtractEmailRegex = new RE2(/<(.*)>/);
 
 export const BitbucketSecretScanningFactory = () => {
   const initialize: TSecretScanningFactoryInitialize<
@@ -90,7 +91,7 @@ export const BitbucketSecretScanningFactory = () => {
     const newWebhookUrl = `${cfg.SITE_URL}/secret-scanning/webhooks/bitbucket?dataSourceId=${dataSourceId}`;
 
     await request.put(
-      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodeURIComponent(payload.config.workspaceSlug)}/hooks/${webhookId}`,
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodeURIComponent(payload.config.workspaceSlug)}/hooks/${encodeURIComponent(webhookId)}`,
       {
         description: "Infisical webhook for push events",
         url: newWebhookUrl,
@@ -272,7 +273,7 @@ export const BitbucketSecretScanningFactory = () => {
               const startColumn = finding.StartColumn - 1; // subtract 1 for +
               const endColumn = finding.EndColumn - 1; // subtract 1 for +
               const authorName = commit.author.user?.display_name || commit.author.raw.split(" <")[0];
-              const emailMatch = commit.author.raw.match(/<(.*)>/);
+              const emailMatch = commit.author.raw.match(ExtractEmailRegex);
               const authorEmail = emailMatch?.[1] ?? "";
 
               return {
