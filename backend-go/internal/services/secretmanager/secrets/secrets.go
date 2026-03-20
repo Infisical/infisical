@@ -6,7 +6,6 @@ import (
 
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/shared/permission"
-	"github.com/infisical/api/internal/services/shared/secretmanager/secretfolder"
 )
 
 type permissionSvc interface {
@@ -14,7 +13,6 @@ type permissionSvc interface {
 }
 
 type secretFolderSvc interface {
-	GetSecretFolders(projectID, environment string) *secretfolder.SecretFolder
 }
 
 type service struct {
@@ -55,7 +53,7 @@ func (s *service) GetSecret(ctx context.Context, p *gensecrets.GetSecretPayload)
 	if err != nil {
 		return nil, err
 	}
-	_ = s.secretFolderSvc.GetSecretFolders("", "")
+	// _ = s.secretFolderSvc.GetSecretFolders("", "")
 
 	return &gensecrets.SecretResult{ID: p.ID, Key: "stub", Value: "stub", Environment: "dev", ProjectID: "proj-1"}, nil
 }

@@ -9,7 +9,7 @@ import (
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/secretmanager/secrets"
 	"github.com/infisical/api/internal/services/shared/permission"
-	"github.com/infisical/api/internal/services/shared/secretmanager/secretfolder"
+	smShared "github.com/infisical/api/internal/services/shared/secretmanager"
 	"github.com/infisical/api/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -33,9 +33,10 @@ func setupMux(t *testing.T) *testutil.TestMux {
 
 	permDAL := permission.NewDAL()
 	permLib := permission.NewSharedService(permDAL)
-	secretfolderLib := secretfolder.NewSharedService()
 
-	svc := secrets.NewService(testutil.NopLogger(), permLib, secretfolderLib)
+	smSharedSvcs := smShared.NewSharedServices(smShared.SharedServicesDeps{DB: infra.DB})
+
+	svc := secrets.NewService(testutil.NopLogger(), permLib, smSharedSvcs.SecretFolder)
 
 	mux := testutil.NewTestMux()
 	endpoints := gensecrets.NewEndpoints(svc)
