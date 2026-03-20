@@ -41,10 +41,6 @@ description: "Learn how to configure an Infisical Sync to replicate secrets betw
                 - **Overwrite Destination Secrets**: Removes any secrets at the destination not present in Infisical.
                 - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination; conflicts are resolved in favor of the source Infisical instance.
                 - **Import Secrets (Prioritize Destination)**: Imports secrets from the destination; conflicts are resolved in favor of the remote instance.
-            - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
-            <Note>
-                We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
-            </Note>
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
             - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
