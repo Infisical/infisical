@@ -112,10 +112,8 @@ export const AddOrgMemberModal = ({
   const projectRoles = singleSelectedProjectId ? fetchedProjectRoles : BUILT_IN_PROJECT_ROLES;
 
   useEffect(() => {
-    if (selectedProjects.length !== 1) {
-      setValue("projectRole", DEFAULT_PROJECT_ROLE);
-    }
-  }, [selectedProjects.length, setValue]);
+    setValue("projectRole", DEFAULT_PROJECT_ROLE);
+  }, [singleSelectedProjectId, setValue]);
 
   // set initial form role based off org default role
   useEffect(() => {
