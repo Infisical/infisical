@@ -95,13 +95,13 @@ Feature: Order
     Then the value response.status_code should be equal to 400
     And the value response with jq ".status" should be equal to 400
     And the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
-    And the value response with jq ".detail" should be equal to "Only DNS identifiers are supported"
+    And the value response with jq ".detail" should be equal to "<expected_detail>"
 
     Examples: Bad Identifier Types
-      | identifier_type |
-      | bad             |
-      | ip              |
-      | email           |
+      | identifier_type | expected_detail                          |
+      | bad             | Only DNS and IP identifiers are supported |
+      | email           | Only DNS and IP identifiers are supported |
+      | ip              | Invalid IP identifier                     |
 
   Scenario Outline: Create an order with invalid identifier values
     Given I have an ACME cert profile as "acme_profile"
