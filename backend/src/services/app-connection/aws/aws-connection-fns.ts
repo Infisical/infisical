@@ -1,6 +1,5 @@
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
-import type { AWSError, Response } from "aws-sdk";
-import STS from "aws-sdk/clients/sts";
+import AWS from "aws-sdk";
 import { AxiosError } from "axios";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -76,24 +75,24 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
       throw new InternalServerError({ message: `Unsupported AWS connection method: ${method}` });
   }
 
-  return {
+  return new AWS.Config({
     region,
     credentials: {
       accessKeyId,
       secretAccessKey,
       sessionToken
     }
-  };
+  });
 };
 
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
-  let resp: STS.GetCallerIdentityResponse & {
-    $response: Response<STS.GetCallerIdentityResponse, AWSError>;
+  let resp: AWS.STS.GetCallerIdentityResponse & {
+    $response: AWS.Response<AWS.STS.GetCallerIdentityResponse, AWS.AWSError>;
   };
 
   try {
     const awsConfig = await getAwsConnectionConfig(appConnection);
-    const sts = new STS(awsConfig);
+    const sts = new AWS.STS(awsConfig);
 
     resp = await sts.getCallerIdentity().promise();
   } catch (error: unknown) {

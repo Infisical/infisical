@@ -1,6 +1,4 @@
-import * as common from "oci-common";
-import * as identity from "oci-identity";
-import * as keymanagement from "oci-keymanagement";
+import { common, identity, keymanagement } from "oci-sdk";
 
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";

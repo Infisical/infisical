@@ -1,4 +1,4 @@
-import { SimpleAuthenticationDetailsProvider } from "oci-common";
+import { SimpleAuthenticationDetailsProvider } from "oci-sdk";
 import { z } from "zod";
 
 import { TOCIConnection } from "@app/ee/services/app-connections/oci";

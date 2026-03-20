@@ -15,7 +15,7 @@ import {
   UpdateSecretCommand,
   UpdateSecretCommandInput
 } from "@aws-sdk/client-secrets-manager";
-import type { AWSError } from "aws-sdk";
+import { AWSError } from "aws-sdk";
 import {
   CreateSecretResponse,
   DescribeSecretResponse,
@@ -50,7 +50,7 @@ const getSecretsManagerClient = async (secretSync: TAwsSecretsManagerSyncWithCre
     region: config.region,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
-    credentials: config.credentials
+    credentials: config.credentials!
   });
 
   return secretsManagerClient;
