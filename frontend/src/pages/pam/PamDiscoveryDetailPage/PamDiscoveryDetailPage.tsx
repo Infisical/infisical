@@ -309,7 +309,7 @@ const RunExpandedContent = ({
   errorMessage?: string | null;
 }) => {
   const adEnum = progress?.adEnumeration;
-  const depScan = progress?.dependencyScan;
+  const depScan = progress?.machineEnumeration;
   const machineErrors = progress?.machineErrors;
   const hasMachineErrors = machineErrors && Object.keys(machineErrors).length > 0;
 
@@ -335,7 +335,7 @@ const RunExpandedContent = ({
         {depScan && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium tracking-wider text-label uppercase">
-              Dependency Scan
+              Machine Enumeration
             </span>
             <Badge
               variant={PROGRESS_BADGE_MAP[depScan.status] || "info"}
@@ -490,7 +490,7 @@ const RunsTab = ({
               const isExpanded = expandedRunId === run.id;
               const hasDetails =
                 run.progress?.adEnumeration ||
-                run.progress?.dependencyScan ||
+                run.progress?.machineEnumeration ||
                 run.errorMessage ||
                 (run.progress?.machineErrors && Object.keys(run.progress.machineErrors).length > 0);
 

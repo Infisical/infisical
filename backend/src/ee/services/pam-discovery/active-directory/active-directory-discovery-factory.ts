@@ -947,7 +947,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       await pamDiscoveryRunDAL.updateById(run.id, {
         progress: {
           adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
-          dependencyScan: {
+          machineEnumeration: {
             status: PamDiscoveryStepStatus.Running,
             totalMachines: computers.length,
             scannedMachines: 0,
@@ -1257,7 +1257,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           dependenciesDiscoveredCount,
           progress: {
             adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
-            dependencyScan: {
+            machineEnumeration: {
               status: PamDiscoveryStepStatus.Running,
               totalMachines: computers.length,
               scannedMachines,
@@ -1276,7 +1276,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         const staleDependenciesCount =
           (await pamDiscoverySourceDependenciesDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
 
-        const dependencyScanStatus =
+        const machineEnumerationStatus =
           failedMachines === computers.length && computers.length > 0
             ? PamDiscoveryStepStatus.Failed
             : PamDiscoveryStepStatus.Completed;
@@ -1295,8 +1295,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           completedAt: new Date(),
           progress: {
             adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
-            dependencyScan: {
-              status: dependencyScanStatus,
+            machineEnumeration: {
+              status: machineEnumerationStatus,
               totalMachines: computers.length,
               scannedMachines,
               failedMachines,
@@ -1315,7 +1315,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       const progress: TActiveDirectoryDiscoverySourceRunProgress = adEnumerationSucceeded
         ? {
             adEnumeration: { status: PamDiscoveryStepStatus.Completed },
-            dependencyScan: { status: PamDiscoveryStepStatus.Failed, statusMessage: (error as Error).message }
+            machineEnumeration: { status: PamDiscoveryStepStatus.Failed, statusMessage: (error as Error).message }
           }
         : {
             adEnumeration: { status: PamDiscoveryStepStatus.Failed, error: (error as Error).message }

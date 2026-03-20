@@ -79,7 +79,7 @@ export const ActiveDirectoryDiscoverySourceRunProgressSchema = z.object({
       error: z.string().optional()
     })
     .optional(),
-  dependencyScan: z
+  machineEnumeration: z
     .object({
       status: z.nativeEnum(PamDiscoveryStepStatus),
       totalMachines: z.number().optional(),
