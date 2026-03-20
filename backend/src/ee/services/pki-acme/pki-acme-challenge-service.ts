@@ -83,7 +83,9 @@ export const pkiAcmeChallengeServiceFactory = ({
         "Using ACME development HTTP-01 challenge host override"
       );
     }
-    const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, `http://${host}`);
+    // IPv6 addresses need brackets in URLs (e.g., http://[::1]/)
+    const urlHost = host.includes(":") ? `[${host}]` : host;
+    const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, `http://${urlHost}`);
     logger.info({ challengeUrl }, "Performing ACME HTTP-01 challenge validation");
 
     // TODO: read config from the profile to get the timeout instead
