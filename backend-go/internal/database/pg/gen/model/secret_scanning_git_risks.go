@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -15,33 +16,33 @@ import (
 
 type SecretScanningGitRisks struct {
 	ID                         uuid.UUID `sql:"primary_key"`
-	Description                *string
-	StartLine                  *string
-	EndLine                    *string
-	StartColumn                *string
-	EndColumn                  *string
-	File                       *string
-	SymlinkFile                *string
-	Commit                     *string
-	Entropy                    *string
-	Author                     *string
-	Email                      *string
-	Date                       *string
-	Message                    *string
+	Description                sql.Null[string]
+	StartLine                  sql.Null[string]
+	EndLine                    sql.Null[string]
+	StartColumn                sql.Null[string]
+	EndColumn                  sql.Null[string]
+	File                       sql.Null[string]
+	SymlinkFile                sql.Null[string]
+	Commit                     sql.Null[string]
+	Entropy                    sql.Null[string]
+	Author                     sql.Null[string]
+	Email                      sql.Null[string]
+	Date                       sql.Null[string]
+	Message                    sql.Null[string]
 	Tags                       *pq.StringArray
-	RuleID                     *string
-	Fingerprint                *string
-	FingerPrintWithoutCommitId *string
-	IsFalsePositive            *bool
-	IsResolved                 *bool
-	RiskOwner                  *string
+	RuleID                     sql.Null[string]
+	Fingerprint                sql.Null[string]
+	FingerPrintWithoutCommitId sql.Null[string]
+	IsFalsePositive            sql.Null[bool]
+	IsResolved                 sql.Null[bool]
+	RiskOwner                  sql.Null[string]
 	InstallationId             string
-	RepositoryId               *string
-	RepositoryLink             *string
-	RepositoryFullName         *string
-	PusherName                 *string
-	PusherEmail                *string
-	Status                     *string
+	RepositoryId               sql.Null[string]
+	RepositoryLink             sql.Null[string]
+	RepositoryFullName         sql.Null[string]
+	PusherName                 sql.Null[string]
+	PusherEmail                sql.Null[string]
+	Status                     sql.Null[string]
 	OrgId                      uuid.UUID
 	CreatedAt                  time.Time
 	UpdatedAt                  time.Time

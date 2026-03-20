@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,8 +18,8 @@ type IdentityMetadata struct {
 	Key        string
 	Value      string
 	OrgId      uuid.UUID
-	UserId     *uuid.UUID
-	IdentityId *uuid.UUID
+	UserId     sql.Null[uuid.UUID]
+	IdentityId sql.Null[uuid.UUID]
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }

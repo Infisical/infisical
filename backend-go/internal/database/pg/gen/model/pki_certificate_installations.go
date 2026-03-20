@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -18,9 +19,9 @@ type PkiCertificateInstallations struct {
 	LocationType        string
 	LocationDetails     string
 	LocationFingerprint string
-	Name                *string
+	Name                sql.Null[string]
 	Type                string
-	Metadata            *string
+	Metadata            sql.Null[string]
 	LastSeenAt          time.Time
 	CreatedAt           time.Time
 	UpdatedAt           time.Time

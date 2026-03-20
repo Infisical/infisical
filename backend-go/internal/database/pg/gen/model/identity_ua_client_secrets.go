@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,7 +18,7 @@ type IdentityUaClientSecrets struct {
 	Description              string
 	ClientSecretPrefix       string
 	ClientSecretHash         string
-	ClientSecretLastUsedAt   *time.Time
+	ClientSecretLastUsedAt   sql.NullTime
 	ClientSecretNumUses      int64
 	ClientSecretNumUsesLimit int64
 	ClientSecretTTL          int64

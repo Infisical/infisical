@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -16,8 +17,8 @@ import (
 type AiMcpEndpoints struct {
 	ID                   uuid.UUID `sql:"primary_key"`
 	Name                 string
-	Description          *string
-	Status               *string
+	Description          sql.Null[string]
+	Status               sql.Null[string]
 	ProjectId            string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time

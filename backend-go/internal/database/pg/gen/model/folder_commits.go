@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,7 +18,7 @@ type FolderCommits struct {
 	CommitId      int64
 	ActorMetadata string
 	ActorType     string
-	Message       *string
+	Message       sql.Null[string]
 	FolderId      uuid.UUID
 	EnvId         uuid.UUID
 	CreatedAt     time.Time

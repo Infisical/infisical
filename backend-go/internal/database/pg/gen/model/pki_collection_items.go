@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,6 +18,6 @@ type PkiCollectionItems struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	PkiCollectionId uuid.UUID
-	CaId            *uuid.UUID
-	CertId          *uuid.UUID
+	CaId            sql.Null[uuid.UUID]
+	CertId          sql.Null[uuid.UUID]
 }

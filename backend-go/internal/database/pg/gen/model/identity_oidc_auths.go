@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -20,16 +21,16 @@ type IdentityOidcAuths struct {
 	AccessTokenTrustedIps   string
 	IdentityId              uuid.UUID
 	OidcDiscoveryUrl        string
-	EncryptedCaCert         *string
-	CaCertIV                *string
-	CaCertTag               *string
+	EncryptedCaCert         sql.Null[string]
+	CaCertIV                sql.Null[string]
+	CaCertTag               sql.Null[string]
 	BoundIssuer             string
 	BoundAudiences          string
 	BoundClaims             string
-	BoundSubject            *string
+	BoundSubject            sql.Null[string]
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
-	EncryptedCaCertificate  *[]byte
-	ClaimMetadataMapping    *string
+	EncryptedCaCertificate  sql.Null[[]byte]
+	ClaimMetadataMapping    sql.Null[string]
 	AccessTokenPeriod       int64
 }

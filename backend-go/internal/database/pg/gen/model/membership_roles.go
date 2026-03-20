@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,11 +17,11 @@ type MembershipRoles struct {
 	ID                       uuid.UUID `sql:"primary_key"`
 	Role                     string
 	IsTemporary              bool
-	TemporaryMode            *string
-	TemporaryRange           *string
-	TemporaryAccessStartTime *time.Time
-	TemporaryAccessEndTime   *time.Time
-	CustomRoleId             *uuid.UUID
+	TemporaryMode            sql.Null[string]
+	TemporaryRange           sql.Null[string]
+	TemporaryAccessStartTime sql.NullTime
+	TemporaryAccessEndTime   sql.NullTime
+	CustomRoleId             sql.Null[uuid.UUID]
 	MembershipId             uuid.UUID
 	CreatedAt                time.Time
 	UpdatedAt                time.Time

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 )
 
@@ -15,7 +16,7 @@ type ExternalKms struct {
 	ID                      uuid.UUID `sql:"primary_key"`
 	Provider                string
 	EncryptedProviderInputs []byte
-	Status                  *string
-	StatusDetails           *string
+	Status                  sql.Null[string]
+	StatusDetails           sql.Null[string]
 	KmsKeyId                uuid.UUID
 }

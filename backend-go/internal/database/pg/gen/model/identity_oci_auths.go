@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -23,6 +24,6 @@ type IdentityOciAuths struct {
 	IdentityId              uuid.UUID
 	Type                    string
 	TenancyOcid             string
-	AllowedUsernames        *string
+	AllowedUsernames        sql.Null[string]
 	AccessTokenPeriod       int64
 }

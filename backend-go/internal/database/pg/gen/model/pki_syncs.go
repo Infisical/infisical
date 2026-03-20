@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,27 +16,27 @@ import (
 type PkiSyncs struct {
 	ID                uuid.UUID `sql:"primary_key"`
 	Name              string
-	Description       *string
+	Description       sql.Null[string]
 	Destination       string
 	IsAutoSyncEnabled bool
 	Version           int32
 	DestinationConfig string
 	SyncOptions       string
 	ProjectId         string
-	SubscriberId      *uuid.UUID
+	SubscriberId      sql.Null[uuid.UUID]
 	ConnectionId      uuid.UUID
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	SyncStatus        *string
-	LastSyncJobId     *string
-	LastSyncMessage   *string
-	LastSyncedAt      *time.Time
-	ImportStatus      *string
-	LastImportJobId   *string
-	LastImportMessage *string
-	LastImportedAt    *time.Time
-	RemoveStatus      *string
-	LastRemoveJobId   *string
-	LastRemoveMessage *string
-	LastRemovedAt     *time.Time
+	SyncStatus        sql.Null[string]
+	LastSyncJobId     sql.Null[string]
+	LastSyncMessage   sql.Null[string]
+	LastSyncedAt      sql.NullTime
+	ImportStatus      sql.Null[string]
+	LastImportJobId   sql.Null[string]
+	LastImportMessage sql.Null[string]
+	LastImportedAt    sql.NullTime
+	RemoveStatus      sql.Null[string]
+	LastRemoveJobId   sql.Null[string]
+	LastRemoveMessage sql.Null[string]
+	LastRemovedAt     sql.NullTime
 }

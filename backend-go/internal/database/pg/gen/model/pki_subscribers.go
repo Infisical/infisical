@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -18,19 +19,19 @@ type PkiSubscribers struct {
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 	ProjectId               string
-	CaId                    *uuid.UUID
+	CaId                    sql.Null[uuid.UUID]
 	Name                    string
 	CommonName              string
 	SubjectAlternativeNames pq.StringArray
-	TTL                     *string
+	TTL                     sql.Null[string]
 	KeyUsages               pq.StringArray
 	ExtendedKeyUsages       pq.StringArray
 	Status                  string
 	EnableAutoRenewal       bool
-	AutoRenewalPeriodInDays *int32
-	LastAutoRenewAt         *time.Time
-	LastOperationStatus     *string
-	LastOperationMessage    *string
-	LastOperationAt         *time.Time
-	Properties              *string
+	AutoRenewalPeriodInDays sql.Null[int32]
+	LastAutoRenewAt         sql.NullTime
+	LastOperationStatus     sql.Null[string]
+	LastOperationMessage    sql.Null[string]
+	LastOperationAt         sql.NullTime
+	Properties              sql.Null[string]
 }

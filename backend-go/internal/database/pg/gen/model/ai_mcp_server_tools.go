@@ -8,13 +8,14 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 )
 
 type AiMcpServerTools struct {
 	ID            uuid.UUID `sql:"primary_key"`
 	Name          string
-	Description   *string
-	InputSchema   *string
+	Description   sql.Null[string]
+	InputSchema   sql.Null[string]
 	AiMcpServerId uuid.UUID
 }

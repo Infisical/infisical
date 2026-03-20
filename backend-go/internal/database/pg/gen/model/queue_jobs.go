@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -19,14 +20,14 @@ type QueueJobs struct {
 	QueueJobName  string
 	JobId         string
 	QueueData     string
-	QueueOptions  *string
+	QueueOptions  sql.Null[string]
 	Status        string
 	Attempts      int32
 	MaxAttempts   int32
-	ErrorMessage  *string
-	LastHeartBeat *time.Time
-	StartedAt     *time.Time
-	CompletedAt   *time.Time
+	ErrorMessage  sql.Null[string]
+	LastHeartBeat sql.NullTime
+	StartedAt     sql.NullTime
+	CompletedAt   sql.NullTime
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }

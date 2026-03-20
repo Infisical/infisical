@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,12 +17,12 @@ type PkiDiscoveryScanHistory struct {
 	ID                      uuid.UUID `sql:"primary_key"`
 	DiscoveryConfigId       uuid.UUID
 	StartedAt               time.Time
-	CompletedAt             *time.Time
+	CompletedAt             sql.NullTime
 	Status                  string
 	TargetsScannedCount     int32
 	CertificatesFoundCount  int32
 	InstallationsFoundCount int32
-	ErrorMessage            *string
+	ErrorMessage            sql.Null[string]
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 }

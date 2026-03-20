@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,8 +16,8 @@ import (
 type FolderCheckpointResources struct {
 	ID                 uuid.UUID `sql:"primary_key"`
 	FolderCheckpointId uuid.UUID
-	SecretVersionId    *uuid.UUID
-	FolderVersionId    *uuid.UUID
+	SecretVersionId    sql.Null[uuid.UUID]
+	FolderVersionId    sql.Null[uuid.UUID]
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }

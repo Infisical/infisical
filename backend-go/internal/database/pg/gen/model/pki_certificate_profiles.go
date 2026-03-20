@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,17 +16,17 @@ import (
 type PkiCertificateProfiles struct {
 	ID                  uuid.UUID `sql:"primary_key"`
 	ProjectId           string
-	CaId                *uuid.UUID
+	CaId                sql.Null[uuid.UUID]
 	CertificatePolicyId uuid.UUID
 	Slug                string
-	Description         *string
+	Description         sql.Null[string]
 	EnrollmentType      string
-	EstConfigId         *uuid.UUID
-	ApiConfigId         *uuid.UUID
+	EstConfigId         sql.Null[uuid.UUID]
+	ApiConfigId         sql.Null[uuid.UUID]
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
-	AcmeConfigId        *uuid.UUID
+	AcmeConfigId        sql.Null[uuid.UUID]
 	IssuerType          string
-	ExternalConfigs     *string
-	Defaults            *string
+	ExternalConfigs     sql.Null[string]
+	Defaults            sql.Null[string]
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -21,11 +22,11 @@ type SecretScanningFindings struct {
 	Rule           string
 	Severity       string
 	Status         string
-	Remarks        *string
+	Remarks        sql.Null[string]
 	Fingerprint    string
 	Details        string
 	ProjectId      string
-	ScanId         *uuid.UUID
+	ScanId         sql.Null[uuid.UUID]
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -16,12 +17,12 @@ import (
 type UserAliases struct {
 	ID              uuid.UUID `sql:"primary_key"`
 	UserId          uuid.UUID
-	Username        *string
+	Username        sql.Null[string]
 	AliasType       string
 	ExternalId      string
 	Emails          *pq.StringArray
-	OrgId           *uuid.UUID
+	OrgId           sql.Null[uuid.UUID]
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-	IsEmailVerified *bool
+	IsEmailVerified sql.Null[bool]
 }

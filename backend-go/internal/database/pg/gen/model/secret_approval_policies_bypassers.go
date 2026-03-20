@@ -8,14 +8,15 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type SecretApprovalPoliciesBypassers struct {
 	ID              uuid.UUID `sql:"primary_key"`
-	BypasserGroupId *uuid.UUID
-	BypasserUserId  *uuid.UUID
+	BypasserGroupId sql.Null[uuid.UUID]
+	BypasserUserId  sql.Null[uuid.UUID]
 	PolicyId        uuid.UUID
 	CreatedAt       time.Time
 	UpdatedAt       time.Time

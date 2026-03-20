@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,8 +18,8 @@ type PkiAcmeChallenges struct {
 	AuthId      uuid.UUID
 	Type        string
 	Status      string
-	Error       *string
-	ValidatedAt *time.Time
+	Error       sql.Null[string]
+	ValidatedAt sql.NullTime
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,10 +18,10 @@ type DynamicSecretLeases struct {
 	Version          int32
 	ExternalEntityId string
 	ExpireAt         time.Time
-	Status           *string
-	StatusDetails    *string
+	Status           sql.Null[string]
+	StatusDetails    sql.Null[string]
 	DynamicSecretId  uuid.UUID
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
-	Config           *string
+	Config           sql.Null[string]
 }

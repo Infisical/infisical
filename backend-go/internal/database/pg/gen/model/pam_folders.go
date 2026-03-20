@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,9 +16,9 @@ import (
 type PamFolders struct {
 	ID          uuid.UUID `sql:"primary_key"`
 	ProjectId   string
-	ParentId    *uuid.UUID
+	ParentId    sql.Null[uuid.UUID]
 	Name        string
-	Description *string
+	Description sql.Null[string]
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

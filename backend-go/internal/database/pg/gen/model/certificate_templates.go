@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -16,7 +17,7 @@ import (
 type CertificateTemplates struct {
 	ID                     uuid.UUID `sql:"primary_key"`
 	CaId                   uuid.UUID
-	PkiCollectionId        *uuid.UUID
+	PkiCollectionId        sql.Null[uuid.UUID]
 	Name                   string
 	CommonName             string
 	SubjectAlternativeName string

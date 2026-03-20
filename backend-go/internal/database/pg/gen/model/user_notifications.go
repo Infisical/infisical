@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,11 +16,11 @@ import (
 type UserNotifications struct {
 	ID        uuid.UUID `sql:"primary_key"`
 	UserId    uuid.UUID
-	OrgId     *uuid.UUID
+	OrgId     sql.Null[uuid.UUID]
 	Type      string
 	Title     string
-	Body      *string
-	Link      *string
+	Body      sql.Null[string]
+	Link      sql.Null[string]
 	IsRead    bool
 	CreatedAt time.Time `sql:"primary_key"`
 	UpdatedAt time.Time

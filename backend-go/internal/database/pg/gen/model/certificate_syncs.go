@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,11 +17,11 @@ type CertificateSyncs struct {
 	ID                 uuid.UUID `sql:"primary_key"`
 	PkiSyncId          uuid.UUID
 	CertificateId      uuid.UUID
-	SyncStatus         *string
-	LastSyncMessage    *string
-	LastSyncedAt       *time.Time
+	SyncStatus         sql.Null[string]
+	LastSyncMessage    sql.Null[string]
+	LastSyncedAt       sql.NullTime
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
-	ExternalIdentifier *string
-	SyncMetadata       *string
+	ExternalIdentifier sql.Null[string]
+	SyncMetadata       sql.Null[string]
 }

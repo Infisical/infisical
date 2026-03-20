@@ -8,13 +8,13 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
-	"time"
 )
 
 type InternalCertificateAuthorities struct {
 	ID                          uuid.UUID `sql:"primary_key"`
-	ParentCaId                  *uuid.UUID
+	ParentCaId                  sql.Null[uuid.UUID]
 	Type                        string
 	FriendlyName                string
 	Organization                string
@@ -24,16 +24,16 @@ type InternalCertificateAuthorities struct {
 	Locality                    string
 	CommonName                  string
 	Dn                          string
-	SerialNumber                *string
-	MaxPathLength               *int32
+	SerialNumber                sql.Null[string]
+	MaxPathLength               sql.Null[int32]
 	KeyAlgorithm                string
-	NotBefore                   *time.Time
-	NotAfter                    *time.Time
-	ActiveCaCertId              *uuid.UUID
+	NotBefore                   sql.NullTime
+	NotAfter                    sql.NullTime
+	ActiveCaCertId              sql.Null[uuid.UUID]
 	CaId                        uuid.UUID
 	AutoRenewalEnabled          bool
-	AutoRenewalDaysBeforeExpiry *int32
-	LastRenewalStatus           *string
-	LastRenewalMessage          *string
-	LastRenewalAt               *time.Time
+	AutoRenewalDaysBeforeExpiry sql.Null[int32]
+	LastRenewalStatus           sql.Null[string]
+	LastRenewalMessage          sql.Null[string]
+	LastRenewalAt               sql.NullTime
 }

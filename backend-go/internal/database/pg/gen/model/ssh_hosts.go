@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -22,5 +23,5 @@ type SSHHosts struct {
 	HostCertTtl string
 	UserSshCaId uuid.UUID
 	HostSshCaId uuid.UUID
-	Alias       *string
+	Alias       sql.Null[string]
 }

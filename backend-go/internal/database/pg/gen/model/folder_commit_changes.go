@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,8 +18,8 @@ type FolderCommitChanges struct {
 	FolderCommitId  uuid.UUID
 	ChangeType      string
 	IsUpdate        bool
-	SecretVersionId *uuid.UUID
-	FolderVersionId *uuid.UUID
+	SecretVersionId sql.Null[uuid.UUID]
+	FolderVersionId sql.Null[uuid.UUID]
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }

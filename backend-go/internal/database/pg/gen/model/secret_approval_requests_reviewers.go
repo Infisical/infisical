@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -19,5 +20,5 @@ type SecretApprovalRequestsReviewers struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	ReviewerUserId uuid.UUID
-	Comment        *string
+	Comment        sql.Null[string]
 }

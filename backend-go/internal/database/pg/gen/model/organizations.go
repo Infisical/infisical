@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,35 +16,35 @@ import (
 type Organizations struct {
 	ID                                    uuid.UUID `sql:"primary_key"`
 	Name                                  string
-	CustomerId                            *string
+	CustomerId                            sql.Null[string]
 	Slug                                  string
 	CreatedAt                             time.Time
 	UpdatedAt                             time.Time
-	AuthEnforced                          *bool
-	ScimEnabled                           *bool
-	KmsDefaultKeyId                       *uuid.UUID
-	KmsEncryptedDataKey                   *[]byte
+	AuthEnforced                          sql.Null[bool]
+	ScimEnabled                           sql.Null[bool]
+	KmsDefaultKeyId                       sql.Null[uuid.UUID]
+	KmsEncryptedDataKey                   sql.Null[[]byte]
 	DefaultMembershipRole                 string
 	EnforceMfa                            bool
-	SelectedMfaMethod                     *string
-	AllowSecretSharingOutsideOrganization *bool
+	SelectedMfaMethod                     sql.Null[string]
+	AllowSecretSharingOutsideOrganization sql.Null[bool]
 	ShouldUseNewPrivilegeSystem           bool
-	PrivilegeUpgradeInitiatedByUsername   *string
-	PrivilegeUpgradeInitiatedAt           *time.Time
+	PrivilegeUpgradeInitiatedByUsername   sql.Null[string]
+	PrivilegeUpgradeInitiatedAt           sql.NullTime
 	BypassOrgAuthEnabled                  bool
-	UserTokenExpiration                   *string
-	SecretsProductEnabled                 *bool
-	PkiProductEnabled                     *bool
-	KmsProductEnabled                     *bool
-	SshProductEnabled                     *bool
-	ScannerProductEnabled                 *bool
-	ShareSecretsProductEnabled            *bool
-	MaxSharedSecretLifetime               *int32
-	MaxSharedSecretViewLimit              *int32
+	UserTokenExpiration                   sql.Null[string]
+	SecretsProductEnabled                 sql.Null[bool]
+	PkiProductEnabled                     sql.Null[bool]
+	KmsProductEnabled                     sql.Null[bool]
+	SshProductEnabled                     sql.Null[bool]
+	ScannerProductEnabled                 sql.Null[bool]
+	ShareSecretsProductEnabled            sql.Null[bool]
+	MaxSharedSecretLifetime               sql.Null[int32]
+	MaxSharedSecretViewLimit              sql.Null[int32]
 	GoogleSsoAuthEnforced                 bool
-	GoogleSsoAuthLastUsed                 *time.Time
-	ParentOrgId                           *uuid.UUID
-	RootOrgId                             *uuid.UUID
+	GoogleSsoAuthLastUsed                 sql.NullTime
+	ParentOrgId                           sql.Null[uuid.UUID]
+	RootOrgId                             sql.Null[uuid.UUID]
 	BlockDuplicateSecretSyncDestinations  bool
-	SecretShareBrandConfig                *string
+	SecretShareBrandConfig                sql.Null[string]
 }

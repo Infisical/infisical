@@ -8,8 +8,8 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
-	"time"
 )
 
 type ApprovalRequestApprovals struct {
@@ -17,6 +17,6 @@ type ApprovalRequestApprovals struct {
 	StepId         uuid.UUID
 	ApproverUserId uuid.UUID
 	Decision       string
-	Comment        *string
-	CreatedAt      *time.Time
+	Comment        sql.Null[string]
+	CreatedAt      sql.NullTime
 }
