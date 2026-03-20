@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
-import ACM from "aws-sdk/clients/acm";
-import ELBv2 from "aws-sdk/clients/elbv2";
+import ACM from "aws-sdk/clients/acm.js";
+import ELBv2 from "aws-sdk/clients/elbv2.js";
 import { z } from "zod";
 
 import { TCertificateSyncs } from "@app/db/schemas";
