@@ -5,7 +5,7 @@ import { request } from "@app/lib/config/request";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getExternalInfisicalAccessToken } from "@app/services/app-connection/external-infisical";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { matchesSchema, parseSyncErrorMessage } from "@app/services/secret-sync/secret-sync-fns";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TExternalInfisicalSyncWithCredentials } from "./external-infisical-sync-types";
@@ -23,7 +23,7 @@ const withExternalInfisicalErrorHandling = async <T>(fn: () => Promise<T>): Prom
       const shouldRetry = !isNonRetryableStatus(status);
       throw new SecretSyncError({
         error: err,
-        message: parseSyncErrorMessage(err),
+        message: (err.response?.data as { message?: string })?.message ?? err.message,
         shouldRetry
       });
     }
