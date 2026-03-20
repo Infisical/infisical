@@ -197,14 +197,17 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
           </Step>
           <Step title="Open the Install Certificate Modal">
             Press **Install CA Certificate** on the intermediate CA. Select **External CA (Automated)** and press **Choose Integration**.
+            ![pki install select method](/images/platform/pki/ca/ca-install-adcs-select-method.png)
           </Step>
           <Step title="Select Azure AD CS">
             Choose **Azure AD CS** as the integration provider.
+            ![pki install external select](/images/platform/pki/ca/ca-install-adcs-external-select.png)
           </Step>
           <Step title="Configure Signing Details">
+            ![pki install adcs form](/images/platform/pki/ca/ca-install-adcs.png)
             - **Azure AD CS Connection**: Select your AD CS Connection.
             - **Certificate Template**: The AD CS template name (e.g., `SubCA`).
-            - **Validity Period**: Optional TTL (e.g., `365d`). Requires `EDITF_ATTRIBUTEENDDATE` on the AD CS server.
+            - **Validity Period**: Optional TTL (e.g., `365`). Requires `EDITF_ATTRIBUTEENDDATE` on the AD CS server.
             - **Path Length**: Max intermediate CAs below this one (`-1` for no limit, `0` to prevent chaining).
           </Step>
           <Step title="Install">
@@ -224,7 +227,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
                   "appConnectionId": "<adcs-connection-id>",
                   "destinationConfig": {
                       "template": "SubCA",
-                      "validityPeriod": "365d"
+                      "validityPeriod": 365
                   }
               }'
             ```
@@ -245,25 +248,82 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       </Tab>
     </Tabs>
 
-    ## Auto-Renewal for AD CS-Signed CAs
+    ## Auto-Renewal
 
-    Infisical can automatically renew intermediate CA certificates signed by AD CS. Each renewal submits a fresh CSR (AD CS has no renewal API).
+    Infisical supports automatic renewal of intermediate CA certificates signed by AD CS. When enabled, Infisical will automatically submit a new CSR to AD CS and import the renewed certificate before the current one expires.
 
-    Enable via the CA details page or the API:
+    <Tabs>
+      <Tab title="Infisical UI">
+        Navigate to the CA details page of your AD CS-signed intermediate CA. Click the **edit** (pencil) icon in the Details section to open the renewal settings.
 
-    ```bash Request
-    curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/auto-renewal' \
-      --header 'Authorization: Bearer <access-token>' \
-      --header 'Content-Type: application/json' \
-      --data-raw '{
+        ![pki adcs auto-renewal page](/images/platform/pki/ca/ca-adcs-auto-renewal-page.png)
+
+        Toggle **Auto-Renewal** on and set the **Days Before Expiry** to configure when the renewal should be triggered.
+
+        ![pki adcs auto-renewal modal](/images/platform/pki/ca/ca-adcs-auto-renewal-modal.png)
+      </Tab>
+      <Tab title="API">
+        ### Enable Auto-Renewal
+
+        ```bash Request
+        curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/auto-renewal' \
+          --header 'Authorization: Bearer <access-token>' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "autoRenewalEnabled": true,
+              "autoRenewalDaysBeforeExpiry": 7
+          }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
           "autoRenewalEnabled": true,
-          "autoRenewalDaysBeforeExpiry": 7
-      }'
-    ```
+          "autoRenewalDaysBeforeExpiry": 7,
+          "lastRenewalStatus": null,
+          "lastRenewalMessage": null,
+          "lastRenewalAt": null
+        }
+        ```
 
-    <Note>
-      `autoRenewalDaysBeforeExpiry` must be less than the certificate's TTL and at most 30 days.
-    </Note>
+        <Note>
+          - `autoRenewalDaysBeforeExpiry` must be less than the certificate's TTL and at most 30 days
+          - Auto-renewal is only available for CAs with an external signing configuration (e.g., AD CS)
+          - The renewal status can be checked via the GET auto-renewal endpoint
+        </Note>
+      </Tab>
+    </Tabs>
+
+    ## Manual Renewal
+
+    You can also manually trigger a renewal for an AD CS-signed intermediate CA at any time. Each renewal submits a fresh CSR (AD CS has no renewal API).
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        Navigate to the CA details page and press the **Renew CA** button.
+
+        ![pki adcs renew page](/images/platform/pki/ca/ca-adcs-renew-page.png)
+
+        The renewal modal will confirm that this CA is configured to use Azure AD CS for signing. Press **Renew via AD CS** to submit a new CSR to AD CS and install the renewed certificate.
+
+        ![pki adcs renew modal](/images/platform/pki/ca/ca-adcs-renew-modal.png)
+      </Tab>
+      <Tab title="API">
+        To manually renew an AD CS-signed CA, re-trigger the install flow via the API.
+
+        ```bash Request
+        curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/install-certificate-adcs' \
+          --header 'Authorization: Bearer <access-token>' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "maxPathLength": -1
+          }'
+        ```
+
+        This re-triggers the install flow — Infisical will submit a fresh CSR to AD CS and import the renewed certificate.
+      </Tab>
+    </Tabs>
   </Tab>
 </Tabs>
 
