@@ -500,10 +500,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           // In-memory fallback to limit blast radius during Redis outage
           if (inMemoryIdentityDedup.has(dedupKey)) return;
           inMemoryIdentityDedup.add(dedupKey);
-          const timer = setTimeout(
-            () => inMemoryIdentityDedup.delete(dedupKey),
-            IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS
-          );
+          const timer = setTimeout(() => inMemoryIdentityDedup.delete(dedupKey), IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS);
           timer.unref();
           // falls through intentionally: first caller during Redis outage still identifies
         }
