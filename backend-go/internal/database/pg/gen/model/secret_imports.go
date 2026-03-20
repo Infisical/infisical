@@ -8,22 +8,23 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type SecretImports struct {
 	ID                   uuid.UUID `sql:"primary_key"`
-	Version              *int32
+	Version              sql.Null[int32]
 	ImportPath           string
 	ImportEnv            uuid.UUID
 	Position             int32
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	FolderId             uuid.UUID
-	IsReplication        *bool
-	IsReplicationSuccess *bool
-	ReplicationStatus    *string
-	LastReplicated       *time.Time
-	IsReserved           *bool
+	IsReplication        sql.Null[bool]
+	IsReplicationSuccess sql.Null[bool]
+	ReplicationStatus    sql.Null[string]
+	LastReplicated       sql.NullTime
+	IsReserved           sql.Null[bool]
 }

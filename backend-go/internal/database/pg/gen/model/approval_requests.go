@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,17 +17,17 @@ type ApprovalRequests struct {
 	ID                uuid.UUID `sql:"primary_key"`
 	ProjectId         string
 	OrganizationId    uuid.UUID
-	PolicyId          *uuid.UUID
-	RequesterId       *uuid.UUID
+	PolicyId          sql.Null[uuid.UUID]
+	RequesterId       sql.Null[uuid.UUID]
 	RequesterName     string
 	RequesterEmail    string
 	Type              string
 	Status            string
-	Justification     *string
+	Justification     sql.Null[string]
 	CurrentStep       int32
 	RequestData       string
-	ExpiresAt         *time.Time
+	ExpiresAt         sql.NullTime
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	MachineIdentityId *uuid.UUID
+	MachineIdentityId sql.Null[uuid.UUID]
 }

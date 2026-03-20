@@ -8,31 +8,32 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type OidcConfigs struct {
 	ID                        uuid.UUID `sql:"primary_key"`
-	DiscoveryURL              *string
-	Issuer                    *string
-	AuthorizationEndpoint     *string
-	JwksUri                   *string
-	TokenEndpoint             *string
-	UserinfoEndpoint          *string
-	EncryptedClientId         *string
+	DiscoveryURL              sql.Null[string]
+	Issuer                    sql.Null[string]
+	AuthorizationEndpoint     sql.Null[string]
+	JwksUri                   sql.Null[string]
+	TokenEndpoint             sql.Null[string]
+	UserinfoEndpoint          sql.Null[string]
+	EncryptedClientId         sql.Null[string]
 	ConfigurationType         string
-	ClientIdIV                *string
-	ClientIdTag               *string
-	EncryptedClientSecret     *string
-	ClientSecretIV            *string
-	ClientSecretTag           *string
-	AllowedEmailDomains       *string
+	ClientIdIV                sql.Null[string]
+	ClientIdTag               sql.Null[string]
+	EncryptedClientSecret     sql.Null[string]
+	ClientSecretIV            sql.Null[string]
+	ClientSecretTag           sql.Null[string]
+	AllowedEmailDomains       sql.Null[string]
 	IsActive                  bool
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
 	OrgId                     uuid.UUID
-	LastUsed                  *time.Time
+	LastUsed                  sql.NullTime
 	ManageGroupMemberships    bool
 	EncryptedOidcClientId     []byte
 	EncryptedOidcClientSecret []byte

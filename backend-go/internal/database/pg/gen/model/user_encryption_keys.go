@@ -8,27 +8,28 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 )
 
 type UserEncryptionKeys struct {
 	ID                                uuid.UUID `sql:"primary_key"`
-	ClientPublicKey                   *string
-	ServerPrivateKey                  *string
-	EncryptionVersion                 *int32
-	ProtectedKey                      *string
-	ProtectedKeyIV                    *string
-	ProtectedKeyTag                   *string
-	PublicKey                         *string
-	EncryptedPrivateKey               *string
-	Iv                                *string
-	Tag                               *string
-	Salt                              *string
-	Verifier                          *string
+	ClientPublicKey                   sql.Null[string]
+	ServerPrivateKey                  sql.Null[string]
+	EncryptionVersion                 sql.Null[int32]
+	ProtectedKey                      sql.Null[string]
+	ProtectedKeyIV                    sql.Null[string]
+	ProtectedKeyTag                   sql.Null[string]
+	PublicKey                         sql.Null[string]
+	EncryptedPrivateKey               sql.Null[string]
+	Iv                                sql.Null[string]
+	Tag                               sql.Null[string]
+	Salt                              sql.Null[string]
+	Verifier                          sql.Null[string]
 	UserId                            uuid.UUID
-	HashedPassword                    *string
-	ServerEncryptedPrivateKey         *string
-	ServerEncryptedPrivateKeyIV       *string
-	ServerEncryptedPrivateKeyTag      *string
-	ServerEncryptedPrivateKeyEncoding *string
+	HashedPassword                    sql.Null[string]
+	ServerEncryptedPrivateKey         sql.Null[string]
+	ServerEncryptedPrivateKeyIV       sql.Null[string]
+	ServerEncryptedPrivateKeyTag      sql.Null[string]
+	ServerEncryptedPrivateKeyEncoding sql.Null[string]
 }

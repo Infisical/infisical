@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,14 +17,14 @@ type PkiCertificatePolicies struct {
 	ID                uuid.UUID `sql:"primary_key"`
 	ProjectId         string
 	Name              string
-	Description       *string
-	Subject           *string
-	Sans              *string
-	KeyUsages         *string
-	ExtendedKeyUsages *string
-	Algorithms        *string
-	Validity          *string
+	Description       sql.Null[string]
+	Subject           sql.Null[string]
+	Sans              sql.Null[string]
+	KeyUsages         sql.Null[string]
+	ExtendedKeyUsages sql.Null[string]
+	Algorithms        sql.Null[string]
+	Validity          sql.Null[string]
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	BasicConstraints  *string
+	BasicConstraints  sql.Null[string]
 }

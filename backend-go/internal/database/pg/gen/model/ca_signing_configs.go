@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,10 +17,10 @@ type CaSigningConfigs struct {
 	ID                        uuid.UUID `sql:"primary_key"`
 	CaId                      uuid.UUID
 	Type                      string
-	ParentCaId                *uuid.UUID
-	AppConnectionId           *uuid.UUID
-	DestinationConfig         *string
-	LastExternalCertificateId *string
+	ParentCaId                sql.Null[uuid.UUID]
+	AppConnectionId           sql.Null[uuid.UUID]
+	DestinationConfig         sql.Null[string]
+	LastExternalCertificateId sql.Null[string]
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
 }

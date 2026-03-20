@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -21,7 +22,7 @@ type AccessApprovalPolicies struct {
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	EnforcementLevel     string
-	DeletedAt            *time.Time
+	DeletedAt            sql.NullTime
 	AllowedSelfApprovals bool
-	MaxTimePeriod        *string
+	MaxTimePeriod        sql.Null[string]
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,9 +17,9 @@ type PkiAlertChannels struct {
 	ID              uuid.UUID `sql:"primary_key"`
 	AlertId         uuid.UUID
 	ChannelType     string
-	Config          *string
-	Enabled         *bool
+	Config          sql.Null[string]
+	Enabled         sql.Null[bool]
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-	EncryptedConfig *[]byte
+	EncryptedConfig sql.Null[[]byte]
 }

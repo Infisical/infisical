@@ -8,12 +8,12 @@
 package model
 
 import (
-	"time"
+	"database/sql"
 )
 
 type InfisicalMigrations struct {
 	ID            int32 `sql:"primary_key"`
-	Name          *string
-	Batch         *int32
-	MigrationTime *time.Time
+	Name          sql.Null[string]
+	Batch         sql.Null[int32]
+	MigrationTime sql.NullTime
 }

@@ -8,20 +8,21 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type SecretScanningDataSources struct {
 	ID                   uuid.UUID `sql:"primary_key"`
-	ExternalId           *string
+	ExternalId           sql.Null[string]
 	Name                 string
-	Description          *string
+	Description          sql.Null[string]
 	Type                 string
 	Config               string
-	EncryptedCredentials *[]byte
-	ConnectionId         *uuid.UUID
-	IsAutoScanEnabled    *bool
+	EncryptedCredentials sql.Null[[]byte]
+	ConnectionId         sql.Null[uuid.UUID]
+	IsAutoScanEnabled    sql.Null[bool]
 	ProjectId            string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time

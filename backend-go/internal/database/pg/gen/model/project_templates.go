@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,12 +16,12 @@ import (
 type ProjectTemplates struct {
 	ID                       uuid.UUID `sql:"primary_key"`
 	Name                     string
-	Description              *string
+	Description              sql.Null[string]
 	Roles                    string
-	Environments             *string
+	Environments             sql.Null[string]
 	OrgId                    uuid.UUID
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
 	Type                     string
-	ProjectManagedIdentities *string
+	ProjectManagedIdentities sql.Null[string]
 }

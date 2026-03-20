@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -21,20 +22,20 @@ type IdentityKubernetesAuths struct {
 	CreatedAt                           time.Time
 	UpdatedAt                           time.Time
 	IdentityId                          uuid.UUID
-	KubernetesHost                      *string
-	EncryptedCaCert                     *string
-	CaCertIV                            *string
-	CaCertTag                           *string
-	EncryptedTokenReviewerJwt           *string
-	TokenReviewerJwtIV                  *string
-	TokenReviewerJwtTag                 *string
+	KubernetesHost                      sql.Null[string]
+	EncryptedCaCert                     sql.Null[string]
+	CaCertIV                            sql.Null[string]
+	CaCertTag                           sql.Null[string]
+	EncryptedTokenReviewerJwt           sql.Null[string]
+	TokenReviewerJwtIV                  sql.Null[string]
+	TokenReviewerJwtTag                 sql.Null[string]
 	AllowedNamespaces                   string
 	AllowedNames                        string
 	AllowedAudience                     string
-	EncryptedKubernetesTokenReviewerJwt *[]byte
-	EncryptedKubernetesCaCertificate    *[]byte
-	GatewayId                           *uuid.UUID
+	EncryptedKubernetesTokenReviewerJwt sql.Null[[]byte]
+	EncryptedKubernetesCaCertificate    sql.Null[[]byte]
+	GatewayId                           sql.Null[uuid.UUID]
 	AccessTokenPeriod                   int64
 	TokenReviewMode                     string
-	GatewayV2Id                         *uuid.UUID
+	GatewayV2Id                         sql.Null[uuid.UUID]
 }

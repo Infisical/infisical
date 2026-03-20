@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -22,8 +23,8 @@ type IdentityGcpAuths struct {
 	UpdatedAt               time.Time
 	IdentityId              uuid.UUID
 	Type                    string
-	AllowedServiceAccounts  *string
-	AllowedProjects         *string
-	AllowedZones            *string
+	AllowedServiceAccounts  sql.Null[string]
+	AllowedProjects         sql.Null[string]
+	AllowedZones            sql.Null[string]
 	AccessTokenPeriod       int64
 }

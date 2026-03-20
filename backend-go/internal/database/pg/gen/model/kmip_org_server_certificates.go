@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,7 +17,7 @@ type KmipOrgServerCertificates struct {
 	ID                   uuid.UUID `sql:"primary_key"`
 	OrgId                uuid.UUID
 	CommonName           string
-	AltNames             *string
+	AltNames             sql.Null[string]
 	SerialNumber         string
 	KeyAlgorithm         string
 	IssuedAt             time.Time

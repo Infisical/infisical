@@ -8,15 +8,15 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
-	"time"
 )
 
 type SecretScanningScans struct {
 	ID            uuid.UUID `sql:"primary_key"`
 	Status        string
-	StatusMessage *string
+	StatusMessage sql.Null[string]
 	Type          string
 	ResourceId    uuid.UUID
-	CreatedAt     *time.Time
+	CreatedAt     sql.NullTime
 }

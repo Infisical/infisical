@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -18,15 +19,15 @@ type IdentityAccessTokens struct {
 	AccessTokenMaxTTL        int64
 	AccessTokenNumUses       int64
 	AccessTokenNumUsesLimit  int64
-	AccessTokenLastUsedAt    *time.Time
-	AccessTokenLastRenewedAt *time.Time
+	AccessTokenLastUsedAt    sql.NullTime
+	AccessTokenLastRenewedAt sql.NullTime
 	IsAccessTokenRevoked     bool
-	IdentityUAClientSecretId *string
+	IdentityUAClientSecretId sql.Null[string]
 	IdentityId               uuid.UUID
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
-	Name                     *string
+	Name                     sql.Null[string]
 	AuthMethod               string
 	AccessTokenPeriod        int64
-	SubOrganizationId        *uuid.UUID
+	SubOrganizationId        sql.Null[uuid.UUID]
 }

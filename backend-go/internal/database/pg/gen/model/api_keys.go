@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,8 +16,8 @@ import (
 type APIKeys struct {
 	ID         string `sql:"primary_key"`
 	Name       string
-	LastUsed   *time.Time
-	ExpiresAt  *time.Time
+	LastUsed   sql.NullTime
+	ExpiresAt  sql.NullTime
 	SecretHash string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time

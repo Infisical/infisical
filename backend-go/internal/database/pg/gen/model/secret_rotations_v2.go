@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 type SecretRotationsV2 struct {
 	ID                            uuid.UUID `sql:"primary_key"`
 	Name                          string
-	Description                   *string
+	Description                   sql.Null[string]
 	Type                          string
 	Parameters                    string
 	SecretsMapping                string
@@ -31,8 +32,8 @@ type SecretRotationsV2 struct {
 	RotationStatus                string
 	LastRotationAttemptedAt       time.Time
 	LastRotatedAt                 time.Time
-	EncryptedLastRotationMessage  *[]byte
-	LastRotationJobId             *string
-	NextRotationAt                *time.Time
+	EncryptedLastRotationMessage  sql.Null[[]byte]
+	LastRotationJobId             sql.Null[string]
+	NextRotationAt                sql.NullTime
 	IsLastRotationManual          bool
 }

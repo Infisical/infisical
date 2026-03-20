@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,15 +17,15 @@ type AuditLogs struct {
 	ID            uuid.UUID `sql:"primary_key"`
 	Actor         string
 	ActorMetadata string
-	IpAddress     *string
+	IpAddress     sql.Null[string]
 	EventType     string
-	EventMetadata *string
-	UserAgent     *string
-	UserAgentType *string
-	ExpiresAt     *time.Time
+	EventMetadata sql.Null[string]
+	UserAgent     sql.Null[string]
+	UserAgentType sql.Null[string]
+	ExpiresAt     sql.NullTime
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
-	OrgId         *uuid.UUID
-	ProjectId     *string
-	ProjectName   *string
+	OrgId         sql.Null[uuid.UUID]
+	ProjectId     sql.Null[string]
+	ProjectName   sql.Null[string]
 }

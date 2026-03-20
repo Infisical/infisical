@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,26 +16,26 @@ import (
 type Integrations struct {
 	ID                  uuid.UUID `sql:"primary_key"`
 	IsActive            bool
-	URL                 *string
-	App                 *string
-	AppId               *string
-	TargetEnvironment   *string
-	TargetEnvironmentId *string
-	TargetService       *string
-	TargetServiceId     *string
-	Owner               *string
-	Path                *string
-	Region              *string
-	Scope               *string
+	URL                 sql.Null[string]
+	App                 sql.Null[string]
+	AppId               sql.Null[string]
+	TargetEnvironment   sql.Null[string]
+	TargetEnvironmentId sql.Null[string]
+	TargetService       sql.Null[string]
+	TargetServiceId     sql.Null[string]
+	Owner               sql.Null[string]
+	Path                sql.Null[string]
+	Region              sql.Null[string]
+	Scope               sql.Null[string]
 	Integration         string
-	Metadata            *string
+	Metadata            sql.Null[string]
 	IntegrationAuthId   uuid.UUID
 	EnvId               uuid.UUID
 	SecretPath          string
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
-	LastUsed            *time.Time
-	IsSynced            *bool
-	SyncMessage         *string
-	LastSyncJobId       *string
+	LastUsed            sql.NullTime
+	IsSynced            sql.Null[bool]
+	SyncMessage         sql.Null[string]
+	LastSyncJobId       sql.Null[string]
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,9 +17,9 @@ type TrustedIps struct {
 	ID        uuid.UUID `sql:"primary_key"`
 	IpAddress string
 	Type      string
-	Prefix    *int32
-	IsActive  *bool
-	Comment   *string
+	Prefix    sql.Null[int32]
+	IsActive  sql.Null[bool]
+	Comment   sql.Null[string]
 	ProjectId string
 	CreatedAt time.Time
 	UpdatedAt time.Time

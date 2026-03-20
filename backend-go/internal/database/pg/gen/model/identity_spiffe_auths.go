@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -19,11 +20,11 @@ type IdentitySpiffeAuths struct {
 	AllowedSpiffeIds              string
 	AllowedAudiences              string
 	ConfigurationType             string
-	EncryptedCaBundleJwks         *[]byte
-	BundleEndpointUrl             *string
-	EncryptedBundleEndpointCaCert *[]byte
-	EncryptedCachedBundleJwks     *[]byte
-	CachedBundleLastRefreshedAt   *time.Time
+	EncryptedCaBundleJwks         sql.Null[[]byte]
+	BundleEndpointUrl             sql.Null[string]
+	EncryptedBundleEndpointCaCert sql.Null[[]byte]
+	EncryptedCachedBundleJwks     sql.Null[[]byte]
+	CachedBundleLastRefreshedAt   sql.NullTime
 	BundleRefreshHintSeconds      int32
 	AccessTokenTTL                int64
 	AccessTokenMaxTTL             int64

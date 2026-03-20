@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,8 +16,8 @@ import (
 type ScimEvents struct {
 	ID        uuid.UUID `sql:"primary_key"`
 	OrgId     uuid.UUID
-	EventType *string
-	Event     *string
+	EventType sql.Null[string]
+	Event     sql.Null[string]
 	CreatedAt time.Time `sql:"primary_key"`
 	UpdatedAt time.Time
 }

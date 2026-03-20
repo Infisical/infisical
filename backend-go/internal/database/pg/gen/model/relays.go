@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,10 +17,10 @@ type Relays struct {
 	ID              uuid.UUID `sql:"primary_key"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-	OrgId           *uuid.UUID
-	IdentityId      *uuid.UUID
+	OrgId           sql.Null[uuid.UUID]
+	IdentityId      sql.Null[uuid.UUID]
 	Name            string
 	Host            string
-	Heartbeat       *time.Time
-	HealthAlertedAt *time.Time
+	Heartbeat       sql.NullTime
+	HealthAlertedAt sql.NullTime
 }

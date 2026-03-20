@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -20,8 +21,8 @@ type WebauthnCredentials struct {
 	PublicKey    string
 	Counter      int64
 	Transports   *pq.StringArray
-	Name         *string
-	LastUsedAt   *time.Time
+	Name         sql.Null[string]
+	LastUsedAt   sql.NullTime
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

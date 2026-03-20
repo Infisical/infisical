@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 type KmsRootConfig struct {
 	ID                 uuid.UUID `sql:"primary_key"`
 	EncryptedRootKey   []byte
-	EncryptionStrategy *string
+	EncryptionStrategy sql.Null[string]
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }

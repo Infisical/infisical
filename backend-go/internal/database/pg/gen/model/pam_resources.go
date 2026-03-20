@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,13 +17,13 @@ type PamResources struct {
 	ID                                  uuid.UUID `sql:"primary_key"`
 	ProjectId                           string
 	Name                                string
-	GatewayId                           *uuid.UUID
+	GatewayId                           sql.Null[uuid.UUID]
 	ResourceType                        string
 	EncryptedConnectionDetails          []byte
 	CreatedAt                           time.Time
 	UpdatedAt                           time.Time
-	EncryptedRotationAccountCredentials *[]byte
-	EncryptedResourceMetadata           *[]byte
-	AdServerResourceId                  *uuid.UUID
-	DiscoveryFingerprint                *string
+	EncryptedRotationAccountCredentials sql.Null[[]byte]
+	EncryptedResourceMetadata           sql.Null[[]byte]
+	AdServerResourceId                  sql.Null[uuid.UUID]
+	DiscoveryFingerprint                sql.Null[string]
 }

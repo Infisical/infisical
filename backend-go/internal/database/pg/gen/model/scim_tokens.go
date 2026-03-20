@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -19,5 +20,5 @@ type ScimTokens struct {
 	OrgId                  uuid.UUID
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	ExpiryNotificationSent *bool
+	ExpiryNotificationSent sql.Null[bool]
 }

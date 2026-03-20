@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -15,30 +16,30 @@ import (
 
 type SuperAdmin struct {
 	ID                                       uuid.UUID `sql:"primary_key"`
-	Initialized                              *bool
-	AllowSignUp                              *bool
+	Initialized                              sql.Null[bool]
+	AllowSignUp                              sql.Null[bool]
 	CreatedAt                                time.Time
 	UpdatedAt                                time.Time
-	AllowedSignUpDomain                      *string
+	AllowedSignUpDomain                      sql.Null[string]
 	InstanceId                               uuid.UUID
-	TrustSamlEmails                          *bool
-	TrustLdapEmails                          *bool
-	TrustOidcEmails                          *bool
-	DefaultAuthOrgId                         *uuid.UUID
+	TrustSamlEmails                          sql.Null[bool]
+	TrustLdapEmails                          sql.Null[bool]
+	TrustOidcEmails                          sql.Null[bool]
+	DefaultAuthOrgId                         sql.Null[uuid.UUID]
 	EnabledLoginMethods                      *pq.StringArray
-	EncryptedSlackClientId                   *[]byte
-	EncryptedSlackClientSecret               *[]byte
-	AuthConsentContent                       *string
-	PageFrameContent                         *string
+	EncryptedSlackClientId                   sql.Null[[]byte]
+	EncryptedSlackClientSecret               sql.Null[[]byte]
+	AuthConsentContent                       sql.Null[string]
+	PageFrameContent                         sql.Null[string]
 	AdminIdentityIds                         *pq.StringArray
-	EncryptedMicrosoftTeamsAppId             *[]byte
-	EncryptedMicrosoftTeamsClientSecret      *[]byte
-	EncryptedMicrosoftTeamsBotId             *[]byte
-	EncryptedGitHubAppConnectionClientId     *[]byte
-	EncryptedGitHubAppConnectionClientSecret *[]byte
-	EncryptedGitHubAppConnectionSlug         *[]byte
-	EncryptedGitHubAppConnectionId           *[]byte
-	EncryptedGitHubAppConnectionPrivateKey   *[]byte
-	EncryptedEnvOverrides                    *[]byte
+	EncryptedMicrosoftTeamsAppId             sql.Null[[]byte]
+	EncryptedMicrosoftTeamsClientSecret      sql.Null[[]byte]
+	EncryptedMicrosoftTeamsBotId             sql.Null[[]byte]
+	EncryptedGitHubAppConnectionClientId     sql.Null[[]byte]
+	EncryptedGitHubAppConnectionClientSecret sql.Null[[]byte]
+	EncryptedGitHubAppConnectionSlug         sql.Null[[]byte]
+	EncryptedGitHubAppConnectionId           sql.Null[[]byte]
+	EncryptedGitHubAppConnectionPrivateKey   sql.Null[[]byte]
+	EncryptedEnvOverrides                    sql.Null[[]byte]
 	FipsEnabled                              bool
 }

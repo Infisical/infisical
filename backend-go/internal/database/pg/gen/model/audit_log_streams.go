@@ -8,18 +8,19 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type AuditLogStreams struct {
 	ID                          uuid.UUID `sql:"primary_key"`
-	URL                         *string
-	EncryptedHeadersCiphertext  *string
-	EncryptedHeadersIV          *string
-	EncryptedHeadersTag         *string
-	EncryptedHeadersAlgorithm   *string
-	EncryptedHeadersKeyEncoding *string
+	URL                         sql.Null[string]
+	EncryptedHeadersCiphertext  sql.Null[string]
+	EncryptedHeadersIV          sql.Null[string]
+	EncryptedHeadersTag         sql.Null[string]
+	EncryptedHeadersAlgorithm   sql.Null[string]
+	EncryptedHeadersKeyEncoding sql.Null[string]
 	OrgId                       uuid.UUID
 	CreatedAt                   time.Time
 	UpdatedAt                   time.Time

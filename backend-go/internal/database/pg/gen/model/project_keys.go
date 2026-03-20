@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,7 +18,7 @@ type ProjectKeys struct {
 	EncryptedKey string
 	Nonce        string
 	ReceiverId   uuid.UUID
-	SenderId     *uuid.UUID
+	SenderId     sql.Null[uuid.UUID]
 	ProjectId    string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

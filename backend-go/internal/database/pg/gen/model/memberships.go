@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -16,17 +17,17 @@ import (
 type Memberships struct {
 	ID                  uuid.UUID `sql:"primary_key"`
 	Scope               string
-	ActorUserId         *uuid.UUID
-	ActorIdentityId     *uuid.UUID
-	ActorGroupId        *uuid.UUID
+	ActorUserId         sql.Null[uuid.UUID]
+	ActorIdentityId     sql.Null[uuid.UUID]
+	ActorGroupId        sql.Null[uuid.UUID]
 	ScopeOrgId          uuid.UUID
-	ScopeProjectId      *string
+	ScopeProjectId      sql.Null[string]
 	IsActive            bool
-	Status              *string
-	InviteEmail         *string
-	LastInvitedAt       *time.Time
-	LastLoginAuthMethod *string
-	LastLoginTime       *time.Time
+	Status              sql.Null[string]
+	InviteEmail         sql.Null[string]
+	LastInvitedAt       sql.NullTime
+	LastLoginAuthMethod sql.Null[string]
+	LastLoginTime       sql.NullTime
 	ProjectFavorites    *pq.StringArray
 	CreatedAt           time.Time
 	UpdatedAt           time.Time

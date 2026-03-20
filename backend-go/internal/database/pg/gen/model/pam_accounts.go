@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,19 +16,19 @@ import (
 type PamAccounts struct {
 	ID                           uuid.UUID `sql:"primary_key"`
 	ProjectId                    string
-	FolderId                     *uuid.UUID
+	FolderId                     sql.Null[uuid.UUID]
 	ResourceId                   uuid.UUID
 	Name                         string
-	Description                  *string
+	Description                  sql.Null[string]
 	EncryptedCredentials         []byte
 	CreatedAt                    time.Time
 	UpdatedAt                    time.Time
 	RotationEnabled              bool
-	RotationIntervalSeconds      *int32
-	LastRotatedAt                *time.Time
-	RotationStatus               *string
-	EncryptedLastRotationMessage *[]byte
-	RequireMfa                   *bool
-	InternalMetadata             *string
-	DiscoveryFingerprint         *string
+	RotationIntervalSeconds      sql.Null[int32]
+	LastRotatedAt                sql.NullTime
+	RotationStatus               sql.Null[string]
+	EncryptedLastRotationMessage sql.Null[[]byte]
+	RequireMfa                   sql.Null[bool]
+	InternalMetadata             sql.Null[string]
+	DiscoveryFingerprint         sql.Null[string]
 }

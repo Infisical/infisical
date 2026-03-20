@@ -7,7 +7,11 @@
 
 package model
 
+import (
+	"database/sql"
+)
+
 type InfisicalMigrationsLock struct {
 	Index    int32 `sql:"primary_key"`
-	IsLocked *int32
+	IsLocked sql.Null[int32]
 }

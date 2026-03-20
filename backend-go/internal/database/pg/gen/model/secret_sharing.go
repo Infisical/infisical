@@ -8,29 +8,30 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type SecretSharing struct {
 	ID                uuid.UUID `sql:"primary_key"`
-	EncryptedValue    *string
-	Iv                *string
-	Tag               *string
-	HashedHex         *string
+	EncryptedValue    sql.Null[string]
+	Iv                sql.Null[string]
+	Tag               sql.Null[string]
+	HashedHex         sql.Null[string]
 	ExpiresAt         time.Time
-	UserId            *uuid.UUID
-	OrgId             *uuid.UUID
+	UserId            sql.Null[uuid.UUID]
+	OrgId             sql.Null[uuid.UUID]
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	ExpiresAfterViews *int32
+	ExpiresAfterViews sql.Null[int32]
 	AccessType        string
-	Name              *string
-	LastViewedAt      *time.Time
-	Password          *string
-	EncryptedSecret   *[]byte
-	Identifier        *string
+	Name              sql.Null[string]
+	LastViewedAt      sql.NullTime
+	Password          sql.Null[string]
+	EncryptedSecret   sql.Null[[]byte]
+	Identifier        sql.Null[string]
 	Type              string
-	AuthorizedEmails  *string
-	IdentityId        *uuid.UUID
+	AuthorizedEmails  sql.Null[string]
+	IdentityId        sql.Null[uuid.UUID]
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,16 +16,16 @@ import (
 type AccessApprovalRequests struct {
 	ID                 uuid.UUID `sql:"primary_key"`
 	PolicyId           uuid.UUID
-	PrivilegeId        *uuid.UUID
+	PrivilegeId        sql.Null[uuid.UUID]
 	IsTemporary        bool
-	TemporaryRange     *string
+	TemporaryRange     sql.Null[string]
 	Permissions        string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	RequestedByUserId  uuid.UUID
-	Note               *string
-	PrivilegeDeletedAt *time.Time
+	Note               sql.Null[string]
+	PrivilegeDeletedAt sql.NullTime
 	Status             string
-	EditedByUserId     *uuid.UUID
-	EditNote           *string
+	EditedByUserId     sql.Null[uuid.UUID]
+	EditNote           sql.Null[string]
 }

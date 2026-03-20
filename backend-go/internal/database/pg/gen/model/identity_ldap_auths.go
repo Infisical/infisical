@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -21,15 +22,15 @@ type IdentityLdapAuths struct {
 	IdentityId                 uuid.UUID
 	EncryptedBindDN            []byte
 	EncryptedBindPass          []byte
-	EncryptedLdapCaCertificate *[]byte
+	EncryptedLdapCaCertificate sql.Null[[]byte]
 	URL                        string
 	SearchBase                 string
 	SearchFilter               string
-	AllowedFields              *string
+	AllowedFields              sql.Null[string]
 	CreatedAt                  time.Time
 	UpdatedAt                  time.Time
 	AccessTokenPeriod          int64
-	TemplateId                 *uuid.UUID
+	TemplateId                 sql.Null[uuid.UUID]
 	LockoutEnabled             bool
 	LockoutThreshold           int32
 	LockoutDurationSeconds     int32

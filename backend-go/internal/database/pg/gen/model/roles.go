@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,11 +16,11 @@ import (
 type Roles struct {
 	ID          uuid.UUID `sql:"primary_key"`
 	Name        string
-	Description *string
+	Description sql.Null[string]
 	Slug        string
 	Permissions string
-	OrgId       *uuid.UUID
-	ProjectId   *string
+	OrgId       sql.Null[uuid.UUID]
+	ProjectId   sql.Null[string]
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

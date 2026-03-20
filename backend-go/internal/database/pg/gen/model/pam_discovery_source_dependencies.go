@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,7 +18,7 @@ type PamDiscoverySourceDependencies struct {
 	DiscoverySourceId uuid.UUID
 	DependencyId      uuid.UUID
 	LastSeenAt        time.Time
-	LastSeenRunId     *uuid.UUID
-	IsStale           *bool
-	CreatedAt         *time.Time
+	LastSeenRunId     sql.Null[uuid.UUID]
+	IsStale           sql.Null[bool]
+	CreatedAt         sql.NullTime
 }

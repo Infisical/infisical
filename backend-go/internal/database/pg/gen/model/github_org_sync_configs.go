@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,8 +16,8 @@ import (
 type GithubOrgSyncConfigs struct {
 	ID                            uuid.UUID `sql:"primary_key"`
 	GithubOrgName                 string
-	IsActive                      *bool
-	EncryptedGithubOrgAccessToken *[]byte
+	IsActive                      sql.Null[bool]
+	EncryptedGithubOrgAccessToken sql.Null[[]byte]
 	OrgId                         uuid.UUID
 	CreatedAt                     time.Time
 	UpdatedAt                     time.Time

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,19 +18,19 @@ type PamDiscoverySourceRuns struct {
 	DiscoverySourceId           uuid.UUID
 	Status                      string
 	TriggeredBy                 string
-	ResourcesDiscoveredCount    *int32
-	AccountsDiscoveredCount     *int32
-	DependenciesDiscoveredCount *int32
-	NewResourcesCount           *int32
-	StaleResourcesCount         *int32
-	NewAccountsCount            *int32
-	StaleAccountsCount          *int32
-	NewDependenciesCount        *int32
-	StaleDependenciesCount      *int32
+	ResourcesDiscoveredCount    sql.Null[int32]
+	AccountsDiscoveredCount     sql.Null[int32]
+	DependenciesDiscoveredCount sql.Null[int32]
+	NewResourcesCount           sql.Null[int32]
+	StaleResourcesCount         sql.Null[int32]
+	NewAccountsCount            sql.Null[int32]
+	StaleAccountsCount          sql.Null[int32]
+	NewDependenciesCount        sql.Null[int32]
+	StaleDependenciesCount      sql.Null[int32]
 	Progress                    string
-	ErrorMessage                *string
-	StartedAt                   *time.Time
-	CompletedAt                 *time.Time
+	ErrorMessage                sql.Null[string]
+	StartedAt                   sql.NullTime
+	CompletedAt                 sql.NullTime
 	CreatedAt                   time.Time
 	UpdatedAt                   time.Time
 }

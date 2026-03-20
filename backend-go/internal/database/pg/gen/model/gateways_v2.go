@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -18,9 +19,9 @@ type GatewaysV2 struct {
 	UpdatedAt              time.Time
 	OrgId                  uuid.UUID
 	IdentityId             uuid.UUID
-	RelayId                *uuid.UUID
+	RelayId                sql.Null[uuid.UUID]
 	Name                   string
-	Heartbeat              *time.Time
-	EncryptedPamSessionKey *[]byte
-	HealthAlertedAt        *time.Time
+	Heartbeat              sql.NullTime
+	EncryptedPamSessionKey sql.Null[[]byte]
+	HealthAlertedAt        sql.NullTime
 }

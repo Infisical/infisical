@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -23,7 +24,7 @@ type KmipOrgConfigs struct {
 	EncryptedRootCaPrivateKey                []byte
 	ServerIntermediateCaIssuedAt             time.Time
 	ServerIntermediateCaExpiration           time.Time
-	ServerIntermediateCaSerialNumber         *string
+	ServerIntermediateCaSerialNumber         sql.Null[string]
 	EncryptedServerIntermediateCaCertificate []byte
 	EncryptedServerIntermediateCaChain       []byte
 	EncryptedServerIntermediateCaPrivateKey  []byte

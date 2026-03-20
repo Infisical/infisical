@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 type GitAppInstallSessions struct {
 	ID        uuid.UUID `sql:"primary_key"`
 	SessionId string
-	UserId    *uuid.UUID
+	UserId    sql.Null[uuid.UUID]
 	OrgId     uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time

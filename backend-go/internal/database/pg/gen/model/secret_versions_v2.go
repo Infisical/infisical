@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,23 +18,23 @@ type SecretVersionsV2 struct {
 	Version               int32
 	Type                  string
 	Key                   string
-	EncryptedValue        *[]byte
-	EncryptedComment      *[]byte
-	ReminderNote          *string
-	ReminderRepeatDays    *int32
-	SkipMultilineEncoding *bool
-	Metadata              *string
-	EnvId                 *uuid.UUID
+	EncryptedValue        sql.Null[[]byte]
+	EncryptedComment      sql.Null[[]byte]
+	ReminderNote          sql.Null[string]
+	ReminderRepeatDays    sql.Null[int32]
+	SkipMultilineEncoding sql.Null[bool]
+	Metadata              sql.Null[string]
+	EnvId                 sql.Null[uuid.UUID]
 	SecretId              uuid.UUID
 	FolderId              uuid.UUID
-	UserId                *uuid.UUID
+	UserId                sql.Null[uuid.UUID]
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
-	UserActorId           *uuid.UUID
-	IdentityActorId       *uuid.UUID
-	ActorType             *string
-	ParentVersionId       *uuid.UUID
+	UserActorId           sql.Null[uuid.UUID]
+	IdentityActorId       sql.Null[uuid.UUID]
+	ActorType             sql.Null[string]
+	ParentVersionId       sql.Null[uuid.UUID]
 	IsRedacted            bool
-	RedactedAt            *time.Time
-	RedactedByUserId      *uuid.UUID
+	RedactedAt            sql.NullTime
+	RedactedByUserId      sql.Null[uuid.UUID]
 }

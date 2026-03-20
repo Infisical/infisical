@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -20,11 +21,11 @@ type AppConnectionCredentialRotations struct {
 	RotationInterval              int32
 	RotateAtUtc                   string
 	RotationStatus                string
-	LastRotationAttemptedAt       *time.Time
-	LastRotatedAt                 *time.Time
-	EncryptedLastRotationMessage  *[]byte
-	LastRotationJobId             *string
-	NextRotationAt                *time.Time
+	LastRotationAttemptedAt       sql.NullTime
+	LastRotatedAt                 sql.NullTime
+	EncryptedLastRotationMessage  sql.Null[[]byte]
+	LastRotationJobId             sql.Null[string]
+	NextRotationAt                sql.NullTime
 	ActiveIndex                   int32
 	EncryptedGeneratedCredentials []byte
 	CreatedAt                     time.Time

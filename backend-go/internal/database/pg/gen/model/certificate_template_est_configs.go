@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 type CertificateTemplateEstConfigs struct {
 	ID                             uuid.UUID `sql:"primary_key"`
 	CertificateTemplateId          uuid.UUID
-	EncryptedCaChain               *[]byte
+	EncryptedCaChain               sql.Null[[]byte]
 	HashedPassphrase               string
 	IsEnabled                      bool
 	CreatedAt                      time.Time

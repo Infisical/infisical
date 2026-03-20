@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 type AppConnections struct {
 	ID                           uuid.UUID `sql:"primary_key"`
 	Name                         string
-	Description                  *string
+	Description                  sql.Null[string]
 	App                          string
 	Method                       string
 	EncryptedCredentials         []byte
@@ -23,8 +24,8 @@ type AppConnections struct {
 	OrgId                        uuid.UUID
 	CreatedAt                    time.Time
 	UpdatedAt                    time.Time
-	IsPlatformManagedCredentials *bool
-	GatewayId                    *uuid.UUID
-	ProjectId                    *string
+	IsPlatformManagedCredentials sql.Null[bool]
+	GatewayId                    sql.Null[uuid.UUID]
+	ProjectId                    sql.Null[string]
 	IsAutoRotationEnabled        bool
 }

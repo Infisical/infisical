@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -17,38 +18,38 @@ type Certificates struct {
 	ID                        uuid.UUID `sql:"primary_key"`
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
-	CaId                      *uuid.UUID
+	CaId                      sql.Null[uuid.UUID]
 	Status                    string
 	SerialNumber              string
 	FriendlyName              string
 	CommonName                string
 	NotBefore                 time.Time
 	NotAfter                  time.Time
-	RevokedAt                 *time.Time
-	RevocationReason          *int32
-	AltNames                  *string
-	CaCertId                  *uuid.UUID
-	CertificateTemplateId     *uuid.UUID
+	RevokedAt                 sql.NullTime
+	RevocationReason          sql.Null[int32]
+	AltNames                  sql.Null[string]
+	CaCertId                  sql.Null[uuid.UUID]
+	CertificateTemplateId     sql.Null[uuid.UUID]
 	KeyUsages                 *pq.StringArray
 	ExtendedKeyUsages         *pq.StringArray
 	ProjectId                 string
-	PkiSubscriberId           *uuid.UUID
-	ProfileId                 *uuid.UUID
-	RenewBeforeDays           *int32
-	RenewedFromCertificateId  *uuid.UUID
-	RenewedByCertificateId    *uuid.UUID
-	RenewalError              *string
-	KeyAlgorithm              *string
-	SignatureAlgorithm        *string
-	SubjectOrganization       *string
-	SubjectOrganizationalUnit *string
-	SubjectCountry            *string
-	SubjectState              *string
-	SubjectLocality           *string
-	FingerprintSha256         *string
-	FingerprintSha1           *string
-	IsCA                      *bool
-	PathLength                *int32
-	Source                    *string
-	DiscoveryMetadata         *string
+	PkiSubscriberId           sql.Null[uuid.UUID]
+	ProfileId                 sql.Null[uuid.UUID]
+	RenewBeforeDays           sql.Null[int32]
+	RenewedFromCertificateId  sql.Null[uuid.UUID]
+	RenewedByCertificateId    sql.Null[uuid.UUID]
+	RenewalError              sql.Null[string]
+	KeyAlgorithm              sql.Null[string]
+	SignatureAlgorithm        sql.Null[string]
+	SubjectOrganization       sql.Null[string]
+	SubjectOrganizationalUnit sql.Null[string]
+	SubjectCountry            sql.Null[string]
+	SubjectState              sql.Null[string]
+	SubjectLocality           sql.Null[string]
+	FingerprintSha256         sql.Null[string]
+	FingerprintSha1           sql.Null[string]
+	IsCA                      sql.Null[bool]
+	PathLength                sql.Null[int32]
+	Source                    sql.Null[string]
+	DiscoveryMetadata         sql.Null[string]
 }

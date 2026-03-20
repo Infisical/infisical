@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,22 +16,22 @@ import (
 type Webhooks struct {
 	ID                  uuid.UUID `sql:"primary_key"`
 	SecretPath          string
-	URL                 *string
-	LastStatus          *string
-	LastRunErrorMessage *string
+	URL                 sql.Null[string]
+	LastStatus          sql.Null[string]
+	LastRunErrorMessage sql.Null[string]
 	IsDisabled          bool
-	EncryptedSecretKey  *string
-	Iv                  *string
-	Tag                 *string
-	Algorithm           *string
-	KeyEncoding         *string
+	EncryptedSecretKey  sql.Null[string]
+	Iv                  sql.Null[string]
+	Tag                 sql.Null[string]
+	Algorithm           sql.Null[string]
+	KeyEncoding         sql.Null[string]
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	EnvId               uuid.UUID
-	UrlCipherText       *string
-	UrlIV               *string
-	UrlTag              *string
-	Type                *string
-	EncryptedPassKey    *[]byte
+	UrlCipherText       sql.Null[string]
+	UrlIV               sql.Null[string]
+	UrlTag              sql.Null[string]
+	Type                sql.Null[string]
+	EncryptedPassKey    sql.Null[[]byte]
 	EncryptedUrl        []byte
 }

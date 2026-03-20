@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,6 +18,6 @@ type SSHHostLoginUserMappings struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	SshHostLoginUserId uuid.UUID
-	UserId             *uuid.UUID
-	GroupId            *uuid.UUID
+	UserId             sql.Null[uuid.UUID]
+	GroupId            sql.Null[uuid.UUID]
 }

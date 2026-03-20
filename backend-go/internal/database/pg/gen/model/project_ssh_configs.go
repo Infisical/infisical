@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,6 +18,6 @@ type ProjectSSHConfigs struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	ProjectId          string
-	DefaultUserSshCaId *uuid.UUID
-	DefaultHostSshCaId *uuid.UUID
+	DefaultUserSshCaId sql.Null[uuid.UUID]
+	DefaultHostSshCaId sql.Null[uuid.UUID]
 }

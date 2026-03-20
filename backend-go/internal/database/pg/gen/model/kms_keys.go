@@ -8,20 +8,21 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type KmsKeys struct {
 	ID           uuid.UUID `sql:"primary_key"`
-	Description  *string
-	IsDisabled   *bool
-	IsReserved   *bool
+	Description  sql.Null[string]
+	IsDisabled   sql.Null[bool]
+	IsReserved   sql.Null[bool]
 	OrgId        uuid.UUID
 	Name         string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-	ProjectId    *string
+	ProjectId    sql.Null[string]
 	KeyUsage     string
-	KmipMetadata *string
+	KmipMetadata sql.Null[string]
 }

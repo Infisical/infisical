@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -18,5 +19,5 @@ type CertificateBodies struct {
 	UpdatedAt                 time.Time
 	CertId                    uuid.UUID
 	EncryptedCertificate      []byte
-	EncryptedCertificateChain *[]byte
+	EncryptedCertificateChain sql.Null[[]byte]
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,12 +16,12 @@ import (
 type PkiAcmeOrders struct {
 	ID            uuid.UUID `sql:"primary_key"`
 	AccountId     uuid.UUID
-	CertificateId *uuid.UUID
-	NotBefore     *time.Time
-	NotAfter      *time.Time
+	CertificateId sql.Null[uuid.UUID]
+	NotBefore     sql.NullTime
+	NotAfter      sql.NullTime
 	ExpiresAt     time.Time
-	Csr           *string
-	Error         *string
+	Csr           sql.Null[string]
+	Error         sql.Null[string]
 	Status        string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time

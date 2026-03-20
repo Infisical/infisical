@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,19 +17,19 @@ type SamlConfigs struct {
 	ID                       uuid.UUID `sql:"primary_key"`
 	AuthProvider             string
 	IsActive                 bool
-	EncryptedEntryPoint      *string
-	EntryPointIV             *string
-	EntryPointTag            *string
-	EncryptedIssuer          *string
-	IssuerTag                *string
-	IssuerIV                 *string
-	EncryptedCert            *string
-	CertIV                   *string
-	CertTag                  *string
+	EncryptedEntryPoint      sql.Null[string]
+	EntryPointIV             sql.Null[string]
+	EntryPointTag            sql.Null[string]
+	EncryptedIssuer          sql.Null[string]
+	IssuerTag                sql.Null[string]
+	IssuerIV                 sql.Null[string]
+	EncryptedCert            sql.Null[string]
+	CertIV                   sql.Null[string]
+	CertTag                  sql.Null[string]
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
 	OrgId                    uuid.UUID
-	LastUsed                 *time.Time
+	LastUsed                 sql.NullTime
 	EncryptedSamlEntryPoint  []byte
 	EncryptedSamlIssuer      []byte
 	EncryptedSamlCertificate []byte

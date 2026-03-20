@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,7 +17,7 @@ type VaultExternalMigrationConfigs struct {
 	ID           uuid.UUID `sql:"primary_key"`
 	OrgId        uuid.UUID
 	Namespace    string
-	ConnectionId *uuid.UUID
+	ConnectionId sql.Null[uuid.UUID]
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

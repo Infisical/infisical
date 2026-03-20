@@ -8,26 +8,27 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type SecretApprovalRequestsSecretsV2 struct {
 	ID                    uuid.UUID `sql:"primary_key"`
-	Version               *int32
+	Version               sql.Null[int32]
 	Key                   string
-	EncryptedValue        *[]byte
-	EncryptedComment      *[]byte
-	ReminderNote          *string
-	ReminderRepeatDays    *int32
-	SkipMultilineEncoding *bool
-	Metadata              *string
+	EncryptedValue        sql.Null[[]byte]
+	EncryptedComment      sql.Null[[]byte]
+	ReminderNote          sql.Null[string]
+	ReminderRepeatDays    sql.Null[int32]
+	SkipMultilineEncoding sql.Null[bool]
+	Metadata              sql.Null[string]
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
 	RequestId             uuid.UUID
 	Op                    string
-	SecretId              *uuid.UUID
-	SecretVersion         *uuid.UUID
-	SecretMetadata        *string
-	InternalMetadata      *string
+	SecretId              sql.Null[uuid.UUID]
+	SecretVersion         sql.Null[uuid.UUID]
+	SecretMetadata        sql.Null[string]
+	InternalMetadata      sql.Null[string]
 }

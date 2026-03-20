@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,17 +17,17 @@ type PkiDiscoveryConfigs struct {
 	ID                uuid.UUID `sql:"primary_key"`
 	ProjectId         string
 	Name              string
-	Description       *string
+	Description       sql.Null[string]
 	DiscoveryType     string
 	TargetConfig      string
 	IsAutoScanEnabled bool
-	ScanIntervalDays  *int32
-	GatewayId         *uuid.UUID
+	ScanIntervalDays  sql.Null[int32]
+	GatewayId         sql.Null[uuid.UUID]
 	IsActive          bool
-	LastScanStatus    *string
-	LastScanJobId     *string
-	LastScanMessage   *string
-	LastScannedAt     *time.Time
+	LastScanStatus    sql.Null[string]
+	LastScanJobId     sql.Null[string]
+	LastScanMessage   sql.Null[string]
+	LastScannedAt     sql.NullTime
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }

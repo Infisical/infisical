@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,13 +16,13 @@ import (
 type PkiAlertsV2 struct {
 	ID                 uuid.UUID `sql:"primary_key"`
 	Name               string
-	Description        *string
+	Description        sql.Null[string]
 	EventType          string
-	AlertBefore        *string
-	Filters            *string
-	Enabled            *bool
+	AlertBefore        sql.Null[string]
+	Filters            sql.Null[string]
+	Enabled            sql.Null[bool]
 	ProjectId          string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
-	NotificationConfig *string
+	NotificationConfig sql.Null[string]
 }

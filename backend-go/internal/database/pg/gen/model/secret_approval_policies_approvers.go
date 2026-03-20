@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,6 +18,6 @@ type SecretApprovalPoliciesApprovers struct {
 	PolicyId        uuid.UUID
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-	ApproverUserId  *uuid.UUID
-	ApproverGroupId *uuid.UUID
+	ApproverUserId  sql.Null[uuid.UUID]
+	ApproverGroupId sql.Null[uuid.UUID]
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -21,6 +22,6 @@ type IdentityTLSCertAuths struct {
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 	IdentityId              uuid.UUID
-	AllowedCommonNames      *string
+	AllowedCommonNames      sql.Null[string]
 	EncryptedCaCertificate  []byte
 }

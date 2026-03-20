@@ -8,14 +8,15 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 )
 
 type ApprovalPolicySteps struct {
 	ID                uuid.UUID `sql:"primary_key"`
 	PolicyId          uuid.UUID
-	Name              *string
+	Name              sql.Null[string]
 	StepNumber        int32
 	RequiredApprovals int32
-	NotifyApprovers   *bool
+	NotifyApprovers   sql.Null[bool]
 }

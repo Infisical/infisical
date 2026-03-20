@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,14 +16,14 @@ import (
 type AuthTokens struct {
 	ID          uuid.UUID `sql:"primary_key"`
 	Type        string
-	PhoneNumber *string
+	PhoneNumber sql.Null[string]
 	TokenHash   string
-	TriesLeft   *int32
+	TriesLeft   sql.Null[int32]
 	ExpiresAt   time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	UserId      *uuid.UUID
-	OrgId       *uuid.UUID
-	AliasId     *string
-	Payload     *string
+	UserId      sql.Null[uuid.UUID]
+	OrgId       sql.Null[uuid.UUID]
+	AliasId     sql.Null[string]
+	Payload     sql.Null[string]
 }

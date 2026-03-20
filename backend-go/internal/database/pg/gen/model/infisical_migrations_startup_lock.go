@@ -8,13 +8,13 @@
 package model
 
 import (
-	"time"
+	"database/sql"
 )
 
 type InfisicalMigrationsStartupLock struct {
 	Index              int32 `sql:"primary_key"`
-	IsLocked           *int32
-	SessionID          *string
-	Node               *string
-	HeartbeatUpdatedAt *time.Time
+	IsLocked           sql.Null[int32]
+	SessionID          sql.Null[string]
+	Node               sql.Null[string]
+	HeartbeatUpdatedAt sql.NullTime
 }

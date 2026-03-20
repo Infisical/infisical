@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,31 +16,31 @@ import (
 type IntegrationAuths struct {
 	ID                            uuid.UUID `sql:"primary_key"`
 	Integration                   string
-	TeamId                        *string
-	URL                           *string
-	Namespace                     *string
-	AccountId                     *string
-	RefreshCiphertext             *string
-	RefreshIV                     *string
-	RefreshTag                    *string
-	AccessIdCiphertext            *string
-	AccessIdIV                    *string
-	AccessIdTag                   *string
-	AccessCiphertext              *string
-	AccessIV                      *string
-	AccessTag                     *string
-	AccessExpiresAt               *time.Time
-	Metadata                      *string
+	TeamId                        sql.Null[string]
+	URL                           sql.Null[string]
+	Namespace                     sql.Null[string]
+	AccountId                     sql.Null[string]
+	RefreshCiphertext             sql.Null[string]
+	RefreshIV                     sql.Null[string]
+	RefreshTag                    sql.Null[string]
+	AccessIdCiphertext            sql.Null[string]
+	AccessIdIV                    sql.Null[string]
+	AccessIdTag                   sql.Null[string]
+	AccessCiphertext              sql.Null[string]
+	AccessIV                      sql.Null[string]
+	AccessTag                     sql.Null[string]
+	AccessExpiresAt               sql.NullTime
+	Metadata                      sql.Null[string]
 	Algorithm                     string
 	KeyEncoding                   string
 	ProjectId                     string
 	CreatedAt                     time.Time
 	UpdatedAt                     time.Time
-	AwsAssumeIamRoleArnCipherText *string
-	AwsAssumeIamRoleArnIV         *string
-	AwsAssumeIamRoleArnTag        *string
-	EncryptedAccess               *[]byte
-	EncryptedAccessId             *[]byte
-	EncryptedRefresh              *[]byte
-	EncryptedAwsAssumeIamRoleArn  *[]byte
+	AwsAssumeIamRoleArnCipherText sql.Null[string]
+	AwsAssumeIamRoleArnIV         sql.Null[string]
+	AwsAssumeIamRoleArnTag        sql.Null[string]
+	EncryptedAccess               sql.Null[[]byte]
+	EncryptedAccessId             sql.Null[[]byte]
+	EncryptedRefresh              sql.Null[[]byte]
+	EncryptedAwsAssumeIamRoleArn  sql.Null[[]byte]
 }

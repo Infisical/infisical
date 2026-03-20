@@ -8,15 +8,16 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 )
 
 type ExternalCertificateAuthorities struct {
 	ID                 uuid.UUID `sql:"primary_key"`
 	Type               string
-	AppConnectionId    *uuid.UUID
-	DnsAppConnectionId *uuid.UUID
+	AppConnectionId    sql.Null[uuid.UUID]
+	DnsAppConnectionId sql.Null[uuid.UUID]
 	CaId               uuid.UUID
-	Credentials        *[]byte
-	Configuration      *string
+	Credentials        sql.Null[[]byte]
+	Configuration      sql.Null[string]
 }
