@@ -76,7 +76,7 @@ export const ExternalInfisicalSyncFields = () => {
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Project"
-            tooltipText="The project on the remote Infisical instance to sync secrets to. Ensure the machine identity used by this connection has been added as a member to any projects you want to sync."
+            tooltipText="The project on the remote Infisical instance to sync secrets to. Ensure the machine identity used by this connection has access to the project."
           >
             <FilterableSelect
               isLoading={isProjectsLoading && Boolean(connectionId)}
