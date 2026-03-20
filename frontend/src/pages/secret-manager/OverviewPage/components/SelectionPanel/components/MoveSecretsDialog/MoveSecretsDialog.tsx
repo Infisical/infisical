@@ -63,17 +63,15 @@ type OptionValue = { secretPath: string };
 const FolderPathSelect = ({
   environments,
   projectId,
-  sourceSecretPath,
   value,
   onChange
 }: {
   environments: ProjectEnv[];
   projectId: string;
-  sourceSecretPath: string;
   value: OptionValue | null;
   onChange: (newValue: OptionValue | null) => void;
 }) => {
-  const [search, setSearch] = useState(sourceSecretPath);
+  const [search, setSearch] = useState("/");
   const [debouncedSearch] = useDebounce(search);
   const [previousValue, setPreviousValue] = useState<OptionValue | null>(value);
 
@@ -198,7 +196,7 @@ const SingleEnvContent = ({
   const sourceEnv = visibleEnvs[0];
   const moveSecrets = useMoveSecrets();
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
-    secretPath: sourceSecretPath
+    secretPath: "/"
   });
 
   const {
@@ -215,6 +213,10 @@ const SingleEnvContent = ({
   });
 
   const selectedEnvironment = watch("environment");
+
+  useEffect(() => {
+    setSelectedPath({ secretPath: "/" });
+  }, [selectedEnvironment]);
 
   const destinationSelected =
     Boolean(selectedPath?.secretPath) &&
@@ -322,13 +324,13 @@ const SingleEnvContent = ({
         <FieldLabel>Secret Path</FieldLabel>
         <FieldContent>
           <FolderPathSelect
+            key={selectedEnvironment}
             environments={
               selectedEnvironment
                 ? environments.filter((e) => e.slug === selectedEnvironment)
                 : environments
             }
             projectId={projectId}
-            sourceSecretPath={sourceSecretPath}
             value={selectedPath}
             onChange={setSelectedPath}
           />
@@ -400,7 +402,7 @@ const MultiEnvContent = ({
   const { permission } = useProjectPermission();
   const [moveResults, setMoveResults] = useState<MoveResults | null>(null);
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
-    secretPath: sourceSecretPath
+    secretPath: "/"
   });
 
   const {
@@ -585,7 +587,6 @@ const MultiEnvContent = ({
           <FolderPathSelect
             environments={environments}
             projectId={projectId}
-            sourceSecretPath={sourceSecretPath}
             value={selectedPath}
             onChange={setSelectedPath}
           />
