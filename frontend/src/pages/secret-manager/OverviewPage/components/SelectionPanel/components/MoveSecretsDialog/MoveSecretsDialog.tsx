@@ -209,7 +209,7 @@ const SingleEnvContent = ({
   } = useForm<TSingleEnvFormSchema>({
     resolver: zodResolver(singleEnvFormSchema),
     defaultValues: {
-      environment: environments[0]?.slug,
+      environment: sourceEnv.slug,
       shouldOverwrite: false
     }
   });
@@ -223,8 +223,8 @@ const SingleEnvContent = ({
   const handleFormSubmit = async (data: TSingleEnvFormSchema) => {
     if (!selectedPath) {
       createNotification({
-        text: "error",
-        title: "You must specify a secret path to move the selected secrets to"
+        type: "error",
+        text: "You must specify a secret path to move the selected secrets to"
       });
       return;
     }
@@ -458,8 +458,8 @@ const MultiEnvContent = ({
   const handleFormSubmit = async (data: TMultiEnvFormSchema) => {
     if (!selectedPath) {
       createNotification({
-        text: "error",
-        title: "You must specify a secret path to move the selected secrets to"
+        type: "error",
+        text: "You must specify a secret path to move the selected secrets to"
       });
       return;
     }
