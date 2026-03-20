@@ -307,6 +307,113 @@ func TestEmptyTree(t *testing.T) {
 // Environment isolation
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// GetTreeByPathEnvSlug / GetTreeByPathEnvID
+// ---------------------------------------------------------------------------
+
+func TestGetTreeByPathEnvSlug(t *testing.T) {
+	l := buildTestTree()
+
+	t.Run("root returns entire env subtree", func(t *testing.T) {
+		nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/")
+		require.True(t, ok)
+		require.Len(t, nodes, 4) // root, a, b, c
+
+		ids := make([]uuid.UUID, len(nodes))
+		for i, n := range nodes {
+			ids[i] = n.ID
+		}
+		assert.Equal(t, rootDevID, ids[0])
+		assert.Equal(t, folderA, ids[1])
+		assert.Equal(t, folderB, ids[2])
+		assert.Equal(t, folderC, ids[3])
+	})
+
+	t.Run("subtree from mid-level", func(t *testing.T) {
+		nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/a")
+		require.True(t, ok)
+		require.Len(t, nodes, 3) // a, b, c
+		assert.Equal(t, folderA, nodes[0].ID)
+		assert.Equal(t, folderB, nodes[1].ID)
+		assert.Equal(t, folderC, nodes[2].ID)
+	})
+
+	t.Run("subtree from deeper level", func(t *testing.T) {
+		nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/a/b")
+		require.True(t, ok)
+		require.Len(t, nodes, 2) // b, c
+		assert.Equal(t, folderB, nodes[0].ID)
+		assert.Equal(t, folderC, nodes[1].ID)
+	})
+
+	t.Run("leaf node returns single element", func(t *testing.T) {
+		nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/a/b/c")
+		require.True(t, ok)
+		require.Len(t, nodes, 1)
+		assert.Equal(t, folderC, nodes[0].ID)
+	})
+
+	t.Run("prod root subtree", func(t *testing.T) {
+		nodes, ok := l.GetSubTreeByPathEnvSlug("prod", "/")
+		require.True(t, ok)
+		require.Len(t, nodes, 2) // root, d
+		assert.Equal(t, rootProdID, nodes[0].ID)
+		assert.Equal(t, folderD, nodes[1].ID)
+	})
+
+	t.Run("nonexistent path", func(t *testing.T) {
+		_, ok := l.GetSubTreeByPathEnvSlug("dev", "/x/y")
+		assert.False(t, ok)
+	})
+
+	t.Run("nonexistent env", func(t *testing.T) {
+		_, ok := l.GetSubTreeByPathEnvSlug("staging", "/")
+		assert.False(t, ok)
+	})
+}
+
+func TestGetTreeByPathEnvID(t *testing.T) {
+	l := buildTestTree()
+
+	t.Run("returns subtree by env ID", func(t *testing.T) {
+		nodes, ok := l.GetSubTreeByPathEnvID(devEnvID, "/a")
+		require.True(t, ok)
+		require.Len(t, nodes, 3)
+		assert.Equal(t, folderA, nodes[0].ID)
+	})
+
+	t.Run("unknown env ID", func(t *testing.T) {
+		_, ok := l.GetSubTreeByPathEnvID(uuid.MustParse("99999999-9999-9999-9999-999999999999"), "/")
+		assert.False(t, ok)
+	})
+}
+
+func TestGetTreeChildrenSortedByName(t *testing.T) {
+	// Build a tree with multiple children at the same level to verify sort order.
+	rows := []folderRow{
+		{ID: rootDevID, Name: "root", EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
+		{ID: folderC, Name: "cherry", ParentID: nullUUID(rootDevID), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
+		{ID: folderA, Name: "apple", ParentID: nullUUID(rootDevID), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
+		{ID: folderB, Name: "banana", ParentID: nullUUID(rootDevID), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
+	}
+	l := newFolderLookup(rows)
+
+	nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/")
+	require.True(t, ok)
+	require.Len(t, nodes, 4)
+
+	assert.Equal(t, "root", nodes[0].Name)
+	assert.Equal(t, "apple", nodes[1].Name)
+	assert.Equal(t, "banana", nodes[2].Name)
+	assert.Equal(t, "cherry", nodes[3].Name)
+}
+
+func TestGetTreeEmptyTree(t *testing.T) {
+	l := newFolderLookup(nil)
+	_, ok := l.GetSubTreeByPathEnvSlug("dev", "/")
+	assert.False(t, ok)
+}
+
 func TestEnvironmentIsolation(t *testing.T) {
 	l := buildTestTree()
 
