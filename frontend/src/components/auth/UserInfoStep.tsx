@@ -127,7 +127,6 @@ export default function UserInfoStep({
         SecurityClient.setProviderAuthToken("");
 
         if (isInfisicalCloud()) {
-          console.log("A");
           window.dataLayer = window.dataLayer || [];
           window.dataLayer.push({ event: "signup_completed" });
         }
