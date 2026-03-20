@@ -96,7 +96,11 @@ export const pkiAcmeChallengeServiceFactory = ({
     const challengeResponse = await axios.get<string>(challengeUrl.toString(), {
       // In case if we override the host in the development mode, still provide the original host in the header
       // to help the upstream server to validate the request
-      headers: { Host: challenge.auth.identifierValue },
+      headers: {
+        Host: challenge.auth.identifierValue.includes(":")
+          ? `[${challenge.auth.identifierValue}]`
+          : challenge.auth.identifierValue
+      },
       timeout: timeoutMs,
       responseType: "text",
       validateStatus: () => true
