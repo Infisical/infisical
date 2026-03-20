@@ -16,6 +16,7 @@ export type TRemoteProject = {
   id: string;
   name: string;
   slug: string;
+  type: string;
   environments: Array<{ id: string; name: string; slug: string }>;
 };
 
@@ -104,15 +105,19 @@ export const listProjects = async (connection: TExternalInfisicalConnection): Pr
         id: string;
         name: string;
         slug: string;
+        type: string;
         environments?: Array<{ id: string; name: string; slug: string }>;
       }>;
     }>(`${baseUrl}/api/v1/projects`, { headers });
-    return (data.projects ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      environments: p.environments ?? []
-    }));
+    return (data.projects ?? [])
+      .filter((p) => p.type === "secret-manager")
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        type: p.type,
+        environments: p.environments ?? []
+      }));
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({

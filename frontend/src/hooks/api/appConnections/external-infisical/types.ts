@@ -2,6 +2,7 @@ export type TRemoteInfisicalProject = {
   id: string;
   name: string;
   slug: string;
+  type: string;
   environments: Array<{ id: string; name: string; slug: string }>;
 };
 
