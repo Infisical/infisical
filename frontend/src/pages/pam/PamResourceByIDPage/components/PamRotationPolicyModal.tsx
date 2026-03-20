@@ -276,7 +276,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
       const serverRuleIds = new Set(rules.map((r) => r.id));
       const newIdMap = new Map<string, string>();
 
-      localRules.reduce((chain, local) => {
+      await localRules.reduce((chain, local) => {
         if (local.id.startsWith(TEMP_ID_PREFIX)) {
           return chain.then(async () => {
             const created = await createRule.mutateAsync({

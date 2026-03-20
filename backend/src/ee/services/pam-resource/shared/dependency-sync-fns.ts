@@ -19,7 +19,11 @@ export const WINRM_DEFAULT_HTTPS_PORT = 5986;
 
 const SINGLE_QUOTE_RE = new RE2("'", "g");
 const NEWLINE_RE = new RE2("[\\r\\n]", "g");
-const SAFE_WINDOWS_PATH_RE = new RE2("^[a-zA-Z0-9\\s\\\\_\\-.\\\\]+$");
+
+// Allow alphanumerics, spaces, single backslash, hyphen, underscore, dot, but NOT ".." sequences
+const SAFE_WINDOWS_NAME_RE = new RE2("^[a-zA-Z0-9 _\\-.]+$");
+const SAFE_WINDOWS_PATH_RE = new RE2("^[a-zA-Z0-9 _\\-.\\\\/]+$");
+const PATH_TRAVERSAL_RE = new RE2("\\.\\.");
 
 // Sanitize a string for safe use inside PowerShell single-quoted strings:
 // - doubles single quotes (PowerShell escape)
@@ -27,9 +31,15 @@ const SAFE_WINDOWS_PATH_RE = new RE2("^[a-zA-Z0-9\\s\\\\_\\-.\\\\]+$");
 export const escapePowershellSingleQuote = (value: string) =>
   NEWLINE_RE.replace(SINGLE_QUOTE_RE.replace(value, "''"), "");
 
-const validateWindowsPathValue = (value: string, label: string) => {
-  if (!SAFE_WINDOWS_PATH_RE.test(value)) {
+const validateWindowsName = (value: string, label: string) => {
+  if (!SAFE_WINDOWS_NAME_RE.test(value)) {
     throw new Error(`${label} contains invalid characters: ${value}`);
+  }
+};
+
+const validateWindowsPath = (value: string, label: string) => {
+  if (!SAFE_WINDOWS_PATH_RE.test(value) || PATH_TRAVERSAL_RE.test(value)) {
+    throw new Error(`${label} contains invalid characters or path traversal: ${value}`);
   }
 };
 
@@ -38,11 +48,11 @@ export const buildDependencySyncScript = (
   accountUsername: string,
   newPassword: string
 ): string => {
-  validateWindowsPathValue(dep.name, "Dependency name");
-
   const escapedPassword = escapePowershellSingleQuote(newPassword);
   const escapedName = escapePowershellSingleQuote(dep.name);
   const escapedUsername = escapePowershellSingleQuote(accountUsername);
+
+  validateWindowsName(escapedName, "Dependency name");
 
   switch (dep.dependencyType) {
     case PamAccountDependencyType.WindowsService:
@@ -54,8 +64,8 @@ export const buildDependencySyncScript = (
     case PamAccountDependencyType.ScheduledTask: {
       const taskData = dep.data as { TaskPath?: string } | null;
       const taskPath = taskData?.TaskPath ?? "\\";
-      validateWindowsPathValue(taskPath, "Task path");
       const escapedPath = escapePowershellSingleQuote(taskPath);
+      validateWindowsPath(escapedPath, "Task path");
       return `schtasks.exe /Change /TN '${escapedPath}${escapedName}' /RU '${escapedUsername}' /RP '${escapedPassword}'`;
     }
 
@@ -126,11 +136,31 @@ export const syncDependenciesAfterRotation = async ({
     return encryptor;
   };
 
+  const failAllDeps = async (deps: typeof enabledDeps, msg: string) => {
+    let encryptedMsg: Buffer | null = null;
+    try {
+      const enc = await getEncryptor();
+      encryptedMsg = enc({ plainText: Buffer.from(msg) }).cipherTextBlob;
+    } catch (err) {
+      logger.error(err, `[DependencySync] Failed to encrypt error message`);
+    }
+    await Promise.all(
+      deps.map((dep) =>
+        ctx.pamAccountDependenciesDAL.updateById(dep.id, {
+          syncStatus: PamDependencySyncStatus.Failed,
+          encryptedLastSyncMessage: encryptedMsg
+        })
+      )
+    );
+  };
+
   await Promise.all(
     Object.entries(grouped).map(async ([resourceId, deps]) => {
       const resource = resourceMap.get(resourceId);
       if (!resource) {
-        logger.warn(`[DependencySync] Resource ${resourceId} not found, skipping`);
+        const msg = `Resource ${resourceId} not found`;
+        logger.warn(`[DependencySync] ${msg}, skipping`);
+        await failAllDeps(deps, msg);
         return;
       }
 
@@ -142,11 +172,14 @@ export const syncDependenciesAfterRotation = async ({
         hostname = connDetails.hostname ?? connDetails.domain ?? null;
       } catch (err) {
         logger.error(err, `[DependencySync] Failed to decrypt resource ${resourceId}`);
+        await failAllDeps(deps, `Failed to decrypt resource connection details`);
         return;
       }
 
       if (!hostname) {
-        logger.warn(`[DependencySync] No hostname found for resource ${resourceId}, skipping`);
+        const msg = `No hostname found for resource ${resourceId}`;
+        logger.warn(`[DependencySync] ${msg}, skipping`);
+        await failAllDeps(deps, msg);
         return;
       }
 

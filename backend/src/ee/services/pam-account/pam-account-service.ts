@@ -1325,21 +1325,6 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Account is already being rotated" });
     }
 
-    // Prevent the rotation account from rotating its own password
-    const { rotationAccountCredentials } = await decryptResource(resource, account.projectId, kmsService);
-    const accountCredentials = await decryptAccountCredentials({
-      encryptedCredentials: account.encryptedCredentials,
-      projectId: account.projectId,
-      kmsService
-    });
-    const rotationUsername = (rotationAccountCredentials as { username?: string })?.username;
-    const accountUsername = (accountCredentials as { username?: string })?.username;
-    if (rotationUsername && accountUsername && rotationUsername.toLowerCase() === accountUsername.toLowerCase()) {
-      throw new BadRequestError({
-        message: "This account cannot be rotated because it is used as the rotation credentials"
-      });
-    }
-
     void rotateAccount(account).catch((err) => {
       logger.error(err, `Background rotation failed for account [accountId=${accountId}]`);
     });
