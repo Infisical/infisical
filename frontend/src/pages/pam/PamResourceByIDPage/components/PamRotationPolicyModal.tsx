@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  InfoIcon,
-  PlusIcon,
-  TrashIcon,
-  TriangleAlertIcon,
-  XIcon
-} from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { PlusIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -27,15 +18,9 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
-  TextArea,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   UnstableAlert,
   UnstableAlertDescription,
   UnstableAlertTitle,
-  UnstableIconButton,
   UnstableInput
 } from "@app/components/v3";
 import {
@@ -53,152 +38,9 @@ import {
 } from "@app/hooks/api/pam/mutations";
 import { useGetPamRotationRules } from "@app/hooks/api/pam/queries";
 
-const formatIntervalDays = (seconds: number) => {
-  const days = Math.round(seconds / 86400);
-  return days.toString();
-};
+import { LocalRule, RotationRuleCard, WinrmConfigSection } from "./rotation-policy";
 
 const TEMP_ID_PREFIX = "_new_";
-
-// A local working copy of a rule (may be new or existing)
-type LocalRule = {
-  id: string;
-  name: string | null;
-  namePattern: string;
-  enabled: boolean;
-  intervalSeconds: number | null;
-};
-
-type RuleCardProps = {
-  rule: LocalRule;
-  index: number;
-  totalRules: number;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onDelete: () => void;
-  onUpdate: (
-    updates: Partial<Pick<LocalRule, "name" | "namePattern" | "enabled" | "intervalSeconds">>
-  ) => void;
-};
-
-const RuleCard = ({
-  rule,
-  index,
-  totalRules,
-  onMoveUp,
-  onMoveDown,
-  onDelete,
-  onUpdate
-}: RuleCardProps) => {
-  const [localName, setLocalName] = useState(rule.name ?? "");
-  const [localPattern, setLocalPattern] = useState(rule.namePattern);
-  const [localInterval, setLocalInterval] = useState(
-    rule.intervalSeconds ? formatIntervalDays(rule.intervalSeconds) : "30"
-  );
-
-  useEffect(() => {
-    setLocalName(rule.name ?? "");
-    setLocalPattern(rule.namePattern);
-    setLocalInterval(rule.intervalSeconds ? formatIntervalDays(rule.intervalSeconds) : "30");
-  }, [rule]);
-
-  const handleNameBlur = () => {
-    if (localName !== (rule.name ?? "")) {
-      onUpdate({ name: localName || null });
-    }
-  };
-
-  const handlePatternBlur = () => {
-    if (localPattern !== rule.namePattern && localPattern.trim()) {
-      onUpdate({ namePattern: localPattern });
-    }
-  };
-
-  const handleIntervalBlur = () => {
-    const days = parseInt(localInterval, 10);
-    if (!Number.isNaN(days) && days > 0) {
-      const seconds = days * 86400;
-      if (seconds !== rule.intervalSeconds) {
-        onUpdate({ intervalSeconds: seconds });
-      }
-    }
-  };
-
-  return (
-    <div className="flex gap-2 rounded-lg border border-border bg-card p-4">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="mr-1 text-lg font-medium text-muted">{index + 1}</span>
-          <Switch
-            id={`rule-enabled-${rule.id}`}
-            checked={rule.enabled}
-            onCheckedChange={(checked) => onUpdate({ enabled: checked })}
-            variant="project"
-          />
-          {rule.enabled ? (
-            <Label>Rotate</Label>
-          ) : (
-            <Label className="opacity-50">Do Not Rotate</Label>
-          )}
-        </div>
-        <div className="grid grid-cols-[auto_1fr_1fr] gap-2">
-          <Field>
-            <FieldLabel>Rule Name</FieldLabel>
-            <FieldContent>
-              <UnstableInput
-                value={localName}
-                onChange={(e) => setLocalName(e.target.value)}
-                onBlur={handleNameBlur}
-                placeholder="e.g., Service accounts"
-              />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel>Account Pattern</FieldLabel>
-            <FieldContent>
-              <UnstableInput
-                value={localPattern}
-                onChange={(e) => setLocalPattern(e.target.value)}
-                onBlur={handlePatternBlur}
-                placeholder="*"
-                className="font-mono"
-              />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel>Interval (days)</FieldLabel>
-            <FieldContent>
-              <UnstableInput
-                value={localInterval}
-                onChange={(e) => setLocalInterval(e.target.value)}
-                onBlur={handleIntervalBlur}
-                className={twMerge(!rule.enabled && "opacity-50")}
-                disabled={!rule.enabled}
-              />
-            </FieldContent>
-          </Field>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <UnstableIconButton variant="ghost" size="xs" onClick={onDelete}>
-          <TrashIcon className="text-danger" />
-        </UnstableIconButton>
-        <UnstableIconButton variant="ghost" size="xs" onClick={onMoveUp} isDisabled={index === 0}>
-          <ArrowUpIcon />
-        </UnstableIconButton>
-        <UnstableIconButton
-          variant="ghost"
-          size="xs"
-          onClick={onMoveDown}
-          isDisabled={index >= totalRules - 1}
-        >
-          <ArrowDownIcon />
-        </UnstableIconButton>
-      </div>
-    </div>
-  );
-};
 
 const credentialsSchema = z
   .object({
@@ -247,7 +89,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // WinRM config for Windows Server resources (stored in connectionDetails)
+  // WinRM config for Windows Server resources
   const isWindowsResource = resource.resourceType === PamResourceType.Windows;
   const getWinrmDefaults = () => {
     const cd = resource.connectionDetails as {
@@ -270,10 +112,11 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   );
   const [winrmCaCert, setWinrmCaCert] = useState(() => getWinrmDefaults().winrmCaCert);
 
-  // Local working copy of rules — only persisted on save
+  // Rules
   const [localRules, setLocalRules] = useState<LocalRule[]>([]);
   const [deletedRuleIds, setDeletedRuleIds] = useState<string[]>([]);
 
+  // Credentials form
   const existingUsername =
     "rotationAccountCredentials" in resource
       ? ((resource.rotationAccountCredentials as { username?: string } | null)?.username ?? "")
@@ -313,11 +156,10 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   }, [rules, resource, hasRotationCredentials, resetCred]);
 
   useEffect(() => {
-    if (isOpen) {
-      resetAll();
-    }
+    if (isOpen) resetAll();
   }, [isOpen, resetAll]);
 
+  // Rule handlers
   const handleAddRule = () => {
     setLocalRules((prev) => [
       ...prev,
@@ -363,7 +205,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
     });
   };
 
-  // Compute whether any changes exist
+  // Dirty checks
   const wd = getWinrmDefaults();
   const isWinrmDirty =
     isWindowsResource &&
@@ -395,7 +237,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   const handleSave = async (credData: CredentialsFormData) => {
     setIsSaving(true);
     try {
-      // Save credentials and WinRM config if changed
       const clearingCredentials =
         isCredDirty && credData.username === "" && credData.password === "";
       const updatePayload: Record<string, unknown> = {
@@ -425,18 +266,17 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
         );
       }
 
-      // Delete removed rules (sequential to avoid race conditions)
+      // Persist rule changes
       await deletedRuleIds.reduce(
         (chain, ruleId) =>
           chain.then(() => deleteRule.mutateAsync({ resourceId: resource.id, ruleId }).then()),
         Promise.resolve()
       );
 
-      // Create new rules & update existing ones (sequential to preserve order)
       const serverRuleIds = new Set(rules.map((r) => r.id));
       const newIdMap = new Map<string, string>();
 
-      await localRules.reduce((chain, local) => {
+      localRules.reduce((chain, local) => {
         if (local.id.startsWith(TEMP_ID_PREFIX)) {
           return chain.then(async () => {
             const created = await createRule.mutateAsync({
@@ -475,7 +315,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
         return chain;
       }, Promise.resolve());
 
-      // Reorder if needed
       const finalIds = localRules.map((r) =>
         r.id.startsWith(TEMP_ID_PREFIX) ? newIdMap.get(r.id)! : r.id
       );
@@ -496,11 +335,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
     }
   };
 
-  const handleCancel = () => {
-    resetAll();
-    onOpenChange(false);
-  };
-
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange} modal={false}>
       <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
@@ -511,6 +345,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
           </SheetDescription>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
+          {/* LDAPS warning for AD resources */}
           {resource.resourceType === PamResourceType.ActiveDirectory &&
             !(resource.connectionDetails as { useLdaps?: boolean }).useLdaps && (
               <UnstableAlert variant="info">
@@ -597,79 +432,16 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
 
           {/* WinRM Config (Windows Server only) */}
           {isWindowsResource && (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <Label>WinRM Configuration</Label>
-                <p className="text-xs text-muted">
-                  WinRM is used to execute password rotation commands on the Windows machine
-                </p>
-              </div>
-
-              <Field>
-                <FieldLabel>
-                  Port
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      The WinRM port on this machine. Default is 5985 for HTTP or 5986 for HTTPS
-                    </TooltipContent>
-                  </Tooltip>
-                </FieldLabel>
-                <FieldContent>
-                  <UnstableInput
-                    type="number"
-                    value={winrmPort}
-                    onChange={(e) => setWinrmPort(Number(e.target.value))}
-                    placeholder="5985"
-                  />
-                </FieldContent>
-              </Field>
-
-              <Field orientation="horizontal">
-                <FieldLabel>Enable HTTPS</FieldLabel>
-                <Switch
-                  variant="project"
-                  checked={useWinrmHttps}
-                  onCheckedChange={setUseWinrmHttps}
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel>CA Certificate</FieldLabel>
-                <FieldContent>
-                  <TextArea
-                    value={winrmCaCert}
-                    onChange={(e) => setWinrmCaCert(e.target.value)}
-                    className="max-h-32"
-                    disabled={!useWinrmHttps}
-                    placeholder="-----BEGIN CERTIFICATE-----..."
-                  />
-                </FieldContent>
-              </Field>
-
-              <Field orientation="horizontal">
-                <FieldLabel>
-                  Reject Unauthorized
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      If enabled, Infisical will only connect if the machine has a valid, trusted
-                      TLS certificate
-                    </TooltipContent>
-                  </Tooltip>
-                </FieldLabel>
-                <Switch
-                  variant="project"
-                  disabled={!useWinrmHttps}
-                  checked={useWinrmHttps ? winrmRejectUnauthorized : false}
-                  onCheckedChange={setWinrmRejectUnauthorized}
-                />
-              </Field>
-            </div>
+            <WinrmConfigSection
+              winrmPort={winrmPort}
+              useWinrmHttps={useWinrmHttps}
+              winrmRejectUnauthorized={winrmRejectUnauthorized}
+              winrmCaCert={winrmCaCert}
+              onWinrmPortChange={setWinrmPort}
+              onUseWinrmHttpsChange={setUseWinrmHttps}
+              onWinrmRejectUnauthorizedChange={setWinrmRejectUnauthorized}
+              onWinrmCaCertChange={setWinrmCaCert}
+            />
           )}
 
           {/* Rotation Rules */}
@@ -693,7 +465,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
             ) : (
               <div className="flex flex-col gap-3">
                 {localRules.map((rule, index) => (
-                  <RuleCard
+                  <RotationRuleCard
                     key={rule.id}
                     rule={rule}
                     index={index}
@@ -717,7 +489,14 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
           >
             Update Details
           </Button>
-          <Button variant="outline" className="mr-auto" onClick={handleCancel}>
+          <Button
+            variant="outline"
+            className="mr-auto"
+            onClick={() => {
+              resetAll();
+              onOpenChange(false);
+            }}
+          >
             Cancel
           </Button>
         </SheetFooter>
