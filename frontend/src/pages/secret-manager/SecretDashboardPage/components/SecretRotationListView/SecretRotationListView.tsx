@@ -87,7 +87,8 @@ export const SecretRotationListView = ({
         isOpen={
           popUp.reconcileSecretRotation.isOpen &&
           (popUp.reconcileSecretRotation.data?.type === SecretRotation.UnixLinuxLocalAccount ||
-            popUp.reconcileSecretRotation.data?.type === SecretRotation.WindowsLocalAccount)
+            popUp.reconcileSecretRotation.data?.type === SecretRotation.WindowsLocalAccount ||
+            popUp.reconcileSecretRotation.data?.type === SecretRotation.HpIloLocalAccount)
         }
         secretRotation={popUp.reconcileSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("reconcileSecretRotation", isOpen)}

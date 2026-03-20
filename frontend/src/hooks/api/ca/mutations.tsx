@@ -242,6 +242,34 @@ export const useInstallCaCertificateVenafi = (projectId: string) => {
   });
 };
 
+export const useInstallCaCertificateAdcs = (projectId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { message: string; caId: string },
+    object,
+    { caId: string; maxPathLength?: number }
+  >({
+    mutationFn: async ({ caId, ...body }) => {
+      const { data } = await apiRequest.post<{ message: string; caId: string }>(
+        `/api/v1/cert-manager/ca/internal/${caId}/install-certificate-adcs`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaAutoRenewal(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectCas({ projectId }) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, projectId)
+      });
+    }
+  });
+};
+
 export const useCreateCaSigningConfig = () => {
   const queryClient = useQueryClient();
   return useMutation<
@@ -252,11 +280,7 @@ export const useCreateCaSigningConfig = () => {
       type: string;
       parentCaId?: string;
       appConnectionId?: string;
-      destinationConfig?: {
-        applicationId: string;
-        issuingTemplateId: string;
-        validityPeriod?: number;
-      };
+      destinationConfig?: Record<string, unknown>;
     }
   >({
     mutationFn: async ({ caId, ...body }) => {
@@ -281,11 +305,7 @@ export const useUpdateCaSigningConfig = () => {
       caId: string;
       parentCaId?: string;
       appConnectionId?: string;
-      destinationConfig?: {
-        applicationId: string;
-        issuingTemplateId: string;
-        validityPeriod?: number;
-      };
+      destinationConfig?: Record<string, unknown>;
     }
   >({
     mutationFn: async ({ caId, ...body }) => {

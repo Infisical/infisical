@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
-import KMS from "aws-sdk/clients/kms";
+import KMS from "aws-sdk/clients/kms.js";
 
 import {
   ActionProjectType,

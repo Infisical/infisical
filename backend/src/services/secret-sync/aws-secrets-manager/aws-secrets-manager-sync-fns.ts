@@ -22,7 +22,7 @@ import {
   SecretListEntry,
   SecretValueEntry,
   Tag
-} from "aws-sdk/clients/secretsmanager";
+} from "aws-sdk/clients/secretsmanager.js";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";

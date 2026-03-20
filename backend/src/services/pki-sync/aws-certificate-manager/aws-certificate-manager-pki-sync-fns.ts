@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import ACM from "aws-sdk/clients/acm";
+import ACM from "aws-sdk/clients/acm.js";
 import RE2 from "re2";
 import { z } from "zod";
 

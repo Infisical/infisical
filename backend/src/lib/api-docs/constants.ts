@@ -2108,6 +2108,9 @@ export const CERTIFICATE_AUTHORITIES = {
   INSTALL_CERT_VENAFI: {
     caId: "The ID of the CA to install the certificate for via Venafi."
   },
+  INSTALL_CERT_ADCS: {
+    caId: "The ID of the CA to install the certificate for via Azure AD CS."
+  },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
   },
@@ -3141,6 +3144,13 @@ export const SecretRotations = {
       password:
         'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
     },
+    HP_ILO: {
+      username: "The username of the HP iLO account to rotate the password for.",
+      rotationMethod:
+        'Whether the rotation should be performed using "login-as-target" (the target user\'s own credentials) or "login-as-root" (the SSH connection\'s admin credentials). Defaults to "login-as-root".',
+      password:
+        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
+    },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {
         base: "The password requirements to use when generating the new password.",
@@ -3218,6 +3228,10 @@ export const SecretRotations = {
       password: "The name of the secret that the rotated password will be mapped to."
     },
     WINDOWS_LOCAL_ACCOUNT: {
+      username: "The name of the secret that the username will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
+    HP_ILO: {
       username: "The name of the secret that the username will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },

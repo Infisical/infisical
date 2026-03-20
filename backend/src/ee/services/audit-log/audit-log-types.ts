@@ -345,6 +345,7 @@ export enum EventType {
   GET_CA_CRLS = "get-certificate-authority-crls",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
+  INSTALL_CA_CERT_ADCS = "install-ca-cert-adcs",
   CREATE_CA_SIGNING_CONFIG = "create-ca-signing-config",
   GET_CA_SIGNING_CONFIG = "get-ca-signing-config",
   UPDATE_CA_SIGNING_CONFIG = "update-ca-signing-config",
@@ -2585,6 +2586,14 @@ interface GenerateCaCertificate {
 
 interface InstallCaCertVenafi {
   type: EventType.INSTALL_CA_CERT_VENAFI;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface InstallCaCertAdcs {
+  type: EventType.INSTALL_CA_CERT_ADCS;
   metadata: {
     caId: string;
     dn: string;
@@ -5617,6 +5626,7 @@ export type Event =
   | GetCaCrls
   | GenerateCaCertificate
   | InstallCaCertVenafi
+  | InstallCaCertAdcs
   | CreateCaSigningConfig
   | GetCaSigningConfig
   | UpdateCaSigningConfig
