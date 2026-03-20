@@ -2,14 +2,7 @@
 import { useState } from "react";
 import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  ArrowLeftIcon,
-  EllipsisVerticalIcon,
-  PencilIcon,
-  PlusIcon,
-  ShieldCheckIcon,
-  TrashIcon
-} from "lucide-react";
+import { ArrowLeftIcon, EllipsisVerticalIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -20,10 +13,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyContent,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
   UnstableIconButton,
   UnstableInput,
   UnstableTable,
@@ -55,16 +54,20 @@ import {
 const RuleForm = ({
   defaultValues,
   isEditing,
+  initialIsActive = true,
   environments,
   onCancel,
   onSubmit
 }: {
   defaultValues?: Partial<TRuleForm>;
   isEditing: boolean;
+  initialIsActive?: boolean;
   environments: { slug: string; name: string }[];
   onCancel: () => void;
-  onSubmit: (data: TRuleForm) => void;
+  onSubmit: (data: TRuleForm, isActive?: boolean) => void;
 }) => {
+  const [isActive, setIsActive] = useState(initialIsActive);
+
   const form = useForm<TRuleForm>({
     resolver: zodResolver(ruleFormSchema),
     defaultValues: defaultValues || {
@@ -101,28 +104,41 @@ const RuleForm = ({
   return (
     <div className="w-full">
       <div className="flex h-full w-full flex-1 flex-col rounded-lg border border-border bg-card py-4">
-        <div className="mx-4 flex items-center gap-3 border-b border-border pb-4">
-          <UnstableIconButton
-            aria-label="Back to list"
-            variant="ghost"
-            size="sm"
-            onClick={onCancel}
-          >
-            <ArrowLeftIcon className="size-4" />
-          </UnstableIconButton>
-          <div>
-            <h3 className="text-lg font-medium text-foreground">
-              {isEditing ? "Edit Rule" : "Create Rule"}
-            </h3>
-            <p className="text-sm leading-3 text-muted">
-              {isEditing ? "Modify this validation rule" : "Define a new secret validation rule"}
-            </p>
+        <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
+          <div className="flex items-center gap-3">
+            <UnstableIconButton
+              aria-label="Back to list"
+              variant="ghost"
+              size="sm"
+              onClick={onCancel}
+            >
+              <ArrowLeftIcon className="size-4" />
+            </UnstableIconButton>
+            <div>
+              <h3 className="text-lg font-medium text-foreground">
+                {isEditing ? "Edit Rule" : "Create Rule"}
+              </h3>
+              <p className="text-sm leading-3 text-muted">
+                {isEditing ? "Modify this validation rule" : "Define a new secret validation rule"}
+              </p>
+            </div>
           </div>
+          {isEditing && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted">{isActive ? "Enabled" : "Disabled"}</span>
+              <Switch checked={isActive} onCheckedChange={setIsActive} variant="project" />
+            </div>
+          )}
         </div>
 
         <FormProvider {...form}>
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
-            <div className="thin-scrollbar flex-1 space-y-6 overflow-y-scroll p-4">
+          <form
+            onSubmit={handleSubmit((data) => onSubmit(data, isEditing ? isActive : undefined))}
+            className="flex flex-1 flex-col overflow-hidden"
+          >
+            <div
+              className={`thin-scrollbar flex-1 space-y-6 overflow-y-scroll p-4 transition-opacity ${!isActive ? "pointer-events-none opacity-40" : ""}`}
+            >
               {/* Name & Description */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
@@ -332,7 +348,7 @@ export const SecretValidationRulesTab = () => {
     setView({ mode: "edit", ruleId: id });
   };
 
-  const handleSubmit = async (data: TRuleForm) => {
+  const handleSubmit = async (data: TRuleForm, isActive?: boolean) => {
     try {
       if (view.mode === "edit") {
         const editView = view as { mode: "edit"; ruleId: string };
@@ -341,6 +357,7 @@ export const SecretValidationRulesTab = () => {
           ruleId: editView.ruleId,
           name: data.name,
           description: data.description,
+          isActive,
           environmentSlug: data.environment ?? undefined,
           secretPath: data.folderPath,
           type: data.enforcement.type as string as SecretValidationRuleType,
@@ -394,13 +411,20 @@ export const SecretValidationRulesTab = () => {
                 </div>
               )}
               {!isLoading && rules.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border py-12">
-                  <ShieldCheckIcon className="mb-3 size-10 text-muted" />
-                  <p className="text-sm text-muted">No validation rules configured</p>
-                  <p className="mt-1 text-xs text-muted">
-                    Click &quot;Create Rule&quot; to define your first secret validation rule.
-                  </p>
-                </div>
+                <UnstableEmpty className="border">
+                  <UnstableEmptyHeader>
+                    <UnstableEmptyTitle>No validation rules configured</UnstableEmptyTitle>
+                    <UnstableEmptyDescription>
+                      Create a rule to enforce validation constraints on secret keys and values
+                    </UnstableEmptyDescription>
+                  </UnstableEmptyHeader>
+                  <UnstableEmptyContent>
+                    <Button variant="outline" size="xs" onClick={() => setView({ mode: "create" })}>
+                      <PlusIcon className="size-4" />
+                      Create Rule
+                    </Button>
+                  </UnstableEmptyContent>
+                </UnstableEmpty>
               ) : (
                 !isLoading && (
                   <UnstableTable>
@@ -496,6 +520,7 @@ export const SecretValidationRulesTab = () => {
     <RuleForm
       defaultValues={editingDefaults}
       isEditing={view.mode === "edit"}
+      initialIsActive={editingRule?.isActive ?? true}
       environments={currentProject.environments}
       onCancel={() => setView({ mode: "list" })}
       onSubmit={handleSubmit}
