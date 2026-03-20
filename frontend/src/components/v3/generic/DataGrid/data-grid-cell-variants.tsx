@@ -64,6 +64,7 @@ export function ShortTextCell<TData>({
   const [value, setValue] = React.useState(initialValue);
   const cellRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const prefilledRef = React.useRef<string | null>(null);
 
   const prevInitialValueRef = React.useRef(initialValue);
   if (initialValue !== prevInitialValueRef.current) {
@@ -72,6 +73,13 @@ export function ShortTextCell<TData>({
     if (cellRef.current && !isEditing) {
       cellRef.current.textContent = initialValue ?? "";
     }
+  }
+
+  // When commit + discard are batched by React 18, the intermediate initialValue
+  // change is never seen, so prevInitialValueRef misses it and value stays stale.
+  // Reset value to match initialValue when not editing to prevent showing stale data.
+  if (!isEditing && value !== initialValue) {
+    setValue(initialValue);
   }
 
   const onBlur = React.useCallback(() => {
@@ -122,6 +130,7 @@ export function ShortTextCell<TData>({
         }
       } else if (isFocused && event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
         // Handle typing to pre-fill the value when editing starts
+        prefilledRef.current = event.key;
         setValue(event.key);
 
         queueMicrotask(() => {
@@ -142,13 +151,16 @@ export function ShortTextCell<TData>({
 
   React.useEffect(() => {
     if (isEditing && cellRef.current) {
-      cellRef.current.focus();
+      // Use pre-filled character if user typed to start editing,
+      // otherwise always sync from initialValue to prevent stale values
+      // (e.g. after batched commit+discard where prevInitialValueRef misses the change)
+      const prefilled = prefilledRef.current;
+      prefilledRef.current = null;
+      const editValue = prefilled ?? initialValue ?? "";
 
-      if (value !== undefined && value !== null) {
-        cellRef.current.textContent = String(value);
-      } else {
-        cellRef.current.textContent = "";
-      }
+      setValue(editValue);
+      cellRef.current.textContent = editValue;
+      cellRef.current.focus();
 
       if (cellRef.current.textContent) {
         const range = document.createRange();
@@ -235,6 +247,10 @@ export function LongTextCell<TData>({
   const prevInitialValueRef = React.useRef(initialValue);
   if (initialValue !== prevInitialValueRef.current) {
     prevInitialValueRef.current = initialValue;
+    setValue(initialValue ?? "");
+  }
+
+  if (!isEditing && value !== (initialValue ?? "")) {
     setValue(initialValue ?? "");
   }
 
@@ -551,6 +567,7 @@ export function UrlCell<TData>({
   const [value, setValue] = React.useState(initialValue ?? "");
   const cellRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const prefilledRef = React.useRef<string | null>(null);
 
   const prevInitialValueRef = React.useRef(initialValue);
   if (initialValue !== prevInitialValueRef.current) {
@@ -559,6 +576,10 @@ export function UrlCell<TData>({
     if (cellRef.current && !isEditing) {
       cellRef.current.textContent = initialValue ?? "";
     }
+  }
+
+  if (!isEditing && value !== (initialValue ?? "")) {
+    setValue(initialValue ?? "");
   }
 
   const onBlur = React.useCallback(() => {
@@ -619,6 +640,7 @@ export function UrlCell<TData>({
         !event.metaKey
       ) {
         // Handle typing to pre-fill the value when editing starts
+        prefilledRef.current = event.key;
         setValue(event.key);
 
         queueMicrotask(() => {
@@ -662,13 +684,13 @@ export function UrlCell<TData>({
 
   React.useEffect(() => {
     if (isEditing && cellRef.current) {
-      cellRef.current.focus();
+      const prefilled = prefilledRef.current;
+      prefilledRef.current = null;
+      const editValue = prefilled ?? initialValue ?? "";
 
-      if (value !== undefined && value !== null) {
-        cellRef.current.textContent = String(value);
-      } else {
-        cellRef.current.textContent = "";
-      }
+      setValue(editValue);
+      cellRef.current.textContent = editValue;
+      cellRef.current.focus();
 
       if (cellRef.current.textContent) {
         const range = document.createRange();
