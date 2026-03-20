@@ -308,7 +308,7 @@ const SingleEnvContent = ({
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select environment" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="w-full">
                   {environments.map(({ name, slug }) => (
                     <SelectItem value={slug} key={slug}>
                       {name}
@@ -670,7 +670,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         else onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-xl overflow-visible">
+      <DialogContent className="max-w-xl overflow-visible [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>Move Secrets</DialogTitle>
           <DialogDescription>
