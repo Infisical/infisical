@@ -11,8 +11,11 @@ import (
 
 // Tx represents a database transaction. *sql.Tx satisfies this interface.
 // Consumers can use lock.Tx() with DAL operations that accept this interface.
+// Includes Exec/Query (non-context variants) so Tx satisfies go-jet's qrm.DB.
 type Tx interface {
+	Exec(query string, args ...any) (sql.Result, error)
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	Query(query string, args ...any) (*sql.Rows, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	Commit() error
 	Rollback() error

@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
+	"github.com/google/uuid"
 )
 
 // TableDef holds go-jet table metadata needed for generic CRUD operations.
@@ -66,10 +67,10 @@ func (d *DAL[M]) WithTx(tx *sql.Tx) *DAL[M] {
 }
 
 // FindByID returns a single row by its primary key.
-func (d *DAL[M]) FindByID(ctx context.Context, id string) (*M, error) {
+func (d *DAL[M]) FindByID(ctx context.Context, id uuid.UUID) (*M, error) {
 	stmt := d.def.Table.
 		SELECT(d.def.AllColumns).
-		WHERE(d.def.IDColumn.EQ(postgres.String(id)))
+		WHERE(d.def.IDColumn.EQ(postgres.UUID(id)))
 
 	var result M
 	err := stmt.QueryContext(ctx, d.replica, &result)

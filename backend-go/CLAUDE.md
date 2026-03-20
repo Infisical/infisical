@@ -112,6 +112,10 @@ go-jet generated table types live in `internal/database/pg/gen/table/` (50+ tabl
 
 **All database operations must go through a DAL, never directly from a service.** Services must not import `table`, `postgres`, or `qrm` packages or construct queries themselves. Instead, create or extend a DAL with the required method and call it from the service. This keeps query logic centralized and testable.
 
+**Always use type-safe go-jet queries — never raw SQL.** Use go-jet's generated table types for all SELECT, INSERT, UPDATE, and DELETE operations. For UPDATE, use `Table.UPDATE(columns...).SET(values...).WHERE(...)` or the column-expression form `Column.SET(expression)`. See [go-jet UPDATE docs](https://github.com/go-jet/jet/wiki/UPDATE). Raw `tx.ExecContext(ctx, "UPDATE ...")` is not allowed — the only exception is PostgreSQL advisory locks (`pg_advisory_xact_lock`) which have no go-jet equivalent.
+
+**Keep code lean.** Organize DAL files by functionality. If a helper function is only called once, inline it at the call site instead of extracting a separate method. Only extract shared helpers when they have multiple callers. Split files needed to organize similiar functionality ones
+
 ### Configuration
 
 Environment variables loaded via koanf (`internal/config/config.go`). 186+ settings covering DB, Redis, auth, encryption, SSO, integrations, etc. Validated on startup with `config.ValidationError`.

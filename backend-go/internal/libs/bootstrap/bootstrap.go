@@ -40,7 +40,7 @@ func (r *DBReport) PrintReport(logger *slog.Logger) {
 
 // CheckDBConnection pings the primary database and all read replicas,
 // returning a report with the status of each.
-func CheckDBConnection(ctx context.Context, db *pg.DB) *DBReport {
+func CheckDBConnection(ctx context.Context, db pg.DB) *DBReport {
 	report := &DBReport{}
 
 	if err := db.Primary().PingContext(ctx); err != nil {

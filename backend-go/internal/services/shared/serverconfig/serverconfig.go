@@ -12,9 +12,10 @@ import (
 	"github.com/infisical/api/internal/database/pg/gen/model"
 )
 
+var adminConfigDBUUID = uuid.MustParse("00000000-0000-0000-0000-000000000000")
+
 const (
 	// AdminConfigDBUUID is the fixed UUID for the single super_admin config row.
-	AdminConfigDBUUID = "00000000-0000-0000-0000-000000000000"
 
 	// PgLockSuperAdminInit is the advisory lock ID used during config initialization.
 	PgLockSuperAdminInit int64 = 2024
@@ -52,35 +53,35 @@ func configFromModel(m *model.SuperAdmin) ServerConfig {
 		FipsEnabled: m.FipsEnabled,
 	}
 
-	if m.Initialized != nil {
-		cfg.Initialized = *m.Initialized
+	if m.Initialized.Valid {
+		cfg.Initialized = m.Initialized.V
 	}
-	if m.AllowSignUp != nil {
-		cfg.AllowSignUp = *m.AllowSignUp
+	if m.AllowSignUp.Valid {
+		cfg.AllowSignUp = m.AllowSignUp.V
 	}
-	if m.AllowedSignUpDomain != nil {
-		cfg.AllowedSignUpDomain = *m.AllowedSignUpDomain
+	if m.AllowedSignUpDomain.Valid {
+		cfg.AllowedSignUpDomain = m.AllowedSignUpDomain.V
 	}
-	if m.TrustSamlEmails != nil {
-		cfg.TrustSamlEmails = *m.TrustSamlEmails
+	if m.TrustSamlEmails.Valid {
+		cfg.TrustSamlEmails = m.TrustSamlEmails.V
 	}
-	if m.TrustLdapEmails != nil {
-		cfg.TrustLdapEmails = *m.TrustLdapEmails
+	if m.TrustLdapEmails.Valid {
+		cfg.TrustLdapEmails = m.TrustLdapEmails.V
 	}
-	if m.TrustOidcEmails != nil {
-		cfg.TrustOidcEmails = *m.TrustOidcEmails
+	if m.TrustOidcEmails.Valid {
+		cfg.TrustOidcEmails = m.TrustOidcEmails.V
 	}
-	if m.DefaultAuthOrgId != nil {
-		cfg.DefaultAuthOrgID = m.DefaultAuthOrgId
+	if m.DefaultAuthOrgId.Valid {
+		cfg.DefaultAuthOrgID = &m.DefaultAuthOrgId.V
 	}
 	if m.EnabledLoginMethods != nil {
 		cfg.EnabledLoginMethods = []string(*m.EnabledLoginMethods)
 	}
-	if m.AuthConsentContent != nil {
-		cfg.AuthConsentContent = *m.AuthConsentContent
+	if m.AuthConsentContent.Valid {
+		cfg.AuthConsentContent = m.AuthConsentContent.V
 	}
-	if m.PageFrameContent != nil {
-		cfg.PageFrameContent = *m.PageFrameContent
+	if m.PageFrameContent.Valid {
+		cfg.PageFrameContent = m.PageFrameContent.V
 	}
 	if m.AdminIdentityIds != nil {
 		cfg.AdminIdentityIDs = []string(*m.AdminIdentityIds)
@@ -98,7 +99,7 @@ type keyStore interface {
 
 // dal defines the subset of DAL operations this service needs.
 type dal interface {
-	FindByID(ctx context.Context, id string) (*model.SuperAdmin, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*model.SuperAdmin, error)
 	FindOrCreateConfig(ctx context.Context) (*model.SuperAdmin, error)
 	UpdateByID(ctx context.Context, id string, columns pq.StringArray, data *model.SuperAdmin) (*model.SuperAdmin, error)
 }
@@ -147,7 +148,7 @@ func (s *SharedService) GetConfig(ctx context.Context) (ServerConfig, error) {
 	}
 
 	// Cache miss — read from DB.
-	m, err := s.dal.FindByID(ctx, AdminConfigDBUUID)
+	m, err := s.dal.FindByID(ctx, adminConfigDBUUID)
 	if err != nil {
 		return ServerConfig{}, fmt.Errorf("reading config from database: %w", err)
 	}

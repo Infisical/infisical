@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/infisical/api/internal/services/platform"
@@ -14,12 +15,15 @@ type Registry struct {
 	Libs          *shared.SharedServices
 }
 
-func NewRegistry(logger *slog.Logger) *Registry {
-	sharedLibs := shared.NewSharedServices()
+func NewRegistry(logger *slog.Logger, sharedDeps shared.SharedServicesDeps) (*Registry, error) {
+	sharedLibs, err := shared.NewSharedServices(sharedDeps)
+	if err != nil {
+		return nil, fmt.Errorf("shared services: %w", err)
+	}
 
 	return &Registry{
 		Libs:          sharedLibs,
 		Platform:      platform.NewRegistry(logger, sharedLibs),
 		SecretManager: secretmanager.NewRegistry(logger, sharedLibs),
-	}
+	}, nil
 }

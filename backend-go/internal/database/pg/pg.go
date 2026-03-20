@@ -17,18 +17,35 @@ import (
 	"github.com/infisical/api/internal/config"
 )
 
-// DB wraps a primary pgxpool and zero or more read-replica pools,
-// exposing them as *sql.DB for compatibility with go-jet and database/sql consumers.
-type DB struct {
-	primary     *pgxpool.Pool
-	replicas    []*pgxpool.Pool
-	primarySQL  *sql.DB
-	replicaSQL  []*sql.DB
+// Tx represents a database transaction executor.
+// Satisfied by *sql.Tx and keystore.Tx. Includes Exec/Query to satisfy go-jet's qrm.DB.
+type Tx interface {
+	Exec(query string, args ...any) (sql.Result, error)
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	Query(query string, args ...any) (*sql.Rows, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+type DB interface {
+	Primary() *sql.DB
+	Replica() *sql.DB
+	ReplicaCount() int
+	PrimaryPool() *pgxpool.Pool
+	Close()
+}
+
+// pgDatabase wraps a primary pgxpool and zero or more read-replica pools,
+// exposing them as *sql.pgDatabase for compatibility with go-jet and database/sql consumers.
+type pgDatabase struct {
+	primary    *pgxpool.Pool
+	replicas   []*pgxpool.Pool
+	primarySQL *sql.DB
+	replicaSQL []*sql.DB
 }
 
 // NewPostgresDB creates a connection pool for the primary database and optional read replicas.
 // primaryRootCert is used as fallback for replicas that don't specify their own cert.
-func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, readReplicas []config.DBReadReplica) (*DB, error) {
+func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, readReplicas []config.DBReadReplica) (DB, error) {
 	primaryPool, err := openPool(ctx, primaryURI, primaryRootCert)
 	if err != nil {
 		return nil, fmt.Errorf("primary db: %w", err)
@@ -61,7 +78,7 @@ func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, read
 		replicaSQLDBs[i] = stdlib.OpenDBFromPool(p)
 	}
 
-	return &DB{
+	return &pgDatabase{
 		primary:    primaryPool,
 		replicas:   replicaPools,
 		primarySQL: primarySQLDB,
@@ -70,13 +87,13 @@ func NewPostgresDB(ctx context.Context, primaryURI, primaryRootCert string, read
 }
 
 // Primary returns the primary database as *sql.DB.
-func (db *DB) Primary() *sql.DB {
+func (db *pgDatabase) Primary() *sql.DB {
 	return db.primarySQL
 }
 
 // Replica returns a random read-replica as *sql.DB, or the primary if no replicas are configured.
 // Matches the Node.js behavior: Math.floor(Math.random() * readReplicaDbs.length).
-func (db *DB) Replica() *sql.DB {
+func (db *pgDatabase) Replica() *sql.DB {
 	if len(db.replicaSQL) == 0 {
 		return db.primarySQL
 	}
@@ -84,17 +101,17 @@ func (db *DB) Replica() *sql.DB {
 }
 
 // ReplicaCount returns the number of read replicas configured.
-func (db *DB) ReplicaCount() int {
+func (db *pgDatabase) ReplicaCount() int {
 	return len(db.replicas)
 }
 
 // PrimaryPool returns the underlying primary pgxpool.Pool for operations that need it directly.
-func (db *DB) PrimaryPool() *pgxpool.Pool {
+func (db *pgDatabase) PrimaryPool() *pgxpool.Pool {
 	return db.primary
 }
 
 // Close closes all connection pools (primary + replicas) and their sql.DB wrappers.
-func (db *DB) Close() {
+func (db *pgDatabase) Close() {
 	db.primarySQL.Close()
 	for _, s := range db.replicaSQL {
 		s.Close()

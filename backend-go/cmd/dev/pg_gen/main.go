@@ -57,6 +57,35 @@ func main() {
 							if isPartitionTable(table.Name) {
 								m.Skip = true
 							}
+
+							m = m.UseField(func(columnMetaData metadata.Column) template.TableModelField {
+								defaultTableModelField := template.DefaultTableModelField(columnMetaData)
+
+								switch defaultTableModelField.Type.Name {
+								case "*string":
+									defaultTableModelField.Type = template.NewType(sql.Null[string]{})
+								case "*int32":
+									defaultTableModelField.Type = template.NewType(sql.Null[int32]{})
+								case "*int64":
+									defaultTableModelField.Type = template.NewType(sql.Null[int64]{})
+								case "*bool":
+									defaultTableModelField.Type = template.NewType(sql.Null[bool]{})
+								case "*float64":
+									defaultTableModelField.Type = template.NewType(sql.Null[float64]{})
+								case "*time.Time":
+									defaultTableModelField.Type = template.NewType(sql.NullTime{})
+								case "*[]byte":
+									defaultTableModelField.Type = template.NewType(sql.Null[[]byte]{})
+								case "*uuid.UUID":
+									defaultTableModelField.Type = template.Type{
+										ImportPath:            "database/sql",
+										Name:                  "sql.Null[uuid.UUID]",
+										AdditionalImportPaths: []string{"github.com/google/uuid"},
+									}
+								}
+								return defaultTableModelField
+							})
+
 							return m
 						}),
 					).
