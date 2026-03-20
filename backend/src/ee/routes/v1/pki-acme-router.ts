@@ -149,7 +149,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
       res.header("Replay-Nonce", nonce);
       res.header("Cache-Control", "no-store");
-      void res.status(204).send("");
+      return res.status(204).send();
     }
   });
 
