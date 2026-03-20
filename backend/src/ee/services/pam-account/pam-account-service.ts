@@ -1124,7 +1124,13 @@ export const pamAccountServiceFactory = ({
 
       // Read resource
       const resource = await pamResourceDAL.findById(account.resourceId);
-      if (!resource || !resource.encryptedRotationAccountCredentials) return;
+      if (!resource || !resource.encryptedRotationAccountCredentials) {
+        logger.warn(
+          `[Rotation] Resource or rotation credentials missing for account [accountId=${account.id}], releasing lock`
+        );
+        await pamAccountDAL.updateById(account.id, { rotationStatus: PamAccountRotationStatus.Failed });
+        return;
+      }
       logResourceType = resource.resourceType;
 
       const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = await decryptResource(
@@ -1132,7 +1138,13 @@ export const pamAccountServiceFactory = ({
         account.projectId,
         kmsService
       );
-      if (!rotationAccountCredentials) return;
+      if (!rotationAccountCredentials) {
+        logger.warn(
+          `[Rotation] Decrypted rotation credentials missing for account [accountId=${account.id}], releasing lock`
+        );
+        await pamAccountDAL.updateById(account.id, { rotationStatus: PamAccountRotationStatus.Failed });
+        return;
+      }
 
       // Perform rotation
       const accountCredentials = await decryptAccountCredentials({

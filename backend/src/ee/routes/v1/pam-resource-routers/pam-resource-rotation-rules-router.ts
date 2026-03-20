@@ -112,6 +112,7 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const rule = await server.services.pamResourceRotationRules.updateById(
+        req.params.resourceId,
         req.params.ruleId,
         req.body,
         req.permission
@@ -142,7 +143,11 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const rule = await server.services.pamResourceRotationRules.deleteById(req.params.ruleId, req.permission);
+      const rule = await server.services.pamResourceRotationRules.deleteById(
+        req.params.resourceId,
+        req.params.ruleId,
+        req.permission
+      );
 
       return { rule };
     }

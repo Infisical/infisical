@@ -17,8 +17,11 @@ import { TPostRotateContext } from "../pam-resource-types";
 export const WINRM_DEFAULT_HTTP_PORT = 5985;
 export const WINRM_DEFAULT_HTTPS_PORT = 5986;
 
-// Escape a string for use inside PowerShell single-quoted strings (doubles single quotes)
-export const escapePowershellSingleQuote = (value: string) => new RE2("'", "g").replace(value, "''");
+// Sanitize a string for safe use inside PowerShell single-quoted strings:
+// - doubles single quotes (PowerShell escape)
+// - strips newlines/carriage returns
+export const escapePowershellSingleQuote = (value: string) =>
+  new RE2("'", "g").replace(value, "''").replace(/[\r\n]/g, "");
 
 export const buildDependencySyncScript = (
   dep: TPamAccountDependencies,

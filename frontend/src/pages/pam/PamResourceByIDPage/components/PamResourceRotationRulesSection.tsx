@@ -22,8 +22,7 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import {
   useCreatePamRotationRule,
   useDeletePamRotationRule,
@@ -181,8 +180,8 @@ export const PamResourceRotationRulesSection = ({ resource }: Props) => {
           </p>
         </div>
         <ProjectPermissionCan
-          I={ProjectPermissionPamAccountActions.EditRotationConfig}
-          a={ProjectPermissionSub.PamAccounts}
+          I={ProjectPermissionActions.Edit}
+          a={ProjectPermissionSub.PamResources}
         >
           {(isAllowed) => (
             <Button size="xs" onClick={openCreateForm} isDisabled={!isAllowed}>

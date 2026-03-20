@@ -257,8 +257,7 @@ export enum ProjectPermissionPamAccountActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  TriggerRotation = "trigger-rotation",
-  EditRotationConfig = "edit-rotation-config"
+  TriggerRotation = "trigger-rotation"
 }
 
 export enum ProjectPermissionPamSessionActions {

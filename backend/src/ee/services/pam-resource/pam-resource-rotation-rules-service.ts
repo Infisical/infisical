@@ -94,19 +94,25 @@ export const pamResourceRotationRulesServiceFactory = ({
       throw new BadRequestError({ message: `Invalid glob pattern: ${namePattern}` });
     }
 
-    const maxPriority = await pamResourceRotationRulesDAL.getMaxPriority(resourceId);
+    return pamResourceRotationRulesDAL.transaction(async (tx) => {
+      const maxPriority = await pamResourceRotationRulesDAL.getMaxPriority(resourceId, tx);
 
-    return pamResourceRotationRulesDAL.create({
-      resourceId,
-      name: name ?? null,
-      namePattern,
-      enabled,
-      intervalSeconds: intervalSeconds ?? null,
-      priority: maxPriority + 1
+      return pamResourceRotationRulesDAL.create(
+        {
+          resourceId,
+          name: name ?? null,
+          namePattern,
+          enabled,
+          intervalSeconds: intervalSeconds ?? null,
+          priority: maxPriority + 1
+        },
+        tx
+      );
     });
   };
 
   const updateById = async (
+    resourceId: string,
     ruleId: string,
     updates: {
       name?: string | null;
@@ -118,6 +124,10 @@ export const pamResourceRotationRulesServiceFactory = ({
   ) => {
     const rule = await pamResourceRotationRulesDAL.findById(ruleId);
     if (!rule) throw new NotFoundError({ message: `Rotation rule with ID '${ruleId}' not found` });
+
+    if (rule.resourceId !== resourceId) {
+      throw new BadRequestError({ message: `Rule '${ruleId}' does not belong to resource '${resourceId}'` });
+    }
 
     await ensureEditPermission(rule.resourceId, actor);
 
@@ -139,9 +149,13 @@ export const pamResourceRotationRulesServiceFactory = ({
     return pamResourceRotationRulesDAL.updateById(ruleId, updates);
   };
 
-  const deleteById = async (ruleId: string, actor: OrgServiceActor) => {
+  const deleteById = async (resourceId: string, ruleId: string, actor: OrgServiceActor) => {
     const rule = await pamResourceRotationRulesDAL.findById(ruleId);
     if (!rule) throw new NotFoundError({ message: `Rotation rule with ID '${ruleId}' not found` });
+
+    if (rule.resourceId !== resourceId) {
+      throw new BadRequestError({ message: `Rule '${ruleId}' does not belong to resource '${resourceId}'` });
+    }
 
     await ensureEditPermission(rule.resourceId, actor);
 
@@ -153,6 +167,11 @@ export const pamResourceRotationRulesServiceFactory = ({
 
     const existingRules = await pamResourceRotationRulesDAL.findByResourceId(resourceId);
     const existingIds = new Set(existingRules.map((r) => r.id));
+    const uniqueRuleIds = new Set(orderedRuleIds);
+
+    if (uniqueRuleIds.size !== orderedRuleIds.length) {
+      throw new BadRequestError({ message: "Duplicate rule IDs are not allowed" });
+    }
 
     for (const id of orderedRuleIds) {
       if (!existingIds.has(id)) {
