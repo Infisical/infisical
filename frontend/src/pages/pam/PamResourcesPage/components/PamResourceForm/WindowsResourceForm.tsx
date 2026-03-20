@@ -2,13 +2,17 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { FormControl, Select, SelectItem } from "@app/components/v2";
 import {
   Button,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   SheetFooter,
   UnstableInput
 } from "@app/components/v3";
@@ -84,31 +88,31 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
             control={control}
             name="adServerResourceId"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error?.message)}
-                errorText={error?.message}
-                label="Active Directory Resource"
-                helperText="Optionally associate this server with an AD domain"
-              >
-                <Select
-                  value={value || "none"}
-                  onValueChange={(val) => onChange(val === "none" ? null : val)}
-                  className="w-full border border-mineshaft-500"
-                  dropdownContainerClassName="max-w-none"
-                  isLoading={isAdResourcesLoading}
-                  placeholder="None"
-                  position="popper"
-                >
-                  <SelectItem value="none" key="none">
-                    None
-                  </SelectItem>
-                  {(adResources?.resources || []).map((adResource) => (
-                    <SelectItem value={adResource.id} key={adResource.id}>
-                      {adResource.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Field>
+                <FieldLabel>Active Directory Resource</FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={value || "none"}
+                    onValueChange={(val) => onChange(val === "none" ? null : val)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={isAdResourcesLoading ? "Loading..." : "None"} />
+                    </SelectTrigger>
+                    <SelectContent position="popper" align="start">
+                      <SelectItem value="none">None</SelectItem>
+                      {(adResources?.resources || []).map((adResource) => (
+                        <SelectItem value={adResource.id} key={adResource.id}>
+                          {adResource.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted">
+                    Optionally associate this server with an AD domain
+                  </p>
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
           <div className="flex items-start gap-2">
