@@ -129,47 +129,49 @@ export const SecretPathInput = ({
           className={containerClassName}
         />
       </Popover.Trigger>
-      <Popover.Content
-        align="start"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        className={twMerge(
-          "relative top-2 z-100 overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
-        )}
-        style={{
-          width: "var(--radix-popover-trigger-width)",
-          maxHeight: "var(--radix-select-content-available-height)"
-        }}
-      >
-        <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-scroll rounded-md text-white">
-          {suggestions.map((suggestion, i) => (
-            <div
-              tabIndex={0}
-              role="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setHighlightedIndex(i);
-                handleSuggestionSelect(i);
-              }}
-              style={{ pointerEvents: "auto" }}
-              className="flex items-center justify-between border-mineshaft-600 text-left"
-              key={`secret-reference-secret-${i + 1}`}
-            >
+      <Popover.Portal>
+        <Popover.Content
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className={twMerge(
+            "relative top-2 z-100 overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+          )}
+          style={{
+            width: "var(--radix-popover-trigger-width)",
+            maxHeight: "var(--radix-select-content-available-height)"
+          }}
+        >
+          <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-auto rounded-md text-white">
+            {suggestions.map((suggestion, i) => (
               <div
-                className={`${
-                  highlightedIndex === i ? "bg-gray-600" : ""
-                } text-md relative mb-0.5 flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-500`}
+                tabIndex={0}
+                role="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setHighlightedIndex(i);
+                  handleSuggestionSelect(i);
+                }}
+                style={{ pointerEvents: "auto" }}
+                className="flex items-center justify-between border-mineshaft-600 text-left"
+                key={`secret-reference-secret-${i + 1}`}
               >
-                <div className="flex gap-2">
-                  <div className="flex items-center text-yellow-700">
-                    <FontAwesomeIcon icon={faFolder} />
+                <div
+                  className={`${
+                    highlightedIndex === i ? "bg-gray-600" : ""
+                  } text-md relative mb-0.5 flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-500`}
+                >
+                  <div className="flex gap-2">
+                    <div className="flex items-center text-yellow-700">
+                      <FontAwesomeIcon icon={faFolder} />
+                    </div>
+                    <div className="text-md w-10/12 truncate text-left">{suggestion}</div>
                   </div>
-                  <div className="text-md w-10/12 truncate text-left">{suggestion}</div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </Popover.Content>
+            ))}
+          </div>
+        </Popover.Content>
+      </Popover.Portal>
     </Popover.Root>
   );
 };
