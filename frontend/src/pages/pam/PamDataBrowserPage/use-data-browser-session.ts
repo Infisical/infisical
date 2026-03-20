@@ -30,12 +30,17 @@ type ApprovalState = {
   policyName?: string;
   policyId?: string;
   creating: boolean;
+  submitted: boolean;
+  approvalRequestId?: string;
+  errorMessage?: string;
 };
 
 type UseDataBrowserSessionOptions = {
   accountId: string;
   projectId: string;
   orgId: string;
+  resourceName: string;
+  accountName: string;
   onSessionEnd?: () => void;
 };
 
@@ -44,6 +49,9 @@ const REQUEST_TIMEOUT_MS = 30_000;
 export const useDataBrowserSession = ({
   accountId,
   projectId,
+  orgId,
+  resourceName,
+  accountName,
   onSessionEnd
 }: UseDataBrowserSessionOptions) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -197,7 +205,8 @@ export const useDataBrowserSession = ({
             required: true,
             policyName: details?.policyName,
             policyId: details?.policyId,
-            creating: false
+            creating: false,
+            submitted: false
           });
           setIsConnecting(false);
           return;
@@ -270,24 +279,48 @@ export const useDataBrowserSession = ({
   // Approval request flow
   const submitApprovalRequest = useCallback(
     async (justification?: string) => {
-      if (!approvalState?.policyId) return;
-      setApprovalState((prev) => (prev ? { ...prev, creating: true } : null));
+      if (!approvalState?.required) return;
+      setApprovalState((prev) =>
+        prev ? { ...prev, creating: true, errorMessage: undefined } : null
+      );
 
       try {
-        await apiRequest.post("/api/v1/approval-policies/pam-access/requests", {
-          policyId: approvalState.policyId,
-          justification,
-          projectId,
-          resourceId: accountId
-        });
-        setApprovalState((prev) => (prev ? { ...prev, creating: false } : null));
+        const { data: approvalData } = await apiRequest.post<{ request: { id: string } }>(
+          "/api/v1/approval-policies/pam-access/requests",
+          {
+            projectId,
+            requestData: {
+              accessDuration: "1h",
+              resourceName,
+              accountName
+            },
+            justification: justification?.trim() || undefined
+          }
+        );
+        setApprovalState((prev) =>
+          prev
+            ? {
+                ...prev,
+                creating: false,
+                submitted: true,
+                approvalRequestId: approvalData.request.id
+              }
+            : null
+        );
       } catch {
-        setApprovalState((prev) => (prev ? { ...prev, creating: false } : null));
-        setErrorMessage("Failed to create approval request");
+        setApprovalState((prev) =>
+          prev
+            ? { ...prev, creating: false, errorMessage: "Failed to create approval request" }
+            : null
+        );
       }
     },
-    [approvalState, projectId, accountId]
+    [approvalState, projectId, resourceName, accountName]
   );
+
+  const approvalRequestUrl = approvalState?.approvalRequestId
+    ? `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approval-requests/${approvalState.approvalRequestId}`
+    : undefined;
 
   // --- Request helpers ---
 
@@ -399,6 +432,7 @@ export const useDataBrowserSession = ({
     reconnect,
     handleMfaVerification,
     submitApprovalRequest,
+    approvalRequestUrl,
     fetchSchemas,
     fetchTables,
     fetchTableDetail,

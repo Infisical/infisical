@@ -44,6 +44,8 @@ export const PamDataBrowserPage = () => {
   const unsavedChangeCountRef = useRef(0);
   const [pendingTableSwitch, setPendingTableSwitch] = useState<string | null>(null);
 
+  const [approvalJustification, setApprovalJustification] = useState("");
+
   const {
     isConnected,
     isConnecting,
@@ -55,6 +57,7 @@ export const PamDataBrowserPage = () => {
     reconnect,
     handleMfaVerification,
     submitApprovalRequest,
+    approvalRequestUrl,
     fetchSchemas,
     fetchTables,
     fetchTableDetail,
@@ -63,6 +66,8 @@ export const PamDataBrowserPage = () => {
     accountId,
     projectId,
     orgId,
+    resourceName: account?.resource?.name ?? "",
+    accountName: account?.name ?? "",
     onSessionEnd: () => setHasDisconnected(true)
   });
 
@@ -84,7 +89,6 @@ export const PamDataBrowserPage = () => {
   // Cleanup on real unmount
   useEffect(() => {
     return () => {
-      connectedOnceRef.current = false;
       disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,18 +253,49 @@ export const PamDataBrowserPage = () => {
         <p className="max-w-sm text-center text-sm text-mineshaft-300">
           This account is protected by policy: {approvalState.policyName ?? "Unknown"}
         </p>
-        <div className="flex gap-2">
-          <Button
-            variant="info"
-            isPending={approvalState.creating}
-            onClick={() => submitApprovalRequest()}
-          >
-            Create Approval Request
-          </Button>
-          <Button variant="outline" onClick={handleReconnect}>
-            Reconnect
-          </Button>
-        </div>
+        {approvalState.submitted ? (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-sm text-green-400">Approval request created successfully!</p>
+            {approvalRequestUrl && (
+              <a
+                href={approvalRequestUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary-500 underline hover:text-primary-400"
+              >
+                View approval request
+              </a>
+            )}
+            <Button variant="info" onClick={handleReconnect}>
+              Reconnect
+            </Button>
+          </div>
+        ) : (
+          <div className="flex w-full max-w-sm flex-col gap-3">
+            <textarea
+              className="w-full rounded border border-mineshaft-500 bg-bunker-700 px-3 py-2 text-sm text-mineshaft-100 placeholder:text-mineshaft-500 focus:border-primary-500 focus:outline-none"
+              placeholder="Justification (optional)"
+              rows={3}
+              value={approvalJustification}
+              onChange={(e) => setApprovalJustification(e.target.value)}
+            />
+            {approvalState.errorMessage && (
+              <p className="text-sm text-red-400">{approvalState.errorMessage}</p>
+            )}
+            <div className="flex justify-center gap-2">
+              <Button
+                variant="info"
+                isPending={approvalState.creating}
+                onClick={() => submitApprovalRequest(approvalJustification)}
+              >
+                Create Approval Request
+              </Button>
+              <Button variant="outline" onClick={handleReconnect}>
+                Reconnect
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
