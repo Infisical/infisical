@@ -49,7 +49,7 @@ func (d *DAL) FindOrCreateConfig(ctx context.Context) (*model.SuperAdmin, error)
 
 	// Check if config already exists.
 	txDAL := d.WithTx(tx)
-	cfg, err := txDAL.FindByID(ctx, AdminConfigDBUUID)
+	cfg, err := txDAL.FindByID(ctx, adminConfigDBUUID)
 	if err == nil {
 		tx.Commit()
 		return cfg, nil
@@ -63,7 +63,7 @@ func (d *DAL) FindOrCreateConfig(ctx context.Context) (*model.SuperAdmin, error)
 	var result model.SuperAdmin
 	err = table.SuperAdmin.
 		INSERT(table.SuperAdmin.ID, table.SuperAdmin.Initialized, table.SuperAdmin.AllowSignUp, table.SuperAdmin.FipsEnabled).
-		VALUES(postgres.String(AdminConfigDBUUID), postgres.Bool(false), postgres.Bool(true), postgres.Bool(false)).
+		VALUES(postgres.UUID(adminConfigDBUUID), postgres.Bool(false), postgres.Bool(true), postgres.Bool(false)).
 		RETURNING(table.SuperAdmin.AllColumns).
 		QueryContext(ctx, tx, &result)
 	if err != nil {
