@@ -30,7 +30,11 @@ const ExternalInfisicalSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.EXTERNAL_INFISICAL.secretPath)
 });
 
-const ExternalInfisicalSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
+const ExternalInfisicalSyncOptionsConfig: TSyncOptionsConfig = {
+  canImportSecrets: true,
+  canRemoveSecretsOnDeletion: true,
+  supportsKeySchema: false
+};
 
 export const ExternalInfisicalSyncSchema = BaseSecretSyncSchema(
   SecretSync.ExternalInfisical,
@@ -64,6 +68,7 @@ export const ExternalInfisicalSyncListItemSchema = z
     connection: z.literal(AppConnection.ExternalInfisical),
     destination: z.literal(SecretSync.ExternalInfisical),
     canImportSecrets: z.literal(true),
-    canRemoveSecretsOnDeletion: z.literal(true)
+    canRemoveSecretsOnDeletion: z.literal(true),
+    supportsKeySchema: z.literal(false)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.ExternalInfisical] }));

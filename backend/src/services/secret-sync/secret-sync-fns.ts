@@ -375,7 +375,9 @@ export const SecretSyncFns = {
       case SecretSync.AzureEntraIdScim:
         return AzureEntraIdScimSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.ExternalInfisical:
-        return ExternalInfisicalSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
+        // infinite sync loops where the prefixed key triggers another sync cycle.
+        return ExternalInfisicalSyncFns.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -622,7 +624,9 @@ export const SecretSyncFns = {
       case SecretSync.AzureEntraIdScim:
         return AzureEntraIdScimSyncFns.removeSecrets();
       case SecretSync.ExternalInfisical:
-        return ExternalInfisicalSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
+        // infinite sync loops where the prefixed key triggers another sync cycle.
+        return ExternalInfisicalSyncFns.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

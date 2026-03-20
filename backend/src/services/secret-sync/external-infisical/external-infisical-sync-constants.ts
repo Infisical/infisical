@@ -7,5 +7,6 @@ export const EXTERNAL_INFISICAL_SYNC_LIST_OPTION: TSecretSyncListItem = {
   destination: SecretSync.ExternalInfisical,
   connection: AppConnection.ExternalInfisical,
   canImportSecrets: true,
-  canRemoveSecretsOnDeletion: true
+  canRemoveSecretsOnDeletion: true,
+  supportsKeySchema: false
 };
