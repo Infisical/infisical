@@ -53,8 +53,8 @@ const addMemberFormSchema = z.object({
     .default([]),
   projectRole: z
     .object({
-      slug: z.string(),
-      name: z.string()
+      slug: z.string().min(1),
+      name: z.string().min(1)
     })
     .default(DEFAULT_PROJECT_ROLE),
   organizationRole: z.object({
@@ -106,14 +106,16 @@ export const AddOrgMemberModal = ({
   const selectedProjects = watch("projects", []);
   const singleSelectedProjectId =
     selectedProjects.length === 1 ? selectedProjects[0].id : undefined;
-  const { data: fetchedProjectRoles } = useGetProjectRoles(singleSelectedProjectId ?? "");
+  const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
+    singleSelectedProjectId ?? ""
+  );
   const projectRoles = singleSelectedProjectId ? fetchedProjectRoles : BUILT_IN_PROJECT_ROLES;
 
   useEffect(() => {
     if (selectedProjects.length !== 1) {
       setValue("projectRole", DEFAULT_PROJECT_ROLE);
     }
-  }, [selectedProjects.length]);
+  }, [selectedProjects.length, setValue]);
 
   // set initial form role based off org default role
   useEffect(() => {
@@ -330,6 +332,7 @@ export const AddOrgMemberModal = ({
                     >
                       <FilterableSelect
                         isDisabled={selectedProjects.length === 0}
+                        isLoading={Boolean(singleSelectedProjectId) && isProjectRolesLoading}
                         value={value}
                         onChange={onChange}
                         options={projectRoles ?? []}
