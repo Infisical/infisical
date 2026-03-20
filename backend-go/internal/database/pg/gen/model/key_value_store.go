@@ -8,13 +8,14 @@
 package model
 
 import (
+	"database/sql"
 	"time"
 )
 
 type KeyValueStore struct {
 	Key          string `sql:"primary_key"`
-	IntegerValue *int64
-	ExpiresAt    *time.Time
+	IntegerValue sql.Null[int64]
+	ExpiresAt    sql.NullTime
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

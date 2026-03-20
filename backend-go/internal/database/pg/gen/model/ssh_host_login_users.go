@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,7 +17,7 @@ type SSHHostLoginUsers struct {
 	ID             uuid.UUID `sql:"primary_key"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
-	SshHostId      *uuid.UUID
+	SshHostId      sql.Null[uuid.UUID]
 	LoginUser      string
-	SshHostGroupId *uuid.UUID
+	SshHostGroupId sql.Null[uuid.UUID]
 }

@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,7 +17,7 @@ type ExternalGroupOrgRoleMappings struct {
 	ID        uuid.UUID `sql:"primary_key"`
 	GroupName string
 	Role      string
-	RoleId    *uuid.UUID
+	RoleId    sql.Null[uuid.UUID]
 	OrgId     uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time

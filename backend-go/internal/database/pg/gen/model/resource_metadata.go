@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,18 +16,18 @@ import (
 type ResourceMetadata struct {
 	ID                          uuid.UUID `sql:"primary_key"`
 	Key                         string
-	Value                       *string
+	Value                       sql.Null[string]
 	OrgId                       uuid.UUID
-	UserId                      *uuid.UUID
-	IdentityId                  *uuid.UUID
-	SecretId                    *uuid.UUID
+	UserId                      sql.Null[uuid.UUID]
+	IdentityId                  sql.Null[uuid.UUID]
+	SecretId                    sql.Null[uuid.UUID]
 	CreatedAt                   time.Time
 	UpdatedAt                   time.Time
-	DynamicSecretId             *uuid.UUID
-	EncryptedValue              *[]byte
-	CertificateId               *uuid.UUID
-	CertificateRequestId        *uuid.UUID
-	CertificateRequestCreatedAt *time.Time
-	PamResourceId               *uuid.UUID
-	PamAccountId                *uuid.UUID
+	DynamicSecretId             sql.Null[uuid.UUID]
+	EncryptedValue              sql.Null[[]byte]
+	CertificateId               sql.Null[uuid.UUID]
+	CertificateRequestId        sql.Null[uuid.UUID]
+	CertificateRequestCreatedAt sql.NullTime
+	PamResourceId               sql.Null[uuid.UUID]
+	PamAccountId                sql.Null[uuid.UUID]
 }

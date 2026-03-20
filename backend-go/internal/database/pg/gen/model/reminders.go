@@ -8,17 +8,18 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type Reminders struct {
 	ID               uuid.UUID `sql:"primary_key"`
-	SecretId         *uuid.UUID
-	Message          *string
-	RepeatDays       *int32
+	SecretId         sql.Null[uuid.UUID]
+	Message          sql.Null[string]
+	RepeatDays       sql.Null[int32]
 	NextReminderDate time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
-	FromDate         *time.Time
+	FromDate         sql.NullTime
 }

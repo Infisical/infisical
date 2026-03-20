@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -18,11 +19,11 @@ type PamAccountDependencies struct {
 	ResourceId     uuid.UUID
 	DependencyType string
 	Name           string
-	DisplayName    *string
-	State          *string
+	DisplayName    sql.Null[string]
+	State          sql.Null[string]
 	Data           string
 	Source         string
-	IsEnabled      *bool
+	IsEnabled      sql.Null[bool]
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

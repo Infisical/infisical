@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,14 +18,14 @@ type SecretRotations struct {
 	Provider              string
 	SecretPath            string
 	Interval              int32
-	LastRotatedAt         *time.Time
-	Status                *string
-	StatusMessage         *string
-	EncryptedData         *string
-	EncryptedDataIV       *string
-	EncryptedDataTag      *string
-	Algorithm             *string
-	KeyEncoding           *string
+	LastRotatedAt         sql.NullTime
+	Status                sql.Null[string]
+	StatusMessage         sql.Null[string]
+	EncryptedData         sql.Null[string]
+	EncryptedDataIV       sql.Null[string]
+	EncryptedDataTag      sql.Null[string]
+	Algorithm             sql.Null[string]
+	KeyEncoding           sql.Null[string]
 	EnvId                 uuid.UUID
 	CreatedAt             time.Time
 	UpdatedAt             time.Time

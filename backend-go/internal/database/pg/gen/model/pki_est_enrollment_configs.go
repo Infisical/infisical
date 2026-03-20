@@ -8,15 +8,16 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type PkiEstEnrollmentConfigs struct {
 	ID                           uuid.UUID `sql:"primary_key"`
-	DisableBootstrapCaValidation *bool
+	DisableBootstrapCaValidation sql.Null[bool]
 	HashedPassphrase             string
-	EncryptedCaChain             *[]byte
+	EncryptedCaChain             sql.Null[[]byte]
 	CreatedAt                    time.Time
 	UpdatedAt                    time.Time
 }

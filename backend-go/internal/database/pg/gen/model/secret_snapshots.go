@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,7 +17,7 @@ type SecretSnapshots struct {
 	ID             uuid.UUID `sql:"primary_key"`
 	EnvId          uuid.UUID
 	FolderId       uuid.UUID
-	ParentFolderId *uuid.UUID
+	ParentFolderId sql.Null[uuid.UUID]
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

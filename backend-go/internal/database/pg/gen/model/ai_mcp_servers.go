@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,14 +17,14 @@ type AiMcpServers struct {
 	ID                   uuid.UUID `sql:"primary_key"`
 	Name                 string
 	URL                  string
-	Description          *string
-	Status               *string
-	CredentialMode       *string
-	AuthMethod           *string
-	EncryptedCredentials *[]byte
-	EncryptedOauthConfig *[]byte
+	Description          sql.Null[string]
+	Status               sql.Null[string]
+	CredentialMode       sql.Null[string]
+	AuthMethod           sql.Null[string]
+	EncryptedCredentials sql.Null[[]byte]
+	EncryptedOauthConfig sql.Null[[]byte]
 	ProjectId            string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
-	GatewayId            *uuid.UUID
+	GatewayId            sql.Null[uuid.UUID]
 }

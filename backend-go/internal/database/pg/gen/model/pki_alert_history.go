@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,9 +16,9 @@ import (
 type PkiAlertHistory struct {
 	ID                  uuid.UUID `sql:"primary_key"`
 	AlertId             uuid.UUID
-	TriggeredAt         *time.Time
-	HasNotificationSent *bool
-	NotificationError   *string
+	TriggeredAt         sql.NullTime
+	HasNotificationSent sql.Null[bool]
+	NotificationError   sql.Null[string]
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }

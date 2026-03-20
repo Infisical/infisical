@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -22,10 +23,10 @@ type ProjectBots struct {
 	Tag                      string
 	Algorithm                string
 	KeyEncoding              string
-	EncryptedProjectKey      *string
-	EncryptedProjectKeyNonce *string
+	EncryptedProjectKey      sql.Null[string]
+	EncryptedProjectKeyNonce sql.Null[string]
 	ProjectId                string
-	SenderId                 *uuid.UUID
+	SenderId                 sql.Null[uuid.UUID]
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
 }

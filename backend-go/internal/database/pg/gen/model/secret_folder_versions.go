@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,10 +16,10 @@ import (
 type SecretFolderVersions struct {
 	ID          uuid.UUID `sql:"primary_key"`
 	Name        string
-	Version     *int32
+	Version     sql.Null[int32]
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	EnvId       uuid.UUID
 	FolderId    uuid.UUID
-	Description *string
+	Description sql.Null[string]
 }

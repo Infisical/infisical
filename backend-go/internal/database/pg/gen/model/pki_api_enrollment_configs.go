@@ -8,14 +8,15 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type PkiAPIEnrollmentConfigs struct {
 	ID              uuid.UUID `sql:"primary_key"`
-	AutoRenew       *bool
-	RenewBeforeDays *int32
+	AutoRenew       sql.Null[bool]
+	RenewBeforeDays sql.Null[int32]
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }

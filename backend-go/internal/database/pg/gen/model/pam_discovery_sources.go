@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -21,7 +22,7 @@ type PamDiscoverySources struct {
 	EncryptedDiscoveryCredentials []byte
 	DiscoveryConfiguration        string
 	Schedule                      string
-	LastRunAt                     *time.Time
+	LastRunAt                     sql.NullTime
 	Status                        string
 	CreatedAt                     time.Time
 	UpdatedAt                     time.Time

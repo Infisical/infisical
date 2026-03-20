@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -17,24 +18,24 @@ type Projects struct {
 	ID                                          string `sql:"primary_key"`
 	Name                                        string
 	Slug                                        string
-	AutoCapitalization                          *bool
+	AutoCapitalization                          sql.Null[bool]
 	OrgId                                       uuid.UUID
 	CreatedAt                                   time.Time
 	UpdatedAt                                   time.Time
 	Version                                     int32
-	UpgradeStatus                               *string
+	UpgradeStatus                               sql.Null[string]
 	PitVersionLimit                             int32
-	KmsCertificateKeyId                         *uuid.UUID
-	AuditLogsRetentionDays                      *int32
-	KmsSecretManagerKeyId                       *uuid.UUID
-	KmsSecretManagerEncryptedDataKey            *[]byte
-	Description                                 *string
+	KmsCertificateKeyId                         sql.Null[uuid.UUID]
+	AuditLogsRetentionDays                      sql.Null[int32]
+	KmsSecretManagerKeyId                       sql.Null[uuid.UUID]
+	KmsSecretManagerEncryptedDataKey            sql.Null[[]byte]
+	Description                                 sql.Null[string]
 	Type                                        string
 	EnforceCapitalization                       bool
-	HasDeleteProtection                         *bool
+	HasDeleteProtection                         sql.Null[bool]
 	SecretSharing                               bool
 	ShowSnapshotsLegacy                         bool
-	DefaultProduct                              *string
+	DefaultProduct                              sql.Null[string]
 	SecretDetectionIgnoreValues                 *pq.StringArray
-	EnforceEncryptedSecretManagerSecretMetadata *bool
+	EnforceEncryptedSecretManagerSecretMetadata sql.Null[bool]
 }

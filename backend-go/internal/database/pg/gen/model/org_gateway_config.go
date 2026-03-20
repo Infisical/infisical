@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -22,7 +23,7 @@ type OrgGatewayConfig struct {
 	EncryptedRootCaPrivateKey     []byte
 	ClientCaIssuedAt              time.Time
 	ClientCaExpiration            time.Time
-	ClientCaSerialNumber          *string
+	ClientCaSerialNumber          sql.Null[string]
 	EncryptedClientCaCertificate  []byte
 	EncryptedClientCaPrivateKey   []byte
 	ClientCertSerialNumber        string

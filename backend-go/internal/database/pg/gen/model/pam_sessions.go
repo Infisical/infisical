@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,21 +16,21 @@ import (
 type PamSessions struct {
 	ID                uuid.UUID `sql:"primary_key"`
 	ProjectId         string
-	AccountId         *uuid.UUID
+	AccountId         sql.Null[uuid.UUID]
 	ResourceType      string
 	ResourceName      string
 	AccountName       string
-	UserId            *uuid.UUID
+	UserId            sql.Null[uuid.UUID]
 	ActorName         string
 	ActorEmail        string
 	ActorIp           string
 	ActorUserAgent    string
 	Status            string
-	EncryptedLogsBlob *[]byte
+	EncryptedLogsBlob sql.Null[[]byte]
 	ExpiresAt         time.Time
-	StartedAt         *time.Time
-	EndedAt           *time.Time
+	StartedAt         sql.NullTime
+	EndedAt           sql.NullTime
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	AccessMethod      *string
+	AccessMethod      sql.Null[string]
 }

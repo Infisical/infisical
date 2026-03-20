@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,10 +16,10 @@ import (
 type SecretTags struct {
 	ID                 uuid.UUID `sql:"primary_key"`
 	Slug               string
-	Color              *string
+	Color              sql.Null[string]
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
-	CreatedBy          *uuid.UUID
+	CreatedBy          sql.Null[uuid.UUID]
 	ProjectId          string
 	CreatedByActorType string
 }

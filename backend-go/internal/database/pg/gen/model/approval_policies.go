@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -18,11 +19,11 @@ type ApprovalPolicies struct {
 	OrganizationId             uuid.UUID
 	Type                       string
 	Name                       string
-	IsActive                   *bool
-	MaxRequestTtl              *string
+	IsActive                   sql.Null[bool]
+	MaxRequestTtl              sql.Null[string]
 	Conditions                 string
 	Constraints                string
 	CreatedAt                  time.Time
 	UpdatedAt                  time.Time
-	BypassForMachineIdentities *bool
+	BypassForMachineIdentities sql.Null[bool]
 }

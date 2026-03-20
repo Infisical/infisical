@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -19,28 +20,28 @@ type IntermediateCertificateRequests struct {
 	UpdatedAt          time.Time
 	Status             string
 	ProjectId          string
-	ProfileId          *uuid.UUID
-	CaId               *uuid.UUID
-	CertificateId      *uuid.UUID
-	Csr                *string
-	CommonName         *string
+	ProfileId          sql.Null[uuid.UUID]
+	CaId               sql.Null[uuid.UUID]
+	CertificateId      sql.Null[uuid.UUID]
+	Csr                sql.Null[string]
+	CommonName         sql.Null[string]
 	KeyUsages          *pq.StringArray
 	ExtendedKeyUsages  *pq.StringArray
-	NotBefore          *time.Time
-	NotAfter           *time.Time
-	KeyAlgorithm       *string
-	SignatureAlgorithm *string
-	ErrorMessage       *string
-	Metadata           *string
-	AcmeOrderId        *uuid.UUID
-	BasicConstraints   *string
-	ApprovalRequestId  *uuid.UUID
-	TTL                *string
-	EnrollmentType     *string
-	AltNames           *string
-	Organization       *string
-	OrganizationalUnit *string
-	Country            *string
-	State              *string
-	Locality           *string
+	NotBefore          sql.NullTime
+	NotAfter           sql.NullTime
+	KeyAlgorithm       sql.Null[string]
+	SignatureAlgorithm sql.Null[string]
+	ErrorMessage       sql.Null[string]
+	Metadata           sql.Null[string]
+	AcmeOrderId        sql.Null[uuid.UUID]
+	BasicConstraints   sql.Null[string]
+	ApprovalRequestId  sql.Null[uuid.UUID]
+	TTL                sql.Null[string]
+	EnrollmentType     sql.Null[string]
+	AltNames           sql.Null[string]
+	Organization       sql.Null[string]
+	OrganizationalUnit sql.Null[string]
+	Country            sql.Null[string]
+	State              sql.Null[string]
+	Locality           sql.Null[string]
 }

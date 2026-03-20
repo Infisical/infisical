@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 type SecretScanningConfigs struct {
 	ID        uuid.UUID `sql:"primary_key"`
 	ProjectId string
-	Content   *string
+	Content   sql.Null[string]
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

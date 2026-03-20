@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/lib/pq"
 	"time"
 )
@@ -17,15 +18,15 @@ type ServiceTokens struct {
 	Name                   string
 	Scopes                 string
 	Permissions            pq.StringArray
-	LastUsed               *time.Time
-	ExpiresAt              *time.Time
+	LastUsed               sql.NullTime
+	ExpiresAt              sql.NullTime
 	SecretHash             string
-	EncryptedKey           *string
-	Iv                     *string
-	Tag                    *string
+	EncryptedKey           sql.Null[string]
+	Iv                     sql.Null[string]
+	Tag                    sql.Null[string]
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
 	CreatedBy              string
 	ProjectId              string
-	ExpiryNotificationSent *bool
+	ExpiryNotificationSent sql.Null[bool]
 }

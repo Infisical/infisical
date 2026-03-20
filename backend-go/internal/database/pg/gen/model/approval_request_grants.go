@@ -8,21 +8,21 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
-	"time"
 )
 
 type ApprovalRequestGrants struct {
 	ID               uuid.UUID `sql:"primary_key"`
 	ProjectId        string
-	RequestId        *uuid.UUID
-	GranteeUserId    *uuid.UUID
-	RevokedByUserId  *uuid.UUID
-	RevocationReason *string
+	RequestId        sql.Null[uuid.UUID]
+	GranteeUserId    sql.Null[uuid.UUID]
+	RevokedByUserId  sql.Null[uuid.UUID]
+	RevocationReason sql.Null[string]
 	Status           string
 	Type             string
 	Attributes       string
-	CreatedAt        *time.Time
-	ExpiresAt        *time.Time
-	RevokedAt        *time.Time
+	CreatedAt        sql.NullTime
+	ExpiresAt        sql.NullTime
+	RevokedAt        sql.NullTime
 }

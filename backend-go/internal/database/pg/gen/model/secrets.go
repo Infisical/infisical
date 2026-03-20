@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,23 +17,23 @@ type Secrets struct {
 	ID                       uuid.UUID `sql:"primary_key"`
 	Version                  int32
 	Type                     string
-	SecretBlindIndex         *string
+	SecretBlindIndex         sql.Null[string]
 	SecretKeyCiphertext      string
 	SecretKeyIV              string
 	SecretKeyTag             string
 	SecretValueCiphertext    string
 	SecretValueIV            string
 	SecretValueTag           string
-	SecretCommentCiphertext  *string
-	SecretCommentIV          *string
-	SecretCommentTag         *string
-	SecretReminderNote       *string
-	SecretReminderRepeatDays *int32
-	SkipMultilineEncoding    *bool
+	SecretCommentCiphertext  sql.Null[string]
+	SecretCommentIV          sql.Null[string]
+	SecretCommentTag         sql.Null[string]
+	SecretReminderNote       sql.Null[string]
+	SecretReminderRepeatDays sql.Null[int32]
+	SkipMultilineEncoding    sql.Null[bool]
 	Algorithm                string
 	KeyEncoding              string
-	Metadata                 *string
-	UserId                   *uuid.UUID
+	Metadata                 sql.Null[string]
+	UserId                   sql.Null[uuid.UUID]
 	FolderId                 uuid.UUID
 	CreatedAt                time.Time
 	UpdatedAt                time.Time

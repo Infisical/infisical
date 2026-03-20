@@ -8,18 +8,19 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
 
 type MicrosoftTeamsIntegrations struct {
 	ID                      uuid.UUID `sql:"primary_key"`
-	InternalTeamsAppId      *string
+	InternalTeamsAppId      sql.Null[string]
 	TenantId                string
-	EncryptedAccessToken    *[]byte
-	EncryptedBotAccessToken *[]byte
-	AccessTokenExpiresAt    *time.Time
-	BotAccessTokenExpiresAt *time.Time
+	EncryptedAccessToken    sql.Null[[]byte]
+	EncryptedBotAccessToken sql.Null[[]byte]
+	AccessTokenExpiresAt    sql.NullTime
+	BotAccessTokenExpiresAt sql.NullTime
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 }

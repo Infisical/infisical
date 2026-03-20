@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,13 +18,13 @@ type SecretApprovalRequests struct {
 	PolicyId              uuid.UUID
 	HasMerged             bool
 	Status                string
-	Conflicts             *string
+	Conflicts             sql.Null[string]
 	Slug                  string
 	FolderId              uuid.UUID
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
-	IsReplicated          *bool
-	CommitterUserId       *uuid.UUID
-	StatusChangedByUserId *uuid.UUID
-	BypassReason          *string
+	IsReplicated          sql.Null[bool]
+	CommitterUserId       sql.Null[uuid.UUID]
+	StatusChangedByUserId sql.Null[uuid.UUID]
+	BypassReason          sql.Null[string]
 }

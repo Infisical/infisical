@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 type AuthTokenSessions struct {
 	ID             uuid.UUID `sql:"primary_key"`
 	IP             string
-	UserAgent      *string
+	UserAgent      sql.Null[string]
 	RefreshVersion int32
 	AccessVersion  int32
 	LastUsed       time.Time

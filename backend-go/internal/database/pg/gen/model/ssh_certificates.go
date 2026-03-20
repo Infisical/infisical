@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -17,13 +18,13 @@ type SSHCertificates struct {
 	ID                       uuid.UUID `sql:"primary_key"`
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
-	SshCaId                  *uuid.UUID
-	SshCertificateTemplateId *uuid.UUID
+	SshCaId                  sql.Null[uuid.UUID]
+	SshCertificateTemplateId sql.Null[uuid.UUID]
 	SerialNumber             string
 	CertType                 string
 	Principals               pq.StringArray
 	KeyId                    string
 	NotBefore                time.Time
 	NotAfter                 time.Time
-	SshHostId                *uuid.UUID
+	SshHostId                sql.Null[uuid.UUID]
 }

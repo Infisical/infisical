@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -19,7 +20,7 @@ type Gateways struct {
 	KeyAlgorithm       string
 	IssuedAt           time.Time
 	Expiration         time.Time
-	Heartbeat          *time.Time
+	Heartbeat          sql.NullTime
 	RelayAddress       []byte
 	OrgGatewayRootCaId uuid.UUID
 	IdentityId         uuid.UUID

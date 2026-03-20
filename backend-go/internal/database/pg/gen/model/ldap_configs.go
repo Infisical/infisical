@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,16 +18,16 @@ type LdapConfigs struct {
 	OrgId                      uuid.UUID
 	IsActive                   bool
 	URL                        string
-	EncryptedBindDN            *string
-	BindDNIV                   *string
-	BindDNTag                  *string
-	EncryptedBindPass          *string
-	BindPassIV                 *string
-	BindPassTag                *string
+	EncryptedBindDN            sql.Null[string]
+	BindDNIV                   sql.Null[string]
+	BindDNTag                  sql.Null[string]
+	EncryptedBindPass          sql.Null[string]
+	BindPassIV                 sql.Null[string]
+	BindPassTag                sql.Null[string]
 	SearchBase                 string
-	EncryptedCACert            *string
-	CaCertIV                   *string
-	CaCertTag                  *string
+	EncryptedCACert            sql.Null[string]
+	CaCertIV                   sql.Null[string]
+	CaCertTag                  sql.Null[string]
 	CreatedAt                  time.Time
 	UpdatedAt                  time.Time
 	GroupSearchBase            string
@@ -35,5 +36,5 @@ type LdapConfigs struct {
 	UniqueUserAttribute        string
 	EncryptedLdapBindDN        []byte
 	EncryptedLdapBindPass      []byte
-	EncryptedLdapCaCertificate *[]byte
+	EncryptedLdapCaCertificate sql.Null[[]byte]
 }

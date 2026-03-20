@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -17,7 +18,7 @@ type WorkflowIntegrations struct {
 	Integration string
 	Slug        string
 	OrgId       uuid.UUID
-	Description *string
+	Description sql.Null[string]
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Status      string

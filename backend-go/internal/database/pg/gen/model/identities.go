@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -15,10 +16,10 @@ import (
 type Identities struct {
 	ID                  uuid.UUID `sql:"primary_key"`
 	Name                string
-	AuthMethod          *string
+	AuthMethod          sql.Null[string]
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	HasDeleteProtection bool
 	OrgId               uuid.UUID
-	ProjectId           *string
+	ProjectId           sql.Null[string]
 }

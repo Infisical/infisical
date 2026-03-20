@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
@@ -16,6 +17,6 @@ type KmipClients struct {
 	ID          uuid.UUID `sql:"primary_key"`
 	Name        string
 	Permissions *pq.StringArray
-	Description *string
+	Description sql.Null[string]
 	ProjectId   string
 }

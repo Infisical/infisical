@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,15 +17,15 @@ type AdditionalPrivileges struct {
 	ID                       uuid.UUID `sql:"primary_key"`
 	Name                     string
 	IsTemporary              bool
-	TemporaryMode            *string
-	TemporaryRange           *string
-	TemporaryAccessStartTime *time.Time
-	TemporaryAccessEndTime   *time.Time
+	TemporaryMode            sql.Null[string]
+	TemporaryRange           sql.Null[string]
+	TemporaryAccessStartTime sql.NullTime
+	TemporaryAccessEndTime   sql.NullTime
 	Permissions              string
-	ActorUserId              *uuid.UUID
-	ActorIdentityId          *uuid.UUID
-	OrgId                    *uuid.UUID
-	ProjectId                *string
+	ActorUserId              sql.Null[uuid.UUID]
+	ActorIdentityId          sql.Null[uuid.UUID]
+	OrgId                    sql.Null[uuid.UUID]
+	ProjectId                sql.Null[string]
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
 }

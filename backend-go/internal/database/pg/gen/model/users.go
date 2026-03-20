@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"time"
@@ -15,23 +16,23 @@ import (
 
 type Users struct {
 	ID                                uuid.UUID `sql:"primary_key"`
-	Email                             *string
+	Email                             sql.Null[string]
 	AuthMethods                       *pq.StringArray
-	SuperAdmin                        *bool
-	FirstName                         *string
-	LastName                          *string
-	IsAccepted                        *bool
-	IsMfaEnabled                      *bool
+	SuperAdmin                        sql.Null[bool]
+	FirstName                         sql.Null[string]
+	LastName                          sql.Null[string]
+	IsAccepted                        sql.Null[bool]
+	IsMfaEnabled                      sql.Null[bool]
 	MfaMethods                        *pq.StringArray
-	Devices                           *string
+	Devices                           sql.Null[string]
 	CreatedAt                         time.Time
 	UpdatedAt                         time.Time
 	IsGhost                           bool
 	Username                          string
-	IsEmailVerified                   *bool
-	ConsecutiveFailedMfaAttempts      *int32
-	IsLocked                          *bool
-	TemporaryLockDateEnd              *time.Time
-	ConsecutiveFailedPasswordAttempts *int32
-	SelectedMfaMethod                 *string
+	IsEmailVerified                   sql.Null[bool]
+	ConsecutiveFailedMfaAttempts      sql.Null[int32]
+	IsLocked                          sql.Null[bool]
+	TemporaryLockDateEnd              sql.NullTime
+	ConsecutiveFailedPasswordAttempts sql.Null[int32]
+	SelectedMfaMethod                 sql.Null[string]
 }

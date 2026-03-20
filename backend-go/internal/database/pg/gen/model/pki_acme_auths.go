@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -16,11 +17,11 @@ type PkiAcmeAuths struct {
 	ID              uuid.UUID `sql:"primary_key"`
 	AccountId       uuid.UUID
 	Status          string
-	Token           *string
+	Token           sql.Null[string]
 	IdentifierType  string
 	IdentifierValue string
 	ExpiresAt       time.Time
-	CertificateId   *uuid.UUID
+	CertificateId   sql.Null[uuid.UUID]
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }

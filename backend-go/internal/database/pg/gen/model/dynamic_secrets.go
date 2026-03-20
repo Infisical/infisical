@@ -8,6 +8,7 @@
 package model
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -18,20 +19,20 @@ type DynamicSecrets struct {
 	Version          int32
 	Type             string
 	DefaultTTL       string
-	MaxTTL           *string
-	InputIV          *string
-	InputCiphertext  *string
-	InputTag         *string
+	MaxTTL           sql.Null[string]
+	InputIV          sql.Null[string]
+	InputCiphertext  sql.Null[string]
+	InputTag         sql.Null[string]
 	Algorithm        string
 	KeyEncoding      string
 	FolderId         uuid.UUID
-	Status           *string
-	StatusDetails    *string
+	Status           sql.Null[string]
+	StatusDetails    sql.Null[string]
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	EncryptedInput   []byte
-	ProjectGatewayId *uuid.UUID
-	GatewayId        *uuid.UUID
-	UsernameTemplate *string
-	GatewayV2Id      *uuid.UUID
+	ProjectGatewayId sql.Null[uuid.UUID]
+	GatewayId        sql.Null[uuid.UUID]
+	UsernameTemplate sql.Null[string]
+	GatewayV2Id      sql.Null[uuid.UUID]
 }
