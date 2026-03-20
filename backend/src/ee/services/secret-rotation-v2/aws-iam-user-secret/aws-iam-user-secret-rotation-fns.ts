@@ -1,4 +1,4 @@
-import IAM from "aws-sdk/clients/iam";
+import AWS from "aws-sdk";
 
 import {
   TAwsIamUserSecretRotationGeneratedCredentials,
@@ -13,7 +13,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 
-const getCreateDate = (key: IAM.AccessKeyMetadata): number => {
+const getCreateDate = (key: AWS.IAM.AccessKeyMetadata): number => {
   return key.CreateDate ? new Date(key.CreateDate).getTime() : 0;
 };
 
@@ -29,7 +29,7 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
 
   const $rotateClientSecret = async () => {
     const { credentials } = await getAwsConnectionConfig(connection, region);
-    const iam = new IAM({ credentials });
+    const iam = new AWS.IAM({ credentials });
 
     const { AccessKeyMetadata } = await iam.listAccessKeys({ UserName: userName }).promise();
 
@@ -72,7 +72,7 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     callback
   ) => {
     const { credentials } = await getAwsConnectionConfig(connection, region);
-    const iam = new IAM({ credentials });
+    const iam = new AWS.IAM({ credentials });
 
     await Promise.all(
       generatedCredentials.map((generatedCredential) =>

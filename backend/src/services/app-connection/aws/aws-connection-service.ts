@@ -1,6 +1,4 @@
-import ELBv2 from "aws-sdk/clients/elbv2";
-import IAM from "aws-sdk/clients/iam";
-import KMS from "aws-sdk/clients/kms";
+import AWS from "aws-sdk";
 
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -27,12 +25,12 @@ const listAwsKmsKeys = async (
 ) => {
   const { credentials } = await getAwsConnectionConfig(appConnection, region);
 
-  const awsKms = new KMS({
+  const awsKms = new AWS.KMS({
     credentials,
     region
   });
 
-  const aliasEntries: KMS.AliasList = [];
+  const aliasEntries: AWS.KMS.AliasList = [];
   let aliasMarker: string | undefined;
   do {
     // eslint-disable-next-line no-await-in-loop
@@ -41,7 +39,7 @@ const listAwsKmsKeys = async (
     aliasMarker = response.NextMarker;
   } while (aliasMarker);
 
-  const keyMetadataRecord: Record<string, KMS.KeyMetadata | undefined> = {};
+  const keyMetadataRecord: Record<string, AWS.KMS.KeyMetadata | undefined> = {};
   for await (const aliasEntry of aliasEntries) {
     if (aliasEntry.TargetKeyId) {
       const keyDescription = await awsKms.describeKey({ KeyId: aliasEntry.TargetKeyId }).promise();
@@ -81,9 +79,9 @@ const listAwsKmsKeys = async (
 const listAwsIamUsers = async (appConnection: TAwsConnection) => {
   const { credentials } = await getAwsConnectionConfig(appConnection);
 
-  const iam = new IAM({ credentials });
+  const iam = new AWS.IAM({ credentials });
 
-  const userEntries: IAM.User[] = [];
+  const userEntries: AWS.IAM.User[] = [];
   let userMarker: string | undefined;
   do {
     // eslint-disable-next-line no-await-in-loop
@@ -123,7 +121,7 @@ const listAwsLoadBalancers = async (
 ): Promise<TAwsLoadBalancerInfo[]> => {
   const { credentials } = await getAwsConnectionConfig(appConnection, region);
 
-  const elbClient = new ELBv2({
+  const elbClient = new AWS.ELBv2({
     credentials,
     region
   });
@@ -169,7 +167,7 @@ const listAwsListeners = async (
 ): Promise<TAwsListenerInfo[]> => {
   const { credentials } = await getAwsConnectionConfig(appConnection, region);
 
-  const elbClient = new ELBv2({
+  const elbClient = new AWS.ELBv2({
     credentials,
     region
   });

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
-import KMS from "aws-sdk/clients/kms";
+import AWS from "aws-sdk";
 
 import {
   ActionProjectType,
@@ -1046,7 +1046,7 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const kms = new KMS({
+    const kms = new AWS.KMS({
       region,
       credentials: {
         accessKeyId: String(accessId),
