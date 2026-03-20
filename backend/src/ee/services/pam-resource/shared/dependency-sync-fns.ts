@@ -10,7 +10,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
-import { PamAccountDependencyType } from "../../pam-discovery/pam-discovery-enums";
+import { PamAccountDependencyType, PamDependencySyncStatus } from "../../pam-discovery/pam-discovery-enums";
 import { decryptResource } from "../pam-resource-fns";
 import { TPostRotateContext } from "../pam-resource-types";
 
@@ -159,7 +159,7 @@ export const syncDependenciesAfterRotation = async ({
       for (const dep of deps) {
         try {
           // eslint-disable-next-line no-await-in-loop
-          await ctx.pamAccountDependenciesDAL.updateById(dep.id, { syncStatus: "pending" });
+          await ctx.pamAccountDependenciesDAL.updateById(dep.id, { syncStatus: PamDependencySyncStatus.Pending });
 
           const script = buildDependencySyncScript(dep, newCredentials.username, newCredentials.password);
 
@@ -199,7 +199,7 @@ export const syncDependenciesAfterRotation = async ({
 
           // eslint-disable-next-line no-await-in-loop
           await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
-            syncStatus: "success",
+            syncStatus: PamDependencySyncStatus.Success,
             lastSyncedAt: new Date(),
             encryptedLastSyncMessage: null
           });
@@ -221,7 +221,7 @@ export const syncDependenciesAfterRotation = async ({
 
             // eslint-disable-next-line no-await-in-loop
             await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
-              syncStatus: "failed",
+              syncStatus: PamDependencySyncStatus.Failed,
               lastSyncedAt: new Date(),
               encryptedLastSyncMessage: encryptedMessage
             });
@@ -229,7 +229,7 @@ export const syncDependenciesAfterRotation = async ({
             logger.error(encryptErr, `[DependencySync] Failed to encrypt error message for dep ${dep.id}`);
             // eslint-disable-next-line no-await-in-loop
             await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
-              syncStatus: "failed",
+              syncStatus: PamDependencySyncStatus.Failed,
               lastSyncedAt: new Date()
             });
           }
