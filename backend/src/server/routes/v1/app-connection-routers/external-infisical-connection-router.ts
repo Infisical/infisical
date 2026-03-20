@@ -16,7 +16,6 @@ const RemoteProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
-  type: z.string(),
   environments: z.array(z.object({ id: z.string(), name: z.string(), slug: z.string() }))
 });
 
