@@ -4,24 +4,29 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  EyeIcon,
-  EyeOffIcon,
   InfoIcon,
   PlusIcon,
   TrashIcon,
-  TriangleAlertIcon
+  TriangleAlertIcon,
+  XIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import {
   Button,
   Field,
   FieldContent,
+  FieldError,
   FieldLabel,
   Label,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Switch,
   TextArea,
   Tooltip,
@@ -120,7 +125,7 @@ const RuleCard = ({
   };
 
   return (
-    <div className="flex gap-2 rounded-lg border border-border bg-mineshaft-700/30 p-4">
+    <div className="flex gap-2 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="mr-1 text-lg font-medium text-muted">{index + 1}</span>
@@ -136,41 +141,42 @@ const RuleCard = ({
             <Label className="opacity-50">Do Not Rotate</Label>
           )}
         </div>
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-3">
-          <div>
-            <span className="mb-1 block text-xs font-medium text-muted">Rule Name</span>
-            <Input
-              value={localName}
-              onChange={(e) => setLocalName(e.target.value)}
-              onBlur={handleNameBlur}
-              placeholder="e.g., Service accounts"
-              className="h-8 text-sm"
-            />
-          </div>
-          <div>
-            <span className="mb-1 block text-xs font-medium text-muted">Account Pattern</span>
-            <Input
-              value={localPattern}
-              onChange={(e) => setLocalPattern(e.target.value)}
-              onBlur={handlePatternBlur}
-              placeholder="*"
-              className="h-8 font-mono text-sm"
-            />
-          </div>
-          <div>
-            <span className="mb-1 block text-xs font-medium text-muted">Interval</span>
-            <div className="flex items-center gap-1">
-              <Input
+        <div className="grid grid-cols-[auto_1fr_1fr] gap-2">
+          <Field>
+            <FieldLabel>Rule Name</FieldLabel>
+            <FieldContent>
+              <UnstableInput
+                value={localName}
+                onChange={(e) => setLocalName(e.target.value)}
+                onBlur={handleNameBlur}
+                placeholder="e.g., Service accounts"
+              />
+            </FieldContent>
+          </Field>
+          <Field>
+            <FieldLabel>Account Pattern</FieldLabel>
+            <FieldContent>
+              <UnstableInput
+                value={localPattern}
+                onChange={(e) => setLocalPattern(e.target.value)}
+                onBlur={handlePatternBlur}
+                placeholder="*"
+                className="font-mono"
+              />
+            </FieldContent>
+          </Field>
+          <Field>
+            <FieldLabel>Interval (days)</FieldLabel>
+            <FieldContent>
+              <UnstableInput
                 value={localInterval}
                 onChange={(e) => setLocalInterval(e.target.value)}
                 onBlur={handleIntervalBlur}
-                className={twMerge("h-8 w-16 text-center text-sm", !rule.enabled && "opacity-50")}
-                isDisabled={!rule.enabled}
+                className={twMerge(!rule.enabled && "opacity-50")}
                 disabled={!rule.enabled}
               />
-              <span className="text-xs text-muted">days</span>
-            </div>
-          </div>
+            </FieldContent>
+          </Field>
         </div>
       </div>
 
@@ -243,18 +249,26 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
 
   // WinRM config for Windows Server resources (stored in connectionDetails)
   const isWindowsResource = resource.resourceType === PamResourceType.Windows;
-  const connDetails = resource.connectionDetails as {
-    winrmPort?: number;
-    useWinrmHttps?: boolean;
-    winrmRejectUnauthorized?: boolean;
-    winrmCaCert?: string;
+  const getWinrmDefaults = () => {
+    const cd = resource.connectionDetails as {
+      winrmPort?: number;
+      useWinrmHttps?: boolean;
+      winrmRejectUnauthorized?: boolean;
+      winrmCaCert?: string;
+    };
+    return {
+      winrmPort: cd.winrmPort ?? 5985,
+      useWinrmHttps: cd.useWinrmHttps ?? false,
+      winrmRejectUnauthorized: cd.winrmRejectUnauthorized ?? true,
+      winrmCaCert: cd.winrmCaCert ?? ""
+    };
   };
-  const [winrmPort, setWinrmPort] = useState(connDetails.winrmPort ?? 5985);
-  const [useWinrmHttps, setUseWinrmHttps] = useState(connDetails.useWinrmHttps ?? false);
+  const [winrmPort, setWinrmPort] = useState(() => getWinrmDefaults().winrmPort);
+  const [useWinrmHttps, setUseWinrmHttps] = useState(() => getWinrmDefaults().useWinrmHttps);
   const [winrmRejectUnauthorized, setWinrmRejectUnauthorized] = useState(
-    connDetails.winrmRejectUnauthorized ?? true
+    () => getWinrmDefaults().winrmRejectUnauthorized
   );
-  const [winrmCaCert, setWinrmCaCert] = useState(connDetails.winrmCaCert ?? "");
+  const [winrmCaCert, setWinrmCaCert] = useState(() => getWinrmDefaults().winrmCaCert);
 
   // Local working copy of rules — only persisted on save
   const [localRules, setLocalRules] = useState<LocalRule[]>([]);
@@ -290,11 +304,13 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
       password: hasRotationCredentials ? UNCHANGED_PASSWORD_SENTINEL : ""
     });
     setShowPassword(false);
-    setWinrmPort(connDetails.winrmPort ?? 5985);
-    setUseWinrmHttps(connDetails.useWinrmHttps ?? false);
-    setWinrmRejectUnauthorized(connDetails.winrmRejectUnauthorized ?? true);
-    setWinrmCaCert(connDetails.winrmCaCert ?? "");
-  }, [rules, resource, hasRotationCredentials, resetCred, connDetails]);
+    const wd = getWinrmDefaults();
+    setWinrmPort(wd.winrmPort);
+    setUseWinrmHttps(wd.useWinrmHttps);
+    setWinrmRejectUnauthorized(wd.winrmRejectUnauthorized);
+    setWinrmCaCert(wd.winrmCaCert);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rules, resource, hasRotationCredentials, resetCred]);
 
   useEffect(() => {
     if (isOpen) {
@@ -347,6 +363,35 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
     });
   };
 
+  // Compute whether any changes exist
+  const wd = getWinrmDefaults();
+  const isWinrmDirty =
+    isWindowsResource &&
+    (winrmPort !== wd.winrmPort ||
+      useWinrmHttps !== wd.useWinrmHttps ||
+      winrmRejectUnauthorized !== wd.winrmRejectUnauthorized ||
+      (winrmCaCert || "") !== (wd.winrmCaCert || ""));
+
+  const isRulesDirty = (() => {
+    if (deletedRuleIds.length > 0) return true;
+    if (localRules.some((r) => r.id.startsWith(TEMP_ID_PREFIX))) return true;
+    const serverOrder = rules.map((r) => r.id);
+    if (localRules.length !== serverOrder.length) return true;
+    return localRules.some((local, i) => {
+      if (local.id !== serverOrder[i]) return true;
+      const server = rules.find((r) => r.id === local.id);
+      if (!server) return true;
+      return (
+        local.name !== (server.name ?? null) ||
+        local.namePattern !== server.namePattern ||
+        local.enabled !== server.enabled ||
+        local.intervalSeconds !== (server.intervalSeconds ?? null)
+      );
+    });
+  })();
+
+  const hasChanges = isCredDirty || isWinrmDirty || isRulesDirty;
+
   const handleSave = async (credData: CredentialsFormData) => {
     setIsSaving(true);
     try {
@@ -364,7 +409,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
           : { username: credData.username, password: credData.password };
       }
 
-      if (isWindowsResource) {
+      if (isWinrmDirty) {
         updatePayload.connectionDetails = {
           ...(resource.connectionDetails as Record<string, unknown>),
           winrmPort,
@@ -374,7 +419,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
         };
       }
 
-      if (isCredDirty || isWindowsResource) {
+      if (isCredDirty || isWinrmDirty) {
         await updateResource.mutateAsync(
           updatePayload as Parameters<typeof updateResource.mutateAsync>[0]
         );
@@ -457,12 +502,15 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Edit Rotation Policy"
-        subTitle="Configure automatic password rotation for accounts under this resource."
-      >
-        <div className="flex flex-col gap-6">
+    <Sheet open={isOpen} onOpenChange={onOpenChange} modal={false}>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
+        <SheetHeader className="border-b">
+          <SheetTitle>Edit Rotation Policy</SheetTitle>
+          <SheetDescription>
+            Configure automatic password rotation for accounts under this resource.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
           {resource.resourceType === PamResourceType.ActiveDirectory &&
             !(resource.connectionDetails as { useLdaps?: boolean }).useLdaps && (
               <UnstableAlert variant="info">
@@ -475,78 +523,84 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
               </UnstableAlert>
             )}
 
-          {/* Section: Rotation Credentials */}
-          <div>
-            <h4 className="mb-1 text-sm font-semibold">Rotation Credentials</h4>
-            <p className="mb-3 text-xs text-mineshaft-400">
-              Privileged account used to perform password rotations
-            </p>
-            <div className="flex gap-3">
+          {/* Rotation Credentials */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <Label>Rotation Credentials</Label>
+              <p className="text-xs text-muted">
+                Privileged account used to perform password rotations
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <Controller
                 name="username"
                 control={credControl}
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    className="mb-0 flex-1"
-                    label="Username"
-                    isError={!!error}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} autoComplete="off" />
-                  </FormControl>
+                  <Field>
+                    <FieldLabel>Username</FieldLabel>
+                    <FieldContent>
+                      <UnstableInput {...field} isError={Boolean(error)} autoComplete="off" />
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
                 )}
               />
               <Controller
                 name="password"
                 control={credControl}
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    className="mb-0 flex-1"
-                    label="Password"
-                    isError={!!error}
-                    errorText={error?.message}
-                  >
-                    <div className="relative">
-                      <Input
-                        {...field}
-                        type={showPassword ? "text" : "password"}
-                        autoComplete="new-password"
-                        onFocus={() => {
-                          if (field.value === UNCHANGED_PASSWORD_SENTINEL) {
-                            field.onChange("");
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="absolute top-1/2 right-2 -translate-y-1/2 text-muted hover:text-foreground"
-                        onClick={() => setShowPassword(!showPassword)}
-                        tabIndex={-1}
-                      >
-                        {showPassword ? (
-                          <EyeOffIcon className="size-4" />
-                        ) : (
-                          <EyeIcon className="size-4" />
-                        )}
-                      </button>
-                    </div>
-                  </FormControl>
+                  <Field>
+                    <FieldLabel>Password</FieldLabel>
+                    <FieldContent>
+                      <div className="relative">
+                        <UnstableInput
+                          {...field}
+                          placeholder="••••••"
+                          isError={Boolean(error)}
+                          autoComplete="new-password"
+                          type={showPassword ? "text" : "password"}
+                          onFocus={() => {
+                            if (field.value === UNCHANGED_PASSWORD_SENTINEL) {
+                              field.onChange("");
+                            }
+                            setShowPassword(true);
+                          }}
+                          onBlur={() => {
+                            if (field.value === "") {
+                              field.onChange(UNCHANGED_PASSWORD_SENTINEL);
+                            }
+                            setShowPassword(false);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="absolute top-1/2 right-2 -translate-y-1/2 text-muted hover:text-foreground"
+                          onClick={() => field.onChange("")}
+                          tabIndex={-1}
+                        >
+                          <XIcon className="size-4" />
+                        </button>
+                      </div>
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
                 )}
               />
             </div>
             {hasRotationCredentials && (
-              <p className="mt-2 text-xs text-mineshaft-400">
-                Clear both fields to remove credentials and disable rotation.
+              <p className="text-xs text-warning">
+                Clear both fields to remove credentials and disable rotation
               </p>
             )}
           </div>
 
-          {/* Section: WinRM Config (Windows Server only) */}
+          {/* WinRM Config (Windows Server only) */}
           {isWindowsResource && (
             <div className="flex flex-col gap-3">
-              <div>
-                <h4 className="text-sm font-semibold">WinRM Configuration</h4>
-                <p className="text-xs text-mineshaft-400">
+              <div className="flex flex-col gap-1">
+                <Label>WinRM Configuration</Label>
+                <p className="text-xs text-muted">
                   WinRM is used to execute password rotation commands on the Windows machine
                 </p>
               </div>
@@ -618,16 +672,15 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
             </div>
           )}
 
-          {/* Section: Rotation Rules */}
+          {/* Rotation Rules */}
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-semibold">Rotation Rules</h4>
-                <p className="text-xs text-mineshaft-400">
-                  Rules are evaluated top-to-bottom by priority
-                </p>
+              <div className="flex flex-col gap-1">
+                <Label>Rotation Rules</Label>
+                <p className="text-xs text-muted">Rules are evaluated top-to-bottom by priority</p>
               </div>
-              <Button size="xs" onClick={handleAddRule}>
+
+              <Button variant="neutral" size="xs" onClick={handleAddRule}>
                 <PlusIcon className="size-3.5" />
                 Add Rule
               </Button>
@@ -654,23 +707,21 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
               </div>
             )}
           </div>
-
-          {/* Footer */}
-          <div className="mt-4 flex gap-2">
-            <Button
-              variant="neutral"
-              onClick={handleCredSubmit(handleSave)}
-              isPending={isSaving}
-              isDisabled={isSaving}
-            >
-              Update Details
-            </Button>
-            <Button variant="ghost" onClick={handleCancel}>
-              Cancel
-            </Button>
-          </div>
         </div>
-      </ModalContent>
-    </Modal>
+        <SheetFooter className="shrink-0 border-t">
+          <Button
+            variant="neutral"
+            onClick={handleCredSubmit(handleSave)}
+            isPending={isSaving}
+            isDisabled={isSaving || !hasChanges}
+          >
+            Update Details
+          </Button>
+          <Button variant="outline" className="mr-auto" onClick={handleCancel}>
+            Cancel
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };

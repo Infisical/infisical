@@ -19,7 +19,7 @@ export const PamUpdateDiscoverySourceModal = ({ isOpen, onOpenChange, source }: 
           <SheetTitle>Edit Discovery Source</SheetTitle>
           <SheetDescription>
             Update details for this {PAM_DISCOVERY_TYPE_MAP[source.discoveryType].name} discovery
-            source
+            source.
           </SheetDescription>
         </SheetHeader>
         <PamDiscoverySourceForm
