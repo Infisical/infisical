@@ -393,6 +393,7 @@ export function LongTextCell<TData>({
           isSelected={isSelected}
           isSearchMatch={isSearchMatch}
           isActiveSearchMatch={isActiveSearchMatch}
+          isDirty={isDirty}
           readOnly={readOnly}
           onKeyDown={onWrapperKeyDown}
         >

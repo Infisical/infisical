@@ -485,20 +485,17 @@ export const DataBrowserGrid = ({
   const newRowTempIdsRef = useRef(newRowTempIds);
   newRowTempIdsRef.current = newRowTempIds;
 
-  const getIsCellDirty = useCallback(
-    (rowIndex: number, columnId: string) => {
-      const row = currentDataRef.current[rowIndex];
-      if (!row) return false;
-      if (row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId))) return true;
-      const pkMap = originalDataByPkRef.current;
-      if (!pkMap) return false;
-      const key = getRowKey(row, primaryKeysRef.current);
-      const original = pkMap.get(key);
-      if (!original) return false;
-      return String(row[columnId] ?? "") !== String(original[columnId] ?? "");
-    },
-    []
-  );
+  const getIsCellDirty = useCallback((rowIndex: number, columnId: string) => {
+    const row = currentDataRef.current[rowIndex];
+    if (!row) return false;
+    if (row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId))) return true;
+    const pkMap = originalDataByPkRef.current;
+    if (!pkMap) return false;
+    const key = getRowKey(row, primaryKeysRef.current);
+    const original = pkMap.get(key);
+    if (!original) return false;
+    return String(row[columnId] ?? "") !== String(original[columnId] ?? "");
+  }, []);
 
   // Stable row identity for TanStack Table
   const getRowId = useCallback(

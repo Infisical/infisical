@@ -80,7 +80,13 @@ export const DataBrowserToolbar = ({
         {hasPrimaryKey && (
           <>
             <div className="h-4 w-px bg-border" />
-            <Button variant="outline" size="xs" onClick={onAddRecord} disabled={hasNewRow} className="gap-1">
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={onAddRecord}
+              disabled={hasNewRow}
+              className="gap-1"
+            >
               <PlusIcon className="size-3" />
               Add record
             </Button>
