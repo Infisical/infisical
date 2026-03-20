@@ -46,7 +46,17 @@ const attemptSshConnection = (
       host: targetHost,
       port: targetPort,
       readyTimeout: SSH_TIMEOUT,
-      tryKeyboard: false
+      tryKeyboard: false,
+      algorithms: {
+        serverHostKey: [
+          "ssh-rsa", // Required for HP iLO 4/5
+          "ssh-dss"
+        ],
+        kex: [
+          "diffie-hellman-group14-sha1", // Required for HP iLO 4/5
+          "diffie-hellman-group1-sha1"
+        ]
+      }
     };
 
     client.on("error", (err: Error) => {

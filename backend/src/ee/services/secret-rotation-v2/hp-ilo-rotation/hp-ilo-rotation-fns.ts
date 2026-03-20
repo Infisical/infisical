@@ -41,6 +41,7 @@ const ILO_PROMPT = "hpiLO->";
 const COMMAND_COMPLETED = "status_tag=COMMAND COMPLETED";
 const COMMAND_FAILED = "COMMAND PROCESSING FAILED";
 const CONNECTION_TIMEOUT = 15000;
+const MAX_BUFFER_SIZE = 64 * 1024;
 
 const executeIloShell = (conn: Client, command: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -66,6 +67,14 @@ const executeIloShell = (conn: Client, command: string): Promise<string> => {
         if (settled) return;
 
         buffer += data.toString();
+
+        if (buffer.length > MAX_BUFFER_SIZE) {
+          clearTimeout(timeout);
+          settled = true;
+          conn.end();
+          reject(new Error("iLO shell response exceeded maximum buffer size"));
+          return;
+        }
 
         if (buffer.includes(ILO_PROMPT) && !commandSent) {
           commandSent = true;
