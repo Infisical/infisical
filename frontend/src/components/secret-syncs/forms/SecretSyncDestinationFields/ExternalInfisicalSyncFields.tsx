@@ -3,7 +3,8 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Input } from "@app/components/v2";
+import { FilterableSelect, FormControl } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import {
   TRemoteInfisicalEnvironmentFolderTree,
   TRemoteInfisicalProject,
@@ -22,42 +23,44 @@ export const ExternalInfisicalSyncFields = () => {
   const connectionId = useWatch({ name: "connection.id", control });
   const projectId = useWatch({ name: "destinationConfig.projectId", control });
   const environmentSlug = useWatch({ name: "destinationConfig.environment", control });
+  const currentSecretPath = useWatch({ name: "destinationConfig.secretPath", control });
 
   const { data: projects = [], isPending: isProjectsLoading } =
     useExternalInfisicalConnectionListProjects(connectionId, {
       enabled: Boolean(connectionId)
     });
 
-  const {
-    data: folderTree = {},
-    isPending: isFolderTreeLoading,
-    isError: isFolderTreeError
-  } = useExternalInfisicalConnectionGetEnvironmentFolderTree(connectionId, projectId, {
-    enabled: Boolean(connectionId) && Boolean(projectId)
-  });
+  const { data: folderTree = {} } = useExternalInfisicalConnectionGetEnvironmentFolderTree(
+    connectionId,
+    projectId,
+    { enabled: Boolean(connectionId) && Boolean(projectId) }
+  );
 
   const environments = useMemo(() => {
     return projects.find((p) => p.id === projectId)?.environments ?? [];
   }, [projects, projectId]);
 
-  const folderOptions = useMemo(() => {
-    const root = { path: "/", name: "Root" };
-    if (!environmentSlug) return [root];
+  const childFolderNamesAtPath = useMemo(() => {
+    if (!environmentSlug) return [];
 
     const tree = folderTree as TRemoteInfisicalEnvironmentFolderTree;
-    // Remote API may key by env slug or by env id; support both
     const envData =
       tree[environmentSlug] ?? Object.values(tree).find((env) => env.slug === environmentSlug);
-    const folders = (envData?.folders ?? []).filter((f) => f.path !== "/");
-    return [root, ...folders];
-  }, [folderTree, environmentSlug]);
+    const allFolders = envData?.folders ?? [];
 
-  // When folder tree fails or returns empty, allow manual path entry, since the target env might not have the API
-  // modified to allow MI access to folder tree yet
-  const showManualPathInput =
-    Boolean(connectionId && projectId && environmentSlug) &&
-    !isFolderTreeLoading &&
-    (isFolderTreeError || folderOptions.length <= 1);
+    const browsedPath =
+      currentSecretPath && !currentSecretPath.endsWith("/")
+        ? `${currentSecretPath}/`
+        : (currentSecretPath ?? "/");
+
+    return allFolders
+      .filter((f) => {
+        if (!f.path.startsWith(browsedPath)) return false;
+        const remainder = f.path.slice(browsedPath.length);
+        return remainder.length > 0 && !remainder.includes("/");
+      })
+      .map((f) => f.name);
+  }, [folderTree, environmentSlug, currentSecretPath]);
 
   return (
     <>
@@ -133,25 +136,13 @@ export const ExternalInfisicalSyncFields = () => {
             isError={Boolean(error?.message)}
             label="Secret path"
             tooltipText="The folder path on the remote Infisical instance to sync secrets to"
-            helperText={showManualPathInput ? "Enter the path (e.g. / or /my-folder)" : undefined}
           >
-            {showManualPathInput ? (
-              <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="/" />
-            ) : (
-              <FilterableSelect
-                isLoading={isFolderTreeLoading && Boolean(projectId)}
-                isDisabled={!connectionId || !projectId || !environmentSlug}
-                value={folderOptions.find((f) => f.path === value) ?? folderOptions[0]}
-                onChange={(option) => {
-                  const v = option as SingleValue<{ path: string; name: string }>;
-                  onChange(v?.path ?? "/");
-                }}
-                options={folderOptions}
-                placeholder="Select a path..."
-                getOptionLabel={(option) => option.path}
-                getOptionValue={(option) => option.path}
-              />
-            )}
+            <SecretPathInput
+              isDisabled={!connectionId || !projectId || !environmentSlug}
+              value={value}
+              onChange={onChange}
+              folderNames={childFolderNamesAtPath}
+            />
           </FormControl>
         )}
       />
