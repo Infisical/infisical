@@ -245,54 +245,41 @@ const SingleEnvContent = ({
       return;
     }
 
-    try {
-      const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
-        shouldOverwrite: data.shouldOverwrite,
-        sourceEnvironment: sourceEnv.slug,
-        sourceSecretPath,
-        destinationEnvironment: data.environment,
-        destinationSecretPath: selectedPath.secretPath,
-        projectId,
-        projectSlug,
-        secretIds: secretsToMove.map((sec) => sec.id)
-      });
+    const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
+      shouldOverwrite: data.shouldOverwrite,
+      sourceEnvironment: sourceEnv.slug,
+      sourceSecretPath,
+      destinationEnvironment: data.environment,
+      destinationSecretPath: selectedPath.secretPath,
+      projectId,
+      projectSlug,
+      secretIds: secretsToMove.map((sec) => sec.id)
+    });
 
-      if (isDestinationUpdated && isSourceUpdated) {
-        createNotification({
-          type: "success",
-          text: "Successfully moved selected secrets"
-        });
-      } else if (isDestinationUpdated) {
-        createNotification({
-          type: "info",
-          text: "Successfully created secrets in destination. A secret approval request has been generated for the source."
-        });
-      } else if (isSourceUpdated) {
-        createNotification({
-          type: "info",
-          text: "A secret approval request has been generated in the destination"
-        });
-      } else {
-        createNotification({
-          type: "info",
-          text: "A secret approval request has been generated in both the source and the destination."
-        });
-      }
-
-      onClose();
-      onComplete();
-    } catch (error) {
-      let errorMessage = (error as Error)?.message ?? "Failed to move secrets";
-      if (axios.isAxiosError(error)) {
-        const { message } = error?.response?.data as { message: string };
-        if (message) errorMessage = message;
-      }
-
+    if (isDestinationUpdated && isSourceUpdated) {
       createNotification({
-        type: "error",
-        text: errorMessage
+        type: "success",
+        text: "Successfully moved selected secrets"
+      });
+    } else if (isDestinationUpdated) {
+      createNotification({
+        type: "info",
+        text: "Successfully created secrets in destination. A secret approval request has been generated for the source."
+      });
+    } else if (isSourceUpdated) {
+      createNotification({
+        type: "info",
+        text: "A secret approval request has been generated in the destination"
+      });
+    } else {
+      createNotification({
+        type: "info",
+        text: "A secret approval request has been generated in both the source and the destination."
       });
     }
+
+    onClose();
+    onComplete();
   };
 
   return (
