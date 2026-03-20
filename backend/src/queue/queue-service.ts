@@ -111,8 +111,7 @@ export enum QueueName {
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
-  CertificateCleanup = "certificate-cleanup",
-  DailySecretSyncRetry = "daily-secret-sync-retry"
+  CertificateCleanup = "certificate-cleanup"
 }
 
 export enum QueueJobs {
@@ -396,6 +395,10 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.SecretSyncSendActionFailedNotifications;
         payload: TQueueSendSecretSyncActionFailedNotificationsDTO;
+      }
+    | {
+        name: QueueJobs.DailySecretSyncRetry;
+        payload: undefined;
       };
   [QueueName.SecretRotationV2]:
     | {
@@ -464,10 +467,6 @@ export type TQueueJobTypes = {
   };
   [QueueName.DailyReminders]: {
     name: QueueJobs.DailyReminders;
-    payload: undefined;
-  };
-  [QueueName.DailySecretSyncRetry]: {
-    name: QueueJobs.DailySecretSyncRetry;
     payload: undefined;
   };
   [QueueName.SecretReminderMigration]: {

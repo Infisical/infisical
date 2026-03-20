@@ -13,7 +13,7 @@ import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -80,7 +80,7 @@ const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
 type TSecretSyncQueueFactoryDep = {
-  queueService: Pick<TQueueServiceFactory, "queue" | "start" | "stopRepeatableJob">;
+  queueService: Pick<TQueueServiceFactory, "queue" | "start" | "upsertJobScheduler">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
@@ -1117,9 +1117,35 @@ export const secretSyncQueueFactory = ({
     }
   };
 
+  const $handleDailySecretSyncRetry = async () => {
+    const updatedIds = await secretSyncDAL.updateAndReturnIds(
+      {
+        syncStatus: SecretSyncStatus.Failed,
+        isAutoSyncEnabled: true,
+        $in: { destination: [...SECRET_SYNC_DAILY_RETRY_DESTINATIONS] }
+      },
+      { syncStatus: SecretSyncStatus.Pending }
+    );
+
+    if (!updatedIds.length) return;
+
+    await Promise.all(
+      updatedIds.map((syncId) =>
+        queueSecretSyncSyncSecretsById({
+          syncId
+        })
+      )
+    );
+  };
+
   queueService.start(QueueName.AppConnectionSecretSync, async (job) => {
     if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
       await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
+      return;
+    }
+
+    if (job.name === QueueJobs.DailySecretSyncRetry) {
+      await $handleDailySecretSyncRetry();
       return;
     }
 
@@ -1191,39 +1217,13 @@ export const secretSyncQueueFactory = ({
     }
   });
 
-  queueService.start(QueueName.DailySecretSyncRetry, async () => {
-    const updatedIds = await secretSyncDAL.updateAndReturnIds(
-      {
-        syncStatus: SecretSyncStatus.Failed,
-        isAutoSyncEnabled: true,
-        $in: { destination: [...SECRET_SYNC_DAILY_RETRY_DESTINATIONS] }
-      },
-      { syncStatus: SecretSyncStatus.Pending }
-    );
-
-    if (!updatedIds.length) return;
-
-    await Promise.all(
-      updatedIds.map((syncId) =>
-        queueSecretSyncSyncSecretsById({
-          syncId
-        })
-      )
-    );
-  });
-
   const startDailySecretSyncRetryJob = async () => {
-    await queueService.stopRepeatableJob(
-      QueueName.DailySecretSyncRetry,
-      QueueJobs.DailySecretSyncRetry,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.DailySecretSyncRetry as string
+    await queueService.upsertJobScheduler(
+      QueueName.AppConnectionSecretSync,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailySecretSyncRetry}`,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.DailySecretSyncRetry }
     );
-
-    await queueService.queue(QueueName.DailySecretSyncRetry, QueueJobs.DailySecretSyncRetry, undefined, {
-      jobId: QueueName.DailySecretSyncRetry,
-      repeat: { pattern: "0 0 * * *", utc: true, key: QueueJobs.DailySecretSyncRetry }
-    });
   };
 
   return {
