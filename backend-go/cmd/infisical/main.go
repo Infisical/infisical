@@ -52,7 +52,8 @@ func main() {
 	dbReport := bootstrap.CheckDBConnection(ctx, db)
 	dbReport.PrintReport(logger)
 
-	svc, err := services.NewRegistry(logger, db, shared.SharedServicesDeps{
+	svc, err := services.NewRegistry(ctx, logger, db, shared.SharedServicesDeps{
+		Logger: logger,
 		Config: cfg,
 		DB:     db,
 	})
