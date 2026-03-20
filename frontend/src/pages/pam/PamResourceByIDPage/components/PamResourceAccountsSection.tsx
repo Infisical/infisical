@@ -209,15 +209,14 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const handleRotateAccount = async (accountId: string) => {
     try {
       setRotatingAccountIds((prev) => new Set(prev).add(accountId));
-      createNotification({ text: "Account rotation triggered", type: "success" });
       await manualRotate.mutateAsync({ accountId });
+      createNotification({ text: "Account rotation triggered", type: "success" });
     } catch {
       setRotatingAccountIds((prev) => {
         const next = new Set(prev);
         next.delete(accountId);
         return next;
       });
-      createNotification({ text: "Failed to trigger rotation", type: "error" });
     }
   };
 
