@@ -31,7 +31,7 @@ type DB interface {
 	Replica() *sql.DB
 	ReplicaCount() int
 	PrimaryPool() *pgxpool.Pool
-	Close()
+	Close() error
 }
 
 // pgDatabase wraps a primary pgxpool and zero or more read-replica pools,
@@ -111,15 +111,20 @@ func (db *pgDatabase) PrimaryPool() *pgxpool.Pool {
 }
 
 // Close closes all connection pools (primary + replicas) and their sql.DB wrappers.
-func (db *pgDatabase) Close() {
+func (db *pgDatabase) Close() error {
 	db.primarySQL.Close()
 	for _, s := range db.replicaSQL {
-		s.Close()
+		if err := s.Close(); err != nil {
+			return err
+		}
 	}
 	db.primary.Close()
-	for _, r := range db.replicas {
-		r.Close()
+	for _, r := range db.replicaSQL {
+		if err := r.Close(); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // openPool creates a pgxpool.Pool from a connection URI and optional base64-encoded root CA cert.
