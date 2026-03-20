@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -216,16 +216,10 @@ export const appConnectionCredentialRotationQueueFactory = async ({
   });
 
   // Schedule the cron job
-  await queueService.queue(
+  await queueService.upsertJobScheduler(
     QueueName.AppConnectionCredentialRotation,
-    QueueJobs.AppConnectionCredentialRotationQueueRotations,
-    undefined,
-    {
-      jobId: "app-connection-credential-rotation-cron",
-      repeat: {
-        pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
-        key: "app-connection-credential-rotation-cron"
-      }
-    }
+    `${JOB_SCHEDULER_PREFIX}:app-connection-credential-rotation-cron`,
+    { pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *" },
+    { name: QueueJobs.AppConnectionCredentialRotationQueueRotations }
   );
 };

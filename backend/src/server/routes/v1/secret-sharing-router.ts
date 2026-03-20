@@ -12,9 +12,11 @@ import {
   readLimit,
   writeLimit
 } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
 
@@ -159,6 +161,16 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         });
       }
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SharedSecretViewed,
+        distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${req.params.id}`,
+        organizationId: sharedSecret.orgId ?? undefined,
+        properties: {
+          sharedSecretId: req.params.id,
+          accessType: sharedSecret.accessType as SecretSharingAccessType
+        }
+      });
+
       return sharedSecret;
     }
   });
@@ -217,6 +229,17 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         ...req.body,
         accessType: SecretSharingAccessType.Anyone
       });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretShared,
+        distinctId: `anonymous-${sharedSecret.id}`,
+        properties: {
+          accessType: SecretSharingAccessType.Anyone,
+          expiresAt: sharedSecret.expiresAt.toISOString(),
+          hasPassword: !!req.body.password
+        }
+      });
+
       return { id: sharedSecret.id };
     }
   });
@@ -309,6 +332,17 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             id: sharedSecret.id,
             usingPassword: !!req.body.password
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretShared,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          accessType: req.body.accessType,
+          expiresAt: sharedSecret.expiresAt.toISOString(),
+          hasPassword: !!req.body.password
         }
       });
 

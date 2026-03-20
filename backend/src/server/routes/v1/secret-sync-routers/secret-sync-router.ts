@@ -43,6 +43,10 @@ import {
   DigitalOceanAppPlatformSyncListItemSchema,
   DigitalOceanAppPlatformSyncSchema
 } from "@app/services/secret-sync/digital-ocean-app-platform";
+import {
+  ExternalInfisicalSyncListItemSchema,
+  ExternalInfisicalSyncSchema
+} from "@app/services/secret-sync/external-infisical";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
@@ -99,7 +103,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   ChefSyncSchema,
   OctopusDeploySyncSchema,
   CircleCISyncSchema,
-  AzureEntraIdScimSyncSchema
+  AzureEntraIdScimSyncSchema,
+  ExternalInfisicalSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -138,7 +143,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   ChefSyncListItemSchema,
   OctopusDeploySyncListItemSchema,
   CircleCISyncListItemSchema,
-  AzureEntraIdScimSyncListItemSchema
+  AzureEntraIdScimSyncListItemSchema,
+  ExternalInfisicalSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

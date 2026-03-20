@@ -134,6 +134,7 @@
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/ssh",
@@ -467,6 +468,7 @@
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
+                      "documentation/platform/secret-rotation/hp-ilo-local-account",
                       "documentation/platform/secret-rotation/okta-client-secret",
                       "documentation/platform/secret-rotation/openrouter-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
@@ -572,8 +574,8 @@
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
                       "integrations/secret-syncs/checkly",
-                      "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/chef",
+                      "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
@@ -585,6 +587,7 @@
                       "integrations/secret-syncs/hashicorp-vault",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
+                      "integrations/secret-syncs/external-infisical",
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/northflank",
@@ -1558,6 +1561,18 @@
                     ]
                   },
                   {
+                    "group": "Infisical",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/external-infisical/list",
+                      "api-reference/endpoints/app-connections/external-infisical/available",
+                      "api-reference/endpoints/app-connections/external-infisical/get-by-id",
+                      "api-reference/endpoints/app-connections/external-infisical/get-by-name",
+                      "api-reference/endpoints/app-connections/external-infisical/create",
+                      "api-reference/endpoints/app-connections/external-infisical/update",
+                      "api-reference/endpoints/app-connections/external-infisical/delete"
+                    ]
+                  },
+                  {
                     "group": "Laravel Forge",
                     "pages": [
                       "api-reference/endpoints/app-connections/laravel-forge/list",
@@ -2306,6 +2321,20 @@
                     ]
                   },
                   {
+                    "group": "HP iLO Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/create",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/list",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/update",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/reconcile"
+                    ]
+                  },
+                  {
                     "group": "Unix/Linux Local Account",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
@@ -2651,6 +2680,20 @@
                     ]
                   },
                   {
+                    "group": "Infisical",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/external-infisical/list",
+                      "api-reference/endpoints/secret-syncs/external-infisical/get-by-id",
+                      "api-reference/endpoints/secret-syncs/external-infisical/get-by-name",
+                      "api-reference/endpoints/secret-syncs/external-infisical/create",
+                      "api-reference/endpoints/secret-syncs/external-infisical/update",
+                      "api-reference/endpoints/secret-syncs/external-infisical/delete",
+                      "api-reference/endpoints/secret-syncs/external-infisical/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/external-infisical/import-secrets",
+                      "api-reference/endpoints/secret-syncs/external-infisical/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Laravel Forge",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/laravel-forge/list",
@@ -2876,7 +2919,8 @@
                         "pages": [
                           "api-reference/endpoints/certificate-authorities/internal/sign-intermediate",
                           "api-reference/endpoints/certificate-authorities/internal/import-cert",
-                          "api-reference/endpoints/certificate-authorities/internal/install-cert-venafi"
+                          "api-reference/endpoints/certificate-authorities/internal/install-cert-venafi",
+                          "api-reference/endpoints/certificate-authorities/internal/install-cert-adcs"
                         ]
                       },
                       {

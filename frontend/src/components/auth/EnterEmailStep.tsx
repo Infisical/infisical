@@ -93,9 +93,9 @@ export default function EnterEmailStep({
               {String(t("signup.step1-submit"))}
             </Button>
           </div>
-          <div className="mt-6 flex w-full justify-center text-sm text-muted">
+          <div className="mt-6 flex w-full justify-center text-xs text-label">
             <Link to="/login">
-              <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+              <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                 {t("signup.already-have-account")}
               </span>
             </Link>
