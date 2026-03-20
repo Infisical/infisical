@@ -184,7 +184,8 @@ export enum QueueJobs {
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
-  CertificateCleanup = "certificate-cleanup-job"
+  CertificateCleanup = "certificate-cleanup-job",
+  DailySecretSyncRetry = "daily-secret-sync-retry-job"
 }
 
 export type TQueueOptions = {
@@ -395,6 +396,10 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.SecretSyncSendActionFailedNotifications;
         payload: TQueueSendSecretSyncActionFailedNotificationsDTO;
+      }
+    | {
+        name: QueueJobs.DailySecretSyncRetry;
+        payload: undefined;
       };
   [QueueName.SecretRotationV2]:
     | {

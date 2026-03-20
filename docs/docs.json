@@ -134,6 +134,7 @@
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/ssh",
@@ -573,8 +574,8 @@
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
                       "integrations/secret-syncs/checkly",
-                      "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/chef",
+                      "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
@@ -586,6 +587,7 @@
                       "integrations/secret-syncs/hashicorp-vault",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
+                      "integrations/secret-syncs/external-infisical",
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/northflank",
@@ -1556,6 +1558,18 @@
                       "api-reference/endpoints/app-connections/humanitec/create",
                       "api-reference/endpoints/app-connections/humanitec/update",
                       "api-reference/endpoints/app-connections/humanitec/delete"
+                    ]
+                  },
+                  {
+                    "group": "Infisical",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/external-infisical/list",
+                      "api-reference/endpoints/app-connections/external-infisical/available",
+                      "api-reference/endpoints/app-connections/external-infisical/get-by-id",
+                      "api-reference/endpoints/app-connections/external-infisical/get-by-name",
+                      "api-reference/endpoints/app-connections/external-infisical/create",
+                      "api-reference/endpoints/app-connections/external-infisical/update",
+                      "api-reference/endpoints/app-connections/external-infisical/delete"
                     ]
                   },
                   {
@@ -2663,6 +2677,20 @@
                       "api-reference/endpoints/secret-syncs/humanitec/delete",
                       "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
                       "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Infisical",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/external-infisical/list",
+                      "api-reference/endpoints/secret-syncs/external-infisical/get-by-id",
+                      "api-reference/endpoints/secret-syncs/external-infisical/get-by-name",
+                      "api-reference/endpoints/secret-syncs/external-infisical/create",
+                      "api-reference/endpoints/secret-syncs/external-infisical/update",
+                      "api-reference/endpoints/secret-syncs/external-infisical/delete",
+                      "api-reference/endpoints/secret-syncs/external-infisical/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/external-infisical/import-secrets",
+                      "api-reference/endpoints/secret-syncs/external-infisical/remove-secrets"
                     ]
                   },
                   {

@@ -137,6 +137,12 @@ import {
   TValidateDNSMadeEasyConnectionCredentialsSchema
 } from "./dns-made-easy/dns-made-easy-connection-types";
 import {
+  TExternalInfisicalConnection,
+  TExternalInfisicalConnectionConfig,
+  TExternalInfisicalConnectionInput,
+  TValidateExternalInfisicalConnectionCredentialsSchema
+} from "./external-infisical";
+import {
   TFlyioConnection,
   TFlyioConnectionConfig,
   TFlyioConnectionInput,
@@ -366,6 +372,7 @@ export type TAppConnection = { id: string } & (
   | TCircleCIConnection
   | TAzureEntraIdConnection
   | TVenafiConnection
+  | TExternalInfisicalConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -430,6 +437,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCircleCIConnectionInput
   | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
+  | TExternalInfisicalConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -522,7 +530,8 @@ export type TAppConnectionConfig =
   | TOpenRouterConnectionConfig
   | TCircleCIConnectionConfig
   | TAzureEntraIdConnectionConfig
-  | TVenafiConnectionConfig;
+  | TVenafiConnectionConfig
+  | TExternalInfisicalConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -577,7 +586,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOpenRouterConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
-  | TValidateVenafiConnectionCredentialsSchema;
+  | TValidateVenafiConnectionCredentialsSchema
+  | TValidateExternalInfisicalConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

@@ -19,6 +19,7 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "onChange"> & 
   environment?: string;
   containerClassName?: string;
   onChange?: (arg: string) => void;
+  folderNames?: string[];
 };
 
 export const SecretPathInput = ({
@@ -26,6 +27,7 @@ export const SecretPathInput = ({
   onChange,
   environment,
   value: propValue,
+  folderNames: folderNamesProp,
   ...props
 }: Props) => {
   const [inputValue, setInputValue] = useState(propValue ?? "");
@@ -58,15 +60,16 @@ export const SecretPathInput = ({
   }, [debouncedInputValue]);
 
   useEffect(() => {
+    const activeFolders = folderNamesProp ?? folders;
     const searchFragment = debouncedInputValue.split("/").pop() || "";
-    const filteredSuggestions = folders
+    const filteredSuggestions = activeFolders
       .filter((suggestionEntry) =>
         suggestionEntry.toUpperCase().startsWith(searchFragment.toUpperCase())
       )
       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 
     setSuggestions(filteredSuggestions);
-  }, [debouncedInputValue, folders]);
+  }, [debouncedInputValue, folders, folderNamesProp]);
 
   const handleSuggestionSelect = (selectedIndex: number) => {
     if (!suggestions[selectedIndex]) {
@@ -76,7 +79,7 @@ export const SecretPathInput = ({
     const validPaths = inputValue.split("/");
     validPaths.pop();
 
-    const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}`;
+    const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}/`;
     onChange?.(newValue);
     setInputValue(newValue);
     setSecretPath(newValue);

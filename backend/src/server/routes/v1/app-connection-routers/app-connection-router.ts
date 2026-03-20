@@ -78,6 +78,10 @@ import {
   DNSMadeEasyConnectionListItemSchema,
   SanitizedDNSMadeEasyConnectionSchema
 } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-schema";
+import {
+  ExternalInfisicalConnectionListItemSchema,
+  SanitizedExternalInfisicalConnectionSchema
+} from "@app/services/app-connection/external-infisical";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -213,7 +217,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDbtConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
-  ...SanitizedVenafiConnectionSchema.options
+  ...SanitizedVenafiConnectionSchema.options,
+  ...SanitizedExternalInfisicalConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -269,7 +274,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DbtConnectionListItemSchema,
   OpenRouterConnectionListItemSchema,
   AzureEntraIdConnectionListItemSchema,
-  VenafiConnectionListItemSchema
+  VenafiConnectionListItemSchema,
+  ExternalInfisicalConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

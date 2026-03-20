@@ -3044,6 +3044,11 @@ export const SecretSyncs = {
       orgName: "The CircleCI organization name to sync secrets to.",
       projectId: "The CircleCI project ID to sync secrets to.",
       projectName: "The CircleCI project name to sync secrets to."
+    },
+    EXTERNAL_INFISICAL: {
+      projectId: "The ID of the project on the external Infisical instance to sync secrets to.",
+      environment: "The environment slug on the external Infisical instance to sync secrets to.",
+      secretPath: "The secret path on the external Infisical instance to sync secrets to."
     }
   }
 };
