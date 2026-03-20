@@ -74,6 +74,7 @@ declare module "@tanstack/react-table" {
     getIsCellSelected?: (rowIndex: number, columnId: string) => boolean;
     getIsSearchMatch?: (rowIndex: number, columnId: string) => boolean;
     getIsActiveSearchMatch?: (rowIndex: number, columnId: string) => boolean;
+    getIsCellDirty?: (rowIndex: number, columnId: string) => boolean;
     getVisualRowIndex?: (rowId: string) => number | undefined;
     rowHeight?: RowHeightValue;
     onRowHeightChange?: (value: RowHeightValue) => void;
@@ -181,6 +182,7 @@ export interface DataGridCellProps<TData> {
   isSelected: boolean;
   isSearchMatch: boolean;
   isActiveSearchMatch: boolean;
+  isDirty: boolean;
   readOnly: boolean;
 }
 

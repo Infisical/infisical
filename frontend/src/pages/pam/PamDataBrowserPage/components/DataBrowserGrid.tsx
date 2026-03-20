@@ -460,6 +460,27 @@ export const DataBrowserGrid = ({
     setCurrentData(newData);
   }, []);
 
+  // Use refs so the callback identity is stable (survives tableMeta useMemo)
+  // while always reading the latest data.
+  const currentDataRef = useRef(currentData);
+  currentDataRef.current = currentData;
+  const originalDataRef = useRef(originalData);
+  originalDataRef.current = originalData;
+  const newRowTempIdsRef = useRef(newRowTempIds);
+  newRowTempIdsRef.current = newRowTempIds;
+
+  const getIsCellDirty = useCallback(
+    (rowIndex: number, columnId: string) => {
+      const row = currentDataRef.current[rowIndex];
+      if (!row) return false;
+      if (row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId))) return true;
+      const original = originalDataRef.current[rowIndex];
+      if (!original) return false;
+      return String(row[columnId] ?? "") !== String(original[columnId] ?? "");
+    },
+    []
+  );
+
   // Stable row identity for TanStack Table
   const getRowId = useCallback(
     (row: Record<string, unknown>, index: number) => {
@@ -497,7 +518,7 @@ export const DataBrowserGrid = ({
     enableSearch: true,
     enablePaste: hasPrimaryKey,
     onRowsDelete: hasPrimaryKey ? handleRowsDelete : undefined,
-    meta: { onSelectionCountChange: syncSelectionCount } as Record<string, unknown>
+    meta: { onSelectionCountChange: syncSelectionCount, getIsCellDirty } as Record<string, unknown>
   });
   gridRef.current = gridProps.table;
 

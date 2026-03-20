@@ -57,6 +57,7 @@ export function ShortTextCell<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly
 }: DataGridCellProps<TData>) {
   const initialValue = cell.getValue() as string;
@@ -143,8 +144,10 @@ export function ShortTextCell<TData>({
     if (isEditing && cellRef.current) {
       cellRef.current.focus();
 
-      if (!cellRef.current.textContent && value) {
-        cellRef.current.textContent = value;
+      if (value !== undefined && value !== null) {
+        cellRef.current.textContent = String(value);
+      } else {
+        cellRef.current.textContent = "";
       }
 
       if (cellRef.current.textContent) {
@@ -176,6 +179,7 @@ export function ShortTextCell<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
       onKeyDown={onWrapperKeyDown}
     >
@@ -218,6 +222,7 @@ export function LongTextCell<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly
 }: DataGridCellProps<TData>) {
   const initialValue = cell.getValue() as string;
@@ -411,6 +416,7 @@ export function NumberCell<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly
 }: DataGridCellProps<TData>) {
   const initialValue = cell.getValue() as number;
@@ -504,6 +510,7 @@ export function NumberCell<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
       onKeyDown={onWrapperKeyDown}
     >
@@ -537,6 +544,7 @@ export function UrlCell<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly
 }: DataGridCellProps<TData>) {
   const initialValue = cell.getValue() as string;
@@ -656,8 +664,10 @@ export function UrlCell<TData>({
     if (isEditing && cellRef.current) {
       cellRef.current.focus();
 
-      if (!cellRef.current.textContent && value) {
-        cellRef.current.textContent = value;
+      if (value !== undefined && value !== null) {
+        cellRef.current.textContent = String(value);
+      } else {
+        cellRef.current.textContent = "";
       }
 
       if (cellRef.current.textContent) {
@@ -690,6 +700,7 @@ export function UrlCell<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
       onKeyDown={onWrapperKeyDown}
     >
@@ -811,6 +822,7 @@ export function CheckboxCell<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
       className="flex size-full justify-center"
       onClick={onWrapperClick}
@@ -840,6 +852,7 @@ export function SelectCell<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly
 }: DataGridCellProps<TData>) {
   const initialValue = cell.getValue() as string;
@@ -906,6 +919,7 @@ export function SelectCell<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
       onKeyDown={onWrapperKeyDown}
     >
@@ -967,6 +981,7 @@ export function MultiSelectCell<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly
 }: DataGridCellProps<TData>) {
   const cellValue = React.useMemo(() => {
@@ -1114,6 +1129,7 @@ export function MultiSelectCell<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
       onKeyDown={onWrapperKeyDown}
     >
@@ -1234,6 +1250,7 @@ export function DateCell<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly
 }: DataGridCellProps<TData>) {
   const initialValue = cell.getValue() as string;
@@ -1302,6 +1319,7 @@ export function DateCell<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
       onKeyDown={onWrapperKeyDown}
     >
@@ -1342,6 +1360,7 @@ export function FileCell<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly
 }: DataGridCellProps<TData>) {
   const cellValue = React.useMemo(() => (cell.getValue() as FileCellData[]) ?? [], [cell]);
@@ -1819,6 +1838,7 @@ export function FileCell<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
       className={cn({
         "ring-1 ring-primary/80 ring-inset": isDraggingOver

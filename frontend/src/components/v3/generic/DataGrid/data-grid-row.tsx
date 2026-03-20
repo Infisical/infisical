@@ -227,6 +227,8 @@ function DataGridRowImpl<TData>({
 
         const isSearchMatch = searchMatchColumns?.has(columnId) ?? false;
         const isActiveSearchMatch = activeSearchMatch?.columnId === columnId;
+        const isCellDirty =
+          tableMeta?.getIsCellDirty?.(virtualRowIndex, columnId) ?? false;
 
         const nextCell = visibleCells[colIndex + 1];
         const isLastColumn = colIndex === visibleCells.length - 1;
@@ -274,6 +276,7 @@ function DataGridRowImpl<TData>({
                 isSelected={isCellSelected}
                 isSearchMatch={isSearchMatch}
                 isActiveSearchMatch={isActiveSearchMatch}
+                isDirty={isCellDirty}
                 readOnly={readOnly}
               />
             )}

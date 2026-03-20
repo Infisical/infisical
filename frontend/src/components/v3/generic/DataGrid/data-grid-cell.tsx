@@ -21,6 +21,7 @@ export const DataGridCell = React.memo(DataGridCellImpl, (prev, next) => {
   if (prev.isSelected !== next.isSelected) return false;
   if (prev.isSearchMatch !== next.isSearchMatch) return false;
   if (prev.isActiveSearchMatch !== next.isActiveSearchMatch) return false;
+  if (prev.isDirty !== next.isDirty) return false;
   if (prev.readOnly !== next.readOnly) return false;
   if (prev.rowIndex !== next.rowIndex) return false;
   if (prev.columnId !== next.columnId) return false;
@@ -50,6 +51,7 @@ function DataGridCellImpl<TData>({
   isSelected,
   isSearchMatch,
   isActiveSearchMatch,
+  isDirty,
   readOnly,
   rowHeight
 }: DataGridCellProps<TData>) {
@@ -104,6 +106,7 @@ function DataGridCellImpl<TData>({
       isSelected={isSelected}
       isSearchMatch={isSearchMatch}
       isActiveSearchMatch={isActiveSearchMatch}
+      isDirty={isDirty}
       readOnly={readOnly}
     />
   );

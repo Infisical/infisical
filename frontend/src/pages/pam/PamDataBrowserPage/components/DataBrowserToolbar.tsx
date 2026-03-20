@@ -107,7 +107,7 @@ export const DataBrowserToolbar = ({
             </Button>
             <Button variant="outline" size="xs" onClick={onDiscard} className="gap-1">
               <UndoIcon className="size-3" />
-              Discard
+              Discard changes
             </Button>
           </>
         )}
