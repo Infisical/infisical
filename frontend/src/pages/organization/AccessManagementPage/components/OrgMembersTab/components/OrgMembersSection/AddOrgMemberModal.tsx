@@ -289,7 +289,7 @@ export const AddOrgMemberModal = ({
               )}
             />
 
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-end justify-between gap-2">
               <div className="w-full">
                 <Controller
                   control={control}
@@ -317,13 +317,23 @@ export const AddOrgMemberModal = ({
                   )}
                 />
               </div>
-              <div className="mt-[0.15rem] flex min-w-fit justify-end">
+              <div className="w-48 flex-shrink-0">
                 <Controller
                   control={control}
                   name="projectRole"
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl
-                      tooltipText="Select which role to assign to the users in the selected projects."
+                      tooltipText={
+                        <>
+                          Select which role to assign to the users in the selected projects.
+                          <br />
+                          When multiple projects are selected, only built-in roles are available for
+                          selection.
+                          <br />
+                          You can assign users to additional projects after they&apos;ve been
+                          invited.
+                        </>
+                      }
                       label="Role"
                       isError={Boolean(error)}
                       errorText={error?.message}
