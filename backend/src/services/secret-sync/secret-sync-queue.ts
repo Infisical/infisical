@@ -1221,7 +1221,7 @@ export const secretSyncQueueFactory = ({
     await queueService.upsertJobScheduler(
       QueueName.AppConnectionSecretSync,
       `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailySecretSyncRetry}`,
-      { pattern: "0 0 * * *" },
+      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *" },
       { name: QueueJobs.DailySecretSyncRetry }
     );
   };
