@@ -143,7 +143,7 @@ consisting of an (optional) root CA and an intermediate CA.
   <Step title="Creating a root CA">
     If you wish to use an external root CA, you can skip this step and head to step 2 to create an intermediate CA.
 
-    To create a root CA, make an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/create) API endpoint, specifying the `type` as `root`.
+    To create a root CA, make an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/internal/create) API endpoint, specifying the `type` as `root`.
 
     ### Sample request
 
@@ -176,7 +176,7 @@ consisting of an (optional) root CA and an intermediate CA.
 
   </Step>
   <Step title="Creating an intermediate CA">
-    To create an intermediate CA, make an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/create) API endpoint, specifying the `type` as `intermediate`.
+    To create an intermediate CA, make an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/internal/create) API endpoint, specifying the `type` as `intermediate`.
 
     ### Sample request
 
@@ -311,7 +311,7 @@ In the following steps, we explore how to renew a CA certificate.
   </Tab>
   <Tab title="API">
   
-  To renew a CA certificate, make an API request to the [Renew CA](/api-reference/endpoints/certificate-authorities/renew) API endpoint, specifying the new `notAfter` date for the CA.
+  To renew a CA certificate, make an API request to the [Renew CA](/api-reference/endpoints/certificate-authorities/internal/renew) API endpoint, specifying the new `notAfter` date for the CA.
 
     ### Sample request
 
