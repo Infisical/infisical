@@ -17,17 +17,29 @@ import { TPostRotateContext } from "../pam-resource-types";
 export const WINRM_DEFAULT_HTTP_PORT = 5985;
 export const WINRM_DEFAULT_HTTPS_PORT = 5986;
 
+const SINGLE_QUOTE_RE = new RE2("'", "g");
+const NEWLINE_RE = new RE2("[\\r\\n]", "g");
+const SAFE_WINDOWS_PATH_RE = new RE2("^[a-zA-Z0-9\\s\\\\_\\-.\\\\]+$");
+
 // Sanitize a string for safe use inside PowerShell single-quoted strings:
 // - doubles single quotes (PowerShell escape)
 // - strips newlines/carriage returns
 export const escapePowershellSingleQuote = (value: string) =>
-  new RE2("'", "g").replace(value, "''").replace(/[\r\n]/g, "");
+  NEWLINE_RE.replace(SINGLE_QUOTE_RE.replace(value, "''"), "");
+
+const validateWindowsPathValue = (value: string, label: string) => {
+  if (!SAFE_WINDOWS_PATH_RE.test(value)) {
+    throw new Error(`${label} contains invalid characters: ${value}`);
+  }
+};
 
 export const buildDependencySyncScript = (
   dep: TPamAccountDependencies,
   accountUsername: string,
   newPassword: string
 ): string => {
+  validateWindowsPathValue(dep.name, "Dependency name");
+
   const escapedPassword = escapePowershellSingleQuote(newPassword);
   const escapedName = escapePowershellSingleQuote(dep.name);
   const escapedUsername = escapePowershellSingleQuote(accountUsername);
@@ -42,6 +54,7 @@ export const buildDependencySyncScript = (
     case PamAccountDependencyType.ScheduledTask: {
       const taskData = dep.data as { TaskPath?: string } | null;
       const taskPath = taskData?.TaskPath ?? "\\";
+      validateWindowsPathValue(taskPath, "Task path");
       const escapedPath = escapePowershellSingleQuote(taskPath);
       return `schtasks.exe /Change /TN '${escapedPath}${escapedName}' /RU '${escapedUsername}' /RP '${escapedPassword}'`;
     }
@@ -173,7 +186,23 @@ export const syncDependenciesAfterRotation = async ({
           });
 
           if (!depConnectionDetails) {
-            logger.warn(`[DependencySync] Unable to get gateway connection for dep ${dep.name}, skipping`);
+            const msg = "Unable to establish gateway connection for dependency sync";
+            logger.warn(`[DependencySync] ${msg} [dep=${dep.name}]`);
+
+            let encryptedLastSyncMessage: Buffer | null = null;
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              const enc = await getEncryptor();
+              const { cipherTextBlob } = enc({ plainText: Buffer.from(msg) });
+              encryptedLastSyncMessage = cipherTextBlob;
+            } catch {}
+
+            // eslint-disable-next-line no-await-in-loop
+            await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
+              syncStatus: PamDependencySyncStatus.Failed,
+              encryptedLastSyncMessage
+            });
+
             // eslint-disable-next-line no-continue
             continue;
           }
@@ -215,27 +244,21 @@ export const syncDependenciesAfterRotation = async ({
             `[DependencySync] Failed to sync ${dep.dependencyType} '${dep.name}' on resource ${resourceId}`
           );
 
+          let encryptedLastSyncMessage: Buffer | null = null;
           try {
             // eslint-disable-next-line no-await-in-loop
             const enc = await getEncryptor();
-            const { cipherTextBlob: encryptedMessage } = enc({
+            const { cipherTextBlob } = enc({
               plainText: Buffer.from(errorMessage)
             });
+            encryptedLastSyncMessage = cipherTextBlob;
+          } catch {}
 
-            // eslint-disable-next-line no-await-in-loop
-            await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
-              syncStatus: PamDependencySyncStatus.Failed,
-              lastSyncedAt: new Date(),
-              encryptedLastSyncMessage: encryptedMessage
-            });
-          } catch (encryptErr) {
-            logger.error(encryptErr, `[DependencySync] Failed to encrypt error message for dep ${dep.id}`);
-            // eslint-disable-next-line no-await-in-loop
-            await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
-              syncStatus: PamDependencySyncStatus.Failed,
-              lastSyncedAt: new Date()
-            });
-          }
+          // eslint-disable-next-line no-await-in-loop
+          await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
+            syncStatus: PamDependencySyncStatus.Failed,
+            encryptedLastSyncMessage
+          });
         }
       }
     })

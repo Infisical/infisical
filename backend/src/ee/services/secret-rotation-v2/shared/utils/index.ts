@@ -1,4 +1,8 @@
+import RE2 from "re2";
+
 import { crypto } from "@app/lib/crypto/cryptography";
+
+const DOUBLE_QUOTE_RE = new RE2('"', "g");
 
 type TPasswordRequirements = {
   length: number;
@@ -26,11 +30,14 @@ export const generatePassword = (passwordRequirements?: TPasswordRequirements) =
   try {
     const { length, required, allowedSymbols } = passwordRequirements ?? DEFAULT_PASSWORD_REQUIREMENTS;
 
+    // Strip double quotes from symbols — they break AD unicodePwd encoding and PowerShell string contexts
+    const safeSymbols = DOUBLE_QUOTE_RE.replace(allowedSymbols || "-_.~!*", "");
+
     const chars = {
       lowercase: "abcdefghijklmnopqrstuvwxyz",
       uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
       digits: "0123456789",
-      symbols: allowedSymbols || "-_.~!*"
+      symbols: safeSymbols
     };
 
     const parts: string[] = [];
