@@ -631,6 +631,7 @@ const executeWinRmLocalAccountEnumeration = async (
   winrmPort: number,
   useWinrmHttps: boolean,
   winrmRejectUnauthorized: boolean,
+  winrmCaCert: string | undefined,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmLocalUser[]> => {
@@ -651,7 +652,8 @@ const executeWinRmLocalAccountEnumeration = async (
         credentials.password,
         proxyPort,
         useWinrmHttps,
-        winrmRejectUnauthorized
+        winrmRejectUnauthorized,
+        winrmCaCert
       );
 
       if (!stdout.trim()) {
@@ -671,6 +673,7 @@ const executeWinRmDependencyEnumeration = async (
   winrmPort: number,
   useWinrmHttps: boolean,
   winrmRejectUnauthorized: boolean,
+  winrmCaCert: string | undefined,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmDependencies> => {
@@ -690,7 +693,8 @@ const executeWinRmDependencyEnumeration = async (
         credentials.password,
         proxyPort,
         useWinrmHttps,
-        winrmRejectUnauthorized
+        winrmRejectUnauthorized,
+        winrmCaCert
       );
 
       if (!stdout.trim()) {
@@ -1079,6 +1083,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               configuration.winrmPort,
               configuration.useWinrmHttps,
               configuration.winrmRejectUnauthorized,
+              configuration.winrmCaCert,
               gatewayId,
               gatewayV2Service
             );
@@ -1130,6 +1135,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                   configuration.winrmPort,
                   configuration.useWinrmHttps,
                   configuration.winrmRejectUnauthorized,
+                  configuration.winrmCaCert,
                   gatewayId,
                   gatewayV2Service
                 );

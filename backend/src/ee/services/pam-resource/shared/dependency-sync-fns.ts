@@ -69,6 +69,7 @@ type TSyncDependenciesParams = {
   gatewayId: string;
   winrmPort?: number;
   useWinrmHttps?: boolean;
+  winrmCaCert?: string;
   resolveHostname?: (hostname: string) => Promise<string>;
   formatWinrmUsername?: (rotationUsername: string, hostname: string, resourceType: string) => string;
 };
@@ -83,6 +84,7 @@ export const syncDependenciesAfterRotation = async ({
   gatewayId,
   winrmPort,
   useWinrmHttps = false,
+  winrmCaCert,
   resolveHostname,
   formatWinrmUsername
 }: TSyncDependenciesParams) => {
@@ -186,7 +188,8 @@ export const syncDependenciesAfterRotation = async ({
                 rotationCredentials.password,
                 proxyPort,
                 useWinrmHttps,
-                false
+                false,
+                winrmCaCert
               );
             },
             {

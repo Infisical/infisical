@@ -261,7 +261,7 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^11.1.0",
-    "winrm-client": "0.0.12",
+    "winrm-client": "github:Infisical/winrm-client#master",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.24.5"
   }
