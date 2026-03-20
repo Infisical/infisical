@@ -41,6 +41,11 @@ const formSchema = genericResourceFieldsSchema.extend({
       .string()
       .trim()
       .transform((val) => val || undefined)
+      .optional(),
+    ldapTlsServerName: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
       .optional()
   })
 });
@@ -60,7 +65,8 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
             ...resource.connectionDetails,
             useLdaps: resource.connectionDetails.useLdaps ?? false,
             ldapRejectUnauthorized: resource.connectionDetails.ldapRejectUnauthorized ?? true,
-            ldapCaCert: resource.connectionDetails.ldapCaCert ?? ""
+            ldapCaCert: resource.connectionDetails.ldapCaCert ?? "",
+            ldapTlsServerName: resource.connectionDetails.ldapTlsServerName ?? ""
           }
         }
       : {
@@ -72,7 +78,8 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
             port: 389,
             useLdaps: false,
             ldapRejectUnauthorized: true,
-            ldapCaCert: ""
+            ldapCaCert: "",
+            ldapTlsServerName: ""
           }
         }
   });
@@ -84,6 +91,10 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
   } = form;
 
   const useLdaps = useWatch({ control, name: "connectionDetails.useLdaps" });
+  const ldapRejectUnauthorized = useWatch({
+    control,
+    name: "connectionDetails.ldapRejectUnauthorized"
+  });
 
   return (
     <FormProvider {...form}>
@@ -188,7 +199,7 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
                   <FieldLabel>
                     Reject Unauthorized
                     <Tooltip>
-                      <TooltipTrigger>
+                      <TooltipTrigger asChild>
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>
@@ -204,6 +215,35 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
                     onCheckedChange={field.onChange}
                   />
                   <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+
+            <Controller
+              name="connectionDetails.ldapTlsServerName"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>
+                    TLS Server Name
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The expected hostname in the server's TLS certificate. Required when DC
+                        Address is an IP address and Reject Unauthorized is enabled.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <UnstableInput
+                      {...field}
+                      placeholder="dc.corp.example.com"
+                      disabled={!useLdaps || !ldapRejectUnauthorized}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
                 </Field>
               )}
             />

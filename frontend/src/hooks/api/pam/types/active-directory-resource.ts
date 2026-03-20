@@ -14,6 +14,7 @@ export type TActiveDirectoryConnectionDetails = {
   useLdaps?: boolean;
   ldapRejectUnauthorized?: boolean;
   ldapCaCert?: string;
+  ldapTlsServerName?: string;
 };
 
 export type TActiveDirectoryCredentials = {

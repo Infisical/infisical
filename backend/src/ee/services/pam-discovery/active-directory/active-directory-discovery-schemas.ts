@@ -30,6 +30,11 @@ export const ActiveDirectoryDiscoveryConfigurationSchema = z.object({
     .trim()
     .transform((val) => val || undefined)
     .optional(),
+  ldapTlsServerName: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
   // WinRM
   winrmPort: z.coerce.number().int().min(1).max(65535),
   useWinrmHttps: z.boolean(),

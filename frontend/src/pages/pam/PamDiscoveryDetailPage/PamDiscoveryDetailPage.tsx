@@ -328,7 +328,7 @@ const RunExpandedContent = ({
               {adEnum.status}
             </Badge>
             {adEnum.error && adEnum.error !== errorMessage && (
-              <span className="text-xs text-red-400">{adEnum.error}</span>
+              <span className="text-xs whitespace-pre-wrap text-danger">{adEnum.error}</span>
             )}
           </div>
         )}
@@ -347,7 +347,7 @@ const RunExpandedContent = ({
               <span className="text-xs text-muted">
                 {depScan.scannedMachines ?? 0}/{depScan.totalMachines} machines
                 {(depScan.failedMachines ?? 0) > 0 && (
-                  <span className="ml-1 text-red-400">({depScan.failedMachines} failed)</span>
+                  <span className="ml-1 text-danger">({depScan.failedMachines} failed)</span>
                 )}
               </span>
             )}
@@ -360,7 +360,7 @@ const RunExpandedContent = ({
       {errorMessage && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium tracking-wider text-muted uppercase">Error</span>
-          <span className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs text-red-400">
+          <span className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs whitespace-pre-wrap text-danger">
             {errorMessage}
           </span>
         </div>

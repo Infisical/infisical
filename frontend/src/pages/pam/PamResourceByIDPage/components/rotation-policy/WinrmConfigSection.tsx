@@ -47,7 +47,7 @@ export const WinrmConfigSection = ({
         <FieldLabel>
           Port
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
             </TooltipTrigger>
             <TooltipContent>
@@ -87,7 +87,7 @@ export const WinrmConfigSection = ({
         <FieldLabel>
           Reject Unauthorized
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
             </TooltipTrigger>
             <TooltipContent>

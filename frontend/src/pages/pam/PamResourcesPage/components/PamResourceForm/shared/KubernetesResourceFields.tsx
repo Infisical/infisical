@@ -62,7 +62,7 @@ export const KubernetesResourceFields = () => {
             <FieldLabel>
               Reject Unauthorized
               <Tooltip>
-                <TooltipTrigger>
+                <TooltipTrigger asChild>
                   <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                 </TooltipTrigger>
                 <TooltipContent>

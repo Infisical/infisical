@@ -47,6 +47,11 @@ const formSchema = genericDiscoveryFieldsSchema.extend({
       .trim()
       .transform((val) => val || undefined)
       .optional(),
+    ldapTlsServerName: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .optional(),
     // WinRM
     winrmPort: z.coerce.number().int().min(1).max(65535),
     useWinrmHttps: z.boolean().default(true),
@@ -91,6 +96,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
               (source.discoveryConfiguration?.ldapCaCert as string) ||
               (source.discoveryConfiguration?.caCert as string) ||
               "",
+            ldapTlsServerName: (source.discoveryConfiguration?.ldapTlsServerName as string) || "",
             winrmPort: (source.discoveryConfiguration?.winrmPort as number) || 5986,
             useWinrmHttps: source.discoveryConfiguration?.useWinrmHttps !== false,
             winrmRejectUnauthorized:
@@ -117,6 +123,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
             useLdaps: true,
             ldapRejectUnauthorized: true,
             ldapCaCert: "",
+            ldapTlsServerName: "",
             winrmPort: 5986,
             useWinrmHttps: true,
             winrmRejectUnauthorized: true,
@@ -139,6 +146,10 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
   const [showPassword, setShowPassword] = useState(false);
   const password = useWatch({ control, name: "discoveryCredentials.password" });
   const useLdaps = useWatch({ control, name: "discoveryConfiguration.useLdaps" });
+  const ldapRejectUnauthorized = useWatch({
+    control,
+    name: "discoveryConfiguration.ldapRejectUnauthorized"
+  });
   const useWinrmHttps = useWatch({ control, name: "discoveryConfiguration.useWinrmHttps" });
   const discoverDependencies = useWatch({
     control,
@@ -173,7 +184,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                   <FieldLabel>
                     Domain FQDN
                     <Tooltip>
-                      <TooltipTrigger>
+                      <TooltipTrigger asChild>
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>
@@ -202,7 +213,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                   <FieldLabel>
                     DC Address
                     <Tooltip>
-                      <TooltipTrigger>
+                      <TooltipTrigger asChild>
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>
@@ -232,7 +243,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                     <FieldLabel>
                       Username
                       <Tooltip>
-                        <TooltipTrigger>
+                        <TooltipTrigger asChild>
                           <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                         </TooltipTrigger>
                         <TooltipContent>
@@ -262,7 +273,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                     <FieldLabel>
                       Password
                       <Tooltip>
-                        <TooltipTrigger>
+                        <TooltipTrigger asChild>
                           <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                         </TooltipTrigger>
                         <TooltipContent>
@@ -340,7 +351,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                   <FieldLabel>
                     Port
                     <Tooltip>
-                      <TooltipTrigger>
+                      <TooltipTrigger asChild>
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>
@@ -405,7 +416,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                   <FieldLabel>
                     Reject Unauthorized
                     <Tooltip>
-                      <TooltipTrigger>
+                      <TooltipTrigger asChild>
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>
@@ -424,6 +435,35 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                 </Field>
               )}
             />
+
+            <Controller
+              name="discoveryConfiguration.ldapTlsServerName"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>
+                    TLS Server Name
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The expected hostname in the server's TLS certificate. Required when DC
+                        Address is an IP address and Reject Unauthorized is enabled.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <UnstableInput
+                      {...field}
+                      placeholder="dc.corp.example.com"
+                      disabled={!useLdaps || !ldapRejectUnauthorized}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
           </div>
 
           <div className="flex flex-col gap-3">
@@ -437,7 +477,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                   <FieldLabel>
                     Port
                     <Tooltip>
-                      <TooltipTrigger>
+                      <TooltipTrigger asChild>
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>
@@ -502,7 +542,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                   <FieldLabel>
                     Reject Unauthorized
                     <Tooltip>
-                      <TooltipTrigger>
+                      <TooltipTrigger asChild>
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>

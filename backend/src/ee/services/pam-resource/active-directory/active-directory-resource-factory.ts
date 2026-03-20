@@ -78,8 +78,7 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
         rejectUnauthorized: connectionDetails.ldapRejectUnauthorized ?? false,
         ...(connectionDetails.ldapCaCert && {
           ca: [connectionDetails.ldapCaCert],
-          servername: connectionDetails.dcAddress,
-          checkServerIdentity: () => undefined
+          servername: connectionDetails.ldapTlsServerName || connectionDetails.dcAddress
         })
       }
     };
@@ -98,13 +97,19 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
             ...buildLdapTlsOptions()
           });
 
+          let clientError: Error | null = null;
           client.on("error", (err: Error) => {
-            client.unbind();
+            clientError = err;
+            try {
+              client.unbind();
+            } catch {}
             reject(err);
           });
 
           // Anonymous bind to verify this is a reachable LDAP server
           client.bind("", "", (err) => {
+            if (clientError) return;
+
             if (err) {
               // Even if anonymous bind is rejected, an LDAP error response means the server is an LDAP server
               // Only reject if it's a connection-level error (not an LDAP protocol error)
@@ -150,12 +155,18 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
             ...buildLdapTlsOptions()
           });
 
+          let clientError: Error | null = null;
           client.on("error", (err: Error) => {
-            client.unbind();
+            clientError = err;
+            try {
+              client.unbind();
+            } catch {}
             reject(err);
           });
 
           client.bind(bindDn, credentials.password, (err) => {
+            if (clientError) return;
+
             if (err) {
               client.unbind();
               logger.warn(err, "[Active Directory Resource Factory] LDAP bind failed during credential validation");

@@ -32,6 +32,11 @@ export const ActiveDirectoryResourceConnectionDetailsSchema = z.object({
     .string()
     .trim()
     .transform((val) => val || undefined)
+    .optional(),
+  ldapTlsServerName: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
     .optional()
 });
 

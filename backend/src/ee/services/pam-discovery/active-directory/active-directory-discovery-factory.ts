@@ -370,18 +370,25 @@ const executeLdapEnumeration = async (
             rejectUnauthorized: configuration.ldapRejectUnauthorized,
             ...(configuration.ldapCaCert && {
               ca: [configuration.ldapCaCert],
-              servername: configuration.dcAddress,
-              checkServerIdentity: () => undefined
+              servername: configuration.ldapTlsServerName || configuration.dcAddress
             })
           }
         })
+      });
+
+      // Capture TLS/connection errors that fire before or during bind
+      // Without this handler, unhandled 'error' events (e.g. TLS cert mismatch) crash the Node.js process
+      let clientError: Error | null = null;
+      client.on("error", (err: Error) => {
+        clientError = err;
       });
 
       try {
         const bindDn = `${credentials.username}@${configuration.domainFQDN}`;
         await new Promise<void>((resolve, reject) => {
           client.bind(bindDn, credentials.password, (err) => {
-            if (err) reject(new Error(`LDAP bind failed: ${err.message}`));
+            if (clientError) reject(clientError);
+            else if (err) reject(new Error(`LDAP bind failed: ${err.message}`));
             else resolve();
           });
         });
@@ -436,7 +443,11 @@ const executeLdapEnumeration = async (
 
         return { computers, users };
       } finally {
-        client.unbind();
+        try {
+          client.unbind();
+        } catch {
+          // client may already be destroyed from a TLS/connection error
+        }
       }
     }
   );
@@ -862,8 +873,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                   rejectUnauthorized: configuration.ldapRejectUnauthorized,
                   ...(configuration.ldapCaCert && {
                     ca: [configuration.ldapCaCert],
-                    servername: configuration.dcAddress,
-                    checkServerIdentity: () => undefined
+                    servername: configuration.ldapTlsServerName || configuration.dcAddress
                   })
                 }
               })
