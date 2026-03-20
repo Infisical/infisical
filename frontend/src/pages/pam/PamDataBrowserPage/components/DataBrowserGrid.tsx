@@ -199,8 +199,8 @@ export const DataBrowserGrid = ({
   );
 
   const fetchData = useCallback(
-    async (p: number, ps: number, f: FilterCondition[], s: SortCondition[]) => {
-      if (!tableDetail) return;
+    async (p: number, ps: number, f: FilterCondition[], s: SortCondition[]): Promise<number> => {
+      if (!tableDetail) return 0;
       setIsDataLoading(true);
       try {
         const selectSql = buildSelectQuery({
@@ -224,13 +224,17 @@ export const DataBrowserGrid = ({
         setExecutionTimeMs(dataResult.executionTimeMs);
         setTotalCount(Number(countResult.rows[0]?.count ?? 0));
         setNewRowTempIds(new Set());
+        setSelectedRowCount(0);
+        selectedRowsRef.current = [];
         hasLoadedRef.current = true;
+        return dataResult.rows.length;
       } catch (err) {
         createNotification({
           title: "Failed to load data",
           text: err instanceof Error ? err.message : "Unknown error",
           type: "error"
         });
+        return 0;
       } finally {
         setIsDataLoading(false);
       }
@@ -360,7 +364,10 @@ export const DataBrowserGrid = ({
             text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
             type: "success"
           });
-          await fetchData(page, pageSize, filters, sorts);
+          const rowCount = await fetchData(page, pageSize, filters, sorts);
+          if (rowCount === 0 && page > 1) {
+            setPage(page - 1);
+          }
         } catch (err) {
           createNotification({
             title: "Delete failed",
@@ -580,7 +587,10 @@ export const DataBrowserGrid = ({
           text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
           type: "success"
         });
-        await fetchData(page, pageSize, filters, sorts);
+        const rowCount = await fetchData(page, pageSize, filters, sorts);
+        if (rowCount === 0 && page > 1) {
+          setPage(page - 1);
+        }
       } catch (err) {
         createNotification({
           title: "Delete failed",
