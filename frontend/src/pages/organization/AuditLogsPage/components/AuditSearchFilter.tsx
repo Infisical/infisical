@@ -38,7 +38,6 @@ const FILTER_PROPERTIES: FilterProperty[] = [
   },
   {
     key: "actor_id",
-    displayLabel: "actor id",
     hints: "filter by specific user or identity ID"
   },
   {
@@ -51,8 +50,8 @@ const FILTER_PROPERTIES: FilterProperty[] = [
   },
   { key: "project", hints: "project ID" },
   { key: "environment", hints: "e.g. production, staging, dev" },
-  { key: "secret_path", displayLabel: "secret path", hints: "e.g. /, /app, /services" },
-  { key: "secret_key", displayLabel: "secret key", hints: "e.g. DATABASE_URL, API_KEY" }
+  { key: "secret_path", hints: "e.g. /, /app, /services" },
+  { key: "secret_key", hints: "e.g. DATABASE_URL, API_KEY" }
 ];
 
 const PROJECT_DEPENDENT_KEYS = new Set(["environment", "secret_path", "secret_key"]);
@@ -67,9 +66,15 @@ type Props = {
   filters: AppliedFilter[];
   onFiltersChange: (filters: AppliedFilter[]) => void;
   hasProjectContext?: boolean;
+  projectId?: string;
 };
 
-export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext }: Props) => {
+export const AuditSearchFilter = ({
+  filters,
+  onFiltersChange,
+  hasProjectContext,
+  projectId
+}: Props) => {
   const currentActorType = filters.find((f) => f.property === "actor")?.value as
     | ActorType
     | undefined;
@@ -94,7 +99,8 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
   const hasActorId = propertyKey === "actor_id" || filters.some((f) => f.property === "actor_id");
   const { suggestions: actorIdSuggestions } = useAuditLogActorSuggestions(
     currentActorType,
-    hasActorId
+    hasActorId,
+    projectId
   );
 
   const valueSuggestions = useMemo(() => {

@@ -112,6 +112,7 @@ const LogsSectionComponent = ({
               filters={searchFilters}
               onFiltersChange={setSearchFilters}
               hasProjectContext={Boolean(project)}
+              projectId={project?.id}
             />
             {searchFilters.length > 0 && (
               <p className="mt-2 text-xs text-mineshaft-400">
