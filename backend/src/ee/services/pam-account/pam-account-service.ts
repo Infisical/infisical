@@ -1153,6 +1153,32 @@ export const pamAccountServiceFactory = ({
         kmsService
       });
 
+      // Prevent the rotation account from rotating its own password
+      const rotationUsername = (rotationAccountCredentials as { username?: string })?.username;
+      const accountUsername = (accountCredentials as { username?: string })?.username;
+      if (rotationUsername && accountUsername && rotationUsername.toLowerCase() === accountUsername.toLowerCase()) {
+        logger.warn(
+          `[Rotation] Skipping rotation for account [accountId=${account.id}] — account is the rotation account itself`
+        );
+        const errorMsg = "This account cannot be rotated because it is used as the rotation credentials";
+        try {
+          const { encryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId: account.projectId
+          });
+          const { cipherTextBlob: encryptedMessage } = encryptor({ plainText: Buffer.from(errorMsg) });
+          await pamAccountDAL.updateById(account.id, {
+            rotationStatus: PamAccountRotationStatus.Failed,
+            encryptedLastRotationMessage: encryptedMessage
+          });
+        } catch {
+          await pamAccountDAL.updateById(account.id, {
+            rotationStatus: PamAccountRotationStatus.Failed
+          });
+        }
+        return;
+      }
+
       const factory = PAM_RESOURCE_FACTORY_MAP[resourceType as PamResource](
         resourceType as PamResource,
         connectionDetails,
@@ -1297,6 +1323,21 @@ export const pamAccountServiceFactory = ({
 
     if (account.rotationStatus === PamAccountRotationStatus.Rotating) {
       throw new BadRequestError({ message: "Account is already being rotated" });
+    }
+
+    // Prevent the rotation account from rotating its own password
+    const { rotationAccountCredentials } = await decryptResource(resource, account.projectId, kmsService);
+    const accountCredentials = await decryptAccountCredentials({
+      encryptedCredentials: account.encryptedCredentials,
+      projectId: account.projectId,
+      kmsService
+    });
+    const rotationUsername = (rotationAccountCredentials as { username?: string })?.username;
+    const accountUsername = (accountCredentials as { username?: string })?.username;
+    if (rotationUsername && accountUsername && rotationUsername.toLowerCase() === accountUsername.toLowerCase()) {
+      throw new BadRequestError({
+        message: "This account cannot be rotated because it is used as the rotation credentials"
+      });
     }
 
     void rotateAccount(account).catch((err) => {
