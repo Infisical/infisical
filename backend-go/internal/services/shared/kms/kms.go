@@ -111,17 +111,21 @@ type SharedService struct {
 	hsm           HsmService // nil when HSM is not configured
 }
 
-// NewSharedService creates a new KMS service.
-// encryptionKey is the raw 32-byte key derived from ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY env var.
-// hsm may be nil if HSM is not configured.
-func NewSharedService(dal dal, hsm HsmService, cfg *config.Config) (*SharedService, error) {
+// Deps holds the dependencies for the KMS shared service.
+type Deps struct {
+	DAL    dal
+	HSM    HsmService // nil when HSM is not configured
+	Config *config.Config
+}
 
+// NewSharedService creates a new KMS service.
+func NewSharedService(deps Deps) (*SharedService, error) {
 	var encryptionKey []byte
-	if cfg.EncryptionKey != "" {
-		encryptionKey = []byte(cfg.EncryptionKey)
-	} else if cfg.RootEncryptionKey != "" {
+	if deps.Config.EncryptionKey != "" {
+		encryptionKey = []byte(deps.Config.EncryptionKey)
+	} else if deps.Config.RootEncryptionKey != "" {
 		var decErr error
-		encryptionKey, decErr = base64.StdEncoding.DecodeString(cfg.RootEncryptionKey)
+		encryptionKey, decErr = base64.StdEncoding.DecodeString(deps.Config.RootEncryptionKey)
 		if decErr != nil {
 			return nil, fmt.Errorf("failed to decode ROOT_ENCRYPTION_KEY from base64: %w", decErr)
 		}
@@ -129,8 +133,8 @@ func NewSharedService(dal dal, hsm HsmService, cfg *config.Config) (*SharedServi
 
 	return &SharedService{
 		encryptionKey: encryptionKey,
-		dal:           dal,
-		hsm:           hsm,
+		dal:           deps.DAL,
+		hsm:           deps.HSM,
 	}, nil
 }
 
@@ -306,10 +310,10 @@ func (s *SharedService) encryptRootKey(plainKey []byte, strategy RootKeyEncrypti
 	}
 }
 
-func (s *SharedService) decryptRootKey(config *model.KmsRootConfig) ([]byte, error) {
+func (s *SharedService) decryptRootKey(rootCfg *model.KmsRootConfig) ([]byte, error) {
 	strategy := StrategySoftware
-	if config.EncryptionStrategy.Valid {
-		strategy = RootKeyEncryptionStrategy(config.EncryptionStrategy.V)
+	if rootCfg.EncryptionStrategy.Valid {
+		strategy = RootKeyEncryptionStrategy(rootCfg.EncryptionStrategy.V)
 	}
 
 	switch strategy {
@@ -320,13 +324,13 @@ func (s *SharedService) decryptRootKey(config *model.KmsRootConfig) ([]byte, err
 		if !s.hsm.IsActive() {
 			return nil, fmt.Errorf("KMS: HSM service is not active")
 		}
-		return s.hsm.Decrypt(config.EncryptedRootKey)
+		return s.hsm.Decrypt(rootCfg.EncryptedRootKey)
 	case StrategySoftware:
 		if len(s.encryptionKey) == 0 {
 			return nil, fmt.Errorf("KMS: ENCRYPTION_KEY / ROOT_ENCRYPTION_KEY not set")
 		}
 		// Root key is encrypted with AES-GCM (no version suffix).
-		return cipher.SymmetricDecrypt(config.EncryptedRootKey, s.encryptionKey)
+		return cipher.SymmetricDecrypt(rootCfg.EncryptedRootKey, s.encryptionKey)
 	default:
 		return nil, fmt.Errorf("KMS: unknown encryption strategy: %s", strategy)
 	}

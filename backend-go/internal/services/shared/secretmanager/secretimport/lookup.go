@@ -8,11 +8,11 @@ import (
 
 // ImportEntry represents a single secret import configured on a folder.
 type ImportEntry struct {
-	ID          uuid.UUID
-	FolderID    uuid.UUID
-	ImportPath  string
-	ImportEnvID uuid.UUID
-	Position    int32
+	ID            uuid.UUID
+	FolderID      uuid.UUID
+	ImportPath    string
+	ImportEnvID   uuid.UUID
+	Position      int32
 	IsReplication bool
 	IsReserved    bool
 }

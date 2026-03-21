@@ -9,7 +9,7 @@ import (
 )
 
 type permissionGetter interface {
-	GetProjectPermission(ctx context.Context, args permission.GetProjectPermissionArgs) (*permission.GetProjectPermissionResult, error)
+	GetProjectPermission(ctx context.Context, args *permission.GetProjectPermissionArgs) (*permission.GetProjectPermissionResult, error)
 }
 
 type service struct {
@@ -17,10 +17,15 @@ type service struct {
 	permission permissionGetter
 }
 
-func NewService(logger *slog.Logger, permission permissionGetter) genprojects.Service {
+// Deps holds the dependencies for the projects service.
+type Deps struct {
+	Permission permissionGetter
+}
+
+func NewService(logger *slog.Logger, deps Deps) genprojects.Service {
 	return &service{
 		logger:     logger.With("service", "projects"),
-		permission: permission,
+		permission: deps.Permission,
 	}
 }
 

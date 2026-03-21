@@ -3,6 +3,7 @@ package license
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
@@ -38,7 +39,7 @@ func (d *DAL) FindRootOrgDetails(ctx context.Context, orgID string) (*orgRow, er
 	var row orgRow
 	err := stmt.QueryContext(ctx, d.db.Primary(), &row)
 	if err != nil {
-		if err == qrm.ErrNoRows {
+		if errors.Is(err, qrm.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -53,7 +54,7 @@ func (d *DAL) FindRootOrgDetails(ctx context.Context, orgID string) (*orgRow, er
 		var rootRow orgRow
 		err := rootStmt.QueryContext(ctx, d.db.Primary(), &rootRow)
 		if err != nil {
-			if err == qrm.ErrNoRows {
+			if errors.Is(err, qrm.ErrNoRows) {
 				return nil, nil
 			}
 			return nil, err

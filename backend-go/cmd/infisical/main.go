@@ -13,6 +13,7 @@ import (
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/libs/bootstrap"
+	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/server"
 	"github.com/infisical/api/internal/services"
 	"github.com/infisical/api/internal/services/shared"
@@ -47,20 +48,22 @@ func main() {
 		logger.Error("failed to initialize database", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer errutil.DeferErr(ctx, db.Close, "closing database")
 
 	dbReport := bootstrap.CheckDBConnection(ctx, db)
 	dbReport.PrintReport(logger)
 
 	svc, err := services.NewRegistry(ctx, logger, db, shared.SharedServicesDeps{
-		Logger: logger,
-		Config: cfg,
-		DB:     db,
+		Logger:   logger,
+		Config:   cfg,
+		DB:       db,
+		HSM:      nil,
+		KeyStore: nil,
 	})
 
 	if err != nil {
 		logger.Error("failed to initialize services", "error", err)
-		os.Exit(1)
+		return
 	}
 	// Create server.
 	srv := server.NewServer(svc, logger)

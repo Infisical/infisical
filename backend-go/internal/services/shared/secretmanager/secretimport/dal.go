@@ -3,6 +3,7 @@ package secretimport
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
@@ -55,7 +56,7 @@ func (d *DAL) GetImportsByProjectID(ctx context.Context, projectID string) ([]im
 	var rows []importRow
 	err := stmt.QueryContext(ctx, d.db.Primary(), &rows)
 	if err != nil {
-		if err == qrm.ErrNoRows {
+		if errors.Is(err, qrm.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err

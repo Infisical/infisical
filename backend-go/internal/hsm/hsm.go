@@ -7,6 +7,7 @@
 package hsm
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
 	"errors"
@@ -265,7 +266,7 @@ func (s *Service) selfTest() error {
 		return fmt.Errorf("test decryption: %w", err)
 	}
 
-	if string(testData) != string(decrypted) {
+	if !bytes.Equal(testData, decrypted) {
 		return errors.New("decrypted data does not match original")
 	}
 
