@@ -22,6 +22,7 @@ export const useCreateIdentityProjectAdditionalPrivilege = () => {
       queryClient.invalidateQueries({
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
+      queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
     }
   });
 };
@@ -48,6 +49,7 @@ export const useUpdateIdentityProjectAdditionalPrivilege = () => {
       queryClient.invalidateQueries({
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
+      queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
     }
   });
 };
@@ -73,6 +75,7 @@ export const useDeleteIdentityProjectAdditionalPrivilege = () => {
       queryClient.invalidateQueries({
         queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId })
       });
+      queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
     }
   });
 };

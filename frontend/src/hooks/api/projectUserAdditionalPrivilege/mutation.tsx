@@ -22,6 +22,7 @@ export const useCreateProjectUserAdditionalPrivilege = () => {
       queryClient.invalidateQueries({
         queryKey: projectUserPrivilegeKeys.list(projectMembershipId)
       });
+      queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
     }
   });
 };
@@ -41,6 +42,7 @@ export const useUpdateProjectUserAdditionalPrivilege = () => {
       queryClient.invalidateQueries({
         queryKey: projectUserPrivilegeKeys.list(projectMembershipId)
       });
+      queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
     }
   });
 };
@@ -59,6 +61,7 @@ export const useDeleteProjectUserAdditionalPrivilege = () => {
       queryClient.invalidateQueries({
         queryKey: projectUserPrivilegeKeys.list(projectMembershipId)
       });
+      queryClient.invalidateQueries({ queryKey: ["secret-access-list"] });
     }
   });
 };

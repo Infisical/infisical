@@ -193,7 +193,7 @@ export const PolicyTemplateModal = ({ isOpen, onOpenChange, type }: Props) => {
       <ModalContent
         title="Policy Templates"
         subTitle="Select a template with prepopulated policies to get started. You can always add more policies later."
-        className="max-w-3xl"
+        className="z-60 max-w-3xl"
       >
         <Content onClose={() => onOpenChange(false)} type={type} />
       </ModalContent>

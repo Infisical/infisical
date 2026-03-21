@@ -318,7 +318,7 @@ export const VaultPolicyImportModal = ({ isOpen, onOpenChange }: Props) => {
       <ModalContent
         title="Import from HashiCorp Vault"
         subTitle="Select a policy from your Vault namespace or paste your own HCL policy to translate it into Infisical permissions."
-        className="max-w-4xl"
+        className="z-60 max-w-4xl"
       >
         <Content onClose={() => onOpenChange(false)} />
       </ModalContent>
