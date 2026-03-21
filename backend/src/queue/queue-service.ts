@@ -1,6 +1,7 @@
 import { Job, JobSchedulerJson, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TQueueJobs } from "@app/db/schemas";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
@@ -260,7 +261,7 @@ export type TQueueJobTypes = {
     payload: {
       certificateId: string;
       projectId: string;
-      eventType: string;
+      eventType: PkiAlertEventType;
     };
   };
   [QueueName.PkiSyncCleanup]: {

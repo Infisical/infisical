@@ -799,14 +799,18 @@ export const pkiAlertV2ServiceFactory = ({
 
     const filters = (alert.filters ?? []) as TPkiFilterRule[];
 
-    const matchingCertificates: TCertificatePreview[] = [];
+    const allCertificates: TCertificatePreview[] = [];
     for (const certId of certificateIds) {
       // eslint-disable-next-line no-await-in-loop
       const { certificates } = await pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
         certificateId: certId
       });
-      matchingCertificates.push(...certificates);
+      allCertificates.push(...certificates);
     }
+
+    const matchingCertificates = allCertificates.filter(
+      (cert) => cert.enrollmentType !== CertificateOrigin.CA
+    );
 
     if (matchingCertificates.length === 0) return;
 

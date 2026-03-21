@@ -194,7 +194,11 @@ export const pkiAlertV2QueueServiceFactory = ({
     );
   };
 
-  const processEventAlert = async (payload: { certificateId: string; projectId: string; eventType: string }) => {
+  const processEventAlert = async (payload: {
+    certificateId: string;
+    projectId: string;
+    eventType: PkiAlertEventType;
+  }) => {
     const { certificateId, projectId, eventType } = payload;
 
     const alerts = await pkiAlertV2DAL.findByProjectId(projectId, {
@@ -206,12 +210,16 @@ export const pkiAlertV2QueueServiceFactory = ({
 
     for (const alert of alerts) {
       try {
-        await pkiAlertV2Service.sendEventNotifications(alert.id, [certificateId], eventType as PkiAlertEventType);
+        await pkiAlertV2Service.sendEventNotifications(alert.id, [certificateId], eventType);
         logger.info(
-          `Sent ${eventType} notification for alert ${alert.id} (${alert.name}) for certificate ${certificateId}`
+          { alertId: alert.id, alertName: alert.name, certificateId, eventType },
+          "Sent PKI event notification"
         );
       } catch (error) {
-        logger.error(error, `Failed to process ${eventType} alert ${alert.id} for certificate ${certificateId}`);
+        logger.error(
+          { alertId: alert.id, certificateId, eventType, error },
+          "Failed to process PKI event alert"
+        );
       }
     }
   };
