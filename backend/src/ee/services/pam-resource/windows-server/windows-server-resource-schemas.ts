@@ -35,6 +35,11 @@ export const WindowsResourceConnectionDetailsSchema = z.object({
     .string()
     .trim()
     .transform((val) => val || undefined)
+    .optional(),
+  winrmTlsServerName: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
     .optional()
 });
 

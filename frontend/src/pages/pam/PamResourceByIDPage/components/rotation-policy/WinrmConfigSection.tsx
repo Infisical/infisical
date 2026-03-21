@@ -18,10 +18,12 @@ type Props = {
   useWinrmHttps: boolean;
   winrmRejectUnauthorized: boolean;
   winrmCaCert: string;
+  winrmTlsServerName: string;
   onWinrmPortChange: (port: number) => void;
   onUseWinrmHttpsChange: (value: boolean) => void;
   onWinrmRejectUnauthorizedChange: (value: boolean) => void;
   onWinrmCaCertChange: (value: string) => void;
+  onWinrmTlsServerNameChange: (value: string) => void;
 };
 
 export const WinrmConfigSection = ({
@@ -29,10 +31,12 @@ export const WinrmConfigSection = ({
   useWinrmHttps,
   winrmRejectUnauthorized,
   winrmCaCert,
+  winrmTlsServerName,
   onWinrmPortChange,
   onUseWinrmHttpsChange,
   onWinrmRejectUnauthorizedChange,
-  onWinrmCaCertChange
+  onWinrmCaCertChange,
+  onWinrmTlsServerNameChange
 }: Props) => {
   return (
     <div className="flex flex-col gap-3">
@@ -102,6 +106,29 @@ export const WinrmConfigSection = ({
           checked={useWinrmHttps ? winrmRejectUnauthorized : false}
           onCheckedChange={onWinrmRejectUnauthorizedChange}
         />
+      </Field>
+
+      <Field>
+        <FieldLabel>
+          TLS Server Name
+          <Tooltip>
+            <TooltipTrigger>
+              <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+            </TooltipTrigger>
+            <TooltipContent>
+              The expected hostname in the server&apos;s TLS certificate. Required when connecting
+              via IP address and Reject Unauthorized is enabled.
+            </TooltipContent>
+          </Tooltip>
+        </FieldLabel>
+        <FieldContent>
+          <UnstableInput
+            value={winrmTlsServerName}
+            onChange={(e) => onWinrmTlsServerNameChange(e.target.value)}
+            placeholder="server.corp.example.com"
+            disabled={!useWinrmHttps || !winrmRejectUnauthorized}
+          />
+        </FieldContent>
       </Field>
     </div>
   );

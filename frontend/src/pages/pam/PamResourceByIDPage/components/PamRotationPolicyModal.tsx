@@ -97,12 +97,14 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
       useWinrmHttps?: boolean;
       winrmRejectUnauthorized?: boolean;
       winrmCaCert?: string;
+      winrmTlsServerName?: string;
     };
     return {
       winrmPort: cd.winrmPort ?? 5985,
       useWinrmHttps: cd.useWinrmHttps ?? false,
       winrmRejectUnauthorized: cd.winrmRejectUnauthorized ?? true,
-      winrmCaCert: cd.winrmCaCert ?? ""
+      winrmCaCert: cd.winrmCaCert ?? "",
+      winrmTlsServerName: cd.winrmTlsServerName ?? ""
     };
   };
   const [winrmPort, setWinrmPort] = useState(() => getWinrmDefaults().winrmPort);
@@ -111,6 +113,9 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
     () => getWinrmDefaults().winrmRejectUnauthorized
   );
   const [winrmCaCert, setWinrmCaCert] = useState(() => getWinrmDefaults().winrmCaCert);
+  const [winrmTlsServerName, setWinrmTlsServerName] = useState(
+    () => getWinrmDefaults().winrmTlsServerName
+  );
 
   // Rules
   const [localRules, setLocalRules] = useState<LocalRule[]>([]);
@@ -152,6 +157,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
     setUseWinrmHttps(wd.useWinrmHttps);
     setWinrmRejectUnauthorized(wd.winrmRejectUnauthorized);
     setWinrmCaCert(wd.winrmCaCert);
+    setWinrmTlsServerName(wd.winrmTlsServerName);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rules, resource, hasRotationCredentials, resetCred]);
 
@@ -212,7 +218,8 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
     (winrmPort !== wd.winrmPort ||
       useWinrmHttps !== wd.useWinrmHttps ||
       winrmRejectUnauthorized !== wd.winrmRejectUnauthorized ||
-      (winrmCaCert || "") !== (wd.winrmCaCert || ""));
+      (winrmCaCert || "") !== (wd.winrmCaCert || "") ||
+      (winrmTlsServerName || "") !== (wd.winrmTlsServerName || ""));
 
   const isRulesDirty = (() => {
     if (deletedRuleIds.length > 0) return true;
@@ -256,7 +263,8 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
           winrmPort,
           useWinrmHttps,
           winrmRejectUnauthorized,
-          winrmCaCert: winrmCaCert || undefined
+          winrmCaCert: winrmCaCert || undefined,
+          winrmTlsServerName: winrmTlsServerName || undefined
         };
       }
 
@@ -441,6 +449,8 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
               onUseWinrmHttpsChange={setUseWinrmHttps}
               onWinrmRejectUnauthorizedChange={setWinrmRejectUnauthorized}
               onWinrmCaCertChange={setWinrmCaCert}
+              winrmTlsServerName={winrmTlsServerName}
+              onWinrmTlsServerNameChange={setWinrmTlsServerName}
             />
           )}
 

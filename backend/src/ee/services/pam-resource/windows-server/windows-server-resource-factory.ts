@@ -17,11 +17,7 @@ import {
   TPamResourceFactoryValidateAccountCredentials,
   TPostRotateContext
 } from "../pam-resource-types";
-import {
-  escapePowershellSingleQuote,
-  syncDependenciesAfterRotation,
-  WINRM_DEFAULT_HTTP_PORT
-} from "../shared/dependency-sync-fns";
+import { escapePowershellSingleQuote, syncDependenciesAfterRotation } from "../shared/dependency-sync-fns";
 import {
   TWindowsAccountCredentials,
   TWindowsResourceConnectionDetails,
@@ -150,8 +146,8 @@ export const windowsResourceFactory: TPamResourceFactory<
     const escapedNewPassword = escapePowershellSingleQuote(newPassword);
     const escapedUsername = escapePowershellSingleQuote(currentCredentials.username);
 
-    const winrmPort = connectionDetails.winrmPort ?? WINRM_DEFAULT_HTTP_PORT;
-    const useWinrmHttps = connectionDetails.useWinrmHttps ?? false;
+    const winrmPort = connectionDetails.winrmPort;
+    const useWinrmHttps = connectionDetails.useWinrmHttps;
 
     await executeWithGateway(
       { connectionDetails, gatewayId, resourceType, targetPortOverride: winrmPort },
@@ -170,7 +166,8 @@ export const windowsResourceFactory: TPamResourceFactory<
           proxyPort,
           useWinrmHttps,
           useWinrmHttps ? connectionDetails.winrmRejectUnauthorized : undefined,
-          connectionDetails.winrmCaCert
+          connectionDetails.winrmCaCert,
+          connectionDetails.winrmTlsServerName
         );
 
         logger.info(
@@ -198,10 +195,7 @@ export const windowsResourceFactory: TPamResourceFactory<
       ctx,
       gatewayV2Service,
       rotationCredentials: rotationAccountCredentials,
-      gatewayId,
-      winrmPort: connectionDetails.winrmPort,
-      useWinrmHttps: connectionDetails.useWinrmHttps,
-      winrmCaCert: connectionDetails.winrmCaCert
+      gatewayId
     });
   };
 

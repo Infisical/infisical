@@ -13,9 +13,7 @@ import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { PamAccountDependencyType, PamDependencySyncStatus } from "../../pam-discovery/pam-discovery-enums";
 import { decryptResource } from "../pam-resource-fns";
 import { TPostRotateContext } from "../pam-resource-types";
-
-export const WINRM_DEFAULT_HTTP_PORT = 5985;
-export const WINRM_DEFAULT_HTTPS_PORT = 5986;
+import { TWindowsResourceConnectionDetails } from "../windows-server/windows-server-resource-types";
 
 const SINGLE_QUOTE_RE = new RE2("'", "g");
 const NEWLINE_RE = new RE2("[\\r\\n]", "g");
@@ -90,11 +88,16 @@ type TSyncDependenciesParams = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   rotationCredentials: { username: string; password: string };
   gatewayId: string;
-  winrmPort?: number;
-  useWinrmHttps?: boolean;
-  winrmCaCert?: string;
   resolveHostname?: (hostname: string) => Promise<string>;
   formatWinrmUsername?: (rotationUsername: string, hostname: string, resourceType: string) => string;
+};
+
+type TWinrmConfig = {
+  winrmPort: number;
+  useWinrmHttps: boolean;
+  winrmRejectUnauthorized: boolean;
+  winrmCaCert?: string;
+  winrmTlsServerName?: string;
 };
 
 export const syncDependenciesAfterRotation = async ({
@@ -105,13 +108,9 @@ export const syncDependenciesAfterRotation = async ({
   gatewayV2Service,
   rotationCredentials,
   gatewayId,
-  winrmPort,
-  useWinrmHttps = false,
-  winrmCaCert,
   resolveHostname,
   formatWinrmUsername
 }: TSyncDependenciesParams) => {
-  const effectiveWinrmPort = winrmPort ?? (useWinrmHttps ? WINRM_DEFAULT_HTTPS_PORT : WINRM_DEFAULT_HTTP_PORT);
   const allDeps = await ctx.pamAccountDependenciesDAL.findByAccountId(accountId);
   const enabledDeps = allDeps.filter((d) => d.isRotationSyncEnabled);
   if (!enabledDeps.length) return;
@@ -164,12 +163,25 @@ export const syncDependenciesAfterRotation = async ({
         return;
       }
 
-      // Get hostname from the target resource's connection details
+      // Get hostname and WinRM config from the target resource's connection details
       let hostname: string | null = null;
+      let winrmConfig: TWinrmConfig = {
+        winrmPort: 5986,
+        useWinrmHttps: true,
+        winrmRejectUnauthorized: true
+      };
+
       try {
         const decrypted = await decryptResource(resource, projectId, ctx.kmsService);
-        const connDetails = decrypted.connectionDetails as { hostname?: string; domain?: string };
-        hostname = connDetails.hostname ?? connDetails.domain ?? null;
+        const connDetails = decrypted.connectionDetails as TWindowsResourceConnectionDetails;
+        hostname = connDetails.hostname;
+        winrmConfig = {
+          winrmPort: connDetails.winrmPort,
+          useWinrmHttps: connDetails.useWinrmHttps,
+          winrmRejectUnauthorized: connDetails.winrmRejectUnauthorized,
+          winrmCaCert: connDetails.winrmCaCert,
+          winrmTlsServerName: connDetails.winrmTlsServerName
+        };
       } catch (err) {
         logger.error(err, `[DependencySync] Failed to decrypt resource ${resourceId}`);
         await failAllDeps(deps, `Failed to decrypt resource connection details`);
@@ -215,7 +227,7 @@ export const syncDependenciesAfterRotation = async ({
           const depConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
             gatewayId,
             targetHost,
-            targetPort: effectiveWinrmPort
+            targetPort: winrmConfig.winrmPort
           });
 
           if (!depConnectionDetails) {
@@ -251,9 +263,10 @@ export const syncDependenciesAfterRotation = async ({
                 winrmUsername,
                 rotationCredentials.password,
                 proxyPort,
-                useWinrmHttps,
-                false,
-                winrmCaCert
+                winrmConfig.useWinrmHttps,
+                winrmConfig.winrmRejectUnauthorized,
+                winrmConfig.winrmCaCert,
+                winrmConfig.winrmTlsServerName
               );
             },
             {

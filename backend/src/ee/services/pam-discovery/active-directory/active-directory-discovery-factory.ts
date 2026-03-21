@@ -656,6 +656,7 @@ const executeWinRmLocalAccountEnumeration = async (
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
       const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
       const script = `Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordLastSet, Description, SID | ConvertTo-Json`;
+      // Use machine's DNS hostname as TLS servername for cert verification
       const stdout = await runPowershell(
         script,
         "localhost",
@@ -664,7 +665,8 @@ const executeWinRmLocalAccountEnumeration = async (
         proxyPort,
         useWinrmHttps,
         winrmRejectUnauthorized,
-        winrmCaCert
+        winrmCaCert,
+        hostname
       );
 
       if (!stdout.trim()) {
@@ -697,6 +699,7 @@ const executeWinRmDependencyEnumeration = async (
     async (proxyPort) => {
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
       const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
+      // Use machine's DNS hostname as TLS servername for cert verification
       const stdout = await runPowershell(
         DEPENDENCY_ENUMERATION_SCRIPT,
         "localhost",
@@ -705,7 +708,8 @@ const executeWinRmDependencyEnumeration = async (
         proxyPort,
         useWinrmHttps,
         winrmRejectUnauthorized,
-        winrmCaCert
+        winrmCaCert,
+        hostname
       );
 
       if (!stdout.trim()) {
