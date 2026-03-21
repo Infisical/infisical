@@ -14,16 +14,17 @@ import (
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/libs/bootstrap"
 	"github.com/infisical/api/internal/libs/errutil"
+	"github.com/infisical/api/internal/libs/logutil"
 	"github.com/infisical/api/internal/server"
 	"github.com/infisical/api/internal/services"
 	"github.com/infisical/api/internal/services/shared"
 )
 
 func main() {
-	// Setup structured JSON logger.
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	// Setup structured JSON logger with context enrichment (e.g. request ID).
+	logger := slog.New(logutil.NewContextHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: config.GetConfiguredSlogLevel(),
-	}))
+	})))
 	slog.SetDefault(logger)
 
 	// Load configuration.
@@ -31,12 +32,12 @@ func main() {
 	if err != nil {
 		var validationErr *config.ValidationError
 		if errors.As(err, &validationErr) {
-			slog.Error("invalid environment variables")
+			slog.ErrorContext(context.Background(), "invalid environment variables")
 			for _, issue := range validationErr.Issues {
-				slog.Error("  " + issue)
+				slog.ErrorContext(context.Background(), "  "+issue)
 			}
 		} else {
-			slog.Error("failed to load config", slog.Any("error", err))
+			slog.ErrorContext(context.Background(), "failed to load config", slog.Any("error", err))
 		}
 		os.Exit(1)
 	}
@@ -45,7 +46,7 @@ func main() {
 	ctx := context.Background()
 	db, err := pg.NewPostgresDB(ctx, cfg.DBConnectionURI, cfg.DBRootCert, cfg.DBReadReplicas)
 	if err != nil {
-		logger.Error("failed to initialize database", slog.Any("error", err))
+		logger.ErrorContext(ctx, "failed to initialize database", slog.Any("error", err))
 		os.Exit(1)
 	}
 	defer errutil.DeferErr(ctx, db.Close, "closing database")
@@ -62,7 +63,7 @@ func main() {
 	})
 
 	if err != nil {
-		logger.Error("failed to initialize services", slog.Any("error", err))
+		logger.ErrorContext(ctx, "failed to initialize services", slog.Any("error", err))
 		return
 	}
 	// Create server.
@@ -85,11 +86,11 @@ func main() {
 	srv.Listen(ctx, cfg.Addr(), &wg, errc)
 
 	// Wait for signal.
-	logger.Info("exiting", slog.Any("reason", <-errc))
+	logger.InfoContext(ctx, "exiting", slog.Any("reason", <-errc))
 
 	// Send cancellation signal to server goroutines.
 	cancel()
 	wg.Wait()
 
-	logger.Info("server stopped")
+	logger.InfoContext(ctx, "server stopped")
 }

@@ -10,6 +10,7 @@ import (
 	goahttp "goa.design/goa/v3/http"
 
 	"github.com/infisical/api/internal/libs/errutil"
+	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/services"
 )
 
@@ -44,7 +45,10 @@ func NewServer(svc *services.Registry, logger *slog.Logger) *Server {
 }
 
 func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, errc chan error) {
-	var handler = requestLogger(s.mux, s.logger)
+	var handler http.Handler = s.mux
+	// the order is other way around. Last one wraps the previous one, so request ID is set before logging.
+	handler = requestLogger(handler, s.logger)
+	handler = requestid.Middleware(handler)
 
 	srv := &http.Server{
 		Addr:              addr,
@@ -55,18 +59,18 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	wg.Go(func() {
 
 		go func() {
-			s.logger.Info("HTTP server listening", slog.String("addr", addr))
+			s.logger.InfoContext(ctx, "HTTP server listening", slog.String("addr", addr))
 			errc <- srv.ListenAndServe()
 		}()
 
 		<-ctx.Done()
-		s.logger.Info("shutting down HTTP server", slog.String("addr", addr))
+		s.logger.InfoContext(ctx, "shutting down HTTP server", slog.String("addr", addr))
 
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		if err := srv.Shutdown(shutdownCtx); err != nil {
-			s.logger.Error("HTTP server shutdown error", slog.Any("error", err))
+			s.logger.ErrorContext(ctx, "HTTP server shutdown error", slog.Any("error", err))
 		}
 	})
 }
@@ -75,7 +79,8 @@ func requestLogger(next http.Handler, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		logger.Info("request",
+		logger.InfoContext(r.Context(), "request",
+			slog.String("reqId", requestid.FromContext(r.Context())),
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
 			slog.String("duration", time.Since(start).String()),
