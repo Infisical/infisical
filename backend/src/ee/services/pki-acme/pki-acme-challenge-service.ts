@@ -84,7 +84,10 @@ export const pkiAcmeChallengeServiceFactory = ({
       );
     }
     // IPv6 addresses need brackets in URLs (e.g., http://[::1]/)
-    const urlHost = host.includes(":") ? `[${host}]` : host;
+    // Only bracket if the host is a raw IPv6 address (contains ":" but is a valid IP),
+    // not if it's a hostname:port like "host.docker.internal:8087"
+    const isIPv6 = host.includes(":") && isValidIp(host);
+    const urlHost = isIPv6 ? `[${host}]` : host;
     const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, `http://${urlHost}`);
     logger.info({ challengeUrl }, "Performing ACME HTTP-01 challenge validation");
 
@@ -97,9 +100,10 @@ export const pkiAcmeChallengeServiceFactory = ({
       // In case if we override the host in the development mode, still provide the original host in the header
       // to help the upstream server to validate the request
       headers: {
-        Host: challenge.auth.identifierValue.includes(":")
-          ? `[${challenge.auth.identifierValue}]`
-          : challenge.auth.identifierValue
+        Host:
+          challenge.auth.identifierValue.includes(":") && isValidIp(challenge.auth.identifierValue)
+            ? `[${challenge.auth.identifierValue}]`
+            : challenge.auth.identifierValue
       },
       timeout: timeoutMs,
       responseType: "text",
