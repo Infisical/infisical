@@ -51,29 +51,35 @@ func ParseEndpoint(
 
 		projectsGetHealthFlags = flag.NewFlagSet("get-health", flag.ExitOnError)
 
-		projectsCreateProjectFlags    = flag.NewFlagSet("create-project", flag.ExitOnError)
-		projectsCreateProjectBodyFlag = projectsCreateProjectFlags.String("body", "REQUIRED", "")
+		projectsCreateProjectFlags     = flag.NewFlagSet("create-project", flag.ExitOnError)
+		projectsCreateProjectBodyFlag  = projectsCreateProjectFlags.String("body", "REQUIRED", "")
+		projectsCreateProjectTokenFlag = projectsCreateProjectFlags.String("token", "REQUIRED", "")
 
 		secretsFlags = flag.NewFlagSet("secrets", flag.ContinueOnError)
 
 		secretsGetHealthFlags = flag.NewFlagSet("get-health", flag.ExitOnError)
 
-		secretsCreateSecretFlags    = flag.NewFlagSet("create-secret", flag.ExitOnError)
-		secretsCreateSecretBodyFlag = secretsCreateSecretFlags.String("body", "REQUIRED", "")
+		secretsCreateSecretFlags     = flag.NewFlagSet("create-secret", flag.ExitOnError)
+		secretsCreateSecretBodyFlag  = secretsCreateSecretFlags.String("body", "REQUIRED", "")
+		secretsCreateSecretTokenFlag = secretsCreateSecretFlags.String("token", "REQUIRED", "")
 
-		secretsGetSecretFlags  = flag.NewFlagSet("get-secret", flag.ExitOnError)
-		secretsGetSecretIDFlag = secretsGetSecretFlags.String("id", "REQUIRED", "Secret ID")
+		secretsGetSecretFlags     = flag.NewFlagSet("get-secret", flag.ExitOnError)
+		secretsGetSecretIDFlag    = secretsGetSecretFlags.String("id", "REQUIRED", "Secret ID")
+		secretsGetSecretTokenFlag = secretsGetSecretFlags.String("token", "REQUIRED", "")
 
-		secretsUpdateSecretFlags    = flag.NewFlagSet("update-secret", flag.ExitOnError)
-		secretsUpdateSecretBodyFlag = secretsUpdateSecretFlags.String("body", "REQUIRED", "")
-		secretsUpdateSecretIDFlag   = secretsUpdateSecretFlags.String("id", "REQUIRED", "Secret ID")
+		secretsUpdateSecretFlags     = flag.NewFlagSet("update-secret", flag.ExitOnError)
+		secretsUpdateSecretBodyFlag  = secretsUpdateSecretFlags.String("body", "REQUIRED", "")
+		secretsUpdateSecretIDFlag    = secretsUpdateSecretFlags.String("id", "REQUIRED", "Secret ID")
+		secretsUpdateSecretTokenFlag = secretsUpdateSecretFlags.String("token", "REQUIRED", "")
 
-		secretsDeleteSecretFlags  = flag.NewFlagSet("delete-secret", flag.ExitOnError)
-		secretsDeleteSecretIDFlag = secretsDeleteSecretFlags.String("id", "REQUIRED", "Secret ID")
+		secretsDeleteSecretFlags     = flag.NewFlagSet("delete-secret", flag.ExitOnError)
+		secretsDeleteSecretIDFlag    = secretsDeleteSecretFlags.String("id", "REQUIRED", "Secret ID")
+		secretsDeleteSecretTokenFlag = secretsDeleteSecretFlags.String("token", "REQUIRED", "")
 
 		secretsListSecretsFlags           = flag.NewFlagSet("list-secrets", flag.ExitOnError)
 		secretsListSecretsProjectIDFlag   = secretsListSecretsFlags.String("project-id", "REQUIRED", "")
 		secretsListSecretsEnvironmentFlag = secretsListSecretsFlags.String("environment", "REQUIRED", "")
+		secretsListSecretsTokenFlag       = secretsListSecretsFlags.String("token", "REQUIRED", "")
 	)
 	projectsFlags.Usage = projectsUsage
 	projectsGetHealthFlags.Usage = projectsGetHealthUsage
@@ -180,7 +186,7 @@ func ParseEndpoint(
 				endpoint = c.GetHealth()
 			case "create-project":
 				endpoint = c.CreateProject()
-				data, err = projectsc.BuildCreateProjectPayload(*projectsCreateProjectBodyFlag)
+				data, err = projectsc.BuildCreateProjectPayload(*projectsCreateProjectBodyFlag, *projectsCreateProjectTokenFlag)
 			}
 		case "secrets":
 			c := secretsc.NewClient(scheme, host, doer, enc, dec, restore)
@@ -189,19 +195,19 @@ func ParseEndpoint(
 				endpoint = c.GetHealth()
 			case "create-secret":
 				endpoint = c.CreateSecret()
-				data, err = secretsc.BuildCreateSecretPayload(*secretsCreateSecretBodyFlag)
+				data, err = secretsc.BuildCreateSecretPayload(*secretsCreateSecretBodyFlag, *secretsCreateSecretTokenFlag)
 			case "get-secret":
 				endpoint = c.GetSecret()
-				data, err = secretsc.BuildGetSecretPayload(*secretsGetSecretIDFlag)
+				data, err = secretsc.BuildGetSecretPayload(*secretsGetSecretIDFlag, *secretsGetSecretTokenFlag)
 			case "update-secret":
 				endpoint = c.UpdateSecret()
-				data, err = secretsc.BuildUpdateSecretPayload(*secretsUpdateSecretBodyFlag, *secretsUpdateSecretIDFlag)
+				data, err = secretsc.BuildUpdateSecretPayload(*secretsUpdateSecretBodyFlag, *secretsUpdateSecretIDFlag, *secretsUpdateSecretTokenFlag)
 			case "delete-secret":
 				endpoint = c.DeleteSecret()
-				data, err = secretsc.BuildDeleteSecretPayload(*secretsDeleteSecretIDFlag)
+				data, err = secretsc.BuildDeleteSecretPayload(*secretsDeleteSecretIDFlag, *secretsDeleteSecretTokenFlag)
 			case "list-secrets":
 				endpoint = c.ListSecrets()
-				data, err = secretsc.BuildListSecretsPayload(*secretsListSecretsProjectIDFlag, *secretsListSecretsEnvironmentFlag)
+				data, err = secretsc.BuildListSecretsPayload(*secretsListSecretsProjectIDFlag, *secretsListSecretsEnvironmentFlag, *secretsListSecretsTokenFlag)
 			}
 		}
 	}
@@ -243,6 +249,7 @@ func projectsCreateProjectUsage() {
 	// Header with flags
 	fmt.Fprintf(os.Stderr, "%s [flags] projects create-project", os.Args[0])
 	fmt.Fprint(os.Stderr, " -body JSON")
+	fmt.Fprint(os.Stderr, " -token STRING")
 	fmt.Fprintln(os.Stderr)
 
 	// Description
@@ -251,10 +258,11 @@ func projectsCreateProjectUsage() {
 
 	// Flags list
 	fmt.Fprintln(os.Stderr, `    -body JSON: `)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "projects create-project --body '{\n      \"name\": \"a9\",\n      \"orgId\": \"Eius dolorum eius qui repellendus aperiam vel.\"\n   }'")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "projects create-project --body '{\n      \"name\": \"j1k\",\n      \"orgId\": \"Nostrum molestiae mollitia velit.\"\n   }' --token \"Rem sed corrupti ducimus mollitia ducimus quod.\"")
 }
 
 // secretsUsage displays the usage of the secrets command and its subcommands.
@@ -292,6 +300,7 @@ func secretsCreateSecretUsage() {
 	// Header with flags
 	fmt.Fprintf(os.Stderr, "%s [flags] secrets create-secret", os.Args[0])
 	fmt.Fprint(os.Stderr, " -body JSON")
+	fmt.Fprint(os.Stderr, " -token STRING")
 	fmt.Fprintln(os.Stderr)
 
 	// Description
@@ -300,16 +309,18 @@ func secretsCreateSecretUsage() {
 
 	// Flags list
 	fmt.Fprintln(os.Stderr, `    -body JSON: `)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets create-secret --body '{\n      \"environment\": \"Omnis et non.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Sed consequatur.\",\n      \"value\": \"Earum sed blanditiis est dolor.\"\n   }'")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets create-secret --body '{\n      \"environment\": \"Ducimus qui.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Ut aut.\",\n      \"value\": \"Dolor fugiat maxime nisi quas expedita.\"\n   }' --token \"Qui quasi ducimus vel.\"")
 }
 
 func secretsGetSecretUsage() {
 	// Header with flags
 	fmt.Fprintf(os.Stderr, "%s [flags] secrets get-secret", os.Args[0])
 	fmt.Fprint(os.Stderr, " -id STRING")
+	fmt.Fprint(os.Stderr, " -token STRING")
 	fmt.Fprintln(os.Stderr)
 
 	// Description
@@ -318,10 +329,11 @@ func secretsGetSecretUsage() {
 
 	// Flags list
 	fmt.Fprintln(os.Stderr, `    -id STRING: Secret ID`)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret --id \"Dolor est illo.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret --id \"Doloremque qui minus consequatur non aut officia.\" --token \"Voluptatem sunt et sed.\"")
 }
 
 func secretsUpdateSecretUsage() {
@@ -329,6 +341,7 @@ func secretsUpdateSecretUsage() {
 	fmt.Fprintf(os.Stderr, "%s [flags] secrets update-secret", os.Args[0])
 	fmt.Fprint(os.Stderr, " -body JSON")
 	fmt.Fprint(os.Stderr, " -id STRING")
+	fmt.Fprint(os.Stderr, " -token STRING")
 	fmt.Fprintln(os.Stderr)
 
 	// Description
@@ -338,16 +351,18 @@ func secretsUpdateSecretUsage() {
 	// Flags list
 	fmt.Fprintln(os.Stderr, `    -body JSON: `)
 	fmt.Fprintln(os.Stderr, `    -id STRING: Secret ID`)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets update-secret --body '{\n      \"key\": \"Omnis veniam.\",\n      \"value\": \"Explicabo et sed.\"\n   }' --id \"Eum est consequatur velit eaque quibusdam id.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets update-secret --body '{\n      \"key\": \"Voluptatibus officia magni et ducimus pariatur.\",\n      \"value\": \"Voluptas inventore est ut.\"\n   }' --id \"Quam rem.\" --token \"Quidem dolor recusandae voluptates et inventore.\"")
 }
 
 func secretsDeleteSecretUsage() {
 	// Header with flags
 	fmt.Fprintf(os.Stderr, "%s [flags] secrets delete-secret", os.Args[0])
 	fmt.Fprint(os.Stderr, " -id STRING")
+	fmt.Fprint(os.Stderr, " -token STRING")
 	fmt.Fprintln(os.Stderr)
 
 	// Description
@@ -356,10 +371,11 @@ func secretsDeleteSecretUsage() {
 
 	// Flags list
 	fmt.Fprintln(os.Stderr, `    -id STRING: Secret ID`)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets delete-secret --id \"Et velit quod.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets delete-secret --id \"Omnis exercitationem optio laborum voluptates sit.\" --token \"Eum autem.\"")
 }
 
 func secretsListSecretsUsage() {
@@ -367,6 +383,7 @@ func secretsListSecretsUsage() {
 	fmt.Fprintf(os.Stderr, "%s [flags] secrets list-secrets", os.Args[0])
 	fmt.Fprint(os.Stderr, " -project-id STRING")
 	fmt.Fprint(os.Stderr, " -environment STRING")
+	fmt.Fprint(os.Stderr, " -token STRING")
 	fmt.Fprintln(os.Stderr)
 
 	// Description
@@ -376,8 +393,9 @@ func secretsListSecretsUsage() {
 	// Flags list
 	fmt.Fprintln(os.Stderr, `    -project-id STRING: `)
 	fmt.Fprintln(os.Stderr, `    -environment STRING: `)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets --project-id \"Quia aspernatur necessitatibus blanditiis iure dolor labore.\" --environment \"Est aut aliquam placeat ducimus sit.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets --project-id \"Et et accusamus laborum vitae.\" --environment \"Molestiae dolores.\" --token \"Nihil harum in.\"")
 }

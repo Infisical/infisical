@@ -21,11 +21,15 @@ paths:
             description: Create a new project.
             operationId: projects#createProject
             parameters:
+                - name: Authorization
+                  in: header
+                  required: true
+                  type: string
                 - name: CreateProjectRequestBody
                   in: body
                   required: true
                   schema:
-                    $ref: '#/definitions/CreateProjectPayload'
+                    $ref: '#/definitions/ProjectsCreateProjectRequestBody'
                     required:
                         - name
                         - orgId
@@ -76,6 +80,10 @@ paths:
                             - error
             schemes:
                 - http
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
     /api/v1/platform/projects/health:
         get:
             tags:
@@ -148,6 +156,10 @@ paths:
                   description: Environment slug
                   required: true
                   type: string
+                - name: Authorization
+                  in: header
+                  required: true
+                  type: string
             responses:
                 "200":
                     description: OK response.
@@ -195,6 +207,10 @@ paths:
                             - error
             schemes:
                 - http
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
         post:
             tags:
                 - secrets
@@ -202,11 +218,15 @@ paths:
             description: Create a new secret.
             operationId: secrets#createSecret
             parameters:
+                - name: Authorization
+                  in: header
+                  required: true
+                  type: string
                 - name: CreateSecretRequestBody
                   in: body
                   required: true
                   schema:
-                    $ref: '#/definitions/Secret'
+                    $ref: '#/definitions/SecretsCreateSecretRequestBody'
                     required:
                         - key
                         - value
@@ -259,6 +279,10 @@ paths:
                             - error
             schemes:
                 - http
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
     /api/v1/secret-manager/secrets/{id}:
         get:
             tags:
@@ -270,6 +294,10 @@ paths:
                 - name: id
                   in: path
                   description: Secret ID
+                  required: true
+                  type: string
+                - name: Authorization
+                  in: header
                   required: true
                   type: string
             responses:
@@ -319,6 +347,10 @@ paths:
                             - error
             schemes:
                 - http
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
         delete:
             tags:
                 - secrets
@@ -329,6 +361,10 @@ paths:
                 - name: id
                   in: path
                   description: Secret ID
+                  required: true
+                  type: string
+                - name: Authorization
+                  in: header
                   required: true
                   type: string
             responses:
@@ -376,6 +412,10 @@ paths:
                             - error
             schemes:
                 - http
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
         patch:
             tags:
                 - secrets
@@ -386,6 +426,10 @@ paths:
                 - name: id
                   in: path
                   description: Secret ID
+                  required: true
+                  type: string
+                - name: Authorization
+                  in: header
                   required: true
                   type: string
                 - name: UpdateSecretRequestBody
@@ -440,6 +484,10 @@ paths:
                             - error
             schemes:
                 - http
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
     /api/v1/secret-manager/secrets/health:
         get:
             tags:
@@ -501,49 +549,30 @@ definitions:
         properties:
             details:
                 description: Optional structured details
-                example: Accusantium error veritatis minus quas.
+                example: Accusamus eveniet omnis et nisi eius cum.
             error:
                 type: string
                 description: Error class name
-                example: Cumque non rerum minima.
+                example: Consequuntur dicta deleniti ex voluptatem animi ullam.
             message:
                 type: string
                 description: Human-readable error message
-                example: Dolores et nihil harum.
+                example: Id sit est consectetur culpa.
             statusCode:
                 type: integer
                 description: HTTP status code
-                example: 5894983497943371786
+                example: 6552615694114024345
                 format: int64
         description: Invalid request
         example:
-            details: Reprehenderit autem.
-            error: Officiis laudantium vero dolor dignissimos molestiae laboriosam.
-            message: Eveniet magni est.
-            statusCode: 967567680778815670
+            details: Enim consequatur vero eum quisquam.
+            error: Consequatur dolorem pariatur quos dicta inventore.
+            message: In ab nisi.
+            statusCode: 1835525417397707347
         required:
             - statusCode
             - message
             - error
-    CreateProjectPayload:
-        title: CreateProjectPayload
-        type: object
-        properties:
-            name:
-                type: string
-                description: Project name
-                example: nj3
-                minLength: 1
-            orgId:
-                type: string
-                description: Organization ID
-                example: Aut esse nostrum.
-        example:
-            name: eq
-            orgId: Sunt ut similique quibusdam numquam dolorem cum.
-        required:
-            - name
-            - orgId
     Project:
         title: 'Mediatype identifier: application/vnd.project; view=default'
         type: object
@@ -551,22 +580,41 @@ definitions:
             id:
                 type: string
                 description: Project ID
-                example: Eius praesentium doloremque.
+                example: Soluta molestiae.
             name:
                 type: string
                 description: Project name
-                example: Eum recusandae.
+                example: Possimus numquam qui dolor id.
             orgId:
                 type: string
                 description: Organization ID
-                example: Culpa tempore.
+                example: Expedita molestiae ab dolore repellat ut praesentium.
         description: CreateProjectResponseBody result type (default view)
         example:
-            id: Dolores consequatur saepe.
-            name: Ullam iure molestiae.
-            orgId: Quam vitae fugiat ut aut.
+            id: Omnis suscipit qui inventore.
+            name: Nihil id aut ut autem soluta.
+            orgId: Necessitatibus accusamus dolor voluptatem architecto.
         required:
             - id
+            - name
+            - orgId
+    ProjectsCreateProjectRequestBody:
+        title: ProjectsCreateProjectRequestBody
+        type: object
+        properties:
+            name:
+                type: string
+                description: Project name
+                example: e
+                minLength: 1
+            orgId:
+                type: string
+                description: Organization ID
+                example: Facilis aut sed consequatur.
+        example:
+            name: 5h
+            orgId: Rerum sunt quod eaque.
+        required:
             - name
             - orgId
     Secret:
@@ -576,30 +624,30 @@ definitions:
             environment:
                 type: string
                 description: Environment slug
-                example: Delectus sed ex vel architecto.
+                example: Deleniti repellendus.
             id:
                 type: string
                 description: Secret ID
-                example: Qui facere ipsum dolor.
+                example: Voluptatem sapiente corrupti dignissimos officiis ut.
             key:
                 type: string
                 description: Secret key
-                example: Et reiciendis eligendi voluptatem incidunt.
+                example: Aperiam culpa voluptatum.
             projectId:
                 type: string
                 description: Project ID
-                example: Voluptas accusamus repellendus.
+                example: Quia magni atque voluptatem.
             value:
                 type: string
                 description: Secret value
-                example: Earum blanditiis consequatur fugiat qui.
+                example: Dolorem fuga quia.
         description: CreateSecretResponseBody result type (default view)
         example:
-            environment: Et nisi eius cum qui.
-            id: Ut ratione id.
-            key: Est consectetur culpa debitis consequuntur dicta.
-            projectId: In ab nisi.
-            value: Ex voluptatem animi ullam illum accusamus eveniet.
+            environment: Est ad alias quidem porro.
+            id: Harum fuga natus et.
+            key: Labore consequatur eveniet consequatur et.
+            projectId: Iste doloremque et.
+            value: In reiciendis tempora doloribus cupiditate repellendus alias.
         required:
             - id
             - key
@@ -613,32 +661,62 @@ definitions:
             environment:
                 type: string
                 description: Environment slug
-                example: Necessitatibus accusamus dolor voluptatem architecto.
+                example: Officiis voluptatum.
             id:
                 type: string
                 description: Secret ID
-                example: Expedita molestiae ab dolore repellat ut praesentium.
+                example: Deleniti id deserunt sint ut id.
             key:
                 type: string
                 description: Secret key
-                example: Omnis suscipit qui inventore.
+                example: Blanditiis occaecati vitae.
             projectId:
                 type: string
                 description: Project ID
-                example: Et aut facilis aut.
+                example: Debitis et delectus.
             value:
                 type: string
                 description: Secret value
-                example: Nihil id aut ut autem soluta.
+                example: Laboriosam distinctio.
         description: SecretResultResponse result type (default view)
         example:
-            environment: Aperiam culpa voluptatum.
-            id: Consequatur aut deleniti velit.
-            key: Rerum sunt quod eaque.
-            projectId: Dolorem fuga quia.
-            value: Voluptatem sapiente corrupti dignissimos officiis ut.
+            environment: Ad rerum repudiandae est.
+            id: Illo libero qui consequatur aut.
+            key: Et ipsam illum rerum voluptate.
+            projectId: Repudiandae hic temporibus qui eaque.
+            value: Aut alias eaque dolores ducimus.
         required:
             - id
+            - key
+            - value
+            - environment
+            - projectId
+    SecretsCreateSecretRequestBody:
+        title: SecretsCreateSecretRequestBody
+        type: object
+        properties:
+            environment:
+                type: string
+                description: Environment slug
+                example: Velit vel.
+            key:
+                type: string
+                description: Secret key
+                example: DATABASE_URL
+            projectId:
+                type: string
+                description: Project ID
+                example: Ratione vero reiciendis ut accusamus ipsa.
+            value:
+                type: string
+                description: Secret value
+                example: Esse ex nihil sit.
+        example:
+            environment: Laudantium quas itaque et et.
+            key: DATABASE_URL
+            projectId: Facilis deleniti voluptates.
+            value: Impedit sed nisi.
+        required:
             - key
             - value
             - environment
@@ -650,16 +728,21 @@ definitions:
             $ref: '#/definitions/SecretResultResponse'
         description: ListSecretsResponseBody is the result type for an array of SecretResultResponse (default view)
         example:
-            - environment: Maxime est quo iure.
-              id: Sequi id quidem necessitatibus velit.
-              key: Ut repellat et nihil alias veritatis maiores.
-              projectId: Nisi iusto voluptas non aliquam ipsam consequatur.
-              value: Aliquam impedit sint animi at quia voluptas.
-            - environment: Maxime est quo iure.
-              id: Sequi id quidem necessitatibus velit.
-              key: Ut repellat et nihil alias veritatis maiores.
-              projectId: Nisi iusto voluptas non aliquam ipsam consequatur.
-              value: Aliquam impedit sint animi at quia voluptas.
+            - environment: Voluptas molestias ad est.
+              id: Nulla et.
+              key: Sint neque placeat suscipit delectus ea eligendi.
+              projectId: Qui harum ut quo sint voluptates temporibus.
+              value: Aut modi incidunt.
+            - environment: Voluptas molestias ad est.
+              id: Nulla et.
+              key: Sint neque placeat suscipit delectus ea eligendi.
+              projectId: Qui harum ut quo sint voluptates temporibus.
+              value: Aut modi incidunt.
+            - environment: Voluptas molestias ad est.
+              id: Nulla et.
+              key: Sint neque placeat suscipit delectus ea eligendi.
+              projectId: Qui harum ut quo sint voluptates temporibus.
+              value: Aut modi incidunt.
     SecretsUpdateSecretRequestBody:
         title: SecretsUpdateSecretRequestBody
         type: object
@@ -667,11 +750,27 @@ definitions:
             key:
                 type: string
                 description: Secret key
-                example: Consequatur dolorem pariatur quos dicta inventore.
+                example: Aliquid ipsum et est.
             value:
                 type: string
                 description: Secret value
-                example: Enim consequatur vero eum quisquam.
+                example: Eveniet eaque commodi aspernatur.
         example:
-            key: Soluta molestiae.
-            value: Possimus numquam qui dolor id.
+            key: Perspiciatis at et in.
+            value: Et consequatur ea.
+securityDefinitions:
+    identity_access_token_header_Authorization:
+        type: apiKey
+        description: 'Machine identity access token via Authorization: Bearer header'
+        name: Authorization
+        in: header
+    jwt_header_Authorization:
+        type: apiKey
+        description: 'User session JWT token via Authorization: Bearer header'
+        name: Authorization
+        in: header
+    service_token_header_Authorization:
+        type: apiKey
+        description: 'Service token via Authorization: Bearer header'
+        name: Authorization
+        in: header

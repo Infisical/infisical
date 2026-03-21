@@ -902,52 +902,58 @@ func NewListSecretsInternalErrorResponseBody(res *secrets.APIErrorResult) *ListS
 	return body
 }
 
-// NewCreateSecretSecret builds a secrets service createSecret endpoint payload.
-func NewCreateSecretSecret(body *CreateSecretRequestBody) *secrets.Secret {
-	v := &secrets.Secret{
+// NewCreateSecretPayload builds a secrets service createSecret endpoint
+// payload.
+func NewCreateSecretPayload(body *CreateSecretRequestBody, token string) *secrets.CreateSecretPayload {
+	v := &secrets.CreateSecretPayload{
 		Key:         *body.Key,
 		Value:       *body.Value,
 		Environment: *body.Environment,
 		ProjectID:   *body.ProjectID,
 	}
+	v.Token = token
 
 	return v
 }
 
 // NewGetSecretPayload builds a secrets service getSecret endpoint payload.
-func NewGetSecretPayload(id string) *secrets.GetSecretPayload {
+func NewGetSecretPayload(id string, token string) *secrets.GetSecretPayload {
 	v := &secrets.GetSecretPayload{}
 	v.ID = id
+	v.Token = token
 
 	return v
 }
 
 // NewUpdateSecretPayload builds a secrets service updateSecret endpoint
 // payload.
-func NewUpdateSecretPayload(body *UpdateSecretRequestBody, id string) *secrets.UpdateSecretPayload {
+func NewUpdateSecretPayload(body *UpdateSecretRequestBody, id string, token string) *secrets.UpdateSecretPayload {
 	v := &secrets.UpdateSecretPayload{
 		Key:   body.Key,
 		Value: body.Value,
 	}
 	v.ID = id
+	v.Token = token
 
 	return v
 }
 
 // NewDeleteSecretPayload builds a secrets service deleteSecret endpoint
 // payload.
-func NewDeleteSecretPayload(id string) *secrets.DeleteSecretPayload {
+func NewDeleteSecretPayload(id string, token string) *secrets.DeleteSecretPayload {
 	v := &secrets.DeleteSecretPayload{}
 	v.ID = id
+	v.Token = token
 
 	return v
 }
 
 // NewListSecretsPayload builds a secrets service listSecrets endpoint payload.
-func NewListSecretsPayload(projectID string, environment string) *secrets.ListSecretsPayload {
+func NewListSecretsPayload(projectID string, environment string, token string) *secrets.ListSecretsPayload {
 	v := &secrets.ListSecretsPayload{}
 	v.ProjectID = projectID
 	v.Environment = environment
+	v.Token = token
 
 	return v
 }

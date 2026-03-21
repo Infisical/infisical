@@ -19,13 +19,13 @@ import (
 
 // BuildCreateProjectPayload builds the payload for the projects createProject
 // endpoint from CLI flags.
-func BuildCreateProjectPayload(projectsCreateProjectBody string) (*projects.CreateProjectPayload, error) {
+func BuildCreateProjectPayload(projectsCreateProjectBody string, projectsCreateProjectToken string) (*projects.CreateProjectPayload, error) {
 	var err error
 	var body CreateProjectRequestBody
 	{
 		err = json.Unmarshal([]byte(projectsCreateProjectBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"name\": \"a9\",\n      \"orgId\": \"Eius dolorum eius qui repellendus aperiam vel.\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"name\": \"j1k\",\n      \"orgId\": \"Nostrum molestiae mollitia velit.\"\n   }'")
 		}
 		if utf8.RuneCountInString(body.Name) < 1 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.name", body.Name, utf8.RuneCountInString(body.Name), 1, true))
@@ -34,10 +34,15 @@ func BuildCreateProjectPayload(projectsCreateProjectBody string) (*projects.Crea
 			return nil, err
 		}
 	}
+	var token string
+	{
+		token = projectsCreateProjectToken
+	}
 	v := &projects.CreateProjectPayload{
 		Name:  body.Name,
 		OrgID: body.OrgID,
 	}
+	v.Token = token
 
 	return v, nil
 }

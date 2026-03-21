@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/infisical/api/internal/libs/authutil"
 	genprojects "github.com/infisical/api/internal/server/gen/projects"
 	"github.com/infisical/api/internal/services/shared/permission"
 )
@@ -13,6 +14,7 @@ type permissionGetter interface {
 }
 
 type service struct {
+	authutil.AuthHandler
 	logger     *slog.Logger
 	permission permissionGetter
 }

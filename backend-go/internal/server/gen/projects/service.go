@@ -12,6 +12,7 @@ import (
 	"context"
 
 	projectsviews "github.com/infisical/api/internal/server/gen/projects/views"
+	"goa.design/goa/v3/security"
 )
 
 // Service for managing projects.
@@ -20,6 +21,12 @@ type Service interface {
 	GetHealth(context.Context) (res string, err error)
 	// Create a new project.
 	CreateProject(context.Context, *CreateProjectPayload) (res *ProjectResult, err error)
+}
+
+// Auther defines the authorization functions to be implemented by the service.
+type Auther interface {
+	// JWTAuth implements the authorization logic for the JWT security scheme.
+	JWTAuth(ctx context.Context, token string, schema *security.JWTScheme) (context.Context, error)
 }
 
 // APIName is the name of the API as defined in the design.
@@ -52,6 +59,7 @@ type APIErrorResult struct {
 // CreateProjectPayload is the payload type of the projects service
 // createProject method.
 type CreateProjectPayload struct {
+	Token string
 	// Project name
 	Name string
 	// Organization ID
