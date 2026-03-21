@@ -1,12 +1,14 @@
-# Run integration tests — testcontainers handles docker lifecycle automatically
+# Run unit tests (no infra required)
 test:
-	TESTCONTAINERS_DEBUG=true go test -v ./internal/... -count=1 -race -timeout 300s
+	go test -v ./internal/... -count=1 -race -timeout 120s
 
-# Tear down shared test containers and remove state file.
-# Use this if tests misbehave or to free up ports.
-test-cleanup:
-	rm -f .test-infra-state.json .test-infra.lock
-	docker compose -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
+# Run integration tests — testcontainers spins up isolated containers per package
+test-integration:
+	go test -v -tags integration ./internal/... -count=1 -race -timeout 300s
+
+# Run all tests (unit + integration)
+test-all:
+	go test -v -tags integration ./internal/... -count=1 -race -timeout 300s
 
 # Generate Goa code from design DSL
 gen-goa:

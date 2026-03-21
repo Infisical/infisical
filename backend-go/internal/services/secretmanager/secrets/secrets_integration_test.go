@@ -1,3 +1,5 @@
+//go:build integration
+
 package secrets_test
 
 import (
@@ -11,19 +13,25 @@ import (
 	"github.com/infisical/api/internal/services/shared/permission"
 	smShared "github.com/infisical/api/internal/services/shared/secretmanager"
 	"github.com/infisical/api/internal/testutil"
+	"github.com/infisical/api/internal/testutil/infra"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	infra   *testutil.TestInfra
-	project *testutil.ProjectSeed
+	stack   *infra.Stack
+	project *infra.ProjectSeed
 )
 
 func TestMain(m *testing.M) {
-	infra = testutil.SetupInfra()
-	project = infra.MustCreateProject("secrets-test")
+	stack = infra.New().
+		WithPostgres().
+		WithRedis().
+		WithNodeJSApi().
+		MustStart()
+
+	project = stack.NodeJS().MustCreateProject("secrets-test")
 	code := m.Run()
-	infra.Teardown()
+	stack.Stop()
 	os.Exit(code)
 }
 
@@ -34,7 +42,7 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	permDAL := permission.NewDAL()
 	permLib := permission.NewSharedService(permDAL)
 
-	smSharedSvcs := smShared.NewSharedServices(smShared.SharedServicesDeps{DB: infra.DB})
+	smSharedSvcs := smShared.NewSharedServices(smShared.SharedServicesDeps{DB: stack.DB()})
 
 	svc := secrets.NewService(testutil.NopLogger(), permLib, smSharedSvcs.SecretFolder)
 
@@ -59,7 +67,7 @@ func TestCreateSecret(t *testing.T) {
 
 	var result map[string]any
 	mux.Request(t, http.MethodPost, "/api/v1/secret-manager/secrets").
-		WithAuth(infra.IdentityToken).
+		WithAuth(stack.NodeJS().IdentityToken()).
 		WithBody(map[string]any{
 			"key":         "DB_PASSWORD",
 			"value":       "s3cret",
@@ -79,7 +87,7 @@ func TestGetSecret(t *testing.T) {
 
 	var result map[string]any
 	mux.Request(t, http.MethodGet, "/api/v1/secret-manager/secrets/test-id-123").
-		WithAuth(infra.IdentityToken).
+		WithAuth(stack.NodeJS().IdentityToken()).
 		Do().
 		ExpectStatus(http.StatusOK).
 		ParseJSON(&result)
@@ -92,7 +100,7 @@ func TestUpdateSecret(t *testing.T) {
 
 	var result map[string]any
 	mux.Request(t, http.MethodPatch, "/api/v1/secret-manager/secrets/test-id-456").
-		WithAuth(infra.IdentityToken).
+		WithAuth(stack.NodeJS().IdentityToken()).
 		WithBody(map[string]any{
 			"key":   "UPDATED_KEY",
 			"value": "updated_value",
@@ -108,7 +116,7 @@ func TestDeleteSecret(t *testing.T) {
 	mux := setupMux(t)
 
 	mux.Request(t, http.MethodDelete, "/api/v1/secret-manager/secrets/test-id-789").
-		WithAuth(infra.IdentityToken).
+		WithAuth(stack.NodeJS().IdentityToken()).
 		Do().
 		ExpectStatus(http.StatusNoContent)
 }
@@ -118,7 +126,7 @@ func TestListSecrets(t *testing.T) {
 
 	var result []map[string]any
 	mux.Request(t, http.MethodGet, "/api/v1/secret-manager/secrets?projectId="+project.ID+"&environment="+project.EnvSlug).
-		WithAuth(infra.IdentityToken).
+		WithAuth(stack.NodeJS().IdentityToken()).
 		Do().
 		ExpectStatus(http.StatusOK).
 		ParseJSON(&result)
