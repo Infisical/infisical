@@ -19,7 +19,7 @@ import {
   AcmeIncorrectResponseError,
   AcmeServerInternalError
 } from "./pki-acme-errors";
-import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
+import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType, AcmeIdentifierType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
 
 type TPkiAcmeChallengeServiceFactoryDep = {
@@ -64,7 +64,7 @@ export const pkiAcmeChallengeServiceFactory = ({
       }
       const host = challenge.auth.identifierValue;
       // check if host is a private ip address
-      if (isPrivateIp(host)) {
+      if (challenge.auth.identifierType === AcmeIdentifierType.IP && isPrivateIp(host)) {
         throw new BadRequestError({ message: "Private IP addresses are not allowed" });
       }
       if (challenge.type !== AcmeChallengeType.HTTP_01 && challenge.type !== AcmeChallengeType.DNS_01) {
