@@ -19,9 +19,6 @@ paths:
                     application/json:
                         schema:
                             $ref: '#/components/schemas/CreateProjectPayload'
-                        example:
-                            name: hay
-                            orgId: Id eveniet atque sed.
             responses:
                 "201":
                     description: Created response.
@@ -29,10 +26,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Project'
-                            example:
-                                id: Eius maxime nemo doloremque magni velit.
-                                name: Hic mollitia ut ea.
-                                orgId: Tempora ut sunt nihil aut sunt et.
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
     /api/v1/platform/projects/health:
         get:
             tags:
@@ -47,8 +70,36 @@ paths:
                         application/json:
                             schema:
                                 type: string
-                                example: Voluptates rerum maxime aut placeat rerum quos.
-                            example: Laudantium porro.
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
     /api/v1/secret-manager/secrets:
         get:
             tags:
@@ -65,8 +116,6 @@ paths:
                   schema:
                     type: string
                     description: Project ID
-                    example: Aperiam optio ea molestias quibusdam nisi quia.
-                  example: Eos rerum laborum maiores architecto.
                 - name: environment
                   in: query
                   description: Environment slug
@@ -75,8 +124,6 @@ paths:
                   schema:
                     type: string
                     description: Environment slug
-                    example: Illo dicta exercitationem est.
-                  example: Accusamus ut dolorem nemo.
             responses:
                 "200":
                     description: OK response.
@@ -84,17 +131,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SecretResultCollection'
-                            example:
-                                - environment: Magnam quidem necessitatibus minima quia.
-                                  id: Est et omnis nobis.
-                                  key: Inventore similique quae est nesciunt aperiam dolorem.
-                                  projectId: Dolore laudantium occaecati accusamus mollitia voluptas vero.
-                                  value: Animi unde nihil enim.
-                                - environment: Magnam quidem necessitatibus minima quia.
-                                  id: Est et omnis nobis.
-                                  key: Inventore similique quae est nesciunt aperiam dolorem.
-                                  projectId: Dolore laudantium occaecati accusamus mollitia voluptas vero.
-                                  value: Animi unde nihil enim.
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
         post:
             tags:
                 - secrets
@@ -107,11 +173,6 @@ paths:
                     application/json:
                         schema:
                             $ref: '#/components/schemas/Secret'
-                        example:
-                            environment: Qui eum quos eum pariatur.
-                            key: DATABASE_URL
-                            projectId: Deleniti itaque voluptatum.
-                            value: Reiciendis minima.
             responses:
                 "201":
                     description: Created response.
@@ -119,12 +180,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Secret3'
-                            example:
-                                environment: Ipsa placeat.
-                                id: Aperiam vel velit repellendus aliquam.
-                                key: Quia adipisci.
-                                projectId: Corrupti est et.
-                                value: Tempore corrupti.
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
     /api/v1/secret-manager/secrets/{id}:
         delete:
             tags:
@@ -140,11 +225,39 @@ paths:
                   schema:
                     type: string
                     description: Secret ID
-                    example: Dolor labore.
-                  example: Est aut aliquam placeat ducimus sit.
             responses:
                 "204":
                     description: No Content response.
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
         get:
             tags:
                 - secrets
@@ -159,8 +272,6 @@ paths:
                   schema:
                     type: string
                     description: Secret ID
-                    example: Corrupti necessitatibus quasi enim.
-                  example: Omnis exercitationem optio laborum voluptates sit.
             responses:
                 "200":
                     description: OK response.
@@ -168,12 +279,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Secret4'
-                            example:
-                                environment: Quia consequuntur id quasi nostrum.
-                                id: Consequatur et temporibus incidunt earum.
-                                key: Iste distinctio.
-                                projectId: Mollitia velit eum rem sed corrupti ducimus.
-                                value: Consequatur ea consequatur provident aliquam mollitia.
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
         patch:
             tags:
                 - secrets
@@ -188,17 +323,12 @@ paths:
                   schema:
                     type: string
                     description: Secret ID
-                    example: Eum autem.
-                  example: Aspernatur necessitatibus blanditiis.
             requestBody:
                 required: true
                 content:
                     application/json:
                         schema:
                             $ref: '#/components/schemas/UpdateSecretRequestBody'
-                        example:
-                            key: Omnis autem quo ducimus facilis veritatis.
-                            value: Eligendi quasi iusto.
             responses:
                 "200":
                     description: OK response.
@@ -206,12 +336,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Secret5'
-                            example:
-                                environment: Sed sint voluptatem et et ut.
-                                id: Quis cupiditate nobis fugiat consectetur.
-                                key: Necessitatibus aliquid alias nihil.
-                                projectId: Expedita molestiae repudiandae veritatis.
-                                value: Ipsa quibusdam vel cupiditate enim optio.
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
     /api/v1/secret-manager/secrets/health:
         get:
             tags:
@@ -226,25 +380,67 @@ paths:
                         application/json:
                             schema:
                                 type: string
-                                example: Doloremque qui minus consequatur non aut officia.
-                            example: Deleniti sunt recusandae.
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
 components:
     schemas:
+        APIErrorResult:
+            type: object
+            properties:
+                details:
+                    description: Optional structured details
+                error:
+                    type: string
+                    description: Error class name
+                message:
+                    type: string
+                    description: Human-readable error message
+                statusCode:
+                    type: integer
+                    description: HTTP status code
+                    format: int64
+            required:
+                - statusCode
+                - message
+                - error
         CreateProjectPayload:
             type: object
             properties:
                 name:
                     type: string
                     description: Project name
-                    example: "3"
                     minLength: 1
                 orgId:
                     type: string
                     description: Organization ID
-                    example: Tempora voluptas.
-            example:
-                name: q
-                orgId: Necessitatibus qui harum ut quo.
             required:
                 - name
                 - orgId
@@ -254,19 +450,12 @@ components:
                 id:
                     type: string
                     description: Project ID
-                    example: Tempora numquam ut ea molestiae est.
                 name:
                     type: string
                     description: Project name
-                    example: Et veniam.
                 orgId:
                     type: string
                     description: Organization ID
-                    example: Voluptas occaecati quam placeat ut non.
-            example:
-                id: Accusantium aspernatur non repudiandae.
-                name: Qui magni voluptatem sint sed.
-                orgId: Quaerat neque dolor est.
             required:
                 - id
                 - name
@@ -277,7 +466,6 @@ components:
                 environment:
                     type: string
                     description: Environment slug
-                    example: Veritatis nostrum ab quo accusantium.
                 key:
                     type: string
                     description: Secret key
@@ -285,16 +473,9 @@ components:
                 projectId:
                     type: string
                     description: Project ID
-                    example: Quasi sit itaque libero labore ut vitae.
                 value:
                     type: string
                     description: Secret value
-                    example: Voluptates temporibus ut consequuntur.
-            example:
-                environment: Nam minus corrupti.
-                key: DATABASE_URL
-                projectId: Nobis in.
-                value: Aut nisi autem.
             required:
                 - key
                 - value
@@ -306,29 +487,18 @@ components:
                 environment:
                     type: string
                     description: Environment slug
-                    example: Repellendus blanditiis corrupti iusto non.
                 id:
                     type: string
                     description: Secret ID
-                    example: Voluptatem et veritatis ipsa cum est.
                 key:
                     type: string
                     description: Secret key
-                    example: Debitis voluptatem dolore quia corrupti unde.
                 projectId:
                     type: string
                     description: Project ID
-                    example: Est perferendis.
                 value:
                     type: string
                     description: Secret value
-                    example: Aperiam et mollitia mollitia officia molestiae odio.
-            example:
-                environment: Aut voluptas animi.
-                id: Hic et velit temporibus ea necessitatibus.
-                key: Iure aut.
-                projectId: Cupiditate asperiores tenetur.
-                value: Veniam sint quo quas velit.
             required:
                 - id
                 - key
@@ -341,29 +511,18 @@ components:
                 environment:
                     type: string
                     description: Environment slug
-                    example: Sed pariatur sunt repudiandae voluptatibus quasi provident.
                 id:
                     type: string
                     description: Secret ID
-                    example: Voluptatem sunt et sed.
                 key:
                     type: string
                     description: Secret key
-                    example: Et officia ea rerum quidem velit at.
                 projectId:
                     type: string
                     description: Project ID
-                    example: Est neque officia aspernatur laudantium molestiae.
                 value:
                     type: string
                     description: Secret value
-                    example: Enim qui eum et.
-            example:
-                environment: Delectus ut.
-                id: Ut libero tenetur.
-                key: Officiis velit amet.
-                projectId: Voluptatem est.
-                value: Eaque omnis est.
             required:
                 - id
                 - key
@@ -376,29 +535,18 @@ components:
                 environment:
                     type: string
                     description: Environment slug
-                    example: Inventore praesentium blanditiis soluta beatae occaecati.
                 id:
                     type: string
                     description: Secret ID
-                    example: Omnis veniam.
                 key:
                     type: string
                     description: Secret key
-                    example: Explicabo et sed.
                 projectId:
                     type: string
                     description: Project ID
-                    example: Impedit enim dignissimos sed magni accusantium facilis.
                 value:
                     type: string
                     description: Secret value
-                    example: Eum est consequatur velit eaque quibusdam id.
-            example:
-                environment: Enim molestias at.
-                id: Ratione voluptas exercitationem maiores natus.
-                key: Et eum dolores tempore ullam possimus quisquam.
-                projectId: Consequatur autem pariatur.
-                value: Sunt in.
             required:
                 - id
                 - key
@@ -411,29 +559,18 @@ components:
                 environment:
                     type: string
                     description: Environment slug
-                    example: Porro et quia tempore quis.
                 id:
                     type: string
                     description: Secret ID
-                    example: Voluptas inventore est ut.
                 key:
                     type: string
                     description: Secret key
-                    example: Quam rem.
                 projectId:
                     type: string
                     description: Project ID
-                    example: Et quia eos incidunt.
                 value:
                     type: string
                     description: Secret value
-                    example: Quidem dolor recusandae voluptates et inventore.
-            example:
-                environment: Qui excepturi numquam est accusamus natus qui.
-                id: Quod aut exercitationem enim consectetur dolor ut.
-                key: Ex delectus.
-                projectId: Voluptas nesciunt illum sed magni facere et.
-                value: Laboriosam odio repellendus officiis.
             required:
                 - id
                 - key
@@ -446,29 +583,18 @@ components:
                 environment:
                     type: string
                     description: Environment slug
-                    example: Quam eius doloribus dolorem odio similique.
                 id:
                     type: string
                     description: Secret ID
-                    example: Alias sed aut ut.
                 key:
                     type: string
                     description: Secret key
-                    example: Ratione aliquam quas expedita ipsam delectus.
                 projectId:
                     type: string
                     description: Project ID
-                    example: Dolor nulla dolore mollitia facilis sed.
                 value:
                     type: string
                     description: Secret value
-                    example: Corrupti et velit quod nihil dolor.
-            example:
-                environment: Exercitationem eligendi saepe et earum corporis.
-                id: Omnis et ut aliquid atque ipsum vero.
-                key: Suscipit velit molestias ratione itaque exercitationem voluptate.
-                projectId: Voluptas culpa.
-                value: Iste quia.
             required:
                 - id
                 - key
@@ -479,31 +605,15 @@ components:
             type: array
             items:
                 $ref: '#/components/schemas/Secret6'
-            example:
-                - environment: Magnam quidem necessitatibus minima quia.
-                  id: Est et omnis nobis.
-                  key: Inventore similique quae est nesciunt aperiam dolorem.
-                  projectId: Dolore laudantium occaecati accusamus mollitia voluptas vero.
-                  value: Animi unde nihil enim.
-                - environment: Magnam quidem necessitatibus minima quia.
-                  id: Est et omnis nobis.
-                  key: Inventore similique quae est nesciunt aperiam dolorem.
-                  projectId: Dolore laudantium occaecati accusamus mollitia voluptas vero.
-                  value: Animi unde nihil enim.
         UpdateSecretRequestBody:
             type: object
             properties:
                 key:
                     type: string
                     description: Secret key
-                    example: Et in et quos eius soluta.
                 value:
                     type: string
                     description: Secret value
-                    example: Impedit adipisci voluptatem molestiae voluptas nemo.
-            example:
-                key: Unde modi.
-                value: Voluptatibus officia magni et ducimus pariatur.
 tags:
     - name: projects
       description: Service for managing projects.

@@ -29,6 +29,13 @@ func NewClient(getHealth, createProject goa.Endpoint) *Client {
 }
 
 // GetHealth calls the "getHealth" endpoint of the "projects" service.
+// GetHealth may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
 func (c *Client) GetHealth(ctx context.Context) (res string, err error) {
 	var ires any
 	ires, err = c.GetHealthEndpoint(ctx, nil)
@@ -39,6 +46,13 @@ func (c *Client) GetHealth(ctx context.Context) (res string, err error) {
 }
 
 // CreateProject calls the "createProject" endpoint of the "projects" service.
+// CreateProject may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
 func (c *Client) CreateProject(ctx context.Context, p *CreateProjectPayload) (res *ProjectResult, err error) {
 	var ires any
 	ires, err = c.CreateProjectEndpoint(ctx, p)

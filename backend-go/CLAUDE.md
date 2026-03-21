@@ -12,6 +12,7 @@ All commands run from `backend-go/`:
 - `make gen-db` — regenerate go-jet table types from DB (`internal/database/pg/gen/`)
 - `make test` — integration tests (testcontainers, `-race`, 300s timeout)
 - `make lint` — **must pass before submission**
+- `make lint-fix` — **use to fix auto fixable ones**
 
 Never edit generated code in `gen/` directories — always regenerate.
 

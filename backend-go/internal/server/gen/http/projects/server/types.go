@@ -36,6 +36,136 @@ type CreateProjectResponseBody struct {
 	OrgID string `form:"orgId" json:"orgId" xml:"orgId"`
 }
 
+// GetHealthBadRequestResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "bad_request" error.
+type GetHealthBadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetHealthUnauthorizedResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "unauthorized" error.
+type GetHealthUnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetHealthForbiddenResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "forbidden" error.
+type GetHealthForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetHealthNotFoundResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "not_found" error.
+type GetHealthNotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetHealthInternalErrorResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "internal_error" error.
+type GetHealthInternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectBadRequestResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "bad_request" error.
+type CreateProjectBadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectUnauthorizedResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "unauthorized" error.
+type CreateProjectUnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectForbiddenResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "forbidden" error.
+type CreateProjectForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectNotFoundResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "not_found" error.
+type CreateProjectNotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectInternalErrorResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "internal_error" error.
+type CreateProjectInternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode int `form:"statusCode" json:"statusCode" xml:"statusCode"`
+	// Human-readable error message
+	Message string `form:"message" json:"message" xml:"message"`
+	// Error class name
+	ErrorClass string `form:"error" json:"error" xml:"error"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
 // NewCreateProjectResponseBody builds the HTTP response body from the result
 // of the "createProject" endpoint of the "projects" service.
 func NewCreateProjectResponseBody(res *projectsviews.ProjectResultView) *CreateProjectResponseBody {
@@ -43,6 +173,126 @@ func NewCreateProjectResponseBody(res *projectsviews.ProjectResultView) *CreateP
 		ID:    *res.ID,
 		Name:  *res.Name,
 		OrgID: *res.OrgID,
+	}
+	return body
+}
+
+// NewGetHealthBadRequestResponseBody builds the HTTP response body from the
+// result of the "getHealth" endpoint of the "projects" service.
+func NewGetHealthBadRequestResponseBody(res *projects.APIErrorResult) *GetHealthBadRequestResponseBody {
+	body := &GetHealthBadRequestResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewGetHealthUnauthorizedResponseBody builds the HTTP response body from the
+// result of the "getHealth" endpoint of the "projects" service.
+func NewGetHealthUnauthorizedResponseBody(res *projects.APIErrorResult) *GetHealthUnauthorizedResponseBody {
+	body := &GetHealthUnauthorizedResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewGetHealthForbiddenResponseBody builds the HTTP response body from the
+// result of the "getHealth" endpoint of the "projects" service.
+func NewGetHealthForbiddenResponseBody(res *projects.APIErrorResult) *GetHealthForbiddenResponseBody {
+	body := &GetHealthForbiddenResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewGetHealthNotFoundResponseBody builds the HTTP response body from the
+// result of the "getHealth" endpoint of the "projects" service.
+func NewGetHealthNotFoundResponseBody(res *projects.APIErrorResult) *GetHealthNotFoundResponseBody {
+	body := &GetHealthNotFoundResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewGetHealthInternalErrorResponseBody builds the HTTP response body from the
+// result of the "getHealth" endpoint of the "projects" service.
+func NewGetHealthInternalErrorResponseBody(res *projects.APIErrorResult) *GetHealthInternalErrorResponseBody {
+	body := &GetHealthInternalErrorResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewCreateProjectBadRequestResponseBody builds the HTTP response body from
+// the result of the "createProject" endpoint of the "projects" service.
+func NewCreateProjectBadRequestResponseBody(res *projects.APIErrorResult) *CreateProjectBadRequestResponseBody {
+	body := &CreateProjectBadRequestResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewCreateProjectUnauthorizedResponseBody builds the HTTP response body from
+// the result of the "createProject" endpoint of the "projects" service.
+func NewCreateProjectUnauthorizedResponseBody(res *projects.APIErrorResult) *CreateProjectUnauthorizedResponseBody {
+	body := &CreateProjectUnauthorizedResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewCreateProjectForbiddenResponseBody builds the HTTP response body from the
+// result of the "createProject" endpoint of the "projects" service.
+func NewCreateProjectForbiddenResponseBody(res *projects.APIErrorResult) *CreateProjectForbiddenResponseBody {
+	body := &CreateProjectForbiddenResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewCreateProjectNotFoundResponseBody builds the HTTP response body from the
+// result of the "createProject" endpoint of the "projects" service.
+func NewCreateProjectNotFoundResponseBody(res *projects.APIErrorResult) *CreateProjectNotFoundResponseBody {
+	body := &CreateProjectNotFoundResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
+	}
+	return body
+}
+
+// NewCreateProjectInternalErrorResponseBody builds the HTTP response body from
+// the result of the "createProject" endpoint of the "projects" service.
+func NewCreateProjectInternalErrorResponseBody(res *projects.APIErrorResult) *CreateProjectInternalErrorResponseBody {
+	body := &CreateProjectInternalErrorResponseBody{
+		StatusCode: res.StatusCode,
+		Message:    res.Message,
+		ErrorClass: res.ErrorClass,
+		Details:    res.Details,
 	}
 	return body
 }

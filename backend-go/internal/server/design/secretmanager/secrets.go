@@ -2,6 +2,8 @@ package secretmanager
 
 import (
 	. "goa.design/goa/v3/dsl"
+
+	"github.com/infisical/api/internal/server/design/common"
 )
 
 // Secret describes the input for creating a secret.
@@ -30,6 +32,8 @@ var SecretResult = ResultType("application/vnd.secret", func() {
 
 var _ = Service("secrets", func() {
 	Description("Service for managing secrets.")
+
+	common.CommonServiceErrors()
 
 	Method("getHealth", func() {
 		Description("Health check for the secrets service.")

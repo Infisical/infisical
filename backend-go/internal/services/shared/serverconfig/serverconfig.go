@@ -169,7 +169,7 @@ func (s *SharedService) GetConfig(ctx context.Context) (ServerConfig, error) {
 	// Populate cache (non-fatal on error).
 	if data, err := json.Marshal(cfg); err == nil {
 		if err := s.keyStore.SetItemWithExpiry(ctx, adminConfigCacheKey, adminConfigCacheTTL, string(data)); err != nil {
-			s.logger.ErrorContext(ctx, "setting config in cache", "error", err)
+			s.logger.ErrorContext(ctx, "setting config in cache", slog.Any("error", err))
 		}
 	}
 

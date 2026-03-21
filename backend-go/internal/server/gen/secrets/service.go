@@ -46,6 +46,17 @@ const ServiceName = "secrets"
 // MethodKey key.
 var MethodNames = [6]string{"getHealth", "createSecret", "getSecret", "updateSecret", "deleteSecret", "listSecrets"}
 
+type APIErrorResult struct {
+	// HTTP status code
+	StatusCode int
+	// Human-readable error message
+	Message string
+	// Error class name
+	ErrorClass string
+	// Optional structured details
+	Details any
+}
+
 // DeleteSecretPayload is the payload type of the secrets service deleteSecret
 // method.
 type DeleteSecretPayload struct {
@@ -107,6 +118,23 @@ type UpdateSecretPayload struct {
 	Key *string
 	// Secret value
 	Value *string
+}
+
+// Error returns an error description.
+func (e *APIErrorResult) Error() string {
+	return ""
+}
+
+// ErrorName returns "APIErrorResult".
+//
+// Deprecated: Use GoaErrorName - https://github.com/goadesign/goa/issues/3105
+func (e *APIErrorResult) ErrorName() string {
+	return e.GoaErrorName()
+}
+
+// GoaErrorName returns "APIErrorResult".
+func (e *APIErrorResult) GoaErrorName() string {
+	return "bad_request"
 }
 
 // NewSecretResult initializes result type SecretResult from viewed result type

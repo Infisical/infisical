@@ -2,6 +2,8 @@ package platform
 
 import (
 	. "goa.design/goa/v3/dsl"
+
+	"github.com/infisical/api/internal/server/design/common"
 )
 
 // CreateProjectPayload describes the input for creating a project.
@@ -26,6 +28,8 @@ var ProjectResult = ResultType("application/vnd.project", func() {
 
 var _ = Service("projects", func() {
 	Description("Service for managing projects.")
+
+	common.CommonServiceErrors()
 
 	Method("getHealth", func() {
 		Description("Health check for the projects service.")

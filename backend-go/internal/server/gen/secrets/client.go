@@ -37,6 +37,13 @@ func NewClient(getHealth, createSecret, getSecret, updateSecret, deleteSecret, l
 }
 
 // GetHealth calls the "getHealth" endpoint of the "secrets" service.
+// GetHealth may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
 func (c *Client) GetHealth(ctx context.Context) (res string, err error) {
 	var ires any
 	ires, err = c.GetHealthEndpoint(ctx, nil)
@@ -47,6 +54,13 @@ func (c *Client) GetHealth(ctx context.Context) (res string, err error) {
 }
 
 // CreateSecret calls the "createSecret" endpoint of the "secrets" service.
+// CreateSecret may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
 func (c *Client) CreateSecret(ctx context.Context, p *Secret) (res *SecretResult, err error) {
 	var ires any
 	ires, err = c.CreateSecretEndpoint(ctx, p)
@@ -57,6 +71,13 @@ func (c *Client) CreateSecret(ctx context.Context, p *Secret) (res *SecretResult
 }
 
 // GetSecret calls the "getSecret" endpoint of the "secrets" service.
+// GetSecret may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
 func (c *Client) GetSecret(ctx context.Context, p *GetSecretPayload) (res *SecretResult, err error) {
 	var ires any
 	ires, err = c.GetSecretEndpoint(ctx, p)
@@ -67,6 +88,13 @@ func (c *Client) GetSecret(ctx context.Context, p *GetSecretPayload) (res *Secre
 }
 
 // UpdateSecret calls the "updateSecret" endpoint of the "secrets" service.
+// UpdateSecret may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
 func (c *Client) UpdateSecret(ctx context.Context, p *UpdateSecretPayload) (res *SecretResult, err error) {
 	var ires any
 	ires, err = c.UpdateSecretEndpoint(ctx, p)
@@ -77,12 +105,26 @@ func (c *Client) UpdateSecret(ctx context.Context, p *UpdateSecretPayload) (res 
 }
 
 // DeleteSecret calls the "deleteSecret" endpoint of the "secrets" service.
+// DeleteSecret may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
 func (c *Client) DeleteSecret(ctx context.Context, p *DeleteSecretPayload) (err error) {
 	_, err = c.DeleteSecretEndpoint(ctx, p)
 	return
 }
 
 // ListSecrets calls the "listSecrets" endpoint of the "secrets" service.
+// ListSecrets may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
 func (c *Client) ListSecrets(ctx context.Context, p *ListSecretsPayload) (res SecretResultCollection, err error) {
 	var ires any
 	ires, err = c.ListSecretsEndpoint(ctx, p)

@@ -36,7 +36,7 @@ func main() {
 				slog.Error("  " + issue)
 			}
 		} else {
-			slog.Error("failed to load config", "error", err)
+			slog.Error("failed to load config", slog.Any("error", err))
 		}
 		os.Exit(1)
 	}
@@ -45,7 +45,7 @@ func main() {
 	ctx := context.Background()
 	db, err := pg.NewPostgresDB(ctx, cfg.DBConnectionURI, cfg.DBRootCert, cfg.DBReadReplicas)
 	if err != nil {
-		logger.Error("failed to initialize database", "error", err)
+		logger.Error("failed to initialize database", slog.Any("error", err))
 		os.Exit(1)
 	}
 	defer errutil.DeferErr(ctx, db.Close, "closing database")
@@ -62,7 +62,7 @@ func main() {
 	})
 
 	if err != nil {
-		logger.Error("failed to initialize services", "error", err)
+		logger.Error("failed to initialize services", slog.Any("error", err))
 		return
 	}
 	// Create server.
@@ -85,7 +85,7 @@ func main() {
 	srv.Listen(ctx, cfg.Addr(), &wg, errc)
 
 	// Wait for signal.
-	logger.Info("exiting", "reason", <-errc)
+	logger.Info("exiting", slog.Any("reason", <-errc))
 
 	// Send cancellation signal to server goroutines.
 	cancel()

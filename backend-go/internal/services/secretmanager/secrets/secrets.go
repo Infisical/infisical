@@ -28,7 +28,7 @@ type Deps struct {
 
 func NewService(logger *slog.Logger, deps Deps) gensecrets.Service {
 	return &service{
-		logger:          logger.With("service", "secrets"),
+		logger:          logger.With(slog.String("service", "secrets")),
 		permissionSvc:   deps.Permission,
 		secretFolderSvc: deps.SecretFolder,
 	}
@@ -40,7 +40,7 @@ func (s *service) GetHealth(ctx context.Context) (string, error) {
 }
 
 func (s *service) CreateSecret(ctx context.Context, p *gensecrets.Secret) (*gensecrets.SecretResult, error) {
-	s.logger.InfoContext(ctx, "creating secret", "key", p.Key)
+	s.logger.InfoContext(ctx, "creating secret", slog.String("key", p.Key))
 	return &gensecrets.SecretResult{
 		ID:          "generated-id",
 		Key:         p.Key,
@@ -51,7 +51,7 @@ func (s *service) CreateSecret(ctx context.Context, p *gensecrets.Secret) (*gens
 }
 
 func (s *service) GetSecret(ctx context.Context, p *gensecrets.GetSecretPayload) (*gensecrets.SecretResult, error) {
-	s.logger.InfoContext(ctx, "getting secret", "id", p.ID)
+	s.logger.InfoContext(ctx, "getting secret", slog.String("id", p.ID))
 	_, err := s.permissionSvc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
 		ProjectID: "",
 	})
@@ -63,16 +63,16 @@ func (s *service) GetSecret(ctx context.Context, p *gensecrets.GetSecretPayload)
 }
 
 func (s *service) UpdateSecret(ctx context.Context, p *gensecrets.UpdateSecretPayload) (*gensecrets.SecretResult, error) {
-	s.logger.InfoContext(ctx, "updating secret", "id", p.ID)
+	s.logger.InfoContext(ctx, "updating secret", slog.String("id", p.ID))
 	return &gensecrets.SecretResult{ID: p.ID, Key: "updated", Value: "updated", Environment: "dev", ProjectID: "proj-1"}, nil
 }
 
 func (s *service) DeleteSecret(ctx context.Context, p *gensecrets.DeleteSecretPayload) error {
-	s.logger.InfoContext(ctx, "deleting secret", "id", p.ID)
+	s.logger.InfoContext(ctx, "deleting secret", slog.String("id", p.ID))
 	return nil
 }
 
 func (s *service) ListSecrets(ctx context.Context, p *gensecrets.ListSecretsPayload) (gensecrets.SecretResultCollection, error) {
-	s.logger.InfoContext(ctx, "listing secrets", "projectId", p.ProjectID, "env", p.Environment)
+	s.logger.InfoContext(ctx, "listing secrets", slog.String("projectId", p.ProjectID), slog.String("env", p.Environment))
 	return gensecrets.SecretResultCollection{}, nil
 }

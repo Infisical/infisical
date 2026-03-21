@@ -38,6 +38,17 @@ const ServiceName = "projects"
 // MethodKey key.
 var MethodNames = [2]string{"getHealth", "createProject"}
 
+type APIErrorResult struct {
+	// HTTP status code
+	StatusCode int
+	// Human-readable error message
+	Message string
+	// Error class name
+	ErrorClass string
+	// Optional structured details
+	Details any
+}
+
 // CreateProjectPayload is the payload type of the projects service
 // createProject method.
 type CreateProjectPayload struct {
@@ -56,6 +67,23 @@ type ProjectResult struct {
 	Name string
 	// Organization ID
 	OrgID string
+}
+
+// Error returns an error description.
+func (e *APIErrorResult) Error() string {
+	return ""
+}
+
+// ErrorName returns "APIErrorResult".
+//
+// Deprecated: Use GoaErrorName - https://github.com/goadesign/goa/issues/3105
+func (e *APIErrorResult) ErrorName() string {
+	return e.GoaErrorName()
+}
+
+// GoaErrorName returns "APIErrorResult".
+func (e *APIErrorResult) GoaErrorName() string {
+	return "bad_request"
 }
 
 // NewProjectResult initializes result type ProjectResult from viewed result

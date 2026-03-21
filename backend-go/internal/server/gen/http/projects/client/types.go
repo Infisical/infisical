@@ -11,6 +11,7 @@ package client
 import (
 	projects "github.com/infisical/api/internal/server/gen/projects"
 	projectsviews "github.com/infisical/api/internal/server/gen/projects/views"
+	goa "goa.design/goa/v3/pkg"
 )
 
 // CreateProjectRequestBody is the type of the "projects" service
@@ -33,6 +34,136 @@ type CreateProjectResponseBody struct {
 	OrgID *string `form:"orgId,omitempty" json:"orgId,omitempty" xml:"orgId,omitempty"`
 }
 
+// GetHealthBadRequestResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "bad_request" error.
+type GetHealthBadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetHealthUnauthorizedResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "unauthorized" error.
+type GetHealthUnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetHealthForbiddenResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "forbidden" error.
+type GetHealthForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetHealthNotFoundResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "not_found" error.
+type GetHealthNotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetHealthInternalErrorResponseBody is the type of the "projects" service
+// "getHealth" endpoint HTTP response body for the "internal_error" error.
+type GetHealthInternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectBadRequestResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "bad_request" error.
+type CreateProjectBadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectUnauthorizedResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "unauthorized" error.
+type CreateProjectUnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectForbiddenResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "forbidden" error.
+type CreateProjectForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectNotFoundResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "not_found" error.
+type CreateProjectNotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// CreateProjectInternalErrorResponseBody is the type of the "projects" service
+// "createProject" endpoint HTTP response body for the "internal_error" error.
+type CreateProjectInternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
 // NewCreateProjectRequestBody builds the HTTP request body from the payload of
 // the "createProject" endpoint of the "projects" service.
 func NewCreateProjectRequestBody(p *projects.CreateProjectPayload) *CreateProjectRequestBody {
@@ -41,6 +172,71 @@ func NewCreateProjectRequestBody(p *projects.CreateProjectPayload) *CreateProjec
 		OrgID: p.OrgID,
 	}
 	return body
+}
+
+// NewGetHealthBadRequest builds a projects service getHealth endpoint
+// bad_request error.
+func NewGetHealthBadRequest(body *GetHealthBadRequestResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetHealthUnauthorized builds a projects service getHealth endpoint
+// unauthorized error.
+func NewGetHealthUnauthorized(body *GetHealthUnauthorizedResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetHealthForbidden builds a projects service getHealth endpoint forbidden
+// error.
+func NewGetHealthForbidden(body *GetHealthForbiddenResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetHealthNotFound builds a projects service getHealth endpoint not_found
+// error.
+func NewGetHealthNotFound(body *GetHealthNotFoundResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetHealthInternalError builds a projects service getHealth endpoint
+// internal_error error.
+func NewGetHealthInternalError(body *GetHealthInternalErrorResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
 }
 
 // NewCreateProjectProjectResultCreated builds a "projects" service
@@ -53,4 +249,219 @@ func NewCreateProjectProjectResultCreated(body *CreateProjectResponseBody) *proj
 	}
 
 	return v
+}
+
+// NewCreateProjectBadRequest builds a projects service createProject endpoint
+// bad_request error.
+func NewCreateProjectBadRequest(body *CreateProjectBadRequestResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewCreateProjectUnauthorized builds a projects service createProject
+// endpoint unauthorized error.
+func NewCreateProjectUnauthorized(body *CreateProjectUnauthorizedResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewCreateProjectForbidden builds a projects service createProject endpoint
+// forbidden error.
+func NewCreateProjectForbidden(body *CreateProjectForbiddenResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewCreateProjectNotFound builds a projects service createProject endpoint
+// not_found error.
+func NewCreateProjectNotFound(body *CreateProjectNotFoundResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewCreateProjectInternalError builds a projects service createProject
+// endpoint internal_error error.
+func NewCreateProjectInternalError(body *CreateProjectInternalErrorResponseBody) *projects.APIErrorResult {
+	v := &projects.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// ValidateGetHealthBadRequestResponseBody runs the validations defined on
+// getHealth_bad_request_response_body
+func ValidateGetHealthBadRequestResponseBody(body *GetHealthBadRequestResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateGetHealthUnauthorizedResponseBody runs the validations defined on
+// getHealth_unauthorized_response_body
+func ValidateGetHealthUnauthorizedResponseBody(body *GetHealthUnauthorizedResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateGetHealthForbiddenResponseBody runs the validations defined on
+// getHealth_forbidden_response_body
+func ValidateGetHealthForbiddenResponseBody(body *GetHealthForbiddenResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateGetHealthNotFoundResponseBody runs the validations defined on
+// getHealth_not_found_response_body
+func ValidateGetHealthNotFoundResponseBody(body *GetHealthNotFoundResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateGetHealthInternalErrorResponseBody runs the validations defined on
+// getHealth_internal_error_response_body
+func ValidateGetHealthInternalErrorResponseBody(body *GetHealthInternalErrorResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateCreateProjectBadRequestResponseBody runs the validations defined on
+// createProject_bad_request_response_body
+func ValidateCreateProjectBadRequestResponseBody(body *CreateProjectBadRequestResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateCreateProjectUnauthorizedResponseBody runs the validations defined
+// on createProject_unauthorized_response_body
+func ValidateCreateProjectUnauthorizedResponseBody(body *CreateProjectUnauthorizedResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateCreateProjectForbiddenResponseBody runs the validations defined on
+// createProject_forbidden_response_body
+func ValidateCreateProjectForbiddenResponseBody(body *CreateProjectForbiddenResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateCreateProjectNotFoundResponseBody runs the validations defined on
+// createProject_not_found_response_body
+func ValidateCreateProjectNotFoundResponseBody(body *CreateProjectNotFoundResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateCreateProjectInternalErrorResponseBody runs the validations defined
+// on createProject_internal_error_response_body
+func ValidateCreateProjectInternalErrorResponseBody(body *CreateProjectInternalErrorResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
 }
