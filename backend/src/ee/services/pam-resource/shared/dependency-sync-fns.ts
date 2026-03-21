@@ -15,26 +15,33 @@ import { decryptResource } from "../pam-resource-fns";
 import { TPostRotateContext } from "../pam-resource-types";
 import { TWindowsResourceConnectionDetails } from "../windows-server/windows-server-resource-types";
 
-const SINGLE_QUOTE_RE = new RE2("'", "g");
-const NEWLINE_RE = new RE2("[\\r\\n]", "g");
-
-// Allow alphanumerics, spaces, single backslash, hyphen, underscore, dot, but NOT ".." sequences
-const SAFE_WINDOWS_NAME_RE = new RE2("^[a-zA-Z0-9 _\\-.]+$");
-const SAFE_WINDOWS_PATH_RE = new RE2("^[a-zA-Z0-9 _\\-.\\\\/]+$");
-const PATH_TRAVERSAL_RE = new RE2("\\.\\.");
-
 // Sanitize a string for safe use inside PowerShell single-quoted strings:
 // - doubles single quotes (PowerShell escape)
 // - strips newlines/carriage returns
+const SINGLE_QUOTE_RE = new RE2("'", "g");
+const NEWLINE_RE = new RE2("[\\r\\n]", "g");
 export const escapePowershellSingleQuote = (value: string) =>
   NEWLINE_RE.replace(SINGLE_QUOTE_RE.replace(value, "''"), "");
 
+// Reject control characters (U+0000–U+001F) that could survive escaping
+const CONTROL_CHAR_RE = new RE2("[\\x00-\\x1f]");
+const validateNoControlChars = (value: string, label: string) => {
+  if (CONTROL_CHAR_RE.test(value)) {
+    throw new Error(`${label} contains control characters`);
+  }
+};
+
+// Allow alphanumerics, spaces, hyphen, underscore, dot
+const SAFE_WINDOWS_NAME_RE = new RE2("^[a-zA-Z0-9 _\\-.]+$");
 const validateWindowsName = (value: string, label: string) => {
   if (!SAFE_WINDOWS_NAME_RE.test(value)) {
     throw new Error(`${label} contains invalid characters: ${value}`);
   }
 };
 
+// Allow alphanumerics, spaces, hyphen, underscore, dot, backslash, forward slash (but reject ".." path traversal)
+const SAFE_WINDOWS_PATH_RE = new RE2("^[a-zA-Z0-9 _\\-.\\\\/]+$");
+const PATH_TRAVERSAL_RE = new RE2("\\.\\.");
 const validateWindowsPath = (value: string, label: string) => {
   if (!SAFE_WINDOWS_PATH_RE.test(value) || PATH_TRAVERSAL_RE.test(value)) {
     throw new Error(`${label} contains invalid characters or path traversal: ${value}`);
@@ -46,11 +53,14 @@ export const buildDependencySyncScript = (
   accountUsername: string,
   newPassword: string
 ): string => {
-  validateWindowsName(dep.name, "Dependency name");
-
   const escapedPassword = escapePowershellSingleQuote(newPassword);
   const escapedName = escapePowershellSingleQuote(dep.name);
   const escapedUsername = escapePowershellSingleQuote(accountUsername);
+
+  // Validate all escaped values before interpolation into PowerShell commands
+  validateWindowsName(escapedName, "Dependency name");
+  validateNoControlChars(escapedUsername, "Account username");
+  validateNoControlChars(escapedPassword, "Password");
 
   switch (dep.dependencyType) {
     case PamAccountDependencyType.WindowsService:

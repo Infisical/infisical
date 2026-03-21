@@ -286,7 +286,7 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
                     reject(new Error(`AD password reset failed: ${modifyErr.message}`));
                   } else {
                     logger.info(
-                      `[AD Rotation] Password rotated for ${currentCredentials.username} on ${connectionDetails.domain}`
+                      `[AD Rotation] Password rotated for domain account [username=${currentCredentials.username}] on [domain=${connectionDetails.domain}]`
                     );
                     resolve();
                   }
