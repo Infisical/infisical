@@ -1,3 +1,5 @@
+//go:build integration
+
 package kms_test
 
 import (
@@ -13,24 +15,29 @@ import (
 
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/services/shared/kms"
-	"github.com/infisical/api/internal/testutil"
+	"github.com/infisical/api/internal/testutil/infra"
 )
 
-var orgID uuid.UUID
-
-var infra *testutil.TestInfra
+var (
+	stack *infra.Stack
+	orgID uuid.UUID
+)
 
 func TestMain(m *testing.M) {
-	infra = testutil.SetupInfra()
+	stack = infra.New().
+		WithPostgres().
+		WithRedis().
+		WithNodeJSApi().
+		MustStart()
 
 	var err error
-	orgID, err = uuid.Parse(infra.OrgID)
+	orgID, err = uuid.Parse(stack.NodeJS().OrgID())
 	if err != nil {
 		log.Fatalf("kms_test: parsing org ID: %v", err)
 	}
 
 	code := m.Run()
-	infra.Teardown()
+	stack.Stop()
 	os.Exit(code)
 }
 
@@ -38,15 +45,15 @@ func TestMain(m *testing.M) {
 func setupService(t *testing.T) *kms.SharedService {
 	t.Helper()
 
-	opts, err := redis.ParseURL(infra.RedisURL)
+	opts, err := redis.ParseURL(stack.Redis().URL())
 	require.NoError(t, err)
 	redisClient := redis.NewClient(opts)
 	t.Cleanup(func() { redisClient.Close() })
 
-	ks := keystore.NewKeyStore(redisClient, infra.DB.Primary())
-	dal := kms.NewDAL(infra.DB, ks)
+	ks := keystore.NewKeyStore(redisClient, stack.DB().Primary())
+	dal := kms.NewDAL(stack.DB(), ks)
 
-	svc, err := kms.NewSharedService(dal, nil, infra.Config)
+	svc, err := kms.NewSharedService(dal, nil, stack.Config())
 	require.NoError(t, err)
 	return svc
 }
@@ -208,7 +215,7 @@ func TestProjectCipherPair_CreatesFromScratch(t *testing.T) {
 	svc := startedService(t)
 	ctx := context.Background()
 
-	proj := infra.CreateProject(t, "kms-scratch")
+	proj := stack.NodeJS().CreateProject(t, "kms-scratch")
 
 	pair, err := svc.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
 		Type:      kms.DataKeyProject,
@@ -230,7 +237,7 @@ func TestProjectCipherPair_Idempotent(t *testing.T) {
 	svc := startedService(t)
 	ctx := context.Background()
 
-	proj := infra.CreateProject(t, "kms-idempotent")
+	proj := stack.NodeJS().CreateProject(t, "kms-idempotent")
 
 	dto := kms.CreateCipherPairDTO{
 		Type:      kms.DataKeyProject,
@@ -258,7 +265,7 @@ func TestProjectCipherPair_Concurrent(t *testing.T) {
 	ctx := context.Background()
 
 	// All goroutines race on the same fresh project.
-	proj := infra.CreateProject(t, "kms-concurrent")
+	proj := stack.NodeJS().CreateProject(t, "kms-concurrent")
 
 	const n = 10
 	plaintext := []byte("concurrent project test")
@@ -308,8 +315,8 @@ func TestProjectCipherPair_IsolatedPerProject(t *testing.T) {
 	svc := startedService(t)
 	ctx := context.Background()
 
-	proj1 := infra.CreateProject(t, "kms-iso-1")
-	proj2 := infra.CreateProject(t, "kms-iso-2")
+	proj1 := stack.NodeJS().CreateProject(t, "kms-iso-1")
+	proj2 := stack.NodeJS().CreateProject(t, "kms-iso-2")
 
 	pair1, err := svc.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
 		Type:      kms.DataKeyProject,
