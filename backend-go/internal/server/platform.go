@@ -7,6 +7,6 @@ import (
 
 func (s *Server) mountPlatform() {
 	projectsEndpoints := genprojects.NewEndpoints(s.svc.Platform.Projects)
-	projectsServer := projectssvr.New(projectsEndpoints, s.mux, s.dec, s.enc, s.eh, nil)
+	projectsServer := projectssvr.New(projectsEndpoints, s.mux, s.dec, s.enc, s.eh, s.formatter)
 	projectssvr.Mount(s.mux, projectsServer)
 }

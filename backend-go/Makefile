@@ -1,5 +1,8 @@
 # Run unit tests (no infra required)
 lint:
+	golangci-lint run 
+
+lint-fix:
 	go fix ./... && golangci-lint run --fix
 
 test:

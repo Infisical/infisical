@@ -7,7 +7,7 @@ import (
 
 func (s *Server) mountSecretManager() {
 	secretsEndpoints := gensecrets.NewEndpoints(s.svc.SecretManager.Secrets)
-	secretsServer := secretssvr.New(secretsEndpoints, s.mux, s.dec, s.enc, s.eh, nil)
+	secretsServer := secretssvr.New(secretsEndpoints, s.mux, s.dec, s.enc, s.eh, s.formatter)
 
 	secretssvr.Mount(s.mux, secretsServer)
 }
