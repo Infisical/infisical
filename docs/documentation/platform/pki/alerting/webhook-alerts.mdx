@@ -16,19 +16,32 @@ To create an alert, head to your Certificate Management Project > Alerting and p
 
 Here's some guidance for each field in the alert configuration sequence:
 
-- **Alert Type**: The type of alert to create such as **Certificate Expiration**.
-- **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+- **Alert Type**: The type of certificate event to alert on. Options are **Certificate Expiration**, **Certificate Issuance**, **Certificate Renewal**, and **Certificate Revocation**.
+- **Alert Name**: A slug friendly name for the alert such as `tls-expiry-alert`.
 - **Description**: An optional description for the alert.
-- **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+- **Alert Before** *(Expiration alerts only)*: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
 - **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
 
 Next, add a **Webhook** notification channel. The URL must use HTTPS. Optionally configure a signing secret to verify the authenticity of webhook payloads.
 
 ![pki alerting channels](/images/platform/pki/alerting/alert-create-channels.png)
 
+## Webhook Event Types
+
+Each alert type maps to a corresponding CloudEvents event type:
+
+| Alert Type | Event Type | Subject |
+|---|---|---|
+| Certificate Expiration | `com.infisical.pki.certificate.expiration` | `certificate-expiration-alert` |
+| Certificate Issuance | `com.infisical.pki.certificate.issuance` | `certificate-issuance-alert` |
+| Certificate Renewal | `com.infisical.pki.certificate.renewal` | `certificate-renewal-alert` |
+| Certificate Revocation | `com.infisical.pki.certificate.revocation` | `certificate-revocation-alert` |
+
 ## Webhook Payload Format
 
-Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https://cloudevents.io/)-compliant JSON payload.
+Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https://cloudevents.io/) compliant JSON payload.
+
+### Expiration Alert Payload
 
 ```json
 {
@@ -67,6 +80,48 @@ Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https:
 }
 ```
 
+### Issuance, Renewal, and Revocation Alert Payload
+
+Event driven alerts (issuance, renewal, revocation) share the same payload structure. The `type` and `subject` fields reflect the specific event, and `alertBefore` is omitted since these are real time notifications.
+
+For revocation alerts, each certificate in the array will also include `revokedAt` and `revocationReason` fields when available.
+
+```json
+{
+  "specversion": "1.0",
+  "type": "com.infisical.pki.certificate.issuance",
+  "source": "/projects/<project-id>/alerts/<alert-id>",
+  "id": "<unique-event-id>",
+  "time": "2024-06-15T14:22:00.000Z",
+  "datacontenttype": "application/json",
+  "subject": "certificate-issuance-alert",
+  "data": {
+    "alert": {
+      "id": "<alert-id>",
+      "name": "prod-issuance-notify",
+      "projectId": "<project-id>"
+    },
+    "certificates": [
+      {
+        "id": "<certificate-id>",
+        "serialNumber": "9876543210",
+        "commonName": "api.example.com",
+        "san": ["api.example.com"],
+        "profileName": "API Server",
+        "notBefore": "2024-06-15T00:00:00.000Z",
+        "notAfter": "2025-06-15T23:59:59.000Z",
+        "status": "active",
+        "daysUntilExpiry": 365
+      }
+    ],
+    "metadata": {
+      "totalCertificates": 1,
+      "viewUrl": "https://app.infisical.com/cert-manager/<project-id>/policies"
+    }
+  }
+}
+```
+
 ## Webhook Signature Verification
 
 If you configure a signing secret for your webhook channel, Infisical will include an `x-infisical-signature` header with each request. This allows you to verify that the webhook payload originated from Infisical.
@@ -80,13 +135,13 @@ x-infisical-signature: t=<timestamp>,v1=<signature>
 Where:
 - `<timestamp>` is the Unix timestamp (in milliseconds) when the signature was generated
 - `v1` indicates the signature version
-- `<signature>` is the HMAC-SHA256 signature of the payload
+- `<signature>` is the HMAC SHA256 signature of the payload
 
 To verify the signature:
 
 1. Extract the timestamp and signature from the header
 2. Construct the signature payload by concatenating the timestamp, a period (`.`), and the raw request body: `{timestamp}.{body}`
-3. Compute an HMAC-SHA256 hash using your signing secret
+3. Compute an HMAC SHA256 hash using your signing secret
 4. Compare the computed signature with the signature from the header
 
 Example verification in Node.js:

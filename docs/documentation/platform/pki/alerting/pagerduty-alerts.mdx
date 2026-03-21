@@ -34,10 +34,10 @@ Infisical can send PKI certificate alert notifications to PagerDuty using the [E
 
     Here's some guidance for each field in the alert configuration sequence:
 
-    - **Alert Type**: The type of alert to create such as **Certificate Expiration**.
-    - **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+    - **Alert Type**: The type of certificate event to alert on. Options are **Certificate Expiration**, **Certificate Issuance**, **Certificate Renewal**, and **Certificate Revocation**.
+    - **Alert Name**: A slug friendly name for the alert such as `tls-expiry-alert`.
     - **Description**: An optional description for the alert.
-    - **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+    - **Alert Before** *(Expiration alerts only)*: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
     - **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
   </Step>
   <Step title="Add a PagerDuty Notification Channel">
@@ -53,7 +53,9 @@ Keep your integration key secure. Anyone with access to it can send events to yo
 
 ## Severity Mapping
 
-Infisical automatically maps the time remaining until certificate expiry to a PagerDuty event severity:
+### Expiration Alerts
+
+For expiration alerts, Infisical automatically maps the time remaining until certificate expiry to a PagerDuty event severity:
 
 | Time Until Expiry | PagerDuty Severity |
 | --- | --- |
@@ -61,6 +63,14 @@ Infisical automatically maps the time remaining until certificate expiry to a Pa
 | ≤ 14 days | `error` |
 | ≤ 30 days | `warning` |
 | > 30 days | `info` |
+
+### Other Alert Types
+
+| Alert Type | PagerDuty Severity |
+| --- | --- |
+| Certificate Issuance | `info` |
+| Certificate Renewal | `info` |
+| Certificate Revocation | `warning` |
 
 ## Incident Grouping
 

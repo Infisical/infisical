@@ -6,7 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
-  CreatePkiAlertV2Schema,
+  BasePkiAlertV2Schema,
   createSecureAlertBeforeValidator,
   NotificationConfigSchema,
   PkiAlertChannelType,
@@ -29,7 +29,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       operationId: "createPkiAlertV1",
       description: "Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
-      body: CreatePkiAlertV2Schema.extend({
+      body: BasePkiAlertV2Schema.extend({
         projectId: z.string().uuid().describe("Project ID")
       }),
       response: {
@@ -39,7 +39,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             name: z.string(),
             description: z.string().nullable(),
             eventType: z.nativeEnum(PkiAlertEventType),
-            alertBefore: z.string(),
+            alertBefore: z.string().optional(),
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
@@ -115,7 +115,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
               name: z.string(),
               description: z.string().nullable(),
               eventType: z.nativeEnum(PkiAlertEventType),
-              alertBefore: z.string(),
+              alertBefore: z.string().optional(),
               filters: z.array(PkiFilterRuleSchema),
               enabled: z.boolean(),
               notificationConfig: NotificationConfigSchema.nullable(),
@@ -179,7 +179,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             name: z.string(),
             description: z.string().nullable(),
             eventType: z.nativeEnum(PkiAlertEventType),
-            alertBefore: z.string(),
+            alertBefore: z.string().optional(),
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
@@ -247,7 +247,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             name: z.string(),
             description: z.string().nullable(),
             eventType: z.nativeEnum(PkiAlertEventType),
-            alertBefore: z.string(),
+            alertBefore: z.string().optional(),
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),
@@ -318,7 +318,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             name: z.string(),
             description: z.string().nullable(),
             eventType: z.nativeEnum(PkiAlertEventType),
-            alertBefore: z.string(),
+            alertBefore: z.string().optional(),
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
             projectId: z.string().uuid(),

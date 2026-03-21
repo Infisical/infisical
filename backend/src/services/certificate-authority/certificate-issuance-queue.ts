@@ -21,6 +21,8 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { CertKeyAlgorithm } from "../certificate-common/certificate-constants";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
+import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -108,6 +110,7 @@ type TCertificateIssuanceQueueFactoryDep = {
     "attachCertificateToRequest" | "updateCertificateRequestStatus"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -128,7 +131,8 @@ export const certificateIssuanceQueueFactory = ({
   pkiSyncQueue,
   certificateProfileDAL,
   certificateRequestService,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  pkiAlertV2Queue
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -472,6 +476,16 @@ export const certificateIssuanceQueueFactory = ({
       logger.info(
         `Successfully processed certificate issuance job with [certificateId=${certificateId}] [caId=${caId}]`
       );
+
+      try {
+        await pkiAlertV2Queue?.queueCertificateEvent({
+          certificateId,
+          projectId: ca.projectId,
+          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE
+        });
+      } catch {
+        logger.debug("Failed to queue PKI alert event for async certificate issuance");
+      }
     } catch (error: unknown) {
       logger.error(error, `Certificate issuance job failed for [certificateId=${certificateId}] [caId=${caId}]`);
 

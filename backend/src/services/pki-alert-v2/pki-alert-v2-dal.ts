@@ -354,6 +354,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       showPreview?: boolean;
       excludeAlerted?: boolean;
       alertId?: string;
+      certificateId?: string;
     },
     tx?: Knex
   ): Promise<{ certificates: TCertificatePreview[]; total: number }> => {
@@ -400,6 +401,10 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
       let certCountQuery = (tx || db.replicaNode()).count("* as count").from(TableName.Certificate);
       certCountQuery = applyCertificateFilters(certCountQuery, filters, projectId) as typeof certCountQuery;
+
+      if (options?.certificateId) {
+        certCountQuery = certCountQuery.where(`${TableName.Certificate}.id`, options.certificateId);
+      }
 
       if (options?.showPreview) {
         certCountQuery = certCountQuery
@@ -457,7 +462,9 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.notAfter`,
           `${TableName.Certificate}.status`,
           `${TableName.Certificate}.profileId`,
-          `${TableName.Certificate}.pkiSubscriberId`
+          `${TableName.Certificate}.pkiSubscriberId`,
+          `${TableName.Certificate}.revokedAt`,
+          `${TableName.Certificate}.revocationReason`
         ];
 
         if (needsProfileJoin) {
@@ -467,6 +474,10 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         let certificateQuery = (tx || db.replicaNode()).select(selectColumns).from(TableName.Certificate);
 
         certificateQuery = applyCertificateFilters(certificateQuery, filters, projectId) as typeof certificateQuery;
+
+        if (options?.certificateId) {
+          certificateQuery = certificateQuery.where(`${TableName.Certificate}.id`, options.certificateId);
+        }
 
         if (options?.showPreview) {
           certificateQuery = certificateQuery
@@ -526,6 +537,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
             notBefore: Date;
             notAfter: Date;
             status: string;
+            revokedAt?: Date | null;
+            revocationReason?: number | null;
           }>
         ).map((cert) => {
           let enrollmentType = CertificateOrigin.UNKNOWN;
@@ -544,7 +557,9 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
             enrollmentType,
             notBefore: cert.notBefore,
             notAfter: cert.notAfter,
-            status: cert.status
+            status: cert.status,
+            revokedAt: cert.revokedAt,
+            revocationReason: cert.revocationReason
           };
         });
 

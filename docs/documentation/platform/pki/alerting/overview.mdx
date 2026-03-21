@@ -1,12 +1,21 @@
 ---
 title: "Alerting"
 sidebarTitle: "Overview"
-description: "Learn how to set up alerting for expiring certificates with Infisical"
+description: "Learn how to set up alerting for certificate lifecycle events with Infisical"
 ---
 
 ## Concept
 
-In order to ensure that your certificates are always up-to-date and not expired, you can set up alerting in Infisical for expiring CA and leaf certificates based on customizable filters.
+Infisical allows you to configure alerts for key certificate lifecycle events, keeping your team informed when certificates are issued, renewed, revoked, or approaching expiration. Alerts are configured per project and can be delivered through multiple notification channels.
+
+### Supported Alert Types
+
+| Alert Type | Trigger | Description |
+|---|---|---|
+| **Certificate Expiration** | Scheduled (daily check) | Notifies when certificates are approaching their expiration date, based on a configurable time window (e.g., 30 days before expiry). |
+| **Certificate Issuance** | Real time | Notifies when a new certificate is issued through a certificate profile (via API, CSR signing, or EST/ACME enrollment). |
+| **Certificate Renewal** | Real time | Notifies when an existing certificate is renewed, either manually or through auto renewal. |
+| **Certificate Revocation** | Real time | Notifies when a certificate is revoked. |
 
 ## Guide to Creating an Alert
 
@@ -20,16 +29,21 @@ To create an alert, head to your Certificate Management Project > Alerting and p
 
 Here's some guidance for each field in the alert configuration sequence:
 
-- **Alert Type**: The type of alert to create such as **Certificate Expiration**.
-- **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+- **Alert Type**: The type of certificate event to alert on. Options are **Certificate Expiration**, **Certificate Issuance**, **Certificate Renewal**, and **Certificate Revocation**.
+- **Alert Name**: A slug friendly name for the alert such as `tls-expiry-alert` or `prod-issuance-notify`.
 - **Description**: An optional description for the alert.
-- **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
-- **Daily Alerts**: When not enabled, a single notification is sent when the threshold is first reached. Enabling this option sends notifications every day until the certificate expires or is renewed.
+- **Alert Before** *(Expiration alerts only)*: The time before certificate expiration to trigger the alert, such as 30 days denoted by `30d`. Supported units: `d` (days), `w` (weeks), `m` (months), `y` (years).
+- **Daily Alerts** *(Expiration alerts only)*: When not enabled, a single notification is sent when the threshold is first reached. Enabling this option sends notifications every day until the certificate expires or is renewed.
 
 <Warning>
   For certificates that cannot be renewed through Infisical, daily alerts will continue to be sent each day until the original expiration date.
 </Warning>
+
 - **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
+
+<Note>
+  For event driven alert types (Issuance, Renewal, Revocation), notifications are sent in real time when the event occurs. For Expiration alerts, Infisical checks for matching certificates on a daily schedule.
+</Note>
 
 ### Notification Channels
 

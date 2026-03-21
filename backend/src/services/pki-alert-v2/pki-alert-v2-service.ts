@@ -23,6 +23,7 @@ import { sendWebhookNotification } from "./pki-alert-v2-channel-webhook-fns";
 import { TAlertWithChannels, TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
 import {
+  alertEventTypeToWebhookEventType,
   CertificateOrigin,
   PkiAlertChannelType,
   PkiAlertEventType,
@@ -187,10 +188,16 @@ export const pkiAlertV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
 
-    try {
-      parseTimeToPostgresInterval(alertBefore);
-    } catch (error) {
-      throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
+    if (eventType === PkiAlertEventType.EXPIRATION && !alertBefore) {
+      throw new BadRequestError({ message: "alertBefore is required for expiration alerts" });
+    }
+
+    if (alertBefore) {
+      try {
+        parseTimeToPostgresInterval(alertBefore);
+      } catch (error) {
+        throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
+      }
     }
 
     // Validate webhook and Slack URLs early to provide immediate SSRF feedback
@@ -341,6 +348,12 @@ export const pkiAlertV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
+
+    const resultingEventType = eventType ?? (alert.eventType as PkiAlertEventType);
+    const resultingAlertBefore = alertBefore !== undefined ? alertBefore : alert.alertBefore;
+    if (resultingEventType === PkiAlertEventType.EXPIRATION && !resultingAlertBefore) {
+      throw new BadRequestError({ message: "alertBefore is required for expiration alerts" });
+    }
 
     if (alertBefore) {
       try {
@@ -582,38 +595,43 @@ export const pkiAlertV2ServiceFactory = ({
     };
   };
 
-  const sendAlertNotifications = async (alertId: string, certificateIds: string[]) => {
-    const alert = await pkiAlertV2DAL.findByIdWithChannels(alertId);
-    if (!alert || !alert.enabled) return;
-
-    const { projectId } = alert;
-    const channels = alert.channels.filter((channel) => channel.enabled);
-    if (channels.length === 0) return;
-
-    const alertBefore = alert.alertBefore ?? "";
-    const filters = (alert.filters ?? []) as TPkiFilterRule[];
-
-    const { certificates } = await pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
-      alertBefore: parseTimeToPostgresInterval(alertBefore)
-    });
-
-    const matchingCertificates = certificates.filter(
-      (cert) => certificateIds.includes(cert.id) && cert.enrollmentType !== CertificateOrigin.CA
-    );
-
-    if (matchingCertificates.length === 0) return;
-
+  const dispatchToChannels = async ({
+    alertId,
+    alertName,
+    alertBefore,
+    projectId,
+    eventType,
+    channels,
+    matchingCertificates,
+    certificateIds
+  }: {
+    alertId: string;
+    alertName: string;
+    alertBefore?: string;
+    projectId: string;
+    eventType: PkiAlertEventType;
+    channels: Array<{
+      id: string;
+      channelType: string;
+      config: unknown;
+      encryptedConfig?: Buffer | null;
+      enabled: boolean;
+    }>;
+    matchingCertificates: TCertificatePreview[];
+    certificateIds: string[];
+  }) => {
     let hasNotificationSent = false;
     let notificationError: string | undefined;
     const errors: string[] = [];
 
-    const alertBeforeDays = parseTimeToDays(alertBefore);
+    const alertBeforeDays = alertBefore ? parseTimeToDays(alertBefore) : 0;
     const alertData = {
-      id: alert.id,
-      name: alert.name,
+      id: alertId,
+      name: alertName,
       alertBefore,
       projectId
     };
+    const webhookEventType = alertEventTypeToWebhookEventType[eventType];
 
     // Get decryptor for channel configs
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -630,11 +648,12 @@ export const pkiAlertV2ServiceFactory = ({
             const result = await sendEmailNotificationWithRetry(
               smtpService,
               config,
-              alert.name,
+              alertName,
               alertBeforeDays,
               projectId,
               matchingCertificates,
-              channel.id
+              channel.id,
+              eventType
             );
             return { ...result, channelType: channel.channelType };
           }
@@ -644,14 +663,20 @@ export const pkiAlertV2ServiceFactory = ({
               config,
               alertData,
               matchingCertificates,
-              PkiWebhookEventType.CERTIFICATE_EXPIRATION,
+              webhookEventType,
               channel.id
             );
             return { ...result, channelType: channel.channelType };
           }
           case PkiAlertChannelType.SLACK: {
             const config = decryptChannelConfig<TSlackChannelConfig>(channel, decryptor);
-            const result = await sendSlackNotificationWithRetry(config, alertData, matchingCertificates, channel.id);
+            const result = await sendSlackNotificationWithRetry(
+              config,
+              alertData,
+              matchingCertificates,
+              channel.id,
+              eventType
+            );
             return { ...result, channelType: channel.channelType };
           }
           case PkiAlertChannelType.PAGERDUTY: {
@@ -660,7 +685,8 @@ export const pkiAlertV2ServiceFactory = ({
               config,
               alertData,
               matchingCertificates,
-              channel.id
+              channel.id,
+              eventType
             );
             return { ...result, channelType: channel.channelType };
           }
@@ -712,8 +738,8 @@ export const pkiAlertV2ServiceFactory = ({
                 userId: admin.userId,
                 orgId: project.orgId,
                 type: NotificationType.PKI_ALERT_CHANNEL_FAILED,
-                title: `PKI Alert Channel Failed: ${alert.name}`,
-                body: `Your PKI alert **${alert.name}** failed to deliver notifications: \`${truncatedError}\``,
+                title: `PKI Alert Channel Failed: ${alertName}`,
+                body: `Your PKI alert **${alertName}** failed to deliver notifications: \`${truncatedError}\``,
                 link: alertingPath
               }))
             );
@@ -727,6 +753,72 @@ export const pkiAlertV2ServiceFactory = ({
     await pkiAlertHistoryDAL.createWithCertificates(alertId, certificateIds, {
       hasNotificationSent,
       notificationError
+    });
+  };
+
+  const sendAlertNotifications = async (alertId: string, certificateIds: string[]) => {
+    const alert = await pkiAlertV2DAL.findByIdWithChannels(alertId);
+    if (!alert || !alert.enabled) return;
+
+    const { projectId } = alert;
+    const channels = alert.channels.filter((channel) => channel.enabled);
+    if (channels.length === 0) return;
+
+    const alertBefore = alert.alertBefore ?? "";
+    const filters = (alert.filters ?? []) as TPkiFilterRule[];
+
+    const { certificates } = await pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
+      alertBefore: parseTimeToPostgresInterval(alertBefore)
+    });
+
+    const matchingCertificates = certificates.filter(
+      (cert) => certificateIds.includes(cert.id) && cert.enrollmentType !== CertificateOrigin.CA
+    );
+
+    if (matchingCertificates.length === 0) return;
+
+    await dispatchToChannels({
+      alertId,
+      alertName: alert.name,
+      alertBefore,
+      projectId,
+      eventType: PkiAlertEventType.EXPIRATION,
+      channels,
+      matchingCertificates,
+      certificateIds
+    });
+  };
+
+  const sendEventNotifications = async (alertId: string, certificateIds: string[], eventType: PkiAlertEventType) => {
+    const alert = await pkiAlertV2DAL.findByIdWithChannels(alertId);
+    if (!alert || !alert.enabled) return;
+
+    const { projectId } = alert;
+    const channels = alert.channels.filter((channel) => channel.enabled);
+    if (channels.length === 0) return;
+
+    const filters = (alert.filters ?? []) as TPkiFilterRule[];
+
+    const matchingCertificates: TCertificatePreview[] = [];
+    for (const certId of certificateIds) {
+      // eslint-disable-next-line no-await-in-loop
+      const { certificates } = await pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
+        certificateId: certId
+      });
+      matchingCertificates.push(...certificates);
+    }
+
+    if (matchingCertificates.length === 0) return;
+
+    await dispatchToChannels({
+      alertId,
+      alertName: alert.name,
+      alertBefore: alert.alertBefore ?? undefined,
+      projectId,
+      eventType,
+      channels,
+      matchingCertificates,
+      certificateIds
     });
   };
 
@@ -803,6 +895,7 @@ export const pkiAlertV2ServiceFactory = ({
     listMatchingCertificates,
     listCurrentMatchingCertificates,
     sendAlertNotifications,
+    sendEventNotifications,
     testWebhookConfig
   };
 };
