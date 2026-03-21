@@ -448,7 +448,7 @@ export const ActiveDirectoryDiscoveryForm = ({ source, onSubmit, closeSheet }: P
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        The expected hostname in the server's TLS certificate. Required when DC
+                        The expected hostname in the server&apos;s TLS certificate. Required when DC
                         Address is an IP address and Reject Unauthorized is enabled.
                       </TooltipContent>
                     </Tooltip>

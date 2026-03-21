@@ -102,7 +102,9 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
             clientError = err;
             try {
               client.unbind();
-            } catch {}
+            } catch {
+              // do nothing
+            }
             reject(err);
           });
 
@@ -160,7 +162,9 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
             clientError = err;
             try {
               client.unbind();
-            } catch {}
+            } catch {
+              // do nothing
+            }
             reject(err);
           });
 
