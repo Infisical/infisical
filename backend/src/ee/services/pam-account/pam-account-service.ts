@@ -1219,7 +1219,7 @@ export const pamAccountServiceFactory = ({
         }
       });
 
-      // Run post-rotate hook
+      // Run post-rotate hook (e.g. dependency sync)
       if (factory.postRotate) {
         try {
           await factory.postRotate(
@@ -1230,7 +1230,27 @@ export const pamAccountServiceFactory = ({
             rotationAccountCredentials
           );
         } catch (postRotateError) {
+          // Password was rotated but dependency sync failed, mark as partial success
+          const postRotateMsg = `Password rotated successfully, but dependency sync failed: ${postRotateError instanceof Error ? postRotateError.message : String(postRotateError)}`;
           logger.error(postRotateError, `Post-rotation hook failed for account [accountId=${account.id}]`);
+          try {
+            const { encryptor: postRotateEncryptor } = await kmsService.createCipherPairWithDataKey({
+              type: KmsDataKey.SecretManager,
+              projectId: account.projectId
+            });
+            const { cipherTextBlob: encryptedPostRotateMsg } = postRotateEncryptor({
+              plainText: Buffer.from(postRotateMsg)
+            });
+            await pamAccountDAL.updateById(account.id, {
+              rotationStatus: PamAccountRotationStatus.PartialSuccess,
+              encryptedLastRotationMessage: encryptedPostRotateMsg
+            });
+          } catch (encryptErr) {
+            logger.error(encryptErr, `Failed to store post-rotation warning for account [accountId=${account.id}]`);
+            await pamAccountDAL.updateById(account.id, {
+              rotationStatus: PamAccountRotationStatus.PartialSuccess
+            });
+          }
         }
       }
     } catch (error) {

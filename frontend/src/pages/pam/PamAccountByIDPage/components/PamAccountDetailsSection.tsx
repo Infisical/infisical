@@ -8,9 +8,6 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   UnstableIconButton
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
@@ -29,6 +26,8 @@ const rotationStatusVariant = (status?: string | null) => {
       return "success" as const;
     case PamAccountRotationStatus.Failed:
       return "danger" as const;
+    case PamAccountRotationStatus.PartialSuccess:
+      return "warning" as const;
     case PamAccountRotationStatus.Rotating:
       return "info" as const;
     default:
@@ -42,6 +41,8 @@ const rotationStatusLabel = (status?: string | null) => {
       return "Success";
     case PamAccountRotationStatus.Failed:
       return "Failed";
+    case PamAccountRotationStatus.PartialSuccess:
+      return "Partial";
     case PamAccountRotationStatus.Rotating:
       return "Rotating";
     default:
@@ -106,27 +107,30 @@ export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
         <Detail>
           <DetailLabel>Rotation Status</DetailLabel>
           <DetailValue>
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={rotationStatusVariant(account.rotationStatus)}
-                className={isRotating ? "animate-pulse" : undefined}
-              >
-                {rotationStatusLabel(account.rotationStatus)}
-              </Badge>
-              {account.rotationStatus === PamAccountRotationStatus.Failed &&
-                account.lastRotationMessage && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help text-xs text-red-400">View error</span>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs">
-                      {account.lastRotationMessage}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-            </div>
+            <Badge
+              variant={rotationStatusVariant(account.rotationStatus)}
+              className={isRotating ? "animate-pulse" : undefined}
+            >
+              {rotationStatusLabel(account.rotationStatus)}
+            </Badge>
           </DetailValue>
         </Detail>
+        {(account.rotationStatus === PamAccountRotationStatus.Failed ||
+          account.rotationStatus === PamAccountRotationStatus.PartialSuccess) &&
+          account.lastRotationMessage && (
+            <Detail>
+              <DetailLabel>Last Rotation Message</DetailLabel>
+              <DetailValue
+                className={`text-xs break-words ${
+                  account.rotationStatus === PamAccountRotationStatus.Failed
+                    ? "text-danger"
+                    : "text-warning"
+                }`}
+              >
+                {account.lastRotationMessage}
+              </DetailValue>
+            </Detail>
+          )}
         {"lastRotatedAt" in account && account.lastRotatedAt && (
           <Detail>
             <DetailLabel>Last Rotated</DetailLabel>

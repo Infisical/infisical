@@ -455,6 +455,20 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                           )}
                         </Tooltip>
                       )}
+                      {rotationStatus === PamAccountRotationStatus.PartialSuccess && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="warning" className="text-xs">
+                              Partial
+                            </Badge>
+                          </TooltipTrigger>
+                          {lastRotationMessage && (
+                            <TooltipContent className="max-w-sm">
+                              {lastRotationMessage}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      )}
                       {rotationStatus === PamAccountRotationStatus.Rotating && (
                         <Badge variant="info" className="animate-pulse text-xs">
                           Rotating

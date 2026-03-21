@@ -47,5 +47,6 @@ export enum PamAccountView {
 export enum PamAccountRotationStatus {
   Rotating = "rotating",
   Success = "success",
+  PartialSuccess = "partial-success",
   Failed = "failed"
 }

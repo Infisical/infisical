@@ -48,6 +48,8 @@ export const buildDependencySyncScript = (
   accountUsername: string,
   newPassword: string
 ): string => {
+  validateWindowsName(dep.name, "Dependency name");
+
   const escapedPassword = escapePowershellSingleQuote(newPassword);
   const escapedName = escapePowershellSingleQuote(dep.name);
   const escapedUsername = escapePowershellSingleQuote(accountUsername);
@@ -64,6 +66,7 @@ export const buildDependencySyncScript = (
     case PamAccountDependencyType.ScheduledTask: {
       const taskData = dep.data as { TaskPath?: string } | null;
       const taskPath = taskData?.TaskPath ?? "\\";
+      validateWindowsPath(taskPath, "Task path");
       const escapedPath = escapePowershellSingleQuote(taskPath);
       validateWindowsPath(escapedPath, "Task path");
       return `schtasks.exe /Change /TN '${escapedPath}${escapedName}' /RU '${escapedUsername}' /RP '${escapedPassword}'`;
