@@ -158,7 +158,7 @@ func NewSharedService(ctx context.Context, logger *slog.Logger, deps Deps) *Shar
 func (s *SharedService) init(ctx context.Context, cfg *config.Config) {
 	defer func() {
 		if r := recover(); r != nil {
-			s.logger.Error("panic during license init", slog.Any("recover", r))
+			s.logger.ErrorContext(ctx, "panic during license init", slog.Any("recover", r))
 		}
 	}()
 
@@ -166,14 +166,14 @@ func (s *SharedService) init(ctx context.Context, cfg *config.Config) {
 	if cfg.LicenseServerKey != "" {
 		token, err := s.cloudAPI.refreshToken(ctx)
 		if err != nil {
-			s.logger.Error("cloud license login failed", slog.Any("error", err))
+			s.logger.ErrorContext(ctx, "cloud license login failed", slog.Any("error", err))
 			s.isValid = true // allow OSS fallback
 			return
 		}
 		if token != "" {
 			s.instanceType = InstanceTypeCloud
 		}
-		s.logger.Info("license initialized", slog.String("instanceType", string(InstanceTypeCloud)))
+		s.logger.InfoContext(ctx, "license initialized", slog.String("instanceType", string(InstanceTypeCloud)))
 		s.isValid = true
 		return
 	}
@@ -186,16 +186,16 @@ func (s *SharedService) init(ctx context.Context, cfg *config.Config) {
 		s.onPremAPI.apiKey = licenseKey
 		token, err := s.onPremAPI.refreshToken(ctx)
 		if err != nil {
-			s.logger.Error("on-prem license login failed", slog.Any("error", err))
+			s.logger.ErrorContext(ctx, "on-prem license login failed", slog.Any("error", err))
 			s.isValid = true
 			return
 		}
 		if token != "" {
 			if err := s.syncOnPremFeatures(ctx); err != nil {
-				s.logger.Error("initial on-prem feature sync failed", slog.Any("error", err))
+				s.logger.ErrorContext(ctx, "initial on-prem feature sync failed", slog.Any("error", err))
 			}
 			s.instanceType = InstanceTypeEnterpriseOnPrem
-			s.logger.Info("license initialized", slog.String("instanceType", string(InstanceTypeEnterpriseOnPrem)))
+			s.logger.InfoContext(ctx, "license initialized", slog.String("instanceType", string(InstanceTypeEnterpriseOnPrem)))
 			s.isValid = true
 		}
 		return
@@ -204,10 +204,10 @@ func (s *SharedService) init(ctx context.Context, cfg *config.Config) {
 	// 3. Offline enterprise license.
 	if licenseKey != "" && licenseType == OfflineLicenseType {
 		if err := s.loadOfflineLicense(licenseKey); err != nil {
-			s.logger.Warn("offline license validation failed", slog.Any("error", err))
+			s.logger.WarnContext(ctx, "offline license validation failed", slog.Any("error", err))
 		} else {
 			s.instanceType = InstanceTypeEnterpriseOnPremOffline
-			s.logger.Info("license initialized", slog.String("instanceType", string(InstanceTypeEnterpriseOnPremOffline)))
+			s.logger.InfoContext(ctx, "license initialized", slog.String("instanceType", string(InstanceTypeEnterpriseOnPremOffline)))
 			s.isValid = true
 			return
 		}
@@ -216,7 +216,7 @@ func (s *SharedService) init(ctx context.Context, cfg *config.Config) {
 	// 4. Self-hosted OSS fallback.
 	s.instanceType = InstanceTypeOnPrem
 	s.isValid = true
-	s.logger.Info("license initialized", slog.String("instanceType", string(InstanceTypeOnPrem)))
+	s.logger.InfoContext(ctx, "license initialized", slog.String("instanceType", string(InstanceTypeOnPrem)))
 }
 
 // detectLicenseKey determines the license key and its type (online/offline).
@@ -334,7 +334,7 @@ func (s *SharedService) GetPlan(ctx context.Context, orgID string) (*FeatureSet,
 	}
 	endpoint := fmt.Sprintf("/api/license-server/v1/customers/%s/cloud-plan", org.CustomerID.String)
 	if err := s.cloudAPI.get(ctx, endpoint, &resp); err != nil {
-		s.logger.Error("failed to fetch cloud plan", slog.String("orgID", orgID), slog.Any("error", err))
+		s.logger.ErrorContext(ctx, "failed to fetch cloud plan", slog.String("orgID", orgID), slog.Any("error", err))
 		return s.fallbackPlan(ctx, cacheKey), nil
 	}
 
@@ -382,7 +382,7 @@ func (s *SharedService) startBackgroundSync() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.stopSync = cancel
 
-	s.logger.Info("starting background license sync", slog.Duration("interval", syncInterval))
+	s.logger.InfoContext(ctx, "starting background license sync", slog.Duration("interval", syncInterval))
 	go func() {
 		ticker := time.NewTicker(syncInterval)
 		defer ticker.Stop()
@@ -390,11 +390,11 @@ func (s *SharedService) startBackgroundSync() {
 		for {
 			select {
 			case <-ctx.Done():
-				s.logger.Info("background license sync stopped")
+				s.logger.InfoContext(ctx, "background license sync stopped")
 				return
 			case <-ticker.C:
 				if err := s.syncOnPremFeatures(ctx); err != nil {
-					s.logger.Error("background license sync failed", slog.Any("error", err))
+					s.logger.ErrorContext(ctx, "background license sync failed", slog.Any("error", err))
 				}
 			}
 		}

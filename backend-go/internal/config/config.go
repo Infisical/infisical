@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -439,7 +440,7 @@ func LoadConfig() (*Config, error) {
 	if nodeEnv != string(NodeEnvProduction) {
 		if err := k.Load(file.Provider(".env"), dotenv.Parser()); err != nil {
 			if !os.IsNotExist(err) {
-				slog.Debug("could not load .env file", slog.Any("error", err))
+				slog.DebugContext(context.Background(), "could not load .env file", slog.Any("error", err))
 			}
 		}
 	}
