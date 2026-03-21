@@ -8,6 +8,8 @@ import (
 
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
+
+	"github.com/infisical/api/internal/libs/requestid"
 )
 
 // ErrorBody is the JSON response shape sent to clients on error.
@@ -35,6 +37,8 @@ func (b *ErrorBody) StatusCode() int {
 //  3. Any other error (unknown) — logged at ERROR, returns 500 with safe message.
 func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goahttp.Statuser {
 	return func(ctx context.Context, err error) goahttp.Statuser {
+		reqID := requestid.FromContext(ctx)
+
 		var apiErr *Error
 		if errors.As(err, &apiErr) {
 			if apiErr.Status >= http.StatusInternalServerError {
@@ -49,6 +53,7 @@ func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goah
 					Code:    apiErr.Status,
 					Message: "Something went wrong",
 					Err:     apiErr.Name,
+					ReqID:   reqID,
 				}
 			}
 
@@ -64,6 +69,7 @@ func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goah
 				Message: apiErr.Message,
 				Err:     apiErr.Name,
 				Details: apiErr.Details,
+				ReqID:   reqID,
 			}
 		}
 
@@ -80,6 +86,7 @@ func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goah
 				Code:    status,
 				Message: goaErr.Message,
 				Err:     goaErr.Name,
+				ReqID:   reqID,
 			}
 		}
 
@@ -89,6 +96,7 @@ func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goah
 			Code:    http.StatusInternalServerError,
 			Message: "Something went wrong",
 			Err:     "InternalServerError",
+			ReqID:   reqID,
 		}
 	}
 }
