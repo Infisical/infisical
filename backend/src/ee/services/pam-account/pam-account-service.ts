@@ -1341,6 +1341,7 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Rotation credentials are not configured on this resource" });
     }
 
+    // Immediate check. There's an actual atomic lock in rotateAccount
     if (account.rotationStatus === PamAccountRotationStatus.Rotating) {
       throw new BadRequestError({ message: "Account is already being rotated" });
     }

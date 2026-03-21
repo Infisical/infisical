@@ -214,14 +214,21 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
           ...buildLdapTlsOptions()
         });
 
+        let clientError: Error | null = null;
         client.on("error", (err: Error) => {
-          client.unbind();
+          clientError = err;
+          try {
+            client.unbind();
+          } catch {
+            // do nothing
+          }
           reject(err);
         });
 
         // Bind as rotation account (admin)
         const bindDn = `${rotationAccountCredentials.username}@${connectionDetails.domain}`;
         client.bind(bindDn, rotationAccountCredentials.password, (bindErr) => {
+          if (clientError) return;
           if (bindErr) {
             client.unbind();
             reject(new Error(`Rotation account bind failed: ${bindErr.message}`));

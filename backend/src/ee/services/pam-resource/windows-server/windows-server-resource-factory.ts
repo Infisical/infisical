@@ -171,7 +171,7 @@ export const windowsResourceFactory: TPamResourceFactory<
         );
 
         logger.info(
-          `[Windows Rotation] Password rotated for local account '${currentCredentials.username}' on ${connectionDetails.hostname}`
+          `[Windows Rotation] Password rotated for local account [username=${currentCredentials.username}] on [hostname=${connectionDetails.hostname}]`
         );
       }
     );
