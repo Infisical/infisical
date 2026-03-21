@@ -28,7 +28,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { OrgInviteLink } from "./OrgInviteLink";
 
-const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
+const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Developer" };
 
 const BUILT_IN_PROJECT_ROLES = [
   { slug: "admin", name: "Admin", description: "Full administrative access over a project" },
