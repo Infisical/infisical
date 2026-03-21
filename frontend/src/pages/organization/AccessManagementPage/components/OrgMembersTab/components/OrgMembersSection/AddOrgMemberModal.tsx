@@ -31,10 +31,10 @@ import { OrgInviteLink } from "./OrgInviteLink";
 const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
 
 const BUILT_IN_PROJECT_ROLES = [
-  { slug: "admin", name: "Admin" },
-  { slug: "member", name: "Member" },
-  { slug: "viewer", name: "Viewer" },
-  { slug: "no-access", name: "No Access" }
+  { slug: "admin", name: "Admin", description: "Full administrative access over a project" },
+  { slug: "member", name: "Developer", description: "Limited read/write role in a project" },
+  { slug: "viewer", name: "Viewer", description: "Only read role in a project" },
+  { slug: "no-access", name: "No Access", description: "No access to any resources in the project" }
 ];
 
 const EmailSchema = z.string().email().min(1).trim().toLowerCase();
