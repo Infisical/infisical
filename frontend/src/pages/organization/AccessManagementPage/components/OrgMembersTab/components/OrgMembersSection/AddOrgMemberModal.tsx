@@ -289,71 +289,67 @@ export const AddOrgMemberModal = ({
               )}
             />
 
-            <div className="flex items-end justify-between gap-2">
-              <div className="w-full">
-                <Controller
-                  control={control}
-                  name="projects"
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Assign users to projects"
-                      isOptional
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <FilterableSelect
-                        isMulti
-                        value={value}
-                        onChange={onChange}
-                        isLoading={isProjectsLoading}
-                        getOptionLabel={(project) => project.name}
-                        getOptionValue={(project) => project.id}
-                        options={projects}
-                        groupBy="type"
-                        getGroupHeaderLabel={getGroupHeaderLabel}
-                        placeholder="Select projects..."
-                      />
-                    </FormControl>
-                  )}
-                />
-              </div>
-              <div className="w-48 flex-shrink-0">
-                <Controller
-                  control={control}
-                  name="projectRole"
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl
-                      tooltipText={
-                        <>
-                          Select which role to assign to the users in the selected projects.
-                          <br />
-                          When multiple projects are selected, only built-in roles are available for
-                          selection.
-                          <br />
-                          You can assign users to additional projects after they&apos;ve been
-                          invited.
-                        </>
-                      }
-                      label="Role"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <FilterableSelect
-                        isDisabled={selectedProjects.length === 0}
-                        isLoading={Boolean(singleSelectedProjectId) && isProjectRolesLoading}
-                        value={value}
-                        onChange={onChange}
-                        options={projectRoles ?? []}
-                        getOptionValue={(option) => option.slug}
-                        getOptionLabel={(option) => option.name}
-                        placeholder="Select role..."
-                        components={{ Option: RoleOption }}
-                      />
-                    </FormControl>
-                  )}
-                />
-              </div>
-            </div>
+            <Controller
+              control={control}
+              name="projects"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Assign users to projects"
+                  isOptional
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <FilterableSelect
+                    isMulti
+                    value={value}
+                    onChange={onChange}
+                    isLoading={isProjectsLoading}
+                    getOptionLabel={(project) => project.name}
+                    getOptionValue={(project) => project.id}
+                    options={projects}
+                    groupBy="type"
+                    getGroupHeaderLabel={getGroupHeaderLabel}
+                    placeholder="Select projects..."
+                  />
+                </FormControl>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="projectRole"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  tooltipText={
+                    <>
+                      Select which role to assign to the users in the selected projects.
+                      <br />
+                      <br />
+                      When multiple projects are selected, only built-in roles are available for
+                      selection.
+                      <br />
+                      <br />
+                      You can assign users to additional projects after they&apos;ve been invited.
+                    </>
+                  }
+                  label="Project Role"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <FilterableSelect
+                    isDisabled={selectedProjects.length === 0}
+                    isLoading={Boolean(singleSelectedProjectId) && isProjectRolesLoading}
+                    value={value}
+                    onChange={onChange}
+                    options={projectRoles ?? []}
+                    getOptionValue={(option) => option.slug}
+                    getOptionLabel={(option) => option.name}
+                    placeholder="Select role..."
+                    components={{ Option: RoleOption }}
+                  />
+                </FormControl>
+              )}
+            />
 
             <div className="mt-8 flex items-center">
               <Button
