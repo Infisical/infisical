@@ -146,8 +146,8 @@ export const windowsResourceFactory: TPamResourceFactory<
     const escapedNewPassword = escapePowershellSingleQuote(newPassword);
     const escapedUsername = escapePowershellSingleQuote(currentCredentials.username);
 
-    const winrmPort = connectionDetails.winrmPort;
-    const useWinrmHttps = connectionDetails.useWinrmHttps;
+    const { winrmPort } = connectionDetails;
+    const { useWinrmHttps } = connectionDetails;
 
     await executeWithGateway(
       { connectionDetails, gatewayId, resourceType, targetPortOverride: winrmPort },
