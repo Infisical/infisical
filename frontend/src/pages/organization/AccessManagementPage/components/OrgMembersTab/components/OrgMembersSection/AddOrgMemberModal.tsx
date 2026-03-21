@@ -332,7 +332,7 @@ export const AddOrgMemberModal = ({
                       You can assign users to additional projects after they&apos;ve been invited.
                     </>
                   }
-                  label="Project Role"
+                  label="Project role"
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
