@@ -197,7 +197,7 @@ const PageContent = () => {
 
       <div className="flex gap-6">
         {/* Left Column */}
-        <div className="flex w-80 flex-col gap-4">
+        <div className="flex w-80 shrink-0 flex-col gap-4">
           <PamResourceDetailsSection resource={resource} onEdit={() => setIsEditModalOpen(true)} />
           <PamResourceConnectionSection
             resource={resource}

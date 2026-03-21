@@ -282,7 +282,7 @@ const PageContent = () => {
 
       <div className="flex gap-6">
         {/* Left Column */}
-        <div className="flex w-80 flex-col gap-4">
+        <div className="flex w-80 shrink-0 flex-col gap-4">
           <PamAccountDetailsSection account={account} onEdit={() => setIsEditModalOpen(true)} />
           <PamAccountCredentialsSection account={account} onEdit={() => setIsEditModalOpen(true)} />
           <PamAccountPropertiesSection account={account} />
