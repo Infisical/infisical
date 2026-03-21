@@ -24,7 +24,7 @@ type Deps struct {
 
 func NewService(logger *slog.Logger, deps Deps) genprojects.Service {
 	return &service{
-		logger:     logger.With("service", "projects"),
+		logger:     logger.With(slog.String("service", "projects")),
 		permission: deps.Permission,
 	}
 }
@@ -35,7 +35,7 @@ func (s *service) GetHealth(ctx context.Context) (string, error) {
 }
 
 func (s *service) CreateProject(ctx context.Context, p *genprojects.CreateProjectPayload) (*genprojects.ProjectResult, error) {
-	s.logger.InfoContext(ctx, "creating project", "name", p.Name)
+	s.logger.InfoContext(ctx, "creating project", slog.String("name", p.Name))
 	return &genprojects.ProjectResult{
 		ID:    "generated-id",
 		Name:  p.Name,

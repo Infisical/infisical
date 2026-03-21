@@ -15,7 +15,7 @@ type Registry struct {
 }
 
 func NewRegistry(logger *slog.Logger, db pg.DB, sharedServices *shared.SharedServices) *Registry {
-	l := logger.With("product", "secretmanager")
+	l := logger.With(slog.String("product", "secretmanager"))
 
 	smSharedService := smService.NewSharedServices(smService.SharedServicesDeps{
 		DB: db,

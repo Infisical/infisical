@@ -106,7 +106,7 @@ func NewGetHealthHandler(
 ) http.Handler {
 	var (
 		encodeResponse = EncodeGetHealthResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeGetHealthError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
@@ -153,7 +153,7 @@ func NewCreateProjectHandler(
 	var (
 		decodeRequest  = DecodeCreateProjectRequest(mux, decoder)
 		encodeResponse = EncodeCreateProjectResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeCreateProjectError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))

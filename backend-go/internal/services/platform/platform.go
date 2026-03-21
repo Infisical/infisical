@@ -13,7 +13,7 @@ type Registry struct {
 }
 
 func NewRegistry(logger *slog.Logger, sharedLibs *shared.SharedServices) *Registry {
-	l := logger.With("product", "platform")
+	l := logger.With(slog.String("product", "platform"))
 	return &Registry{
 		Projects: projects.NewService(l, projects.Deps{
 			Permission: sharedLibs.Permission,

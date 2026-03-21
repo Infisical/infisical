@@ -254,7 +254,7 @@ func projectsCreateProjectUsage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "projects create-project --body '{\n      \"name\": \"hay\",\n      \"orgId\": \"Id eveniet atque sed.\"\n   }'")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "projects create-project --body '{\n      \"name\": \"a9\",\n      \"orgId\": \"Eius dolorum eius qui repellendus aperiam vel.\"\n   }'")
 }
 
 // secretsUsage displays the usage of the secrets command and its subcommands.
@@ -303,7 +303,7 @@ func secretsCreateSecretUsage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets create-secret --body '{\n      \"environment\": \"Qui eum quos eum pariatur.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Deleniti itaque voluptatum.\",\n      \"value\": \"Reiciendis minima.\"\n   }'")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets create-secret --body '{\n      \"environment\": \"Omnis et non.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Sed consequatur.\",\n      \"value\": \"Earum sed blanditiis est dolor.\"\n   }'")
 }
 
 func secretsGetSecretUsage() {
@@ -321,7 +321,7 @@ func secretsGetSecretUsage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret --id \"Expedita molestias consequatur magnam dolores eius.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret --id \"Dolor est illo.\"")
 }
 
 func secretsUpdateSecretUsage() {
@@ -341,7 +341,7 @@ func secretsUpdateSecretUsage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets update-secret --body '{\n      \"key\": \"Omnis autem quo ducimus facilis veritatis.\",\n      \"value\": \"Eligendi quasi iusto.\"\n   }' --id \"Consectetur ducimus est iste ut provident.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets update-secret --body '{\n      \"key\": \"Omnis veniam.\",\n      \"value\": \"Explicabo et sed.\"\n   }' --id \"Eum est consequatur velit eaque quibusdam id.\"")
 }
 
 func secretsDeleteSecretUsage() {
@@ -359,7 +359,7 @@ func secretsDeleteSecretUsage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets delete-secret --id \"Eos sed reprehenderit atque.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets delete-secret --id \"Et velit quod.\"")
 }
 
 func secretsListSecretsUsage() {
@@ -379,5 +379,5 @@ func secretsListSecretsUsage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets --project-id \"Dolorum ut ipsum.\" --environment \"Explicabo voluptas necessitatibus enim hic nam.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets --project-id \"Quia aspernatur necessitatibus blanditiis iure dolor labore.\" --environment \"Est aut aliquam placeat ducimus sit.\"")
 }

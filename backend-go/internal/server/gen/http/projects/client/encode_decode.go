@@ -38,6 +38,13 @@ func (c *Client) BuildGetHealthRequest(ctx context.Context, v any) (*http.Reques
 // DecodeGetHealthResponse returns a decoder for responses returned by the
 // projects getHealth endpoint. restoreBody controls whether the response body
 // should be restored after having been read.
+// DecodeGetHealthResponse may return the following errors:
+//   - "bad_request" (type *projects.APIErrorResult): http.StatusBadRequest
+//   - "unauthorized" (type *projects.APIErrorResult): http.StatusUnauthorized
+//   - "forbidden" (type *projects.APIErrorResult): http.StatusForbidden
+//   - "not_found" (type *projects.APIErrorResult): http.StatusNotFound
+//   - "internal_error" (type *projects.APIErrorResult): http.StatusInternalServerError
+//   - error: internal error
 func DecodeGetHealthResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
 	return func(resp *http.Response) (any, error) {
 		if restoreBody {
@@ -63,6 +70,76 @@ func DecodeGetHealthResponse(decoder func(*http.Response) goahttp.Decoder, resto
 				return nil, goahttp.ErrDecodingError("projects", "getHealth", err)
 			}
 			return body, nil
+		case http.StatusBadRequest:
+			var (
+				body GetHealthBadRequestResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "getHealth", err)
+			}
+			err = ValidateGetHealthBadRequestResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "getHealth", err)
+			}
+			return nil, NewGetHealthBadRequest(&body)
+		case http.StatusUnauthorized:
+			var (
+				body GetHealthUnauthorizedResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "getHealth", err)
+			}
+			err = ValidateGetHealthUnauthorizedResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "getHealth", err)
+			}
+			return nil, NewGetHealthUnauthorized(&body)
+		case http.StatusForbidden:
+			var (
+				body GetHealthForbiddenResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "getHealth", err)
+			}
+			err = ValidateGetHealthForbiddenResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "getHealth", err)
+			}
+			return nil, NewGetHealthForbidden(&body)
+		case http.StatusNotFound:
+			var (
+				body GetHealthNotFoundResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "getHealth", err)
+			}
+			err = ValidateGetHealthNotFoundResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "getHealth", err)
+			}
+			return nil, NewGetHealthNotFound(&body)
+		case http.StatusInternalServerError:
+			var (
+				body GetHealthInternalErrorResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "getHealth", err)
+			}
+			err = ValidateGetHealthInternalErrorResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "getHealth", err)
+			}
+			return nil, NewGetHealthInternalError(&body)
 		default:
 			body, _ := io.ReadAll(resp.Body)
 			return nil, goahttp.ErrInvalidResponse("projects", "getHealth", resp.StatusCode, string(body))
@@ -104,6 +181,13 @@ func EncodeCreateProjectRequest(encoder func(*http.Request) goahttp.Encoder) fun
 // DecodeCreateProjectResponse returns a decoder for responses returned by the
 // projects createProject endpoint. restoreBody controls whether the response
 // body should be restored after having been read.
+// DecodeCreateProjectResponse may return the following errors:
+//   - "bad_request" (type *projects.APIErrorResult): http.StatusBadRequest
+//   - "unauthorized" (type *projects.APIErrorResult): http.StatusUnauthorized
+//   - "forbidden" (type *projects.APIErrorResult): http.StatusForbidden
+//   - "not_found" (type *projects.APIErrorResult): http.StatusNotFound
+//   - "internal_error" (type *projects.APIErrorResult): http.StatusInternalServerError
+//   - error: internal error
 func DecodeCreateProjectResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
 	return func(resp *http.Response) (any, error) {
 		if restoreBody {
@@ -136,6 +220,76 @@ func DecodeCreateProjectResponse(decoder func(*http.Response) goahttp.Decoder, r
 			}
 			res := projects.NewProjectResult(vres)
 			return res, nil
+		case http.StatusBadRequest:
+			var (
+				body CreateProjectBadRequestResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "createProject", err)
+			}
+			err = ValidateCreateProjectBadRequestResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "createProject", err)
+			}
+			return nil, NewCreateProjectBadRequest(&body)
+		case http.StatusUnauthorized:
+			var (
+				body CreateProjectUnauthorizedResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "createProject", err)
+			}
+			err = ValidateCreateProjectUnauthorizedResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "createProject", err)
+			}
+			return nil, NewCreateProjectUnauthorized(&body)
+		case http.StatusForbidden:
+			var (
+				body CreateProjectForbiddenResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "createProject", err)
+			}
+			err = ValidateCreateProjectForbiddenResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "createProject", err)
+			}
+			return nil, NewCreateProjectForbidden(&body)
+		case http.StatusNotFound:
+			var (
+				body CreateProjectNotFoundResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "createProject", err)
+			}
+			err = ValidateCreateProjectNotFoundResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "createProject", err)
+			}
+			return nil, NewCreateProjectNotFound(&body)
+		case http.StatusInternalServerError:
+			var (
+				body CreateProjectInternalErrorResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("projects", "createProject", err)
+			}
+			err = ValidateCreateProjectInternalErrorResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("projects", "createProject", err)
+			}
+			return nil, NewCreateProjectInternalError(&body)
 		default:
 			body, _ := io.ReadAll(resp.Body)
 			return nil, goahttp.ErrInvalidResponse("projects", "createProject", resp.StatusCode, string(body))

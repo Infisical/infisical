@@ -26,6 +26,7 @@ linters:
     - revive
     - unconvert
     - unparam
+    - sloglint
     - wastedassign
 
   settings:
@@ -62,9 +63,16 @@ linters:
 
     misspell:
       locale: US
+      extra-words:
+        - typo: "Statuser"
+          correction: "Statuser"
 
     prealloc:
       simple: true
+
+    sloglint:
+      no-global: "all"
+      attr-only: true
 
   exclusions:
     generated: strict
@@ -84,6 +92,19 @@ linters:
           - staticcheck
         text: "ST1001"
 
+      # Pre-init code and utilities can use global slog.
+      - path: cmd/
+        linters:
+          - sloglint
+        text: "global logger"
+      - path: internal/config/
+        linters:
+          - sloglint
+        text: "global logger"
+      - path: internal/libs/
+        linters:
+          - sloglint
+
       # Test files can be more relaxed.
       - path: _test\.go
         linters:
@@ -91,6 +112,7 @@ linters:
           - unparam
           - prealloc
           - exhaustruct
+          - sloglint
 
 formatters:
   enable:

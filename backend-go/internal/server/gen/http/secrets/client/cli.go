@@ -23,7 +23,7 @@ func BuildCreateSecretPayload(secretsCreateSecretBody string) (*secrets.Secret, 
 	{
 		err = json.Unmarshal([]byte(secretsCreateSecretBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"environment\": \"Qui eum quos eum pariatur.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Deleniti itaque voluptatum.\",\n      \"value\": \"Reiciendis minima.\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"environment\": \"Omnis et non.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Sed consequatur.\",\n      \"value\": \"Earum sed blanditiis est dolor.\"\n   }'")
 		}
 	}
 	v := &secrets.Secret{
@@ -57,7 +57,7 @@ func BuildUpdateSecretPayload(secretsUpdateSecretBody string, secretsUpdateSecre
 	{
 		err = json.Unmarshal([]byte(secretsUpdateSecretBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"key\": \"Omnis autem quo ducimus facilis veritatis.\",\n      \"value\": \"Eligendi quasi iusto.\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"key\": \"Omnis veniam.\",\n      \"value\": \"Explicabo et sed.\"\n   }'")
 		}
 	}
 	var id string

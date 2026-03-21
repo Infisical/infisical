@@ -126,7 +126,7 @@ func NewGetHealthHandler(
 ) http.Handler {
 	var (
 		encodeResponse = EncodeGetHealthResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeGetHealthError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
@@ -173,7 +173,7 @@ func NewCreateSecretHandler(
 	var (
 		decodeRequest  = DecodeCreateSecretRequest(mux, decoder)
 		encodeResponse = EncodeCreateSecretResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeCreateSecretError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
@@ -226,7 +226,7 @@ func NewGetSecretHandler(
 	var (
 		decodeRequest  = DecodeGetSecretRequest(mux, decoder)
 		encodeResponse = EncodeGetSecretResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeGetSecretError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
@@ -279,7 +279,7 @@ func NewUpdateSecretHandler(
 	var (
 		decodeRequest  = DecodeUpdateSecretRequest(mux, decoder)
 		encodeResponse = EncodeUpdateSecretResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeUpdateSecretError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
@@ -332,7 +332,7 @@ func NewDeleteSecretHandler(
 	var (
 		decodeRequest  = DecodeDeleteSecretRequest(mux, decoder)
 		encodeResponse = EncodeDeleteSecretResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeDeleteSecretError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
@@ -385,7 +385,7 @@ func NewListSecretsHandler(
 	var (
 		decodeRequest  = DecodeListSecretsRequest(mux, decoder)
 		encodeResponse = EncodeListSecretsResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeListSecretsError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
