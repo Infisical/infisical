@@ -93,8 +93,9 @@ export async function up(knex: Knex): Promise<void> {
         const encrypted = encryptor({ plainText: Buffer.from(JSON.stringify(decrypted)) }).cipherTextBlob;
         updates.push({ id: resource.id, encryptedConnectionDetails: encrypted });
       }
-    } catch {
-      // Skip resources that fail to decrypt
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`Migration failed to backfill TLS config for [resourceId=${resource.id}]:`, err);
     }
   }
 

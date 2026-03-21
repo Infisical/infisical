@@ -323,9 +323,10 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
         return chain;
       }, Promise.resolve());
 
-      const finalIds = localRules.map((r) =>
-        r.id.startsWith(TEMP_ID_PREFIX) ? newIdMap.get(r.id)! : r.id
-      );
+      const finalIds = localRules
+        .map((r) => (r.id.startsWith(TEMP_ID_PREFIX) ? newIdMap.get(r.id) : r.id))
+        .filter((id): id is string => !!id);
+
       const serverOrder = rules.filter((r) => !deletedRuleIds.includes(r.id)).map((r) => r.id);
       const orderChanged =
         finalIds.length !== serverOrder.length || finalIds.some((id, i) => id !== serverOrder[i]);

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { ArrowDownIcon, ArrowUpIcon, TrashIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import {
   Field,
@@ -82,7 +81,7 @@ export const RotationRuleCard = ({
 
   return (
     <div className="flex gap-2 rounded-lg border border-border bg-card p-4">
-      <div className="flex flex-col gap-2">
+      <div className="flex w-full flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="mr-1 text-lg font-medium text-muted">{index + 1}</span>
           <Switch
@@ -97,8 +96,8 @@ export const RotationRuleCard = ({
             <Label className="opacity-50">Do Not Rotate</Label>
           )}
         </div>
-        <div className="grid grid-cols-[auto_1fr_1fr] gap-2">
-          <Field>
+        <div className="flex gap-2">
+          <Field className="w-2/5 shrink-0">
             <FieldLabel>Rule Name</FieldLabel>
             <FieldContent>
               <UnstableInput
@@ -121,18 +120,18 @@ export const RotationRuleCard = ({
               />
             </FieldContent>
           </Field>
-          <Field>
-            <FieldLabel>Interval (days)</FieldLabel>
-            <FieldContent>
-              <UnstableInput
-                value={localInterval}
-                onChange={(e) => setLocalInterval(e.target.value)}
-                onBlur={handleIntervalBlur}
-                className={twMerge(!rule.enabled && "opacity-50")}
-                disabled={!rule.enabled}
-              />
-            </FieldContent>
-          </Field>
+          {rule.enabled && (
+            <Field>
+              <FieldLabel>Interval (days)</FieldLabel>
+              <FieldContent>
+                <UnstableInput
+                  value={localInterval}
+                  onChange={(e) => setLocalInterval(e.target.value)}
+                  onBlur={handleIntervalBlur}
+                />
+              </FieldContent>
+            </Field>
+          )}
         </div>
       </div>
 
