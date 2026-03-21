@@ -123,10 +123,15 @@ func (c *Client) CreateSecret() goa.Endpoint {
 // service getSecret server.
 func (c *Client) GetSecret() goa.Endpoint {
 	var (
+		encodeRequest  = EncodeGetSecretRequest(c.encoder)
 		decodeResponse = DecodeGetSecretResponse(c.decoder, c.RestoreResponseBody)
 	)
 	return func(ctx context.Context, v any) (any, error) {
 		req, err := c.BuildGetSecretRequest(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		err = encodeRequest(req, v)
 		if err != nil {
 			return nil, err
 		}
@@ -166,10 +171,15 @@ func (c *Client) UpdateSecret() goa.Endpoint {
 // service deleteSecret server.
 func (c *Client) DeleteSecret() goa.Endpoint {
 	var (
+		encodeRequest  = EncodeDeleteSecretRequest(c.encoder)
 		decodeResponse = DecodeDeleteSecretResponse(c.decoder, c.RestoreResponseBody)
 	)
 	return func(ctx context.Context, v any) (any, error) {
 		req, err := c.BuildDeleteSecretRequest(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		err = encodeRequest(req, v)
 		if err != nil {
 			return nil, err
 		}

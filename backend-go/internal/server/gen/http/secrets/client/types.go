@@ -491,7 +491,7 @@ type SecretResultResponse struct {
 
 // NewCreateSecretRequestBody builds the HTTP request body from the payload of
 // the "createSecret" endpoint of the "secrets" service.
-func NewCreateSecretRequestBody(p *secrets.Secret) *CreateSecretRequestBody {
+func NewCreateSecretRequestBody(p *secrets.CreateSecretPayload) *CreateSecretRequestBody {
 	body := &CreateSecretRequestBody{
 		Key:         p.Key,
 		Value:       p.Value,

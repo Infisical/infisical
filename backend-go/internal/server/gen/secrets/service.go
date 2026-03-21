@@ -12,6 +12,7 @@ import (
 	"context"
 
 	secretsviews "github.com/infisical/api/internal/server/gen/secrets/views"
+	"goa.design/goa/v3/security"
 )
 
 // Service for managing secrets.
@@ -19,7 +20,7 @@ type Service interface {
 	// Health check for the secrets service.
 	GetHealth(context.Context) (res string, err error)
 	// Create a new secret.
-	CreateSecret(context.Context, *Secret) (res *SecretResult, err error)
+	CreateSecret(context.Context, *CreateSecretPayload) (res *SecretResult, err error)
 	// Get a secret by ID.
 	GetSecret(context.Context, *GetSecretPayload) (res *SecretResult, err error)
 	// Update an existing secret.
@@ -28,6 +29,12 @@ type Service interface {
 	DeleteSecret(context.Context, *DeleteSecretPayload) (err error)
 	// List secrets for an environment.
 	ListSecrets(context.Context, *ListSecretsPayload) (res SecretResultCollection, err error)
+}
+
+// Auther defines the authorization functions to be implemented by the service.
+type Auther interface {
+	// JWTAuth implements the authorization logic for the JWT security scheme.
+	JWTAuth(ctx context.Context, token string, schema *security.JWTScheme) (context.Context, error)
 }
 
 // APIName is the name of the API as defined in the design.
@@ -57,30 +64,10 @@ type APIErrorResult struct {
 	Details any
 }
 
-// DeleteSecretPayload is the payload type of the secrets service deleteSecret
+// CreateSecretPayload is the payload type of the secrets service createSecret
 // method.
-type DeleteSecretPayload struct {
-	// Secret ID
-	ID string
-}
-
-// GetSecretPayload is the payload type of the secrets service getSecret method.
-type GetSecretPayload struct {
-	// Secret ID
-	ID string
-}
-
-// ListSecretsPayload is the payload type of the secrets service listSecrets
-// method.
-type ListSecretsPayload struct {
-	// Project ID
-	ProjectID string
-	// Environment slug
-	Environment string
-}
-
-// Secret is the payload type of the secrets service createSecret method.
-type Secret struct {
+type CreateSecretPayload struct {
+	Token string
 	// Secret key
 	Key string
 	// Secret value
@@ -89,6 +76,31 @@ type Secret struct {
 	Environment string
 	// Project ID
 	ProjectID string
+}
+
+// DeleteSecretPayload is the payload type of the secrets service deleteSecret
+// method.
+type DeleteSecretPayload struct {
+	Token string
+	// Secret ID
+	ID string
+}
+
+// GetSecretPayload is the payload type of the secrets service getSecret method.
+type GetSecretPayload struct {
+	Token string
+	// Secret ID
+	ID string
+}
+
+// ListSecretsPayload is the payload type of the secrets service listSecrets
+// method.
+type ListSecretsPayload struct {
+	Token string
+	// Project ID
+	ProjectID string
+	// Environment slug
+	Environment string
 }
 
 // SecretResult is the result type of the secrets service createSecret method.
@@ -112,6 +124,7 @@ type SecretResultCollection []*SecretResult
 // UpdateSecretPayload is the payload type of the secrets service updateSecret
 // method.
 type UpdateSecretPayload struct {
+	Token string
 	// Secret ID
 	ID string
 	// Secret key
