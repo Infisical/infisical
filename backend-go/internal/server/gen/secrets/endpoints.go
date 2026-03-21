@@ -12,6 +12,7 @@ import (
 	"context"
 
 	goa "goa.design/goa/v3/pkg"
+	"goa.design/goa/v3/security"
 )
 
 // Endpoints wraps the "secrets" service endpoints.
@@ -26,13 +27,15 @@ type Endpoints struct {
 
 // NewEndpoints wraps the methods of the "secrets" service with endpoints.
 func NewEndpoints(s Service) *Endpoints {
+	// Casting service to Auther interface
+	a := s.(Auther)
 	return &Endpoints{
 		GetHealth:    NewGetHealthEndpoint(s),
-		CreateSecret: NewCreateSecretEndpoint(s),
-		GetSecret:    NewGetSecretEndpoint(s),
-		UpdateSecret: NewUpdateSecretEndpoint(s),
-		DeleteSecret: NewDeleteSecretEndpoint(s),
-		ListSecrets:  NewListSecretsEndpoint(s),
+		CreateSecret: NewCreateSecretEndpoint(s, a.JWTAuth),
+		GetSecret:    NewGetSecretEndpoint(s, a.JWTAuth),
+		UpdateSecret: NewUpdateSecretEndpoint(s, a.JWTAuth),
+		DeleteSecret: NewDeleteSecretEndpoint(s, a.JWTAuth),
+		ListSecrets:  NewListSecretsEndpoint(s, a.JWTAuth),
 	}
 }
 
@@ -56,9 +59,35 @@ func NewGetHealthEndpoint(s Service) goa.Endpoint {
 
 // NewCreateSecretEndpoint returns an endpoint function that calls the method
 // "createSecret" of service "secrets".
-func NewCreateSecretEndpoint(s Service) goa.Endpoint {
+func NewCreateSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
-		p := req.(*Secret)
+		p := req.(*CreateSecretPayload)
+		var err error
+		sc := security.JWTScheme{
+			Name:           "jwt",
+			Scopes:         []string{},
+			RequiredScopes: []string{},
+		}
+		ctx, err = authJWTFn(ctx, p.Token, &sc)
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "identity_access_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "service_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			return nil, err
+		}
 		res, err := s.CreateSecret(ctx, p)
 		if err != nil {
 			return nil, err
@@ -70,9 +99,35 @@ func NewCreateSecretEndpoint(s Service) goa.Endpoint {
 
 // NewGetSecretEndpoint returns an endpoint function that calls the method
 // "getSecret" of service "secrets".
-func NewGetSecretEndpoint(s Service) goa.Endpoint {
+func NewGetSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		p := req.(*GetSecretPayload)
+		var err error
+		sc := security.JWTScheme{
+			Name:           "jwt",
+			Scopes:         []string{},
+			RequiredScopes: []string{},
+		}
+		ctx, err = authJWTFn(ctx, p.Token, &sc)
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "identity_access_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "service_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			return nil, err
+		}
 		res, err := s.GetSecret(ctx, p)
 		if err != nil {
 			return nil, err
@@ -84,9 +139,35 @@ func NewGetSecretEndpoint(s Service) goa.Endpoint {
 
 // NewUpdateSecretEndpoint returns an endpoint function that calls the method
 // "updateSecret" of service "secrets".
-func NewUpdateSecretEndpoint(s Service) goa.Endpoint {
+func NewUpdateSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		p := req.(*UpdateSecretPayload)
+		var err error
+		sc := security.JWTScheme{
+			Name:           "jwt",
+			Scopes:         []string{},
+			RequiredScopes: []string{},
+		}
+		ctx, err = authJWTFn(ctx, p.Token, &sc)
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "identity_access_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "service_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			return nil, err
+		}
 		res, err := s.UpdateSecret(ctx, p)
 		if err != nil {
 			return nil, err
@@ -98,18 +179,70 @@ func NewUpdateSecretEndpoint(s Service) goa.Endpoint {
 
 // NewDeleteSecretEndpoint returns an endpoint function that calls the method
 // "deleteSecret" of service "secrets".
-func NewDeleteSecretEndpoint(s Service) goa.Endpoint {
+func NewDeleteSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		p := req.(*DeleteSecretPayload)
+		var err error
+		sc := security.JWTScheme{
+			Name:           "jwt",
+			Scopes:         []string{},
+			RequiredScopes: []string{},
+		}
+		ctx, err = authJWTFn(ctx, p.Token, &sc)
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "identity_access_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "service_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			return nil, err
+		}
 		return nil, s.DeleteSecret(ctx, p)
 	}
 }
 
 // NewListSecretsEndpoint returns an endpoint function that calls the method
 // "listSecrets" of service "secrets".
-func NewListSecretsEndpoint(s Service) goa.Endpoint {
+func NewListSecretsEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		p := req.(*ListSecretsPayload)
+		var err error
+		sc := security.JWTScheme{
+			Name:           "jwt",
+			Scopes:         []string{},
+			RequiredScopes: []string{},
+		}
+		ctx, err = authJWTFn(ctx, p.Token, &sc)
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "identity_access_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "service_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			return nil, err
+		}
 		res, err := s.ListSecrets(ctx, p)
 		if err != nil {
 			return nil, err

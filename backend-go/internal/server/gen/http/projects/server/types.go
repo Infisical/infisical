@@ -299,11 +299,12 @@ func NewCreateProjectInternalErrorResponseBody(res *projects.APIErrorResult) *Cr
 
 // NewCreateProjectPayload builds a projects service createProject endpoint
 // payload.
-func NewCreateProjectPayload(body *CreateProjectRequestBody) *projects.CreateProjectPayload {
+func NewCreateProjectPayload(body *CreateProjectRequestBody, token string) *projects.CreateProjectPayload {
 	v := &projects.CreateProjectPayload{
 		Name:  *body.Name,
 		OrgID: *body.OrgID,
 	}
+	v.Token = token
 
 	return v
 }

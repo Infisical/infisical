@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/infisical/api/internal/libs/authutil"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/shared/permission"
 )
@@ -15,6 +16,7 @@ type permissionSvc interface {
 type secretFolderSvc any
 
 type service struct {
+	authutil.AuthHandler
 	logger          *slog.Logger
 	permissionSvc   permissionSvc
 	secretFolderSvc secretFolderSvc
@@ -39,7 +41,7 @@ func (s *service) GetHealth(ctx context.Context) (string, error) {
 	return "secrets service is healthy", nil
 }
 
-func (s *service) CreateSecret(ctx context.Context, p *gensecrets.Secret) (*gensecrets.SecretResult, error) {
+func (s *service) CreateSecret(ctx context.Context, p *gensecrets.CreateSecretPayload) (*gensecrets.SecretResult, error) {
 	s.logger.InfoContext(ctx, "creating secret", slog.String("key", p.Key))
 	return &gensecrets.SecretResult{
 		ID:          "generated-id",

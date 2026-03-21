@@ -17,78 +17,98 @@ import (
 
 // BuildCreateSecretPayload builds the payload for the secrets createSecret
 // endpoint from CLI flags.
-func BuildCreateSecretPayload(secretsCreateSecretBody string) (*secrets.Secret, error) {
+func BuildCreateSecretPayload(secretsCreateSecretBody string, secretsCreateSecretToken string) (*secrets.CreateSecretPayload, error) {
 	var err error
 	var body CreateSecretRequestBody
 	{
 		err = json.Unmarshal([]byte(secretsCreateSecretBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"environment\": \"Omnis et non.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Sed consequatur.\",\n      \"value\": \"Earum sed blanditiis est dolor.\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"environment\": \"Ducimus qui.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Ut aut.\",\n      \"value\": \"Dolor fugiat maxime nisi quas expedita.\"\n   }'")
 		}
 	}
-	v := &secrets.Secret{
+	var token string
+	{
+		token = secretsCreateSecretToken
+	}
+	v := &secrets.CreateSecretPayload{
 		Key:         body.Key,
 		Value:       body.Value,
 		Environment: body.Environment,
 		ProjectID:   body.ProjectID,
 	}
+	v.Token = token
 
 	return v, nil
 }
 
 // BuildGetSecretPayload builds the payload for the secrets getSecret endpoint
 // from CLI flags.
-func BuildGetSecretPayload(secretsGetSecretID string) (*secrets.GetSecretPayload, error) {
+func BuildGetSecretPayload(secretsGetSecretID string, secretsGetSecretToken string) (*secrets.GetSecretPayload, error) {
 	var id string
 	{
 		id = secretsGetSecretID
 	}
+	var token string
+	{
+		token = secretsGetSecretToken
+	}
 	v := &secrets.GetSecretPayload{}
 	v.ID = id
+	v.Token = token
 
 	return v, nil
 }
 
 // BuildUpdateSecretPayload builds the payload for the secrets updateSecret
 // endpoint from CLI flags.
-func BuildUpdateSecretPayload(secretsUpdateSecretBody string, secretsUpdateSecretID string) (*secrets.UpdateSecretPayload, error) {
+func BuildUpdateSecretPayload(secretsUpdateSecretBody string, secretsUpdateSecretID string, secretsUpdateSecretToken string) (*secrets.UpdateSecretPayload, error) {
 	var err error
 	var body UpdateSecretRequestBody
 	{
 		err = json.Unmarshal([]byte(secretsUpdateSecretBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"key\": \"Omnis veniam.\",\n      \"value\": \"Explicabo et sed.\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"key\": \"Voluptatibus officia magni et ducimus pariatur.\",\n      \"value\": \"Voluptas inventore est ut.\"\n   }'")
 		}
 	}
 	var id string
 	{
 		id = secretsUpdateSecretID
 	}
+	var token string
+	{
+		token = secretsUpdateSecretToken
+	}
 	v := &secrets.UpdateSecretPayload{
 		Key:   body.Key,
 		Value: body.Value,
 	}
 	v.ID = id
+	v.Token = token
 
 	return v, nil
 }
 
 // BuildDeleteSecretPayload builds the payload for the secrets deleteSecret
 // endpoint from CLI flags.
-func BuildDeleteSecretPayload(secretsDeleteSecretID string) (*secrets.DeleteSecretPayload, error) {
+func BuildDeleteSecretPayload(secretsDeleteSecretID string, secretsDeleteSecretToken string) (*secrets.DeleteSecretPayload, error) {
 	var id string
 	{
 		id = secretsDeleteSecretID
 	}
+	var token string
+	{
+		token = secretsDeleteSecretToken
+	}
 	v := &secrets.DeleteSecretPayload{}
 	v.ID = id
+	v.Token = token
 
 	return v, nil
 }
 
 // BuildListSecretsPayload builds the payload for the secrets listSecrets
 // endpoint from CLI flags.
-func BuildListSecretsPayload(secretsListSecretsProjectID string, secretsListSecretsEnvironment string) (*secrets.ListSecretsPayload, error) {
+func BuildListSecretsPayload(secretsListSecretsProjectID string, secretsListSecretsEnvironment string, secretsListSecretsToken string) (*secrets.ListSecretsPayload, error) {
 	var projectID string
 	{
 		projectID = secretsListSecretsProjectID
@@ -97,9 +117,14 @@ func BuildListSecretsPayload(secretsListSecretsProjectID string, secretsListSecr
 	{
 		environment = secretsListSecretsEnvironment
 	}
+	var token string
+	{
+		token = secretsListSecretsToken
+	}
 	v := &secrets.ListSecretsPayload{}
 	v.ProjectID = projectID
 	v.Environment = environment
+	v.Token = token
 
 	return v, nil
 }

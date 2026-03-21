@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	secrets "github.com/infisical/api/internal/server/gen/secrets"
 	secretsviews "github.com/infisical/api/internal/server/gen/secrets/views"
@@ -166,9 +167,17 @@ func (c *Client) BuildCreateSecretRequest(ctx context.Context, v any) (*http.Req
 // secrets createSecret server.
 func EncodeCreateSecretRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
 	return func(req *http.Request, v any) error {
-		p, ok := v.(*secrets.Secret)
+		p, ok := v.(*secrets.CreateSecretPayload)
 		if !ok {
-			return goahttp.ErrInvalidType("secrets", "createSecret", "*secrets.Secret", v)
+			return goahttp.ErrInvalidType("secrets", "createSecret", "*secrets.CreateSecretPayload", v)
+		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
 		}
 		body := NewCreateSecretRequestBody(p)
 		if err := encoder(req).Encode(&body); err != nil {
@@ -320,6 +329,26 @@ func (c *Client) BuildGetSecretRequest(ctx context.Context, v any) (*http.Reques
 	}
 
 	return req, nil
+}
+
+// EncodeGetSecretRequest returns an encoder for requests sent to the secrets
+// getSecret server.
+func EncodeGetSecretRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
+	return func(req *http.Request, v any) error {
+		p, ok := v.(*secrets.GetSecretPayload)
+		if !ok {
+			return goahttp.ErrInvalidType("secrets", "getSecret", "*secrets.GetSecretPayload", v)
+		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
+		}
+		return nil
+	}
 }
 
 // DecodeGetSecretResponse returns a decoder for responses returned by the
@@ -474,6 +503,14 @@ func EncodeUpdateSecretRequest(encoder func(*http.Request) goahttp.Encoder) func
 		if !ok {
 			return goahttp.ErrInvalidType("secrets", "updateSecret", "*secrets.UpdateSecretPayload", v)
 		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
+		}
 		body := NewUpdateSecretRequestBody(p)
 		if err := encoder(req).Encode(&body); err != nil {
 			return goahttp.ErrEncodingError("secrets", "updateSecret", err)
@@ -626,6 +663,26 @@ func (c *Client) BuildDeleteSecretRequest(ctx context.Context, v any) (*http.Req
 	return req, nil
 }
 
+// EncodeDeleteSecretRequest returns an encoder for requests sent to the
+// secrets deleteSecret server.
+func EncodeDeleteSecretRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
+	return func(req *http.Request, v any) error {
+		p, ok := v.(*secrets.DeleteSecretPayload)
+		if !ok {
+			return goahttp.ErrInvalidType("secrets", "deleteSecret", "*secrets.DeleteSecretPayload", v)
+		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
+		}
+		return nil
+	}
+}
+
 // DecodeDeleteSecretResponse returns a decoder for responses returned by the
 // secrets deleteSecret endpoint. restoreBody controls whether the response
 // body should be restored after having been read.
@@ -752,6 +809,14 @@ func EncodeListSecretsRequest(encoder func(*http.Request) goahttp.Encoder) func(
 		p, ok := v.(*secrets.ListSecretsPayload)
 		if !ok {
 			return goahttp.ErrInvalidType("secrets", "listSecrets", "*secrets.ListSecretsPayload", v)
+		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
 		}
 		values := req.URL.Query()
 		values.Add("projectId", p.ProjectID)

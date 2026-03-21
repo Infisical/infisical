@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	projects "github.com/infisical/api/internal/server/gen/projects"
 	projectsviews "github.com/infisical/api/internal/server/gen/projects/views"
@@ -169,6 +170,14 @@ func EncodeCreateProjectRequest(encoder func(*http.Request) goahttp.Encoder) fun
 		p, ok := v.(*projects.CreateProjectPayload)
 		if !ok {
 			return goahttp.ErrInvalidType("projects", "createProject", "*projects.CreateProjectPayload", v)
+		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
 		}
 		body := NewCreateProjectRequestBody(p)
 		if err := encoder(req).Encode(&body); err != nil {

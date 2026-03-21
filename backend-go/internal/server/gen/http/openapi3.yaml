@@ -18,7 +18,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/CreateProjectPayload'
+                            $ref: '#/components/schemas/CreateProjectRequestBody'
             responses:
                 "201":
                     description: Created response.
@@ -56,6 +56,10 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/APIErrorResult'
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
     /api/v1/platform/projects/health:
         get:
             tags:
@@ -161,6 +165,10 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/APIErrorResult'
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
         post:
             tags:
                 - secrets
@@ -210,6 +218,10 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/APIErrorResult'
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
     /api/v1/secret-manager/secrets/{id}:
         delete:
             tags:
@@ -258,6 +270,10 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/APIErrorResult'
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
         get:
             tags:
                 - secrets
@@ -309,6 +325,10 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/APIErrorResult'
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
         patch:
             tags:
                 - secrets
@@ -366,6 +386,10 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/APIErrorResult'
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
     /api/v1/secret-manager/secrets/health:
         get:
             tags:
@@ -431,7 +455,7 @@ components:
                 - statusCode
                 - message
                 - error
-        CreateProjectPayload:
+        CreateProjectRequestBody:
             type: object
             properties:
                 name:
@@ -614,6 +638,19 @@ components:
                 value:
                     type: string
                     description: Secret value
+    securitySchemes:
+        identity_access_token_header_Authorization:
+            type: http
+            description: 'Machine identity access token via Authorization: Bearer header'
+            scheme: bearer
+        jwt_header_Authorization:
+            type: http
+            description: 'User session JWT token via Authorization: Bearer header'
+            scheme: bearer
+        service_token_header_Authorization:
+            type: http
+            description: 'Service token via Authorization: Bearer header'
+            scheme: bearer
 tags:
     - name: projects
       description: Service for managing projects.

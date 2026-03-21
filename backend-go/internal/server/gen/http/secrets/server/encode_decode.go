@@ -13,6 +13,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	secrets "github.com/infisical/api/internal/server/gen/secrets"
 	secretsviews "github.com/infisical/api/internal/server/gen/secrets/views"
@@ -127,9 +128,9 @@ func EncodeCreateSecretResponse(encoder func(context.Context, http.ResponseWrite
 
 // DecodeCreateSecretRequest returns a decoder for requests sent to the secrets
 // createSecret endpoint.
-func DecodeCreateSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.Secret, error) {
-	return func(r *http.Request) (*secrets.Secret, error) {
-		var payload *secrets.Secret
+func DecodeCreateSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.CreateSecretPayload, error) {
+	return func(r *http.Request) (*secrets.CreateSecretPayload, error) {
+		var payload *secrets.CreateSecretPayload
 		var (
 			body CreateSecretRequestBody
 			err  error
@@ -149,7 +150,33 @@ func DecodeCreateSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) go
 		if err != nil {
 			return payload, err
 		}
-		payload = NewCreateSecretSecret(&body)
+
+		var (
+			token string
+		)
+		token = r.Header.Get("Authorization")
+		if token == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
+		}
+		if err != nil {
+			return payload, err
+		}
+		payload = NewCreateSecretPayload(&body, token)
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
 
 		return payload, nil
 	}
@@ -254,12 +281,36 @@ func DecodeGetSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) goaht
 	return func(r *http.Request) (*secrets.GetSecretPayload, error) {
 		var payload *secrets.GetSecretPayload
 		var (
-			id string
+			id    string
+			token string
+			err   error
 
 			params = mux.Vars(r)
 		)
 		id = params["id"]
-		payload = NewGetSecretPayload(id)
+		token = r.Header.Get("Authorization")
+		if token == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
+		}
+		if err != nil {
+			return payload, err
+		}
+		payload = NewGetSecretPayload(id, token)
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
 
 		return payload, nil
 	}
@@ -380,12 +431,35 @@ func DecodeUpdateSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) go
 		}
 
 		var (
-			id string
+			id    string
+			token string
 
 			params = mux.Vars(r)
 		)
 		id = params["id"]
-		payload = NewUpdateSecretPayload(&body, id)
+		token = r.Header.Get("Authorization")
+		if token == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
+		}
+		if err != nil {
+			return payload, err
+		}
+		payload = NewUpdateSecretPayload(&body, id, token)
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
 
 		return payload, nil
 	}
@@ -487,12 +561,36 @@ func DecodeDeleteSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) go
 	return func(r *http.Request) (*secrets.DeleteSecretPayload, error) {
 		var payload *secrets.DeleteSecretPayload
 		var (
-			id string
+			id    string
+			token string
+			err   error
 
 			params = mux.Vars(r)
 		)
 		id = params["id"]
-		payload = NewDeleteSecretPayload(id)
+		token = r.Header.Get("Authorization")
+		if token == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
+		}
+		if err != nil {
+			return payload, err
+		}
+		payload = NewDeleteSecretPayload(id, token)
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
 
 		return payload, nil
 	}
@@ -599,6 +697,7 @@ func DecodeListSecretsRequest(mux goahttp.Muxer, decoder func(*http.Request) goa
 		var (
 			projectID   string
 			environment string
+			token       string
 			err         error
 		)
 		qp := r.URL.Query()
@@ -610,10 +709,29 @@ func DecodeListSecretsRequest(mux goahttp.Muxer, decoder func(*http.Request) goa
 		if environment == "" {
 			err = goa.MergeErrors(err, goa.MissingFieldError("environment", "query string"))
 		}
+		token = r.Header.Get("Authorization")
+		if token == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
+		}
 		if err != nil {
 			return payload, err
 		}
-		payload = NewListSecretsPayload(projectID, environment)
+		payload = NewListSecretsPayload(projectID, environment, token)
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
 
 		return payload, nil
 	}

@@ -61,7 +61,7 @@ func (c *Client) GetHealth(ctx context.Context) (res string, err error) {
 //   - "not_found" (type *APIErrorResult)
 //   - "internal_error" (type *APIErrorResult)
 //   - error: internal error
-func (c *Client) CreateSecret(ctx context.Context, p *Secret) (res *SecretResult, err error) {
+func (c *Client) CreateSecret(ctx context.Context, p *CreateSecretPayload) (res *SecretResult, err error) {
 	var ires any
 	ires, err = c.CreateSecretEndpoint(ctx, p)
 	if err != nil {

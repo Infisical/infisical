@@ -12,6 +12,7 @@ import (
 	"context"
 
 	goa "goa.design/goa/v3/pkg"
+	"goa.design/goa/v3/security"
 )
 
 // Endpoints wraps the "projects" service endpoints.
@@ -22,9 +23,11 @@ type Endpoints struct {
 
 // NewEndpoints wraps the methods of the "projects" service with endpoints.
 func NewEndpoints(s Service) *Endpoints {
+	// Casting service to Auther interface
+	a := s.(Auther)
 	return &Endpoints{
 		GetHealth:     NewGetHealthEndpoint(s),
-		CreateProject: NewCreateProjectEndpoint(s),
+		CreateProject: NewCreateProjectEndpoint(s, a.JWTAuth),
 	}
 }
 
@@ -44,9 +47,35 @@ func NewGetHealthEndpoint(s Service) goa.Endpoint {
 
 // NewCreateProjectEndpoint returns an endpoint function that calls the method
 // "createProject" of service "projects".
-func NewCreateProjectEndpoint(s Service) goa.Endpoint {
+func NewCreateProjectEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		p := req.(*CreateProjectPayload)
+		var err error
+		sc := security.JWTScheme{
+			Name:           "jwt",
+			Scopes:         []string{},
+			RequiredScopes: []string{},
+		}
+		ctx, err = authJWTFn(ctx, p.Token, &sc)
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "identity_access_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "service_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			return nil, err
+		}
 		res, err := s.CreateProject(ctx, p)
 		if err != nil {
 			return nil, err
