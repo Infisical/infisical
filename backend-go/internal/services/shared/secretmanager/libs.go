@@ -20,7 +20,7 @@ func NewSharedServices(deps SharedServicesDeps) *SharedServices {
 	secretImportDAL := secretimport.NewDAL(deps.DB)
 
 	return &SharedServices{
-		SecretFolder: secretfolder.NewSharedService(secretFolderDAL),
-		SecretImport: secretimport.NewSharedService(secretImportDAL),
+		SecretFolder: secretfolder.NewSharedService(secretfolder.Deps{DAL: secretFolderDAL}),
+		SecretImport: secretimport.NewSharedService(secretimport.Deps{DAL: secretImportDAL}),
 	}
 }

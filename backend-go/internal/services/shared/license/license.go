@@ -87,7 +87,7 @@ func (api *licenseAPI) refreshToken(ctx context.Context) (string, error) {
 }
 
 // get performs a GET with a single retry on 401/403 (token refresh).
-func (api *licenseAPI) get(ctx context.Context, path string, result interface{}) error {
+func (api *licenseAPI) get(ctx context.Context, path string, result any) error {
 	resp, err := api.client.R().SetContext(ctx).SetResult(result).Get(path)
 	if err != nil {
 		return err
@@ -127,23 +127,30 @@ type SharedService struct {
 	stopSync context.CancelFunc
 }
 
-func NewSharedService(ctx context.Context, logger *slog.Logger, cfg *config.Config, ks keyStore, d dal) *SharedService {
+// Deps holds the dependencies for the license shared service.
+type Deps struct {
+	Config   *config.Config
+	KeyStore keyStore
+	DAL      dal
+}
+
+func NewSharedService(ctx context.Context, logger *slog.Logger, deps Deps) *SharedService {
 	svc := &SharedService{
 		logger:         logger.With("svc", "license"),
 		onPremFeatures: DefaultFeatures(),
-		keyStore:       ks,
-		dal:            d,
+		keyStore:       deps.KeyStore,
+		dal:            deps.DAL,
 	}
 
-	serverURL := cfg.LicenseServerURL
+	serverURL := deps.Config.LicenseServerURL
 	if serverURL == "" {
 		serverURL = "https://portal.infisical.com"
 	}
 
-	svc.cloudAPI = newLicenseAPI(serverURL, cloudLoginPath, cfg.LicenseServerKey, "")
+	svc.cloudAPI = newLicenseAPI(serverURL, cloudLoginPath, deps.Config.LicenseServerKey, "")
 	svc.onPremAPI = newLicenseAPI(serverURL, onPremLoginPath, "", "")
 
-	svc.init(ctx, cfg)
+	svc.init(ctx, deps.Config)
 	svc.startBackgroundSync()
 	return svc
 }
@@ -316,7 +323,7 @@ func (s *SharedService) GetPlan(ctx context.Context, orgID string) (*FeatureSet,
 	// Cache miss — fetch from license server.
 	org, err := s.dal.FindRootOrgDetails(ctx, orgID)
 	if err != nil {
-		return s.fallbackPlan(ctx, cacheKey), nil
+		return s.fallbackPlan(ctx, cacheKey), nil //nolint:nilerr // intentional fallback on DB error
 	}
 	if org == nil || !org.CustomerID.Valid || org.CustomerID.String == "" {
 		return s.fallbackPlan(ctx, cacheKey), nil

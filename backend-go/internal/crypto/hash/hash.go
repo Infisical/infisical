@@ -38,7 +38,7 @@ func SHA256Hex(data []byte) string {
 // SHA1 returns the raw SHA-1 digest (20 bytes).
 // Use only where required for compatibility (e.g. certificate fingerprints).
 func SHA1(data []byte) []byte {
-	h := sha1.Sum(data) //nolint:gosec
+	h := sha1.Sum(data)
 	return h[:]
 }
 
@@ -67,7 +67,7 @@ func HMACSHA256(key, data []byte) []byte {
 // HMACSHA1 computes HMAC-SHA-1.
 // Use only where required for protocol compatibility.
 func HMACSHA1(key, data []byte) []byte {
-	return computeHMAC(sha1.New, key, data) //nolint:gosec
+	return computeHMAC(sha1.New, key, data) //nolint:gosec // SHA-1 required for protocol compatibility
 }
 
 // TimingSafeEqual performs constant-time comparison of two byte slices.
@@ -92,7 +92,7 @@ func NewHasher(algorithm Algorithm) (hash.Hash, error) {
 	case AlgoSHA512:
 		return sha512.New(), nil
 	case AlgoSHA1:
-		return sha1.New(), nil //nolint:gosec
+		return sha1.New(), nil //nolint:gosec // SHA-1 required for protocol compatibility
 	default:
 		return nil, fmt.Errorf("unsupported hash algorithm: %s", algorithm)
 	}
@@ -108,7 +108,7 @@ func NewHMAC(algorithm Algorithm, key []byte) (hash.Hash, error) {
 	case AlgoSHA512:
 		return hmac.New(sha512.New, key), nil
 	case AlgoSHA1:
-		return hmac.New(sha1.New, key), nil //nolint:gosec
+		return hmac.New(sha1.New, key), nil //nolint:gosec // SHA-1 required for protocol compatibility
 	default:
 		return nil, fmt.Errorf("unsupported HMAC algorithm: %s", algorithm)
 	}

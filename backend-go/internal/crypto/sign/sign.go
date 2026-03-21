@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"errors"
 	"crypto/sha512"
 	"crypto/x509"
 	"encoding/pem"
@@ -202,7 +203,10 @@ func Verify(data, signature, publicKeyDER []byte, algo SigningAlgorithm, isDiges
 			err = rsa.VerifyPKCS1v15(pubKey, params.hash, digest, signature)
 		}
 		if err != nil {
-			return false, nil
+			if errors.Is(err, rsa.ErrVerification) {
+				return false, nil
+			}
+			return false, err
 		}
 		return true, nil
 

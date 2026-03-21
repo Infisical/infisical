@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/infisical/api/internal/config"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/infisical/api/internal/config"
 )
 
-// maxRetries mirrors the Node.js ioredis reconnectOnError behaviour.
+// maxRetries mirrors the Node.js ioredis reconnectOnError behavior.
 // On a READONLY error (e.g. during failover when a master becomes a replica),
 // go-redis marks the connection as bad (isBadConn), removes it from the pool,
 // and on the next retry creates a fresh connection with new DNS resolution —
@@ -20,7 +21,7 @@ const maxRetries = 3
 
 // NewClientFromEnvConfig creates a redis.UniversalClient from the application's
 // Config. It supports standalone (REDIS_URL), cluster, and sentinel modes,
-// matching the Node.js backend's buildRedisFromConfig behaviour.
+// matching the Node.js backend's buildRedisFromConfig behavior.
 func NewClientFromEnvConfig(cfg *config.Config) (redis.UniversalClient, error) {
 	// Standalone mode via REDIS_URL.
 	if cfg.RedisURL != "" {
@@ -50,8 +51,9 @@ func NewClientFromEnvConfig(cfg *config.Config) (redis.UniversalClient, error) {
 
 		if cfg.RedisClusterAWSElastiCacheDNSLookupMode {
 			// Skip DNS resolution for AWS ElastiCache — pass address through as-is.
-			clusterOpts.Dialer = func(_ context.Context, network, addr string) (net.Conn, error) {
-				return net.Dial(network, addr)
+			clusterOpts.Dialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				dialer := &net.Dialer{}
+				return dialer.DialContext(ctx, network, addr)
 			}
 		}
 

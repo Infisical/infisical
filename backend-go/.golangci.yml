@@ -1,0 +1,101 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - bodyclose
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - exhaustruct
+    - copyloopvar
+    - gocritic
+    - misspell
+    - nilerr
+    - noctx
+    - prealloc
+    - revive
+    - unconvert
+    - unparam
+    - wastedassign
+
+  settings:
+    revive:
+      rules:
+        - name: dot-imports
+          severity: error
+          arguments:
+            - allowedPackages:
+                - "goa.design/goa/v3/dsl"
+
+    gocritic:
+      enable-all: true
+
+    errcheck:
+      check-type-assertions: true
+      exclude-functions:
+        - os.Setenv
+        - fmt.Sscanf
+
+    exhaustive:
+      default-signifies-exhaustive: true
+
+    exhaustruct:
+      include:
+        # Only enforce full initialization on service dependency structs.
+        - 'github\.com/infisical/api/internal/services/.*Deps$'
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+
+    misspell:
+      locale: US
+
+    prealloc:
+      simple: true
+
+  exclusions:
+    generated: strict
+    paths:
+      - internal/server/gen
+      - internal/database/pg/gen
+    rules:
+      # Allow dot imports for Goa DSL files.
+      - path: internal/server/design/
+        linters:
+          - revive
+        text: "dot-imports"
+
+      # Allow dot imports in Goa DSL files for staticcheck (ST1001).
+      - path: internal/server/design/
+        linters:
+          - staticcheck
+        text: "ST1001"
+
+      # Test files can be more relaxed.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - unparam
+          - prealloc
+          - exhaustruct
+
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/infisical/api

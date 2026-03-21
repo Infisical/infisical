@@ -9,11 +9,10 @@ import (
 )
 
 type permissionSvc interface {
-	GetProjectPermission(ctx context.Context, args permission.GetProjectPermissionArgs) (*permission.GetProjectPermissionResult, error)
+	GetProjectPermission(ctx context.Context, args *permission.GetProjectPermissionArgs) (*permission.GetProjectPermissionResult, error)
 }
 
-type secretFolderSvc interface {
-}
+type secretFolderSvc any
 
 type service struct {
 	logger          *slog.Logger
@@ -21,11 +20,17 @@ type service struct {
 	secretFolderSvc secretFolderSvc
 }
 
-func NewService(logger *slog.Logger, permission permissionSvc, secretFolder secretFolderSvc) gensecrets.Service {
+// Deps holds the dependencies for the secrets service.
+type Deps struct {
+	Permission   permissionSvc
+	SecretFolder secretFolderSvc
+}
+
+func NewService(logger *slog.Logger, deps Deps) gensecrets.Service {
 	return &service{
 		logger:          logger.With("service", "secrets"),
-		permissionSvc:   permission,
-		secretFolderSvc: secretFolder,
+		permissionSvc:   deps.Permission,
+		secretFolderSvc: deps.SecretFolder,
 	}
 }
 
@@ -47,13 +52,12 @@ func (s *service) CreateSecret(ctx context.Context, p *gensecrets.Secret) (*gens
 
 func (s *service) GetSecret(ctx context.Context, p *gensecrets.GetSecretPayload) (*gensecrets.SecretResult, error) {
 	s.logger.InfoContext(ctx, "getting secret", "id", p.ID)
-	_, err := s.permissionSvc.GetProjectPermission(ctx, permission.GetProjectPermissionArgs{
+	_, err := s.permissionSvc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
 		ProjectID: "",
 	})
 	if err != nil {
 		return nil, err
 	}
-	// _ = s.secretFolderSvc.GetSecretFolders("", "")
 
 	return &gensecrets.SecretResult{ID: p.ID, Key: "stub", Value: "stub", Environment: "dev", ProjectID: "proj-1"}, nil
 }

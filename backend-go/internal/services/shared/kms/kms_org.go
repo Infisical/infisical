@@ -48,7 +48,7 @@ func (s *SharedService) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]b
 // Returns the plaintext data key.
 // The caller must ensure the org's KMS key exists before calling this
 // to avoid deadlocks with concurrent KMS key + data key creation.
-func (s *SharedService) generateOrgDataKey(ctx context.Context, orgID uuid.UUID, kmsKeyID uuid.UUID) ([]byte, error) {
+func (s *SharedService) generateOrgDataKey(ctx context.Context, orgID, kmsKeyID uuid.UUID) ([]byte, error) {
 	// Decrypt KMS key once — used both for encrypting (create) and decrypting (existing).
 	kmsKey, err := s.decryptKmsKey(ctx, kmsKeyID)
 	if err != nil {
