@@ -75,7 +75,7 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
     if (!connectionDetails.useLdaps) return {};
     return {
       tlsOptions: {
-        rejectUnauthorized: connectionDetails.ldapRejectUnauthorized ?? false,
+        rejectUnauthorized: connectionDetails.ldapRejectUnauthorized,
         ...(connectionDetails.ldapCaCert && {
           ca: [connectionDetails.ldapCaCert],
           servername: connectionDetails.ldapTlsServerName || connectionDetails.dcAddress
