@@ -483,7 +483,11 @@ const upsertAdServerResource = async (
     connectionDetails: {
       domain: configuration.domainFQDN,
       dcAddress: configuration.dcAddress,
-      port: configuration.ldapPort
+      port: configuration.ldapPort,
+      useLdaps: configuration.useLdaps,
+      ldapRejectUnauthorized: configuration.ldapRejectUnauthorized,
+      ldapCaCert: configuration.ldapCaCert,
+      ldapTlsServerName: configuration.ldapTlsServerName
     } as TActiveDirectoryResourceConnectionDetails,
     kmsService
   });
@@ -508,6 +512,12 @@ const upsertWindowsServerResource = async (
   computer: TLdapComputer,
   adServerResourceId: string,
   gatewayId: string,
+  winrmConfig: {
+    winrmPort: number;
+    useWinrmHttps: boolean;
+    winrmRejectUnauthorized: boolean;
+    winrmCaCert?: string;
+  },
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find">,
   tx: Knex
@@ -537,7 +547,8 @@ const upsertWindowsServerResource = async (
       connectionDetails: {
         protocol: WindowsProtocol.RDP,
         hostname: computer.resolvedIp || hostname,
-        port: 3389
+        port: 3389,
+        ...winrmConfig
       } as TWindowsResourceConnectionDetails,
       kmsService
     }),
@@ -1010,6 +1021,12 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               computer,
               adServerResource.id,
               gatewayId,
+              {
+                winrmPort: configuration.winrmPort,
+                useWinrmHttps: configuration.useWinrmHttps,
+                winrmRejectUnauthorized: configuration.winrmRejectUnauthorized,
+                winrmCaCert: configuration.winrmCaCert
+              },
               kmsService,
               pamResourceDAL,
               tx

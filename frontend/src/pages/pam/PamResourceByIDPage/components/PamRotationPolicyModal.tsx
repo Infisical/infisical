@@ -38,7 +38,7 @@ import {
 } from "@app/hooks/api/pam/mutations";
 import { useGetPamRotationRules } from "@app/hooks/api/pam/queries";
 
-import { LocalRule, RotationRuleCard, WinrmConfigSection } from "./rotation-policy";
+import { LocalRule, RotationRuleCard } from "./rotation-policy";
 
 const TEMP_ID_PREFIX = "_new_";
 
@@ -89,34 +89,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // WinRM config for Windows Server resources
-  const isWindowsResource = resource.resourceType === PamResourceType.Windows;
-  const getWinrmDefaults = () => {
-    const cd = resource.connectionDetails as {
-      winrmPort?: number;
-      useWinrmHttps?: boolean;
-      winrmRejectUnauthorized?: boolean;
-      winrmCaCert?: string;
-      winrmTlsServerName?: string;
-    };
-    return {
-      winrmPort: cd.winrmPort ?? 5985,
-      useWinrmHttps: cd.useWinrmHttps ?? false,
-      winrmRejectUnauthorized: cd.winrmRejectUnauthorized ?? true,
-      winrmCaCert: cd.winrmCaCert ?? "",
-      winrmTlsServerName: cd.winrmTlsServerName ?? ""
-    };
-  };
-  const [winrmPort, setWinrmPort] = useState(() => getWinrmDefaults().winrmPort);
-  const [useWinrmHttps, setUseWinrmHttps] = useState(() => getWinrmDefaults().useWinrmHttps);
-  const [winrmRejectUnauthorized, setWinrmRejectUnauthorized] = useState(
-    () => getWinrmDefaults().winrmRejectUnauthorized
-  );
-  const [winrmCaCert, setWinrmCaCert] = useState(() => getWinrmDefaults().winrmCaCert);
-  const [winrmTlsServerName, setWinrmTlsServerName] = useState(
-    () => getWinrmDefaults().winrmTlsServerName
-  );
-
   // Rules
   const [localRules, setLocalRules] = useState<LocalRule[]>([]);
   const [deletedRuleIds, setDeletedRuleIds] = useState<string[]>([]);
@@ -152,12 +124,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
       password: hasRotationCredentials ? UNCHANGED_PASSWORD_SENTINEL : ""
     });
     setShowPassword(false);
-    const wd = getWinrmDefaults();
-    setWinrmPort(wd.winrmPort);
-    setUseWinrmHttps(wd.useWinrmHttps);
-    setWinrmRejectUnauthorized(wd.winrmRejectUnauthorized);
-    setWinrmCaCert(wd.winrmCaCert);
-    setWinrmTlsServerName(wd.winrmTlsServerName);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rules, resource, hasRotationCredentials, resetCred]);
 
@@ -212,14 +178,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
   };
 
   // Dirty checks
-  const wd = getWinrmDefaults();
-  const isWinrmDirty =
-    isWindowsResource &&
-    (winrmPort !== wd.winrmPort ||
-      useWinrmHttps !== wd.useWinrmHttps ||
-      winrmRejectUnauthorized !== wd.winrmRejectUnauthorized ||
-      (winrmCaCert || "") !== (wd.winrmCaCert || "") ||
-      (winrmTlsServerName || "") !== (wd.winrmTlsServerName || ""));
 
   const isRulesDirty = (() => {
     if (deletedRuleIds.length > 0) return true;
@@ -239,7 +197,7 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
     });
   })();
 
-  const hasChanges = isCredDirty || isWinrmDirty || isRulesDirty;
+  const hasChanges = isCredDirty || isRulesDirty;
 
   const handleSave = async (credData: CredentialsFormData) => {
     setIsSaving(true);
@@ -255,20 +213,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
         updatePayload.rotationAccountCredentials = clearingCredentials
           ? null
           : { username: credData.username, password: credData.password };
-      }
-
-      if (isWinrmDirty) {
-        updatePayload.connectionDetails = {
-          ...(resource.connectionDetails as Record<string, unknown>),
-          winrmPort,
-          useWinrmHttps,
-          winrmRejectUnauthorized,
-          winrmCaCert: winrmCaCert || undefined,
-          winrmTlsServerName: winrmTlsServerName || undefined
-        };
-      }
-
-      if (isCredDirty || isWinrmDirty) {
         await updateResource.mutateAsync(
           updatePayload as Parameters<typeof updateResource.mutateAsync>[0]
         );
@@ -438,22 +382,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
               </p>
             )}
           </div>
-
-          {/* WinRM Config (Windows Server only) */}
-          {isWindowsResource && (
-            <WinrmConfigSection
-              winrmPort={winrmPort}
-              useWinrmHttps={useWinrmHttps}
-              winrmRejectUnauthorized={winrmRejectUnauthorized}
-              winrmCaCert={winrmCaCert}
-              onWinrmPortChange={setWinrmPort}
-              onUseWinrmHttpsChange={setUseWinrmHttps}
-              onWinrmRejectUnauthorizedChange={setWinrmRejectUnauthorized}
-              onWinrmCaCertChange={setWinrmCaCert}
-              winrmTlsServerName={winrmTlsServerName}
-              onWinrmTlsServerNameChange={setWinrmTlsServerName}
-            />
-          )}
 
           {/* Rotation Rules */}
           <div>
