@@ -46,7 +46,7 @@ export function DataGrid<TData>({
   contextMenu,
   pasteDialog,
   onRowAdd: onRowAddProp,
-  height = 600,
+  height,
   stretchColumns = false,
   adjustLayout = false,
   className,
@@ -100,10 +100,10 @@ export function DataGrid<TData>({
         data-slot="grid"
         tabIndex={0}
         ref={dataGridRef}
-        className="relative grid thin-scrollbar overflow-auto rounded-md border border-border bg-container select-none focus:outline-none"
+        className="relative grid thin-scrollbar flex-1 grid-rows-[auto_1fr_auto] overflow-auto rounded-md border border-border bg-container select-none focus:outline-none"
         style={{
           ...columnSizeVars,
-          maxHeight: `${height}px`
+          ...(height ? { maxHeight: `${height}px` } : {})
         }}
         onContextMenu={onDataGridContextMenu}
       >

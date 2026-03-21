@@ -165,8 +165,6 @@ export const DataBrowserGrid = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [newRowTempIds, setNewRowTempIds] = useState<Set<string>>(new Set());
-  const [containerHeight, setContainerHeight] = useState(600);
-  const containerRef = useRef<HTMLDivElement>(null);
   const newRowCounterRef = useRef(0);
   const hasLoadedRef = useRef(false);
 
@@ -175,19 +173,6 @@ export const DataBrowserGrid = ({
   const hasPrimaryKey = primaryKeys.length > 0;
   const primaryKeysRef = useRef(primaryKeys);
   primaryKeysRef.current = primaryKeys;
-
-  // Measure container height for the virtualized grid
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return undefined;
-    const observer = new ResizeObserver((entries) => {
-      entries.forEach((entry) => {
-        setContainerHeight(entry.contentRect.height);
-      });
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   // Build TanStack Table column definitions from PG metadata
   const columnDefs = useMemo(
@@ -646,10 +631,7 @@ export const DataBrowserGrid = ({
       )}
 
       {/* Dice UI DataGrid */}
-      <div
-        ref={containerRef}
-        className="data-browser-grid flex-1 overflow-hidden text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800"
-      >
+      <div className="data-browser-grid flex flex-1 flex-col overflow-hidden text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
         {isDataLoading && !hasLoadedRef.current && (
           <div className="space-y-1 p-4">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -667,7 +649,7 @@ export const DataBrowserGrid = ({
           </UnstableEmpty>
         )}
         {currentData.length > 0 && (
-          <DataGrid {...gridProps} height={containerHeight} stretchColumns />
+          <DataGrid {...gridProps} className="min-h-0 flex-1" stretchColumns />
         )}
       </div>
     </div>
