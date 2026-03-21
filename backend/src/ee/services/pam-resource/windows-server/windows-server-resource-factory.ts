@@ -169,7 +169,7 @@ export const windowsResourceFactory: TPamResourceFactory<
           rotationAccountCredentials.password,
           proxyPort,
           useWinrmHttps,
-          useWinrmHttps ? (connectionDetails.winrmRejectUnauthorized ?? false) : undefined,
+          useWinrmHttps ? connectionDetails.winrmRejectUnauthorized : undefined,
           connectionDetails.winrmCaCert
         );
 

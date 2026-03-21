@@ -28,9 +28,9 @@ export const WindowsResourceConnectionDetailsSchema = z.object({
   port: z.coerce.number().int().min(1).max(65535),
 
   // WinRM config — used for rotation only, configured in the rotation policy modal
-  winrmPort: z.coerce.number().int().min(1).max(65535).optional(),
-  useWinrmHttps: z.boolean().optional(),
-  winrmRejectUnauthorized: z.boolean().optional(),
+  winrmPort: z.coerce.number().int().min(1).max(65535),
+  useWinrmHttps: z.boolean(),
+  winrmRejectUnauthorized: z.boolean(),
   winrmCaCert: z
     .string()
     .trim()

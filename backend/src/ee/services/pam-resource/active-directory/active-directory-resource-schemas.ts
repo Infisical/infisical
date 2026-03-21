@@ -26,8 +26,8 @@ export const ActiveDirectoryResourceConnectionDetailsSchema = z.object({
   domain: z.string().trim().min(1).max(255),
   dcAddress: z.string().trim().min(1).max(255),
   port: z.coerce.number().int().min(1).max(65535),
-  useLdaps: z.boolean(),
-  ldapRejectUnauthorized: z.boolean(),
+  useLdaps: z.boolean().optional(),
+  ldapRejectUnauthorized: z.boolean().optional(),
   ldapCaCert: z
     .string()
     .trim()
