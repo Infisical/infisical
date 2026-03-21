@@ -35,9 +35,11 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	t.Helper()
 
 	permDAL := permission.NewDAL()
-	permLib := permission.NewSharedService(permDAL)
+	permLib := permission.NewSharedService(permission.Deps{DAL: permDAL})
 
-	svc := projects.NewService(testutil.NopLogger(), permLib)
+	svc := projects.NewService(testutil.NopLogger(), projects.Deps{
+		Permission: permLib,
+	})
 
 	mux := testutil.NewTestMux()
 	endpoints := genprojects.NewEndpoints(svc)

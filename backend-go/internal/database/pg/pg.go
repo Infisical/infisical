@@ -112,19 +112,17 @@ func (db *pgDatabase) PrimaryPool() *pgxpool.Pool {
 
 // Close closes all connection pools (primary + replicas) and their sql.DB wrappers.
 func (db *pgDatabase) Close() error {
-	db.primarySQL.Close()
+	firstErr := db.primarySQL.Close()
 	for _, s := range db.replicaSQL {
-		if err := s.Close(); err != nil {
-			return err
+		if err := s.Close(); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
 	db.primary.Close()
-	for _, r := range db.replicaSQL {
-		if err := r.Close(); err != nil {
-			return err
-		}
+	for _, r := range db.replicas {
+		r.Close()
 	}
-	return nil
+	return firstErr
 }
 
 // openPool creates a pgxpool.Pool from a connection URI and optional base64-encoded root CA cert.

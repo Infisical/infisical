@@ -3,6 +3,7 @@ package serverconfig
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
@@ -22,7 +23,7 @@ type DAL struct {
 // NewDAL creates a new server config DAL.
 func NewDAL(primary, replica qrm.DB, db *sql.DB) *DAL {
 	return &DAL{
-		DAL: ormify.New[model.SuperAdmin](primary, replica, ormify.TableDef{
+		DAL: ormify.New[model.SuperAdmin](primary, replica, &ormify.TableDef{
 			Table:          table.SuperAdmin,
 			AllColumns:     table.SuperAdmin.AllColumns,
 			MutableColumns: table.SuperAdmin.MutableColumns,
@@ -43,7 +44,7 @@ func (d *DAL) FindOrCreateConfig(ctx context.Context) (*model.SuperAdmin, error)
 
 	// Acquire advisory lock to prevent concurrent init.
 	if _, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock($1)", PgLockSuperAdminInit); err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("acquiring advisory lock: %w", err)
 	}
 
@@ -51,11 +52,13 @@ func (d *DAL) FindOrCreateConfig(ctx context.Context) (*model.SuperAdmin, error)
 	txDAL := d.WithTx(tx)
 	cfg, err := txDAL.FindByID(ctx, adminConfigDBUUID)
 	if err == nil {
-		tx.Commit()
+		if cerr := tx.Commit(); cerr != nil {
+			return nil, fmt.Errorf("committing config read: %w", cerr)
+		}
 		return cfg, nil
 	}
-	if err != qrm.ErrNoRows {
-		tx.Rollback()
+	if !errors.Is(err, qrm.ErrNoRows) {
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("checking existing config: %w", err)
 	}
 
@@ -67,7 +70,7 @@ func (d *DAL) FindOrCreateConfig(ctx context.Context) (*model.SuperAdmin, error)
 		RETURNING(table.SuperAdmin.AllColumns).
 		QueryContext(ctx, tx, &result)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("creating initial config: %w", err)
 	}
 

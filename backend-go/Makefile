@@ -1,4 +1,7 @@
 # Run unit tests (no infra required)
+lint:
+	go fix ./... && golangci-lint run --fix
+
 test:
 	go test -v ./internal/... -count=1 -race -timeout 120s
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -109,20 +110,30 @@ type dal interface {
 type SharedService struct {
 	dal      dal
 	keyStore keyStore
+	logger   *slog.Logger
+}
+
+// Deps holds the dependencies for the server config shared service.
+type Deps struct {
+	DAL      dal
+	KeyStore keyStore
 }
 
 // NewSharedService creates a new server config service.
-func NewSharedService(dal dal, ks keyStore) *SharedService {
+func NewSharedService(logger *slog.Logger, deps Deps) *SharedService {
 	return &SharedService{
-		dal:      dal,
-		keyStore: ks,
+		dal:      deps.DAL,
+		keyStore: deps.KeyStore,
+		logger:   logger,
 	}
 }
 
 // Init ensures the super_admin config row exists.
 // Delegates to the DAL which handles the advisory lock and transaction internally.
 func (s *SharedService) Init(ctx context.Context) (ServerConfig, error) {
-	s.keyStore.DeleteItem(ctx, adminConfigCacheKey)
+	if _, err := s.keyStore.DeleteItem(ctx, adminConfigCacheKey); err != nil {
+		return ServerConfig{}, fmt.Errorf("deleting config from cache: %w", err)
+	}
 
 	m, err := s.dal.FindOrCreateConfig(ctx)
 	if err != nil {
@@ -157,7 +168,9 @@ func (s *SharedService) GetConfig(ctx context.Context) (ServerConfig, error) {
 
 	// Populate cache (non-fatal on error).
 	if data, err := json.Marshal(cfg); err == nil {
-		s.keyStore.SetItemWithExpiry(ctx, adminConfigCacheKey, adminConfigCacheTTL, string(data))
+		if err := s.keyStore.SetItemWithExpiry(ctx, adminConfigCacheKey, adminConfigCacheTTL, string(data)); err != nil {
+			s.logger.ErrorContext(ctx, "setting config in cache", "error", err)
+		}
 	}
 
 	return cfg, nil

@@ -74,22 +74,25 @@ func (r *GetProjectPermissionResult) HasRole(role string) bool {
 }
 
 // permissionDAL defines the data-access methods required by the permission library.
-type permissionDAL interface {
-	// TODO: Define DAL methods as the permission system is fleshed out.
-}
+type permissionDAL any
 
-// Service provides project and org permission checks.
+// SharedService provides project and org permission checks.
 type SharedService struct {
 	dal permissionDAL
 }
 
-// NewService creates a new permission service instance.
-func NewSharedService(dal permissionDAL) *SharedService {
-	return &SharedService{dal: dal}
+// Deps holds the dependencies for the permission shared service.
+type Deps struct {
+	DAL permissionDAL
+}
+
+// NewSharedService creates a new permission service instance.
+func NewSharedService(deps Deps) *SharedService {
+	return &SharedService{dal: deps.DAL}
 }
 
 // GetProjectPermission resolves the effective permissions for an actor within a project.
 // TODO: Implement the full permission resolution logic (role lookup, CASL rule building, etc.).
-func (p *SharedService) GetProjectPermission(ctx context.Context, args GetProjectPermissionArgs) (*GetProjectPermissionResult, error) {
+func (p *SharedService) GetProjectPermission(ctx context.Context, args *GetProjectPermissionArgs) (*GetProjectPermissionResult, error) {
 	panic("not implemented")
 }

@@ -3,6 +3,7 @@ package keystore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -84,13 +85,13 @@ func NewKeyStore(client redis.UniversalClient, db TxStarter) KeyStore {
 	return &redisKeyStore{client: client, db: db}
 }
 
-func (k *redisKeyStore) SetItem(ctx context.Context, key string, value string) error {
+func (k *redisKeyStore) SetItem(ctx context.Context, key, value string) error {
 	return k.client.Set(ctx, key, value, 0).Err()
 }
 
 func (k *redisKeyStore) GetItem(ctx context.Context, key string) (string, error) {
 	val, err := k.client.Get(ctx, key).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return "", nil
 	}
 	return val, err
@@ -138,7 +139,9 @@ func (k *redisKeyStore) AcquirePgLock(ctx context.Context, stringLockId string, 
 
 	if _, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock($1)", lockID); err != nil {
 		if ownedTx {
-			tx.Rollback()
+			if err := tx.Rollback(); err != nil {
+				return nil, fmt.Errorf("acquiring advisory lock %d: %w", lockID, err)
+			}
 		}
 		return nil, fmt.Errorf("acquiring advisory lock %d: %w", lockID, err)
 	}

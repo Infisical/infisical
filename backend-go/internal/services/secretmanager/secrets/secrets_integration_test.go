@@ -40,11 +40,14 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	t.Helper()
 
 	permDAL := permission.NewDAL()
-	permLib := permission.NewSharedService(permDAL)
+	permLib := permission.NewSharedService(permission.Deps{DAL: permDAL})
 
 	smSharedSvcs := smShared.NewSharedServices(smShared.SharedServicesDeps{DB: stack.DB()})
 
-	svc := secrets.NewService(testutil.NopLogger(), permLib, smSharedSvcs.SecretFolder)
+	svc := secrets.NewService(testutil.NopLogger(), secrets.Deps{
+		Permission:   permLib,
+		SecretFolder: smSharedSvcs.SecretFolder,
+	})
 
 	mux := testutil.NewTestMux()
 	endpoints := gensecrets.NewEndpoints(svc)

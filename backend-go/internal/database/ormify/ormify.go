@@ -3,6 +3,7 @@ package ormify
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
@@ -54,11 +55,11 @@ type DAL[M any] struct {
 // New creates a DAL for the given table definition.
 // primary is used for writes, replica for reads.
 // If replica is nil, primary is used for both.
-func New[M any](primary, replica qrm.DB, def TableDef) *DAL[M] {
+func New[M any](primary, replica qrm.DB, def *TableDef) *DAL[M] {
 	if replica == nil {
 		replica = primary
 	}
-	return &DAL[M]{primary: primary, replica: replica, def: def}
+	return &DAL[M]{primary: primary, replica: replica, def: *def}
 }
 
 // WithTx returns a new DAL that executes all operations within the given transaction.
@@ -120,7 +121,7 @@ func (d *DAL[M]) Find(ctx context.Context, condition postgres.BoolExpression, op
 	var results []M
 	err := stmt.QueryContext(ctx, d.replica, &results)
 	if err != nil {
-		if err == qrm.ErrNoRows {
+		if errors.Is(err, qrm.ErrNoRows) {
 			return []M{}, nil
 		}
 		return nil, err
@@ -151,7 +152,7 @@ func (d *DAL[M]) FindAll(ctx context.Context, opts ...FindOpt) ([]M, error) {
 	var results []M
 	err := stmt.QueryContext(ctx, d.replica, &results)
 	if err != nil {
-		if err == qrm.ErrNoRows {
+		if errors.Is(err, qrm.ErrNoRows) {
 			return []M{}, nil
 		}
 		return nil, err

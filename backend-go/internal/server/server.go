@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/infisical/api/internal/services"
 	goahttp "goa.design/goa/v3/http"
+
+	"github.com/infisical/api/internal/services"
 )
 
 type Server struct {
@@ -39,7 +40,7 @@ func NewServer(svc *services.Registry, logger *slog.Logger) *Server {
 }
 
 func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, errc chan error) {
-	var handler http.Handler = requestLogger(s.mux, s.logger)
+	var handler = requestLogger(s.mux, s.logger)
 
 	srv := &http.Server{
 		Addr:              addr,
@@ -47,9 +48,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 		ReadHeaderTimeout: 60 * time.Second,
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 
 		go func() {
 			s.logger.Info("HTTP server listening", "addr", addr)
@@ -65,7 +64,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			s.logger.Error("HTTP server shutdown error", "error", err)
 		}
-	}()
+	})
 }
 
 func requestLogger(next http.Handler, logger *slog.Logger) http.Handler {

@@ -13,8 +13,13 @@ type SharedService struct {
 	dal dal
 }
 
-func NewSharedService(dal dal) *SharedService {
-	return &SharedService{dal: dal}
+// Deps holds the dependencies for the secret folder shared service.
+type Deps struct {
+	DAL dal
+}
+
+func NewSharedService(deps Deps) *SharedService {
+	return &SharedService{dal: deps.DAL}
 }
 
 // LoadProjectFolders fetches all folders for a project and builds an in-memory lookup tree.

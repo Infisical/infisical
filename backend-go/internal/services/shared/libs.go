@@ -33,17 +33,25 @@ func NewSharedServices(ctx context.Context, deps SharedServicesDeps) (*SharedSer
 	permissionDAL := permission.NewDAL()
 	kmsDAL := kms.NewDAL(deps.DB, deps.KeyStore)
 
-	kmsSvc, err := kms.NewSharedService(kmsDAL, deps.HSM, deps.Config)
+	kmsSvc, err := kms.NewSharedService(kms.Deps{
+		DAL:    kmsDAL,
+		HSM:    deps.HSM,
+		Config: deps.Config,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("kms: %w", err)
 	}
 
 	licenseDAL := license.NewDAL(deps.DB)
-	licenseSvc := license.NewSharedService(ctx, deps.Logger, deps.Config, deps.KeyStore, licenseDAL)
+	licenseSvc := license.NewSharedService(ctx, deps.Logger, license.Deps{
+		Config:   deps.Config,
+		KeyStore: deps.KeyStore,
+		DAL:      licenseDAL,
+	})
 
 	return &SharedServices{
 		Config:     deps.Config,
-		Permission: permission.NewSharedService(permissionDAL),
+		Permission: permission.NewSharedService(permission.Deps{DAL: permissionDAL}),
 		KMS:        kmsSvc,
 		License:    licenseSvc,
 	}, nil

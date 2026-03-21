@@ -53,7 +53,11 @@ func setupService(t *testing.T) *kms.SharedService {
 	ks := keystore.NewKeyStore(redisClient, stack.DB().Primary())
 	dal := kms.NewDAL(stack.DB(), ks)
 
-	svc, err := kms.NewSharedService(dal, nil, stack.Config())
+	svc, err := kms.NewSharedService(kms.Deps{
+		DAL:    dal,
+		HSM:    nil,
+		Config: stack.Config(),
+	})
 	require.NoError(t, err)
 	return svc
 }

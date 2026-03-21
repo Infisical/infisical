@@ -1,158 +1,88 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This is the **backend-go** package — a partial Go rewrite of the Node.js backend using Goa v3 for API design and go-jet for type-safe SQL.
 
-This is the **backend-go** package of the Infisical monorepo — a partial Go rewrite of the Node.js backend using Goa v3 for API design and go-jet for type-safe SQL.
+## Commands
 
-## Essential Commands
+All commands run from `backend-go/`:
 
-All commands run from the `backend-go/` directory:
+- `make build` — build binary
+- `make dev` — hot-reloading server via docker-compose + air
+- `make gen-goa` — regenerate Goa HTTP handlers from DSL (`internal/server/design/` → `internal/server/gen/`)
+- `make gen-db` — regenerate go-jet table types from DB (`internal/database/pg/gen/`)
+- `make test` — integration tests (testcontainers, `-race`, 300s timeout)
+- `make lint` — **must pass before submission**
 
-- `make build` — build binary (`go build -o infisical ./cmd/infisical/...`)
-- `make dev` — start hot-reloading server via docker-compose + air
-- `make gen-goa` — regenerate HTTP handlers from Goa DSL definitions
-- `make gen-db` — regenerate go-jet table types from live PostgreSQL schema
-- `make test` — run integration tests (testcontainers, `-race`, 300s timeout)
-- `make test-cleanup` — tear down test compose stack + remove state file
+Never edit generated code in `gen/` directories — always regenerate.
+
+## Code Rules
+
+- **Linting**: All code must pass `make lint`. Do not suppress with `//nolint` unless clearly justified.
+- **Context first**: Every function doing I/O or calling one **must accept `context.Context` as its first argument**. Exception: pure in-memory utility functions.
+- **Explicit logger**: Services receive `*slog.Logger` via constructor — **never use `slog.Default()` or package-level `slog.*` functions** inside services. Tag with `logger.With("service", "name")`.
+- **Interfaces for dependencies**: Consumer defines the interface (narrow, only needed methods). Accept interfaces, not concrete types.
+- **Service constructor signature**: `<NewService|NewSharedService>(ctx context.Context, logger *slog.Logger, deps Deps)`. All external dependencies go in a `Deps` struct (name must end with `Deps`). The `exhaustruct` linter enforces every field is set at the call site — no silent nil dependencies.
+- **DAL boundary**: Services must not import `table`, `postgres`, or `qrm`. All queries go through a DAL. Always use type-safe go-jet — no raw SQL (exception: `pg_advisory_xact_lock`).
+- **Lean code**: Inline helpers with one caller. Only extract when shared. Split DAL files by functionality.
 
 ## Architecture
 
-### Startup Flow
+### Key Directories
 
 ```
-cmd/infisical/main.go
-├─ Load config (koanf, env vars)
-├─ Connect to DB (primary + read replicas)
-├─ Bootstrap health checks
-├─ Create services.Registry (wires all DI)
-├─ Create server.Server (mounts product routes)
-└─ Listen on configured addr
+cmd/infisical/main.go          # Entry point: config → DB → services.Registry → server
+cmd/dev/pg_gen/main.go         # go-jet codegen utility
+internal/
+├── config/                    # Env-var config via koanf (186+ settings)
+├── database/
+│   ├── pg/gen/                # go-jet generated types (DO NOT EDIT)
+│   ├── redis/                 # Redis client (standalone/cluster/sentinel)
+│   └── ormify/                # Generic CRUD: DAL[M any] with FindByID, Create, Update, etc.
+├── keystore/                  # Redis key-value + PG advisory locks
+├── server/
+│   ├── design/{platform,secretmanager}/  # Goa DSL (source of truth)
+│   └── gen/                              # Goa generated (DO NOT EDIT)
+├── services/
+│   ├── services.go            # Root DI wiring (NewRegistry)
+│   ├── shared/                # Cross-product: permission, kms, serverconfig, secretfolder
+│   ├── platform/              # Platform services (projects, etc.)
+│   └── secretmanager/         # Secret manager services (secrets, etc.)
+└── testutil/                  # Test infra (testcontainers, fluent HTTP builder)
 ```
 
-### Directory Structure
+### Service & DI Pattern
 
-```
-backend-go/
-├── cmd/
-│   ├── infisical/main.go          # Main server entry point
-│   └── dev/pg_gen/main.go         # go-jet code generation utility
-├── internal/
-│   ├── config/                    # Centralized env-var config (koanf)
-│   ├── database/
-│   │   ├── pg/                    # PostgreSQL driver (primary + read replicas)
-│   │   │   └── gen/               # go-jet generated table types (50+ tables)
-│   │   ├── redis/                 # Redis client factory (standalone/cluster/sentinel)
-│   │   └── ormify/                # Generic CRUD layer (DAL[M any])
-│   ├── keystore/                  # Key-value store (Redis) + PG advisory locks
-│   ├── libs/bootstrap/            # Startup health checks
-│   ├── server/
-│   │   ├── design/                # Goa DSL API definitions (source of truth)
-│   │   │   ├── platform/          # Platform product routes
-│   │   │   └── secretmanager/     # Secret Manager product routes
-│   │   ├── gen/                   # Goa-generated code (DO NOT EDIT)
-│   │   ├── server.go              # HTTP server + route mounting
-│   │   ├── platform.go            # Mount platform routes
-│   │   └── secretmanager.go       # Mount secret manager routes
-│   ├── services/
-│   │   ├── services.go            # Root registry wiring (DI entry point)
-│   │   ├── platform/              # Platform product services
-│   │   │   └── projects/          # Projects service
-│   │   ├── secretmanager/         # Secret Manager product services
-│   │   │   └── secrets/           # Secrets service
-│   │   └── shared/                # Cross-product shared services
-│   │       ├── permission/        # Permission checking
-│   │       └── secretmanager/     # Product-scoped shared libs
-│   │           └── secretfolder/  # Folder path resolution
-│   └── testutil/                  # Test infrastructure
-├── llm/                           # LLM-friendly architecture docs
-├── Makefile
-├── docker-compose.test.yml        # Test infrastructure (PG, Redis, Node.js)
-├── Dockerfile.dev                 # Dev image with air hot-reload
-└── .air.toml                      # Hot-reload config
-```
+Factory functions with explicit dependencies, wired in `services.go` via `NewRegistry()`. Three tiers:
+1. **Shared** (`services/shared/`) — cross-product, instantiated once
+2. **Product registries** (`services/platform/`, `services/secretmanager/`) — product-specific wiring
+3. **Domain services** — implement Goa-generated interfaces
 
-### API Design (Goa DSL)
+### Data Access (DAL)
 
-API definitions live in `internal/server/design/` using Goa v3 DSL. This is the **source of truth** — running `make gen-goa` generates HTTP handlers, types, encoders/decoders into `internal/server/gen/`. Never edit generated code in `gen/` directly.
+`ormify.DAL[M any]` provides: `FindByID`, `FindOne`, `Find`, `FindAll`, `Create`, `InsertMany`, `UpdateByID`, `Update`, `DeleteByID`, `Delete`, `Count` with functional options (limit/offset/orderBy).
 
-Routes are organized by product line:
-- `design/platform/` — platform routes (e.g., projects)
-- `design/secretmanager/` — secret manager routes (e.g., secrets CRUD)
-
-### Service Factory + Manual DI
-
-Same pattern as the Node.js backend — no IoC container. All services are factory functions with explicit dependencies, wired in `internal/services/services.go` via `NewRegistry()`.
-
-**Always use interfaces when consuming dependencies.** Services must accept dependencies as interfaces, not concrete types. This keeps packages decoupled and testable. The interface should be defined by the consumer (in the consuming package), not the provider. Use narrow interfaces — only the methods the consumer actually needs.
-
-```go
-// In the consuming service package — define the interface you need:
-type keyStore interface {
-    GetItem(ctx context.Context, key string) (string, error)
-    SetItemWithExpiry(ctx context.Context, key string, expiry time.Duration, value string) error
-}
-
-type Service struct {
-    keyStore keyStore // accept interface, not *keystore.redisKeyStore
-}
-```
-
-Services are organized in a three-tier hierarchy:
-1. **Shared services** (`services/shared/`) — cross-product (permission, secretfolder), instantiated once
-2. **Product registries** (`services/platform/`, `services/secretmanager/`) — product-specific wiring, may instantiate product-scoped shared libs
-3. **Domain services** (`services/platform/projects/`, `services/secretmanager/secrets/`) — implement Goa-generated service interfaces
-
-### DAL Layer (Data Access)
-
-Generic CRUD via `internal/database/ormify/` using Go generics (`DAL[M any]`). Provides: `FindByID`, `FindOne`, `Find`, `FindAll`, `Create`, `InsertMany`, `UpdateByID`, `Update`, `DeleteByID`, `Delete`, `Count`. Functional options for limit/offset/orderBy.
-
-go-jet generated table types live in `internal/database/pg/gen/table/` (50+ tables, auto-generated — do not edit).
-
-**Read replica pattern**: The `pg.DB` wrapper supports primary + read replica connection pools. Reads go to a random replica (with fallback to primary). Writes always hit primary.
-
-**All database operations must go through a DAL, never directly from a service.** Services must not import `table`, `postgres`, or `qrm` packages or construct queries themselves. Instead, create or extend a DAL with the required method and call it from the service. This keeps query logic centralized and testable.
-
-**Always use type-safe go-jet queries — never raw SQL.** Use go-jet's generated table types for all SELECT, INSERT, UPDATE, and DELETE operations. For UPDATE, use `Table.UPDATE(columns...).SET(values...).WHERE(...)` or the column-expression form `Column.SET(expression)`. See [go-jet UPDATE docs](https://github.com/go-jet/jet/wiki/UPDATE). Raw `tx.ExecContext(ctx, "UPDATE ...")` is not allowed — the only exception is PostgreSQL advisory locks (`pg_advisory_xact_lock`) which have no go-jet equivalent.
-
-**Keep code lean.** Organize DAL files by functionality. If a helper function is only called once, inline it at the call site instead of extracting a separate method. Only extract shared helpers when they have multiple callers. Split files needed to organize similiar functionality ones
-
-### Configuration
-
-Environment variables loaded via koanf (`internal/config/config.go`). 186+ settings covering DB, Redis, auth, encryption, SSO, integrations, etc. Validated on startup with `config.ValidationError`.
+**Read replica pattern**: `pg.DB` wraps primary + replica pools. Reads go to a random replica (fallback to primary). Writes always hit primary.
 
 ### Testing
 
-Integration tests using testcontainers-go with shared infrastructure:
+Integration tests with testcontainers-go (PostgreSQL 14, Redis 7, Node.js backend):
 
-1. **`testutil.SetupInfra()`** — acquires file lock, starts/reuses `docker-compose.test.yml` (PostgreSQL 14, Redis 7, Node.js backend), bootstraps org/user/identity tokens, saves state to `.test-infra-state.json`
-2. **Per-test `setupMux()`** — instantiates real services + DALs, wires onto `testutil.TestMux` (httptest)
-3. **Fluent test builder**:
-   ```go
-   mux.Request(t, http.MethodPost, "/api/v1/...").
-       WithAuth(infra.IdentityToken).
-       WithBody(payload).
-       Do().
-       ExpectStatus(http.StatusCreated).
-       ParseJSON(&result)
-   ```
+```go
+mux.Request(t, http.MethodPost, "/api/v1/...").
+    WithAuth(infra.IdentityToken).
+    WithBody(payload).
+    Do().
+    ExpectStatus(http.StatusCreated).
+    ParseJSON(&result)
+```
 
-Tests run with `-race` flag. Test infrastructure is shared across packages via file lock coordination — subsequent test packages reuse the running compose stack.
+Tests run with `-race`. Infrastructure shared across packages via file lock + `.test-infra-state.json`.
 
-### Generated Code (Do Not Edit)
-
-Two categories of generated code:
-- **Goa generated** (`internal/server/gen/`) — regenerate with `make gen-goa`
-- **go-jet generated** (`internal/database/pg/gen/`) — regenerate with `make gen-db`
-
-Always regenerate rather than manually editing these directories.
-
-## Wiring a New Feature (Checklist)
+## Wiring a New Feature
 
 1. Define API in Goa DSL (`internal/server/design/<product>/`)
-2. Run `make gen-goa` to generate handlers and types
-3. Create domain service in `internal/services/<product>/<name>/` implementing the generated interface
-4. If needed, add shared services in `internal/services/shared/`
-5. Wire in `internal/services/services.go` (product registry → root registry)
-6. Mount in `internal/server/<product>.go`
-7. Add tests in the service package with `setupMux()` pattern
-8. Run `make test` to verify
+2. `make gen-goa`
+3. Create service in `internal/services/<product>/<name>/` implementing generated interface
+4. Wire in `services.go`, mount in `internal/server/<product>.go`
+5. Add tests with `setupMux()` pattern
+6. `make test` + `make lint`

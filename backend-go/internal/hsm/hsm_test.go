@@ -30,10 +30,10 @@ func setupHSM(t *testing.T) *hsm.Service {
 	confPath := filepath.Join(tokenDir, "softhsm2.conf")
 	require.NoError(t, os.WriteFile(confPath, []byte(
 		"directories.tokendir = "+tokenDir+"\nobjectstore.backend = file\n",
-	), 0644))
+	), 0o644))
 	t.Setenv("SOFTHSM2_CONF", confPath)
 
-	cmd := exec.Command("softhsm2-util",
+	cmd := exec.CommandContext(t.Context(), "softhsm2-util",
 		"--init-token", "--free",
 		"--label", "test-token",
 		"--pin", "1234", "--so-pin", "5678",

@@ -8,6 +8,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/infisical/api/internal/config"
+
 	"github.com/infisical/api/internal/database/pg"
 )
 
@@ -17,7 +18,7 @@ type Stack struct {
 	postgres *PostgresService
 	redis    *RedisService
 	nodejs   *NodeJSService
-	network  testcontainers.Network
+	network  *testcontainers.DockerNetwork
 	cfg      *config.Config
 	db       pg.DB
 }
@@ -33,7 +34,7 @@ func (s *Stack) Stop() {
 	ctx := context.Background()
 
 	if s.db != nil {
-		s.db.Close()
+		_ = s.db.Close()
 	}
 	if s.nodejs != nil {
 		if err := s.nodejs.container.Terminate(ctx); err != nil {

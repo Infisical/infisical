@@ -91,7 +91,7 @@ func newFolderLookup(rows []folderRow) *FolderLookup {
 }
 
 // GetByPathEnvSlug resolves envSlug + path (e.g. "dev", "/hello/world") to a node.
-func (l *FolderLookup) GetByPathEnvSlug(envSlug string, path string) (*FolderNode, bool) {
+func (l *FolderLookup) GetByPathEnvSlug(envSlug, path string) (*FolderNode, bool) {
 	root, ok := l.envBySlug[envSlug]
 	if !ok {
 		return nil, false
@@ -109,7 +109,7 @@ func (l *FolderLookup) GetByPathEnvID(envID uuid.UUID, path string) (*FolderNode
 }
 
 // GetByIDAndEnvID returns the node if it exists and belongs to the given env.
-func (l *FolderLookup) GetByIDAndEnvID(envID uuid.UUID, folderID uuid.UUID) (*FolderNode, bool) {
+func (l *FolderLookup) GetByIDAndEnvID(envID, folderID uuid.UUID) (*FolderNode, bool) {
 	node, ok := l.byID[folderID]
 	if !ok || node.EnvID != envID {
 		return nil, false
@@ -153,7 +153,7 @@ func (l *FolderLookup) GetEnvBySlug(slug string) (*FolderEnv, bool) {
 
 // GetSubTreeByPathEnvSlug resolves envSlug + path to a node and returns it along
 // with all its descendants in depth-first pre-order (parent before children).
-func (l *FolderLookup) GetSubTreeByPathEnvSlug(envSlug string, path string) ([]*FolderNode, bool) {
+func (l *FolderLookup) GetSubTreeByPathEnvSlug(envSlug, path string) ([]*FolderNode, bool) {
 	node, ok := l.GetByPathEnvSlug(envSlug, path)
 	if !ok {
 		return nil, false

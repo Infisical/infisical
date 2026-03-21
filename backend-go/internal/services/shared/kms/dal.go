@@ -3,6 +3,7 @@ package kms
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
@@ -13,6 +14,7 @@ import (
 	"github.com/infisical/api/internal/database/pg/gen/model"
 	"github.com/infisical/api/internal/database/pg/gen/table"
 	"github.com/infisical/api/internal/keystore"
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 // dalLockStore provides advisory locking for the DAL.
@@ -68,7 +70,7 @@ func (d *DAL) FindOrCreateRootConfig(ctx context.Context, createFn func() (encry
 	}
 
 	if _, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock($1)", PgLockKmsRootKeyInit); err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("acquiring advisory lock: %w", err)
 	}
 
@@ -79,18 +81,20 @@ func (d *DAL) FindOrCreateRootConfig(ctx context.Context, createFn func() (encry
 		WHERE(table.KmsRootConfig.ID.EQ(postgres.UUID(KmsRootConfigUUID))).
 		QueryContext(ctx, tx, &existing)
 	if err == nil {
-		tx.Commit()
+		if cerr := tx.Commit(); cerr != nil {
+			return nil, fmt.Errorf("committing root config read: %w", cerr)
+		}
 		return &existing, nil
 	}
-	if err != qrm.ErrNoRows {
-		tx.Rollback()
+	if !errors.Is(err, qrm.ErrNoRows) {
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("checking existing root config: %w", err)
 	}
 
 	// Config doesn't exist — invoke callback to generate the new root key.
 	encryptionRootKey, encryptionStrategy, err := createFn()
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("generating root config: %w", err)
 	}
 
@@ -106,7 +110,7 @@ func (d *DAL) FindOrCreateRootConfig(ctx context.Context, createFn func() (encry
 		RETURNING(table.KmsRootConfig.AllColumns).
 		QueryContext(ctx, tx, &result)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("creating root config: %w", err)
 	}
 
@@ -127,7 +131,7 @@ func (d *DAL) FindOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, create
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("acquiring org key lock: %w", err)
 	}
-	defer lock.Rollback()
+	defer errutil.DeferErr(ctx, lock.Rollback, "FindOrCreateOrgKmsKey: rolling back lock")
 
 	tx := lock.Tx()
 
@@ -149,13 +153,13 @@ func (d *DAL) FindOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, create
 	}
 
 	createdID, err := d.CreateKmsKeyWithInternal(ctx, tx,
-		model.KmsKeys{
+		&model.KmsKeys{
 			Name:       generateRandomKeyName(),
 			OrgId:      org.ID,
 			IsReserved: sql.Null[bool]{V: true, Valid: true},
 			KeyUsage:   "encrypt-decrypt",
 		},
-		model.InternalKms{
+		&model.InternalKms{
 			EncryptedKey:        encryptedKey,
 			EncryptionAlgorithm: "aes-256-gcm",
 			Version:             1,
@@ -193,7 +197,8 @@ func (d *DAL) FindOrCreateOrgDataKey(ctx context.Context, orgID uuid.UUID, creat
 	if err != nil {
 		return nil, fmt.Errorf("acquiring org data key lock: %w", err)
 	}
-	defer lock.Rollback()
+
+	defer errutil.DeferErr(ctx, lock.Rollback, "FindOrCreateOrgDataKey: rolling back lock")
 
 	tx := lock.Tx()
 
@@ -251,7 +256,7 @@ func (d *DAL) FindKmsKeyByID(ctx context.Context, kmsKeyID uuid.UUID) (*KmsKeyWi
 
 // CreateKmsKeyWithInternal inserts a kms_keys row and its internal_kms material within a transaction.
 // Returns the generated kms_keys.id.
-func (d *DAL) CreateKmsKeyWithInternal(ctx context.Context, tx pg.Tx, kmsKey model.KmsKeys, internalKms model.InternalKms) (uuid.UUID, error) {
+func (d *DAL) CreateKmsKeyWithInternal(ctx context.Context, tx pg.Tx, kmsKey *model.KmsKeys, internalKms *model.InternalKms) (uuid.UUID, error) {
 	var kmsKeyResult model.KmsKeys
 	err := table.KmsKeys.
 		INSERT(table.KmsKeys.Name, table.KmsKeys.OrgId, table.KmsKeys.IsReserved, table.KmsKeys.KeyUsage).
@@ -312,7 +317,7 @@ func (d *DAL) FindOrCreateProjectKmsKey(ctx context.Context, projectID string, c
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("acquiring project key lock: %w", err)
 	}
-	defer lock.Rollback()
+	defer errutil.DeferErr(ctx, lock.Rollback, "FindOrCreateProjectKmsKey: rolling back lock")
 
 	tx := lock.Tx()
 
@@ -334,13 +339,13 @@ func (d *DAL) FindOrCreateProjectKmsKey(ctx context.Context, projectID string, c
 	}
 
 	createdID, err := d.CreateKmsKeyWithInternal(ctx, tx,
-		model.KmsKeys{
+		&model.KmsKeys{
 			Name:       generateRandomKeyName(),
 			OrgId:      project.OrgId,
 			IsReserved: sql.Null[bool]{V: true, Valid: true},
 			KeyUsage:   "encrypt-decrypt",
 		},
-		model.InternalKms{
+		&model.InternalKms{
 			EncryptedKey:        encryptedKey,
 			EncryptionAlgorithm: "aes-256-gcm",
 			Version:             1,
@@ -378,7 +383,7 @@ func (d *DAL) FindOrCreateProjectDataKey(ctx context.Context, projectID string, 
 	if err != nil {
 		return nil, fmt.Errorf("acquiring project data key lock: %w", err)
 	}
-	defer lock.Rollback()
+	defer errutil.DeferErr(ctx, lock.Rollback, "FindOrCreateProjectDataKey: rolling back lock")
 
 	tx := lock.Tx()
 

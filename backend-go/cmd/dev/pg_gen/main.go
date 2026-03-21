@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -36,11 +37,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to connect: %v\n", err)
 		os.Exit(1)
 	}
-	defer db.Close()
 
-	if err := db.Ping(); err != nil {
+	defer func() {
+		if cerr := db.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "failed to close db: %v\n", cerr)
+		}
+	}()
+
+	if err := db.PingContext(context.Background()); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to ping database: %v\n", err)
-		os.Exit(1)
+		return
 	}
 
 	// GenerateDB writes directly to destDir without appending the database name.
@@ -102,7 +108,7 @@ func main() {
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "generation failed: %v\n", err)
-		os.Exit(1)
+		return
 	}
 
 	fmt.Println("Generation complete:", destDir)

@@ -57,19 +57,15 @@ func (b *Builder) MustStart() *Stack {
 	var pgErr, redisErr error
 
 	if b.wantPostgres {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			stack.postgres, pgErr = startPostgres(ctx, net.Name)
-		}()
+		})
 	}
 
 	if b.wantRedis {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			stack.redis, redisErr = startRedis(ctx, net.Name)
-		}()
+		})
 	}
 
 	wg.Wait()

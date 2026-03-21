@@ -36,10 +36,10 @@ func NewTestMux() *TestMux {
 func (tm *TestMux) Request(t *testing.T, method, path string) *RequestBuilder {
 	t.Helper()
 	return &RequestBuilder{
-		t:      t,
-		mux:    tm,
-		method: method,
-		path:   path,
+		t:       t,
+		mux:     tm,
+		method:  method,
+		path:    path,
 		headers: make(map[string]string),
 	}
 }
@@ -90,7 +90,7 @@ func (rb *RequestBuilder) Do() *Response {
 		}
 	}
 
-	req := httptest.NewRequest(rb.method, rb.path, reqBody)
+	req := httptest.NewRequestWithContext(context.Background(), rb.method, rb.path, reqBody)
 	if rb.body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
