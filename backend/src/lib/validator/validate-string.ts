@@ -1,8 +1,6 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-export const SPECIAL_CHARACTERS = "!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>/?\\\\";
-
 export enum CharacterType {
   Alphabets = "alphabets",
   Numbers = "numbers",
@@ -55,7 +53,7 @@ export const characterValidator = (allowedCharacters: CharacterType[]) => {
     [CharacterType.Numbers]: "0-9",
     [CharacterType.AlphaNumeric]: "a-zA-Z0-9",
     [CharacterType.Spaces]: "\\s",
-    [CharacterType.SpecialCharacters]: SPECIAL_CHARACTERS,
+    [CharacterType.SpecialCharacters]: "!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>/?\\\\",
     [CharacterType.Punctuation]: "\\.\\,\\;\\:\\!\\?",
     [CharacterType.Colon]: "\\:",
     [CharacterType.ForwardSlash]: "\\/",

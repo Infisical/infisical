@@ -183,6 +183,11 @@ const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate):
   switch (constraint.type) {
     case ConstraintType.MinLength: {
       const min = Number(constraint.value);
+
+      if (Number.isNaN(min)) {
+        return `${targetLabel} must be at least ${min} characters (got ${targetValue.length})`;
+      }
+
       if (targetValue.length < min) {
         return `${targetLabel} must be at least ${min} characters (got ${targetValue.length})`;
       }
@@ -190,17 +195,27 @@ const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate):
     }
     case ConstraintType.MaxLength: {
       const max = Number(constraint.value);
+
+      if (Number.isNaN(max)) {
+        return `${targetLabel} must be at most ${max} characters (got ${targetValue.length})`;
+      }
+
       if (targetValue.length > max) {
         return `${targetLabel} must be at most ${max} characters (got ${targetValue.length})`;
       }
       return null;
     }
     case ConstraintType.RegexPattern: {
-      const regex = new RE2(constraint.value);
-      if (!regex.test(targetValue)) {
+      try {
+        const regex = new RE2(constraint.value);
+        if (!regex.test(targetValue)) {
+          return `${targetLabel} must match pattern ${constraint.value}`;
+        }
+        return null;
+      } catch {
+        // re2 throws an error if the pattern is invalid
         return `${targetLabel} must match pattern ${constraint.value}`;
       }
-      return null;
     }
     case ConstraintType.RequiredPrefix: {
       if (!targetValue.startsWith(constraint.value)) {

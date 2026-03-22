@@ -156,7 +156,7 @@ export const secretValidationRuleServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    const existingRule = await secretValidationRuleDAL.findById(ruleId);
+    const existingRule = await secretValidationRuleDAL.findOne({ id: ruleId, projectId });
     if (!existingRule) {
       throw new NotFoundError({ message: `Secret validation rule with ID ${ruleId} not found` });
     }
@@ -248,7 +248,7 @@ export const secretValidationRuleServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
 
-    const existingRule = await secretValidationRuleDAL.findById(ruleId);
+    const existingRule = await secretValidationRuleDAL.findOne({ id: ruleId, projectId });
     if (!existingRule) {
       throw new NotFoundError({ message: `Secret validation rule with ID ${ruleId} not found` });
     }
