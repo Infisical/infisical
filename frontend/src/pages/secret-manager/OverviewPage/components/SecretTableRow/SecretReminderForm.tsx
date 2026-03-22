@@ -331,7 +331,7 @@ export const SecretReminderForm = ({
                         <Button
                           variant="outline"
                           data-empty={!field.value}
-                          className="w-full justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
+                          className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal"
                           isDisabled={!canEditSecret}
                         >
                           <CalendarIcon className="mr-2 size-4" />
@@ -368,7 +368,7 @@ export const SecretReminderForm = ({
                       <Button
                         variant="outline"
                         data-empty={!field.value}
-                        className="w-full justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
+                        className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal"
                         isDisabled={!canEditSecret}
                       >
                         <CalendarIcon className="mr-2 size-4" />
