@@ -91,41 +91,33 @@ export function ShortTextCell<TData>({
     tableMeta?.onCellEditingStop?.();
   }, [tableMeta, rowIndex, columnId, initialValue, readOnly]);
 
-  const onInput = React.useCallback((event: React.FormEvent<HTMLDivElement>) => {
-    const currentValue = event.currentTarget.textContent ?? "";
-    setValue(currentValue);
-  }, []);
+  const onInput = React.useCallback(
+    (event: React.FormEvent<HTMLDivElement>) => {
+      const currentValue = event.currentTarget.textContent ?? "";
+      setValue(currentValue);
+      if (!readOnly) {
+        tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: currentValue });
+      }
+    },
+    [readOnly, tableMeta, rowIndex, columnId]
+  );
 
   const onWrapperKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (isEditing) {
         if (event.key === "Enter") {
           event.preventDefault();
-          const currentValue = cellRef.current?.textContent ?? "";
-          if (currentValue !== initialValue) {
-            tableMeta?.onDataUpdate?.({
-              rowIndex,
-              columnId,
-              value: currentValue
-            });
-          }
           tableMeta?.onCellEditingStop?.({ moveToNextRow: true });
         } else if (event.key === "Tab") {
           event.preventDefault();
-          const currentValue = cellRef.current?.textContent ?? "";
-          if (currentValue !== initialValue) {
-            tableMeta?.onDataUpdate?.({
-              rowIndex,
-              columnId,
-              value: currentValue
-            });
-          }
           tableMeta?.onCellEditingStop?.({
             direction: event.shiftKey ? "left" : "right"
           });
         } else if (event.key === "Escape") {
           event.preventDefault();
           setValue(initialValue);
+          // Revert the data to the original value since onInput may have committed intermediate edits
+          tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: initialValue });
           cellRef.current?.blur();
         }
       } else if (isFocused && event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
@@ -593,41 +585,32 @@ export function UrlCell<TData>({
     tableMeta?.onCellEditingStop?.();
   }, [tableMeta, rowIndex, columnId, initialValue, readOnly]);
 
-  const onInput = React.useCallback((event: React.FormEvent<HTMLDivElement>) => {
-    const currentValue = event.currentTarget.textContent ?? "";
-    setValue(currentValue);
-  }, []);
+  const onInput = React.useCallback(
+    (event: React.FormEvent<HTMLDivElement>) => {
+      const currentValue = event.currentTarget.textContent ?? "";
+      setValue(currentValue);
+      if (!readOnly) {
+        tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: currentValue || null });
+      }
+    },
+    [readOnly, tableMeta, rowIndex, columnId]
+  );
 
   const onWrapperKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (isEditing) {
         if (event.key === "Enter") {
           event.preventDefault();
-          const currentValue = cellRef.current?.textContent?.trim() ?? "";
-          if (!readOnly && currentValue !== initialValue) {
-            tableMeta?.onDataUpdate?.({
-              rowIndex,
-              columnId,
-              value: currentValue || null
-            });
-          }
           tableMeta?.onCellEditingStop?.({ moveToNextRow: true });
         } else if (event.key === "Tab") {
           event.preventDefault();
-          const currentValue = cellRef.current?.textContent?.trim() ?? "";
-          if (!readOnly && currentValue !== initialValue) {
-            tableMeta?.onDataUpdate?.({
-              rowIndex,
-              columnId,
-              value: currentValue || null
-            });
-          }
           tableMeta?.onCellEditingStop?.({
             direction: event.shiftKey ? "left" : "right"
           });
         } else if (event.key === "Escape") {
           event.preventDefault();
           setValue(initialValue ?? "");
+          tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: initialValue });
           cellRef.current?.blur();
         }
       } else if (
