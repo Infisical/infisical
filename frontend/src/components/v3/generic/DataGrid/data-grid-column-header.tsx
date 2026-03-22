@@ -1,6 +1,8 @@
 import * as React from "react";
 import type { Header, Table } from "@tanstack/react-table";
+import { ArrowUpRightIcon, KeyRoundIcon } from "lucide-react";
 
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { cn } from "@app/components/v3/utils";
 
 interface DataGridColumnHeaderProps<TData, TValue> extends React.ComponentProps<"div"> {
@@ -32,10 +34,37 @@ export function DataGridColumnHeader<TData, TValue>({
         {...props}
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          {/* eslint-disable-next-line no-nested-ternary */}
+          {column.columnDef.meta?.columnIndicator?.type === "pk" ? (
+            <KeyRoundIcon size={12} className="shrink-0 text-yellow-500" />
+          ) : column.columnDef.meta?.columnIndicator?.type === "fk" ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ArrowUpRightIcon size={12} className="shrink-0 text-blue-400" />
+              </TooltipTrigger>
+              {column.columnDef.meta.columnIndicator.tooltip && (
+                <TooltipContent side="bottom">
+                  {column.columnDef.meta.columnIndicator.tooltip}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          ) : null}
           <span className="truncate text-mineshaft-200">{label}</span>
           {column.columnDef.meta?.typeLabel && (
             <span className="shrink-0 font-normal text-accent">
               {column.columnDef.meta.typeLabel}
+            </span>
+          )}
+          {column.columnDef.meta?.columnIndicator && (
+            <span
+              className={cn(
+                "shrink-0 rounded px-1 py-0.5 text-[10px] leading-none font-medium",
+                column.columnDef.meta.columnIndicator.type === "pk"
+                  ? "bg-yellow-500/15 text-yellow-500"
+                  : "bg-blue-400/15 text-blue-400"
+              )}
+            >
+              {column.columnDef.meta.columnIndicator.type === "pk" ? "PK" : "FK"}
             </span>
           )}
         </div>

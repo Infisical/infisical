@@ -61,6 +61,10 @@ declare module "@tanstack/react-table" {
     label?: string;
     typeLabel?: string;
     cell?: CellOpts;
+    columnIndicator?: {
+      type: "pk" | "fk";
+      tooltip?: string;
+    };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

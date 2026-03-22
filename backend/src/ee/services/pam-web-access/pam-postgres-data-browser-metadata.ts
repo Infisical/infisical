@@ -78,32 +78,31 @@ export const getTableDetailQuery = (schema: string, table: string) => ({
       CROSS JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS arr(attnum, pos)
       JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = arr.attnum
       WHERE con.contype = 'p'
+    ),
+    fks AS (
+      SELECT json_agg(
+        json_build_object(
+          'constraintName', con.conname,
+          'columns', (
+            SELECT json_agg(a.attname ORDER BY arr.pos)
+            FROM unnest(con.conkey) WITH ORDINALITY AS arr(attnum, pos)
+            JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = arr.attnum
+          ),
+          'targetSchema', tn.nspname,
+          'targetTable', tc.relname,
+          'targetColumns', (
+            SELECT json_agg(a.attname ORDER BY arr.pos)
+            FROM unnest(con.confkey) WITH ORDINALITY AS arr(attnum, pos)
+            JOIN pg_attribute a ON a.attrelid = con.confrelid AND a.attnum = arr.attnum
+          )
+        )
+      ) AS data
+      FROM pg_constraint con
+      JOIN target ON con.conrelid = target.table_oid
+      JOIN pg_class tc ON tc.oid = con.confrelid
+      JOIN pg_namespace tn ON tn.oid = tc.relnamespace
+      WHERE con.contype = 'f'
     )
-    -- TODO: re-enable when UI needs foreign key and enum data
-    -- fks AS (
-    --   SELECT json_agg(
-    --     json_build_object(
-    --       'constraintName', con.conname,
-    --       'columns', (
-    --         SELECT json_agg(a.attname ORDER BY arr.pos)
-    --         FROM unnest(con.conkey) WITH ORDINALITY AS arr(attnum, pos)
-    --         JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = arr.attnum
-    --       ),
-    --       'targetSchema', tn.nspname,
-    --       'targetTable', tc.relname,
-    --       'targetColumns', (
-    --         SELECT json_agg(a.attname ORDER BY arr.pos)
-    --         FROM unnest(con.confkey) WITH ORDINALITY AS arr(attnum, pos)
-    --         JOIN pg_attribute a ON a.attrelid = con.confrelid AND a.attnum = arr.attnum
-    --       )
-    --     )
-    --   ) AS data
-    --   FROM pg_constraint con
-    --   JOIN target ON con.conrelid = target.table_oid
-    --   JOIN pg_class tc ON tc.oid = con.confrelid
-    --   JOIN pg_namespace tn ON tn.oid = tc.relnamespace
-    --   WHERE con.contype = 'f'
-    -- ),
     -- enum_vals AS (
     --   SELECT json_object_agg(
     --     t.typname,
@@ -118,12 +117,12 @@ export const getTableDetailQuery = (schema: string, table: string) => ({
     -- )
     SELECT json_build_object(
       'columns', COALESCE(cols.data, '[]'::json),
-      'primaryKeys', COALESCE(pks.data, '[]'::json)
+      'primaryKeys', COALESCE(pks.data, '[]'::json),
+      'foreignKeys', COALESCE(fks.data, '[]'::json)
       -- TODO: re-enable when UI needs these
-      -- 'foreignKeys', COALESCE(fks.data, '[]'::json),
       -- 'enums', COALESCE(enum_vals.data, '{}'::json)
     ) AS result
-    FROM cols, pks
+    FROM cols, pks, fks
   `,
   values: [schema, table]
 });

@@ -40,9 +40,18 @@ export type ColumnInfo = {
   identityGeneration: string | null;
 };
 
+export type ForeignKeyInfo = {
+  constraintName: string;
+  columns: string[];
+  targetSchema: string;
+  targetTable: string;
+  targetColumns: string[];
+};
+
 export type TableDetail = {
   columns: ColumnInfo[];
   primaryKeys: string[];
+  foreignKeys: ForeignKeyInfo[];
 };
 
 export type FieldInfo = {

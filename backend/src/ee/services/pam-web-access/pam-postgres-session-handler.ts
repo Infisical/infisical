@@ -157,6 +157,13 @@ export const handlePostgresSession = async (
                     identityGeneration: string | null;
                   }[];
                   primaryKeys: string[];
+                  foreignKeys: {
+                    constraintName: string;
+                    columns: string[];
+                    targetSchema: string;
+                    targetTable: string;
+                    targetColumns: string[];
+                  }[];
                 }
               });
             } catch (err) {

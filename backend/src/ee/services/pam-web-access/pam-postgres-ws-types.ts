@@ -83,17 +83,17 @@ const TableDetailResponseSchema = CorrelatedBaseSchema.extend({
         // maxLength: z.number().nullable()
       })
     ),
-    primaryKeys: z.array(z.string())
+    primaryKeys: z.array(z.string()),
+    foreignKeys: z.array(
+      z.object({
+        constraintName: z.string(),
+        columns: z.array(z.string()),
+        targetSchema: z.string(),
+        targetTable: z.string(),
+        targetColumns: z.array(z.string())
+      })
+    )
     // TODO: re-enable when UI needs these
-    // foreignKeys: z.array(
-    //   z.object({
-    //     constraintName: z.string(),
-    //     columns: z.array(z.string()),
-    //     targetSchema: z.string(),
-    //     targetTable: z.string(),
-    //     targetColumns: z.array(z.string())
-    //   })
-    // ),
     // enums: z.record(z.string(), z.array(z.string()))
   })
 });

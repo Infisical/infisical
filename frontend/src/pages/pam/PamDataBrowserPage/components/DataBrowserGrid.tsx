@@ -7,7 +7,7 @@ import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 
-import type { ColumnInfo, FieldInfo, TableDetail } from "../data-browser-types";
+import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-browser-types";
 import type { FilterCondition, SortCondition } from "../sql-generation";
 import {
   buildCountQuery,
@@ -106,7 +106,36 @@ const SELECT_COLUMN: ColumnDef<RowData> = {
   enableResizing: false
 };
 
-function buildColumnDefs(cols: ColumnInfo[]): ColumnDef<Record<string, unknown>>[] {
+function getColumnIndicator(
+  colName: string,
+  primaryKeys: string[],
+  fkMap: Map<string, ForeignKeyInfo>
+): { type: "pk" | "fk"; tooltip?: string } | undefined {
+  if (primaryKeys.includes(colName)) return { type: "pk" };
+  const fk = fkMap.get(colName);
+  if (fk) {
+    const targetCol = fk.targetColumns[fk.columns.indexOf(colName)] ?? fk.targetColumns[0];
+    return {
+      type: "fk",
+      tooltip: `\u2192 ${fk.targetSchema}.${fk.targetTable}(${targetCol})`
+    };
+  }
+  return undefined;
+}
+
+function buildColumnDefs(
+  cols: ColumnInfo[],
+  primaryKeys: string[],
+  foreignKeys: ForeignKeyInfo[]
+): ColumnDef<Record<string, unknown>>[] {
+  // Build a map from column name → FK info for O(1) lookup
+  const fkMap = new Map<string, ForeignKeyInfo>();
+  foreignKeys.forEach((fk) => {
+    fk.columns.forEach((c) => {
+      if (!fkMap.has(c)) fkMap.set(c, fk);
+    });
+  });
+
   return cols.map((col) => ({
     id: col.name,
     accessorKey: col.name,
@@ -114,7 +143,8 @@ function buildColumnDefs(cols: ColumnInfo[]): ColumnDef<Record<string, unknown>>
     meta: {
       label: col.name,
       typeLabel: col.type,
-      cell: pgTypeToCellOpts()
+      cell: pgTypeToCellOpts(),
+      columnIndicator: getColumnIndicator(col.name, primaryKeys, fkMap)
     },
     size: getColumnSize(col),
     minSize: 80,
@@ -166,6 +196,7 @@ export const DataBrowserGrid = ({
   const hasLoadedRef = useRef(false);
 
   const primaryKeys = tableDetail?.primaryKeys ?? [];
+  const foreignKeys = tableDetail?.foreignKeys ?? [];
   const tableColumns = tableDetail?.columns ?? [];
   const hasPrimaryKey = primaryKeys.length > 0;
   const primaryKeysRef = useRef(primaryKeys);
@@ -183,9 +214,9 @@ export const DataBrowserGrid = ({
   const columnDefs = useMemo(
     () =>
       hasPrimaryKey
-        ? [SELECT_COLUMN, ...buildColumnDefs(tableColumns)]
-        : buildColumnDefs(tableColumns),
-    [hasPrimaryKey, tableColumns]
+        ? [SELECT_COLUMN, ...buildColumnDefs(tableColumns, primaryKeys, foreignKeys)]
+        : buildColumnDefs(tableColumns, primaryKeys, foreignKeys),
+    [hasPrimaryKey, tableColumns, primaryKeys, foreignKeys]
   );
 
   const fetchData = useCallback(
