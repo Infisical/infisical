@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Header, Table } from "@tanstack/react-table";
-import { ArrowUpRightIcon, KeyRoundIcon } from "lucide-react";
+import { KeyRoundIcon, Link2Icon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { cn } from "@app/components/v3/utils";
@@ -40,7 +40,7 @@ export function DataGridColumnHeader<TData, TValue>({
           ) : column.columnDef.meta?.columnIndicator?.type === "fk" ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <ArrowUpRightIcon size={12} className="shrink-0 text-blue-400" />
+                <Link2Icon size={12} className="shrink-0 text-blue-400" />
               </TooltipTrigger>
               {column.columnDef.meta.columnIndicator.tooltip && (
                 <TooltipContent side="bottom">
