@@ -7,14 +7,16 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	secretssvr "github.com/infisical/api/internal/server/gen/http/secrets/server"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/secretmanager/secrets"
+	"github.com/infisical/api/internal/services/shared/auth"
 	"github.com/infisical/api/internal/services/shared/permission"
 	smShared "github.com/infisical/api/internal/services/shared/secretmanager"
 	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
-	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -42,9 +44,13 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	permDAL := permission.NewDAL()
 	permLib := permission.NewSharedService(permission.Deps{DAL: permDAL})
 
+	authDAL := auth.NewDAL(stack.DB())
+	authHandler := auth.NewAuthHandler(authDAL, infra.AuthSecret)
+
 	smSharedSvcs := smShared.NewSharedServices(smShared.SharedServicesDeps{DB: stack.DB()})
 
 	svc := secrets.NewService(testutil.NopLogger(), secrets.Deps{
+		AuthHandler:  authHandler,
 		Permission:   permLib,
 		SecretFolder: smSharedSvcs.SecretFolder,
 	})

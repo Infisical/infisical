@@ -1,9 +1,9 @@
 # Run unit tests (no infra required)
 lint:
-	golangci-lint run 
+	golangci-lint run --build-tags integration
 
 lint-fix:
-	go fix ./... && golangci-lint run --fix
+	go fix ./... && golangci-lint run --build-tags integration --fix
 
 test:
 	go test -v ./internal/... -count=1 -race -timeout 120s

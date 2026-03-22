@@ -7,13 +7,15 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	projectssvr "github.com/infisical/api/internal/server/gen/http/projects/server"
 	genprojects "github.com/infisical/api/internal/server/gen/projects"
 	"github.com/infisical/api/internal/services/platform/projects"
+	"github.com/infisical/api/internal/services/shared/auth"
 	"github.com/infisical/api/internal/services/shared/permission"
 	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
-	"github.com/stretchr/testify/require"
 )
 
 var stack *infra.Stack
@@ -37,8 +39,12 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	permDAL := permission.NewDAL()
 	permLib := permission.NewSharedService(permission.Deps{DAL: permDAL})
 
+	authDAL := auth.NewDAL(stack.DB())
+	authHandler := auth.NewAuthHandler(authDAL, infra.AuthSecret)
+
 	svc := projects.NewService(testutil.NopLogger(), projects.Deps{
-		Permission: permLib,
+		AuthHandler: authHandler,
+		Permission:  permLib,
 	})
 
 	mux := testutil.NewTestMux()
