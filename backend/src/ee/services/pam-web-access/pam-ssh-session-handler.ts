@@ -6,14 +6,9 @@ import {
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-types";
 import { logger } from "@app/lib/logger";
 
-import {
-  parseWsClientMessage,
-  resolveEndReason,
-  SessionEndReason,
-  TSessionContext,
-  TSessionHandlerResult,
-  WsMessageType
-} from "./pam-web-access-types";
+import { parseSshClientMessage } from "./pam-ssh-ws-types";
+import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
+import { resolveEndReason, SessionEndReason, WsMessageType } from "./pam-ws-shared-types";
 
 type TSSHSessionParams = {
   connectionDetails: TSSHResourceConnectionDetails;
@@ -77,7 +72,7 @@ export const handleSSHSession = async (
 
         // WS -> SSH: forward input from WebSocket to remote shell
         socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
-          const message = parseWsClientMessage(rawData);
+          const message = parseSshClientMessage(rawData);
           if (!message) return;
 
           if (message.type === WsMessageType.Input) {

@@ -161,6 +161,9 @@ export function buildDeleteQuery(params: {
   return `DELETE FROM ${tableName} WHERE ${whereClauses}`;
 }
 
+// Note: RETURNING * in individual INSERT/UPDATE statements is harmless but unused when
+// wrapped here — pgClient.query() returns only the last statement's result (COMMIT).
+// The frontend re-fetches data after save anyway.
 export function wrapInTransaction(statements: string[]): string {
   return `BEGIN;\n${statements.join(";\n")};\nCOMMIT;`;
 }

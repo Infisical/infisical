@@ -54,22 +54,21 @@ describe("getTableDetailQuery", () => {
     expect(query.text).toContain("contype = 'p'");
   });
 
-  test("queries foreign keys from pg_constraint", () => {
-    const query = getTableDetailQuery("public", "users");
-    expect(query.text).toContain("contype = 'f'");
-  });
+  // TODO: re-enable when UI needs foreign key and enum data
+  // test("queries foreign keys from pg_constraint", () => {
+  //   const query = getTableDetailQuery("public", "users");
+  //   expect(query.text).toContain("contype = 'f'");
+  // });
 
-  test("queries enum values from pg_enum", () => {
-    const query = getTableDetailQuery("public", "users");
-    expect(query.text).toContain("pg_enum");
-  });
+  // test("queries enum values from pg_enum", () => {
+  //   const query = getTableDetailQuery("public", "users");
+  //   expect(query.text).toContain("pg_enum");
+  // });
 
   test("returns JSON result", () => {
     const query = getTableDetailQuery("public", "users");
     expect(query.text).toContain("json_build_object");
     expect(query.text).toContain("'columns'");
     expect(query.text).toContain("'primaryKeys'");
-    expect(query.text).toContain("'foreignKeys'");
-    expect(query.text).toContain("'enums'");
   });
 });

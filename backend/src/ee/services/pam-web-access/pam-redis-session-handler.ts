@@ -7,14 +7,9 @@ import {
 import { logger } from "@app/lib/logger";
 
 import { formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
-import {
-  parseWsClientMessage,
-  resolveEndReason,
-  SessionEndReason,
-  TSessionContext,
-  TSessionHandlerResult,
-  WsMessageType
-} from "./pam-web-access-types";
+import { parseRedisClientMessage } from "./pam-redis-ws-types";
+import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
+import { resolveEndReason, SessionEndReason, WsMessageType } from "./pam-ws-shared-types";
 
 type TRedisSessionParams = {
   connectionDetails: TRedisResourceConnectionDetails;
@@ -96,7 +91,7 @@ export const handleRedisSession = async (
   socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
     processingPromise = processingPromise
       .then(async () => {
-        const message = parseWsClientMessage(rawData);
+        const message = parseRedisClientMessage(rawData);
         if (!message) {
           sendMessage({
             type: WsMessageType.Output,

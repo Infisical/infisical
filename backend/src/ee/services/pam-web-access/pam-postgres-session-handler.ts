@@ -7,17 +7,10 @@ import {
 import { logger } from "@app/lib/logger";
 
 import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-browser-metadata";
+import { parsePostgresClientMessage, type TPostgresCorrelatedServerMessage } from "./pam-postgres-ws-types";
 import { createPamSqlRepl } from "./pam-web-access-repl";
-import {
-  parseDataBrowserClientMessage,
-  parseWsClientMessage,
-  resolveEndReason,
-  SessionEndReason,
-  TDataBrowserServerMessage,
-  TSessionContext,
-  TSessionHandlerResult,
-  WsMessageType
-} from "./pam-web-access-types";
+import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
+import { resolveEndReason, SessionEndReason, WsMessageType } from "./pam-ws-shared-types";
 
 type TPostgresSessionParams = {
   connectionDetails: TPostgresResourceConnectionDetails;
@@ -58,14 +51,35 @@ export const handlePostgresSession = async (
 
   logger.info({ sessionId }, "Postgres web access session established");
 
-  const sendDataBrowserResponse = (msg: TDataBrowserServerMessage) => {
+  const sendResponse = (msg: TPostgresCorrelatedServerMessage) => {
     try {
       if (socket.readyState === socket.OPEN) {
         socket.send(JSON.stringify(msg));
       }
     } catch (err) {
-      logger.error(err, "Failed to send data browser WebSocket message");
+      logger.error(err, "Failed to send WebSocket message");
     }
+  };
+
+  // Shared error handler for correlated query messages
+  const sendQueryError = async (id: string, err: unknown) => {
+    const pgErr = err as { message?: string; detail?: string; hint?: string };
+
+    // If the failed query was inside a transaction, roll back so the
+    // connection is not stuck in an aborted transaction state.
+    try {
+      await pgClient.query("ROLLBACK");
+    } catch {
+      // ROLLBACK fails if there was no active transaction — safe to ignore.
+    }
+
+    sendResponse({
+      type: "error",
+      id,
+      error: pgErr.message ?? "Query execution failed",
+      detail: pgErr.detail,
+      hint: pgErr.hint
+    });
   };
 
   // Sequential message processing to prevent concurrent query issues
@@ -74,121 +88,7 @@ export const handlePostgresSession = async (
   socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
     processingPromise = processingPromise
       .then(async () => {
-        // Try data-browser message first (pg-* prefixed types)
-        const dbMessage = parseDataBrowserClientMessage(rawData);
-        if (dbMessage) {
-          try {
-            switch (dbMessage.type) {
-              case "pg-get-schemas": {
-                const query = getSchemasQuery();
-                const result = await pgClient.query(query.text, query.values);
-                sendDataBrowserResponse({
-                  type: "pg-schemas",
-                  id: dbMessage.id,
-                  data: result.rows as { name: string }[]
-                });
-                break;
-              }
-
-              case "pg-get-tables": {
-                const query = getTablesQuery(dbMessage.schema);
-                const result = await pgClient.query(query.text, query.values);
-                sendDataBrowserResponse({
-                  type: "pg-tables",
-                  id: dbMessage.id,
-                  data: result.rows as { name: string; tableType: string }[]
-                });
-                break;
-              }
-
-              case "pg-get-table-detail": {
-                const query = getTableDetailQuery(dbMessage.schema, dbMessage.table);
-                const result = await pgClient.query<{ result: string }>(query.text, query.values);
-                const rawDetail = result.rows[0]?.result;
-                if (!rawDetail) {
-                  sendDataBrowserResponse({
-                    type: "pg-error",
-                    id: dbMessage.id,
-                    error: "Table not found or no metadata available"
-                  });
-                  break;
-                }
-                const detail =
-                  typeof rawDetail === "string"
-                    ? (JSON.parse(rawDetail) as Record<string, unknown>)
-                    : (rawDetail as unknown as Record<string, unknown>);
-                sendDataBrowserResponse({
-                  type: "pg-table-detail",
-                  id: dbMessage.id,
-                  data: detail as {
-                    columns: {
-                      name: string;
-                      type: string;
-                      typeOid: number;
-                      nullable: boolean;
-                      defaultValue: string | null;
-                      isIdentity: boolean;
-                      identityGeneration: string | null;
-                      isArray: boolean;
-                      maxLength: number | null;
-                    }[];
-                    primaryKeys: string[];
-                    foreignKeys: {
-                      constraintName: string;
-                      columns: string[];
-                      targetSchema: string;
-                      targetTable: string;
-                      targetColumns: string[];
-                    }[];
-                    enums: Record<string, string[]>;
-                  }
-                });
-                break;
-              }
-
-              case "pg-query": {
-                const startTime = performance.now();
-                const result = await pgClient.query(dbMessage.sql);
-                const executionTimeMs = Math.round(performance.now() - startTime);
-                sendDataBrowserResponse({
-                  type: "pg-query-result",
-                  id: dbMessage.id,
-                  rows: (result.rows ?? []) as Record<string, unknown>[],
-                  fields: (result.fields ?? []).map((f) => ({ name: f.name, dataTypeID: f.dataTypeID })),
-                  rowCount: result.rowCount,
-                  command: result.command ?? "",
-                  executionTimeMs
-                });
-                break;
-              }
-
-              default:
-                break;
-            }
-          } catch (err) {
-            const pgErr = err as { message?: string; detail?: string; hint?: string };
-
-            // If the failed query was inside a transaction, roll back so the
-            // connection is not stuck in an aborted transaction state.
-            try {
-              await pgClient.query("ROLLBACK");
-            } catch {
-              // ROLLBACK fails if there was no active transaction — safe to ignore.
-            }
-
-            sendDataBrowserResponse({
-              type: "pg-error",
-              id: dbMessage.id,
-              error: pgErr.message ?? "Query execution failed",
-              detail: pgErr.detail,
-              hint: pgErr.hint
-            });
-          }
-          return;
-        }
-
-        // Otherwise try terminal message
-        const message = parseWsClientMessage(rawData);
+        const message = parsePostgresClientMessage(rawData);
         if (!message) {
           sendMessage({
             type: WsMessageType.Output,
@@ -198,35 +98,129 @@ export const handlePostgresSession = async (
           return;
         }
 
-        if (message.type === WsMessageType.Control) {
-          if (message.data === "quit") {
-            sendSessionEnd(SessionEndReason.UserQuit);
-            onCleanup();
-            socket.close();
-            return;
-          }
-          if (message.data === "clear-buffer") {
-            repl.clearBuffer();
-            return;
-          }
-          return;
-        }
-
-        if (message.type === WsMessageType.Input) {
-          const replResult = await repl.processInput(message.data);
-
-          if (replResult.shouldClose) {
-            sendSessionEnd(SessionEndReason.UserQuit);
-            onCleanup();
-            socket.close();
-            return;
+        switch (message.type) {
+          case "get-schemas": {
+            try {
+              const query = getSchemasQuery();
+              const result = await pgClient.query(query.text, query.values);
+              sendResponse({
+                type: "schemas",
+                id: message.id,
+                data: result.rows as { name: string }[]
+              });
+            } catch (err) {
+              await sendQueryError(message.id, err);
+            }
+            break;
           }
 
-          sendMessage({
-            type: WsMessageType.Output,
-            data: replResult.output,
-            prompt: replResult.prompt
-          });
+          case "get-tables": {
+            try {
+              const query = getTablesQuery(message.schema);
+              const result = await pgClient.query(query.text, query.values);
+              sendResponse({
+                type: "tables",
+                id: message.id,
+                data: result.rows as { name: string; tableType: string }[]
+              });
+            } catch (err) {
+              await sendQueryError(message.id, err);
+            }
+            break;
+          }
+
+          case "get-table-detail": {
+            try {
+              const query = getTableDetailQuery(message.schema, message.table);
+              const result = await pgClient.query<{ result: string }>(query.text, query.values);
+              const rawDetail = result.rows[0]?.result;
+              if (!rawDetail) {
+                sendResponse({
+                  type: "error",
+                  id: message.id,
+                  error: "Table not found or no metadata available"
+                });
+                break;
+              }
+              const detail =
+                typeof rawDetail === "string"
+                  ? (JSON.parse(rawDetail) as Record<string, unknown>)
+                  : (rawDetail as unknown as Record<string, unknown>);
+              sendResponse({
+                type: "table-detail",
+                id: message.id,
+                data: detail as {
+                  columns: {
+                    name: string;
+                    type: string;
+                    nullable: boolean;
+                    identityGeneration: string | null;
+                  }[];
+                  primaryKeys: string[];
+                }
+              });
+            } catch (err) {
+              await sendQueryError(message.id, err);
+            }
+            break;
+          }
+
+          case "query": {
+            try {
+              // Multi-statement SQL (transactions) is executed via PostgreSQL's simple query
+              // protocol, which returns only the last statement's result. For transaction-wrapped
+              // batches (BEGIN;...;COMMIT;), the result is from COMMIT (no rows/fields).
+              const startTime = performance.now();
+              const result = await pgClient.query(message.sql);
+              const executionTimeMs = Math.round(performance.now() - startTime);
+              sendResponse({
+                type: "query-result",
+                id: message.id,
+                rows: (result.rows ?? []) as Record<string, unknown>[],
+                fields: (result.fields ?? []).map((f) => ({ name: f.name })),
+                rowCount: result.rowCount,
+                command: result.command ?? "",
+                executionTimeMs
+              });
+            } catch (err) {
+              await sendQueryError(message.id, err);
+            }
+            break;
+          }
+
+          case "control": {
+            if (message.data === "quit") {
+              sendSessionEnd(SessionEndReason.UserQuit);
+              onCleanup();
+              socket.close();
+              return;
+            }
+            if (message.data === "clear-buffer") {
+              repl.clearBuffer();
+            }
+            break;
+          }
+
+          case "input": {
+            const replResult = await repl.processInput(message.data);
+
+            if (replResult.shouldClose) {
+              sendSessionEnd(SessionEndReason.UserQuit);
+              onCleanup();
+              socket.close();
+              return;
+            }
+
+            sendMessage({
+              type: WsMessageType.Output,
+              data: replResult.output,
+              prompt: replResult.prompt
+            });
+            break;
+          }
+
+          default:
+            break;
         }
       })
       .catch((err) => {

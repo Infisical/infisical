@@ -6,7 +6,8 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type WebSocket from "ws";
 
-import type { TSessionContext, TWebSocketServerMessage } from "./pam-web-access-types";
+import type { TSessionContext } from "./pam-web-access-types";
+import type { TWsTerminalServerMessage } from "./pam-ws-shared-types";
 
 // Mock logger
 vi.mock("@app/lib/logger", () => ({
@@ -59,8 +60,8 @@ type MockPgClient = {
   on: ReturnType<typeof vi.fn>;
 };
 
-function createMockContext(): TSessionContext & { sentMessages: TWebSocketServerMessage[] } {
-  const sentMessages: TWebSocketServerMessage[] = [];
+function createMockContext(): TSessionContext & { sentMessages: TWsTerminalServerMessage[] } {
+  const sentMessages: TWsTerminalServerMessage[] = [];
   return {
     socket: {
       on: vi.fn(),
@@ -72,7 +73,7 @@ function createMockContext(): TSessionContext & { sentMessages: TWebSocketServer
     relayPort: 5432,
     resourceName: "test-db",
     sessionId: "test-session",
-    sendMessage: vi.fn((msg: TWebSocketServerMessage) => {
+    sendMessage: vi.fn((msg: TWsTerminalServerMessage) => {
       sentMessages.push(msg);
     }),
     sendSessionEnd: vi.fn(),
@@ -133,7 +134,7 @@ describe("handlePostgresSession", () => {
     expect(pgInstance.end).toHaveBeenCalled();
   });
 
-  test("handles pg-get-schemas data browser message", async () => {
+  test("handles get-schemas data browser message", async () => {
     const ctx = createMockContext();
     await handlePostgresSession(ctx, mockParams);
 
@@ -149,7 +150,7 @@ describe("handlePostgresSession", () => {
     const onMessage = messageCall?.[1] as ((data: Buffer) => void) | undefined;
 
     if (onMessage) {
-      const msg = Buffer.from(JSON.stringify({ type: "pg-get-schemas", id: "req-1" }));
+      const msg = Buffer.from(JSON.stringify({ type: "get-schemas", id: "550e8400-e29b-41d4-a716-446655440000" }));
       onMessage(msg);
 
       // Wait for async processing
@@ -158,7 +159,7 @@ describe("handlePostgresSession", () => {
       });
 
       expect((ctx.socket as unknown as { send: ReturnType<typeof vi.fn> }).send).toHaveBeenCalledWith(
-        expect.stringContaining('"pg-schemas"')
+        expect.stringContaining('"schemas"')
       );
     }
   });

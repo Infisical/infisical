@@ -204,6 +204,9 @@ export const DataBrowserGrid = ({
         });
         const countSql = buildCountQuery({ schema, table, filters: f });
 
+        // These two queries don't share a database snapshot (the backend processes them
+        // sequentially, not in a single transaction), so the count could be off by 1 if
+        // another session modifies data between them. Acceptable for a data browser.
         const [dataResult, countResult] = await Promise.all([
           executeQuery(selectSql),
           executeQuery(countSql)

@@ -66,7 +66,6 @@ export const useDataBrowserSession = ({
   const readyRejectRef = useRef<((err: Error) => void) | null>(null);
   const readyPromiseRef = useRef<Promise<void> | null>(null);
   const onSessionEndRef = useRef(onSessionEnd);
-  const requestIdCounterRef = useRef(0);
 
   useEffect(() => {
     onSessionEndRef.current = onSessionEnd;
@@ -121,7 +120,7 @@ export const useDataBrowserSession = ({
             pendingRequestsRef.current.delete(serverMsg.id);
             clearTimeout(pending.timer);
 
-            if (serverMsg.type === "pg-error") {
+            if (serverMsg.type === "error") {
               const errMsg = [serverMsg.error, serverMsg.detail, serverMsg.hint]
                 .filter(Boolean)
                 .join("\n");
@@ -331,7 +330,7 @@ export const useDataBrowserSession = ({
         await readyPromiseRef.current;
       }
 
-      const id = String((requestIdCounterRef.current += 1));
+      const id = crypto.randomUUID();
       const fullMsg = { ...msg, id } as DataBrowserClientMessage;
 
       return new Promise<T>((resolve, reject) => {
@@ -360,16 +359,16 @@ export const useDataBrowserSession = ({
   );
 
   const fetchSchemas = useCallback(async (): Promise<SchemaInfo[]> => {
-    const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "pg-schemas" }>>({
-      type: "pg-get-schemas"
+    const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "schemas" }>>({
+      type: "get-schemas"
     });
     return resp.data;
   }, [sendRequest]);
 
   const fetchTables = useCallback(
     async (schema: string): Promise<TableInfo[]> => {
-      const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "pg-tables" }>>({
-        type: "pg-get-tables",
+      const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "tables" }>>({
+        type: "get-tables",
         schema
       });
       return resp.data;
@@ -379,10 +378,8 @@ export const useDataBrowserSession = ({
 
   const fetchTableDetail = useCallback(
     async (schema: string, table: string): Promise<TableDetail> => {
-      const resp = await sendRequest<
-        Extract<DataBrowserServerMessage, { type: "pg-table-detail" }>
-      >({
-        type: "pg-get-table-detail",
+      const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "table-detail" }>>({
+        type: "get-table-detail",
         schema,
         table
       });
@@ -401,10 +398,8 @@ export const useDataBrowserSession = ({
       command: string;
       executionTimeMs: number;
     }> => {
-      const resp = await sendRequest<
-        Extract<DataBrowserServerMessage, { type: "pg-query-result" }>
-      >({
-        type: "pg-query",
+      const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "query-result" }>>({
+        type: "query",
         sql
       });
       return {
