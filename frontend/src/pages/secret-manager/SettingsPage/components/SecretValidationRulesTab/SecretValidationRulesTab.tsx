@@ -2,10 +2,18 @@
 import { useState } from "react";
 import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { EllipsisVerticalIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { EllipsisVerticalIcon, InfoIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Select,
@@ -20,6 +28,9 @@ import {
   SheetHeader,
   SheetTitle,
   Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
@@ -55,7 +66,7 @@ import {
   ruleFormSchema,
   RuleType,
   TRuleForm
-} from "./SecretEnforcementTab.utils";
+} from "./SecretValidationRulesTab.utils";
 
 const RuleFormContent = ({
   defaultValues,
@@ -298,6 +309,7 @@ type SheetState =
 export const SecretValidationRulesTab = () => {
   const { currentProject } = useProject();
   const [sheetState, setSheetState] = useState<SheetState>({ open: false });
+  const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
 
   const { data: rules = [], isLoading } = useListSecretValidationRules({
     projectId: currentProject.id
@@ -319,12 +331,15 @@ export const SecretValidationRulesTab = () => {
     return env?.name ?? envId;
   };
 
-  const handleDelete = async (ruleId: string) => {
+  const handleDelete = async () => {
+    if (!deleteRuleId) return;
     try {
-      await deleteRule.mutateAsync({ projectId: currentProject.id, ruleId });
+      await deleteRule.mutateAsync({ projectId: currentProject.id, ruleId: deleteRuleId });
       createNotification({ text: "Rule deleted", type: "success" });
     } catch {
       createNotification({ text: "Failed to delete rule", type: "error" });
+    } finally {
+      setDeleteRuleId(null);
     }
   };
 
@@ -448,31 +463,36 @@ export const SecretValidationRulesTab = () => {
                   <UnstableTableBody>
                     {rules.map((rule) => (
                       <UnstableTableRow key={rule.id}>
-                        <UnstableTableCell>
-                          <div>
+                        <UnstableTableCell className="py-3">
+                          <div className="flex items-center">
                             <span className="text-sm font-medium text-foreground">{rule.name}</span>
                             {rule.description && (
-                              <p className="text-xs text-muted">{rule.description}</p>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <InfoIcon className="ml-1.5 size-3.5 text-muted" />
+                                </TooltipTrigger>
+                                <TooltipContent>{rule.description}</TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                         </UnstableTableCell>
-                        <UnstableTableCell>
+                        <UnstableTableCell className="py-3">
                           <Badge variant="neutral">
                             {RULE_TYPE_LABELS[rule.type as string as RuleType] ?? rule.type}
                           </Badge>
                         </UnstableTableCell>
-                        <UnstableTableCell>
+                        <UnstableTableCell className="py-3">
                           <div className="flex items-center gap-1.5">
                             <Badge variant="neutral">{resolveEnvName(rule.envId)}</Badge>
                             <Badge variant="neutral">{rule.secretPath}</Badge>
                           </div>
                         </UnstableTableCell>
-                        <UnstableTableCell>
+                        <UnstableTableCell className="py-3">
                           <Badge variant={rule.isActive ? "success" : "neutral"}>
                             {rule.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </UnstableTableCell>
-                        <UnstableTableCell>
+                        <UnstableTableCell className="py-3">
                           <UnstableDropdownMenu>
                             <UnstableDropdownMenuTrigger asChild>
                               <UnstableIconButton aria-label="Actions" variant="ghost" size="xs">
@@ -490,7 +510,7 @@ export const SecretValidationRulesTab = () => {
                               </UnstableDropdownMenuItem>
                               <UnstableDropdownMenuItem
                                 variant="danger"
-                                onClick={() => handleDelete(rule.id)}
+                                onClick={() => setDeleteRuleId(rule.id)}
                               >
                                 <TrashIcon className="mr-2 size-4" />
                                 Delete
@@ -507,6 +527,26 @@ export const SecretValidationRulesTab = () => {
           </div>
         </div>
       </div>
+
+      <AlertDialog
+        open={deleteRuleId !== null}
+        onOpenChange={(open) => !open && setDeleteRuleId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Validation Rule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this rule? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={handleDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Sheet open={sheetState.open} onOpenChange={(open) => !open && handleClose()}>
         <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">

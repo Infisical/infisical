@@ -104,13 +104,28 @@ export const secretValidationRuleServiceFactory = ({
 
     const parsedInputs = parseSecretValidationRuleInputs(type, inputs);
 
+    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
     const existingRules = await secretValidationRuleDAL.find({ projectId });
     checkForOverlappingRules({
       ruleType: type,
       envId,
       secretPath,
       inputs: parsedInputs,
-      existingRules
+      existingRules: existingRules.map((r) => ({
+        id: r.id,
+        name: r.name,
+        envId: r.envId,
+        secretPath: r.secretPath,
+        type: r.type,
+        inputs: parseSecretValidationRuleInputs(
+          r.type,
+          JSON.parse(ruleInputsDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
+        )
+      }))
     });
 
     const { encryptor: ruleInputsEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -196,7 +211,17 @@ export const secretValidationRuleServiceFactory = ({
       envId: finalEnvId,
       secretPath: finalSecretPath,
       inputs: parsedInputs,
-      existingRules,
+      existingRules: existingRules.map((r) => ({
+        id: r.id,
+        name: r.name,
+        envId: r.envId,
+        secretPath: r.secretPath,
+        type: r.type,
+        inputs: parseSecretValidationRuleInputs(
+          r.type,
+          JSON.parse(ruleInputsDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
+        )
+      })),
       excludeRuleId: ruleId
     });
 

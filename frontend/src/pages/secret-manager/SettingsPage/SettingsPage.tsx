@@ -10,7 +10,7 @@ import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/Pr
 
 import { EncryptionTab } from "./components/EncryptionTab";
 import { SecretSettingsTab } from "./components/ProjectGeneralTab";
-import { SecretValidationRulesTab } from "./components/SecretEnforcementTab";
+import { SecretValidationRulesTab } from "./components/SecretValidationRulesTab";
 import { WebhooksTab } from "./components/WebhooksTab";
 import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection";
 

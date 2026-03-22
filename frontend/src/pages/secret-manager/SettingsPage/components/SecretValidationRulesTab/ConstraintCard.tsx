@@ -19,7 +19,7 @@ import {
   ConstraintTarget,
   ConstraintType,
   TRuleForm
-} from "./SecretEnforcementTab.utils";
+} from "./SecretValidationRulesTab.utils";
 
 type Props = {
   index: number;

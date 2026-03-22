@@ -23,7 +23,11 @@ export const NotificationContent = ({
   return (
     <div className="msg-container">
       {title && <div className="text-md mb-1 font-medium">{title}</div>}
-      <div className={title ? "text-sm whitespace-pre-line text-neutral-400" : "text-md whitespace-pre-line"}>
+      <div
+        className={
+          title ? "text-sm whitespace-pre-line text-neutral-400" : "text-md whitespace-pre-line"
+        }
+      >
         {text}
       </div>
       {children && <div className="mt-2">{children}</div>}
