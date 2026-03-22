@@ -2,7 +2,8 @@ package secretfolder
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 type dal interface {
@@ -26,7 +27,7 @@ func NewSharedService(deps Deps) *SharedService {
 func (s *SharedService) LoadProjectFolders(ctx context.Context, projectID string) (*FolderLookup, error) {
 	rows, err := s.dal.GetFoldersByProjectID(ctx, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("get folders for project %s: %w", projectID, err)
+		return nil, errutil.DatabaseErr("Failed to get folders for project").WithErr(err)
 	}
 	return newFolderLookup(rows), nil
 }

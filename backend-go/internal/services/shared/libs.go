@@ -8,6 +8,7 @@ import (
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/keystore"
+	"github.com/infisical/api/internal/services/shared/auth"
 	"github.com/infisical/api/internal/services/shared/kms"
 	"github.com/infisical/api/internal/services/shared/license"
 	"github.com/infisical/api/internal/services/shared/permission"
@@ -23,10 +24,11 @@ type SharedServicesDeps struct {
 }
 
 type SharedServices struct {
-	Config     *config.Config
-	Permission *permission.SharedService
-	KMS        *kms.SharedService
-	License    *license.SharedService
+	Config      *config.Config
+	AuthHandler auth.AuthHandler
+	Permission  *permission.SharedService
+	KMS         *kms.SharedService
+	License     *license.SharedService
 }
 
 func NewSharedServices(ctx context.Context, deps SharedServicesDeps) (*SharedServices, error) {
@@ -49,10 +51,14 @@ func NewSharedServices(ctx context.Context, deps SharedServicesDeps) (*SharedSer
 		DAL:      licenseDAL,
 	})
 
+	authDAL := auth.NewDAL(deps.DB)
+	authHandler := auth.NewAuthHandler(authDAL, deps.Config.AuthSecret)
+
 	return &SharedServices{
-		Config:     deps.Config,
-		Permission: permission.NewSharedService(permission.Deps{DAL: permissionDAL}),
-		KMS:        kmsSvc,
-		License:    licenseSvc,
+		Config:      deps.Config,
+		AuthHandler: authHandler,
+		Permission:  permission.NewSharedService(permission.Deps{DAL: permissionDAL}),
+		KMS:         kmsSvc,
+		License:     licenseSvc,
 	}, nil
 }

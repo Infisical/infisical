@@ -6,12 +6,14 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 func (s *SharedService) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]byte, error) {
 	org, err := s.dal.FindOrgKmsInfo(ctx, orgID)
 	if err != nil {
-		return nil, fmt.Errorf("KMS: finding org: %w", err)
+		return nil, errutil.DatabaseErr("Failed to find organization KMS info").WithErr(err)
 	}
 
 	// Ensure org has a KMS key (lazy create if missing).
@@ -21,7 +23,7 @@ func (s *SharedService) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]b
 			return s.generateEncryptedKeyMaterial()
 		})
 		if kmsErr != nil {
-			return nil, fmt.Errorf("KMS: ensuring org KMS key: %w", kmsErr)
+			return nil, errutil.DatabaseErr("Failed to ensure organization KMS key").WithErr(kmsErr)
 		}
 		kmsKeyID.V = createdKmsKeyID
 		kmsKeyID.Valid = true
@@ -31,7 +33,7 @@ func (s *SharedService) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]b
 	if org.KmsEncryptedDataKey == nil {
 		dataKey, dataErr := s.generateOrgDataKey(ctx, orgID, kmsKeyID.V)
 		if dataErr != nil {
-			return nil, fmt.Errorf("KMS: ensuring org data key: %w", dataErr)
+			return nil, errutil.DatabaseErr("Failed to ensure organization data key").WithErr(dataErr)
 		}
 		return dataKey, nil
 	}
@@ -64,7 +66,7 @@ func (s *SharedService) generateOrgDataKey(ctx context.Context, orgID, kmsKeyID 
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, errutil.DatabaseErr("Failed to find or create organization data key").WithErr(err)
 	}
 
 	return decryptWithVersion(encryptedDataKey, kmsKey)
