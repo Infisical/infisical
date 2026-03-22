@@ -79,7 +79,7 @@ export const DataBrowserSidebar = ({
 
       {/* Table list */}
       <div className="thin-scrollbar flex-1 overflow-y-auto">
-        {isLoadingTables && (
+        {isLoadingTables && tables.length === 0 && (
           <div className="space-y-1 p-2">
             {Array.from({ length: 8 }).map((_, i) => (
               // eslint-disable-next-line react/no-array-index-key

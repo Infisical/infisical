@@ -43,6 +43,8 @@ export const PamDataBrowserPage = () => {
   const [hasDisconnected, setHasDisconnected] = useState(false);
   const unsavedChangeCountRef = useRef(0);
   const [pendingTableSwitch, setPendingTableSwitch] = useState<string | null>(null);
+  const latestSchemaRequestRef = useRef(0);
+  const latestDetailRequestRef = useRef(0);
 
   const [approvalJustification, setApprovalJustification] = useState("");
 
@@ -127,16 +129,21 @@ export const PamDataBrowserPage = () => {
 
   const loadTables = useCallback(
     async (schema: string) => {
+      // Guard against stale responses when the user switches schemas quickly.
+      // Only apply results if this is still the latest request.
+      latestSchemaRequestRef.current += 1;
+      const requestId = latestSchemaRequestRef.current;
       setIsLoadingTables(true);
       try {
         const result = await fetchTables(schema);
+        if (latestSchemaRequestRef.current !== requestId) return;
         setTables(result);
-        setSelectedTable(null);
-        setTableDetail(null);
       } catch {
         // Error handled by the hook
       } finally {
-        setIsLoadingTables(false);
+        if (latestSchemaRequestRef.current === requestId) {
+          setIsLoadingTables(false);
+        }
       }
     },
     [fetchTables]
@@ -144,14 +151,19 @@ export const PamDataBrowserPage = () => {
 
   const loadTableDetail = useCallback(
     async (schema: string, tableName: string) => {
+      latestDetailRequestRef.current += 1;
+      const requestId = latestDetailRequestRef.current;
       setIsLoadingDetail(true);
       try {
         const result = await fetchTableDetail(schema, tableName);
+        if (latestDetailRequestRef.current !== requestId) return;
         setTableDetail(result);
       } catch {
         // Error handled by the hook
       } finally {
-        setIsLoadingDetail(false);
+        if (latestDetailRequestRef.current === requestId) {
+          setIsLoadingDetail(false);
+        }
       }
     },
     [fetchTableDetail]
@@ -173,6 +185,10 @@ export const PamDataBrowserPage = () => {
   const handleSchemaChange = useCallback(
     (schema: string) => {
       setSelectedSchema(schema);
+      // Clear immediately so the grid doesn't fire a stale query
+      // against the new schema with the old table name.
+      setSelectedTable(null);
+      setTableDetail(null);
       loadTables(schema);
     },
     [loadTables]
