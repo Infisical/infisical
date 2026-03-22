@@ -153,8 +153,7 @@ type TValidationRule = {
   envId?: string | null;
   secretPath: string;
   type: string;
-  inputs?: unknown;
-  isActive: boolean;
+  inputs: unknown;
 };
 
 type TValidationViolation = {
@@ -165,11 +164,11 @@ type TValidationViolation = {
 };
 
 const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
-  [ConstraintType.MinLength]: "minimum length",
-  [ConstraintType.MaxLength]: "maximum length",
-  [ConstraintType.RegexPattern]: "regex pattern",
-  [ConstraintType.RequiredPrefix]: "required prefix",
-  [ConstraintType.RequiredSuffix]: "required suffix"
+  [ConstraintType.MinLength]: "Minimum length",
+  [ConstraintType.MaxLength]: "Maximum length",
+  [ConstraintType.RegexPattern]: "Regex pattern",
+  [ConstraintType.RequiredPrefix]: "Required prefix",
+  [ConstraintType.RequiredSuffix]: "Required suffix"
 };
 
 const TARGET_LABELS: Record<ConstraintTarget, string> = {
@@ -285,11 +284,6 @@ export const enforceSecretValidationRules = ({
   const matchingRulesByType = new Map<SecretValidationRuleType, TValidationRule[]>();
 
   for (const rule of projectRules) {
-    if (!rule.isActive) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
     // Check environment match (null envId on rule = all environments)
     if (rule.envId && rule.envId !== envId) {
       // eslint-disable-next-line no-continue
@@ -327,7 +321,7 @@ export const enforceSecretValidationRules = ({
     );
 
     throw new BadRequestError({
-      message: `Secret validation failed:\n${details.join("\n")}`
+      message: `Secret validation failed:\n${details.join("\n\n")}`
     });
   }
 };

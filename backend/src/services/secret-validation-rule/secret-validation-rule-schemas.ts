@@ -39,5 +39,5 @@ export const parseSecretValidationRuleInputs = (type: string, inputs: unknown) =
 
 export const SecretValidationRuleResponseSchema = SecretValidationRulesSchema.omit({
   type: true,
-  inputs: true
+  encryptedInputs: true
 }).and(SecretValidationRuleInputSchema);

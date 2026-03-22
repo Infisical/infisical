@@ -6,6 +6,8 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { NotFoundError } from "@app/lib/errors";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
 import { checkForOverlappingRules, enforceSecretValidationRules } from "./secret-validation-rule-fns";
 import { parseSecretValidationRuleInputs } from "./secret-validation-rule-schemas";
@@ -21,6 +23,7 @@ type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: TKmsServiceFactory;
 };
 
 export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValidationRuleServiceFactory>;
@@ -28,7 +31,8 @@ export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValida
 export const secretValidationRuleServiceFactory = ({
   secretValidationRuleDAL,
   projectEnvDAL,
-  permissionService
+  permissionService,
+  kmsService
 }: TSecretValidationRuleServiceFactoryDep) => {
   const listByProjectId = async ({
     actor,
@@ -49,11 +53,21 @@ export const secretValidationRuleServiceFactory = ({
 
     const rules = await secretValidationRuleDAL.find({ projectId });
 
-    return (rules || []).map((rule) => ({
+    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const finalRules = (rules || []).map((rule) => ({
       ...rule,
       type: rule.type as SecretValidationRuleType,
-      inputs: parseSecretValidationRuleInputs(rule.type, rule.inputs)
+      inputs: parseSecretValidationRuleInputs(
+        rule.type,
+        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+      )
     }));
+
+    return finalRules;
   };
 
   const createRule = async ({
@@ -99,6 +113,15 @@ export const secretValidationRuleServiceFactory = ({
       existingRules
     });
 
+    const { encryptor: ruleInputsEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const { cipherTextBlob: encryptedRuleInputs } = ruleInputsEncryptor({
+      plainText: Buffer.from(JSON.stringify(parsedInputs))
+    });
+
     const rule = await secretValidationRuleDAL.create({
       name,
       description,
@@ -106,7 +129,7 @@ export const secretValidationRuleServiceFactory = ({
       envId,
       secretPath,
       type,
-      inputs: parsedInputs
+      encryptedInputs: encryptedRuleInputs
     });
 
     return { ...rule, type: rule.type as SecretValidationRuleType, inputs: parsedInputs };
@@ -151,8 +174,17 @@ export const secretValidationRuleServiceFactory = ({
       }
     }
 
+    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const decryptedExistingRuleInputs = ruleInputsDecryptor({
+      cipherTextBlob: existingRule.encryptedInputs
+    });
+
     const ruleType = dto.type ?? existingRule.type;
-    const ruleInputs = inputs ?? existingRule.inputs;
+    const ruleInputs = inputs ?? (JSON.parse(decryptedExistingRuleInputs.toString()) as unknown);
     const parsedInputs = parseSecretValidationRuleInputs(ruleType, ruleInputs);
 
     const finalEnvId = envId !== undefined ? envId : (existingRule.envId as string | null);
@@ -168,16 +200,33 @@ export const secretValidationRuleServiceFactory = ({
       excludeRuleId: ruleId
     });
 
+    let updatedRuleInputs: Buffer | undefined;
+
+    if (inputs) {
+      const { encryptor: ruleInputsEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+
+      const { cipherTextBlob: encryptedRuleInputs } = ruleInputsEncryptor({
+        plainText: Buffer.from(JSON.stringify(parsedInputs))
+      });
+      updatedRuleInputs = encryptedRuleInputs;
+    }
+
     const updatedRule = await secretValidationRuleDAL.updateById(ruleId, {
       ...(envId !== undefined && { envId }),
-      ...(Boolean(inputs) && { inputs: parsedInputs }),
+      ...(Boolean(updatedRuleInputs) && { encryptedInputs: updatedRuleInputs }),
       ...dto
     });
 
     return {
       ...updatedRule,
       type: updatedRule.type as SecretValidationRuleType,
-      inputs: parseSecretValidationRuleInputs(updatedRule.type, updatedRule.inputs)
+      inputs: parseSecretValidationRuleInputs(
+        updatedRule.type,
+        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: updatedRule.encryptedInputs }).toString()) as unknown
+      )
     };
   };
 
@@ -204,11 +253,19 @@ export const secretValidationRuleServiceFactory = ({
       throw new NotFoundError({ message: `Secret validation rule with ID ${ruleId} not found` });
     }
 
+    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
     await secretValidationRuleDAL.deleteById(ruleId);
     return {
       ...existingRule,
       type: existingRule.type as SecretValidationRuleType,
-      inputs: parseSecretValidationRuleInputs(existingRule.type, existingRule.inputs)
+      inputs: parseSecretValidationRuleInputs(
+        existingRule.type,
+        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown
+      )
     };
   };
 
@@ -229,13 +286,21 @@ export const secretValidationRuleServiceFactory = ({
   }) => {
     if (!secrets.length) return;
 
-    const rules = await secretValidationRuleDAL.find({ projectId });
+    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true });
     if (!rules.length) return;
+
+    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     enforceSecretValidationRules({
       projectRules: rules.map((r) => ({
         ...r,
-        isActive: r.isActive ?? true
+        inputs: parseSecretValidationRuleInputs(
+          r.type,
+          JSON.parse(ruleInputsDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
+        )
       })),
       envId,
       secretPath,

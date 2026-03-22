@@ -11,15 +11,21 @@ export async function up(knex: Knex): Promise<void> {
       tb.string("description").nullable();
       tb.string("projectId").notNullable();
       tb.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+
+      // null = not scoped to a specific env
       tb.uuid("envId").nullable();
       tb.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
-      tb.string("secretPath").notNullable().defaultTo("/");
+
+      // we store it as a string because it's a glob pattern that we need to evaluate against at a later stage, not a specific folder
+      tb.string("secretPath").notNullable();
       tb.string("type").notNullable();
-      tb.jsonb("inputs").notNullable();
+      tb.binary("encryptedInputs").notNullable();
       tb.boolean("isActive").notNullable().defaultTo(true);
+
       tb.index("projectId");
       tb.index("envId");
       tb.index("secretPath");
+
       tb.timestamps(true, true, true);
     });
 
