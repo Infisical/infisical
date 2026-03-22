@@ -23,6 +23,7 @@ func NewRegistry(logger *slog.Logger, db pg.DB, sharedServices *shared.SharedSer
 
 	return &Registry{
 		Secrets: secrets.NewService(l, secrets.Deps{
+			AuthHandler:  sharedServices.AuthHandler,
 			Permission:   sharedServices.Permission,
 			SecretFolder: smSharedService.SecretFolder,
 		}),

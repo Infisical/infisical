@@ -4,7 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/infisical/api/internal/libs/authutil"
+	"github.com/infisical/api/internal/services/shared/auth"
+
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/shared/permission"
 )
@@ -16,7 +17,7 @@ type permissionSvc interface {
 type secretFolderSvc any
 
 type service struct {
-	authutil.AuthHandler
+	auth.AuthHandler
 	logger          *slog.Logger
 	permissionSvc   permissionSvc
 	secretFolderSvc secretFolderSvc
@@ -24,12 +25,14 @@ type service struct {
 
 // Deps holds the dependencies for the secrets service.
 type Deps struct {
+	AuthHandler  auth.AuthHandler
 	Permission   permissionSvc
 	SecretFolder secretFolderSvc
 }
 
 func NewService(logger *slog.Logger, deps Deps) gensecrets.Service {
 	return &service{
+		AuthHandler:     deps.AuthHandler,
 		logger:          logger.With(slog.String("service", "secrets")),
 		permissionSvc:   deps.Permission,
 		secretFolderSvc: deps.SecretFolder,

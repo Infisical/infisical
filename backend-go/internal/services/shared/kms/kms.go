@@ -12,6 +12,7 @@ import (
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/crypto/cipher"
 	"github.com/infisical/api/internal/database/pg/gen/model"
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 // KmsRootConfigUUID is the fixed UUID for the single kms_root_config row.
@@ -176,7 +177,7 @@ func (s *SharedService) Start(ctx context.Context, hsmConfigured bool) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("KMS: finding/creating root config: %w", err)
+		return errutil.DatabaseErr("Failed to find or create KMS root config").WithErr(err)
 	}
 
 	decryptedRootKey, err := s.decryptRootKey(rootConfig)
@@ -261,7 +262,7 @@ func (s *SharedService) generateEncryptedKeyMaterial() ([]byte, error) {
 func (s *SharedService) decryptKmsKey(ctx context.Context, kmsKeyID uuid.UUID) ([]byte, error) {
 	kmsKeyDoc, err := s.dal.FindKmsKeyByID(ctx, kmsKeyID)
 	if err != nil {
-		return nil, fmt.Errorf("KMS: finding KMS key %s: %w", kmsKeyID, err)
+		return nil, errutil.DatabaseErr("Failed to find KMS key").WithErr(err)
 	}
 	return s.decryptKmsKeyMaterial(kmsKeyDoc)
 }

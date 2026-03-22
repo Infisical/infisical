@@ -11,6 +11,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/infisical/api/internal/database/pg/gen/model"
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 var adminConfigDBUUID = uuid.MustParse("00000000-0000-0000-0000-000000000000")
@@ -137,7 +138,7 @@ func (s *SharedService) Init(ctx context.Context) (ServerConfig, error) {
 
 	m, err := s.dal.FindOrCreateConfig(ctx)
 	if err != nil {
-		return ServerConfig{}, err
+		return ServerConfig{}, errutil.DatabaseErr("Failed to initialize server config").WithErr(err)
 	}
 	return configFromModel(m), nil
 }
@@ -161,7 +162,7 @@ func (s *SharedService) GetConfig(ctx context.Context) (ServerConfig, error) {
 	// Cache miss — read from DB.
 	m, err := s.dal.FindByID(ctx, adminConfigDBUUID)
 	if err != nil {
-		return ServerConfig{}, fmt.Errorf("reading config from database: %w", err)
+		return ServerConfig{}, errutil.DatabaseErr("Failed to read server config").WithErr(err)
 	}
 
 	cfg := configFromModel(m)

@@ -1,4 +1,4 @@
-package authutil
+package auth
 
 import (
 	"encoding/base64"
@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-// jwtClaims is a minimal struct for peeking at the token type
+// peekClaims is a minimal struct for peeking at the token type
 // without performing signature verification.
-type jwtClaims struct {
+type peekClaims struct {
 	AuthTokenType string `json:"authTokenType"`
 }
 
@@ -32,18 +32,18 @@ func ClassifyToken(token string) AuthMode {
 
 // peekJWTClaims decodes the JWT payload segment (no signature verification)
 // to inspect the authTokenType claim.
-func peekJWTClaims(token string) jwtClaims {
+func peekJWTClaims(token string) peekClaims {
 	parts := strings.SplitN(token, ".", 4)
 	if len(parts) < 3 {
-		return jwtClaims{}
+		return peekClaims{}
 	}
 
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return jwtClaims{}
+		return peekClaims{}
 	}
 
-	var claims jwtClaims
+	var claims peekClaims
 	_ = json.Unmarshal(payload, &claims)
 
 	return claims

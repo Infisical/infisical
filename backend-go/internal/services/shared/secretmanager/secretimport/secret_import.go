@@ -2,7 +2,8 @@ package secretimport
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 type dal interface {
@@ -26,7 +27,7 @@ func NewSharedService(deps Deps) *SharedService {
 func (s *SharedService) LoadProjectImports(ctx context.Context, projectID string) (*ImportLookup, error) {
 	rows, err := s.dal.GetImportsByProjectID(ctx, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("get imports for project %s: %w", projectID, err)
+		return nil, errutil.DatabaseErr("Failed to get imports for project").WithErr(err)
 	}
 	return newImportLookup(rows), nil
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/infisical/api/internal/libs/authutil"
+	"github.com/infisical/api/internal/services/shared/auth"
+
 	genprojects "github.com/infisical/api/internal/server/gen/projects"
 	"github.com/infisical/api/internal/services/shared/permission"
 )
@@ -14,20 +15,22 @@ type permissionGetter interface {
 }
 
 type service struct {
-	authutil.AuthHandler
+	auth.AuthHandler
 	logger     *slog.Logger
 	permission permissionGetter
 }
 
 // Deps holds the dependencies for the projects service.
 type Deps struct {
-	Permission permissionGetter
+	AuthHandler auth.AuthHandler
+	Permission  permissionGetter
 }
 
 func NewService(logger *slog.Logger, deps Deps) genprojects.Service {
 	return &service{
-		logger:     logger.With(slog.String("service", "projects")),
-		permission: deps.Permission,
+		AuthHandler: deps.AuthHandler,
+		logger:      logger.With(slog.String("service", "projects")),
+		permission:  deps.Permission,
 	}
 }
 
