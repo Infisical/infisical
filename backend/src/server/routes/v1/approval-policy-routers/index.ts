@@ -9,6 +9,15 @@ import {
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import {
+  CodeSigningPolicyInputsSchema,
+  CodeSigningPolicySchema,
+  CodeSigningRequestGrantSchema,
+  CodeSigningRequestSchema,
+  CreateCodeSigningPolicySchema,
+  CreateCodeSigningRequestSchema,
+  UpdateCodeSigningPolicySchema
+} from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
+import {
   CreatePamAccessPolicySchema,
   CreatePamAccessRequestSchema,
   PamAccessPolicyInputsSchema,
@@ -48,6 +57,19 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       requestResponseSchema: CertRequestRequestSchema,
       grantResponseSchema: CertRequestRequestGrantSchema,
       inputsSchema: CertRequestPolicyInputsSchema
+    });
+  },
+  [ApprovalPolicyType.CertCodeSigning]: async (server: FastifyZodProvider) => {
+    registerApprovalPolicyEndpoints({
+      server,
+      policyType: ApprovalPolicyType.CertCodeSigning,
+      createPolicySchema: CreateCodeSigningPolicySchema,
+      updatePolicySchema: UpdateCodeSigningPolicySchema,
+      policyResponseSchema: CodeSigningPolicySchema,
+      createRequestSchema: CreateCodeSigningRequestSchema,
+      requestResponseSchema: CodeSigningRequestSchema,
+      grantResponseSchema: CodeSigningRequestGrantSchema,
+      inputsSchema: CodeSigningPolicyInputsSchema
     });
   }
 };

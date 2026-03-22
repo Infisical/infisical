@@ -23,6 +23,26 @@
   html {
     @apply overflow-hidden;
   }
+
+  /* Override browser/password-manager autofill styling for dark theme */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: var(--color-foreground) !important;
+    caret-color: var(--color-foreground);
+    transition: background-color 5000s ease-in-out 0s;
+  }
+  
+  /* NordPass autofill override */
+  input[data-np-input-autofilled],
+  input[data-np-input-autofilled]:hover,
+  input[data-np-input-autofilled]:focus,
+  input[data-np-input-autofilled]:active {
+    background-color: transparent !important;
+    transition: none !important;
+  }
 }
 
 :root {

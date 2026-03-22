@@ -142,6 +142,7 @@ import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { TSignerServiceFactory } from "@app/services/signer/signer-service";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -329,6 +330,7 @@ declare module "fastify" {
       pkiSync: TPkiSyncServiceFactory;
       pkiDiscovery: TPkiDiscoveryServiceFactory;
       pkiInstallation: TPkiInstallationServiceFactory;
+      pkiSigner: TSignerServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;

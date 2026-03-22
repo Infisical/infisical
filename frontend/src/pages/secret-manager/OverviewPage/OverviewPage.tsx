@@ -646,6 +646,15 @@ const OverviewPageContent = () => {
     }
   }, [hasPendingBatchChanges, resetSelectedEntries]);
 
+  const storedEnvIdsKey = storedEnvIds.join(",");
+  const prevStoredEnvIdsKeyRef = useRef(storedEnvIdsKey);
+  useEffect(() => {
+    if (prevStoredEnvIdsKeyRef.current !== storedEnvIdsKey) {
+      prevStoredEnvIdsKeyRef.current = storedEnvIdsKey;
+      resetSelectedEntries();
+    }
+  }, [storedEnvIdsKey, resetSelectedEntries]);
+
   useNavigationBlocker({
     shouldBlock:
       isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0),
@@ -2300,6 +2309,7 @@ const OverviewPageContent = () => {
           importedBy={importedBy}
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
+          visibleEnvs={visibleEnvs}
         />
 
         <UnstableCard>
@@ -3214,7 +3224,9 @@ const OverviewPageContent = () => {
           ((popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
             SecretRotationV2.UnixLinuxLocalAccount ||
             (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
-              SecretRotationV2.WindowsLocalAccount)
+              SecretRotationV2.WindowsLocalAccount ||
+            (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
+              SecretRotationV2.HpIloLocalAccount)
         }
         secretRotation={popUp.reconcileSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("reconcileSecretRotation", isOpen)}

@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
+import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { EmailServiceSetupModal } from "@app/components/v2";
 import {
   Button,
@@ -50,7 +51,7 @@ export const AccountRecoveryEmailPage = () => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-6">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
       <AuthPageBackground />
       <Helmet>
         <title>Account Recovery</title>
@@ -62,16 +63,12 @@ export const AccountRecoveryEmailPage = () => {
           content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
         />
       </Helmet>
+      <AuthPageHeader>
+        <Button asChild>
+          <Link to="/login">Log In</Link>
+        </Button>
+      </AuthPageHeader>
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <Link to="/">
-          <div className="mb-4 flex justify-center">
-            <img
-              src="/images/gradientLogo.svg"
-              style={{ height: "90px", width: "120px" }}
-              alt="Infisical Logo"
-            />
-          </div>
-        </Link>
         {step === 1 && (
           <form onSubmit={onSubmit} className="mx-auto w-full max-w-sm">
             <UnstableCard className="w-full items-stretch gap-0 p-6">
@@ -81,7 +78,7 @@ export const AccountRecoveryEmailPage = () => {
                 </UnstableCardTitle>
               </UnstableCardHeader>
               <UnstableCardContent>
-                <p className="mb-4 text-sm text-muted">
+                <p className="mb-4 text-sm text-label">
                   Enter your email to start the recovery process. You will receive an email with
                   instructions.
                 </p>
@@ -101,9 +98,9 @@ export const AccountRecoveryEmailPage = () => {
                     Continue
                   </Button>
                 </div>
-                <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+                <div className="mt-6 flex flex-row justify-center text-xs text-label">
                   <Link to="/login">
-                    <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                    <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                       Back to Login
                     </span>
                   </Link>
@@ -124,9 +121,9 @@ export const AccountRecoveryEmailPage = () => {
                 If the email is in our system, you will receive an email at{" "}
                 <span className="italic">{email}</span> to initiate the account recovery process.
               </p>
-              <div className="mt-6 flex flex-row justify-center text-xs text-muted">
+              <div className="mt-6 flex flex-row justify-center text-xs text-label">
                 <Link to="/login">
-                  <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                  <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                     Back to Login
                   </span>
                 </Link>

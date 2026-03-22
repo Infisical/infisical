@@ -16,6 +16,7 @@ import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-de
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
+import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
@@ -73,7 +74,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   LaravelForgeSyncDestinationSchema,
   ChefSyncDestinationSchema,
   CircleCISyncDestinationSchema,
-  AzureEntraIdScimSyncDestinationSchema
+  AzureEntraIdScimSyncDestinationSchema,
+  ExternalInfisicalSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

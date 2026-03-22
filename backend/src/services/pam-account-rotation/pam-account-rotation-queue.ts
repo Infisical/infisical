@@ -1,7 +1,7 @@
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 type TPamAccountRotationServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -21,13 +21,6 @@ export const pamAccountRotationServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.PamAccountRotation,
-      QueueJobs.PamAccountRotation,
-      { pattern: "0 * * * *", utc: true },
-      QueueName.PamAccountRotation // job id
-    );
-
     queueService.start(QueueName.PamAccountRotation, async () => {
       try {
         logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
@@ -39,13 +32,12 @@ export const pamAccountRotationServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.PamAccountRotation, QueueJobs.PamAccountRotation, undefined, {
-      jobId: QueueJobs.PamAccountRotation,
-      repeat: {
-        pattern: "0 * * * *",
-        key: QueueJobs.PamAccountRotation
-      }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.PamAccountRotation,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.PamAccountRotation}`,
+      { pattern: "0 * * * *" },
+      { name: QueueJobs.PamAccountRotation }
+    );
   };
 
   return {

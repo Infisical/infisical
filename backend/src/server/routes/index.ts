@@ -420,6 +420,7 @@ import { secretValidationRuleDALFactory } from "@app/services/secret-validation-
 import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { signerDALFactory, signerServiceFactory, signingOperationDALFactory } from "@app/services/signer";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
@@ -1248,6 +1249,9 @@ export const registerRoutes = async (
   const pkiCertificateInstallationCertDAL = pkiCertificateInstallationCertDALFactory(db);
   const pkiDiscoveryScanHistoryDAL = pkiDiscoveryScanHistoryDALFactory(db);
 
+  const signerDAL = signerDALFactory(db);
+  const signingOperationDAL = signingOperationDALFactory(db);
+
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
   const relayDAL = relayDalFactory(db);
@@ -1340,7 +1344,8 @@ export const registerRoutes = async (
     externalCertificateAuthorityDAL,
     permissionService,
     kmsService,
-    projectDAL
+    projectDAL,
+    resourceMetadataDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
@@ -2236,7 +2241,8 @@ export const registerRoutes = async (
     gatewayDAL,
     gatewayV2DAL,
     projectDAL,
-    appConnectionCredentialRotationService
+    appConnectionCredentialRotationService,
+    identityUaDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -2652,6 +2658,18 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const signerService = signerServiceFactory({
+    signerDAL,
+    signingOperationDAL,
+    certificateDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    approvalPolicyDAL,
+    approvalRequestGrantsDAL
+  });
+
   const pkiTemplateService = pkiTemplatesServiceFactory({
     pkiTemplatesDAL,
     certificateAuthorityDAL,
@@ -2774,7 +2792,8 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     approvalPolicyDAL,
     pamSessionExpirationService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pamAccountDependenciesDAL
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({
@@ -2827,6 +2846,10 @@ export const registerRoutes = async (
     pamDiscoveryRunDAL,
     pamDiscoverySourceResourcesDAL,
     pamDiscoverySourceAccountsDAL,
+    pamDiscoverySourceDependenciesDAL,
+    pamAccountDependenciesDAL,
+    pamAccountDAL,
+    pamResourceDAL,
     permissionService,
     kmsService,
     gatewayV2DAL,
@@ -2923,6 +2946,7 @@ export const registerRoutes = async (
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
+  await secretSyncQueue.startDailySecretSyncRetryJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await certificateAuthorityQueue.startCaCrlRebuildJob();
@@ -3021,6 +3045,7 @@ export const registerRoutes = async (
     pkiSync: pkiSyncService,
     pkiDiscovery: pkiDiscoveryService,
     pkiInstallation: pkiInstallationService,
+    pkiSigner: signerService,
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,

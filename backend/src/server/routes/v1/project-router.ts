@@ -991,7 +991,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
         req.params.projectId,
@@ -1307,7 +1307,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             })
           )
           .optional()
-          .describe(PROJECTS.SEARCH_CERTIFICATES.metadata)
+          .describe(PROJECTS.SEARCH_CERTIFICATES.metadata),
+        extendedKeyUsage: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.extendedKeyUsage)
       }),
       response: {
         200: z.object({

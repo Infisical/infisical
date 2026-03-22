@@ -1,0 +1,64 @@
+---
+title: "Code Signing"
+sidebarTitle: "Overview"
+description: "Securely sign code and artifacts with centralized key management and approval workflows."
+---
+
+In Infisical, Code Signing lets you digitally sign software artifacts (JARs, binaries, container images, and more) while keeping private keys secure on the server. Instead of distributing signing keys to developer workstations or CI pipelines, signing operations are performed centrally through Infisical with full audit trails and approval controls.
+
+## How It Works
+
+<div align="center">
+
+```mermaid
+sequenceDiagram
+    participant Tool as Signing Tool
+    participant PKCS as PKCS#11 Module
+    participant Infisical as Infisical
+
+    Tool->>PKCS: Sign data
+    PKCS->>Infisical: POST /signers/{id}/sign
+    Infisical->>Infisical: Validate grant, sign data
+    Infisical-->>PKCS: Signature
+    PKCS-->>Tool: Signature
+```
+
+</div>
+
+1. A **Signer** is created and bound to a certificate with the `codeSigning` extended key usage.
+2. Optionally, a **Signing Policy** is attached to govern who can use the signer and under what conditions. Without a policy, authorized users and identities can sign immediately.
+3. When a policy is configured, users or machine identities **request signing access** through the signing workflow. Once approved, the caller receives a **grant** that authorizes signing operations.
+4. The signing tool (e.g., jarsigner) calls the Infisical API, either directly or through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module), and the signature is computed server-side.
+5. Every signing operation is recorded as an immutable **audit entry** on the signer.
+
+## Core Concepts
+
+### Signers
+
+A [signer](/documentation/platform/pki/code-signing/signers) is a named code-signer bound to a certificate. It represents a signing capability within a project. Private keys are stored securely on the Infisical server and never leave it. All cryptographic operations are performed server-side.
+
+### Signing Policies
+
+[Signing policies](/documentation/platform/pki/code-signing/signing-policies) optionally define the rules that must be satisfied before signing can occur. Policies support constraints that can be combined:
+
+- **Max Window Duration**: Limits how long a signing grant remains valid.
+- **Max Signings**: Limits the total number of signing operations a grant allows.
+
+### Signing Operations
+
+Every call to sign data, whether it succeeds, fails, or is denied, is recorded as a signing operation. This provides a complete audit trail of who signed what, when, and using which grant.
+
+### PKCS#11 Module
+
+The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) implements the PKCS#11 v2.40 standard, allowing standard signing tools to use Infisical signers without code changes. The module supports RSA (PKCS#1 v1.5 and PSS) and ECDSA signing mechanisms.
+
+## Getting Started
+
+<CardGroup cols={2}>
+  <Card title="Create a Signer" href="/documentation/platform/pki/code-signing/signers">
+    Set up a code-signer and bind it to a certificate.
+  </Card>
+  <Card title="Configure Signing Policies" href="/documentation/platform/pki/code-signing/signing-policies">
+    Define signing policies to control who can sign and when.
+  </Card>
+</CardGroup>

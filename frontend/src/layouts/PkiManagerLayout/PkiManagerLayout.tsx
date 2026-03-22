@@ -80,6 +80,23 @@ export const PkiManagerLayout = () => {
                   )}
                 </Link>
                 <Link
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => (
+                    <Tab
+                      value={
+                        isActive || location.pathname.match(/\/code-signing/) ? "selected" : ""
+                      }
+                    >
+                      Code Signing
+                    </Tab>
+                  )}
+                </Link>
+                <Link
                   to="/organizations/$orgId/projects/cert-manager/$projectId/alerting"
                   params={{
                     orgId: currentOrg.id,

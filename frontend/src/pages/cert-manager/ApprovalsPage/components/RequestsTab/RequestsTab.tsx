@@ -291,6 +291,9 @@ export const RequestsTab = () => {
                             orgId: currentOrg.id,
                             projectId: currentProject.id,
                             approvalRequestId: request.id
+                          },
+                          search: {
+                            policyType: ApprovalPolicyType.CertRequest
                           }
                         })
                       }

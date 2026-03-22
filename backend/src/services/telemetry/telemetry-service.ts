@@ -11,7 +11,7 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
+import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
 export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
@@ -98,6 +98,55 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         );
       } catch (error) {
         logger.error(error);
+      }
+    }
+  };
+
+  const sendHubSpotSignupEvent = async (
+    email: string,
+    signupMethod: HubSpotSignupMethod,
+    firstName?: string,
+    lastName?: string
+  ) => {
+    const instanceType = licenseService.getInstanceType();
+    if (
+      appCfg.isProductionMode &&
+      instanceType === InstanceType.Cloud &&
+      appCfg.HUBSPOT_PORTAL_ID &&
+      appCfg.HUBSPOT_SIGNUP_FORM_ID
+    ) {
+      try {
+        const fields: { name: string; value: string }[] = [
+          { name: "email", value: email },
+          { name: "signup_method", value: signupMethod }
+        ];
+
+        const optionalFields: Record<string, string | undefined> = {
+          firstname: firstName,
+          lastname: lastName
+        };
+
+        for (const [name, value] of Object.entries(optionalFields)) {
+          if (value) fields.push({ name, value });
+        }
+
+        await request.post(
+          `https://api.hsforms.com/submissions/v3/integration/submit/${appCfg.HUBSPOT_PORTAL_ID}/${appCfg.HUBSPOT_SIGNUP_FORM_ID}`,
+          {
+            fields,
+            context: {
+              pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
+              pageName: "App Signup"
+            }
+          },
+          {
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        );
+      } catch (error) {
+        logger.error(error, "Failed to send HubSpot signup event");
       }
     }
   };
@@ -480,6 +529,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
   return {
     sendLoopsEvent,
+    sendHubSpotSignupEvent,
     sendPostHogEvents,
     identifyUser,
     identifyIdentity,

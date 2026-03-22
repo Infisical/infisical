@@ -16,6 +16,7 @@ import {
   UnstableCardTitle,
   UnstableInput
 } from "@app/components/v3";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
@@ -96,6 +97,11 @@ export const UserInfoSSOStep = ({
         SecurityClient.setSignupToken("");
         SecurityClient.setToken(response.token);
         SecurityClient.setProviderAuthToken("");
+
+        if (isInfisicalCloud()) {
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push({ event: "signup_completed" });
+        }
 
         const userOrgs = await fetchOrganizations();
         const orgId = userOrgs[0]?.id;
