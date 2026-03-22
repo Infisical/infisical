@@ -58,6 +58,7 @@ description: "Learn how to configure a Azure Key Vault Sync for Infisical."
             </Note>
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
             - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+            - **Disable Certificate Import**: If enabled, Infisical will not import certificate objects from Azure Key Vault when syncing secrets. Enable this option if you want your secrets project to contain only secrets and not certificate objects that Azure Key Vault exposes through the secrets API.
 
         6. Configure the **Details** of your Azure Key Vault Sync, then click **Next**.
         ![Configure Details](/images/secret-syncs/azure-key-vault/vault-details.png)
