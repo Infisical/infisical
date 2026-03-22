@@ -15,6 +15,72 @@ import {
 import type { ColumnInfo } from "../data-browser-types";
 import type { FilterCondition, FilterOperator } from "../sql-generation";
 
+function getFilterPlaceholder(columnType: string, operator: FilterOperator): string {
+  switch (operator) {
+    case "LIKE":
+      return "%pattern%";
+    case "ILIKE":
+      return "%pattern% (case-insensitive)";
+    case "IN":
+      return "a, b, c";
+    case "IS NULL":
+    case "IS NOT NULL":
+      return "";
+    default:
+      break;
+  }
+
+  const t = columnType.toLowerCase().replace("[]", "");
+  switch (t) {
+    case "int2":
+    case "int4":
+    case "int8":
+    case "serial":
+    case "bigserial":
+    case "smallserial":
+    case "integer":
+    case "bigint":
+    case "smallint":
+      return "42";
+    case "float4":
+    case "float8":
+    case "numeric":
+    case "decimal":
+    case "real":
+    case "double precision":
+    case "money":
+      return "3.14";
+    case "bool":
+    case "boolean":
+      return "true";
+    case "uuid":
+      return "550e8400-e29b-41d4-a716-...";
+    case "date":
+      return "2024-01-15";
+    case "timestamp":
+    case "timestamptz":
+      return "2024-01-15 09:30:00";
+    case "time":
+    case "timetz":
+      return "09:30:00";
+    case "json":
+    case "jsonb":
+      return '{"key": "value"}';
+    case "inet":
+    case "cidr":
+      return "192.168.1.0/24";
+    case "text":
+    case "varchar":
+    case "char":
+    case "bpchar":
+    case "name":
+    case "citext":
+      return "some text";
+    default:
+      return "Value";
+  }
+}
+
 const OPERATORS: { value: FilterOperator; label: string; needsValue: boolean }[] = [
   { value: "=", label: "equals", needsValue: true },
   { value: "<>", label: "not equals", needsValue: true },
@@ -106,6 +172,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
           <div className="space-y-2">
             {draft.map((filter, index) => {
               const opConfig = OPERATORS.find((o) => o.value === filter.operator);
+              const colInfo = columns.find((c) => c.name === filter.column);
               return (
                 // eslint-disable-next-line react/no-array-index-key
                 <div key={index} className="flex items-center gap-1.5">
@@ -147,7 +214,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                     <UnstableInput
                       value={filter.value}
                       onChange={(e) => updateFilter(index, { value: e.target.value })}
-                      placeholder="Value"
+                      placeholder={getFilterPlaceholder(colInfo?.type ?? "", filter.operator)}
                       className="h-7 flex-1 text-xs text-mineshaft-200"
                     />
                   )}
