@@ -6,12 +6,14 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 func (s *SharedService) getProjectDataKey(ctx context.Context, projectID string) ([]byte, error) {
 	project, err := s.dal.FindProjectKmsInfo(ctx, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("KMS: finding project: %w", err)
+		return nil, errutil.DatabaseErr("Failed to find project KMS info").WithErr(err)
 	}
 
 	// Ensure project has a KMS key (lazy create if missing).
@@ -21,7 +23,7 @@ func (s *SharedService) getProjectDataKey(ctx context.Context, projectID string)
 			return s.generateEncryptedKeyMaterial()
 		})
 		if kmsErr != nil {
-			return nil, fmt.Errorf("KMS: ensuring project KMS key: %w", kmsErr)
+			return nil, errutil.DatabaseErr("Failed to ensure project KMS key").WithErr(kmsErr)
 		}
 		kmsKeyID.V = createdKmsKeyID
 		kmsKeyID.Valid = true
@@ -31,7 +33,7 @@ func (s *SharedService) getProjectDataKey(ctx context.Context, projectID string)
 	if project.KmsSecretManagerEncryptedDataKey == nil {
 		dataKey, dataErr := s.generateProjectDataKey(ctx, projectID, kmsKeyID.V)
 		if dataErr != nil {
-			return nil, fmt.Errorf("KMS: ensuring project data key: %w", dataErr)
+			return nil, errutil.DatabaseErr("Failed to ensure project data key").WithErr(dataErr)
 		}
 		return dataKey, nil
 	}
@@ -63,7 +65,7 @@ func (s *SharedService) generateProjectDataKey(ctx context.Context, projectID st
 		return encryptWithVersion(plainDataKey, kmsKey)
 	})
 	if err != nil {
-		return nil, err
+		return nil, errutil.DatabaseErr("Failed to find or create project data key").WithErr(err)
 	}
 
 	return decryptWithVersion(encryptedDataKey, kmsKey)

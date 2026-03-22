@@ -19,6 +19,21 @@ type Error struct {
 	Err error
 }
 
+func (e *Error) WithName(name string) *Error {
+	e.Name = name
+	return e
+}
+
+func (e *Error) WithStatus(status int) *Error {
+	e.Status = status
+	return e
+}
+
+func (e *Error) WithMessage(message string) *Error {
+	e.Message = message
+	return e
+}
+
 func (e *Error) Error() string {
 	if e.Err != nil {
 		return e.Message + ": " + e.Err.Error()

@@ -24,6 +24,7 @@ Never edit generated code in `gen/` directories — always regenerate.
 - **Interfaces for dependencies**: Consumer defines the interface (narrow, only needed methods). Accept interfaces, not concrete types.
 - **Service constructor signature**: `<NewService|NewSharedService>(ctx context.Context, logger *slog.Logger, deps Deps)`. All external dependencies go in a `Deps` struct (name must end with `Deps`). The `exhaustruct` linter enforces every field is set at the call site — no silent nil dependencies.
 - **DAL boundary**: Services must not import `table`, `postgres`, or `qrm`. All queries go through a DAL. Always use type-safe go-jet — no raw SQL (exception: `pg_advisory_xact_lock`).
+- **Database error wrapping**: All `err` values returned from DAL/database calls must be wrapped with `errutil.DatabaseErr("<user-facing message>").WithErr(err)`. This logs the real DB error internally but only shows the safe message to clients. Never return raw database errors to the caller.
 - **Lean code**: Inline helpers with one caller. Only extract when shared. Split DAL files by functionality.
 
 ## Architecture
