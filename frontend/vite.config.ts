@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     server: {
-      allowedHosts: true,
+      allowedHosts,
       host: true,
       port: 3000
       // proxy: {
