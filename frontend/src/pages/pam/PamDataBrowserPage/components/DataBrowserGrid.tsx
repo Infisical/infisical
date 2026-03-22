@@ -235,17 +235,12 @@ export const DataBrowserGrid = ({
     [tableDetail, schema, table, primaryKeys, executeQuery]
   );
 
-  // Fetch data when table/filters/sorts/pagination change
+  // Fetch data when filters/sorts/pagination change.
+  // Table switches are handled by the parent via key={schema.table} which
+  // remounts this component with fresh state — no manual reset needed.
   const prevFetchKeyRef = useRef("");
-  const prevTableKeyRef = useRef("");
-  const tableKey = `${schema}.${table}`;
-  const fetchKey = `${tableKey}.${page}.${pageSize}.${JSON.stringify(filters)}.${JSON.stringify(sorts)}`;
+  const fetchKey = `${schema}.${table}.${page}.${pageSize}.${JSON.stringify(filters)}.${JSON.stringify(sorts)}`;
   if (fetchKey !== prevFetchKeyRef.current && tableDetail && !isLoading) {
-    // Reset hasLoaded when switching to a different table so skeleton shows for initial load
-    if (tableKey !== prevTableKeyRef.current) {
-      hasLoadedRef.current = false;
-      prevTableKeyRef.current = tableKey;
-    }
     prevFetchKeyRef.current = fetchKey;
     fetchData(page, pageSize, filters, sorts);
   }

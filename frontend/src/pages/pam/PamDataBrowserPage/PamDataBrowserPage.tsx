@@ -399,6 +399,7 @@ export const PamDataBrowserPage = () => {
 
         {selectedTable ? (
           <DataBrowserGrid
+            key={`${selectedSchema}.${selectedTable}`}
             tableDetail={tableDetail}
             schema={selectedSchema}
             table={selectedTable}
