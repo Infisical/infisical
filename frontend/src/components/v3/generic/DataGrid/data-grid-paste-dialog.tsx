@@ -92,7 +92,7 @@ function PasteDialogImpl({ pasteDialog, onPasteDialogOpenChange, onCellsPaste }:
             <RadioItem ref={expandRadioRef} name="expand-option" value="expand" defaultChecked />
             <div className="flex flex-col gap-1">
               <span className="text-sm leading-none font-medium">Create new rows</span>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted">
                 Add {pasteDialog.rowsNeeded} new row
                 {pasteDialog.rowsNeeded !== 1 ? "s" : ""} to the table and paste all data
               </span>
@@ -104,7 +104,7 @@ function PasteDialogImpl({ pasteDialog, onPasteDialogOpenChange, onCellsPaste }:
             <RadioItem name="expand-option" value="no-expand" />
             <div className="flex flex-col gap-1">
               <span className="text-sm leading-none font-medium">Keep current rows</span>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted">
                 Paste only what fits in the existing rows
               </span>
             </div>

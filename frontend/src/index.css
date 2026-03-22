@@ -58,7 +58,6 @@
   --color-ring: #2d2f33;
   --color-card: #16181a;
   --color-accent: #7d7f80;
-  --color-muted-foreground: #707174;
   --color-container: #1a1c1e;
   --color-container-hover: #1f2123;
 
@@ -480,4 +479,3 @@ input[type="number"]::-webkit-outer-spin-button {
   border-color: var(--color-ring) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ring) 50%, transparent);
 }
-

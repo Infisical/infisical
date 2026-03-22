@@ -219,7 +219,7 @@ const LimitOffsetPopover = ({
   return (
     <Popover open={open} onOpenChange={handleOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="xs" className="text-muted-foreground">
+        <Button variant="ghost" size="xs" className="text-muted">
           {rangeStart} - {rangeEnd} of {totalCount}
         </Button>
       </PopoverTrigger>

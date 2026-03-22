@@ -246,7 +246,7 @@ export function DataGrid<TData>({
                 onClick={onRowAdd}
                 onKeyDown={onFooterCellKeyDown}
               >
-                <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
+                <div className="sticky start-0 flex items-center gap-2 px-3 text-muted">
                   <Plus className="size-3.5" />
                   <span className="text-sm">Add row</span>
                 </div>

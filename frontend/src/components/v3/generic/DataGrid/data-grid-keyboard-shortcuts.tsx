@@ -255,7 +255,7 @@ function DataGridKeyboardShortcutsImpl({ enableSearch = false }: DataGridKeyboar
         </DialogHeader>
         <div className="px-6">
           <div className="relative">
-            <SearchIcon className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <SearchIcon className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted" />
             <Input
               ref={inputRef}
               placeholder="Search shortcuts..."
@@ -274,7 +274,7 @@ function DataGridKeyboardShortcutsImpl({ enableSearch = false }: DataGridKeyboar
               </div>
               <div className="flex flex-col gap-1">
                 <div className="text-lg font-medium tracking-tight">No shortcuts found</div>
-                <p className="text-sm text-muted-foreground">Try searching for a different term.</p>
+                <p className="text-sm text-muted">Try searching for a different term.</p>
               </div>
             </div>
           ) : (
@@ -310,7 +310,7 @@ function ShortcutCard({ keys, description }: ShortcutGroup["shortcuts"][number])
       <KbdGroup className="shrink-0">
         {keys.map((key, index) => (
           <React.Fragment key={key}>
-            {index > 0 && <span className="text-xs text-muted-foreground">+</span>}
+            {index > 0 && <span className="text-xs text-muted">+</span>}
             <Kbd>{key}</Kbd>
           </React.Fragment>
         ))}

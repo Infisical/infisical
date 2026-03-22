@@ -100,7 +100,7 @@ export const DataBrowserSidebar = ({
                 type="button"
                 onClick={() => onTableSelect(t.name)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-container-hover",
+                  "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-muted transition-colors hover:bg-container-hover",
                   selectedTable === t.name && "bg-container-hover text-foreground"
                 )}
               >

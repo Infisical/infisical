@@ -198,7 +198,7 @@ export function ShortTextCell<TData>({
       {isNull && !isEditing ? (
         <span
           data-slot="grid-cell-content"
-          className="text-xs text-muted-foreground/50 italic select-none"
+          className="text-xs text-muted/50 italic select-none"
         >
           NULL
         </span>
@@ -1232,7 +1232,7 @@ export function MultiSelectCell<TData>({
                     <CommandGroup>
                       <CommandItem
                         onSelect={clearAll}
-                        className="justify-center text-muted-foreground"
+                        className="justify-center text-muted"
                       >
                         Clear all
                       </CommandItem>
@@ -1252,7 +1252,7 @@ export function MultiSelectCell<TData>({
             </Badge>
           ))}
           {hiddenBadgeCount > 0 && (
-            <Badge variant="outline" className="px-1.5 py-px text-muted-foreground">
+            <Badge variant="outline" className="px-1.5 py-px text-muted">
               +{hiddenBadgeCount}
             </Badge>
           )}
@@ -1908,14 +1908,14 @@ export function FileCell<TData>({
                 onDrop={onDropzoneDrop}
                 onKeyDown={onDropzoneKeyDown}
               >
-                <Upload className="size-8 text-muted-foreground" />
+                <Upload className="size-8 text-muted" />
                 <div className="text-center text-sm">
                   <p className="font-medium">
                     {isDragging ? "Drop files here" : "Drag files here"}
                   </p>
-                  <p className="text-xs text-muted-foreground">or click to browse</p>
+                  <p className="text-xs text-muted">or click to browse</p>
                 </div>
-                <p id={descriptionId} className="text-xs text-muted-foreground">
+                <p id={descriptionId} className="text-xs text-muted">
                   {maxFileSize
                     ? `Max size: ${formatFileSize(maxFileSize)}${maxFiles ? ` • Max ${maxFiles} files` : ""}`
                     : maxFiles
@@ -1936,14 +1936,14 @@ export function FileCell<TData>({
               {files.length > 0 && (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">
+                    <p className="text-xs font-medium text-muted">
                       {files.length} {files.length === 1 ? "file" : "files"}
                     </p>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-xs text-muted-foreground"
+                      className="h-6 text-xs text-muted"
                       onClick={clearAll}
                       disabled={isPending}
                     >
@@ -1964,11 +1964,11 @@ export function FileCell<TData>({
                           className="flex items-center gap-2 rounded-md border bg-muted/50 px-2 py-1.5 data-pending:opacity-60"
                         >
                           {FileIcon && (
-                            <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+                            <FileIcon className="size-4 shrink-0 text-muted" />
                           )}
                           <div className="flex-1 overflow-hidden">
                             <p className="truncate text-sm">{file.name}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted">
                               {isFileUploading
                                 ? "Uploading..."
                                 : isFileDeleting
@@ -2029,7 +2029,7 @@ export function FileCell<TData>({
             );
           })}
           {hiddenFileCount > 0 && (
-            <Badge variant="outline" className="px-1.5 py-px text-muted-foreground">
+            <Badge variant="outline" className="px-1.5 py-px text-muted">
               +{hiddenFileCount}
             </Badge>
           )}

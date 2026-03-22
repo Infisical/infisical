@@ -207,7 +207,7 @@ function DataGridSearchImpl({
           </Button>
         </div>
       </div>
-      <div className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
+      <div className="flex items-center gap-1 text-xs whitespace-nowrap text-muted">
         {/* eslint-disable-next-line no-nested-ternary */}
         {searchMatches.length > 0 ? (
           <span>
