@@ -196,10 +196,7 @@ export function ShortTextCell<TData>({
       onKeyDown={onWrapperKeyDown}
     >
       {isNull && !isEditing ? (
-        <span
-          data-slot="grid-cell-content"
-          className="text-xs text-muted/50 italic select-none"
-        >
+        <span data-slot="grid-cell-content" className="text-xs text-muted/50 italic select-none">
           NULL
         </span>
       ) : (
@@ -1230,10 +1227,7 @@ export function MultiSelectCell<TData>({
                   <>
                     <CommandSeparator />
                     <CommandGroup>
-                      <CommandItem
-                        onSelect={clearAll}
-                        className="justify-center text-muted"
-                      >
+                      <CommandItem onSelect={clearAll} className="justify-center text-muted">
                         Clear all
                       </CommandItem>
                     </CommandGroup>
@@ -1963,9 +1957,7 @@ export function FileCell<TData>({
                           data-pending={isFilePending ? "" : undefined}
                           className="flex items-center gap-2 rounded-md border bg-muted/50 px-2 py-1.5 data-pending:opacity-60"
                         >
-                          {FileIcon && (
-                            <FileIcon className="size-4 shrink-0 text-muted" />
-                          )}
+                          {FileIcon && <FileIcon className="size-4 shrink-0 text-muted" />}
                           <div className="flex-1 overflow-hidden">
                             <p className="truncate text-sm">{file.name}</p>
                             <p className="text-xs text-muted">

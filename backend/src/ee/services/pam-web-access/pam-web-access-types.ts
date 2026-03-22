@@ -33,11 +33,6 @@ export enum SessionEndReason {
   IdleTimeout = "Session closed due to inactivity."
 }
 
-export enum WebAccessMode {
-  Terminal = "terminal",
-  DataBrowser = "data-browser"
-}
-
 const WebSocketOutputMessageSchema = z.object({
   type: z.enum([WsMessageType.Ready, WsMessageType.Output]),
   data: z.string(),
@@ -184,18 +179,6 @@ export type TSessionContext = {
   onCleanup: () => void;
 };
 
-export type TDataBrowserSessionContext = {
-  socket: WebSocket;
-  relayPort: number;
-  resourceName: string;
-  sessionId: string;
-  sendMessage: (msg: TDataBrowserServerMessage) => void;
-  sendReady: () => void;
-  sendSessionEnd: (reason: SessionEndReason) => void;
-  isNearSessionExpiry: () => boolean;
-  onCleanup: () => void;
-};
-
 export type TSessionHandlerResult = {
   cleanup: () => Promise<void>;
 };
@@ -230,5 +213,4 @@ export type TIssueWebSocketTicketDTO = {
   actorName: string;
   auditLogInfo: AuditLogInfo;
   mfaSessionId?: string;
-  mode?: WebAccessMode;
 };

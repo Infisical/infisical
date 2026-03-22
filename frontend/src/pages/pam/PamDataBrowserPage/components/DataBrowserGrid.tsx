@@ -5,11 +5,6 @@ import { createNotification } from "@app/components/notifications";
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
-import {
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyTitle
-} from "@app/components/v3/generic/Empty";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 
 import type { ColumnInfo, FieldInfo, TableDetail } from "../data-browser-types";
@@ -37,6 +32,7 @@ type DataBrowserGridProps = {
   }>;
   isLoading: boolean;
   onChangeCountUpdate?: (count: number) => void;
+  onFullRefresh?: () => Promise<void>;
 };
 
 const ROW_KEY_PREFIX = "__new_";
@@ -152,7 +148,8 @@ export const DataBrowserGrid = ({
   table,
   executeQuery,
   isLoading,
-  onChangeCountUpdate
+  onChangeCountUpdate,
+  onFullRefresh
 }: DataBrowserGridProps) => {
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
@@ -173,6 +170,14 @@ export const DataBrowserGrid = ({
   const hasPrimaryKey = primaryKeys.length > 0;
   const primaryKeysRef = useRef(primaryKeys);
   primaryKeysRef.current = primaryKeys;
+
+  const [selectedRowCount, setSelectedRowCount] = useState(0);
+  const gridRef = useRef<ReturnType<typeof useDataGrid<Record<string, unknown>>>["table"] | null>(
+    null
+  );
+  // Snapshot selected rows so the toolbar delete button can use them even after
+  // the DataGrid's outside-click handler clears row selection on mousedown.
+  const selectedRowsRef = useRef<Record<string, unknown>[]>([]);
 
   // Build TanStack Table column definitions from PG metadata
   const columnDefs = useMemo(
@@ -499,14 +504,6 @@ export const DataBrowserGrid = ({
     [primaryKeys]
   );
 
-  const [selectedRowCount, setSelectedRowCount] = useState(0);
-  const gridRef = useRef<ReturnType<typeof useDataGrid<Record<string, unknown>>>["table"] | null>(
-    null
-  );
-  // Snapshot selected rows so the toolbar delete button can use them even after
-  // the DataGrid's outside-click handler clears row selection on mousedown.
-  const selectedRowsRef = useRef<Record<string, unknown>[]>([]);
-
   const syncSelectionCount = useCallback(() => {
     if (gridRef.current) {
       const { rows } = gridRef.current.getSelectedRowModel();
@@ -620,7 +617,10 @@ export const DataBrowserGrid = ({
         onPageSizeChange={handlePageSizeChange}
         executionTimeMs={executionTimeMs}
         hasPrimaryKey={hasPrimaryKey}
-        onRefresh={() => fetchData(page, pageSize, filters, sorts)}
+        onRefresh={async () => {
+          if (onFullRefresh) await onFullRefresh();
+          await fetchData(page, pageSize, filters, sorts);
+        }}
         isRefreshing={isDataLoading && hasLoadedRef.current}
       />
 
@@ -640,15 +640,7 @@ export const DataBrowserGrid = ({
             ))}
           </div>
         )}
-        {!isDataLoading && currentData.length === 0 && (
-          <UnstableEmpty className="py-16">
-            <UnstableEmptyTitle>No data</UnstableEmptyTitle>
-            <UnstableEmptyDescription>
-              {filters.length > 0 ? "No rows match the current filters" : "This table is empty"}
-            </UnstableEmptyDescription>
-          </UnstableEmpty>
-        )}
-        {currentData.length > 0 && (
+        {(!isDataLoading || hasLoadedRef.current) && (
           <DataGrid {...gridProps} className="min-h-0 flex-1" stretchColumns />
         )}
       </div>

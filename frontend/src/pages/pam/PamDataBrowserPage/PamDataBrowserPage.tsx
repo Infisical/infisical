@@ -203,6 +203,31 @@ export const PamDataBrowserPage = () => {
     unsavedChangeCountRef.current = count;
   }, []);
 
+  const handleFullRefresh = useCallback(async () => {
+    // 1. Re-fetch tables for current schema (picks up new/dropped tables)
+    setIsLoadingTables(true);
+    try {
+      const tableResult = await fetchTables(selectedSchema);
+      setTables(tableResult);
+
+      // 2. If selected table was dropped, deselect and stop
+      if (selectedTable && !tableResult.find((t) => t.name === selectedTable)) {
+        setSelectedTable(null);
+        setTableDetail(null);
+        return;
+      }
+    } catch {
+      // Error handled by the hook
+    } finally {
+      setIsLoadingTables(false);
+    }
+
+    // 3. Re-fetch table detail for current table (picks up column/PK changes)
+    if (selectedTable) {
+      await loadTableDetail(selectedSchema, selectedTable);
+    }
+  }, [selectedSchema, selectedTable, fetchTables, loadTableDetail]);
+
   const handleReconnect = useCallback(() => {
     setHasDisconnected(false);
     setSchemas([]);
@@ -364,6 +389,7 @@ export const PamDataBrowserPage = () => {
             executeQuery={executeQuery}
             isLoading={isLoadingDetail}
             onChangeCountUpdate={handleChangeCountUpdate}
+            onFullRefresh={handleFullRefresh}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center">

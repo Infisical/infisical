@@ -43,7 +43,6 @@ import { TRedisAccountCredentials, TRedisResourceConnectionDetails } from "../pa
 import { TSSHAccountCredentials, TSSHResourceConnectionDetails } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
-import { handlePostgresDataBrowser } from "./pam-postgres-data-browser-handler";
 import { handlePostgresSession } from "./pam-postgres-session-handler";
 import { handleRedisSession } from "./pam-redis-session-handler";
 import { handleSSHSession } from "./pam-ssh-session-handler";
@@ -51,12 +50,10 @@ import {
   DEFAULT_WEB_SESSION_DURATION_MS,
   MAX_WEB_SESSIONS_PER_USER,
   SessionEndReason,
-  TDataBrowserServerMessage,
   TIssueWebSocketTicketDTO,
   TSessionContext,
   TSessionHandlerResult,
   TWebSocketServerMessage,
-  WebAccessMode,
   WebSocketServerMessageSchema,
   WS_IDLE_TIMEOUT_MS,
   WS_PING_INTERVAL_MS,
@@ -101,7 +98,6 @@ type THandleWebSocketConnectionDTO = {
   actorName: string;
   actorIp: string;
   actorUserAgent: string;
-  mode: WebAccessMode;
 };
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
@@ -131,16 +127,6 @@ export const pamWebAccessServiceFactory = ({
     }
   };
 
-  const sendDataBrowserMessage = (socket: WebSocket, message: TDataBrowserServerMessage): void => {
-    try {
-      if (socket.readyState === socket.OPEN) {
-        socket.send(JSON.stringify(message));
-      }
-    } catch (err) {
-      logger.error(err, "Failed to send data browser WebSocket message");
-    }
-  };
-
   const sendSessionEnd = (socket: WebSocket, reason: SessionEndReason): void => {
     sendMessage(socket, { type: WsMessageType.SessionEnd, reason });
   };
@@ -153,8 +139,7 @@ export const pamWebAccessServiceFactory = ({
     actorEmail,
     actorName,
     auditLogInfo,
-    mfaSessionId,
-    mode = WebAccessMode.Terminal
+    mfaSessionId
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findById(accountId);
 
@@ -288,8 +273,7 @@ export const pamWebAccessServiceFactory = ({
         accountName: account.name,
         actorEmail,
         actorName,
-        auditLogInfo,
-        mode
+        auditLogInfo
       })
     });
 
@@ -322,8 +306,7 @@ export const pamWebAccessServiceFactory = ({
     actorEmail,
     actorName,
     actorIp,
-    actorUserAgent,
-    mode
+    actorUserAgent
   }: THandleWebSocketConnectionDTO): Promise<void> => {
     let session: { id: string } | null = null;
     let cleanedUp = false;
@@ -536,32 +519,8 @@ export const pamWebAccessServiceFactory = ({
         onCleanup: handlerCleanup
       };
 
-      // 6. CONNECT TO RESOURCE (dispatch by type and mode)
-      if (resource.resourceType === PamResource.Postgres && mode === WebAccessMode.DataBrowser) {
-        const boundSendDataBrowserMessage = (msg: TDataBrowserServerMessage) => sendDataBrowserMessage(socket, msg);
-        const dataBrowserCtx = {
-          socket,
-          relayPort: relayServer.port,
-          resourceName: resource.name,
-          sessionId: session.id,
-          sendMessage: boundSendDataBrowserMessage,
-          sendReady: () => {
-            // Send Ready using the terminal message schema (reused for lifecycle)
-            boundSendMessage({
-              type: WsMessageType.Ready,
-              data: `Connected to ${resource.name} (${(resourceConnectionDetails as TPostgresResourceConnectionDetails).database}) as ${(accountCredentials as TPostgresAccountCredentials).username}\n`,
-              prompt: ""
-            });
-          },
-          sendSessionEnd: boundSendSessionEnd,
-          isNearSessionExpiry,
-          onCleanup: handlerCleanup
-        };
-        handlerResult = await handlePostgresDataBrowser(dataBrowserCtx, {
-          connectionDetails: resourceConnectionDetails as TPostgresResourceConnectionDetails,
-          credentials: accountCredentials as TPostgresAccountCredentials
-        });
-      } else if (resource.resourceType === PamResource.Postgres) {
+      // 6. CONNECT TO RESOURCE (dispatch by type)
+      if (resource.resourceType === PamResource.Postgres) {
         handlerResult = await handlePostgresSession(ctx, {
           connectionDetails: resourceConnectionDetails as TPostgresResourceConnectionDetails,
           credentials: accountCredentials as TPostgresAccountCredentials

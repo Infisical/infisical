@@ -168,7 +168,7 @@ export const useDataBrowserSession = ({
       try {
         const { data } = await apiRequest.post<{ ticket: string }>(
           `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-          { projectId, mfaSessionId, mode: "data-browser" }
+          { projectId, mfaSessionId }
         );
         openWebSocket(data.ticket);
       } catch (err: unknown) {

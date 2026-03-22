@@ -13,7 +13,6 @@ import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam
 import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { SanitizedWindowsAccountWithResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
-import { WebAccessMode } from "@app/ee/services/pam-web-access/pam-web-access-types";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -324,8 +323,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         projectId: z.string().uuid(),
-        mfaSessionId: z.string().optional(),
-        mode: z.nativeEnum(WebAccessMode).optional().default(WebAccessMode.Terminal)
+        mfaSessionId: z.string().optional()
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -346,8 +344,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorEmail: req.auth.user.email ?? "",
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
         auditLogInfo: req.auditLogInfo,
-        mfaSessionId: req.body.mfaSessionId,
-        mode: req.body.mode
+        mfaSessionId: req.body.mfaSessionId
       });
 
       return { ticket };
@@ -413,8 +410,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
                 type: z.nativeEnum(ActorType),
                 metadata: z.record(z.unknown())
               })
-            }),
-            mode: z.nativeEnum(WebAccessMode).optional().default(WebAccessMode.Terminal)
+            })
           })
           .parse(JSON.parse(tokenRecord.payload));
 
@@ -435,8 +431,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           auditLogInfo: payload.auditLogInfo as AuditLogInfo,
           userId,
           actorIp: req.realIp ?? "",
-          actorUserAgent: req.headers["user-agent"] ?? "",
-          mode: payload.mode
+          actorUserAgent: req.headers["user-agent"] ?? ""
         });
       } catch (err) {
         logger.error(err, "WebSocket ticket validation failed");

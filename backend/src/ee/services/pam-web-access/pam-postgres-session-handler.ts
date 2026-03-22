@@ -6,11 +6,14 @@ import {
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-types";
 import { logger } from "@app/lib/logger";
 
+import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-browser-metadata";
 import { createPamSqlRepl } from "./pam-web-access-repl";
 import {
+  parseDataBrowserClientMessage,
   parseWsClientMessage,
   resolveEndReason,
   SessionEndReason,
+  TDataBrowserServerMessage,
   TSessionContext,
   TSessionHandlerResult,
   WsMessageType
@@ -55,12 +58,136 @@ export const handlePostgresSession = async (
 
   logger.info({ sessionId }, "Postgres web access session established");
 
+  const sendDataBrowserResponse = (msg: TDataBrowserServerMessage) => {
+    try {
+      if (socket.readyState === socket.OPEN) {
+        socket.send(JSON.stringify(msg));
+      }
+    } catch (err) {
+      logger.error(err, "Failed to send data browser WebSocket message");
+    }
+  };
+
   // Sequential message processing to prevent concurrent query issues
   let processingPromise = Promise.resolve();
 
   socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
     processingPromise = processingPromise
       .then(async () => {
+        // Try data-browser message first (pg-* prefixed types)
+        const dbMessage = parseDataBrowserClientMessage(rawData);
+        if (dbMessage) {
+          try {
+            switch (dbMessage.type) {
+              case "pg-get-schemas": {
+                const query = getSchemasQuery();
+                const result = await pgClient.query(query.text, query.values);
+                sendDataBrowserResponse({
+                  type: "pg-schemas",
+                  id: dbMessage.id,
+                  data: result.rows as { name: string }[]
+                });
+                break;
+              }
+
+              case "pg-get-tables": {
+                const query = getTablesQuery(dbMessage.schema);
+                const result = await pgClient.query(query.text, query.values);
+                sendDataBrowserResponse({
+                  type: "pg-tables",
+                  id: dbMessage.id,
+                  data: result.rows as { name: string; tableType: string }[]
+                });
+                break;
+              }
+
+              case "pg-get-table-detail": {
+                const query = getTableDetailQuery(dbMessage.schema, dbMessage.table);
+                const result = await pgClient.query<{ result: string }>(query.text, query.values);
+                const rawDetail = result.rows[0]?.result;
+                if (!rawDetail) {
+                  sendDataBrowserResponse({
+                    type: "pg-error",
+                    id: dbMessage.id,
+                    error: "Table not found or no metadata available"
+                  });
+                  break;
+                }
+                const detail =
+                  typeof rawDetail === "string"
+                    ? (JSON.parse(rawDetail) as Record<string, unknown>)
+                    : (rawDetail as unknown as Record<string, unknown>);
+                sendDataBrowserResponse({
+                  type: "pg-table-detail",
+                  id: dbMessage.id,
+                  data: detail as {
+                    columns: {
+                      name: string;
+                      type: string;
+                      typeOid: number;
+                      nullable: boolean;
+                      defaultValue: string | null;
+                      isIdentity: boolean;
+                      identityGeneration: string | null;
+                      isArray: boolean;
+                      maxLength: number | null;
+                    }[];
+                    primaryKeys: string[];
+                    foreignKeys: {
+                      constraintName: string;
+                      columns: string[];
+                      targetSchema: string;
+                      targetTable: string;
+                      targetColumns: string[];
+                    }[];
+                    enums: Record<string, string[]>;
+                  }
+                });
+                break;
+              }
+
+              case "pg-query": {
+                const startTime = performance.now();
+                const result = await pgClient.query(dbMessage.sql);
+                const executionTimeMs = Math.round(performance.now() - startTime);
+                sendDataBrowserResponse({
+                  type: "pg-query-result",
+                  id: dbMessage.id,
+                  rows: (result.rows ?? []) as Record<string, unknown>[],
+                  fields: (result.fields ?? []).map((f) => ({ name: f.name, dataTypeID: f.dataTypeID })),
+                  rowCount: result.rowCount,
+                  command: result.command ?? "",
+                  executionTimeMs
+                });
+                break;
+              }
+
+              default:
+                break;
+            }
+          } catch (err) {
+            const pgErr = err as { message?: string; detail?: string; hint?: string };
+
+            // If the failed query was inside a transaction, roll back so the
+            // connection is not stuck in an aborted transaction state.
+            try {
+              await pgClient.query("ROLLBACK");
+            } catch {
+              // ROLLBACK fails if there was no active transaction — safe to ignore.
+            }
+
+            sendDataBrowserResponse({
+              type: "pg-error",
+              id: dbMessage.id,
+              error: pgErr.message ?? "Query execution failed",
+              detail: pgErr.detail,
+              hint: pgErr.hint
+            });
+          }
+          return;
+        }
+
+        // Otherwise try terminal message
         const message = parseWsClientMessage(rawData);
         if (!message) {
           sendMessage({

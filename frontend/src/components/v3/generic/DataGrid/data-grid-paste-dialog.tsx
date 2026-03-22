@@ -104,9 +104,7 @@ function PasteDialogImpl({ pasteDialog, onPasteDialogOpenChange, onCellsPaste }:
             <RadioItem name="expand-option" value="no-expand" />
             <div className="flex flex-col gap-1">
               <span className="text-sm leading-none font-medium">Keep current rows</span>
-              <span className="text-sm text-muted">
-                Paste only what fits in the existing rows
-              </span>
+              <span className="text-sm text-muted">Paste only what fits in the existing rows</span>
             </div>
           </label>
         </div>
