@@ -54,6 +54,8 @@ linters:
       include:
         # Only enforce full initialization on service dependency structs.
         - 'github\.com/infisical/api/internal/services/.*Deps$'
+        # Enforce full initialization on service structs to catch missing wiring in constructors.
+        - 'github\.com/infisical/api/internal/services/.+\.service$'
 
     govet:
       enable-all: true
@@ -112,7 +114,6 @@ linters:
           - errcheck
           - unparam
           - prealloc
-          - exhaustruct
           - sloglint
 
 formatters:
