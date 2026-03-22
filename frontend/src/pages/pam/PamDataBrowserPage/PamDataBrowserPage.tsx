@@ -266,19 +266,19 @@ export const PamDataBrowserPage = () => {
 
   if (mfaState?.required) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-bunker-800">
-        <ShieldCheckIcon className="h-12 w-12 text-yellow-500" />
-        <h2 className="text-lg font-medium text-mineshaft-100">MFA Verification Required</h2>
-        <p className="max-w-sm text-center text-sm text-mineshaft-300">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
+        <ShieldCheckIcon className="size-8 text-mineshaft-400" />
+        <h2 className="text-sm font-medium text-mineshaft-100">MFA Verification Required</h2>
+        <p className="max-w-sm text-center text-xs text-mineshaft-400">
           Multi-factor authentication is required to access this database account.
         </p>
         {mfaState.verifying ? (
-          <div className="flex items-center gap-2 text-sm text-mineshaft-300">
+          <div className="flex items-center gap-2 text-xs text-mineshaft-400">
             <Spinner className="h-4 w-4" />
             Waiting for verification...
           </div>
         ) : (
-          <Button variant="info" onClick={handleMfaVerification}>
+          <Button variant="outline" size="xs" onClick={handleMfaVerification}>
             Verify MFA
           </Button>
         )}
@@ -288,50 +288,51 @@ export const PamDataBrowserPage = () => {
 
   if (approvalState?.required) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-bunker-800">
-        <AlertTriangleIcon className="h-12 w-12 text-yellow-500" />
-        <h2 className="text-lg font-medium text-mineshaft-100">Approval Required</h2>
-        <p className="max-w-sm text-center text-sm text-mineshaft-300">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
+        <AlertTriangleIcon className="size-8 text-mineshaft-400" />
+        <h2 className="text-sm font-medium text-mineshaft-100">Approval Required</h2>
+        <p className="max-w-sm text-center text-xs text-mineshaft-400">
           This account is protected by policy: {approvalState.policyName ?? "Unknown"}
         </p>
         {approvalState.submitted ? (
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-sm text-green-400">Approval request created successfully!</p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-xs text-mineshaft-300">Approval request created successfully.</p>
             {approvalRequestUrl && (
               <a
                 href={approvalRequestUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-primary-500 underline hover:text-primary-400"
+                className="text-xs text-primary-500 underline hover:text-primary-400"
               >
                 View approval request
               </a>
             )}
-            <Button variant="info" onClick={handleReconnect}>
+            <Button variant="outline" size="xs" onClick={handleReconnect}>
               Reconnect
             </Button>
           </div>
         ) : (
-          <div className="flex w-full max-w-sm flex-col gap-3">
+          <div className="flex w-full max-w-sm flex-col gap-2">
             <textarea
-              className="w-full rounded border border-mineshaft-500 bg-bunker-700 px-3 py-2 text-sm text-mineshaft-100 placeholder:text-mineshaft-500 focus:border-primary-500 focus:outline-none"
+              className="w-full rounded border border-mineshaft-600 bg-bunker-700 px-3 py-2 text-xs text-mineshaft-200 placeholder:text-mineshaft-500 focus:border-mineshaft-400 focus:outline-none"
               placeholder="Justification (optional)"
-              rows={3}
+              rows={2}
               value={approvalJustification}
               onChange={(e) => setApprovalJustification(e.target.value)}
             />
             {approvalState.errorMessage && (
-              <p className="text-sm text-red-400">{approvalState.errorMessage}</p>
+              <p className="text-xs text-red-400">{approvalState.errorMessage}</p>
             )}
             <div className="flex justify-center gap-2">
               <Button
-                variant="info"
+                variant="outline"
+                size="xs"
                 isPending={approvalState.creating}
                 onClick={() => submitApprovalRequest(approvalJustification)}
               >
                 Create Approval Request
               </Button>
-              <Button variant="outline" onClick={handleReconnect}>
+              <Button variant="outline" size="xs" onClick={handleReconnect}>
                 Reconnect
               </Button>
             </div>
@@ -343,11 +344,11 @@ export const PamDataBrowserPage = () => {
 
   if (errorMessage && !isConnected) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-bunker-800">
-        <AlertTriangleIcon className="h-12 w-12 text-red-500" />
-        <h2 className="text-lg font-medium text-mineshaft-100">Connection Error</h2>
-        <p className="max-w-sm text-center text-sm text-mineshaft-400">{errorMessage}</p>
-        <Button variant="info" onClick={handleReconnect}>
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
+        <AlertTriangleIcon className="size-8 text-mineshaft-400" />
+        <h2 className="text-sm font-medium text-mineshaft-100">Connection Error</h2>
+        <p className="max-w-sm text-center text-xs text-mineshaft-400">{errorMessage}</p>
+        <Button variant="outline" size="xs" onClick={handleReconnect}>
           Try Again
         </Button>
       </div>
@@ -356,11 +357,11 @@ export const PamDataBrowserPage = () => {
 
   if (hasDisconnected && !isConnected && !isConnecting) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-bunker-800">
-        <WifiOffIcon className="h-12 w-12 text-mineshaft-400" />
-        <h2 className="text-lg font-medium text-mineshaft-100">Disconnected</h2>
-        <p className="text-sm text-mineshaft-400">The database connection was closed.</p>
-        <Button variant="info" onClick={handleReconnect}>
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
+        <WifiOffIcon className="size-8 text-mineshaft-400" />
+        <h2 className="text-sm font-medium text-mineshaft-100">Disconnected</h2>
+        <p className="text-xs text-mineshaft-400">The database connection was closed.</p>
+        <Button variant="outline" size="xs" onClick={handleReconnect}>
           Reconnect
         </Button>
       </div>
