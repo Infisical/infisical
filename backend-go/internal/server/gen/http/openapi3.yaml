@@ -104,13 +104,266 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/APIErrorResult'
-    /api/v1/secret-manager/secrets:
+    /api/v3/secrets/raw:
         get:
             tags:
                 - secrets
-            summary: listSecrets secrets
-            description: List secrets for an environment.
-            operationId: secrets#listSecrets
+            summary: listSecretsRawV3 secrets
+            description: List raw secrets for a project environment (V3, deprecated).
+            operationId: secrets#listSecretsRawV3
+            parameters:
+                - name: workspaceId
+                  in: query
+                  description: Workspace/project ID
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Workspace/project ID
+                - name: workspaceSlug
+                  in: query
+                  description: Workspace/project slug
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Workspace/project slug
+                - name: environment
+                  in: query
+                  description: Environment slug
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Environment slug
+                - name: secretPath
+                  in: query
+                  description: Secret path
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Secret path
+                    default: /
+                - name: viewSecretValue
+                  in: query
+                  description: Whether to include the secret value
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include the secret value
+                    default: true
+                - name: expandSecretReferences
+                  in: query
+                  description: Whether to expand secret references
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to expand secret references
+                    default: false
+                - name: recursive
+                  in: query
+                  description: Whether to list secrets recursively
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to list secrets recursively
+                    default: false
+                - name: include_imports
+                  in: query
+                  description: Whether to include imported secrets
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include imported secrets
+                    default: false
+                - name: tagSlugs
+                  in: query
+                  description: Comma-separated tag slugs to filter by
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Comma-separated tag slugs to filter by
+                - name: metadataFilter
+                  in: query
+                  description: Pipe-delimited metadata filter (key=k,value=v|...)
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Pipe-delimited metadata filter (key=k,value=v|...)
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListSecretsResult'
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
+    /api/v3/secrets/raw/{secretName}:
+        get:
+            tags:
+                - secrets
+            summary: getSecretByNameRawV3 secrets
+            description: Get a raw secret by name (V3, deprecated).
+            operationId: secrets#getSecretByNameRawV3
+            parameters:
+                - name: workspaceId
+                  in: query
+                  description: Workspace/project ID
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Workspace/project ID
+                - name: workspaceSlug
+                  in: query
+                  description: Workspace/project slug
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Workspace/project slug
+                - name: environment
+                  in: query
+                  description: Environment slug
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Environment slug
+                - name: secretPath
+                  in: query
+                  description: Secret path
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Secret path
+                    default: /
+                - name: version
+                  in: query
+                  description: Secret version
+                  allowEmptyValue: true
+                  schema:
+                    type: integer
+                    description: Secret version
+                    format: int64
+                - name: type
+                  in: query
+                  description: Secret type (shared or personal)
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Secret type (shared or personal)
+                    default: shared
+                    enum:
+                        - shared
+                        - personal
+                - name: viewSecretValue
+                  in: query
+                  description: Whether to include the secret value
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include the secret value
+                    default: true
+                - name: expandSecretReferences
+                  in: query
+                  description: Whether to expand secret references
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to expand secret references
+                    default: false
+                - name: include_imports
+                  in: query
+                  description: Whether to include imported secrets
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include imported secrets
+                    default: false
+                - name: secretName
+                  in: path
+                  description: Secret name
+                  required: true
+                  schema:
+                    type: string
+                    description: Secret name
+                    minLength: 1
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetSecretResult'
+                "400":
+                    description: 'bad_request: Invalid request'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "401":
+                    description: 'unauthorized: Authentication required'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "403":
+                    description: 'forbidden: Permission denied'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "404":
+                    description: 'not_found: Resource not found'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+                "500":
+                    description: 'internal_error: Internal server error'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/APIErrorResult'
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
+    /api/v4/secrets:
+        get:
+            tags:
+                - secrets
+            summary: listSecretsV4 secrets
+            description: List secrets for a project environment (V4).
+            operationId: secrets#listSecretsV4
             parameters:
                 - name: projectId
                   in: query
@@ -128,13 +381,75 @@ paths:
                   schema:
                     type: string
                     description: Environment slug
+                - name: secretPath
+                  in: query
+                  description: Secret path
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Secret path
+                    default: /
+                - name: viewSecretValue
+                  in: query
+                  description: Whether to include the secret value
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include the secret value
+                    default: true
+                - name: expandSecretReferences
+                  in: query
+                  description: Whether to expand secret references
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to expand secret references
+                    default: true
+                - name: recursive
+                  in: query
+                  description: Whether to list secrets recursively
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to list secrets recursively
+                    default: false
+                - name: includePersonalOverrides
+                  in: query
+                  description: Whether to include personal overrides
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include personal overrides
+                    default: false
+                - name: includeImports
+                  in: query
+                  description: Whether to include imported secrets
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include imported secrets
+                    default: true
+                - name: tagSlugs
+                  in: query
+                  description: Comma-separated tag slugs to filter by
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Comma-separated tag slugs to filter by
+                - name: metadataFilter
+                  in: query
+                  description: Pipe-delimited metadata filter (key=k,value=v|...)
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Pipe-delimited metadata filter (key=k,value=v|...)
             responses:
                 "200":
                     description: OK response.
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/SecretResultCollection'
+                                $ref: '#/components/schemas/ListSecretsResult'
                 "400":
                     description: 'bad_request: Invalid request'
                     content:
@@ -169,132 +484,96 @@ paths:
                 - jwt_header_Authorization: []
                 - identity_access_token_header_Authorization: []
                 - service_token_header_Authorization: []
-        post:
-            tags:
-                - secrets
-            summary: createSecret secrets
-            description: Create a new secret.
-            operationId: secrets#createSecret
-            requestBody:
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/Secret'
-            responses:
-                "201":
-                    description: Created response.
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Secret3'
-                "400":
-                    description: 'bad_request: Invalid request'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "401":
-                    description: 'unauthorized: Authentication required'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "403":
-                    description: 'forbidden: Permission denied'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "404":
-                    description: 'not_found: Resource not found'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "500":
-                    description: 'internal_error: Internal server error'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-            security:
-                - jwt_header_Authorization: []
-                - identity_access_token_header_Authorization: []
-                - service_token_header_Authorization: []
-    /api/v1/secret-manager/secrets/{id}:
-        delete:
-            tags:
-                - secrets
-            summary: deleteSecret secrets
-            description: Delete a secret by ID.
-            operationId: secrets#deleteSecret
-            parameters:
-                - name: id
-                  in: path
-                  description: Secret ID
-                  required: true
-                  schema:
-                    type: string
-                    description: Secret ID
-            responses:
-                "204":
-                    description: No Content response.
-                "400":
-                    description: 'bad_request: Invalid request'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "401":
-                    description: 'unauthorized: Authentication required'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "403":
-                    description: 'forbidden: Permission denied'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "404":
-                    description: 'not_found: Resource not found'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "500":
-                    description: 'internal_error: Internal server error'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-            security:
-                - jwt_header_Authorization: []
-                - identity_access_token_header_Authorization: []
-                - service_token_header_Authorization: []
+    /api/v4/secrets/{secretName}:
         get:
             tags:
                 - secrets
-            summary: getSecret secrets
-            description: Get a secret by ID.
-            operationId: secrets#getSecret
+            summary: getSecretByNameV4 secrets
+            description: Get a secret by name (V4).
+            operationId: secrets#getSecretByNameV4
             parameters:
-                - name: id
-                  in: path
-                  description: Secret ID
+                - name: projectId
+                  in: query
+                  description: Project ID
+                  allowEmptyValue: true
                   required: true
                   schema:
                     type: string
-                    description: Secret ID
+                    description: Project ID
+                - name: environment
+                  in: query
+                  description: Environment slug
+                  allowEmptyValue: true
+                  required: true
+                  schema:
+                    type: string
+                    description: Environment slug
+                - name: secretPath
+                  in: query
+                  description: Secret path
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Secret path
+                    default: /
+                - name: version
+                  in: query
+                  description: Secret version
+                  allowEmptyValue: true
+                  schema:
+                    type: integer
+                    description: Secret version
+                    format: int64
+                - name: type
+                  in: query
+                  description: Secret type (shared or personal)
+                  allowEmptyValue: true
+                  schema:
+                    type: string
+                    description: Secret type (shared or personal)
+                    default: shared
+                    enum:
+                        - shared
+                        - personal
+                - name: viewSecretValue
+                  in: query
+                  description: Whether to include the secret value
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include the secret value
+                    default: true
+                - name: expandSecretReferences
+                  in: query
+                  description: Whether to expand secret references
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to expand secret references
+                    default: true
+                - name: includeImports
+                  in: query
+                  description: Whether to include imported secrets
+                  allowEmptyValue: true
+                  schema:
+                    type: boolean
+                    description: Whether to include imported secrets
+                    default: true
+                - name: secretName
+                  in: path
+                  description: Secret name
+                  required: true
+                  schema:
+                    type: string
+                    description: Secret name
+                    minLength: 1
             responses:
                 "200":
                     description: OK response.
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Secret4'
+                                $ref: '#/components/schemas/GetSecretResult'
                 "400":
                     description: 'bad_request: Invalid request'
                     content:
@@ -329,111 +608,6 @@ paths:
                 - jwt_header_Authorization: []
                 - identity_access_token_header_Authorization: []
                 - service_token_header_Authorization: []
-        patch:
-            tags:
-                - secrets
-            summary: updateSecret secrets
-            description: Update an existing secret.
-            operationId: secrets#updateSecret
-            parameters:
-                - name: id
-                  in: path
-                  description: Secret ID
-                  required: true
-                  schema:
-                    type: string
-                    description: Secret ID
-            requestBody:
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/UpdateSecretRequestBody'
-            responses:
-                "200":
-                    description: OK response.
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Secret5'
-                "400":
-                    description: 'bad_request: Invalid request'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "401":
-                    description: 'unauthorized: Authentication required'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "403":
-                    description: 'forbidden: Permission denied'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "404":
-                    description: 'not_found: Resource not found'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "500":
-                    description: 'internal_error: Internal server error'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-            security:
-                - jwt_header_Authorization: []
-                - identity_access_token_header_Authorization: []
-                - service_token_header_Authorization: []
-    /api/v1/secret-manager/secrets/health:
-        get:
-            tags:
-                - secrets
-            summary: getHealth secrets
-            description: Health check for the secrets service.
-            operationId: secrets#getHealth
-            responses:
-                "200":
-                    description: OK response.
-                    content:
-                        application/json:
-                            schema:
-                                type: string
-                "400":
-                    description: 'bad_request: Invalid request'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "401":
-                    description: 'unauthorized: Authentication required'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "403":
-                    description: 'forbidden: Permission denied'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "404":
-                    description: 'not_found: Resource not found'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
-                "500":
-                    description: 'internal_error: Internal server error'
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/APIErrorResult'
 components:
     schemas:
         APIErrorResult:
@@ -468,6 +642,96 @@ components:
             required:
                 - name
                 - orgId
+        GetSecretResult:
+            type: object
+            properties:
+                secret:
+                    $ref: '#/components/schemas/SecretRaw'
+            required:
+                - secret
+        ImportSecretRaw:
+            type: object
+            properties:
+                actor:
+                    $ref: '#/components/schemas/SecretActor'
+                environment:
+                    type: string
+                    description: Environment slug
+                id:
+                    type: string
+                    description: Secret ID
+                isRotatedSecret:
+                    type: boolean
+                    description: Whether this is a rotated secret
+                legacyId:
+                    type: string
+                    description: Legacy secret ID
+                rotationId:
+                    type: string
+                    description: Rotation ID (UUID)
+                secretComment:
+                    type: string
+                    description: Secret comment
+                secretKey:
+                    type: string
+                    description: Secret key
+                secretMetadata:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ResourceMetadata'
+                    description: Secret metadata entries
+                secretReminderNote:
+                    type: string
+                    description: Reminder note
+                secretReminderRepeatDays:
+                    type: integer
+                    description: Reminder repeat days
+                    format: int64
+                secretValue:
+                    type: string
+                    description: Secret value
+                secretValueHidden:
+                    type: boolean
+                    description: Whether the secret value is hidden
+                skipMultilineEncoding:
+                    type: boolean
+                    description: Skip multiline encoding
+                type:
+                    type: string
+                    description: Secret type (shared or personal)
+                version:
+                    type: integer
+                    description: Secret version
+                    format: int64
+                workspace:
+                    type: string
+                    description: Workspace/project ID
+            required:
+                - id
+                - legacyId
+                - workspace
+                - environment
+                - version
+                - type
+                - secretKey
+                - secretValue
+                - secretComment
+                - secretValueHidden
+        ListSecretsResult:
+            type: object
+            properties:
+                imports:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SecretImport'
+                    description: Imported secret blocks
+                secrets:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SecretRaw'
+                    description: List of secrets
+            required:
+                - secrets
         Project:
             type: object
             properties:
@@ -484,160 +748,164 @@ components:
                 - id
                 - name
                 - orgId
-        Secret:
+        ResourceMetadata:
+            type: object
+            properties:
+                isEncrypted:
+                    type: boolean
+                    description: Whether the value is encrypted
+                    default: false
+                key:
+                    type: string
+                    description: Metadata key
+                value:
+                    type: string
+                    description: Metadata value
+                    default: ""
+            required:
+                - key
+        SecretActor:
+            type: object
+            properties:
+                actorId:
+                    type: string
+                    description: Actor ID
+                actorType:
+                    type: string
+                    description: Actor type
+                groupId:
+                    type: string
+                    description: Group ID
+                membershipId:
+                    type: string
+                    description: Membership ID
+                name:
+                    type: string
+                    description: Actor name
+        SecretImport:
             type: object
             properties:
                 environment:
                     type: string
-                    description: Environment slug
-                key:
+                    description: Import source environment
+                folderId:
                     type: string
-                    description: Secret key
-                    example: DATABASE_URL
-                projectId:
+                    description: Import source folder ID
+                secretPath:
                     type: string
-                    description: Project ID
-                value:
-                    type: string
-                    description: Secret value
+                    description: Import source path
+                secrets:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ImportSecretRaw'
+                    description: Imported secrets
             required:
-                - key
-                - value
+                - secretPath
                 - environment
-                - projectId
-        Secret2:
+                - secrets
+        SecretRaw:
             type: object
             properties:
-                environment:
+                actor:
+                    $ref: '#/components/schemas/SecretActor'
+                createdAt:
                     type: string
-                    description: Environment slug
-                id:
-                    type: string
-                    description: Secret ID
-                key:
-                    type: string
-                    description: Secret key
-                projectId:
-                    type: string
-                    description: Project ID
-                value:
-                    type: string
-                    description: Secret value
-            required:
-                - id
-                - key
-                - value
-                - environment
-                - projectId
-        Secret3:
-            type: object
-            properties:
-                environment:
-                    type: string
-                    description: Environment slug
-                id:
-                    type: string
-                    description: Secret ID
-                key:
-                    type: string
-                    description: Secret key
-                projectId:
-                    type: string
-                    description: Project ID
-                value:
-                    type: string
-                    description: Secret value
-            required:
-                - id
-                - key
-                - value
-                - environment
-                - projectId
-        Secret4:
-            type: object
-            properties:
+                    description: Creation timestamp
                 environment:
                     type: string
                     description: Environment slug
                 id:
                     type: string
                     description: Secret ID
-                key:
+                isRotatedSecret:
+                    type: boolean
+                    description: Whether this is a rotated secret
+                legacyId:
+                    type: string
+                    description: Legacy secret ID
+                rotationId:
+                    type: string
+                    description: Rotation ID (UUID)
+                secretComment:
+                    type: string
+                    description: Secret comment
+                secretKey:
                     type: string
                     description: Secret key
-                projectId:
+                secretMetadata:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ResourceMetadata'
+                    description: Secret metadata entries
+                secretPath:
                     type: string
-                    description: Project ID
-                value:
+                    description: Path of the secret
+                secretReminderNote:
+                    type: string
+                    description: Reminder note
+                secretReminderRepeatDays:
+                    type: integer
+                    description: Reminder repeat days
+                    format: int64
+                secretValue:
                     type: string
                     description: Secret value
+                secretValueHidden:
+                    type: boolean
+                    description: Whether the secret value is hidden
+                skipMultilineEncoding:
+                    type: boolean
+                    description: Skip multiline encoding
+                tags:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SecretTag'
+                    description: Tags attached to the secret
+                type:
+                    type: string
+                    description: Secret type (shared or personal)
+                updatedAt:
+                    type: string
+                    description: Last update timestamp
+                version:
+                    type: integer
+                    description: Secret version
+                    format: int64
+                workspace:
+                    type: string
+                    description: Workspace/project ID
             required:
                 - id
-                - key
-                - value
+                - legacyId
+                - workspace
                 - environment
-                - projectId
-        Secret5:
+                - version
+                - type
+                - secretKey
+                - secretValue
+                - secretComment
+                - createdAt
+                - updatedAt
+                - secretValueHidden
+        SecretTag:
             type: object
             properties:
-                environment:
+                color:
                     type: string
-                    description: Environment slug
+                    description: Tag color
                 id:
                     type: string
-                    description: Secret ID
-                key:
+                    description: Tag ID (UUID)
+                name:
                     type: string
-                    description: Secret key
-                projectId:
+                    description: Tag name
+                slug:
                     type: string
-                    description: Project ID
-                value:
-                    type: string
-                    description: Secret value
+                    description: Tag slug
             required:
                 - id
-                - key
-                - value
-                - environment
-                - projectId
-        Secret6:
-            type: object
-            properties:
-                environment:
-                    type: string
-                    description: Environment slug
-                id:
-                    type: string
-                    description: Secret ID
-                key:
-                    type: string
-                    description: Secret key
-                projectId:
-                    type: string
-                    description: Project ID
-                value:
-                    type: string
-                    description: Secret value
-            required:
-                - id
-                - key
-                - value
-                - environment
-                - projectId
-        SecretResultCollection:
-            type: array
-            items:
-                $ref: '#/components/schemas/Secret6'
-        UpdateSecretRequestBody:
-            type: object
-            properties:
-                key:
-                    type: string
-                    description: Secret key
-                value:
-                    type: string
-                    description: Secret value
+                - slug
+                - name
     securitySchemes:
         identity_access_token_header_Authorization:
             type: http

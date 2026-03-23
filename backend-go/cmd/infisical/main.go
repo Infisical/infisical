@@ -16,8 +16,8 @@ import (
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/libs/logutil"
 	"github.com/infisical/api/internal/server"
+	"github.com/infisical/api/internal/server/api"
 	"github.com/infisical/api/internal/services"
-	"github.com/infisical/api/internal/services/shared"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func main() {
 	dbReport := bootstrap.CheckDBConnection(ctx, db)
 	dbReport.PrintReport(logger)
 
-	svc, err := services.NewRegistry(ctx, logger, db, shared.SharedServicesDeps{
+	registry, err := api.NewRegistry(ctx, logger, db, services.ServicesDeps{
 		Logger:   logger,
 		Config:   cfg,
 		DB:       db,
@@ -67,7 +67,7 @@ func main() {
 		return
 	}
 	// Create server.
-	srv := server.NewServer(svc, logger)
+	srv := server.NewServer(registry, logger)
 
 	// Create error channel for signal handling and server errors.
 	errc := make(chan error)

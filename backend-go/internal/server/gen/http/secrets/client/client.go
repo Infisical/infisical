@@ -18,29 +18,21 @@ import (
 
 // Client lists the secrets service endpoint HTTP clients.
 type Client struct {
-	// GetHealth Doer is the HTTP client used to make requests to the getHealth
-	// endpoint.
-	GetHealthDoer goahttp.Doer
+	// ListSecretsV4 Doer is the HTTP client used to make requests to the
+	// listSecretsV4 endpoint.
+	ListSecretsV4Doer goahttp.Doer
 
-	// CreateSecret Doer is the HTTP client used to make requests to the
-	// createSecret endpoint.
-	CreateSecretDoer goahttp.Doer
+	// GetSecretByNameV4 Doer is the HTTP client used to make requests to the
+	// getSecretByNameV4 endpoint.
+	GetSecretByNameV4Doer goahttp.Doer
 
-	// GetSecret Doer is the HTTP client used to make requests to the getSecret
-	// endpoint.
-	GetSecretDoer goahttp.Doer
+	// ListSecretsRawV3 Doer is the HTTP client used to make requests to the
+	// listSecretsRawV3 endpoint.
+	ListSecretsRawV3Doer goahttp.Doer
 
-	// UpdateSecret Doer is the HTTP client used to make requests to the
-	// updateSecret endpoint.
-	UpdateSecretDoer goahttp.Doer
-
-	// DeleteSecret Doer is the HTTP client used to make requests to the
-	// deleteSecret endpoint.
-	DeleteSecretDoer goahttp.Doer
-
-	// ListSecrets Doer is the HTTP client used to make requests to the listSecrets
-	// endpoint.
-	ListSecretsDoer goahttp.Doer
+	// GetSecretByNameRawV3 Doer is the HTTP client used to make requests to the
+	// getSecretByNameRawV3 endpoint.
+	GetSecretByNameRawV3Doer goahttp.Doer
 
 	// RestoreResponseBody controls whether the response bodies are reset after
 	// decoding so they can be read again.
@@ -62,48 +54,27 @@ func NewClient(
 	restoreBody bool,
 ) *Client {
 	return &Client{
-		GetHealthDoer:       doer,
-		CreateSecretDoer:    doer,
-		GetSecretDoer:       doer,
-		UpdateSecretDoer:    doer,
-		DeleteSecretDoer:    doer,
-		ListSecretsDoer:     doer,
-		RestoreResponseBody: restoreBody,
-		scheme:              scheme,
-		host:                host,
-		decoder:             dec,
-		encoder:             enc,
+		ListSecretsV4Doer:        doer,
+		GetSecretByNameV4Doer:    doer,
+		ListSecretsRawV3Doer:     doer,
+		GetSecretByNameRawV3Doer: doer,
+		RestoreResponseBody:      restoreBody,
+		scheme:                   scheme,
+		host:                     host,
+		decoder:                  dec,
+		encoder:                  enc,
 	}
 }
 
-// GetHealth returns an endpoint that makes HTTP requests to the secrets
-// service getHealth server.
-func (c *Client) GetHealth() goa.Endpoint {
+// ListSecretsV4 returns an endpoint that makes HTTP requests to the secrets
+// service listSecretsV4 server.
+func (c *Client) ListSecretsV4() goa.Endpoint {
 	var (
-		decodeResponse = DecodeGetHealthResponse(c.decoder, c.RestoreResponseBody)
+		encodeRequest  = EncodeListSecretsV4Request(c.encoder)
+		decodeResponse = DecodeListSecretsV4Response(c.decoder, c.RestoreResponseBody)
 	)
 	return func(ctx context.Context, v any) (any, error) {
-		req, err := c.BuildGetHealthRequest(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := c.GetHealthDoer.Do(req)
-		if err != nil {
-			return nil, goahttp.ErrRequestError("secrets", "getHealth", err)
-		}
-		return decodeResponse(resp)
-	}
-}
-
-// CreateSecret returns an endpoint that makes HTTP requests to the secrets
-// service createSecret server.
-func (c *Client) CreateSecret() goa.Endpoint {
-	var (
-		encodeRequest  = EncodeCreateSecretRequest(c.encoder)
-		decodeResponse = DecodeCreateSecretResponse(c.decoder, c.RestoreResponseBody)
-	)
-	return func(ctx context.Context, v any) (any, error) {
-		req, err := c.BuildCreateSecretRequest(ctx, v)
+		req, err := c.BuildListSecretsV4Request(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -111,23 +82,23 @@ func (c *Client) CreateSecret() goa.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.CreateSecretDoer.Do(req)
+		resp, err := c.ListSecretsV4Doer.Do(req)
 		if err != nil {
-			return nil, goahttp.ErrRequestError("secrets", "createSecret", err)
+			return nil, goahttp.ErrRequestError("secrets", "listSecretsV4", err)
 		}
 		return decodeResponse(resp)
 	}
 }
 
-// GetSecret returns an endpoint that makes HTTP requests to the secrets
-// service getSecret server.
-func (c *Client) GetSecret() goa.Endpoint {
+// GetSecretByNameV4 returns an endpoint that makes HTTP requests to the
+// secrets service getSecretByNameV4 server.
+func (c *Client) GetSecretByNameV4() goa.Endpoint {
 	var (
-		encodeRequest  = EncodeGetSecretRequest(c.encoder)
-		decodeResponse = DecodeGetSecretResponse(c.decoder, c.RestoreResponseBody)
+		encodeRequest  = EncodeGetSecretByNameV4Request(c.encoder)
+		decodeResponse = DecodeGetSecretByNameV4Response(c.decoder, c.RestoreResponseBody)
 	)
 	return func(ctx context.Context, v any) (any, error) {
-		req, err := c.BuildGetSecretRequest(ctx, v)
+		req, err := c.BuildGetSecretByNameV4Request(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -135,23 +106,23 @@ func (c *Client) GetSecret() goa.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.GetSecretDoer.Do(req)
+		resp, err := c.GetSecretByNameV4Doer.Do(req)
 		if err != nil {
-			return nil, goahttp.ErrRequestError("secrets", "getSecret", err)
+			return nil, goahttp.ErrRequestError("secrets", "getSecretByNameV4", err)
 		}
 		return decodeResponse(resp)
 	}
 }
 
-// UpdateSecret returns an endpoint that makes HTTP requests to the secrets
-// service updateSecret server.
-func (c *Client) UpdateSecret() goa.Endpoint {
+// ListSecretsRawV3 returns an endpoint that makes HTTP requests to the secrets
+// service listSecretsRawV3 server.
+func (c *Client) ListSecretsRawV3() goa.Endpoint {
 	var (
-		encodeRequest  = EncodeUpdateSecretRequest(c.encoder)
-		decodeResponse = DecodeUpdateSecretResponse(c.decoder, c.RestoreResponseBody)
+		encodeRequest  = EncodeListSecretsRawV3Request(c.encoder)
+		decodeResponse = DecodeListSecretsRawV3Response(c.decoder, c.RestoreResponseBody)
 	)
 	return func(ctx context.Context, v any) (any, error) {
-		req, err := c.BuildUpdateSecretRequest(ctx, v)
+		req, err := c.BuildListSecretsRawV3Request(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -159,23 +130,23 @@ func (c *Client) UpdateSecret() goa.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.UpdateSecretDoer.Do(req)
+		resp, err := c.ListSecretsRawV3Doer.Do(req)
 		if err != nil {
-			return nil, goahttp.ErrRequestError("secrets", "updateSecret", err)
+			return nil, goahttp.ErrRequestError("secrets", "listSecretsRawV3", err)
 		}
 		return decodeResponse(resp)
 	}
 }
 
-// DeleteSecret returns an endpoint that makes HTTP requests to the secrets
-// service deleteSecret server.
-func (c *Client) DeleteSecret() goa.Endpoint {
+// GetSecretByNameRawV3 returns an endpoint that makes HTTP requests to the
+// secrets service getSecretByNameRawV3 server.
+func (c *Client) GetSecretByNameRawV3() goa.Endpoint {
 	var (
-		encodeRequest  = EncodeDeleteSecretRequest(c.encoder)
-		decodeResponse = DecodeDeleteSecretResponse(c.decoder, c.RestoreResponseBody)
+		encodeRequest  = EncodeGetSecretByNameRawV3Request(c.encoder)
+		decodeResponse = DecodeGetSecretByNameRawV3Response(c.decoder, c.RestoreResponseBody)
 	)
 	return func(ctx context.Context, v any) (any, error) {
-		req, err := c.BuildDeleteSecretRequest(ctx, v)
+		req, err := c.BuildGetSecretByNameRawV3Request(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -183,33 +154,9 @@ func (c *Client) DeleteSecret() goa.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.DeleteSecretDoer.Do(req)
+		resp, err := c.GetSecretByNameRawV3Doer.Do(req)
 		if err != nil {
-			return nil, goahttp.ErrRequestError("secrets", "deleteSecret", err)
-		}
-		return decodeResponse(resp)
-	}
-}
-
-// ListSecrets returns an endpoint that makes HTTP requests to the secrets
-// service listSecrets server.
-func (c *Client) ListSecrets() goa.Endpoint {
-	var (
-		encodeRequest  = EncodeListSecretsRequest(c.encoder)
-		decodeResponse = DecodeListSecretsResponse(c.decoder, c.RestoreResponseBody)
-	)
-	return func(ctx context.Context, v any) (any, error) {
-		req, err := c.BuildListSecretsRequest(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-		err = encodeRequest(req, v)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := c.ListSecretsDoer.Do(req)
-		if err != nil {
-			return nil, goahttp.ErrRequestError("secrets", "listSecrets", err)
+			return nil, goahttp.ErrRequestError("secrets", "getSecretByNameRawV3", err)
 		}
 		return decodeResponse(resp)
 	}
