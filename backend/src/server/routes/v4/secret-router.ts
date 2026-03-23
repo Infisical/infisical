@@ -524,6 +524,24 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      if (
+        req.body.secretReminderRepeatDays !== undefined &&
+        req.body.secretReminderRepeatDays !== null &&
+        req.body.secretReminderRepeatDays > 0
+      ) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretReminderCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            secretId: secret.id,
+            reminderRepeatDays: req.body.secretReminderRepeatDays,
+            hasNote: !!req.body.secretReminderNote,
+            isOneTime: false
+          }
+        });
+      }
+
       return { secret };
     }
   });
@@ -673,6 +691,27 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           actorType: req.permission.type
         }
       });
+
+      // Only fire reminder event when secretReminderRepeatDays is explicitly provided and > 0,
+      // matching the service layer's truthy check that actually creates the reminder
+      if (
+        req.body.secretReminderRepeatDays !== undefined &&
+        req.body.secretReminderRepeatDays !== null &&
+        req.body.secretReminderRepeatDays > 0
+      ) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretReminderCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            secretId: secret.id,
+            reminderRepeatDays: req.body.secretReminderRepeatDays,
+            hasNote: !!req.body.secretReminderNote,
+            isOneTime: false
+          }
+        });
+      }
+
       return { secret };
     }
   });

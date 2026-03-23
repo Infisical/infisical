@@ -42,5 +42,6 @@ export enum CaCapability {
 export enum CaSigningConfigType {
   INTERNAL = "internal",
   MANUAL = "manual",
-  VENAFI = "venafi"
+  VENAFI = "venafi",
+  AZURE_ADCS = "azure-ad-cs"
 }

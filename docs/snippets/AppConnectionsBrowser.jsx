@@ -429,6 +429,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect your Azure Entra ID to manage SCIM tokens with Infisical.",
       category: "Identity & Auth",
+    },
+    {
+      name: "Infisical",
+      slug: "external-infisical",
+      path: "/integrations/app-connections/external-infisical",
+      description:
+        "Learn how to connect a remote Infisical instance to sync secrets between Infisical projects.",
+      category: "Security",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

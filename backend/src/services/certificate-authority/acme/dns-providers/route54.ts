@@ -16,7 +16,7 @@ export const route53InsertTxtRecord = async (
   const route53Client = new Route53Client({
     sha256: CustomAWSHasher,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
-    credentials: config.credentials!,
+    credentials: config.credentials,
     region: config.region
   });
 
@@ -49,7 +49,7 @@ export const route53DeleteTxtRecord = async (
 ) => {
   const config = await getAwsConnectionConfig(connection, AWSRegion.US_WEST_1); // REGION is irrelevant because Route53 is global
   const route53Client = new Route53Client({
-    credentials: config.credentials!,
+    credentials: config.credentials,
     region: config.region
   });
 

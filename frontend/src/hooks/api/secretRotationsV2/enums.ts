@@ -14,7 +14,8 @@ export enum SecretRotation {
   UnixLinuxLocalAccount = "unix-linux-local-account",
   DbtServiceToken = "dbt-service-token",
   WindowsLocalAccount = "windows-local-account",
-  OpenRouterApiKey = "open-router-api-key"
+  OpenRouterApiKey = "open-router-api-key",
+  HpIloLocalAccount = "hp-ilo-local-account"
 }
 
 export enum SecretRotationStatus {

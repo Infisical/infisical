@@ -2,7 +2,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 type THealthAlertServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -24,13 +24,6 @@ export const healthAlertServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.HealthAlert,
-      QueueJobs.HealthAlert,
-      { pattern: "*/5 * * * *", utc: true },
-      QueueName.HealthAlert // job id
-    );
-
     queueService.start(QueueName.HealthAlert, async () => {
       try {
         logger.info(`${QueueName.HealthAlert}: health check alert task started`);
@@ -43,13 +36,12 @@ export const healthAlertServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.HealthAlert, QueueJobs.HealthAlert, undefined, {
-      jobId: QueueJobs.HealthAlert,
-      repeat: {
-        pattern: "*/5 * * * *",
-        key: QueueJobs.HealthAlert
-      }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.HealthAlert,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.HealthAlert}`,
+      { pattern: "*/5 * * * *" },
+      { name: QueueJobs.HealthAlert }
+    );
   };
 
   return {

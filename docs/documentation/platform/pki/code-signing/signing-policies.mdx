@@ -1,0 +1,88 @@
+---
+title: "Signing Policies"
+sidebarTitle: "Signing Policies"
+description: "Learn how to configure signing policies for code signing operations."
+---
+
+In Infisical, code signing policies add a human review step before signing operations can be performed, helping organizations enforce separation of duties and maintain compliance for software supply chain security.
+
+## When to Use Signing Policies
+
+Signing policies are recommended when:
+
+- **Separation of duties is required**: Your organization requires different people to request and authorize code signing.
+- **Release signing needs oversight**: Signing production releases, firmware, or customer-facing artifacts requires additional review.
+- **Compliance mandates review**: Regulatory frameworks or internal policies require documented approval before signing.
+- **Preventing unauthorized signing**: You want to ensure artifacts are only signed after proper validation.
+
+## Policy Constraints
+
+Each signing policy must define at least one constraint that controls the scope of the signing grant issued upon approval. Constraints can be combined to enforce both time and count limits simultaneously.
+
+### Max Window Duration
+
+Limits how long a signing grant remains valid. The requester specifies a **Valid From** and **Valid Until** when requesting access, and the policy enforces a maximum duration.
+
+This is useful for release cycles where a team needs signing access during a defined window (e.g., a 4-hour deployment).
+
+### Max Signings
+
+Limits the total number of signing operations a grant allows. Once the quota is exhausted, the grant expires automatically.
+
+This is useful for CI pipelines that sign a known number of artifacts per build (e.g., 10 JARs per release).
+
+### Combining Constraints
+
+You can configure both constraints on a single policy. For example, a policy with a **4-hour max window** and **10 max signings** would grant access that expires after 4 hours or 10 signing operations, whichever comes first.
+
+<Note>
+  At least one constraint is required. If you only need single-operation approvals, set **Max Signings** to 1.
+</Note>
+
+## Creating a Signing Policy
+
+A signing policy defines the workflow that must be completed before signing access is granted for a specific signer.
+
+Key features of signing policies include:
+
+- **Multi-step workflows**: Configure sequential approval steps where each step must be completed before the next begins.
+- **Flexible approvers**: Assign individual users or groups as eligible approvers for each step.
+- **Required approval count**: Specify how many approvals are needed per step (e.g., require 2 out of 5 eligible approvers).
+- **Request expiration**: Set a maximum time-to-live (TTL) for pending requests.
+- **Constraints**: Configure max window duration or max signings (or both) to control the scope of each grant.
+
+To create a signing policy, head to your Certificate Management Project > **Code Signing > Approvals > Signing Policies** and press **Create Policy**.
+
+<Steps>
+  <Step title="Configuring the policy">
+    Configure the basic policy settings:
+
+    - **Policy Name**: A descriptive name for the policy such as `release-signing-approval`.
+    - **Max. Window Duration**: The maximum time window a requester can ask for (e.g., `4h`, `1d`).
+    - **Max. Signings**: The maximum number of signing operations a requester can ask for. Set to 1 for single-operation approvals.
+    - **Max. Request TTL**: The maximum time a request can remain pending before it expires (optional).
+    - **Bypass approval for machine identities**: When enabled, machine identities can sign without requiring approval.
+
+    ![Create signing policy - configuration](/images/platform/pki/code-signing/approval-policy-create.png)
+  </Step>
+  <Step title="Configuring the approval sequence">
+    Configure the approval steps. Each step defines who can approve and how many approvals are required:
+
+    - **Step Name**: An optional name for the step such as `Security Team Review`.
+    - **Approvers**: The individual users or groups who are eligible to approve this step.
+    - **Required Approvals**: The number of approvals needed to complete this step.
+
+    You can add multiple steps to create a sequential approval workflow. For example:
+    1. **Team Lead Review**: Requires 1 approval from the team leads group
+    2. **Security Review**: Requires 2 approvals from the security team
+
+    Each step must be completed in order before the signing grant is issued.
+
+    ![Create signing policy - approval sequence](/images/platform/pki/code-signing/approval-policy-steps.png)
+  </Step>
+  <Step title="Reviewing and creating the policy">
+    Review your policy configuration and press **Create** to save the policy.
+
+    ![Create signing policy - review](/images/platform/pki/code-signing/approval-policy-review.png)
+  </Step>
+</Steps>

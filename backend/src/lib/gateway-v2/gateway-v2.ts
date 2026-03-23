@@ -65,12 +65,12 @@ export const createRelayConnection = async ({
       });
 
       socket.on("timeout", () => {
-        logger.error(`TLS connection timeout after 30 seconds`);
+        logger.error(`TLS connection timeout after 120 seconds`);
         socket.destroy();
         reject(new Error("TLS connection timeout"));
       });
 
-      socket.setTimeout(30000);
+      socket.setTimeout(100000);
     } catch (error: unknown) {
       reject(new Error(`Failed to create TLS connection: ${error instanceof Error ? error.message : String(error)}`));
     }
@@ -122,7 +122,7 @@ export const createGatewayConnection = async (
         reject(new Error(`Failed to establish gateway mTLS: ${err.message}`));
       });
 
-      gatewaySocket.setTimeout(30000);
+      gatewaySocket.setTimeout(120000);
       gatewaySocket.on("timeout", () => {
         gatewaySocket.destroy();
         reject(new Error("Gateway connection timeout"));

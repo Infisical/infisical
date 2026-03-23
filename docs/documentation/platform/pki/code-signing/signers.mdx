@@ -1,0 +1,108 @@
+---
+title: "Signers"
+sidebarTitle: "Signers"
+description: "Learn how to create and manage code-signing identities."
+---
+
+In Infisical, a signer is a named code-signer bound to an X.509 certificate with the `codeSigning` extended key usage (EKU). Each signer represents a signing capability within a project, for example `release-signer` for production releases or `ci-signer` for CI pipeline artifacts.
+
+Private keys never leave the Infisical server. When a signing operation is requested, the server retrieves the key, computes the signature, and returns only the signature bytes. This ensures that signing keys cannot be exfiltrated from build environments.
+
+## Key Characteristics
+
+- **Bound to a certificate**: Every signer must be linked to a certificate that has the `codeSigning` EKU.
+- **Optional signing policy**: A signer can optionally be associated with a [signing policy](/documentation/platform/pki/code-signing/signing-policies) that governs who can sign and under what conditions. Without a policy, signing is allowed without approval.
+- **Supports RSA and ECDSA**: Signers support RSA (2048, 3072, 4096-bit) and ECDSA (P-256, P-384, P-521) key types depending on the certificate.
+- **Tracks signing history**: Every signing operation is recorded with actor, algorithm, data hash, and grant information.
+
+## Guide to Creating a Signer
+
+<Steps>
+  <Step title="Issuing a code-signing certificate">
+    Before creating a signer, you need a certificate with the `codeSigning` extended key usage. Follow the [guide to issuing certificates](/documentation/platform/pki/certificates/certificates#guide-to-issuing-certificates) and specify `codeSigning` in the extended key usage field.
+
+    <Note>
+      Only certificates with the `codeSigning` extended key usage will be available when creating a signer. If you don't see your certificate, verify that it was issued with the correct EKU.
+    </Note>
+  </Step>
+  <Step title="(Optional) Creating a signing policy">
+    If you want to require approval before signing, head to **Code Signing > Approvals > Signing Policies** and press **Create Policy**. See [Signing Policies](/documentation/platform/pki/code-signing/signing-policies) for details. Without a policy, any authorized user or identity can sign immediately.
+  </Step>
+  <Step title="Creating the signer">
+    Head to your Certificate Management Project > **Code Signing > Signers** and press **Create Signer**.
+
+    ![Create signer modal](/images/platform/pki/code-signing/signer-create.png)
+
+    Fill in the following fields:
+
+    - **Name**: A slug-friendly name for the signer such as `release-signer`.
+    - **Description**: An optional description of the signer's purpose.
+    - **Certificate**: The code-signing certificate to bind to this signer.
+    - **Signing Policy** (optional): The signing policy that governs signing access for this signer. If omitted, signing is allowed without approval.
+
+    Press **Create** to save the signer.
+  </Step>
+</Steps>
+
+## Supported Signing Algorithms
+
+The available signing algorithms depend on the certificate's key type:
+
+### RSA
+
+| Algorithm | Description |
+|-----------|-------------|
+| `RSASSA_PKCS1_V1_5_SHA256` | RSA PKCS#1 v1.5 with SHA-256 |
+| `RSASSA_PKCS1_V1_5_SHA384` | RSA PKCS#1 v1.5 with SHA-384 |
+| `RSASSA_PKCS1_V1_5_SHA512` | RSA PKCS#1 v1.5 with SHA-512 |
+| `RSASSA_PSS_SHA256` | RSA-PSS with SHA-256 |
+| `RSASSA_PSS_SHA384` | RSA-PSS with SHA-384 |
+| `RSASSA_PSS_SHA512` | RSA-PSS with SHA-512 |
+
+### ECDSA
+
+| Algorithm | Description |
+|-----------|-------------|
+| `ECDSA_SHA256` | ECDSA with SHA-256 |
+| `ECDSA_SHA384` | ECDSA with SHA-384 |
+| `ECDSA_SHA512` | ECDSA with SHA-512 |
+
+## Signing via API
+
+You can also sign data programmatically by making an API request to the Sign endpoint:
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/pki/signers/{signerId}/sign \
+  --header 'Authorization: Bearer <access-token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "data": "<base64-encoded-data>",
+    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA256",
+    "isDigest": true,
+    "clientMetadata": {
+      "tool": "custom-pipeline",
+      "hostname": "build-server-1"
+    }
+  }'
+```
+
+<Note>
+  - The `data` field must be base64-encoded and no larger than 128 bytes (the digest of what you want to sign).
+  - Set `isDigest` to `true` if the data is already a hash digest, or `false` if you want the server to hash it.
+  - The `clientMetadata` field is optional and recorded in the signing operation audit log.
+</Note>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I use the same certificate for multiple signers?">
+    Yes. Multiple signers can reference the same certificate, each with a different signing policy. This is useful if you want different approval workflows for different teams using the same signing key.
+  </Accordion>
+  <Accordion title="What happens if my certificate expires?">
+    Signing requests will be rejected if the signer's certificate has expired. You should issue a new certificate and update the signer's certificate binding before expiry.
+  </Accordion>
+  <Accordion title="Can machine identities sign without human approval?">
+    Yes, depending on the signing policy configuration. If the policy allows machine identity bypass, machine identities can sign without human intervention after obtaining a grant.
+  </Accordion>
+</AccordionGroup>

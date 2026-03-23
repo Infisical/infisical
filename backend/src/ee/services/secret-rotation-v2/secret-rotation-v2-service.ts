@@ -87,6 +87,9 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
 import { dbtServiceTokenRotationFactory } from "./dbt-service-token/dbt-service-token-rotation-fns";
+import { hpIloRotationFactory } from "./hp-ilo-rotation/hp-ilo-rotation-fns";
+import { HpIloRotationMethod } from "./hp-ilo-rotation/hp-ilo-rotation-schemas";
+import { THpIloRotation, THpIloRotationGeneratedCredentials } from "./hp-ilo-rotation/hp-ilo-rotation-types";
 import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb-credentials-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-router-api-key-rotation-fns";
@@ -105,10 +108,11 @@ import {
   TWindowsLocalAccountRotationGeneratedCredentials
 } from "./windows-local-account-rotation/windows-local-account-rotation-types";
 
-type TLocalAccountRotation = TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation;
+type TLocalAccountRotation = TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation | THpIloRotation;
 type TLocalAccountRotationGeneratedCredentials =
   | TUnixLinuxLocalAccountRotationGeneratedCredentials
-  | TWindowsLocalAccountRotationGeneratedCredentials;
+  | TWindowsLocalAccountRotationGeneratedCredentials
+  | THpIloRotationGeneratedCredentials;
 
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
@@ -163,7 +167,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.UnixLinuxLocalAccount]: unixLinuxLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -1443,7 +1448,13 @@ export const secretRotationV2ServiceFactory = ({
     {
       rotationId,
       type
-    }: { rotationId: string; type: SecretRotation.UnixLinuxLocalAccount | SecretRotation.WindowsLocalAccount },
+    }: {
+      rotationId: string;
+      type:
+        | SecretRotation.UnixLinuxLocalAccount
+        | SecretRotation.WindowsLocalAccount
+        | SecretRotation.HpIloLocalAccount;
+    },
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -1463,10 +1474,11 @@ export const secretRotationV2ServiceFactory = ({
 
     if (
       secretRotation.type !== SecretRotation.UnixLinuxLocalAccount &&
-      secretRotation.type !== SecretRotation.WindowsLocalAccount
+      secretRotation.type !== SecretRotation.WindowsLocalAccount &&
+      secretRotation.type !== SecretRotation.HpIloLocalAccount
     )
       throw new BadRequestError({
-        message: `Reconcile operation is only supported for Unix/Linux Local Account and Windows Local Account rotations`
+        message: `Reconcile operation is only supported for Unix/Linux Local Account, Windows Local Account, and HP iLO Local Account rotations`
       });
 
     const { projectId, environment, folder, connection, encryptedGeneratedCredentials, parameters, folderId } =
@@ -1488,20 +1500,24 @@ export const secretRotationV2ServiceFactory = ({
 
     const localAccountParams = parameters as TLocalAccountRotation["parameters"];
 
-    const loginAsTargetMethod =
-      type === SecretRotation.UnixLinuxLocalAccount
-        ? UnixLinuxLocalAccountRotationMethod.LoginAsTarget
-        : WindowsLocalAccountRotationMethod.LoginAsTarget;
+    let loginAsTargetMethod;
+    let loginAsRootMethod;
 
-    const loginAsRootMethod =
-      type === SecretRotation.UnixLinuxLocalAccount
-        ? UnixLinuxLocalAccountRotationMethod.LoginAsRoot
-        : WindowsLocalAccountRotationMethod.LoginAsRoot;
+    if (type === SecretRotation.UnixLinuxLocalAccount) {
+      loginAsTargetMethod = UnixLinuxLocalAccountRotationMethod.LoginAsTarget;
+      loginAsRootMethod = UnixLinuxLocalAccountRotationMethod.LoginAsRoot;
+    } else if (type === SecretRotation.WindowsLocalAccount) {
+      loginAsTargetMethod = WindowsLocalAccountRotationMethod.LoginAsTarget;
+      loginAsRootMethod = WindowsLocalAccountRotationMethod.LoginAsRoot;
+    } else {
+      loginAsTargetMethod = HpIloRotationMethod.LoginAsTarget;
+      loginAsRootMethod = HpIloRotationMethod.LoginAsRoot;
+    }
 
     // Only allow reconcile for login-as-target mode
     if (localAccountParams.rotationMethod !== loginAsTargetMethod) {
       throw new BadRequestError({
-        message: `Reconcile operation is only supported for login-as-target mode Unix/Linux Local Account and Windows Local Account rotations`
+        message: `Reconcile operation is only supported for login-as-target mode Unix/Linux Local Account, Windows Local Account, and HP iLO Local Account rotations`
       });
     }
 

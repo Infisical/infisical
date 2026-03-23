@@ -32,6 +32,7 @@ import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollm
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import {
   EnrollmentType,
@@ -238,6 +239,7 @@ type TCertificateProfileServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
 };
 
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
@@ -278,7 +280,8 @@ export const certificateProfileServiceFactory = ({
   externalCertificateAuthorityDAL,
   permissionService,
   kmsService,
-  projectDAL
+  projectDAL,
+  resourceMetadataDAL
 }: TCertificateProfileServiceFactoryDep) => {
   const createProfile = async ({
     actor,
@@ -1054,12 +1057,16 @@ export const certificateProfileServiceFactory = ({
       return null;
     }
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -1067,8 +1074,9 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 

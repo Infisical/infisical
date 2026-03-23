@@ -136,7 +136,6 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
     handleSubmit,
     control,
     watch,
-    setValue,
     formState: { isSubmitting, isDirty }
   } = form;
 
@@ -230,32 +229,40 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
           )}
         />
 
-        <Controller
-          name="credentials.tenantId"
-          control={control}
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
-              isError={Boolean(error?.message)}
-              label="Tenant ID"
-              isOptional={selectedMethod === AzureKeyVaultConnectionMethod.OAuth}
-              errorText={error?.message}
-            >
-              <Input
-                {...field}
-                placeholder="00000000-0000-0000-0000-000000000000"
-                onChange={(e) => {
-                  field.onChange(e.target.value);
-                  setValue("credentials.tenantId", e.target.value);
-                }}
-              />
-            </FormControl>
-          )}
-        />
+        {selectedMethod === AzureKeyVaultConnectionMethod.OAuth && (
+          <Controller
+            name="tenantId"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
+                isError={Boolean(error?.message)}
+                label="Tenant ID"
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
+              </FormControl>
+            )}
+          />
+        )}
 
         {/* Client Secret-specific fields */}
         {selectedMethod === AzureKeyVaultConnectionMethod.ClientSecret && (
           <>
+            <Controller
+              name="credentials.tenantId"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
+                  isError={Boolean(error?.message)}
+                  label="Tenant ID"
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
+                </FormControl>
+              )}
+            />
             <Controller
               name="credentials.clientId"
               control={control}
@@ -312,7 +319,12 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
             type="submit"
             colorSchema="secondary"
             isLoading={isSubmitting || isRedirecting}
-            isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
+            isDisabled={
+              isSubmitting ||
+              (!isUpdate && !isDirty && selectedMethod !== AzureKeyVaultConnectionMethod.OAuth) ||
+              isMissingConfig ||
+              isRedirecting
+            }
           >
             {isUpdate ? "Reconnect to Azure" : "Connect to Azure"}
           </Button>

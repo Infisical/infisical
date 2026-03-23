@@ -12,8 +12,12 @@ import {
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
-import { EnforcementLevel } from "@app/lib/types";
+import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { AuthMethod } from "@app/services/auth/auth-type";
+import { WebhookType } from "@app/services/webhook/webhook-types";
+
+export type HubSpotSignupMethod = AuthMethod | "invite";
 
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
@@ -69,6 +73,14 @@ export enum PostHogEventTypes {
   DynamicSecretDeleted = "Dynamic Secret Deleted",
   DynamicSecretLeaseCreated = "Dynamic Secret Lease Created",
   DynamicSecretLeaseRenewed = "Dynamic Secret Lease Renewed",
+  SecretFolderCreated = "Secret Folder Created",
+  SecretImportCreated = "Secret Import Created",
+  SecretShared = "Secret Shared",
+  SharedSecretViewed = "Shared Secret Viewed",
+  SecretRollbackPerformed = "Secret Rollback Performed",
+  WebhookCreated = "Webhook Created",
+  SecretReminderCreated = "Secret Reminder Created",
+  EnvironmentCreated = "Environment Created",
   SSOConfigured = "SSO Configured",
   AppConnectionCreated = "App Connection Created",
   AppConnectionDeleted = "App Connection Deleted",
@@ -383,6 +395,85 @@ export type TNotificationUpdatedEvent = {
   };
 };
 
+export type TSecretFolderCreatedEvent = {
+  event: PostHogEventTypes.SecretFolderCreated;
+  properties: {
+    projectId: string;
+    environment: string;
+    folderPath?: string;
+    folderId?: string;
+    folderName?: string;
+  };
+};
+
+export type TSecretImportCreatedEvent = {
+  event: PostHogEventTypes.SecretImportCreated;
+  properties: {
+    projectId: string;
+    importFromEnvironment: string;
+    importFromSecretPath: string;
+    importToEnvironment: string;
+    importToSecretPath: string;
+  };
+};
+
+export type TSecretSharedEvent = {
+  event: PostHogEventTypes.SecretShared;
+  properties: {
+    accessType: SecretSharingAccessType;
+    expiresAt: string;
+    hasPassword: boolean;
+  };
+};
+
+export type TSharedSecretViewedEvent = {
+  event: PostHogEventTypes.SharedSecretViewed;
+  properties: {
+    sharedSecretId: string;
+    accessType: SecretSharingAccessType;
+  };
+};
+
+export type TSecretRollbackPerformedEvent = {
+  event: PostHogEventTypes.SecretRollbackPerformed;
+  properties: {
+    projectId: string;
+    environment: string;
+    commitId: string;
+    deepRollback: boolean;
+    totalChanges: number;
+  };
+};
+
+export type TWebhookCreatedEvent = {
+  event: PostHogEventTypes.WebhookCreated;
+  properties: {
+    projectId: string;
+    environment: string;
+    webhookId: string;
+    type: WebhookType;
+  };
+};
+
+export type TSecretReminderCreatedEvent = {
+  event: PostHogEventTypes.SecretReminderCreated;
+  properties: {
+    secretId: string;
+    reminderRepeatDays?: number | null;
+    hasNote: boolean;
+    isOneTime: boolean;
+  };
+};
+
+export type TEnvironmentCreatedEvent = {
+  event: PostHogEventTypes.EnvironmentCreated;
+  properties: {
+    projectId: string;
+    environmentName: string;
+    environmentSlug: string;
+  };
+};
+
 export type TSecretApprovalPolicyCreatedEvent = {
   event: PostHogEventTypes.SecretApprovalPolicyCreated;
   properties: {
@@ -663,6 +754,14 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TDynamicSecretDeletedEvent
   | TDynamicSecretLeaseCreatedEvent
   | TDynamicSecretLeaseRenewedEvent
+  | TSecretFolderCreatedEvent
+  | TSecretImportCreatedEvent
+  | TSecretSharedEvent
+  | TSharedSecretViewedEvent
+  | TSecretRollbackPerformedEvent
+  | TWebhookCreatedEvent
+  | TSecretReminderCreatedEvent
+  | TEnvironmentCreatedEvent
   | TSSOConfiguredEvent
   | TAppConnectionCreatedEvent
   | TAppConnectionDeletedEvent

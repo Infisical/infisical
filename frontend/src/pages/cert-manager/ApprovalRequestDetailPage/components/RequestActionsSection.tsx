@@ -108,8 +108,8 @@ export const RequestActionsSection = ({ request }: Props) => {
           <h3 className="font-medium text-mineshaft-100">Action Required</h3>
         </div>
         <p className="text-sm text-mineshaft-300">
-          You are an approver for this certificate request. Please review the details carefully
-          before making your decision.
+          You are an approver for this request. Please review the details carefully before making
+          your decision.
         </p>
         <div className="flex flex-col gap-2">
           <Button

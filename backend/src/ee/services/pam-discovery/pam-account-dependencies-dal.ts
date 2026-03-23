@@ -13,10 +13,12 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
   const findByAccountId = async (accountId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.PamAccountDependency)
-        .where({ accountId })
-        .orderBy("name", "asc");
+        .where(`${TableName.PamAccountDependency}.accountId`, accountId)
+        .leftJoin(TableName.PamResource, `${TableName.PamAccountDependency}.resourceId`, `${TableName.PamResource}.id`)
+        .select(`${TableName.PamAccountDependency}.*`, `${TableName.PamResource}.name as resourceName`)
+        .orderBy(`${TableName.PamAccountDependency}.name`, "asc");
 
-      return docs as TPamAccountDependencies[];
+      return docs as (TPamAccountDependencies & { resourceName: string | null })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PAM account dependencies by account ID" });
     }
@@ -25,12 +27,42 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
   const findByResourceId = async (resourceId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.PamAccountDependency)
-        .where({ resourceId })
-        .orderBy("name", "asc");
+        .where(`${TableName.PamAccountDependency}.resourceId`, resourceId)
+        .leftJoin(TableName.PamAccount, `${TableName.PamAccountDependency}.accountId`, `${TableName.PamAccount}.id`)
+        .select(`${TableName.PamAccountDependency}.*`, `${TableName.PamAccount}.name as accountName`)
+        .orderBy(`${TableName.PamAccountDependency}.name`, "asc");
 
-      return docs as TPamAccountDependencies[];
+      return docs as (TPamAccountDependencies & { accountName: string | null })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PAM account dependencies by resource ID" });
+    }
+  };
+
+  const countByAccountIds = async (accountIds: string[], tx?: Knex) => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.PamAccountDependency)
+        .whereIn("accountId", accountIds)
+        .groupBy("accountId")
+        .select("accountId")
+        .count("*", { as: "count" });
+
+      return Object.fromEntries(rows.map((r) => [r.accountId, Number(r.count)])) as Record<string, number>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count PAM account dependencies by account IDs" });
+    }
+  };
+
+  const countByResourceIds = async (resourceIds: string[], tx?: Knex) => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.PamAccountDependency)
+        .whereIn("resourceId", resourceIds)
+        .groupBy("resourceId")
+        .select("resourceId")
+        .count("*", { as: "count" });
+
+      return Object.fromEntries(rows.map((r) => [r.resourceId, Number(r.count)])) as Record<string, number>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count PAM account dependencies by resource IDs" });
     }
   };
 
@@ -53,18 +85,18 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
       const [doc] = await knex(TableName.PamAccountDependency)
         .insert({
           ...data,
-          isEnabled: false
+          isRotationSyncEnabled: true
         })
         .onConflict(["accountId", "resourceId", "dependencyType", "name"])
         .merge({
           displayName: data.displayName,
           state: data.state,
           data: data.data
-          // Note: isEnabled is NOT merged - preserves admin's explicit enable/disable
+          // Note: isRotationSyncEnabled is NOT merged - preserves admin's explicit enable/disable
         })
-        .returning("*");
+        .returning(["*", knex.raw('(xmax = 0) as "isNew"')]);
 
-      return doc;
+      return doc as TPamAccountDependencies & { isNew: boolean };
     } catch (error) {
       throw new DatabaseError({ error, name: "Upsert PAM account dependency" });
     }
@@ -74,6 +106,8 @@ export const pamAccountDependenciesDALFactory = (db: TDbClient) => {
     ...orm,
     findByAccountId,
     findByResourceId,
+    countByAccountIds,
+    countByResourceIds,
     upsertDependency
   };
 };

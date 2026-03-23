@@ -5,21 +5,22 @@ import { cn } from "../../utils";
 export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unknown>> = {
   control: ({ isFocused }) =>
     cn(
-      "!min-h-9 w-full cursor-pointer rounded-md border bg-transparent py-1 pr-1 pl-2 text-sm",
+      "!min-h-9 w-full cursor-pointer overflow-hidden rounded-md border bg-transparent py-1 pr-1 pl-2 text-sm",
       isFocused ? "border-ring ring-[3px] ring-ring/50" : "border-border hover:border-foreground/20"
     ),
   placeholder: () => "text-muted text-sm",
   input: () => "text-foreground text-sm",
+  singleValue: () => "truncate pr-2",
   valueContainer: () =>
     "gap-1 max-h-40 !pointer-events-auto !overflow-y-auto thin-scrollbar flex-wrap",
   multiValue: () => "bg-foreground/10 rounded px-1.5 py-0.5 gap-1 text-xs items-center",
   multiValueLabel: () => "text-foreground/85",
   multiValueRemove: () => "[&>svg]:size-3 hover:text-danger text-muted cursor-pointer ml-0.5",
-  menu: () => "my-2 rounded-[6px] border border-border bg-popover p-1 shadow-md",
+  menu: () => "my-2 w-full rounded-[6px] border border-border bg-popover p-1 shadow-md",
   menuList: () => "max-h-48 text-sm overflow-y-auto thin-scrollbar",
   option: ({ isFocused }) =>
     cn(
-      "cursor-pointer rounded-sm px-2 py-1.5 text-sm text-foreground",
+      "cursor-pointer rounded-sm truncate px-2 py-1.5 text-sm text-foreground",
       isFocused && "bg-foreground/5"
     ),
   dropdownIndicator: () =>
@@ -57,7 +58,7 @@ export const getSelectClassNames = (
   ...selectClassNames,
   control: ({ isFocused }) =>
     cn(
-      "!min-h-9 w-full cursor-pointer rounded-md border bg-transparent py-1 pr-1 pl-2 text-sm",
+      "!min-h-9 w-full cursor-pointer overflow-hidden rounded-md border bg-transparent py-1 pr-1 pl-2 text-sm",
       // eslint-disable-next-line no-nested-ternary
       isError
         ? isFocused

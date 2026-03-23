@@ -309,7 +309,7 @@ describe("Validate Permission Boundary: Checking Parent $eq operator", () => {
           action: ["create"],
           subject: "secrets",
           conditions: {
-            environment: { [PermissionConditionOperators.$GLOB]: "staging" }
+            environment: { [PermissionConditionOperators.$NEQ]: "staging" }
           }
         }
       ])
@@ -317,6 +317,81 @@ describe("Validate Permission Boundary: Checking Parent $eq operator", () => {
   ])("Child $operator falsy cases", ({ childPermission }) => {
     const permissionBoundary = validatePermissionBoundary(parentPermission, childPermission);
     expect(permissionBoundary.isValid).toBeFalsy();
+  });
+});
+
+describe("Validate Permission Boundary: $ne child cannot bypass $eq/$in parent", () => {
+  test("Child $ne should not be subset of parent $eq with different value", () => {
+    // Parent: can read secrets ONLY in "qa"
+    // Child: can read secrets in ALL environments EXCEPT "dev" — much broader
+    const parentPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          environment: { [PermissionConditionOperators.$EQ]: "qa" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          environment: { [PermissionConditionOperators.$NEQ]: "dev" }
+        }
+      }
+    ]);
+    const result = validatePermissionBoundary(parentPermission, childPermission);
+    expect(result.isValid).toBeFalsy();
+  });
+
+  test("Child $ne should not be subset of parent $eq with same value", () => {
+    // Parent: only "dev", Child: everything except "dev" — completely disjoint
+    const parentPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          environment: { [PermissionConditionOperators.$EQ]: "dev" }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: {
+          environment: { [PermissionConditionOperators.$NEQ]: "dev" }
+        }
+      }
+    ]);
+    const result = validatePermissionBoundary(parentPermission, childPermission);
+    expect(result.isValid).toBeFalsy();
+  });
+
+  test("Child $ne should not be subset of parent $in when value is outside $in list", () => {
+    // Parent: only ["dev", "staging"], Child: everything except "prod" — much broader
+    const parentPermission = createMongoAbility([
+      {
+        action: ["edit"],
+        subject: "secrets",
+        conditions: {
+          environment: { [PermissionConditionOperators.$IN]: ["dev", "staging"] }
+        }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["edit"],
+        subject: "secrets",
+        conditions: {
+          environment: { [PermissionConditionOperators.$NEQ]: "prod" }
+        }
+      }
+    ]);
+    const result = validatePermissionBoundary(parentPermission, childPermission);
+    expect(result.isValid).toBeFalsy();
   });
 });
 

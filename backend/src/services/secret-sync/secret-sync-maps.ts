@@ -38,7 +38,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Chef]: "Chef",
   [SecretSync.OctopusDeploy]: "Octopus Deploy",
   [SecretSync.CircleCI]: "CircleCI",
-  [SecretSync.AzureEntraIdScim]: "Azure Entra ID SCIM"
+  [SecretSync.AzureEntraIdScim]: "Azure Entra ID SCIM",
+  [SecretSync.ExternalInfisical]: "Infisical"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -77,7 +78,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Chef]: AppConnection.Chef,
   [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
   [SecretSync.CircleCI]: AppConnection.CircleCI,
-  [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId
+  [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
+  [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -116,7 +118,8 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Chef]: SecretSyncPlanType.Enterprise,
   [SecretSync.OctopusDeploy]: SecretSyncPlanType.Regular,
   [SecretSync.CircleCI]: SecretSyncPlanType.Regular,
-  [SecretSync.AzureEntraIdScim]: SecretSyncPlanType.Regular
+  [SecretSync.AzureEntraIdScim]: SecretSyncPlanType.Regular,
+  [SecretSync.ExternalInfisical]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -164,7 +167,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Chef]: [],
   [SecretSync.OctopusDeploy]: [],
   [SecretSync.CircleCI]: [],
-  [SecretSync.AzureEntraIdScim]: []
+  [SecretSync.AzureEntraIdScim]: [],
+  [SecretSync.ExternalInfisical]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
@@ -229,5 +233,14 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Chef]: defaultDuplicateCheck,
   [SecretSync.OctopusDeploy]: defaultDuplicateCheck,
   [SecretSync.CircleCI]: defaultDuplicateCheck,
-  [SecretSync.AzureEntraIdScim]: defaultDuplicateCheck
+  [SecretSync.AzureEntraIdScim]: defaultDuplicateCheck,
+  [SecretSync.ExternalInfisical]: defaultDuplicateCheck
 };
+
+/**
+ * Destinations that require a daily retry when their last sync has failed.
+ * These providers may be unavailable due to network partitions or temporary
+ * outages that outlast the normal BullMQ retry window, so the resource-cleanup
+ * queue re-enqueues them once per day until they succeed.
+ */
+export const SECRET_SYNC_DAILY_RETRY_DESTINATIONS = new Set<SecretSync>([SecretSync.ExternalInfisical]);

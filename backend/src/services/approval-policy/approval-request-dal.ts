@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TApprovalRequestApprovals } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -182,6 +184,15 @@ export type TApprovalRequestGrantsDALFactory = ReturnType<typeof approvalRequest
 export const approvalRequestGrantsDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalRequestGrants);
 
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    try {
+      const grant = await tx(TableName.ApprovalRequestGrants).forUpdate().where({ id }).first();
+      return grant || null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindApprovalRequestGrantByIdForUpdate" });
+    }
+  };
+
   const markExpiredGrants = async () => {
     try {
       const result = await db(TableName.ApprovalRequestGrants)
@@ -196,7 +207,7 @@ export const approvalRequestGrantsDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, markExpiredGrants };
+  return { ...orm, findByIdForUpdate, markExpiredGrants };
 };
 
 // Approval Request Approvals

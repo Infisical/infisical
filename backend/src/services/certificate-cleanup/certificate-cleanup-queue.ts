@@ -5,7 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -191,23 +191,12 @@ export const certificateCleanupQueueFactory = ({
       logger.info(`${QueueJobs.CertificateCleanup}: completed — deleted ${totalDeleted} total, ${totalErrors} errors`);
     });
 
-    await queueService.stopRepeatableJob(
+    await queueService.upsertJobScheduler(
       QueueName.CertificateCleanup,
-      QueueJobs.CertificateCleanup,
-      { pattern: "0 2 * * *", utc: true },
-      QueueJobs.CertificateCleanup
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.CertificateCleanup}`,
+      { pattern: "0 2 * * *" },
+      { name: QueueJobs.CertificateCleanup }
     );
-
-    await queueService.queue(QueueName.CertificateCleanup, QueueJobs.CertificateCleanup, undefined, {
-      jobId: QueueJobs.CertificateCleanup,
-      repeat: {
-        pattern: "0 2 * * *",
-        utc: true,
-        key: QueueJobs.CertificateCleanup
-      },
-      removeOnComplete: true,
-      removeOnFail: true
-    });
 
     queueService.listen(QueueName.CertificateCleanup, "failed", (_, err) => {
       logger.error(err, `${QueueName.CertificateCleanup}: job failed`);

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { BanIcon, EllipsisVerticalIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -31,6 +31,7 @@ import { PamUpdateResourceModal } from "../PamResourcesPage/components/PamUpdate
 import {
   PamResourceAccountsSection,
   PamResourceConnectionSection,
+  PamResourceDependenciesSection,
   PamResourceDetailsSection,
   PamResourceMetadataSection,
   PamResourceRelatedResourcesSection
@@ -44,6 +45,24 @@ const PageContent = () => {
   }) as { resourceId?: string; resourceType?: string; projectId?: string; orgId?: string };
 
   const { resourceId, resourceType, projectId } = params;
+
+  const selectedTab = useSearch({
+    strict: false,
+    select: (el) => el.selectedTab
+  });
+
+  const handleTabChange = (tab: string) => {
+    navigate({
+      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+      search: (prev) => ({ ...prev, selectedTab: tab }),
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        resourceType: resourceType!,
+        resourceId: resourceId!
+      }
+    });
+  };
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -186,9 +205,12 @@ const PageContent = () => {
 
         {/* Right Column - Tabbed Content */}
         <div className="flex-1">
-          <Tabs defaultValue="accounts">
+          <Tabs value={selectedTab} onValueChange={handleTabChange}>
             <TabList>
               <Tab value="accounts">Accounts</Tab>
+              {resource.resourceType === PamResourceType.Windows && (
+                <Tab value="dependencies">Dependencies</Tab>
+              )}
               {resource.resourceType === PamResourceType.ActiveDirectory && (
                 <Tab value="related-resources">Related Resources</Tab>
               )}
@@ -196,6 +218,11 @@ const PageContent = () => {
             <TabPanel value="accounts">
               <PamResourceAccountsSection resource={resource} />
             </TabPanel>
+            {resource.resourceType === PamResourceType.Windows && (
+              <TabPanel value="dependencies">
+                <PamResourceDependenciesSection resource={resource} />
+              </TabPanel>
+            )}
             {resource.resourceType === PamResourceType.ActiveDirectory && (
               <TabPanel value="related-resources">
                 <PamResourceRelatedResourcesSection resource={resource} />

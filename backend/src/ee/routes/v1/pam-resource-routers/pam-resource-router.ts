@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { PamAccountDependenciesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ActiveDirectoryResourceListItemSchema,
@@ -17,7 +18,7 @@ import {
   MySQLResourceListItemSchema,
   SanitizedMySQLResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
-import { PamResourceOrderBy } from "@app/ee/services/pam-resource/pam-resource-enums";
+import { PamResource, PamResourceOrderBy } from "@app/ee/services/pam-resource/pam-resource-enums";
 import {
   PostgresResourceListItemSchema,
   SanitizedPostgresResourceSchema
@@ -219,6 +220,41 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
       });
 
       return { resources, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:resourceType/:resourceId/dependencies",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getPamResourceDependencies",
+      description: "List dependencies that run on this resource",
+      params: z.object({
+        resourceType: z.nativeEnum(PamResource),
+        resourceId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          dependencies: PamAccountDependenciesSchema.extend({
+            accountName: z.string().nullable()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependencies = await server.services.pamDiscoverySource.getResourceDependencies({
+        resourceId: req.params.resourceId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependencies };
     }
   });
 

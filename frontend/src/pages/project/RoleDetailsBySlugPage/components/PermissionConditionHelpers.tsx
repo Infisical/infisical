@@ -1,6 +1,9 @@
 import { GlobPermissionInfo } from "@app/components/permissions";
 import { SelectItem } from "@app/components/v3";
-import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
+import {
+  PermissionConditionOperators,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 export const getConditionOperatorHelperInfo = (type: PermissionConditionOperators) => {
   switch (type) {
@@ -19,8 +22,7 @@ export const getConditionOperatorHelperInfo = (type: PermissionConditionOperator
   }
 };
 
-// scott: we may need to pass the subject in the future to further refine returned items
-export const renderOperatorSelectItems = (type: string) => {
+export const renderOperatorSelectItems = (type: string, subject?: string) => {
   switch (type) {
     case "secretTags":
       return (
@@ -29,10 +31,25 @@ export const renderOperatorSelectItems = (type: string) => {
           <SelectItem value={PermissionConditionOperators.$ALL}>Contains All</SelectItem>
         </>
       );
-    case "identityId":
-    case "connectionId":
     case "metadataKey":
     case "metadataValue":
+      if (subject === ProjectPermissionSub.Certificates) {
+        return (
+          <>
+            <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+            <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+          </>
+        );
+      }
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+        </>
+      );
+    case "identityId":
+    case "connectionId":
     case "role":
       return (
         <>
