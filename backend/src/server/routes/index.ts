@@ -1873,7 +1873,8 @@ export const registerRoutes = async (
     licenseService,
     keyStore,
     orgDAL,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    auditLogService
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({

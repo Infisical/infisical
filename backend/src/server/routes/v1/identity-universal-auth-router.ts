@@ -63,7 +63,9 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         accessTokenMaxTTL
       } = await server.services.identityUa.login({
         ...req.body,
-        ip: req.realIp
+        ip: req.realIp,
+        userAgent: req.auditLogInfo.userAgent,
+        userAgentType: req.auditLogInfo.userAgentType
       });
 
       await server.services.auditLog.createAuditLog({

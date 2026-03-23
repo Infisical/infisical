@@ -1,3 +1,4 @@
+import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TLoginUaDTO = {
@@ -5,6 +6,8 @@ export type TLoginUaDTO = {
   clientSecret: string;
   ip: string;
   organizationSlug?: string;
+  userAgent?: string;
+  userAgentType?: UserAgentType;
 };
 
 export type TAttachUaDTO = {
@@ -68,3 +71,14 @@ export type TGetUniversalAuthClientSecretByIdDTO = {
   identityId: string;
   clientSecretId: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TThrowUnauthorizedWithAuditLogDTO = {
+  message: string;
+  clientId: string;
+  identityId: string | null;
+  reason: string;
+  orgId?: string;
+  ip?: string;
+  userAgent?: string;
+  userAgentType?: UserAgentType;
+};
