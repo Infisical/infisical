@@ -245,7 +245,7 @@ export const DataExplorerGrid = ({
 
         const taggedRows = dataResult.rows.map((row: Record<string, unknown>) => ({
           ...row,
-          __originalPkKey: getRowKey(row, primaryKeys)
+          originalPkKey: getRowKey(row, primaryKeys)
         }));
         setOriginalData(taggedRows);
         setCurrentData(taggedRows);
@@ -318,7 +318,7 @@ export const DataExplorerGrid = ({
     if (!originalDataByPk) return count;
     currentData.forEach((row) => {
       if (row.tempRowId && newRowTempIds.has(String(row.tempRowId))) return;
-      const key = row.__originalPkKey as string;
+      const key = row.originalPkKey as string;
       if (!key) return;
       const original = originalDataByPk.get(key);
       if (!original) return;
@@ -444,7 +444,7 @@ export const DataExplorerGrid = ({
       const pkMap = originalDataByPk;
       currentData.forEach((row) => {
         if (row.tempRowId) return;
-        const key = row.__originalPkKey as string;
+        const key = row.originalPkKey as string;
         const original = key && pkMap ? pkMap.get(key) : undefined;
         if (!original) return;
         const changes: Record<string, unknown> = {};
@@ -521,7 +521,7 @@ export const DataExplorerGrid = ({
     if (row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId))) return true;
     const pkMap = originalDataByPkRef.current;
     if (!pkMap) return false;
-    const key = row.__originalPkKey as string;
+    const key = row.originalPkKey as string;
     if (!key) return false;
     const original = pkMap.get(key);
     if (!original) return false;
@@ -532,7 +532,7 @@ export const DataExplorerGrid = ({
   const getRowId = useCallback(
     (row: Record<string, unknown>, index: number) => {
       if (row.tempRowId) return String(row.tempRowId);
-      if (row.__originalPkKey) return row.__originalPkKey as string;
+      if (row.originalPkKey) return row.originalPkKey as string;
       if (primaryKeys.length > 0) return getRowKey(row, primaryKeys);
       return String(index);
     },
