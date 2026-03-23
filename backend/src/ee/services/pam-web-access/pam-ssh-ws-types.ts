@@ -11,5 +11,3 @@ const ControlSchema = z.object({ type: z.literal(SshClientMessageType.Control), 
 const ResizeSchema = z.object({ type: z.literal(SshClientMessageType.Resize), data: z.string() });
 
 export const SshClientMessageSchema = z.discriminatedUnion("type", [InputSchema, ControlSchema, ResizeSchema]);
-
-export type TSshClientMessage = z.infer<typeof SshClientMessageSchema>;

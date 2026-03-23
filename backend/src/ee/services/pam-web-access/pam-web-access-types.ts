@@ -5,12 +5,12 @@ import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectServiceActor } from "@app/lib/types";
 
 export enum SessionEndReason {
-  SessionCompleted = "Session duration complete. Connection closed.",
-  UserQuit = "Goodbye!",
-  ConnectionLost = "Connection lost. Session ended.",
-  SetupFailed = "Failed to establish connection.",
-  IdleTimeout = "Session closed due to inactivity.",
-  SessionLimitReached = "Maximum concurrent sessions reached. Please close an existing session first."
+  SessionCompleted = "Session duration complete",
+  UserQuit = "Goodbye",
+  ConnectionLost = "Connection lost",
+  SetupFailed = "Failed to establish connection",
+  IdleTimeout = "Session closed due to inactivity",
+  SessionLimitReached = "Maximum concurrent sessions reached"
 }
 
 export enum TerminalServerMessageType {

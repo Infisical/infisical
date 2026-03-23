@@ -156,8 +156,6 @@ export const PostgresServerMessageSchema = z.discriminatedUnion("type", [
   ErrorResponseSchema
 ]);
 
-export type TPostgresServerMessage = z.infer<typeof PostgresServerMessageSchema>;
-
 // Correlated server messages only (excludes lifecycle messages like ready/output/session_end)
 export type TPostgresCorrelatedServerMessage = z.infer<
   | typeof SchemasResponseSchema

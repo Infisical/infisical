@@ -9,5 +9,3 @@ const InputSchema = z.object({ type: z.literal(RedisClientMessageType.Input), da
 const ControlSchema = z.object({ type: z.literal(RedisClientMessageType.Control), data: z.string() });
 
 export const RedisClientMessageSchema = z.discriminatedUnion("type", [InputSchema, ControlSchema]);
-
-export type TRedisClientMessage = z.infer<typeof RedisClientMessageSchema>;

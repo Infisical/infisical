@@ -59,11 +59,6 @@ describe("getTableDetailQuery", () => {
     expect(query.text).toContain("contype = 'f'");
   });
 
-  // test("queries enum values from pg_enum", () => {
-  //   const query = getTableDetailQuery("public", "users");
-  //   expect(query.text).toContain("pg_enum");
-  // });
-
   test("returns JSON result", () => {
     const query = getTableDetailQuery("public", "users");
     expect(query.text).toContain("json_build_object");
