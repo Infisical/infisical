@@ -646,6 +646,15 @@ const OverviewPageContent = () => {
     }
   }, [hasPendingBatchChanges, resetSelectedEntries]);
 
+  const storedEnvIdsKey = storedEnvIds.join(",");
+  const prevStoredEnvIdsKeyRef = useRef(storedEnvIdsKey);
+  useEffect(() => {
+    if (prevStoredEnvIdsKeyRef.current !== storedEnvIdsKey) {
+      prevStoredEnvIdsKeyRef.current = storedEnvIdsKey;
+      resetSelectedEntries();
+    }
+  }, [storedEnvIdsKey, resetSelectedEntries]);
+
   useNavigationBlocker({
     shouldBlock:
       isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0),
@@ -2300,6 +2309,7 @@ const OverviewPageContent = () => {
           importedBy={importedBy}
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
+          visibleEnvs={visibleEnvs}
         />
 
         <UnstableCard>

@@ -15,14 +15,14 @@ import {
   UpdateSecretCommand,
   UpdateSecretCommandInput
 } from "@aws-sdk/client-secrets-manager";
-import { AWSError } from "aws-sdk";
+import type { AWSError } from "aws-sdk";
 import {
   CreateSecretResponse,
   DescribeSecretResponse,
   SecretListEntry,
   SecretValueEntry,
   Tag
-} from "aws-sdk/clients/secretsmanager";
+} from "aws-sdk/clients/secretsmanager.js";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
@@ -50,7 +50,7 @@ const getSecretsManagerClient = async (secretSync: TAwsSecretsManagerSyncWithCre
     region: config.region,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
-    credentials: config.credentials!
+    credentials: config.credentials
   });
 
   return secretsManagerClient;

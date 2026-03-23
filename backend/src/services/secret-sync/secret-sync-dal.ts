@@ -207,6 +207,19 @@ export const secretSyncDALFactory = (
     }
   };
 
+  const updateAndReturnIds = async (
+    filter: Parameters<(typeof secretSyncOrm)["find"]>[0],
+    data: Parameters<(typeof secretSyncOrm)["update"]>[1],
+    tx?: Knex
+  ): Promise<string[]> => {
+    try {
+      const rows = await (tx || db)(TableName.SecretSync).where(buildFindFilter(filter)).update(data).returning("id");
+      return rows.map((r) => r.id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update And Return IDs - Secret Sync" });
+    }
+  };
+
   const findByDestinationAndOrgId = async (destination: string, orgId: string, tx?: Knex) => {
     try {
       const response = await (tx || db.replicaNode())(TableName.SecretSync)
@@ -221,5 +234,14 @@ export const secretSyncDALFactory = (
     }
   };
 
-  return { ...secretSyncOrm, findById, findOne, find, create, updateById, findByDestinationAndOrgId };
+  return {
+    ...secretSyncOrm,
+    findById,
+    findOne,
+    find,
+    create,
+    updateById,
+    updateAndReturnIds,
+    findByDestinationAndOrgId
+  };
 };

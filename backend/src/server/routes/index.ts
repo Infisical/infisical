@@ -2233,7 +2233,8 @@ export const registerRoutes = async (
     gatewayDAL,
     gatewayV2DAL,
     projectDAL,
-    appConnectionCredentialRotationService
+    appConnectionCredentialRotationService,
+    identityUaDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -2945,6 +2946,7 @@ export const registerRoutes = async (
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
+  await secretSyncQueue.startDailySecretSyncRetryJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await certificateAuthorityQueue.startCaCrlRebuildJob();

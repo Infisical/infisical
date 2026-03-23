@@ -34,6 +34,7 @@ import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
+import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
@@ -267,6 +268,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <VenafiConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureEntraId:
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ExternalInfisical:
+        return <ExternalInfisicalConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -470,6 +473,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.ExternalInfisical:
+        return (
+          <ExternalInfisicalConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
+        );
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

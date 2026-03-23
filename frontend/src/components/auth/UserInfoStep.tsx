@@ -16,6 +16,7 @@ import {
   UnstableIconButton,
   UnstableInput
 } from "@app/components/v3";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -124,6 +125,11 @@ export default function UserInfoStep({
         SecurityClient.setSignupToken("");
         SecurityClient.setToken(response.token);
         SecurityClient.setProviderAuthToken("");
+
+        if (isInfisicalCloud()) {
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push({ event: "signup_completed" });
+        }
 
         if (response.organizationId) {
           await selectOrganization({ organizationId: response.organizationId });

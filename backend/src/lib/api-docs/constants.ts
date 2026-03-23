@@ -2108,6 +2108,9 @@ export const CERTIFICATE_AUTHORITIES = {
   INSTALL_CERT_VENAFI: {
     caId: "The ID of the CA to install the certificate for via Venafi."
   },
+  INSTALL_CERT_ADCS: {
+    caId: "The ID of the CA to install the certificate for via Azure AD CS."
+  },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
   },
@@ -2850,6 +2853,10 @@ export const SecretSyncs = {
     },
     FLYIO: {
       autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
+    },
+    AZURE_KEY_VAULT: {
+      disableCertificateImport:
+        "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
     }
   },
   DESTINATION_CONFIG: {
@@ -3041,6 +3048,11 @@ export const SecretSyncs = {
       orgName: "The CircleCI organization name to sync secrets to.",
       projectId: "The CircleCI project ID to sync secrets to.",
       projectName: "The CircleCI project name to sync secrets to."
+    },
+    EXTERNAL_INFISICAL: {
+      projectId: "The ID of the project on the external Infisical instance to sync secrets to.",
+      environment: "The environment slug on the external Infisical instance to sync secrets to.",
+      secretPath: "The secret path on the external Infisical instance to sync secrets to."
     }
   }
 };

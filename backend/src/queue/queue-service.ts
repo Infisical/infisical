@@ -183,7 +183,9 @@ export enum QueueJobs {
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
-  CertificateCleanup = "certificate-cleanup-job"
+  CaAdcsInstall = "ca-adcs-install-job",
+  CertificateCleanup = "certificate-cleanup-job",
+  DailySecretSyncRetry = "daily-secret-sync-retry-job"
 }
 
 export type TQueueOptions = {
@@ -394,6 +396,10 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.SecretSyncSendActionFailedNotifications;
         payload: TQueueSendSecretSyncActionFailedNotificationsDTO;
+      }
+    | {
+        name: QueueJobs.DailySecretSyncRetry;
+        payload: undefined;
       };
   [QueueName.SecretRotationV2]:
     | {
@@ -546,6 +552,10 @@ export type TQueueJobTypes = {
       }
     | {
         name: QueueJobs.CaVenafiInstall;
+        payload: { caId: string; maxPathLength?: number };
+      }
+    | {
+        name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
   [QueueName.CertificateCleanup]: {

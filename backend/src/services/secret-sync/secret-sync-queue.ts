@@ -13,7 +13,7 @@ import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -39,7 +39,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
-import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -72,10 +72,15 @@ import { TNotificationServiceFactory } from "../notification/notification-servic
 import { NotificationType } from "../notification/notification-types";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 
+const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
+  attempts: 5,
+  backoff: { type: "exponential" as const, delay: 3000 }
+};
+
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
 type TSecretSyncQueueFactoryDep = {
-  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
+  queueService: Pick<TQueueServiceFactory, "queue" | "start" | "upsertJobScheduler">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
@@ -92,7 +97,10 @@ type TSecretSyncQueueFactoryDep = {
     | "invalidateSecretCacheByProjectId"
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
-  secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
+  secretSyncDAL: Pick<
+    TSecretSyncDALFactory,
+    "findById" | "find" | "updateById" | "deleteById" | "update" | "updateAndReturnIds"
+  >;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: TProjectDALFactory;
@@ -347,18 +355,17 @@ export const secretSyncQueueFactory = ({
     return secretMap;
   };
 
-  const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) =>
-    queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncSyncSecrets, payload, {
-      delay: getRequeueDelay(payload.failedToAcquireLockCount), // this is for delaying re-queued jobs if sync is locked
-      attempts: 5,
-      backoff: {
-        type: "exponential",
-        delay: 3000
-      },
+  const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) => {
+    const { attempts, backoff } = DEFAULT_SECRET_SYNC_RETRY_CONFIG;
+    return queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncSyncSecrets, payload, {
+      delay: getRequeueDelay(payload.failedToAcquireLockCount),
+      attempts,
+      backoff,
       removeOnComplete: true,
       removeOnFail: true,
       jobId: randomUUID()
     });
+  };
 
   const queueSecretSyncImportSecretsById = async (payload: TQueueSecretSyncImportSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncImportSecrets, payload, {
@@ -1035,7 +1042,13 @@ export const secretSyncQueueFactory = ({
       }
     );
 
-    await Promise.all(secretSyncs.map((secretSync) => queueSecretSyncSyncSecretsById({ syncId: secretSync.id })));
+    await Promise.all(
+      secretSyncs.map((secretSync) =>
+        queueSecretSyncSyncSecretsById({
+          syncId: secretSync.id
+        })
+      )
+    );
   };
 
   const $handleAcquireLockFailure = async (job: SecretSyncActionJob) => {
@@ -1104,9 +1117,35 @@ export const secretSyncQueueFactory = ({
     }
   };
 
+  const $handleDailySecretSyncRetry = async () => {
+    const updatedIds = await secretSyncDAL.updateAndReturnIds(
+      {
+        syncStatus: SecretSyncStatus.Failed,
+        isAutoSyncEnabled: true,
+        $in: { destination: [...SECRET_SYNC_DAILY_RETRY_DESTINATIONS] }
+      },
+      { syncStatus: SecretSyncStatus.Pending }
+    );
+
+    if (!updatedIds.length) return;
+
+    await Promise.all(
+      updatedIds.map((syncId) =>
+        queueSecretSyncSyncSecretsById({
+          syncId
+        })
+      )
+    );
+  };
+
   queueService.start(QueueName.AppConnectionSecretSync, async (job) => {
     if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
       await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
+      return;
+    }
+
+    if (job.name === QueueJobs.DailySecretSyncRetry) {
+      await $handleDailySecretSyncRetry();
       return;
     }
 
@@ -1178,10 +1217,20 @@ export const secretSyncQueueFactory = ({
     }
   });
 
+  const startDailySecretSyncRetryJob = async () => {
+    await queueService.upsertJobScheduler(
+      QueueName.AppConnectionSecretSync,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailySecretSyncRetry}`,
+      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *" },
+      { name: QueueJobs.DailySecretSyncRetry }
+    );
+  };
+
   return {
     queueSecretSyncSyncSecretsById,
     queueSecretSyncImportSecretsById,
     queueSecretSyncRemoveSecretsById,
-    queueSecretSyncsSyncSecretsByPath
+    queueSecretSyncsSyncSecretsByPath,
+    startDailySecretSyncRetryJob
   };
 };

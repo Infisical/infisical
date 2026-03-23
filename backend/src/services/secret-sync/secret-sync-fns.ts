@@ -56,6 +56,7 @@ import {
   DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
   DigitalOceanAppPlatformSyncFns
 } from "./digital-ocean-app-platform";
+import { EXTERNAL_INFISICAL_SYNC_LIST_OPTION, ExternalInfisicalSyncFns } from "./external-infisical";
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
@@ -115,7 +116,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Chef]: CHEF_SYNC_LIST_OPTION,
   [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
   [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
-  [SecretSync.AzureEntraIdScim]: AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION
+  [SecretSync.AzureEntraIdScim]: AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION,
+  [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -372,6 +374,10 @@ export const SecretSyncFns = {
         return CircleCISyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureEntraIdScim:
         return AzureEntraIdScimSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
+      case SecretSync.ExternalInfisical:
+        // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
+        // infinite sync loops where the prefixed key triggers another sync cycle.
+        return ExternalInfisicalSyncFns.syncSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -509,6 +515,9 @@ export const SecretSyncFns = {
       case SecretSync.AzureEntraIdScim:
         secretMap = await AzureEntraIdScimSyncFns.getSecrets();
         break;
+      case SecretSync.ExternalInfisical:
+        secretMap = await ExternalInfisicalSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -614,6 +623,10 @@ export const SecretSyncFns = {
         return CircleCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureEntraIdScim:
         return AzureEntraIdScimSyncFns.removeSecrets();
+      case SecretSync.ExternalInfisical:
+        // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
+        // infinite sync loops where the prefixed key triggers another sync cycle.
+        return ExternalInfisicalSyncFns.removeSecrets(secretSync, secretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -628,10 +641,14 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   let errorMessage: string;
 
   if (err instanceof SecretSyncError) {
+    const innerError: Record<string, unknown> | string | undefined =
+      err.error instanceof AxiosError
+        ? (err.error.response?.data as Record<string, unknown>)
+        : (err.error as Error)?.message;
     errorMessage = JSON.stringify({
       secretKey: err.secretKey,
       message: err.message || undefined,
-      error: err.error ? parseSyncErrorMessage(err.error) : undefined
+      error: innerError
     });
   } else if (err instanceof AxiosError) {
     errorMessage = err?.response?.data

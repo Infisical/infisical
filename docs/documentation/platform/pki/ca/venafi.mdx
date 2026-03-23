@@ -58,12 +58,12 @@ sequenceDiagram
       <Step title="Open the Install Certificate Modal">
         Press the **Install Certificate** option on the intermediate CA you just created. Select **External CA (Automated)** and press **Continue**.
 
-        ![pki install select method](/images/platform/pki/ca/ca-install-select-method.png)
+        ![pki install select method](/images/platform/pki/ca/ca-install-venafi-select-method.png)
       </Step>
       <Step title="Select Venafi TLS Protect Cloud">
         Choose **Venafi TLS Protect Cloud** as the CA integration provider and press **Continue**.
 
-        ![pki install external select](/images/platform/pki/ca/ca-install-external-select.png)
+        ![pki install external select](/images/platform/pki/ca/ca-install-venafi-external-select.png)
       </Step>
       <Step title="Configure the Venafi Signing Details">
         Fill out the following fields:
@@ -256,18 +256,18 @@ You can also manually trigger a renewal for a Venafi-signed intermediate CA at a
     ![pki venafi renew modal](/images/platform/pki/ca/ca-venafi-renew-modal.png)
   </Tab>
   <Tab title="API">
-    To manually renew a Venafi-signed CA, make an API request to the [Renew CA](/api-reference/endpoints/certificate-authorities/internal/renew) API endpoint.
+    To manually renew a Venafi-signed CA, re-trigger the install flow via the API.
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/renew' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/install-certificate-venafi' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
-          "type": "existing"
+          "maxPathLength": -1
       }'
     ```
 
-    For Venafi-signed CAs, Infisical will automatically submit the CSR to Venafi and import the renewed certificate.
+    This re-triggers the install flow — Infisical will submit a fresh CSR to Venafi and import the renewed certificate.
   </Tab>
 </Tabs>
 
