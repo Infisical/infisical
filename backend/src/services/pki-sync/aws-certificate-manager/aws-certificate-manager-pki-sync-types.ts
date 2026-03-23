@@ -1,4 +1,4 @@
-import ACM from "aws-sdk/clients/acm.js";
+import { type CertificateDetail, type Tag } from "@aws-sdk/client-acm";
 import { z } from "zod";
 
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
@@ -22,8 +22,8 @@ export type TAwsCertificateManagerPkiSyncWithCredentials = TAwsCertificateManage
   connection: TAwsConnection;
 };
 
-export interface ACMCertificateWithKey extends ACM.CertificateDetail {
-  Tags?: ACM.TagList;
+export interface ACMCertificateWithKey extends CertificateDetail {
+  Tags?: Tag[];
   key: string;
   cert: string;
   certificateChain: string;

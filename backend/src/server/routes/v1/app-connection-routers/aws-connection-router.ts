@@ -76,8 +76,8 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
         200: z.object({
           iamUsers: z
             .object({
-              UserName: z.string(),
-              Arn: z.string()
+              UserName: z.string().optional(),
+              Arn: z.string().optional()
             })
             .array()
         })
