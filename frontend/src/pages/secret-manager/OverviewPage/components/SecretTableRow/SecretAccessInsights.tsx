@@ -182,8 +182,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     () => ({
       [ProjectPermissionSub.Secrets]: [
         {
-          [ProjectPermissionSecretActions.ReadValue]: true,
-          [ProjectPermissionSecretActions.DescribeSecret]: true,
           conditions: [
             {
               operator: PermissionConditionOperators.$EQ,
@@ -373,7 +371,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           <SheetHeader className="border-b">
             <SheetTitle>Add Additional Privilege for {editingPrivilege?.name}</SheetTitle>
             <SheetDescription>
-              Grant {editingPrivilege?.name} edit access to the secret {secretKey}
+              Grant {editingPrivilege?.name} access to the secret {secretKey}
             </SheetDescription>
           </SheetHeader>
           {editingPrivilege?.type === "user" && (
