@@ -808,9 +808,7 @@ export const pkiAlertV2ServiceFactory = ({
       allCertificates.push(...certificates);
     }
 
-    const matchingCertificates = allCertificates.filter(
-      (cert) => cert.enrollmentType !== CertificateOrigin.CA
-    );
+    const matchingCertificates = allCertificates.filter((cert) => cert.enrollmentType !== CertificateOrigin.CA);
 
     if (matchingCertificates.length === 0) return;
 

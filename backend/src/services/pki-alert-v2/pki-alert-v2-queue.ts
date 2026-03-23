@@ -216,10 +216,7 @@ export const pkiAlertV2QueueServiceFactory = ({
           "Sent PKI event notification"
         );
       } catch (error) {
-        logger.error(
-          { alertId: alert.id, certificateId, eventType, error },
-          "Failed to process PKI event alert"
-        );
+        logger.error({ alertId: alert.id, certificateId, eventType, error }, "Failed to process PKI event alert");
       }
     }
   };
