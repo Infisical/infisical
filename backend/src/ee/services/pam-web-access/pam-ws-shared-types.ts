@@ -14,7 +14,8 @@ export enum SessionEndReason {
   UserQuit = "Goodbye!",
   ConnectionLost = "Connection lost. Session ended.",
   SetupFailed = "Failed to establish connection.",
-  IdleTimeout = "Session closed due to inactivity."
+  IdleTimeout = "Session closed due to inactivity.",
+  SessionLimitReached = "Maximum concurrent sessions reached. Please close an existing session first."
 }
 
 export const resolveEndReason = (isNearSessionExpiry: () => boolean): SessionEndReason =>

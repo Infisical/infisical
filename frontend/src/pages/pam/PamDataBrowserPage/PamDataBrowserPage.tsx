@@ -41,6 +41,7 @@ export const PamDataBrowserPage = () => {
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [hasDisconnected, setHasDisconnected] = useState(false);
+  const [disconnectReason, setDisconnectReason] = useState<string | null>(null);
   const unsavedChangeCountRef = useRef(0);
   const [pendingTableSwitch, setPendingTableSwitch] = useState<string | null>(null);
   const latestSchemaRequestRef = useRef(0);
@@ -70,7 +71,10 @@ export const PamDataBrowserPage = () => {
     orgId,
     resourceName: account?.resource?.name ?? "",
     accountName: account?.name ?? "",
-    onSessionEnd: () => setHasDisconnected(true)
+    onSessionEnd: (reason?: string) => {
+      setHasDisconnected(true);
+      setDisconnectReason(reason ?? null);
+    }
   });
 
   // Drive connection from the page, not the hook.
@@ -246,6 +250,7 @@ export const PamDataBrowserPage = () => {
 
   const handleReconnect = useCallback(() => {
     setHasDisconnected(false);
+    setDisconnectReason(null);
     setSchemas([]);
     setTables([]);
     setSelectedTable(null);
@@ -360,7 +365,9 @@ export const PamDataBrowserPage = () => {
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
         <WifiOffIcon className="size-8 text-mineshaft-400" />
         <h2 className="text-sm font-medium text-mineshaft-100">Disconnected</h2>
-        <p className="text-xs text-mineshaft-400">The database connection was closed.</p>
+        <p className="text-xs text-mineshaft-400">
+          {disconnectReason ?? "The database connection was closed."}
+        </p>
         <Button variant="outline" size="xs" onClick={handleReconnect}>
           Reconnect
         </Button>

@@ -41,7 +41,7 @@ type UseDataBrowserSessionOptions = {
   orgId: string;
   resourceName: string;
   accountName: string;
-  onSessionEnd?: () => void;
+  onSessionEnd?: (reason?: string) => void;
 };
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -108,8 +108,10 @@ export const useDataBrowserSession = ({
         if (serverMsg.type === "session_end") {
           wsRef.current = null;
           setIsConnected(false);
+          setIsConnecting(false);
           rejectAllPending("Session ended");
-          onSessionEndRef.current?.();
+          readyRejectRef.current?.(new Error("Session ended"));
+          onSessionEndRef.current?.(serverMsg.reason);
           return;
         }
 
@@ -133,8 +135,7 @@ export const useDataBrowserSession = ({
       };
 
       ws.onclose = () => {
-        // If wsRef was already cleared (by disconnect/cleanup), this is a stale close — skip.
-        // Same pattern as useWebAccessSession.
+        // If wsRef was already cleared (by disconnect/cleanup or session_end handler), skip.
         if (wsRef.current !== ws) return;
 
         wsRef.current = null;
@@ -163,6 +164,9 @@ export const useDataBrowserSession = ({
         readyResolveRef.current = resolve;
         readyRejectRef.current = reject;
       });
+      // Prevent unhandled rejection — callers of sendRequest will see the error
+      // when they await readyPromiseRef.current.
+      readyPromiseRef.current.catch(() => {});
 
       try {
         const { data } = await apiRequest.post<{ ticket: string }>(
