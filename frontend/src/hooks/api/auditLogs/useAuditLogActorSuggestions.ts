@@ -12,7 +12,7 @@ import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { ActorType } from "./enums";
 
-type ActorSuggestion = { value: string; label: string };
+export type ActorSuggestion = { value: string; label: string; actorType: ActorType };
 
 type UseAuditLogActorSuggestionsResult = {
   suggestions: ActorSuggestion[];
@@ -71,7 +71,7 @@ export const useAuditLogActorSuggestions = (
   const orgId = currentOrg?.id ?? "";
 
   const isUserType = !actorType || actorType === ActorType.USER;
-  const isIdentityType = actorType === ActorType.IDENTITY;
+  const isIdentityType = !actorType || actorType === ActorType.IDENTITY;
 
   const { users, isLoading: isLoadingUsers } = useScopedUsers(
     orgId,
@@ -84,18 +84,24 @@ export const useAuditLogActorSuggestions = (
   );
 
   const suggestions = useMemo<ActorSuggestion[]>(() => {
+    const userSuggestions = users.map((u) => ({
+      label: `${u.user.email || u.user.username} (${u.user.id})`,
+      value: u.user.id,
+      actorType: ActorType.USER as const
+    }));
+    const identitySuggestions = identities.map((identity) => ({
+      label: `${identity.name} (${identity.id})`,
+      value: identity.id,
+      actorType: ActorType.IDENTITY as const
+    }));
+
     switch (actorType) {
-      case ActorType.IDENTITY:
-        return identities.map((identity) => ({
-          label: `${identity.name} (${identity.id})`,
-          value: identity.id
-        }));
       case undefined:
+        return [...userSuggestions, ...identitySuggestions];
       case ActorType.USER:
-        return users.map((u) => ({
-          label: `${u.user.email || u.user.username} (${u.user.id})`,
-          value: u.user.id
-        }));
+        return userSuggestions;
+      case ActorType.IDENTITY:
+        return identitySuggestions;
       default:
         return [];
     }

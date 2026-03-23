@@ -5,7 +5,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tooltip } from "@app/components/v2";
 import { eventToNameMap, userAgentTypeToNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
-import { useAuditLogActorSuggestions } from "@app/hooks/api/auditLogs/useAuditLogActorSuggestions";
+import {
+  ActorSuggestion,
+  useAuditLogActorSuggestions
+} from "@app/hooks/api/auditLogs/useAuditLogActorSuggestions";
 
 export interface AppliedFilter {
   property: string;
@@ -13,7 +16,7 @@ export interface AppliedFilter {
   label?: string;
 }
 
-type Suggestion = { value: string; label: string };
+type Suggestion = { value: string; label: string; actorType?: ActorType };
 
 type FilterProperty = {
   key: string;
@@ -193,7 +196,25 @@ export const AuditSearchFilter = ({
   };
 
   const selectSuggestion = (suggestion: Suggestion) => {
-    if (propertyKey) addFilter(propertyKey, suggestion.value, suggestion.label);
+    if (!propertyKey) return;
+
+    if (propertyKey !== "actor_id" || !suggestion.actorType) {
+      addFilter(propertyKey, suggestion.value, suggestion.label);
+      return;
+    }
+
+    const actorIdFilter: AppliedFilter = {
+      property: "actor_id",
+      value: suggestion.value,
+      label: suggestion.label
+    };
+    const actorFilter: AppliedFilter = { property: "actor", value: suggestion.actorType };
+
+    const otherFilters = filters.filter((f) => f.property !== "actor" && f.property !== "actor_id");
+
+    onFiltersChange([...otherFilters, actorFilter, actorIdFilter]);
+    resetQuery();
+    focusInput();
   };
 
   const navigableItems = isTypingValue
@@ -275,19 +296,25 @@ export const AuditSearchFilter = ({
     </span>
   );
 
-  const actorIdMismatch = useMemo(() => {
+  const actorIdWarning = useMemo<string | null>(() => {
     const actorIdFilter = filters.find((f) => f.property === "actor_id");
-    // Only warn for values picked from suggestions (they have a label)
-    if (!actorIdFilter?.label) return false;
-    return !actorIdSuggestions.some((s) => s.value === actorIdFilter.value);
-  }, [filters, actorIdSuggestions]);
+    if (!actorIdFilter) return null;
+    // Warn when no actor type is set — backend defaults to userId key
+    if (!currentActorType) return "An actor type filter is required for accurate results";
+    // Warn if a suggestion-picked value doesn't match the current actor type's list
+    if (!actorIdFilter.label) return null;
+    if (!actorIdSuggestions.some((s) => s.value === actorIdFilter.value)) {
+      return "This ID does not match the selected actor type and may not return results";
+    }
+    return null;
+  }, [filters, actorIdSuggestions, currentActorType]);
 
   const getChipWarning = (filter: AppliedFilter): string | null => {
     if (!hasProjectFilter && PROJECT_DEPENDENT_KEYS.has(filter.property)) {
       return "Requires a project ID filter to take effect";
     }
-    if (filter.property === "actor_id" && actorIdMismatch) {
-      return "This ID does not match the selected actor type and may not return results";
+    if (filter.property === "actor_id" && actorIdWarning) {
+      return actorIdWarning;
     }
     return null;
   };
@@ -424,22 +451,94 @@ export const AuditSearchFilter = ({
       {showSuggestionDropdown && (
         <div className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
           <div className="py-2">
-            <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">Suggestions</div>
-            {valueSuggestions.map((suggestion, index) => (
-              <button
-                key={suggestion.value}
-                type="button"
-                className={dropdownRowClass(highlightedIndex === index)}
-                onClick={() => selectSuggestion(suggestion)}
-                onMouseEnter={() => setHighlightedIndex(index)}
-              >
-                <FontAwesomeIcon icon={faPlus} className="h-3 w-3 shrink-0 text-mineshaft-400" />
-                <span className="font-mono text-xs text-bunker-200">
-                  <span className="font-medium">{getDisplayLabel(propertyKey || "")}:</span>
-                  <span className="ml-0.5">{suggestion.label}</span>
-                </span>
-              </button>
-            ))}
+            {propertyKey === "actor_id" && !currentActorType ? (
+              <>
+                {(valueSuggestions as ActorSuggestion[]).some(
+                  (s) => s.actorType === ActorType.USER
+                ) && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">Users</div>
+                    {(valueSuggestions as ActorSuggestion[]).map((suggestion, index) =>
+                      suggestion.actorType === ActorType.USER ? (
+                        <button
+                          key={`${suggestion.actorType}-${suggestion.value}`}
+                          type="button"
+                          className={dropdownRowClass(highlightedIndex === index)}
+                          onClick={() => selectSuggestion(suggestion)}
+                          onMouseEnter={() => setHighlightedIndex(index)}
+                        >
+                          <FontAwesomeIcon
+                            icon={faPlus}
+                            className="h-3 w-3 shrink-0 text-mineshaft-400"
+                          />
+                          <span className="font-mono text-xs text-bunker-200">
+                            <span className="font-medium">
+                              {getDisplayLabel(propertyKey || "")}:
+                            </span>
+                            <span className="ml-0.5">{suggestion.label}</span>
+                          </span>
+                        </button>
+                      ) : null
+                    )}
+                  </>
+                )}
+                {(valueSuggestions as ActorSuggestion[]).some(
+                  (s) => s.actorType === ActorType.IDENTITY
+                ) && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">
+                      Identities
+                    </div>
+                    {(valueSuggestions as ActorSuggestion[]).map((suggestion, index) =>
+                      suggestion.actorType === ActorType.IDENTITY ? (
+                        <button
+                          key={`${suggestion.actorType}-${suggestion.value}`}
+                          type="button"
+                          className={dropdownRowClass(highlightedIndex === index)}
+                          onClick={() => selectSuggestion(suggestion)}
+                          onMouseEnter={() => setHighlightedIndex(index)}
+                        >
+                          <FontAwesomeIcon
+                            icon={faPlus}
+                            className="h-3 w-3 shrink-0 text-mineshaft-400"
+                          />
+                          <span className="font-mono text-xs text-bunker-200">
+                            <span className="font-medium">
+                              {getDisplayLabel(propertyKey || "")}:
+                            </span>
+                            <span className="ml-0.5">{suggestion.label}</span>
+                          </span>
+                        </button>
+                      ) : null
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">
+                  Suggestions
+                </div>
+                {valueSuggestions.map((suggestion, index) => (
+                  <button
+                    key={suggestion.value}
+                    type="button"
+                    className={dropdownRowClass(highlightedIndex === index)}
+                    onClick={() => selectSuggestion(suggestion)}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                  >
+                    <FontAwesomeIcon
+                      icon={faPlus}
+                      className="h-3 w-3 shrink-0 text-mineshaft-400"
+                    />
+                    <span className="font-mono text-xs text-bunker-200">
+                      <span className="font-medium">{getDisplayLabel(propertyKey || "")}:</span>
+                      <span className="ml-0.5">{suggestion.label}</span>
+                    </span>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}
