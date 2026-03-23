@@ -11,11 +11,11 @@ import (
 
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/libs/requestid"
-	"github.com/infisical/api/internal/services"
+	"github.com/infisical/api/internal/server/api"
 )
 
 type Server struct {
-	svc       *services.Registry
+	svc       *api.Registry
 	logger    *slog.Logger
 	mux       goahttp.Muxer
 	dec       func(*http.Request) goahttp.Decoder
@@ -24,7 +24,7 @@ type Server struct {
 	formatter func(ctx context.Context, err error) goahttp.Statuser
 }
 
-func NewServer(svc *services.Registry, logger *slog.Logger) *Server {
+func NewServer(svc *api.Registry, logger *slog.Logger) *Server {
 	s := &Server{
 		svc:       svc,
 		logger:    logger,

@@ -12,32 +12,22 @@ import (
 	"fmt"
 )
 
-// GetHealthSecretsPath returns the URL path to the secrets service getHealth HTTP endpoint.
-func GetHealthSecretsPath() string {
-	return "/api/v1/secret-manager/secrets/health"
+// ListSecretsV4SecretsPath returns the URL path to the secrets service listSecretsV4 HTTP endpoint.
+func ListSecretsV4SecretsPath() string {
+	return "/api/v4/secrets"
 }
 
-// CreateSecretSecretsPath returns the URL path to the secrets service createSecret HTTP endpoint.
-func CreateSecretSecretsPath() string {
-	return "/api/v1/secret-manager/secrets"
+// GetSecretByNameV4SecretsPath returns the URL path to the secrets service getSecretByNameV4 HTTP endpoint.
+func GetSecretByNameV4SecretsPath(secretName string) string {
+	return fmt.Sprintf("/api/v4/secrets/%v", secretName)
 }
 
-// GetSecretSecretsPath returns the URL path to the secrets service getSecret HTTP endpoint.
-func GetSecretSecretsPath(id string) string {
-	return fmt.Sprintf("/api/v1/secret-manager/secrets/%v", id)
+// ListSecretsRawV3SecretsPath returns the URL path to the secrets service listSecretsRawV3 HTTP endpoint.
+func ListSecretsRawV3SecretsPath() string {
+	return "/api/v3/secrets/raw"
 }
 
-// UpdateSecretSecretsPath returns the URL path to the secrets service updateSecret HTTP endpoint.
-func UpdateSecretSecretsPath(id string) string {
-	return fmt.Sprintf("/api/v1/secret-manager/secrets/%v", id)
-}
-
-// DeleteSecretSecretsPath returns the URL path to the secrets service deleteSecret HTTP endpoint.
-func DeleteSecretSecretsPath(id string) string {
-	return fmt.Sprintf("/api/v1/secret-manager/secrets/%v", id)
-}
-
-// ListSecretsSecretsPath returns the URL path to the secrets service listSecrets HTTP endpoint.
-func ListSecretsSecretsPath() string {
-	return "/api/v1/secret-manager/secrets"
+// GetSecretByNameRawV3SecretsPath returns the URL path to the secrets service getSecretByNameRawV3 HTTP endpoint.
+func GetSecretByNameRawV3SecretsPath(secretName string) string {
+	return fmt.Sprintf("/api/v3/secrets/raw/%v", secretName)
 }
