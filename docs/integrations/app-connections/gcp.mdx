@@ -76,16 +76,32 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
     </Step>
     <Step title="Enable Service Account Impersonation">
         To enable service account impersonation, you'll need to grant the **Service Account Token Creator** role to the Infisical instance's service account. This configuration allows Infisical to securely impersonate the new service account.
-        - Navigate to the IAM & Admin > Service Accounts section in your Google Cloud Console
-        - Select the newly created service account
-        - Click on the "PERMISSIONS" tab
-        - Click "Grant Access" to add a new principal
 
-        If you're using Infisical Cloud US, use the following service account: infisical-us@infisical-us.iam.gserviceaccount.com
-
-        If you're using Infisical Cloud EU, use the following service account: infisical-eu@infisical-eu.iam.gserviceaccount.com
+        1. Navigate to the **IAM & Admin > Service Accounts** section in your Google Cloud Console.
+        2. Click on the newly created service account to open its details.
+        3. Select the **PERMISSIONS** tab (this shows principals that have access to this service account).
+        4. Click **Grant Access** to add a new principal.
+        5. In the **New principals** field, enter the Infisical service account email for your region:
+            - **Infisical Cloud US**: `infisical-us@infisical-us.iam.gserviceaccount.com`
+            - **Infisical Cloud EU**: `infisical-eu@infisical-eu.iam.gserviceaccount.com`
+            - **Self-Hosted**: Use the email of the service account you created in the Self-Hosted Instance setup above.
+        6. In the **Role** field, select **Service Account Token Creator** (`roles/iam.serviceAccountTokenCreator`).
+        7. Click **Save**.
 
         ![Service Account Page](/images/app-connections/gcp/service-account-grant-access.png)
+
+        <Note>
+            If your GCP organization enforces the **Domain Restricted Sharing** organization policy (`iam.allowedPolicyMemberDomains`),
+            you may see an error like: _"One or more users named in the policy do not belong to a permitted customer."_
+
+            This policy restricts which external domains can be granted IAM roles in your organization. To resolve this, you need to add Infisical's Google Workspace Customer ID to your organization's allowed policy member domains:
+            1. Navigate to **IAM & Admin > Organization Policies** in the Google Cloud Console.
+            2. Search for **Domain restricted sharing** (`iam.allowedPolicyMemberDomains`).
+            3. Click **Manage Policy** and edit the policy to add Infisical's Customer ID (`C04a1qmhm`) as an allowed value under the `under:` prefix (e.g. `is:C04a1qmhm`).
+            4. Save the policy and retry granting access.
+
+            You will need the **Organization Policy Administrator** (`roles/orgpolicy.policyAdmin`) role to modify this policy. For more details, see Google's documentation on [restricting identities by domain](https://cloud.google.com/resource-manager/docs/organization-policy/restricting-domains).
+        </Note>
     </Step>
 
 </Steps>
