@@ -2760,10 +2760,17 @@ export const secretV2BridgeServiceFactory = ({
 
     const sourceSecrets = await secretDAL.find({
       type: SecretType.Shared,
+      folderId: sourceFolder.id,
       $in: {
         [`${TableName.SecretV2}.id` as "id"]: secretIds
       }
     });
+
+    if (sourceSecrets.length !== secretIds.length) {
+      throw new NotFoundError({
+        message: `One or more secrets not found in source folder with path '${sourceSecretPath}' and environment slug '${sourceEnvironment}'`
+      });
+    }
 
     const sourceActions = [
       ProjectPermissionSecretActions.Delete,
