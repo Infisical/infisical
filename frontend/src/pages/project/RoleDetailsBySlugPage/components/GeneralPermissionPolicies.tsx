@@ -120,7 +120,7 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
   control,
   menuPortalContainerRef
 }: ActionsMultiSelectProps<T>) => {
-  const { setValue } = useFormContext<TFormSchema>();
+  const { setValue, trigger } = useFormContext<TFormSchema>();
 
   const { errors } = useFormState({
     control,
@@ -212,10 +212,10 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
       const isSelected = selectedArray.some((s: { value: string }) => s.value === valueStr);
       setValue(`permissions.${subject}.${rootIndex}.${valueStr}` as any, isSelected, {
         shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true
+        shouldTouch: true
       });
     });
+    void trigger("permissions");
   };
 
   return (
