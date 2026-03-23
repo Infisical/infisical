@@ -59,6 +59,12 @@ ipv6RangeLists.ipv4Mapped.addSubnet("::ffff:0:0", 96, "ipv6");
 ipv6RangeLists.reserved.addSubnet("2001:db8::", 32, "ipv6");
 ipv6RangeLists.reserved.addSubnet("2001:2::", 48, "ipv6");
 ipv6RangeLists.reserved.addSubnet("100::", 64, "ipv6");
+// 6to4 (2002::/16) — embeds IPv4 in bits 16-47; e.g. 2002:7f00:0001:: encodes 127.0.0.1
+ipv6RangeLists.reserved.addSubnet("2002::", 16, "ipv6");
+// NAT64 well-known prefix (64:ff9b::/96) — maps IPv6 to IPv4; e.g. 64:ff9b::7f00:1 → 127.0.0.1
+ipv6RangeLists.reserved.addSubnet("64:ff9b::", 96, "ipv6");
+// Local-use NAT64 prefix (64:ff9b:1::/48) — RFC 8215
+ipv6RangeLists.reserved.addSubnet("64:ff9b:1::", 48, "ipv6");
 
 /**
  * Checks if an IP address (IPv4 or IPv6) is private or public
