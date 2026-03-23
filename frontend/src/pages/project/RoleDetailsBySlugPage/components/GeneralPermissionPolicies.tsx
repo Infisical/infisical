@@ -215,7 +215,8 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
         shouldTouch: true
       });
     });
-    void trigger("permissions");
+
+    trigger("permissions");
   };
 
   return (
