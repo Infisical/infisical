@@ -491,7 +491,7 @@ export const AuditSearchFilter = ({
                           className={dropdownRowClass(highlightedIndex === index)}
                           onClick={() => selectSuggestion(suggestion)}
                           onMouseMove={handleMouseMove}
-                onMouseEnter={() => handleMouseEnter(index)}
+                          onMouseEnter={() => handleMouseEnter(index)}
                         >
                           <FontAwesomeIcon
                             icon={faPlus}
@@ -524,7 +524,7 @@ export const AuditSearchFilter = ({
                           className={dropdownRowClass(highlightedIndex === index)}
                           onClick={() => selectSuggestion(suggestion)}
                           onMouseMove={handleMouseMove}
-                onMouseEnter={() => handleMouseEnter(index)}
+                          onMouseEnter={() => handleMouseEnter(index)}
                         >
                           <FontAwesomeIcon
                             icon={faPlus}
@@ -555,7 +555,7 @@ export const AuditSearchFilter = ({
                     className={dropdownRowClass(highlightedIndex === index)}
                     onClick={() => selectSuggestion(suggestion)}
                     onMouseMove={handleMouseMove}
-                onMouseEnter={() => handleMouseEnter(index)}
+                    onMouseEnter={() => handleMouseEnter(index)}
                   >
                     <FontAwesomeIcon
                       icon={faPlus}
