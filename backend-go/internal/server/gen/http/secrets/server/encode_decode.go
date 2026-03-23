@@ -11,9 +11,10 @@ package server
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	secrets "github.com/infisical/api/internal/server/gen/secrets"
 	secretsviews "github.com/infisical/api/internal/server/gen/secrets/views"
@@ -21,684 +22,36 @@ import (
 	goa "goa.design/goa/v3/pkg"
 )
 
-// EncodeGetHealthResponse returns an encoder for responses returned by the
-// secrets getHealth endpoint.
-func EncodeGetHealthResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
+// EncodeListSecretsV4Response returns an encoder for responses returned by the
+// secrets listSecretsV4 endpoint.
+func EncodeListSecretsV4Response(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
 	return func(ctx context.Context, w http.ResponseWriter, v any) error {
-		res, _ := v.(string)
+		res := v.(*secretsviews.ListSecretsResult)
 		enc := encoder(ctx, w)
-		body := res
+		body := NewListSecretsV4ResponseBody(res.Projected)
 		w.WriteHeader(http.StatusOK)
 		return enc.Encode(body)
 	}
 }
 
-// EncodeGetHealthError returns an encoder for errors returned by the getHealth
-// secrets endpoint.
-func EncodeGetHealthError(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
-	encodeError := goahttp.ErrorEncoder(encoder, formatter)
-	return func(ctx context.Context, w http.ResponseWriter, v error) error {
-		var en goa.GoaErrorNamer
-		if !errors.As(v, &en) {
-			return encodeError(ctx, w, v)
-		}
-		switch en.GoaErrorName() {
-		case "bad_request":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetHealthBadRequestResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusBadRequest)
-			return enc.Encode(body)
-		case "unauthorized":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetHealthUnauthorizedResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusUnauthorized)
-			return enc.Encode(body)
-		case "forbidden":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetHealthForbiddenResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusForbidden)
-			return enc.Encode(body)
-		case "not_found":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetHealthNotFoundResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusNotFound)
-			return enc.Encode(body)
-		case "internal_error":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetHealthInternalErrorResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusInternalServerError)
-			return enc.Encode(body)
-		default:
-			return encodeError(ctx, w, v)
-		}
-	}
-}
-
-// EncodeCreateSecretResponse returns an encoder for responses returned by the
-// secrets createSecret endpoint.
-func EncodeCreateSecretResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
-	return func(ctx context.Context, w http.ResponseWriter, v any) error {
-		res := v.(*secretsviews.SecretResult)
-		enc := encoder(ctx, w)
-		body := NewCreateSecretResponseBody(res.Projected)
-		w.WriteHeader(http.StatusCreated)
-		return enc.Encode(body)
-	}
-}
-
-// DecodeCreateSecretRequest returns a decoder for requests sent to the secrets
-// createSecret endpoint.
-func DecodeCreateSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.CreateSecretPayload, error) {
-	return func(r *http.Request) (*secrets.CreateSecretPayload, error) {
-		var payload *secrets.CreateSecretPayload
+// DecodeListSecretsV4Request returns a decoder for requests sent to the
+// secrets listSecretsV4 endpoint.
+func DecodeListSecretsV4Request(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.ListSecretsV4Payload, error) {
+	return func(r *http.Request) (*secrets.ListSecretsV4Payload, error) {
+		var payload *secrets.ListSecretsV4Payload
 		var (
-			body CreateSecretRequestBody
-			err  error
-		)
-		err = decoder(r).Decode(&body)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return payload, goa.MissingPayloadError()
-			}
-			var gerr *goa.ServiceError
-			if errors.As(err, &gerr) {
-				return payload, gerr
-			}
-			return payload, goa.DecodePayloadError(err.Error())
-		}
-		err = ValidateCreateSecretRequestBody(&body)
-		if err != nil {
-			return payload, err
-		}
-
-		var (
-			token string
-		)
-		token = r.Header.Get("Authorization")
-		if token == "" {
-			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
-		}
-		if err != nil {
-			return payload, err
-		}
-		payload = NewCreateSecretPayload(&body, token)
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-
-		return payload, nil
-	}
-}
-
-// EncodeCreateSecretError returns an encoder for errors returned by the
-// createSecret secrets endpoint.
-func EncodeCreateSecretError(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
-	encodeError := goahttp.ErrorEncoder(encoder, formatter)
-	return func(ctx context.Context, w http.ResponseWriter, v error) error {
-		var en goa.GoaErrorNamer
-		if !errors.As(v, &en) {
-			return encodeError(ctx, w, v)
-		}
-		switch en.GoaErrorName() {
-		case "bad_request":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewCreateSecretBadRequestResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusBadRequest)
-			return enc.Encode(body)
-		case "unauthorized":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewCreateSecretUnauthorizedResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusUnauthorized)
-			return enc.Encode(body)
-		case "forbidden":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewCreateSecretForbiddenResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusForbidden)
-			return enc.Encode(body)
-		case "not_found":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewCreateSecretNotFoundResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusNotFound)
-			return enc.Encode(body)
-		case "internal_error":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewCreateSecretInternalErrorResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusInternalServerError)
-			return enc.Encode(body)
-		default:
-			return encodeError(ctx, w, v)
-		}
-	}
-}
-
-// EncodeGetSecretResponse returns an encoder for responses returned by the
-// secrets getSecret endpoint.
-func EncodeGetSecretResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
-	return func(ctx context.Context, w http.ResponseWriter, v any) error {
-		res := v.(*secretsviews.SecretResult)
-		enc := encoder(ctx, w)
-		body := NewGetSecretResponseBody(res.Projected)
-		w.WriteHeader(http.StatusOK)
-		return enc.Encode(body)
-	}
-}
-
-// DecodeGetSecretRequest returns a decoder for requests sent to the secrets
-// getSecret endpoint.
-func DecodeGetSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.GetSecretPayload, error) {
-	return func(r *http.Request) (*secrets.GetSecretPayload, error) {
-		var payload *secrets.GetSecretPayload
-		var (
-			id    string
-			token string
-			err   error
-
-			params = mux.Vars(r)
-		)
-		id = params["id"]
-		token = r.Header.Get("Authorization")
-		if token == "" {
-			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
-		}
-		if err != nil {
-			return payload, err
-		}
-		payload = NewGetSecretPayload(id, token)
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-
-		return payload, nil
-	}
-}
-
-// EncodeGetSecretError returns an encoder for errors returned by the getSecret
-// secrets endpoint.
-func EncodeGetSecretError(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
-	encodeError := goahttp.ErrorEncoder(encoder, formatter)
-	return func(ctx context.Context, w http.ResponseWriter, v error) error {
-		var en goa.GoaErrorNamer
-		if !errors.As(v, &en) {
-			return encodeError(ctx, w, v)
-		}
-		switch en.GoaErrorName() {
-		case "bad_request":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetSecretBadRequestResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusBadRequest)
-			return enc.Encode(body)
-		case "unauthorized":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetSecretUnauthorizedResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusUnauthorized)
-			return enc.Encode(body)
-		case "forbidden":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetSecretForbiddenResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusForbidden)
-			return enc.Encode(body)
-		case "not_found":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetSecretNotFoundResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusNotFound)
-			return enc.Encode(body)
-		case "internal_error":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewGetSecretInternalErrorResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusInternalServerError)
-			return enc.Encode(body)
-		default:
-			return encodeError(ctx, w, v)
-		}
-	}
-}
-
-// EncodeUpdateSecretResponse returns an encoder for responses returned by the
-// secrets updateSecret endpoint.
-func EncodeUpdateSecretResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
-	return func(ctx context.Context, w http.ResponseWriter, v any) error {
-		res := v.(*secretsviews.SecretResult)
-		enc := encoder(ctx, w)
-		body := NewUpdateSecretResponseBody(res.Projected)
-		w.WriteHeader(http.StatusOK)
-		return enc.Encode(body)
-	}
-}
-
-// DecodeUpdateSecretRequest returns a decoder for requests sent to the secrets
-// updateSecret endpoint.
-func DecodeUpdateSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.UpdateSecretPayload, error) {
-	return func(r *http.Request) (*secrets.UpdateSecretPayload, error) {
-		var payload *secrets.UpdateSecretPayload
-		var (
-			body UpdateSecretRequestBody
-			err  error
-		)
-		err = decoder(r).Decode(&body)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return payload, goa.MissingPayloadError()
-			}
-			var gerr *goa.ServiceError
-			if errors.As(err, &gerr) {
-				return payload, gerr
-			}
-			return payload, goa.DecodePayloadError(err.Error())
-		}
-
-		var (
-			id    string
-			token string
-
-			params = mux.Vars(r)
-		)
-		id = params["id"]
-		token = r.Header.Get("Authorization")
-		if token == "" {
-			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
-		}
-		if err != nil {
-			return payload, err
-		}
-		payload = NewUpdateSecretPayload(&body, id, token)
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-
-		return payload, nil
-	}
-}
-
-// EncodeUpdateSecretError returns an encoder for errors returned by the
-// updateSecret secrets endpoint.
-func EncodeUpdateSecretError(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
-	encodeError := goahttp.ErrorEncoder(encoder, formatter)
-	return func(ctx context.Context, w http.ResponseWriter, v error) error {
-		var en goa.GoaErrorNamer
-		if !errors.As(v, &en) {
-			return encodeError(ctx, w, v)
-		}
-		switch en.GoaErrorName() {
-		case "bad_request":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewUpdateSecretBadRequestResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusBadRequest)
-			return enc.Encode(body)
-		case "unauthorized":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewUpdateSecretUnauthorizedResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusUnauthorized)
-			return enc.Encode(body)
-		case "forbidden":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewUpdateSecretForbiddenResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusForbidden)
-			return enc.Encode(body)
-		case "not_found":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewUpdateSecretNotFoundResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusNotFound)
-			return enc.Encode(body)
-		case "internal_error":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewUpdateSecretInternalErrorResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusInternalServerError)
-			return enc.Encode(body)
-		default:
-			return encodeError(ctx, w, v)
-		}
-	}
-}
-
-// EncodeDeleteSecretResponse returns an encoder for responses returned by the
-// secrets deleteSecret endpoint.
-func EncodeDeleteSecretResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
-	return func(ctx context.Context, w http.ResponseWriter, v any) error {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	}
-}
-
-// DecodeDeleteSecretRequest returns a decoder for requests sent to the secrets
-// deleteSecret endpoint.
-func DecodeDeleteSecretRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.DeleteSecretPayload, error) {
-	return func(r *http.Request) (*secrets.DeleteSecretPayload, error) {
-		var payload *secrets.DeleteSecretPayload
-		var (
-			id    string
-			token string
-			err   error
-
-			params = mux.Vars(r)
-		)
-		id = params["id"]
-		token = r.Header.Get("Authorization")
-		if token == "" {
-			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
-		}
-		if err != nil {
-			return payload, err
-		}
-		payload = NewDeleteSecretPayload(id, token)
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-		if strings.Contains(payload.Token, " ") {
-			// Remove authorization scheme prefix (e.g. "Bearer")
-			cred := strings.SplitN(payload.Token, " ", 2)[1]
-			payload.Token = cred
-		}
-
-		return payload, nil
-	}
-}
-
-// EncodeDeleteSecretError returns an encoder for errors returned by the
-// deleteSecret secrets endpoint.
-func EncodeDeleteSecretError(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
-	encodeError := goahttp.ErrorEncoder(encoder, formatter)
-	return func(ctx context.Context, w http.ResponseWriter, v error) error {
-		var en goa.GoaErrorNamer
-		if !errors.As(v, &en) {
-			return encodeError(ctx, w, v)
-		}
-		switch en.GoaErrorName() {
-		case "bad_request":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewDeleteSecretBadRequestResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusBadRequest)
-			return enc.Encode(body)
-		case "unauthorized":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewDeleteSecretUnauthorizedResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusUnauthorized)
-			return enc.Encode(body)
-		case "forbidden":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewDeleteSecretForbiddenResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusForbidden)
-			return enc.Encode(body)
-		case "not_found":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewDeleteSecretNotFoundResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusNotFound)
-			return enc.Encode(body)
-		case "internal_error":
-			var res *secrets.APIErrorResult
-			errors.As(v, &res)
-			enc := encoder(ctx, w)
-			var body any
-			if formatter != nil {
-				body = formatter(ctx, res)
-			} else {
-				body = NewDeleteSecretInternalErrorResponseBody(res)
-			}
-			w.Header().Set("goa-error", res.GoaErrorName())
-			w.WriteHeader(http.StatusInternalServerError)
-			return enc.Encode(body)
-		default:
-			return encodeError(ctx, w, v)
-		}
-	}
-}
-
-// EncodeListSecretsResponse returns an encoder for responses returned by the
-// secrets listSecrets endpoint.
-func EncodeListSecretsResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
-	return func(ctx context.Context, w http.ResponseWriter, v any) error {
-		res := v.(secretsviews.SecretResultCollection)
-		enc := encoder(ctx, w)
-		body := NewSecretResultResponseCollection(res.Projected)
-		w.WriteHeader(http.StatusOK)
-		return enc.Encode(body)
-	}
-}
-
-// DecodeListSecretsRequest returns a decoder for requests sent to the secrets
-// listSecrets endpoint.
-func DecodeListSecretsRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.ListSecretsPayload, error) {
-	return func(r *http.Request) (*secrets.ListSecretsPayload, error) {
-		var payload *secrets.ListSecretsPayload
-		var (
-			projectID   string
-			environment string
-			token       string
-			err         error
+			projectID                string
+			environment              string
+			secretPath               string
+			viewSecretValue          bool
+			expandSecretReferences   bool
+			recursive                bool
+			includePersonalOverrides bool
+			includeImports           bool
+			tagSlugs                 *string
+			metadataFilter           *string
+			token                    string
+			err                      error
 		)
 		qp := r.URL.Query()
 		projectID = qp.Get("projectId")
@@ -709,6 +62,76 @@ func DecodeListSecretsRequest(mux goahttp.Muxer, decoder func(*http.Request) goa
 		if environment == "" {
 			err = goa.MergeErrors(err, goa.MissingFieldError("environment", "query string"))
 		}
+		secretPathRaw := qp.Get("secretPath")
+		if secretPathRaw != "" {
+			secretPath = secretPathRaw
+		} else {
+			secretPath = "/"
+		}
+		{
+			viewSecretValueRaw := qp.Get("viewSecretValue")
+			if viewSecretValueRaw == "" {
+				viewSecretValue = true
+			} else {
+				v, err2 := strconv.ParseBool(viewSecretValueRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("viewSecretValue", viewSecretValueRaw, "boolean"))
+				}
+				viewSecretValue = v
+			}
+		}
+		{
+			expandSecretReferencesRaw := qp.Get("expandSecretReferences")
+			if expandSecretReferencesRaw == "" {
+				expandSecretReferences = true
+			} else {
+				v, err2 := strconv.ParseBool(expandSecretReferencesRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("expandSecretReferences", expandSecretReferencesRaw, "boolean"))
+				}
+				expandSecretReferences = v
+			}
+		}
+		{
+			recursiveRaw := qp.Get("recursive")
+			if recursiveRaw != "" {
+				v, err2 := strconv.ParseBool(recursiveRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("recursive", recursiveRaw, "boolean"))
+				}
+				recursive = v
+			}
+		}
+		{
+			includePersonalOverridesRaw := qp.Get("includePersonalOverrides")
+			if includePersonalOverridesRaw != "" {
+				v, err2 := strconv.ParseBool(includePersonalOverridesRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("includePersonalOverrides", includePersonalOverridesRaw, "boolean"))
+				}
+				includePersonalOverrides = v
+			}
+		}
+		{
+			includeImportsRaw := qp.Get("includeImports")
+			if includeImportsRaw == "" {
+				includeImports = true
+			} else {
+				v, err2 := strconv.ParseBool(includeImportsRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("includeImports", includeImportsRaw, "boolean"))
+				}
+				includeImports = v
+			}
+		}
+		tagSlugsRaw := qp.Get("tagSlugs")
+		if tagSlugsRaw != "" {
+			tagSlugs = &tagSlugsRaw
+		}
+		metadataFilterRaw := qp.Get("metadataFilter")
+		if metadataFilterRaw != "" {
+			metadataFilter = &metadataFilterRaw
+		}
 		token = r.Header.Get("Authorization")
 		if token == "" {
 			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
@@ -716,7 +139,7 @@ func DecodeListSecretsRequest(mux goahttp.Muxer, decoder func(*http.Request) goa
 		if err != nil {
 			return payload, err
 		}
-		payload = NewListSecretsPayload(projectID, environment, token)
+		payload = NewListSecretsV4Payload(projectID, environment, secretPath, viewSecretValue, expandSecretReferences, recursive, includePersonalOverrides, includeImports, tagSlugs, metadataFilter, token)
 		if strings.Contains(payload.Token, " ") {
 			// Remove authorization scheme prefix (e.g. "Bearer")
 			cred := strings.SplitN(payload.Token, " ", 2)[1]
@@ -737,9 +160,9 @@ func DecodeListSecretsRequest(mux goahttp.Muxer, decoder func(*http.Request) goa
 	}
 }
 
-// EncodeListSecretsError returns an encoder for errors returned by the
-// listSecrets secrets endpoint.
-func EncodeListSecretsError(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
+// EncodeListSecretsV4Error returns an encoder for errors returned by the
+// listSecretsV4 secrets endpoint.
+func EncodeListSecretsV4Error(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
 	encodeError := goahttp.ErrorEncoder(encoder, formatter)
 	return func(ctx context.Context, w http.ResponseWriter, v error) error {
 		var en goa.GoaErrorNamer
@@ -755,7 +178,7 @@ func EncodeListSecretsError(encoder func(context.Context, http.ResponseWriter) g
 			if formatter != nil {
 				body = formatter(ctx, res)
 			} else {
-				body = NewListSecretsBadRequestResponseBody(res)
+				body = NewListSecretsV4BadRequestResponseBody(res)
 			}
 			w.Header().Set("goa-error", res.GoaErrorName())
 			w.WriteHeader(http.StatusBadRequest)
@@ -768,7 +191,7 @@ func EncodeListSecretsError(encoder func(context.Context, http.ResponseWriter) g
 			if formatter != nil {
 				body = formatter(ctx, res)
 			} else {
-				body = NewListSecretsUnauthorizedResponseBody(res)
+				body = NewListSecretsV4UnauthorizedResponseBody(res)
 			}
 			w.Header().Set("goa-error", res.GoaErrorName())
 			w.WriteHeader(http.StatusUnauthorized)
@@ -781,7 +204,7 @@ func EncodeListSecretsError(encoder func(context.Context, http.ResponseWriter) g
 			if formatter != nil {
 				body = formatter(ctx, res)
 			} else {
-				body = NewListSecretsForbiddenResponseBody(res)
+				body = NewListSecretsV4ForbiddenResponseBody(res)
 			}
 			w.Header().Set("goa-error", res.GoaErrorName())
 			w.WriteHeader(http.StatusForbidden)
@@ -794,7 +217,7 @@ func EncodeListSecretsError(encoder func(context.Context, http.ResponseWriter) g
 			if formatter != nil {
 				body = formatter(ctx, res)
 			} else {
-				body = NewListSecretsNotFoundResponseBody(res)
+				body = NewListSecretsV4NotFoundResponseBody(res)
 			}
 			w.Header().Set("goa-error", res.GoaErrorName())
 			w.WriteHeader(http.StatusNotFound)
@@ -807,7 +230,7 @@ func EncodeListSecretsError(encoder func(context.Context, http.ResponseWriter) g
 			if formatter != nil {
 				body = formatter(ctx, res)
 			} else {
-				body = NewListSecretsInternalErrorResponseBody(res)
+				body = NewListSecretsV4InternalErrorResponseBody(res)
 			}
 			w.Header().Set("goa-error", res.GoaErrorName())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -818,16 +241,819 @@ func EncodeListSecretsError(encoder func(context.Context, http.ResponseWriter) g
 	}
 }
 
-// marshalSecretsviewsSecretResultViewToSecretResultResponse builds a value of
-// type *SecretResultResponse from a value of type
-// *secretsviews.SecretResultView.
-func marshalSecretsviewsSecretResultViewToSecretResultResponse(v *secretsviews.SecretResultView) *SecretResultResponse {
-	res := &SecretResultResponse{
-		ID:          *v.ID,
-		Key:         *v.Key,
-		Value:       *v.Value,
+// EncodeGetSecretByNameV4Response returns an encoder for responses returned by
+// the secrets getSecretByNameV4 endpoint.
+func EncodeGetSecretByNameV4Response(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
+	return func(ctx context.Context, w http.ResponseWriter, v any) error {
+		res := v.(*secretsviews.GetSecretResult)
+		enc := encoder(ctx, w)
+		body := NewGetSecretByNameV4ResponseBody(res.Projected)
+		w.WriteHeader(http.StatusOK)
+		return enc.Encode(body)
+	}
+}
+
+// DecodeGetSecretByNameV4Request returns a decoder for requests sent to the
+// secrets getSecretByNameV4 endpoint.
+func DecodeGetSecretByNameV4Request(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.GetSecretByNameV4Payload, error) {
+	return func(r *http.Request) (*secrets.GetSecretByNameV4Payload, error) {
+		var payload *secrets.GetSecretByNameV4Payload
+		var (
+			secretName             string
+			projectID              string
+			environment            string
+			secretPath             string
+			version                *int
+			type_                  string
+			viewSecretValue        bool
+			expandSecretReferences bool
+			includeImports         bool
+			token                  string
+			err                    error
+
+			params = mux.Vars(r)
+		)
+		secretName = params["secretName"]
+		if utf8.RuneCountInString(secretName) < 1 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("secretName", secretName, utf8.RuneCountInString(secretName), 1, true))
+		}
+		qp := r.URL.Query()
+		projectID = qp.Get("projectId")
+		if projectID == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("projectId", "query string"))
+		}
+		environment = qp.Get("environment")
+		if environment == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("environment", "query string"))
+		}
+		secretPathRaw := qp.Get("secretPath")
+		if secretPathRaw != "" {
+			secretPath = secretPathRaw
+		} else {
+			secretPath = "/"
+		}
+		{
+			versionRaw := qp.Get("version")
+			if versionRaw != "" {
+				v, err2 := strconv.ParseInt(versionRaw, 10, strconv.IntSize)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("version", versionRaw, "integer"))
+				}
+				pv := int(v)
+				version = &pv
+			}
+		}
+		type_Raw := qp.Get("type")
+		if type_Raw != "" {
+			type_ = type_Raw
+		} else {
+			type_ = "shared"
+		}
+		if !(type_ == "shared" || type_ == "personal") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("type", type_, []any{"shared", "personal"}))
+		}
+		{
+			viewSecretValueRaw := qp.Get("viewSecretValue")
+			if viewSecretValueRaw == "" {
+				viewSecretValue = true
+			} else {
+				v, err2 := strconv.ParseBool(viewSecretValueRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("viewSecretValue", viewSecretValueRaw, "boolean"))
+				}
+				viewSecretValue = v
+			}
+		}
+		{
+			expandSecretReferencesRaw := qp.Get("expandSecretReferences")
+			if expandSecretReferencesRaw == "" {
+				expandSecretReferences = true
+			} else {
+				v, err2 := strconv.ParseBool(expandSecretReferencesRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("expandSecretReferences", expandSecretReferencesRaw, "boolean"))
+				}
+				expandSecretReferences = v
+			}
+		}
+		{
+			includeImportsRaw := qp.Get("includeImports")
+			if includeImportsRaw == "" {
+				includeImports = true
+			} else {
+				v, err2 := strconv.ParseBool(includeImportsRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("includeImports", includeImportsRaw, "boolean"))
+				}
+				includeImports = v
+			}
+		}
+		token = r.Header.Get("Authorization")
+		if token == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
+		}
+		if err != nil {
+			return payload, err
+		}
+		payload = NewGetSecretByNameV4Payload(secretName, projectID, environment, secretPath, version, type_, viewSecretValue, expandSecretReferences, includeImports, token)
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+
+		return payload, nil
+	}
+}
+
+// EncodeGetSecretByNameV4Error returns an encoder for errors returned by the
+// getSecretByNameV4 secrets endpoint.
+func EncodeGetSecretByNameV4Error(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
+	encodeError := goahttp.ErrorEncoder(encoder, formatter)
+	return func(ctx context.Context, w http.ResponseWriter, v error) error {
+		var en goa.GoaErrorNamer
+		if !errors.As(v, &en) {
+			return encodeError(ctx, w, v)
+		}
+		switch en.GoaErrorName() {
+		case "bad_request":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameV4BadRequestResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusBadRequest)
+			return enc.Encode(body)
+		case "unauthorized":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameV4UnauthorizedResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusUnauthorized)
+			return enc.Encode(body)
+		case "forbidden":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameV4ForbiddenResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusForbidden)
+			return enc.Encode(body)
+		case "not_found":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameV4NotFoundResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusNotFound)
+			return enc.Encode(body)
+		case "internal_error":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameV4InternalErrorResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusInternalServerError)
+			return enc.Encode(body)
+		default:
+			return encodeError(ctx, w, v)
+		}
+	}
+}
+
+// EncodeListSecretsRawV3Response returns an encoder for responses returned by
+// the secrets listSecretsRawV3 endpoint.
+func EncodeListSecretsRawV3Response(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
+	return func(ctx context.Context, w http.ResponseWriter, v any) error {
+		res := v.(*secretsviews.ListSecretsResult)
+		enc := encoder(ctx, w)
+		body := NewListSecretsRawV3ResponseBody(res.Projected)
+		w.WriteHeader(http.StatusOK)
+		return enc.Encode(body)
+	}
+}
+
+// DecodeListSecretsRawV3Request returns a decoder for requests sent to the
+// secrets listSecretsRawV3 endpoint.
+func DecodeListSecretsRawV3Request(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.ListSecretsRawV3Payload, error) {
+	return func(r *http.Request) (*secrets.ListSecretsRawV3Payload, error) {
+		var payload *secrets.ListSecretsRawV3Payload
+		var (
+			workspaceID            *string
+			workspaceSlug          *string
+			environment            *string
+			secretPath             string
+			viewSecretValue        bool
+			expandSecretReferences bool
+			recursive              bool
+			includeImports         bool
+			tagSlugs               *string
+			metadataFilter         *string
+			token                  string
+			err                    error
+		)
+		qp := r.URL.Query()
+		workspaceIDRaw := qp.Get("workspaceId")
+		if workspaceIDRaw != "" {
+			workspaceID = &workspaceIDRaw
+		}
+		workspaceSlugRaw := qp.Get("workspaceSlug")
+		if workspaceSlugRaw != "" {
+			workspaceSlug = &workspaceSlugRaw
+		}
+		environmentRaw := qp.Get("environment")
+		if environmentRaw != "" {
+			environment = &environmentRaw
+		}
+		secretPathRaw := qp.Get("secretPath")
+		if secretPathRaw != "" {
+			secretPath = secretPathRaw
+		} else {
+			secretPath = "/"
+		}
+		{
+			viewSecretValueRaw := qp.Get("viewSecretValue")
+			if viewSecretValueRaw == "" {
+				viewSecretValue = true
+			} else {
+				v, err2 := strconv.ParseBool(viewSecretValueRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("viewSecretValue", viewSecretValueRaw, "boolean"))
+				}
+				viewSecretValue = v
+			}
+		}
+		{
+			expandSecretReferencesRaw := qp.Get("expandSecretReferences")
+			if expandSecretReferencesRaw != "" {
+				v, err2 := strconv.ParseBool(expandSecretReferencesRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("expandSecretReferences", expandSecretReferencesRaw, "boolean"))
+				}
+				expandSecretReferences = v
+			}
+		}
+		{
+			recursiveRaw := qp.Get("recursive")
+			if recursiveRaw != "" {
+				v, err2 := strconv.ParseBool(recursiveRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("recursive", recursiveRaw, "boolean"))
+				}
+				recursive = v
+			}
+		}
+		{
+			includeImportsRaw := qp.Get("include_imports")
+			if includeImportsRaw != "" {
+				v, err2 := strconv.ParseBool(includeImportsRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("include_imports", includeImportsRaw, "boolean"))
+				}
+				includeImports = v
+			}
+		}
+		tagSlugsRaw := qp.Get("tagSlugs")
+		if tagSlugsRaw != "" {
+			tagSlugs = &tagSlugsRaw
+		}
+		metadataFilterRaw := qp.Get("metadataFilter")
+		if metadataFilterRaw != "" {
+			metadataFilter = &metadataFilterRaw
+		}
+		token = r.Header.Get("Authorization")
+		if token == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
+		}
+		if err != nil {
+			return payload, err
+		}
+		payload = NewListSecretsRawV3Payload(workspaceID, workspaceSlug, environment, secretPath, viewSecretValue, expandSecretReferences, recursive, includeImports, tagSlugs, metadataFilter, token)
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+
+		return payload, nil
+	}
+}
+
+// EncodeListSecretsRawV3Error returns an encoder for errors returned by the
+// listSecretsRawV3 secrets endpoint.
+func EncodeListSecretsRawV3Error(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
+	encodeError := goahttp.ErrorEncoder(encoder, formatter)
+	return func(ctx context.Context, w http.ResponseWriter, v error) error {
+		var en goa.GoaErrorNamer
+		if !errors.As(v, &en) {
+			return encodeError(ctx, w, v)
+		}
+		switch en.GoaErrorName() {
+		case "bad_request":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewListSecretsRawV3BadRequestResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusBadRequest)
+			return enc.Encode(body)
+		case "unauthorized":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewListSecretsRawV3UnauthorizedResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusUnauthorized)
+			return enc.Encode(body)
+		case "forbidden":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewListSecretsRawV3ForbiddenResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusForbidden)
+			return enc.Encode(body)
+		case "not_found":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewListSecretsRawV3NotFoundResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusNotFound)
+			return enc.Encode(body)
+		case "internal_error":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewListSecretsRawV3InternalErrorResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusInternalServerError)
+			return enc.Encode(body)
+		default:
+			return encodeError(ctx, w, v)
+		}
+	}
+}
+
+// EncodeGetSecretByNameRawV3Response returns an encoder for responses returned
+// by the secrets getSecretByNameRawV3 endpoint.
+func EncodeGetSecretByNameRawV3Response(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, any) error {
+	return func(ctx context.Context, w http.ResponseWriter, v any) error {
+		res := v.(*secretsviews.GetSecretResult)
+		enc := encoder(ctx, w)
+		body := NewGetSecretByNameRawV3ResponseBody(res.Projected)
+		w.WriteHeader(http.StatusOK)
+		return enc.Encode(body)
+	}
+}
+
+// DecodeGetSecretByNameRawV3Request returns a decoder for requests sent to the
+// secrets getSecretByNameRawV3 endpoint.
+func DecodeGetSecretByNameRawV3Request(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (*secrets.GetSecretByNameRawV3Payload, error) {
+	return func(r *http.Request) (*secrets.GetSecretByNameRawV3Payload, error) {
+		var payload *secrets.GetSecretByNameRawV3Payload
+		var (
+			secretName             string
+			workspaceID            *string
+			workspaceSlug          *string
+			environment            *string
+			secretPath             string
+			version                *int
+			type_                  string
+			viewSecretValue        bool
+			expandSecretReferences bool
+			includeImports         bool
+			token                  string
+			err                    error
+
+			params = mux.Vars(r)
+		)
+		secretName = params["secretName"]
+		if utf8.RuneCountInString(secretName) < 1 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("secretName", secretName, utf8.RuneCountInString(secretName), 1, true))
+		}
+		qp := r.URL.Query()
+		workspaceIDRaw := qp.Get("workspaceId")
+		if workspaceIDRaw != "" {
+			workspaceID = &workspaceIDRaw
+		}
+		workspaceSlugRaw := qp.Get("workspaceSlug")
+		if workspaceSlugRaw != "" {
+			workspaceSlug = &workspaceSlugRaw
+		}
+		environmentRaw := qp.Get("environment")
+		if environmentRaw != "" {
+			environment = &environmentRaw
+		}
+		secretPathRaw := qp.Get("secretPath")
+		if secretPathRaw != "" {
+			secretPath = secretPathRaw
+		} else {
+			secretPath = "/"
+		}
+		{
+			versionRaw := qp.Get("version")
+			if versionRaw != "" {
+				v, err2 := strconv.ParseInt(versionRaw, 10, strconv.IntSize)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("version", versionRaw, "integer"))
+				}
+				pv := int(v)
+				version = &pv
+			}
+		}
+		type_Raw := qp.Get("type")
+		if type_Raw != "" {
+			type_ = type_Raw
+		} else {
+			type_ = "shared"
+		}
+		if !(type_ == "shared" || type_ == "personal") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("type", type_, []any{"shared", "personal"}))
+		}
+		{
+			viewSecretValueRaw := qp.Get("viewSecretValue")
+			if viewSecretValueRaw == "" {
+				viewSecretValue = true
+			} else {
+				v, err2 := strconv.ParseBool(viewSecretValueRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("viewSecretValue", viewSecretValueRaw, "boolean"))
+				}
+				viewSecretValue = v
+			}
+		}
+		{
+			expandSecretReferencesRaw := qp.Get("expandSecretReferences")
+			if expandSecretReferencesRaw != "" {
+				v, err2 := strconv.ParseBool(expandSecretReferencesRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("expandSecretReferences", expandSecretReferencesRaw, "boolean"))
+				}
+				expandSecretReferences = v
+			}
+		}
+		{
+			includeImportsRaw := qp.Get("include_imports")
+			if includeImportsRaw != "" {
+				v, err2 := strconv.ParseBool(includeImportsRaw)
+				if err2 != nil {
+					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("include_imports", includeImportsRaw, "boolean"))
+				}
+				includeImports = v
+			}
+		}
+		token = r.Header.Get("Authorization")
+		if token == "" {
+			err = goa.MergeErrors(err, goa.MissingFieldError("token", "header"))
+		}
+		if err != nil {
+			return payload, err
+		}
+		payload = NewGetSecretByNameRawV3Payload(secretName, workspaceID, workspaceSlug, environment, secretPath, version, type_, viewSecretValue, expandSecretReferences, includeImports, token)
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+		if strings.Contains(payload.Token, " ") {
+			// Remove authorization scheme prefix (e.g. "Bearer")
+			cred := strings.SplitN(payload.Token, " ", 2)[1]
+			payload.Token = cred
+		}
+
+		return payload, nil
+	}
+}
+
+// EncodeGetSecretByNameRawV3Error returns an encoder for errors returned by
+// the getSecretByNameRawV3 secrets endpoint.
+func EncodeGetSecretByNameRawV3Error(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder, formatter func(ctx context.Context, err error) goahttp.Statuser) func(context.Context, http.ResponseWriter, error) error {
+	encodeError := goahttp.ErrorEncoder(encoder, formatter)
+	return func(ctx context.Context, w http.ResponseWriter, v error) error {
+		var en goa.GoaErrorNamer
+		if !errors.As(v, &en) {
+			return encodeError(ctx, w, v)
+		}
+		switch en.GoaErrorName() {
+		case "bad_request":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameRawV3BadRequestResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusBadRequest)
+			return enc.Encode(body)
+		case "unauthorized":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameRawV3UnauthorizedResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusUnauthorized)
+			return enc.Encode(body)
+		case "forbidden":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameRawV3ForbiddenResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusForbidden)
+			return enc.Encode(body)
+		case "not_found":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameRawV3NotFoundResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusNotFound)
+			return enc.Encode(body)
+		case "internal_error":
+			var res *secrets.APIErrorResult
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body any
+			if formatter != nil {
+				body = formatter(ctx, res)
+			} else {
+				body = NewGetSecretByNameRawV3InternalErrorResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.GoaErrorName())
+			w.WriteHeader(http.StatusInternalServerError)
+			return enc.Encode(body)
+		default:
+			return encodeError(ctx, w, v)
+		}
+	}
+}
+
+// marshalSecretsviewsSecretRawViewToSecretRawResponseBody builds a value of
+// type *SecretRawResponseBody from a value of type *secretsviews.SecretRawView.
+func marshalSecretsviewsSecretRawViewToSecretRawResponseBody(v *secretsviews.SecretRawView) *SecretRawResponseBody {
+	res := &SecretRawResponseBody{
+		ID:                       *v.ID,
+		LegacyID:                 *v.LegacyID,
+		Workspace:                *v.Workspace,
+		Environment:              *v.Environment,
+		Version:                  *v.Version,
+		Type:                     *v.Type,
+		SecretKey:                *v.SecretKey,
+		SecretValue:              *v.SecretValue,
+		SecretComment:            *v.SecretComment,
+		SecretReminderNote:       v.SecretReminderNote,
+		SecretReminderRepeatDays: v.SecretReminderRepeatDays,
+		SkipMultilineEncoding:    v.SkipMultilineEncoding,
+		CreatedAt:                *v.CreatedAt,
+		UpdatedAt:                *v.UpdatedAt,
+		IsRotatedSecret:          v.IsRotatedSecret,
+		RotationID:               v.RotationID,
+		SecretPath:               v.SecretPath,
+		SecretValueHidden:        *v.SecretValueHidden,
+	}
+	if v.Actor != nil {
+		res.Actor = marshalSecretsviewsSecretActorViewToSecretActorResponseBody(v.Actor)
+	}
+	if v.SecretMetadata != nil {
+		res.SecretMetadata = make([]*ResourceMetadataResponseBody, len(v.SecretMetadata))
+		for i, val := range v.SecretMetadata {
+			if val == nil {
+				res.SecretMetadata[i] = nil
+				continue
+			}
+			res.SecretMetadata[i] = marshalSecretsviewsResourceMetadataViewToResourceMetadataResponseBody(val)
+		}
+	}
+	if v.Tags != nil {
+		res.Tags = make([]*SecretTagResponseBody, len(v.Tags))
+		for i, val := range v.Tags {
+			if val == nil {
+				res.Tags[i] = nil
+				continue
+			}
+			res.Tags[i] = marshalSecretsviewsSecretTagViewToSecretTagResponseBody(val)
+		}
+	}
+
+	return res
+}
+
+// marshalSecretsviewsSecretActorViewToSecretActorResponseBody builds a value
+// of type *SecretActorResponseBody from a value of type
+// *secretsviews.SecretActorView.
+func marshalSecretsviewsSecretActorViewToSecretActorResponseBody(v *secretsviews.SecretActorView) *SecretActorResponseBody {
+	if v == nil {
+		return nil
+	}
+	res := &SecretActorResponseBody{
+		ActorID:      v.ActorID,
+		ActorType:    v.ActorType,
+		Name:         v.Name,
+		MembershipID: v.MembershipID,
+		GroupID:      v.GroupID,
+	}
+
+	return res
+}
+
+// marshalSecretsviewsResourceMetadataViewToResourceMetadataResponseBody builds
+// a value of type *ResourceMetadataResponseBody from a value of type
+// *secretsviews.ResourceMetadataView.
+func marshalSecretsviewsResourceMetadataViewToResourceMetadataResponseBody(v *secretsviews.ResourceMetadataView) *ResourceMetadataResponseBody {
+	if v == nil {
+		return nil
+	}
+	res := &ResourceMetadataResponseBody{
+		Key: *v.Key,
+	}
+	if v.Value != nil {
+		res.Value = *v.Value
+	}
+	if v.IsEncrypted != nil {
+		res.IsEncrypted = *v.IsEncrypted
+	}
+	if v.Value == nil {
+		res.Value = ""
+	}
+	if v.IsEncrypted == nil {
+		res.IsEncrypted = false
+	}
+
+	return res
+}
+
+// marshalSecretsviewsSecretTagViewToSecretTagResponseBody builds a value of
+// type *SecretTagResponseBody from a value of type *secretsviews.SecretTagView.
+func marshalSecretsviewsSecretTagViewToSecretTagResponseBody(v *secretsviews.SecretTagView) *SecretTagResponseBody {
+	if v == nil {
+		return nil
+	}
+	res := &SecretTagResponseBody{
+		ID:    *v.ID,
+		Slug:  *v.Slug,
+		Color: v.Color,
+		Name:  *v.Name,
+	}
+
+	return res
+}
+
+// marshalSecretsviewsSecretImportViewToSecretImportResponseBody builds a value
+// of type *SecretImportResponseBody from a value of type
+// *secretsviews.SecretImportView.
+func marshalSecretsviewsSecretImportViewToSecretImportResponseBody(v *secretsviews.SecretImportView) *SecretImportResponseBody {
+	if v == nil {
+		return nil
+	}
+	res := &SecretImportResponseBody{
+		SecretPath:  *v.SecretPath,
 		Environment: *v.Environment,
-		ProjectID:   *v.ProjectID,
+		FolderID:    v.FolderID,
+	}
+	if v.Secrets != nil {
+		res.Secrets = make([]*ImportSecretRawResponseBody, len(v.Secrets))
+		for i, val := range v.Secrets {
+			if val == nil {
+				res.Secrets[i] = nil
+				continue
+			}
+			res.Secrets[i] = marshalSecretsviewsImportSecretRawViewToImportSecretRawResponseBody(val)
+		}
+	} else {
+		res.Secrets = []*ImportSecretRawResponseBody{}
+	}
+
+	return res
+}
+
+// marshalSecretsviewsImportSecretRawViewToImportSecretRawResponseBody builds a
+// value of type *ImportSecretRawResponseBody from a value of type
+// *secretsviews.ImportSecretRawView.
+func marshalSecretsviewsImportSecretRawViewToImportSecretRawResponseBody(v *secretsviews.ImportSecretRawView) *ImportSecretRawResponseBody {
+	res := &ImportSecretRawResponseBody{
+		ID:                       *v.ID,
+		LegacyID:                 *v.LegacyID,
+		Workspace:                *v.Workspace,
+		Environment:              *v.Environment,
+		Version:                  *v.Version,
+		Type:                     *v.Type,
+		SecretKey:                *v.SecretKey,
+		SecretValue:              *v.SecretValue,
+		SecretComment:            *v.SecretComment,
+		SecretReminderNote:       v.SecretReminderNote,
+		SecretReminderRepeatDays: v.SecretReminderRepeatDays,
+		SkipMultilineEncoding:    v.SkipMultilineEncoding,
+		IsRotatedSecret:          v.IsRotatedSecret,
+		RotationID:               v.RotationID,
+		SecretValueHidden:        *v.SecretValueHidden,
+	}
+	if v.Actor != nil {
+		res.Actor = marshalSecretsviewsSecretActorViewToSecretActorResponseBody(v.Actor)
+	}
+	if v.SecretMetadata != nil {
+		res.SecretMetadata = make([]*ResourceMetadataResponseBody, len(v.SecretMetadata))
+		for i, val := range v.SecretMetadata {
+			if val == nil {
+				res.SecretMetadata[i] = nil
+				continue
+			}
+			res.SecretMetadata[i] = marshalSecretsviewsResourceMetadataViewToResourceMetadataResponseBody(val)
+		}
 	}
 
 	return res

@@ -14,888 +14,468 @@ import (
 	goa "goa.design/goa/v3/pkg"
 )
 
-// CreateSecretRequestBody is the type of the "secrets" service "createSecret"
-// endpoint HTTP request body.
-type CreateSecretRequestBody struct {
-	// Secret key
-	Key string `form:"key" json:"key" xml:"key"`
-	// Secret value
-	Value string `form:"value" json:"value" xml:"value"`
-	// Environment slug
-	Environment string `form:"environment" json:"environment" xml:"environment"`
-	// Project ID
-	ProjectID string `form:"projectId" json:"projectId" xml:"projectId"`
+// ListSecretsV4ResponseBody is the type of the "secrets" service
+// "listSecretsV4" endpoint HTTP response body.
+type ListSecretsV4ResponseBody struct {
+	// List of secrets
+	Secrets []*SecretRawResponseBody `form:"secrets,omitempty" json:"secrets,omitempty" xml:"secrets,omitempty"`
+	// Imported secret blocks
+	Imports []*SecretImportResponseBody `form:"imports,omitempty" json:"imports,omitempty" xml:"imports,omitempty"`
 }
 
-// UpdateSecretRequestBody is the type of the "secrets" service "updateSecret"
-// endpoint HTTP request body.
-type UpdateSecretRequestBody struct {
-	// Secret key
-	Key *string `form:"key,omitempty" json:"key,omitempty" xml:"key,omitempty"`
-	// Secret value
-	Value *string `form:"value,omitempty" json:"value,omitempty" xml:"value,omitempty"`
+// GetSecretByNameV4ResponseBody is the type of the "secrets" service
+// "getSecretByNameV4" endpoint HTTP response body.
+type GetSecretByNameV4ResponseBody struct {
+	// The requested secret
+	Secret *SecretRawResponseBody `form:"secret,omitempty" json:"secret,omitempty" xml:"secret,omitempty"`
 }
 
-// CreateSecretResponseBody is the type of the "secrets" service "createSecret"
-// endpoint HTTP response body.
-type CreateSecretResponseBody struct {
+// ListSecretsRawV3ResponseBody is the type of the "secrets" service
+// "listSecretsRawV3" endpoint HTTP response body.
+type ListSecretsRawV3ResponseBody struct {
+	// List of secrets
+	Secrets []*SecretRawResponseBody `form:"secrets,omitempty" json:"secrets,omitempty" xml:"secrets,omitempty"`
+	// Imported secret blocks
+	Imports []*SecretImportResponseBody `form:"imports,omitempty" json:"imports,omitempty" xml:"imports,omitempty"`
+}
+
+// GetSecretByNameRawV3ResponseBody is the type of the "secrets" service
+// "getSecretByNameRawV3" endpoint HTTP response body.
+type GetSecretByNameRawV3ResponseBody struct {
+	// The requested secret
+	Secret *SecretRawResponseBody `form:"secret,omitempty" json:"secret,omitempty" xml:"secret,omitempty"`
+}
+
+// ListSecretsV4BadRequestResponseBody is the type of the "secrets" service
+// "listSecretsV4" endpoint HTTP response body for the "bad_request" error.
+type ListSecretsV4BadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV4UnauthorizedResponseBody is the type of the "secrets" service
+// "listSecretsV4" endpoint HTTP response body for the "unauthorized" error.
+type ListSecretsV4UnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV4ForbiddenResponseBody is the type of the "secrets" service
+// "listSecretsV4" endpoint HTTP response body for the "forbidden" error.
+type ListSecretsV4ForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV4NotFoundResponseBody is the type of the "secrets" service
+// "listSecretsV4" endpoint HTTP response body for the "not_found" error.
+type ListSecretsV4NotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV4InternalErrorResponseBody is the type of the "secrets" service
+// "listSecretsV4" endpoint HTTP response body for the "internal_error" error.
+type ListSecretsV4InternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameV4BadRequestResponseBody is the type of the "secrets" service
+// "getSecretByNameV4" endpoint HTTP response body for the "bad_request" error.
+type GetSecretByNameV4BadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameV4UnauthorizedResponseBody is the type of the "secrets"
+// service "getSecretByNameV4" endpoint HTTP response body for the
+// "unauthorized" error.
+type GetSecretByNameV4UnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameV4ForbiddenResponseBody is the type of the "secrets" service
+// "getSecretByNameV4" endpoint HTTP response body for the "forbidden" error.
+type GetSecretByNameV4ForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameV4NotFoundResponseBody is the type of the "secrets" service
+// "getSecretByNameV4" endpoint HTTP response body for the "not_found" error.
+type GetSecretByNameV4NotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameV4InternalErrorResponseBody is the type of the "secrets"
+// service "getSecretByNameV4" endpoint HTTP response body for the
+// "internal_error" error.
+type GetSecretByNameV4InternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsRawV3BadRequestResponseBody is the type of the "secrets" service
+// "listSecretsRawV3" endpoint HTTP response body for the "bad_request" error.
+type ListSecretsRawV3BadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsRawV3UnauthorizedResponseBody is the type of the "secrets"
+// service "listSecretsRawV3" endpoint HTTP response body for the
+// "unauthorized" error.
+type ListSecretsRawV3UnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsRawV3ForbiddenResponseBody is the type of the "secrets" service
+// "listSecretsRawV3" endpoint HTTP response body for the "forbidden" error.
+type ListSecretsRawV3ForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsRawV3NotFoundResponseBody is the type of the "secrets" service
+// "listSecretsRawV3" endpoint HTTP response body for the "not_found" error.
+type ListSecretsRawV3NotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsRawV3InternalErrorResponseBody is the type of the "secrets"
+// service "listSecretsRawV3" endpoint HTTP response body for the
+// "internal_error" error.
+type ListSecretsRawV3InternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameRawV3BadRequestResponseBody is the type of the "secrets"
+// service "getSecretByNameRawV3" endpoint HTTP response body for the
+// "bad_request" error.
+type GetSecretByNameRawV3BadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameRawV3UnauthorizedResponseBody is the type of the "secrets"
+// service "getSecretByNameRawV3" endpoint HTTP response body for the
+// "unauthorized" error.
+type GetSecretByNameRawV3UnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameRawV3ForbiddenResponseBody is the type of the "secrets"
+// service "getSecretByNameRawV3" endpoint HTTP response body for the
+// "forbidden" error.
+type GetSecretByNameRawV3ForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameRawV3NotFoundResponseBody is the type of the "secrets"
+// service "getSecretByNameRawV3" endpoint HTTP response body for the
+// "not_found" error.
+type GetSecretByNameRawV3NotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// GetSecretByNameRawV3InternalErrorResponseBody is the type of the "secrets"
+// service "getSecretByNameRawV3" endpoint HTTP response body for the
+// "internal_error" error.
+type GetSecretByNameRawV3InternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// SecretRawResponseBody is used to define fields on response body types.
+type SecretRawResponseBody struct {
 	// Secret ID
 	ID *string `form:"id,omitempty" json:"id,omitempty" xml:"id,omitempty"`
-	// Secret key
-	Key *string `form:"key,omitempty" json:"key,omitempty" xml:"key,omitempty"`
-	// Secret value
-	Value *string `form:"value,omitempty" json:"value,omitempty" xml:"value,omitempty"`
+	// Legacy secret ID
+	LegacyID *string `json:"_id"`
+	// Workspace/project ID
+	Workspace *string `form:"workspace,omitempty" json:"workspace,omitempty" xml:"workspace,omitempty"`
 	// Environment slug
 	Environment *string `form:"environment,omitempty" json:"environment,omitempty" xml:"environment,omitempty"`
-	// Project ID
-	ProjectID *string `form:"projectId,omitempty" json:"projectId,omitempty" xml:"projectId,omitempty"`
+	// Secret version
+	Version *int `form:"version,omitempty" json:"version,omitempty" xml:"version,omitempty"`
+	// Secret type (shared or personal)
+	Type *string `form:"type,omitempty" json:"type,omitempty" xml:"type,omitempty"`
+	// Secret key
+	SecretKey *string `form:"secretKey,omitempty" json:"secretKey,omitempty" xml:"secretKey,omitempty"`
+	// Secret value
+	SecretValue *string `form:"secretValue,omitempty" json:"secretValue,omitempty" xml:"secretValue,omitempty"`
+	// Secret comment
+	SecretComment *string `form:"secretComment,omitempty" json:"secretComment,omitempty" xml:"secretComment,omitempty"`
+	// Reminder note
+	SecretReminderNote *string `form:"secretReminderNote,omitempty" json:"secretReminderNote,omitempty" xml:"secretReminderNote,omitempty"`
+	// Reminder repeat days
+	SecretReminderRepeatDays *int `form:"secretReminderRepeatDays,omitempty" json:"secretReminderRepeatDays,omitempty" xml:"secretReminderRepeatDays,omitempty"`
+	// Skip multiline encoding
+	SkipMultilineEncoding *bool `form:"skipMultilineEncoding,omitempty" json:"skipMultilineEncoding,omitempty" xml:"skipMultilineEncoding,omitempty"`
+	// Creation timestamp
+	CreatedAt *string `form:"createdAt,omitempty" json:"createdAt,omitempty" xml:"createdAt,omitempty"`
+	// Last update timestamp
+	UpdatedAt *string `form:"updatedAt,omitempty" json:"updatedAt,omitempty" xml:"updatedAt,omitempty"`
+	// Last modifier
+	Actor *SecretActorResponseBody `form:"actor,omitempty" json:"actor,omitempty" xml:"actor,omitempty"`
+	// Whether this is a rotated secret
+	IsRotatedSecret *bool `form:"isRotatedSecret,omitempty" json:"isRotatedSecret,omitempty" xml:"isRotatedSecret,omitempty"`
+	// Rotation ID (UUID)
+	RotationID *string `form:"rotationId,omitempty" json:"rotationId,omitempty" xml:"rotationId,omitempty"`
+	// Path of the secret
+	SecretPath *string `form:"secretPath,omitempty" json:"secretPath,omitempty" xml:"secretPath,omitempty"`
+	// Whether the secret value is hidden
+	SecretValueHidden *bool `form:"secretValueHidden,omitempty" json:"secretValueHidden,omitempty" xml:"secretValueHidden,omitempty"`
+	// Secret metadata entries
+	SecretMetadata []*ResourceMetadataResponseBody `form:"secretMetadata,omitempty" json:"secretMetadata,omitempty" xml:"secretMetadata,omitempty"`
+	// Tags attached to the secret
+	Tags []*SecretTagResponseBody `form:"tags,omitempty" json:"tags,omitempty" xml:"tags,omitempty"`
 }
 
-// GetSecretResponseBody is the type of the "secrets" service "getSecret"
-// endpoint HTTP response body.
-type GetSecretResponseBody struct {
+// SecretActorResponseBody is used to define fields on response body types.
+type SecretActorResponseBody struct {
+	// Actor ID
+	ActorID *string `form:"actorId,omitempty" json:"actorId,omitempty" xml:"actorId,omitempty"`
+	// Actor type
+	ActorType *string `form:"actorType,omitempty" json:"actorType,omitempty" xml:"actorType,omitempty"`
+	// Actor name
+	Name *string `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
+	// Membership ID
+	MembershipID *string `form:"membershipId,omitempty" json:"membershipId,omitempty" xml:"membershipId,omitempty"`
+	// Group ID
+	GroupID *string `form:"groupId,omitempty" json:"groupId,omitempty" xml:"groupId,omitempty"`
+}
+
+// ResourceMetadataResponseBody is used to define fields on response body types.
+type ResourceMetadataResponseBody struct {
+	// Metadata key
+	Key *string `form:"key,omitempty" json:"key,omitempty" xml:"key,omitempty"`
+	// Metadata value
+	Value *string `form:"value,omitempty" json:"value,omitempty" xml:"value,omitempty"`
+	// Whether the value is encrypted
+	IsEncrypted *bool `form:"isEncrypted,omitempty" json:"isEncrypted,omitempty" xml:"isEncrypted,omitempty"`
+}
+
+// SecretTagResponseBody is used to define fields on response body types.
+type SecretTagResponseBody struct {
+	// Tag ID (UUID)
+	ID *string `form:"id,omitempty" json:"id,omitempty" xml:"id,omitempty"`
+	// Tag slug
+	Slug *string `form:"slug,omitempty" json:"slug,omitempty" xml:"slug,omitempty"`
+	// Tag color
+	Color **string `form:"color,omitempty" json:"color,omitempty" xml:"color,omitempty"`
+	// Tag name
+	Name *string `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
+}
+
+// SecretImportResponseBody is used to define fields on response body types.
+type SecretImportResponseBody struct {
+	// Import source path
+	SecretPath *string `form:"secretPath,omitempty" json:"secretPath,omitempty" xml:"secretPath,omitempty"`
+	// Import source environment
+	Environment *string `form:"environment,omitempty" json:"environment,omitempty" xml:"environment,omitempty"`
+	// Import source folder ID
+	FolderID *string `form:"folderId,omitempty" json:"folderId,omitempty" xml:"folderId,omitempty"`
+	// Imported secrets
+	Secrets []*ImportSecretRawResponseBody `form:"secrets,omitempty" json:"secrets,omitempty" xml:"secrets,omitempty"`
+}
+
+// ImportSecretRawResponseBody is used to define fields on response body types.
+type ImportSecretRawResponseBody struct {
 	// Secret ID
 	ID *string `form:"id,omitempty" json:"id,omitempty" xml:"id,omitempty"`
-	// Secret key
-	Key *string `form:"key,omitempty" json:"key,omitempty" xml:"key,omitempty"`
-	// Secret value
-	Value *string `form:"value,omitempty" json:"value,omitempty" xml:"value,omitempty"`
+	// Legacy secret ID
+	LegacyID *string `json:"_id"`
+	// Workspace/project ID
+	Workspace *string `form:"workspace,omitempty" json:"workspace,omitempty" xml:"workspace,omitempty"`
 	// Environment slug
 	Environment *string `form:"environment,omitempty" json:"environment,omitempty" xml:"environment,omitempty"`
-	// Project ID
-	ProjectID *string `form:"projectId,omitempty" json:"projectId,omitempty" xml:"projectId,omitempty"`
-}
-
-// UpdateSecretResponseBody is the type of the "secrets" service "updateSecret"
-// endpoint HTTP response body.
-type UpdateSecretResponseBody struct {
-	// Secret ID
-	ID *string `form:"id,omitempty" json:"id,omitempty" xml:"id,omitempty"`
+	// Secret version
+	Version *int `form:"version,omitempty" json:"version,omitempty" xml:"version,omitempty"`
+	// Secret type (shared or personal)
+	Type *string `form:"type,omitempty" json:"type,omitempty" xml:"type,omitempty"`
 	// Secret key
-	Key *string `form:"key,omitempty" json:"key,omitempty" xml:"key,omitempty"`
+	SecretKey *string `form:"secretKey,omitempty" json:"secretKey,omitempty" xml:"secretKey,omitempty"`
 	// Secret value
-	Value *string `form:"value,omitempty" json:"value,omitempty" xml:"value,omitempty"`
-	// Environment slug
-	Environment *string `form:"environment,omitempty" json:"environment,omitempty" xml:"environment,omitempty"`
-	// Project ID
-	ProjectID *string `form:"projectId,omitempty" json:"projectId,omitempty" xml:"projectId,omitempty"`
+	SecretValue *string `form:"secretValue,omitempty" json:"secretValue,omitempty" xml:"secretValue,omitempty"`
+	// Secret comment
+	SecretComment *string `form:"secretComment,omitempty" json:"secretComment,omitempty" xml:"secretComment,omitempty"`
+	// Reminder note
+	SecretReminderNote *string `form:"secretReminderNote,omitempty" json:"secretReminderNote,omitempty" xml:"secretReminderNote,omitempty"`
+	// Reminder repeat days
+	SecretReminderRepeatDays *int `form:"secretReminderRepeatDays,omitempty" json:"secretReminderRepeatDays,omitempty" xml:"secretReminderRepeatDays,omitempty"`
+	// Skip multiline encoding
+	SkipMultilineEncoding *bool `form:"skipMultilineEncoding,omitempty" json:"skipMultilineEncoding,omitempty" xml:"skipMultilineEncoding,omitempty"`
+	// Last modifier
+	Actor *SecretActorResponseBody `form:"actor,omitempty" json:"actor,omitempty" xml:"actor,omitempty"`
+	// Whether this is a rotated secret
+	IsRotatedSecret *bool `form:"isRotatedSecret,omitempty" json:"isRotatedSecret,omitempty" xml:"isRotatedSecret,omitempty"`
+	// Rotation ID (UUID)
+	RotationID *string `form:"rotationId,omitempty" json:"rotationId,omitempty" xml:"rotationId,omitempty"`
+	// Whether the secret value is hidden
+	SecretValueHidden *bool `form:"secretValueHidden,omitempty" json:"secretValueHidden,omitempty" xml:"secretValueHidden,omitempty"`
+	// Secret metadata entries
+	SecretMetadata []*ResourceMetadataResponseBody `form:"secretMetadata,omitempty" json:"secretMetadata,omitempty" xml:"secretMetadata,omitempty"`
 }
 
-// ListSecretsResponseBody is the type of the "secrets" service "listSecrets"
-// endpoint HTTP response body.
-type ListSecretsResponseBody []*SecretResultResponse
-
-// GetHealthBadRequestResponseBody is the type of the "secrets" service
-// "getHealth" endpoint HTTP response body for the "bad_request" error.
-type GetHealthBadRequestResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetHealthUnauthorizedResponseBody is the type of the "secrets" service
-// "getHealth" endpoint HTTP response body for the "unauthorized" error.
-type GetHealthUnauthorizedResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetHealthForbiddenResponseBody is the type of the "secrets" service
-// "getHealth" endpoint HTTP response body for the "forbidden" error.
-type GetHealthForbiddenResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetHealthNotFoundResponseBody is the type of the "secrets" service
-// "getHealth" endpoint HTTP response body for the "not_found" error.
-type GetHealthNotFoundResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetHealthInternalErrorResponseBody is the type of the "secrets" service
-// "getHealth" endpoint HTTP response body for the "internal_error" error.
-type GetHealthInternalErrorResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// CreateSecretBadRequestResponseBody is the type of the "secrets" service
-// "createSecret" endpoint HTTP response body for the "bad_request" error.
-type CreateSecretBadRequestResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// CreateSecretUnauthorizedResponseBody is the type of the "secrets" service
-// "createSecret" endpoint HTTP response body for the "unauthorized" error.
-type CreateSecretUnauthorizedResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// CreateSecretForbiddenResponseBody is the type of the "secrets" service
-// "createSecret" endpoint HTTP response body for the "forbidden" error.
-type CreateSecretForbiddenResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// CreateSecretNotFoundResponseBody is the type of the "secrets" service
-// "createSecret" endpoint HTTP response body for the "not_found" error.
-type CreateSecretNotFoundResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// CreateSecretInternalErrorResponseBody is the type of the "secrets" service
-// "createSecret" endpoint HTTP response body for the "internal_error" error.
-type CreateSecretInternalErrorResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetSecretBadRequestResponseBody is the type of the "secrets" service
-// "getSecret" endpoint HTTP response body for the "bad_request" error.
-type GetSecretBadRequestResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetSecretUnauthorizedResponseBody is the type of the "secrets" service
-// "getSecret" endpoint HTTP response body for the "unauthorized" error.
-type GetSecretUnauthorizedResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetSecretForbiddenResponseBody is the type of the "secrets" service
-// "getSecret" endpoint HTTP response body for the "forbidden" error.
-type GetSecretForbiddenResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetSecretNotFoundResponseBody is the type of the "secrets" service
-// "getSecret" endpoint HTTP response body for the "not_found" error.
-type GetSecretNotFoundResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// GetSecretInternalErrorResponseBody is the type of the "secrets" service
-// "getSecret" endpoint HTTP response body for the "internal_error" error.
-type GetSecretInternalErrorResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// UpdateSecretBadRequestResponseBody is the type of the "secrets" service
-// "updateSecret" endpoint HTTP response body for the "bad_request" error.
-type UpdateSecretBadRequestResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// UpdateSecretUnauthorizedResponseBody is the type of the "secrets" service
-// "updateSecret" endpoint HTTP response body for the "unauthorized" error.
-type UpdateSecretUnauthorizedResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// UpdateSecretForbiddenResponseBody is the type of the "secrets" service
-// "updateSecret" endpoint HTTP response body for the "forbidden" error.
-type UpdateSecretForbiddenResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// UpdateSecretNotFoundResponseBody is the type of the "secrets" service
-// "updateSecret" endpoint HTTP response body for the "not_found" error.
-type UpdateSecretNotFoundResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// UpdateSecretInternalErrorResponseBody is the type of the "secrets" service
-// "updateSecret" endpoint HTTP response body for the "internal_error" error.
-type UpdateSecretInternalErrorResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// DeleteSecretBadRequestResponseBody is the type of the "secrets" service
-// "deleteSecret" endpoint HTTP response body for the "bad_request" error.
-type DeleteSecretBadRequestResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// DeleteSecretUnauthorizedResponseBody is the type of the "secrets" service
-// "deleteSecret" endpoint HTTP response body for the "unauthorized" error.
-type DeleteSecretUnauthorizedResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// DeleteSecretForbiddenResponseBody is the type of the "secrets" service
-// "deleteSecret" endpoint HTTP response body for the "forbidden" error.
-type DeleteSecretForbiddenResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// DeleteSecretNotFoundResponseBody is the type of the "secrets" service
-// "deleteSecret" endpoint HTTP response body for the "not_found" error.
-type DeleteSecretNotFoundResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// DeleteSecretInternalErrorResponseBody is the type of the "secrets" service
-// "deleteSecret" endpoint HTTP response body for the "internal_error" error.
-type DeleteSecretInternalErrorResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// ListSecretsBadRequestResponseBody is the type of the "secrets" service
-// "listSecrets" endpoint HTTP response body for the "bad_request" error.
-type ListSecretsBadRequestResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// ListSecretsUnauthorizedResponseBody is the type of the "secrets" service
-// "listSecrets" endpoint HTTP response body for the "unauthorized" error.
-type ListSecretsUnauthorizedResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// ListSecretsForbiddenResponseBody is the type of the "secrets" service
-// "listSecrets" endpoint HTTP response body for the "forbidden" error.
-type ListSecretsForbiddenResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// ListSecretsNotFoundResponseBody is the type of the "secrets" service
-// "listSecrets" endpoint HTTP response body for the "not_found" error.
-type ListSecretsNotFoundResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// ListSecretsInternalErrorResponseBody is the type of the "secrets" service
-// "listSecrets" endpoint HTTP response body for the "internal_error" error.
-type ListSecretsInternalErrorResponseBody struct {
-	// HTTP status code
-	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
-	// Human-readable error message
-	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
-	// Error class name
-	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
-	// Optional structured details
-	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
-}
-
-// SecretResultResponse is used to define fields on response body types.
-type SecretResultResponse struct {
-	// Secret ID
-	ID *string `form:"id,omitempty" json:"id,omitempty" xml:"id,omitempty"`
-	// Secret key
-	Key *string `form:"key,omitempty" json:"key,omitempty" xml:"key,omitempty"`
-	// Secret value
-	Value *string `form:"value,omitempty" json:"value,omitempty" xml:"value,omitempty"`
-	// Environment slug
-	Environment *string `form:"environment,omitempty" json:"environment,omitempty" xml:"environment,omitempty"`
-	// Project ID
-	ProjectID *string `form:"projectId,omitempty" json:"projectId,omitempty" xml:"projectId,omitempty"`
-}
-
-// NewCreateSecretRequestBody builds the HTTP request body from the payload of
-// the "createSecret" endpoint of the "secrets" service.
-func NewCreateSecretRequestBody(p *secrets.CreateSecretPayload) *CreateSecretRequestBody {
-	body := &CreateSecretRequestBody{
-		Key:         p.Key,
-		Value:       p.Value,
-		Environment: p.Environment,
-		ProjectID:   p.ProjectID,
-	}
-	return body
-}
-
-// NewUpdateSecretRequestBody builds the HTTP request body from the payload of
-// the "updateSecret" endpoint of the "secrets" service.
-func NewUpdateSecretRequestBody(p *secrets.UpdateSecretPayload) *UpdateSecretRequestBody {
-	body := &UpdateSecretRequestBody{
-		Key:   p.Key,
-		Value: p.Value,
-	}
-	return body
-}
-
-// NewGetHealthBadRequest builds a secrets service getHealth endpoint
-// bad_request error.
-func NewGetHealthBadRequest(body *GetHealthBadRequestResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetHealthUnauthorized builds a secrets service getHealth endpoint
-// unauthorized error.
-func NewGetHealthUnauthorized(body *GetHealthUnauthorizedResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetHealthForbidden builds a secrets service getHealth endpoint forbidden
-// error.
-func NewGetHealthForbidden(body *GetHealthForbiddenResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetHealthNotFound builds a secrets service getHealth endpoint not_found
-// error.
-func NewGetHealthNotFound(body *GetHealthNotFoundResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetHealthInternalError builds a secrets service getHealth endpoint
-// internal_error error.
-func NewGetHealthInternalError(body *GetHealthInternalErrorResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewCreateSecretSecretResultCreated builds a "secrets" service "createSecret"
-// endpoint result from a HTTP "Created" response.
-func NewCreateSecretSecretResultCreated(body *CreateSecretResponseBody) *secretsviews.SecretResultView {
-	v := &secretsviews.SecretResultView{
-		ID:          body.ID,
-		Key:         body.Key,
-		Value:       body.Value,
-		Environment: body.Environment,
-		ProjectID:   body.ProjectID,
-	}
-
-	return v
-}
-
-// NewCreateSecretBadRequest builds a secrets service createSecret endpoint
-// bad_request error.
-func NewCreateSecretBadRequest(body *CreateSecretBadRequestResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewCreateSecretUnauthorized builds a secrets service createSecret endpoint
-// unauthorized error.
-func NewCreateSecretUnauthorized(body *CreateSecretUnauthorizedResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewCreateSecretForbidden builds a secrets service createSecret endpoint
-// forbidden error.
-func NewCreateSecretForbidden(body *CreateSecretForbiddenResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewCreateSecretNotFound builds a secrets service createSecret endpoint
-// not_found error.
-func NewCreateSecretNotFound(body *CreateSecretNotFoundResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewCreateSecretInternalError builds a secrets service createSecret endpoint
-// internal_error error.
-func NewCreateSecretInternalError(body *CreateSecretInternalErrorResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetSecretSecretResultOK builds a "secrets" service "getSecret" endpoint
-// result from a HTTP "OK" response.
-func NewGetSecretSecretResultOK(body *GetSecretResponseBody) *secretsviews.SecretResultView {
-	v := &secretsviews.SecretResultView{
-		ID:          body.ID,
-		Key:         body.Key,
-		Value:       body.Value,
-		Environment: body.Environment,
-		ProjectID:   body.ProjectID,
-	}
-
-	return v
-}
-
-// NewGetSecretBadRequest builds a secrets service getSecret endpoint
-// bad_request error.
-func NewGetSecretBadRequest(body *GetSecretBadRequestResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetSecretUnauthorized builds a secrets service getSecret endpoint
-// unauthorized error.
-func NewGetSecretUnauthorized(body *GetSecretUnauthorizedResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetSecretForbidden builds a secrets service getSecret endpoint forbidden
-// error.
-func NewGetSecretForbidden(body *GetSecretForbiddenResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetSecretNotFound builds a secrets service getSecret endpoint not_found
-// error.
-func NewGetSecretNotFound(body *GetSecretNotFoundResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewGetSecretInternalError builds a secrets service getSecret endpoint
-// internal_error error.
-func NewGetSecretInternalError(body *GetSecretInternalErrorResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewUpdateSecretSecretResultOK builds a "secrets" service "updateSecret"
-// endpoint result from a HTTP "OK" response.
-func NewUpdateSecretSecretResultOK(body *UpdateSecretResponseBody) *secretsviews.SecretResultView {
-	v := &secretsviews.SecretResultView{
-		ID:          body.ID,
-		Key:         body.Key,
-		Value:       body.Value,
-		Environment: body.Environment,
-		ProjectID:   body.ProjectID,
-	}
-
-	return v
-}
-
-// NewUpdateSecretBadRequest builds a secrets service updateSecret endpoint
-// bad_request error.
-func NewUpdateSecretBadRequest(body *UpdateSecretBadRequestResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewUpdateSecretUnauthorized builds a secrets service updateSecret endpoint
-// unauthorized error.
-func NewUpdateSecretUnauthorized(body *UpdateSecretUnauthorizedResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewUpdateSecretForbidden builds a secrets service updateSecret endpoint
-// forbidden error.
-func NewUpdateSecretForbidden(body *UpdateSecretForbiddenResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewUpdateSecretNotFound builds a secrets service updateSecret endpoint
-// not_found error.
-func NewUpdateSecretNotFound(body *UpdateSecretNotFoundResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewUpdateSecretInternalError builds a secrets service updateSecret endpoint
-// internal_error error.
-func NewUpdateSecretInternalError(body *UpdateSecretInternalErrorResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewDeleteSecretBadRequest builds a secrets service deleteSecret endpoint
-// bad_request error.
-func NewDeleteSecretBadRequest(body *DeleteSecretBadRequestResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewDeleteSecretUnauthorized builds a secrets service deleteSecret endpoint
-// unauthorized error.
-func NewDeleteSecretUnauthorized(body *DeleteSecretUnauthorizedResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewDeleteSecretForbidden builds a secrets service deleteSecret endpoint
-// forbidden error.
-func NewDeleteSecretForbidden(body *DeleteSecretForbiddenResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewDeleteSecretNotFound builds a secrets service deleteSecret endpoint
-// not_found error.
-func NewDeleteSecretNotFound(body *DeleteSecretNotFoundResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewDeleteSecretInternalError builds a secrets service deleteSecret endpoint
-// internal_error error.
-func NewDeleteSecretInternalError(body *DeleteSecretInternalErrorResponseBody) *secrets.APIErrorResult {
-	v := &secrets.APIErrorResult{
-		StatusCode: *body.StatusCode,
-		Message:    *body.Message,
-		ErrorClass: *body.ErrorClass,
-		Details:    body.Details,
-	}
-
-	return v
-}
-
-// NewListSecretsSecretResultCollectionOK builds a "secrets" service
-// "listSecrets" endpoint result from a HTTP "OK" response.
-func NewListSecretsSecretResultCollectionOK(body ListSecretsResponseBody) secretsviews.SecretResultCollectionView {
-	v := make([]*secretsviews.SecretResultView, len(body))
-	for i, val := range body {
+// NewListSecretsV4ListSecretsResultOK builds a "secrets" service
+// "listSecretsV4" endpoint result from a HTTP "OK" response.
+func NewListSecretsV4ListSecretsResultOK(body *ListSecretsV4ResponseBody) *secretsviews.ListSecretsResultView {
+	v := &secretsviews.ListSecretsResultView{}
+	v.Secrets = make([]*secretsviews.SecretRawView, len(body.Secrets))
+	for i, val := range body.Secrets {
 		if val == nil {
-			v[i] = nil
+			v.Secrets[i] = nil
 			continue
 		}
-		v[i] = unmarshalSecretResultResponseToSecretsviewsSecretResultView(val)
+		v.Secrets[i] = unmarshalSecretRawResponseBodyToSecretsviewsSecretRawView(val)
+	}
+	if body.Imports != nil {
+		v.Imports = make([]*secretsviews.SecretImportView, len(body.Imports))
+		for i, val := range body.Imports {
+			if val == nil {
+				v.Imports[i] = nil
+				continue
+			}
+			v.Imports[i] = unmarshalSecretImportResponseBodyToSecretsviewsSecretImportView(val)
+		}
 	}
 
 	return v
 }
 
-// NewListSecretsBadRequest builds a secrets service listSecrets endpoint
+// NewListSecretsV4BadRequest builds a secrets service listSecretsV4 endpoint
 // bad_request error.
-func NewListSecretsBadRequest(body *ListSecretsBadRequestResponseBody) *secrets.APIErrorResult {
+func NewListSecretsV4BadRequest(body *ListSecretsV4BadRequestResponseBody) *secrets.APIErrorResult {
 	v := &secrets.APIErrorResult{
 		StatusCode: *body.StatusCode,
 		Message:    *body.Message,
@@ -906,9 +486,9 @@ func NewListSecretsBadRequest(body *ListSecretsBadRequestResponseBody) *secrets.
 	return v
 }
 
-// NewListSecretsUnauthorized builds a secrets service listSecrets endpoint
+// NewListSecretsV4Unauthorized builds a secrets service listSecretsV4 endpoint
 // unauthorized error.
-func NewListSecretsUnauthorized(body *ListSecretsUnauthorizedResponseBody) *secrets.APIErrorResult {
+func NewListSecretsV4Unauthorized(body *ListSecretsV4UnauthorizedResponseBody) *secrets.APIErrorResult {
 	v := &secrets.APIErrorResult{
 		StatusCode: *body.StatusCode,
 		Message:    *body.Message,
@@ -919,9 +499,9 @@ func NewListSecretsUnauthorized(body *ListSecretsUnauthorizedResponseBody) *secr
 	return v
 }
 
-// NewListSecretsForbidden builds a secrets service listSecrets endpoint
+// NewListSecretsV4Forbidden builds a secrets service listSecretsV4 endpoint
 // forbidden error.
-func NewListSecretsForbidden(body *ListSecretsForbiddenResponseBody) *secrets.APIErrorResult {
+func NewListSecretsV4Forbidden(body *ListSecretsV4ForbiddenResponseBody) *secrets.APIErrorResult {
 	v := &secrets.APIErrorResult{
 		StatusCode: *body.StatusCode,
 		Message:    *body.Message,
@@ -932,9 +512,9 @@ func NewListSecretsForbidden(body *ListSecretsForbiddenResponseBody) *secrets.AP
 	return v
 }
 
-// NewListSecretsNotFound builds a secrets service listSecrets endpoint
+// NewListSecretsV4NotFound builds a secrets service listSecretsV4 endpoint
 // not_found error.
-func NewListSecretsNotFound(body *ListSecretsNotFoundResponseBody) *secrets.APIErrorResult {
+func NewListSecretsV4NotFound(body *ListSecretsV4NotFoundResponseBody) *secrets.APIErrorResult {
 	v := &secrets.APIErrorResult{
 		StatusCode: *body.StatusCode,
 		Message:    *body.Message,
@@ -945,9 +525,9 @@ func NewListSecretsNotFound(body *ListSecretsNotFoundResponseBody) *secrets.APIE
 	return v
 }
 
-// NewListSecretsInternalError builds a secrets service listSecrets endpoint
-// internal_error error.
-func NewListSecretsInternalError(body *ListSecretsInternalErrorResponseBody) *secrets.APIErrorResult {
+// NewListSecretsV4InternalError builds a secrets service listSecretsV4
+// endpoint internal_error error.
+func NewListSecretsV4InternalError(body *ListSecretsV4InternalErrorResponseBody) *secrets.APIErrorResult {
 	v := &secrets.APIErrorResult{
 		StatusCode: *body.StatusCode,
 		Message:    *body.Message,
@@ -958,9 +538,248 @@ func NewListSecretsInternalError(body *ListSecretsInternalErrorResponseBody) *se
 	return v
 }
 
-// ValidateGetHealthBadRequestResponseBody runs the validations defined on
-// getHealth_bad_request_response_body
-func ValidateGetHealthBadRequestResponseBody(body *GetHealthBadRequestResponseBody) (err error) {
+// NewGetSecretByNameV4GetSecretResultOK builds a "secrets" service
+// "getSecretByNameV4" endpoint result from a HTTP "OK" response.
+func NewGetSecretByNameV4GetSecretResultOK(body *GetSecretByNameV4ResponseBody) *secretsviews.GetSecretResultView {
+	v := &secretsviews.GetSecretResultView{}
+	v.Secret = unmarshalSecretRawResponseBodyToSecretsviewsSecretRawView(body.Secret)
+
+	return v
+}
+
+// NewGetSecretByNameV4BadRequest builds a secrets service getSecretByNameV4
+// endpoint bad_request error.
+func NewGetSecretByNameV4BadRequest(body *GetSecretByNameV4BadRequestResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameV4Unauthorized builds a secrets service getSecretByNameV4
+// endpoint unauthorized error.
+func NewGetSecretByNameV4Unauthorized(body *GetSecretByNameV4UnauthorizedResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameV4Forbidden builds a secrets service getSecretByNameV4
+// endpoint forbidden error.
+func NewGetSecretByNameV4Forbidden(body *GetSecretByNameV4ForbiddenResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameV4NotFound builds a secrets service getSecretByNameV4
+// endpoint not_found error.
+func NewGetSecretByNameV4NotFound(body *GetSecretByNameV4NotFoundResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameV4InternalError builds a secrets service getSecretByNameV4
+// endpoint internal_error error.
+func NewGetSecretByNameV4InternalError(body *GetSecretByNameV4InternalErrorResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsRawV3ListSecretsResultOK builds a "secrets" service
+// "listSecretsRawV3" endpoint result from a HTTP "OK" response.
+func NewListSecretsRawV3ListSecretsResultOK(body *ListSecretsRawV3ResponseBody) *secretsviews.ListSecretsResultView {
+	v := &secretsviews.ListSecretsResultView{}
+	v.Secrets = make([]*secretsviews.SecretRawView, len(body.Secrets))
+	for i, val := range body.Secrets {
+		if val == nil {
+			v.Secrets[i] = nil
+			continue
+		}
+		v.Secrets[i] = unmarshalSecretRawResponseBodyToSecretsviewsSecretRawView(val)
+	}
+	if body.Imports != nil {
+		v.Imports = make([]*secretsviews.SecretImportView, len(body.Imports))
+		for i, val := range body.Imports {
+			if val == nil {
+				v.Imports[i] = nil
+				continue
+			}
+			v.Imports[i] = unmarshalSecretImportResponseBodyToSecretsviewsSecretImportView(val)
+		}
+	}
+
+	return v
+}
+
+// NewListSecretsRawV3BadRequest builds a secrets service listSecretsRawV3
+// endpoint bad_request error.
+func NewListSecretsRawV3BadRequest(body *ListSecretsRawV3BadRequestResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsRawV3Unauthorized builds a secrets service listSecretsRawV3
+// endpoint unauthorized error.
+func NewListSecretsRawV3Unauthorized(body *ListSecretsRawV3UnauthorizedResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsRawV3Forbidden builds a secrets service listSecretsRawV3
+// endpoint forbidden error.
+func NewListSecretsRawV3Forbidden(body *ListSecretsRawV3ForbiddenResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsRawV3NotFound builds a secrets service listSecretsRawV3
+// endpoint not_found error.
+func NewListSecretsRawV3NotFound(body *ListSecretsRawV3NotFoundResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsRawV3InternalError builds a secrets service listSecretsRawV3
+// endpoint internal_error error.
+func NewListSecretsRawV3InternalError(body *ListSecretsRawV3InternalErrorResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameRawV3GetSecretResultOK builds a "secrets" service
+// "getSecretByNameRawV3" endpoint result from a HTTP "OK" response.
+func NewGetSecretByNameRawV3GetSecretResultOK(body *GetSecretByNameRawV3ResponseBody) *secretsviews.GetSecretResultView {
+	v := &secretsviews.GetSecretResultView{}
+	v.Secret = unmarshalSecretRawResponseBodyToSecretsviewsSecretRawView(body.Secret)
+
+	return v
+}
+
+// NewGetSecretByNameRawV3BadRequest builds a secrets service
+// getSecretByNameRawV3 endpoint bad_request error.
+func NewGetSecretByNameRawV3BadRequest(body *GetSecretByNameRawV3BadRequestResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameRawV3Unauthorized builds a secrets service
+// getSecretByNameRawV3 endpoint unauthorized error.
+func NewGetSecretByNameRawV3Unauthorized(body *GetSecretByNameRawV3UnauthorizedResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameRawV3Forbidden builds a secrets service
+// getSecretByNameRawV3 endpoint forbidden error.
+func NewGetSecretByNameRawV3Forbidden(body *GetSecretByNameRawV3ForbiddenResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameRawV3NotFound builds a secrets service
+// getSecretByNameRawV3 endpoint not_found error.
+func NewGetSecretByNameRawV3NotFound(body *GetSecretByNameRawV3NotFoundResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewGetSecretByNameRawV3InternalError builds a secrets service
+// getSecretByNameRawV3 endpoint internal_error error.
+func NewGetSecretByNameRawV3InternalError(body *GetSecretByNameRawV3InternalErrorResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// ValidateListSecretsV4BadRequestResponseBody runs the validations defined on
+// listSecretsV4_bad_request_response_body
+func ValidateListSecretsV4BadRequestResponseBody(body *ListSecretsV4BadRequestResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -973,9 +792,9 @@ func ValidateGetHealthBadRequestResponseBody(body *GetHealthBadRequestResponseBo
 	return
 }
 
-// ValidateGetHealthUnauthorizedResponseBody runs the validations defined on
-// getHealth_unauthorized_response_body
-func ValidateGetHealthUnauthorizedResponseBody(body *GetHealthUnauthorizedResponseBody) (err error) {
+// ValidateListSecretsV4UnauthorizedResponseBody runs the validations defined
+// on listSecretsV4_unauthorized_response_body
+func ValidateListSecretsV4UnauthorizedResponseBody(body *ListSecretsV4UnauthorizedResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -988,9 +807,9 @@ func ValidateGetHealthUnauthorizedResponseBody(body *GetHealthUnauthorizedRespon
 	return
 }
 
-// ValidateGetHealthForbiddenResponseBody runs the validations defined on
-// getHealth_forbidden_response_body
-func ValidateGetHealthForbiddenResponseBody(body *GetHealthForbiddenResponseBody) (err error) {
+// ValidateListSecretsV4ForbiddenResponseBody runs the validations defined on
+// listSecretsV4_forbidden_response_body
+func ValidateListSecretsV4ForbiddenResponseBody(body *ListSecretsV4ForbiddenResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1003,9 +822,9 @@ func ValidateGetHealthForbiddenResponseBody(body *GetHealthForbiddenResponseBody
 	return
 }
 
-// ValidateGetHealthNotFoundResponseBody runs the validations defined on
-// getHealth_not_found_response_body
-func ValidateGetHealthNotFoundResponseBody(body *GetHealthNotFoundResponseBody) (err error) {
+// ValidateListSecretsV4NotFoundResponseBody runs the validations defined on
+// listSecretsV4_not_found_response_body
+func ValidateListSecretsV4NotFoundResponseBody(body *ListSecretsV4NotFoundResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1018,9 +837,9 @@ func ValidateGetHealthNotFoundResponseBody(body *GetHealthNotFoundResponseBody) 
 	return
 }
 
-// ValidateGetHealthInternalErrorResponseBody runs the validations defined on
-// getHealth_internal_error_response_body
-func ValidateGetHealthInternalErrorResponseBody(body *GetHealthInternalErrorResponseBody) (err error) {
+// ValidateListSecretsV4InternalErrorResponseBody runs the validations defined
+// on listSecretsV4_internal_error_response_body
+func ValidateListSecretsV4InternalErrorResponseBody(body *ListSecretsV4InternalErrorResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1033,9 +852,9 @@ func ValidateGetHealthInternalErrorResponseBody(body *GetHealthInternalErrorResp
 	return
 }
 
-// ValidateCreateSecretBadRequestResponseBody runs the validations defined on
-// createSecret_bad_request_response_body
-func ValidateCreateSecretBadRequestResponseBody(body *CreateSecretBadRequestResponseBody) (err error) {
+// ValidateGetSecretByNameV4BadRequestResponseBody runs the validations defined
+// on getSecretByNameV4_bad_request_response_body
+func ValidateGetSecretByNameV4BadRequestResponseBody(body *GetSecretByNameV4BadRequestResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1048,9 +867,9 @@ func ValidateCreateSecretBadRequestResponseBody(body *CreateSecretBadRequestResp
 	return
 }
 
-// ValidateCreateSecretUnauthorizedResponseBody runs the validations defined on
-// createSecret_unauthorized_response_body
-func ValidateCreateSecretUnauthorizedResponseBody(body *CreateSecretUnauthorizedResponseBody) (err error) {
+// ValidateGetSecretByNameV4UnauthorizedResponseBody runs the validations
+// defined on getSecretByNameV4_unauthorized_response_body
+func ValidateGetSecretByNameV4UnauthorizedResponseBody(body *GetSecretByNameV4UnauthorizedResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1063,9 +882,9 @@ func ValidateCreateSecretUnauthorizedResponseBody(body *CreateSecretUnauthorized
 	return
 }
 
-// ValidateCreateSecretForbiddenResponseBody runs the validations defined on
-// createSecret_forbidden_response_body
-func ValidateCreateSecretForbiddenResponseBody(body *CreateSecretForbiddenResponseBody) (err error) {
+// ValidateGetSecretByNameV4ForbiddenResponseBody runs the validations defined
+// on getSecretByNameV4_forbidden_response_body
+func ValidateGetSecretByNameV4ForbiddenResponseBody(body *GetSecretByNameV4ForbiddenResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1078,9 +897,9 @@ func ValidateCreateSecretForbiddenResponseBody(body *CreateSecretForbiddenRespon
 	return
 }
 
-// ValidateCreateSecretNotFoundResponseBody runs the validations defined on
-// createSecret_not_found_response_body
-func ValidateCreateSecretNotFoundResponseBody(body *CreateSecretNotFoundResponseBody) (err error) {
+// ValidateGetSecretByNameV4NotFoundResponseBody runs the validations defined
+// on getSecretByNameV4_not_found_response_body
+func ValidateGetSecretByNameV4NotFoundResponseBody(body *GetSecretByNameV4NotFoundResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1093,9 +912,9 @@ func ValidateCreateSecretNotFoundResponseBody(body *CreateSecretNotFoundResponse
 	return
 }
 
-// ValidateCreateSecretInternalErrorResponseBody runs the validations defined
-// on createSecret_internal_error_response_body
-func ValidateCreateSecretInternalErrorResponseBody(body *CreateSecretInternalErrorResponseBody) (err error) {
+// ValidateGetSecretByNameV4InternalErrorResponseBody runs the validations
+// defined on getSecretByNameV4_internal_error_response_body
+func ValidateGetSecretByNameV4InternalErrorResponseBody(body *GetSecretByNameV4InternalErrorResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1108,9 +927,9 @@ func ValidateCreateSecretInternalErrorResponseBody(body *CreateSecretInternalErr
 	return
 }
 
-// ValidateGetSecretBadRequestResponseBody runs the validations defined on
-// getSecret_bad_request_response_body
-func ValidateGetSecretBadRequestResponseBody(body *GetSecretBadRequestResponseBody) (err error) {
+// ValidateListSecretsRawV3BadRequestResponseBody runs the validations defined
+// on listSecretsRawV3_bad_request_response_body
+func ValidateListSecretsRawV3BadRequestResponseBody(body *ListSecretsRawV3BadRequestResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1123,9 +942,9 @@ func ValidateGetSecretBadRequestResponseBody(body *GetSecretBadRequestResponseBo
 	return
 }
 
-// ValidateGetSecretUnauthorizedResponseBody runs the validations defined on
-// getSecret_unauthorized_response_body
-func ValidateGetSecretUnauthorizedResponseBody(body *GetSecretUnauthorizedResponseBody) (err error) {
+// ValidateListSecretsRawV3UnauthorizedResponseBody runs the validations
+// defined on listSecretsRawV3_unauthorized_response_body
+func ValidateListSecretsRawV3UnauthorizedResponseBody(body *ListSecretsRawV3UnauthorizedResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1138,9 +957,9 @@ func ValidateGetSecretUnauthorizedResponseBody(body *GetSecretUnauthorizedRespon
 	return
 }
 
-// ValidateGetSecretForbiddenResponseBody runs the validations defined on
-// getSecret_forbidden_response_body
-func ValidateGetSecretForbiddenResponseBody(body *GetSecretForbiddenResponseBody) (err error) {
+// ValidateListSecretsRawV3ForbiddenResponseBody runs the validations defined
+// on listSecretsRawV3_forbidden_response_body
+func ValidateListSecretsRawV3ForbiddenResponseBody(body *ListSecretsRawV3ForbiddenResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1153,9 +972,9 @@ func ValidateGetSecretForbiddenResponseBody(body *GetSecretForbiddenResponseBody
 	return
 }
 
-// ValidateGetSecretNotFoundResponseBody runs the validations defined on
-// getSecret_not_found_response_body
-func ValidateGetSecretNotFoundResponseBody(body *GetSecretNotFoundResponseBody) (err error) {
+// ValidateListSecretsRawV3NotFoundResponseBody runs the validations defined on
+// listSecretsRawV3_not_found_response_body
+func ValidateListSecretsRawV3NotFoundResponseBody(body *ListSecretsRawV3NotFoundResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1168,9 +987,9 @@ func ValidateGetSecretNotFoundResponseBody(body *GetSecretNotFoundResponseBody) 
 	return
 }
 
-// ValidateGetSecretInternalErrorResponseBody runs the validations defined on
-// getSecret_internal_error_response_body
-func ValidateGetSecretInternalErrorResponseBody(body *GetSecretInternalErrorResponseBody) (err error) {
+// ValidateListSecretsRawV3InternalErrorResponseBody runs the validations
+// defined on listSecretsRawV3_internal_error_response_body
+func ValidateListSecretsRawV3InternalErrorResponseBody(body *ListSecretsRawV3InternalErrorResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1183,9 +1002,9 @@ func ValidateGetSecretInternalErrorResponseBody(body *GetSecretInternalErrorResp
 	return
 }
 
-// ValidateUpdateSecretBadRequestResponseBody runs the validations defined on
-// updateSecret_bad_request_response_body
-func ValidateUpdateSecretBadRequestResponseBody(body *UpdateSecretBadRequestResponseBody) (err error) {
+// ValidateGetSecretByNameRawV3BadRequestResponseBody runs the validations
+// defined on getSecretByNameRawV3_bad_request_response_body
+func ValidateGetSecretByNameRawV3BadRequestResponseBody(body *GetSecretByNameRawV3BadRequestResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1198,9 +1017,9 @@ func ValidateUpdateSecretBadRequestResponseBody(body *UpdateSecretBadRequestResp
 	return
 }
 
-// ValidateUpdateSecretUnauthorizedResponseBody runs the validations defined on
-// updateSecret_unauthorized_response_body
-func ValidateUpdateSecretUnauthorizedResponseBody(body *UpdateSecretUnauthorizedResponseBody) (err error) {
+// ValidateGetSecretByNameRawV3UnauthorizedResponseBody runs the validations
+// defined on getSecretByNameRawV3_unauthorized_response_body
+func ValidateGetSecretByNameRawV3UnauthorizedResponseBody(body *GetSecretByNameRawV3UnauthorizedResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1213,9 +1032,9 @@ func ValidateUpdateSecretUnauthorizedResponseBody(body *UpdateSecretUnauthorized
 	return
 }
 
-// ValidateUpdateSecretForbiddenResponseBody runs the validations defined on
-// updateSecret_forbidden_response_body
-func ValidateUpdateSecretForbiddenResponseBody(body *UpdateSecretForbiddenResponseBody) (err error) {
+// ValidateGetSecretByNameRawV3ForbiddenResponseBody runs the validations
+// defined on getSecretByNameRawV3_forbidden_response_body
+func ValidateGetSecretByNameRawV3ForbiddenResponseBody(body *GetSecretByNameRawV3ForbiddenResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1228,9 +1047,9 @@ func ValidateUpdateSecretForbiddenResponseBody(body *UpdateSecretForbiddenRespon
 	return
 }
 
-// ValidateUpdateSecretNotFoundResponseBody runs the validations defined on
-// updateSecret_not_found_response_body
-func ValidateUpdateSecretNotFoundResponseBody(body *UpdateSecretNotFoundResponseBody) (err error) {
+// ValidateGetSecretByNameRawV3NotFoundResponseBody runs the validations
+// defined on getSecretByNameRawV3_not_found_response_body
+func ValidateGetSecretByNameRawV3NotFoundResponseBody(body *GetSecretByNameRawV3NotFoundResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1243,9 +1062,9 @@ func ValidateUpdateSecretNotFoundResponseBody(body *UpdateSecretNotFoundResponse
 	return
 }
 
-// ValidateUpdateSecretInternalErrorResponseBody runs the validations defined
-// on updateSecret_internal_error_response_body
-func ValidateUpdateSecretInternalErrorResponseBody(body *UpdateSecretInternalErrorResponseBody) (err error) {
+// ValidateGetSecretByNameRawV3InternalErrorResponseBody runs the validations
+// defined on getSecretByNameRawV3_internal_error_response_body
+func ValidateGetSecretByNameRawV3InternalErrorResponseBody(body *GetSecretByNameRawV3InternalErrorResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}
@@ -1258,173 +1077,147 @@ func ValidateUpdateSecretInternalErrorResponseBody(body *UpdateSecretInternalErr
 	return
 }
 
-// ValidateDeleteSecretBadRequestResponseBody runs the validations defined on
-// deleteSecret_bad_request_response_body
-func ValidateDeleteSecretBadRequestResponseBody(body *DeleteSecretBadRequestResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateDeleteSecretUnauthorizedResponseBody runs the validations defined on
-// deleteSecret_unauthorized_response_body
-func ValidateDeleteSecretUnauthorizedResponseBody(body *DeleteSecretUnauthorizedResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateDeleteSecretForbiddenResponseBody runs the validations defined on
-// deleteSecret_forbidden_response_body
-func ValidateDeleteSecretForbiddenResponseBody(body *DeleteSecretForbiddenResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateDeleteSecretNotFoundResponseBody runs the validations defined on
-// deleteSecret_not_found_response_body
-func ValidateDeleteSecretNotFoundResponseBody(body *DeleteSecretNotFoundResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateDeleteSecretInternalErrorResponseBody runs the validations defined
-// on deleteSecret_internal_error_response_body
-func ValidateDeleteSecretInternalErrorResponseBody(body *DeleteSecretInternalErrorResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateListSecretsBadRequestResponseBody runs the validations defined on
-// listSecrets_bad_request_response_body
-func ValidateListSecretsBadRequestResponseBody(body *ListSecretsBadRequestResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateListSecretsUnauthorizedResponseBody runs the validations defined on
-// listSecrets_unauthorized_response_body
-func ValidateListSecretsUnauthorizedResponseBody(body *ListSecretsUnauthorizedResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateListSecretsForbiddenResponseBody runs the validations defined on
-// listSecrets_forbidden_response_body
-func ValidateListSecretsForbiddenResponseBody(body *ListSecretsForbiddenResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateListSecretsNotFoundResponseBody runs the validations defined on
-// listSecrets_not_found_response_body
-func ValidateListSecretsNotFoundResponseBody(body *ListSecretsNotFoundResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateListSecretsInternalErrorResponseBody runs the validations defined on
-// listSecrets_internal_error_response_body
-func ValidateListSecretsInternalErrorResponseBody(body *ListSecretsInternalErrorResponseBody) (err error) {
-	if body.StatusCode == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
-	}
-	if body.Message == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
-	}
-	if body.ErrorClass == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
-	}
-	return
-}
-
-// ValidateSecretResultResponse runs the validations defined on
-// SecretResultResponse
-func ValidateSecretResultResponse(body *SecretResultResponse) (err error) {
+// ValidateSecretRawResponseBody runs the validations defined on
+// SecretRawResponseBody
+func ValidateSecretRawResponseBody(body *SecretRawResponseBody) (err error) {
 	if body.ID == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("id", "body"))
 	}
-	if body.Key == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("key", "body"))
+	if body.LegacyID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("legacyId", "body"))
 	}
-	if body.Value == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("value", "body"))
+	if body.Workspace == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("workspace", "body"))
 	}
 	if body.Environment == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("environment", "body"))
 	}
-	if body.ProjectID == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("projectId", "body"))
+	if body.Version == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("version", "body"))
+	}
+	if body.Type == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("type", "body"))
+	}
+	if body.SecretKey == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretKey", "body"))
+	}
+	if body.SecretValue == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretValue", "body"))
+	}
+	if body.SecretComment == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretComment", "body"))
+	}
+	if body.CreatedAt == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("createdAt", "body"))
+	}
+	if body.UpdatedAt == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("updatedAt", "body"))
+	}
+	if body.SecretValueHidden == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretValueHidden", "body"))
+	}
+	for _, e := range body.SecretMetadata {
+		if e != nil {
+			if err2 := ValidateResourceMetadataResponseBody(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
+	}
+	for _, e := range body.Tags {
+		if e != nil {
+			if err2 := ValidateSecretTagResponseBody(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
+	}
+	return
+}
+
+// ValidateResourceMetadataResponseBody runs the validations defined on
+// ResourceMetadataResponseBody
+func ValidateResourceMetadataResponseBody(body *ResourceMetadataResponseBody) (err error) {
+	if body.Key == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("key", "body"))
+	}
+	return
+}
+
+// ValidateSecretTagResponseBody runs the validations defined on
+// SecretTagResponseBody
+func ValidateSecretTagResponseBody(body *SecretTagResponseBody) (err error) {
+	if body.ID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("id", "body"))
+	}
+	if body.Slug == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("slug", "body"))
+	}
+	if body.Name == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("name", "body"))
+	}
+	return
+}
+
+// ValidateSecretImportResponseBody runs the validations defined on
+// SecretImportResponseBody
+func ValidateSecretImportResponseBody(body *SecretImportResponseBody) (err error) {
+	if body.SecretPath == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretPath", "body"))
+	}
+	if body.Environment == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("environment", "body"))
+	}
+	if body.Secrets == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secrets", "body"))
+	}
+	for _, e := range body.Secrets {
+		if e != nil {
+			if err2 := ValidateImportSecretRawResponseBody(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
+	}
+	return
+}
+
+// ValidateImportSecretRawResponseBody runs the validations defined on
+// ImportSecretRawResponseBody
+func ValidateImportSecretRawResponseBody(body *ImportSecretRawResponseBody) (err error) {
+	if body.ID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("id", "body"))
+	}
+	if body.LegacyID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("legacyId", "body"))
+	}
+	if body.Workspace == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("workspace", "body"))
+	}
+	if body.Environment == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("environment", "body"))
+	}
+	if body.Version == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("version", "body"))
+	}
+	if body.Type == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("type", "body"))
+	}
+	if body.SecretKey == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretKey", "body"))
+	}
+	if body.SecretValue == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretValue", "body"))
+	}
+	if body.SecretComment == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretComment", "body"))
+	}
+	if body.SecretValueHidden == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretValueHidden", "body"))
+	}
+	for _, e := range body.SecretMetadata {
+		if e != nil {
+			if err2 := ValidateResourceMetadataResponseBody(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
 	}
 	return
 }

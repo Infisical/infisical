@@ -3,6 +3,7 @@ package platform
 import (
 	. "goa.design/goa/v3/dsl"
 
+	"github.com/infisical/api/internal/server/design/auth"
 	"github.com/infisical/api/internal/server/design/common"
 )
 
@@ -34,7 +35,7 @@ var _ = Service("projects", func() {
 
 	Method("createProject", func() {
 		Description("Create a new project.")
-		common.Secured(common.JWTAuth, common.IdentityAccessTokenAuth, common.ServiceTokenAuth).
+		auth.Secured(auth.JWTAuth, auth.IdentityAccessTokenAuth, auth.ServiceTokenAuth).
 			Payload(func() {
 				Attribute("name", String, "Project name", func() {
 					MinLength(1)

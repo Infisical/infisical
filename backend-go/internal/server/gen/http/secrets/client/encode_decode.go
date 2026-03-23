@@ -11,6 +11,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -21,13 +22,13 @@ import (
 	goahttp "goa.design/goa/v3/http"
 )
 
-// BuildGetHealthRequest instantiates a HTTP request object with method and
-// path set to call the "secrets" service "getHealth" endpoint
-func (c *Client) BuildGetHealthRequest(ctx context.Context, v any) (*http.Request, error) {
-	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: GetHealthSecretsPath()}
+// BuildListSecretsV4Request instantiates a HTTP request object with method and
+// path set to call the "secrets" service "listSecretsV4" endpoint
+func (c *Client) BuildListSecretsV4Request(ctx context.Context, v any) (*http.Request, error) {
+	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: ListSecretsV4SecretsPath()}
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
-		return nil, goahttp.ErrInvalidURL("secrets", "getHealth", u.String(), err)
+		return nil, goahttp.ErrInvalidURL("secrets", "listSecretsV4", u.String(), err)
 	}
 	if ctx != nil {
 		req = req.WithContext(ctx)
@@ -36,779 +37,13 @@ func (c *Client) BuildGetHealthRequest(ctx context.Context, v any) (*http.Reques
 	return req, nil
 }
 
-// DecodeGetHealthResponse returns a decoder for responses returned by the
-// secrets getHealth endpoint. restoreBody controls whether the response body
-// should be restored after having been read.
-// DecodeGetHealthResponse may return the following errors:
-//   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
-//   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
-//   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
-//   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
-//   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
-//   - error: internal error
-func DecodeGetHealthResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
-	return func(resp *http.Response) (any, error) {
-		if restoreBody {
-			b, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-			resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			defer func() {
-				resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			}()
-		} else {
-			defer resp.Body.Close()
-		}
-		switch resp.StatusCode {
-		case http.StatusOK:
-			var (
-				body string
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getHealth", err)
-			}
-			return body, nil
-		case http.StatusBadRequest:
-			var (
-				body GetHealthBadRequestResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getHealth", err)
-			}
-			err = ValidateGetHealthBadRequestResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getHealth", err)
-			}
-			return nil, NewGetHealthBadRequest(&body)
-		case http.StatusUnauthorized:
-			var (
-				body GetHealthUnauthorizedResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getHealth", err)
-			}
-			err = ValidateGetHealthUnauthorizedResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getHealth", err)
-			}
-			return nil, NewGetHealthUnauthorized(&body)
-		case http.StatusForbidden:
-			var (
-				body GetHealthForbiddenResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getHealth", err)
-			}
-			err = ValidateGetHealthForbiddenResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getHealth", err)
-			}
-			return nil, NewGetHealthForbidden(&body)
-		case http.StatusNotFound:
-			var (
-				body GetHealthNotFoundResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getHealth", err)
-			}
-			err = ValidateGetHealthNotFoundResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getHealth", err)
-			}
-			return nil, NewGetHealthNotFound(&body)
-		case http.StatusInternalServerError:
-			var (
-				body GetHealthInternalErrorResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getHealth", err)
-			}
-			err = ValidateGetHealthInternalErrorResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getHealth", err)
-			}
-			return nil, NewGetHealthInternalError(&body)
-		default:
-			body, _ := io.ReadAll(resp.Body)
-			return nil, goahttp.ErrInvalidResponse("secrets", "getHealth", resp.StatusCode, string(body))
-		}
-	}
-}
-
-// BuildCreateSecretRequest instantiates a HTTP request object with method and
-// path set to call the "secrets" service "createSecret" endpoint
-func (c *Client) BuildCreateSecretRequest(ctx context.Context, v any) (*http.Request, error) {
-	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: CreateSecretSecretsPath()}
-	req, err := http.NewRequest("POST", u.String(), nil)
-	if err != nil {
-		return nil, goahttp.ErrInvalidURL("secrets", "createSecret", u.String(), err)
-	}
-	if ctx != nil {
-		req = req.WithContext(ctx)
-	}
-
-	return req, nil
-}
-
-// EncodeCreateSecretRequest returns an encoder for requests sent to the
-// secrets createSecret server.
-func EncodeCreateSecretRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
+// EncodeListSecretsV4Request returns an encoder for requests sent to the
+// secrets listSecretsV4 server.
+func EncodeListSecretsV4Request(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
 	return func(req *http.Request, v any) error {
-		p, ok := v.(*secrets.CreateSecretPayload)
+		p, ok := v.(*secrets.ListSecretsV4Payload)
 		if !ok {
-			return goahttp.ErrInvalidType("secrets", "createSecret", "*secrets.CreateSecretPayload", v)
-		}
-		{
-			head := p.Token
-			if !strings.Contains(head, " ") {
-				req.Header.Set("Authorization", "Bearer "+head)
-			} else {
-				req.Header.Set("Authorization", head)
-			}
-		}
-		body := NewCreateSecretRequestBody(p)
-		if err := encoder(req).Encode(&body); err != nil {
-			return goahttp.ErrEncodingError("secrets", "createSecret", err)
-		}
-		return nil
-	}
-}
-
-// DecodeCreateSecretResponse returns a decoder for responses returned by the
-// secrets createSecret endpoint. restoreBody controls whether the response
-// body should be restored after having been read.
-// DecodeCreateSecretResponse may return the following errors:
-//   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
-//   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
-//   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
-//   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
-//   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
-//   - error: internal error
-func DecodeCreateSecretResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
-	return func(resp *http.Response) (any, error) {
-		if restoreBody {
-			b, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-			resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			defer func() {
-				resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			}()
-		} else {
-			defer resp.Body.Close()
-		}
-		switch resp.StatusCode {
-		case http.StatusCreated:
-			var (
-				body CreateSecretResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "createSecret", err)
-			}
-			p := NewCreateSecretSecretResultCreated(&body)
-			view := "default"
-			vres := &secretsviews.SecretResult{Projected: p, View: view}
-			if err = secretsviews.ValidateSecretResult(vres); err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "createSecret", err)
-			}
-			res := secrets.NewSecretResult(vres)
-			return res, nil
-		case http.StatusBadRequest:
-			var (
-				body CreateSecretBadRequestResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "createSecret", err)
-			}
-			err = ValidateCreateSecretBadRequestResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "createSecret", err)
-			}
-			return nil, NewCreateSecretBadRequest(&body)
-		case http.StatusUnauthorized:
-			var (
-				body CreateSecretUnauthorizedResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "createSecret", err)
-			}
-			err = ValidateCreateSecretUnauthorizedResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "createSecret", err)
-			}
-			return nil, NewCreateSecretUnauthorized(&body)
-		case http.StatusForbidden:
-			var (
-				body CreateSecretForbiddenResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "createSecret", err)
-			}
-			err = ValidateCreateSecretForbiddenResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "createSecret", err)
-			}
-			return nil, NewCreateSecretForbidden(&body)
-		case http.StatusNotFound:
-			var (
-				body CreateSecretNotFoundResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "createSecret", err)
-			}
-			err = ValidateCreateSecretNotFoundResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "createSecret", err)
-			}
-			return nil, NewCreateSecretNotFound(&body)
-		case http.StatusInternalServerError:
-			var (
-				body CreateSecretInternalErrorResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "createSecret", err)
-			}
-			err = ValidateCreateSecretInternalErrorResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "createSecret", err)
-			}
-			return nil, NewCreateSecretInternalError(&body)
-		default:
-			body, _ := io.ReadAll(resp.Body)
-			return nil, goahttp.ErrInvalidResponse("secrets", "createSecret", resp.StatusCode, string(body))
-		}
-	}
-}
-
-// BuildGetSecretRequest instantiates a HTTP request object with method and
-// path set to call the "secrets" service "getSecret" endpoint
-func (c *Client) BuildGetSecretRequest(ctx context.Context, v any) (*http.Request, error) {
-	var (
-		id string
-	)
-	{
-		p, ok := v.(*secrets.GetSecretPayload)
-		if !ok {
-			return nil, goahttp.ErrInvalidType("secrets", "getSecret", "*secrets.GetSecretPayload", v)
-		}
-		id = p.ID
-	}
-	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: GetSecretSecretsPath(id)}
-	req, err := http.NewRequest("GET", u.String(), nil)
-	if err != nil {
-		return nil, goahttp.ErrInvalidURL("secrets", "getSecret", u.String(), err)
-	}
-	if ctx != nil {
-		req = req.WithContext(ctx)
-	}
-
-	return req, nil
-}
-
-// EncodeGetSecretRequest returns an encoder for requests sent to the secrets
-// getSecret server.
-func EncodeGetSecretRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
-	return func(req *http.Request, v any) error {
-		p, ok := v.(*secrets.GetSecretPayload)
-		if !ok {
-			return goahttp.ErrInvalidType("secrets", "getSecret", "*secrets.GetSecretPayload", v)
-		}
-		{
-			head := p.Token
-			if !strings.Contains(head, " ") {
-				req.Header.Set("Authorization", "Bearer "+head)
-			} else {
-				req.Header.Set("Authorization", head)
-			}
-		}
-		return nil
-	}
-}
-
-// DecodeGetSecretResponse returns a decoder for responses returned by the
-// secrets getSecret endpoint. restoreBody controls whether the response body
-// should be restored after having been read.
-// DecodeGetSecretResponse may return the following errors:
-//   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
-//   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
-//   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
-//   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
-//   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
-//   - error: internal error
-func DecodeGetSecretResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
-	return func(resp *http.Response) (any, error) {
-		if restoreBody {
-			b, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-			resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			defer func() {
-				resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			}()
-		} else {
-			defer resp.Body.Close()
-		}
-		switch resp.StatusCode {
-		case http.StatusOK:
-			var (
-				body GetSecretResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getSecret", err)
-			}
-			p := NewGetSecretSecretResultOK(&body)
-			view := "default"
-			vres := &secretsviews.SecretResult{Projected: p, View: view}
-			if err = secretsviews.ValidateSecretResult(vres); err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getSecret", err)
-			}
-			res := secrets.NewSecretResult(vres)
-			return res, nil
-		case http.StatusBadRequest:
-			var (
-				body GetSecretBadRequestResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getSecret", err)
-			}
-			err = ValidateGetSecretBadRequestResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getSecret", err)
-			}
-			return nil, NewGetSecretBadRequest(&body)
-		case http.StatusUnauthorized:
-			var (
-				body GetSecretUnauthorizedResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getSecret", err)
-			}
-			err = ValidateGetSecretUnauthorizedResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getSecret", err)
-			}
-			return nil, NewGetSecretUnauthorized(&body)
-		case http.StatusForbidden:
-			var (
-				body GetSecretForbiddenResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getSecret", err)
-			}
-			err = ValidateGetSecretForbiddenResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getSecret", err)
-			}
-			return nil, NewGetSecretForbidden(&body)
-		case http.StatusNotFound:
-			var (
-				body GetSecretNotFoundResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getSecret", err)
-			}
-			err = ValidateGetSecretNotFoundResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getSecret", err)
-			}
-			return nil, NewGetSecretNotFound(&body)
-		case http.StatusInternalServerError:
-			var (
-				body GetSecretInternalErrorResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "getSecret", err)
-			}
-			err = ValidateGetSecretInternalErrorResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "getSecret", err)
-			}
-			return nil, NewGetSecretInternalError(&body)
-		default:
-			body, _ := io.ReadAll(resp.Body)
-			return nil, goahttp.ErrInvalidResponse("secrets", "getSecret", resp.StatusCode, string(body))
-		}
-	}
-}
-
-// BuildUpdateSecretRequest instantiates a HTTP request object with method and
-// path set to call the "secrets" service "updateSecret" endpoint
-func (c *Client) BuildUpdateSecretRequest(ctx context.Context, v any) (*http.Request, error) {
-	var (
-		id string
-	)
-	{
-		p, ok := v.(*secrets.UpdateSecretPayload)
-		if !ok {
-			return nil, goahttp.ErrInvalidType("secrets", "updateSecret", "*secrets.UpdateSecretPayload", v)
-		}
-		id = p.ID
-	}
-	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: UpdateSecretSecretsPath(id)}
-	req, err := http.NewRequest("PATCH", u.String(), nil)
-	if err != nil {
-		return nil, goahttp.ErrInvalidURL("secrets", "updateSecret", u.String(), err)
-	}
-	if ctx != nil {
-		req = req.WithContext(ctx)
-	}
-
-	return req, nil
-}
-
-// EncodeUpdateSecretRequest returns an encoder for requests sent to the
-// secrets updateSecret server.
-func EncodeUpdateSecretRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
-	return func(req *http.Request, v any) error {
-		p, ok := v.(*secrets.UpdateSecretPayload)
-		if !ok {
-			return goahttp.ErrInvalidType("secrets", "updateSecret", "*secrets.UpdateSecretPayload", v)
-		}
-		{
-			head := p.Token
-			if !strings.Contains(head, " ") {
-				req.Header.Set("Authorization", "Bearer "+head)
-			} else {
-				req.Header.Set("Authorization", head)
-			}
-		}
-		body := NewUpdateSecretRequestBody(p)
-		if err := encoder(req).Encode(&body); err != nil {
-			return goahttp.ErrEncodingError("secrets", "updateSecret", err)
-		}
-		return nil
-	}
-}
-
-// DecodeUpdateSecretResponse returns a decoder for responses returned by the
-// secrets updateSecret endpoint. restoreBody controls whether the response
-// body should be restored after having been read.
-// DecodeUpdateSecretResponse may return the following errors:
-//   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
-//   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
-//   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
-//   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
-//   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
-//   - error: internal error
-func DecodeUpdateSecretResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
-	return func(resp *http.Response) (any, error) {
-		if restoreBody {
-			b, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-			resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			defer func() {
-				resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			}()
-		} else {
-			defer resp.Body.Close()
-		}
-		switch resp.StatusCode {
-		case http.StatusOK:
-			var (
-				body UpdateSecretResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "updateSecret", err)
-			}
-			p := NewUpdateSecretSecretResultOK(&body)
-			view := "default"
-			vres := &secretsviews.SecretResult{Projected: p, View: view}
-			if err = secretsviews.ValidateSecretResult(vres); err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "updateSecret", err)
-			}
-			res := secrets.NewSecretResult(vres)
-			return res, nil
-		case http.StatusBadRequest:
-			var (
-				body UpdateSecretBadRequestResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "updateSecret", err)
-			}
-			err = ValidateUpdateSecretBadRequestResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "updateSecret", err)
-			}
-			return nil, NewUpdateSecretBadRequest(&body)
-		case http.StatusUnauthorized:
-			var (
-				body UpdateSecretUnauthorizedResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "updateSecret", err)
-			}
-			err = ValidateUpdateSecretUnauthorizedResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "updateSecret", err)
-			}
-			return nil, NewUpdateSecretUnauthorized(&body)
-		case http.StatusForbidden:
-			var (
-				body UpdateSecretForbiddenResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "updateSecret", err)
-			}
-			err = ValidateUpdateSecretForbiddenResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "updateSecret", err)
-			}
-			return nil, NewUpdateSecretForbidden(&body)
-		case http.StatusNotFound:
-			var (
-				body UpdateSecretNotFoundResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "updateSecret", err)
-			}
-			err = ValidateUpdateSecretNotFoundResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "updateSecret", err)
-			}
-			return nil, NewUpdateSecretNotFound(&body)
-		case http.StatusInternalServerError:
-			var (
-				body UpdateSecretInternalErrorResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "updateSecret", err)
-			}
-			err = ValidateUpdateSecretInternalErrorResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "updateSecret", err)
-			}
-			return nil, NewUpdateSecretInternalError(&body)
-		default:
-			body, _ := io.ReadAll(resp.Body)
-			return nil, goahttp.ErrInvalidResponse("secrets", "updateSecret", resp.StatusCode, string(body))
-		}
-	}
-}
-
-// BuildDeleteSecretRequest instantiates a HTTP request object with method and
-// path set to call the "secrets" service "deleteSecret" endpoint
-func (c *Client) BuildDeleteSecretRequest(ctx context.Context, v any) (*http.Request, error) {
-	var (
-		id string
-	)
-	{
-		p, ok := v.(*secrets.DeleteSecretPayload)
-		if !ok {
-			return nil, goahttp.ErrInvalidType("secrets", "deleteSecret", "*secrets.DeleteSecretPayload", v)
-		}
-		id = p.ID
-	}
-	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: DeleteSecretSecretsPath(id)}
-	req, err := http.NewRequest("DELETE", u.String(), nil)
-	if err != nil {
-		return nil, goahttp.ErrInvalidURL("secrets", "deleteSecret", u.String(), err)
-	}
-	if ctx != nil {
-		req = req.WithContext(ctx)
-	}
-
-	return req, nil
-}
-
-// EncodeDeleteSecretRequest returns an encoder for requests sent to the
-// secrets deleteSecret server.
-func EncodeDeleteSecretRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
-	return func(req *http.Request, v any) error {
-		p, ok := v.(*secrets.DeleteSecretPayload)
-		if !ok {
-			return goahttp.ErrInvalidType("secrets", "deleteSecret", "*secrets.DeleteSecretPayload", v)
-		}
-		{
-			head := p.Token
-			if !strings.Contains(head, " ") {
-				req.Header.Set("Authorization", "Bearer "+head)
-			} else {
-				req.Header.Set("Authorization", head)
-			}
-		}
-		return nil
-	}
-}
-
-// DecodeDeleteSecretResponse returns a decoder for responses returned by the
-// secrets deleteSecret endpoint. restoreBody controls whether the response
-// body should be restored after having been read.
-// DecodeDeleteSecretResponse may return the following errors:
-//   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
-//   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
-//   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
-//   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
-//   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
-//   - error: internal error
-func DecodeDeleteSecretResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
-	return func(resp *http.Response) (any, error) {
-		if restoreBody {
-			b, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-			resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			defer func() {
-				resp.Body = io.NopCloser(bytes.NewBuffer(b))
-			}()
-		} else {
-			defer resp.Body.Close()
-		}
-		switch resp.StatusCode {
-		case http.StatusNoContent:
-			return nil, nil
-		case http.StatusBadRequest:
-			var (
-				body DeleteSecretBadRequestResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "deleteSecret", err)
-			}
-			err = ValidateDeleteSecretBadRequestResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "deleteSecret", err)
-			}
-			return nil, NewDeleteSecretBadRequest(&body)
-		case http.StatusUnauthorized:
-			var (
-				body DeleteSecretUnauthorizedResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "deleteSecret", err)
-			}
-			err = ValidateDeleteSecretUnauthorizedResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "deleteSecret", err)
-			}
-			return nil, NewDeleteSecretUnauthorized(&body)
-		case http.StatusForbidden:
-			var (
-				body DeleteSecretForbiddenResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "deleteSecret", err)
-			}
-			err = ValidateDeleteSecretForbiddenResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "deleteSecret", err)
-			}
-			return nil, NewDeleteSecretForbidden(&body)
-		case http.StatusNotFound:
-			var (
-				body DeleteSecretNotFoundResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "deleteSecret", err)
-			}
-			err = ValidateDeleteSecretNotFoundResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "deleteSecret", err)
-			}
-			return nil, NewDeleteSecretNotFound(&body)
-		case http.StatusInternalServerError:
-			var (
-				body DeleteSecretInternalErrorResponseBody
-				err  error
-			)
-			err = decoder(resp).Decode(&body)
-			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "deleteSecret", err)
-			}
-			err = ValidateDeleteSecretInternalErrorResponseBody(&body)
-			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "deleteSecret", err)
-			}
-			return nil, NewDeleteSecretInternalError(&body)
-		default:
-			body, _ := io.ReadAll(resp.Body)
-			return nil, goahttp.ErrInvalidResponse("secrets", "deleteSecret", resp.StatusCode, string(body))
-		}
-	}
-}
-
-// BuildListSecretsRequest instantiates a HTTP request object with method and
-// path set to call the "secrets" service "listSecrets" endpoint
-func (c *Client) BuildListSecretsRequest(ctx context.Context, v any) (*http.Request, error) {
-	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: ListSecretsSecretsPath()}
-	req, err := http.NewRequest("GET", u.String(), nil)
-	if err != nil {
-		return nil, goahttp.ErrInvalidURL("secrets", "listSecrets", u.String(), err)
-	}
-	if ctx != nil {
-		req = req.WithContext(ctx)
-	}
-
-	return req, nil
-}
-
-// EncodeListSecretsRequest returns an encoder for requests sent to the secrets
-// listSecrets server.
-func EncodeListSecretsRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
-	return func(req *http.Request, v any) error {
-		p, ok := v.(*secrets.ListSecretsPayload)
-		if !ok {
-			return goahttp.ErrInvalidType("secrets", "listSecrets", "*secrets.ListSecretsPayload", v)
+			return goahttp.ErrInvalidType("secrets", "listSecretsV4", "*secrets.ListSecretsV4Payload", v)
 		}
 		{
 			head := p.Token
@@ -821,22 +56,34 @@ func EncodeListSecretsRequest(encoder func(*http.Request) goahttp.Encoder) func(
 		values := req.URL.Query()
 		values.Add("projectId", p.ProjectID)
 		values.Add("environment", p.Environment)
+		values.Add("secretPath", p.SecretPath)
+		values.Add("viewSecretValue", fmt.Sprintf("%v", p.ViewSecretValue))
+		values.Add("expandSecretReferences", fmt.Sprintf("%v", p.ExpandSecretReferences))
+		values.Add("recursive", fmt.Sprintf("%v", p.Recursive))
+		values.Add("includePersonalOverrides", fmt.Sprintf("%v", p.IncludePersonalOverrides))
+		values.Add("includeImports", fmt.Sprintf("%v", p.IncludeImports))
+		if p.TagSlugs != nil {
+			values.Add("tagSlugs", *p.TagSlugs)
+		}
+		if p.MetadataFilter != nil {
+			values.Add("metadataFilter", *p.MetadataFilter)
+		}
 		req.URL.RawQuery = values.Encode()
 		return nil
 	}
 }
 
-// DecodeListSecretsResponse returns a decoder for responses returned by the
-// secrets listSecrets endpoint. restoreBody controls whether the response body
-// should be restored after having been read.
-// DecodeListSecretsResponse may return the following errors:
+// DecodeListSecretsV4Response returns a decoder for responses returned by the
+// secrets listSecretsV4 endpoint. restoreBody controls whether the response
+// body should be restored after having been read.
+// DecodeListSecretsV4Response may return the following errors:
 //   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
 //   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
 //   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
 //   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
 //   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
 //   - error: internal error
-func DecodeListSecretsResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
+func DecodeListSecretsV4Response(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
 	return func(resp *http.Response) (any, error) {
 		if restoreBody {
 			b, err := io.ReadAll(resp.Body)
@@ -853,108 +100,791 @@ func DecodeListSecretsResponse(decoder func(*http.Response) goahttp.Decoder, res
 		switch resp.StatusCode {
 		case http.StatusOK:
 			var (
-				body ListSecretsResponseBody
+				body ListSecretsV4ResponseBody
 				err  error
 			)
 			err = decoder(resp).Decode(&body)
 			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsV4", err)
 			}
-			p := NewListSecretsSecretResultCollectionOK(body)
+			p := NewListSecretsV4ListSecretsResultOK(&body)
 			view := "default"
-			vres := secretsviews.SecretResultCollection{Projected: p, View: view}
-			if err = secretsviews.ValidateSecretResultCollection(vres); err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "listSecrets", err)
+			vres := &secretsviews.ListSecretsResult{Projected: p, View: view}
+			if err = secretsviews.ValidateListSecretsResult(vres); err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsV4", err)
 			}
-			res := secrets.NewSecretResultCollection(vres)
+			res := secrets.NewListSecretsResult(vres)
 			return res, nil
 		case http.StatusBadRequest:
 			var (
-				body ListSecretsBadRequestResponseBody
+				body ListSecretsV4BadRequestResponseBody
 				err  error
 			)
 			err = decoder(resp).Decode(&body)
 			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsV4", err)
 			}
-			err = ValidateListSecretsBadRequestResponseBody(&body)
+			err = ValidateListSecretsV4BadRequestResponseBody(&body)
 			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsV4", err)
 			}
-			return nil, NewListSecretsBadRequest(&body)
+			return nil, NewListSecretsV4BadRequest(&body)
 		case http.StatusUnauthorized:
 			var (
-				body ListSecretsUnauthorizedResponseBody
+				body ListSecretsV4UnauthorizedResponseBody
 				err  error
 			)
 			err = decoder(resp).Decode(&body)
 			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsV4", err)
 			}
-			err = ValidateListSecretsUnauthorizedResponseBody(&body)
+			err = ValidateListSecretsV4UnauthorizedResponseBody(&body)
 			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsV4", err)
 			}
-			return nil, NewListSecretsUnauthorized(&body)
+			return nil, NewListSecretsV4Unauthorized(&body)
 		case http.StatusForbidden:
 			var (
-				body ListSecretsForbiddenResponseBody
+				body ListSecretsV4ForbiddenResponseBody
 				err  error
 			)
 			err = decoder(resp).Decode(&body)
 			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsV4", err)
 			}
-			err = ValidateListSecretsForbiddenResponseBody(&body)
+			err = ValidateListSecretsV4ForbiddenResponseBody(&body)
 			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsV4", err)
 			}
-			return nil, NewListSecretsForbidden(&body)
+			return nil, NewListSecretsV4Forbidden(&body)
 		case http.StatusNotFound:
 			var (
-				body ListSecretsNotFoundResponseBody
+				body ListSecretsV4NotFoundResponseBody
 				err  error
 			)
 			err = decoder(resp).Decode(&body)
 			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsV4", err)
 			}
-			err = ValidateListSecretsNotFoundResponseBody(&body)
+			err = ValidateListSecretsV4NotFoundResponseBody(&body)
 			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsV4", err)
 			}
-			return nil, NewListSecretsNotFound(&body)
+			return nil, NewListSecretsV4NotFound(&body)
 		case http.StatusInternalServerError:
 			var (
-				body ListSecretsInternalErrorResponseBody
+				body ListSecretsV4InternalErrorResponseBody
 				err  error
 			)
 			err = decoder(resp).Decode(&body)
 			if err != nil {
-				return nil, goahttp.ErrDecodingError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsV4", err)
 			}
-			err = ValidateListSecretsInternalErrorResponseBody(&body)
+			err = ValidateListSecretsV4InternalErrorResponseBody(&body)
 			if err != nil {
-				return nil, goahttp.ErrValidationError("secrets", "listSecrets", err)
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsV4", err)
 			}
-			return nil, NewListSecretsInternalError(&body)
+			return nil, NewListSecretsV4InternalError(&body)
 		default:
 			body, _ := io.ReadAll(resp.Body)
-			return nil, goahttp.ErrInvalidResponse("secrets", "listSecrets", resp.StatusCode, string(body))
+			return nil, goahttp.ErrInvalidResponse("secrets", "listSecretsV4", resp.StatusCode, string(body))
 		}
 	}
 }
 
-// unmarshalSecretResultResponseToSecretsviewsSecretResultView builds a value
-// of type *secretsviews.SecretResultView from a value of type
-// *SecretResultResponse.
-func unmarshalSecretResultResponseToSecretsviewsSecretResultView(v *SecretResultResponse) *secretsviews.SecretResultView {
-	res := &secretsviews.SecretResultView{
-		ID:          v.ID,
+// BuildGetSecretByNameV4Request instantiates a HTTP request object with method
+// and path set to call the "secrets" service "getSecretByNameV4" endpoint
+func (c *Client) BuildGetSecretByNameV4Request(ctx context.Context, v any) (*http.Request, error) {
+	var (
+		secretName string
+	)
+	{
+		p, ok := v.(*secrets.GetSecretByNameV4Payload)
+		if !ok {
+			return nil, goahttp.ErrInvalidType("secrets", "getSecretByNameV4", "*secrets.GetSecretByNameV4Payload", v)
+		}
+		secretName = p.SecretName
+	}
+	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: GetSecretByNameV4SecretsPath(secretName)}
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, goahttp.ErrInvalidURL("secrets", "getSecretByNameV4", u.String(), err)
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+
+	return req, nil
+}
+
+// EncodeGetSecretByNameV4Request returns an encoder for requests sent to the
+// secrets getSecretByNameV4 server.
+func EncodeGetSecretByNameV4Request(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
+	return func(req *http.Request, v any) error {
+		p, ok := v.(*secrets.GetSecretByNameV4Payload)
+		if !ok {
+			return goahttp.ErrInvalidType("secrets", "getSecretByNameV4", "*secrets.GetSecretByNameV4Payload", v)
+		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
+		}
+		values := req.URL.Query()
+		values.Add("projectId", p.ProjectID)
+		values.Add("environment", p.Environment)
+		values.Add("secretPath", p.SecretPath)
+		if p.Version != nil {
+			values.Add("version", fmt.Sprintf("%v", *p.Version))
+		}
+		values.Add("type", p.Type)
+		values.Add("viewSecretValue", fmt.Sprintf("%v", p.ViewSecretValue))
+		values.Add("expandSecretReferences", fmt.Sprintf("%v", p.ExpandSecretReferences))
+		values.Add("includeImports", fmt.Sprintf("%v", p.IncludeImports))
+		req.URL.RawQuery = values.Encode()
+		return nil
+	}
+}
+
+// DecodeGetSecretByNameV4Response returns a decoder for responses returned by
+// the secrets getSecretByNameV4 endpoint. restoreBody controls whether the
+// response body should be restored after having been read.
+// DecodeGetSecretByNameV4Response may return the following errors:
+//   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
+//   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
+//   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
+//   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
+//   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
+//   - error: internal error
+func DecodeGetSecretByNameV4Response(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
+	return func(resp *http.Response) (any, error) {
+		if restoreBody {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			resp.Body = io.NopCloser(bytes.NewBuffer(b))
+			defer func() {
+				resp.Body = io.NopCloser(bytes.NewBuffer(b))
+			}()
+		} else {
+			defer resp.Body.Close()
+		}
+		switch resp.StatusCode {
+		case http.StatusOK:
+			var (
+				body GetSecretByNameV4ResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameV4", err)
+			}
+			p := NewGetSecretByNameV4GetSecretResultOK(&body)
+			view := "default"
+			vres := &secretsviews.GetSecretResult{Projected: p, View: view}
+			if err = secretsviews.ValidateGetSecretResult(vres); err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameV4", err)
+			}
+			res := secrets.NewGetSecretResult(vres)
+			return res, nil
+		case http.StatusBadRequest:
+			var (
+				body GetSecretByNameV4BadRequestResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameV4", err)
+			}
+			err = ValidateGetSecretByNameV4BadRequestResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameV4", err)
+			}
+			return nil, NewGetSecretByNameV4BadRequest(&body)
+		case http.StatusUnauthorized:
+			var (
+				body GetSecretByNameV4UnauthorizedResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameV4", err)
+			}
+			err = ValidateGetSecretByNameV4UnauthorizedResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameV4", err)
+			}
+			return nil, NewGetSecretByNameV4Unauthorized(&body)
+		case http.StatusForbidden:
+			var (
+				body GetSecretByNameV4ForbiddenResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameV4", err)
+			}
+			err = ValidateGetSecretByNameV4ForbiddenResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameV4", err)
+			}
+			return nil, NewGetSecretByNameV4Forbidden(&body)
+		case http.StatusNotFound:
+			var (
+				body GetSecretByNameV4NotFoundResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameV4", err)
+			}
+			err = ValidateGetSecretByNameV4NotFoundResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameV4", err)
+			}
+			return nil, NewGetSecretByNameV4NotFound(&body)
+		case http.StatusInternalServerError:
+			var (
+				body GetSecretByNameV4InternalErrorResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameV4", err)
+			}
+			err = ValidateGetSecretByNameV4InternalErrorResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameV4", err)
+			}
+			return nil, NewGetSecretByNameV4InternalError(&body)
+		default:
+			body, _ := io.ReadAll(resp.Body)
+			return nil, goahttp.ErrInvalidResponse("secrets", "getSecretByNameV4", resp.StatusCode, string(body))
+		}
+	}
+}
+
+// BuildListSecretsRawV3Request instantiates a HTTP request object with method
+// and path set to call the "secrets" service "listSecretsRawV3" endpoint
+func (c *Client) BuildListSecretsRawV3Request(ctx context.Context, v any) (*http.Request, error) {
+	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: ListSecretsRawV3SecretsPath()}
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, goahttp.ErrInvalidURL("secrets", "listSecretsRawV3", u.String(), err)
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+
+	return req, nil
+}
+
+// EncodeListSecretsRawV3Request returns an encoder for requests sent to the
+// secrets listSecretsRawV3 server.
+func EncodeListSecretsRawV3Request(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
+	return func(req *http.Request, v any) error {
+		p, ok := v.(*secrets.ListSecretsRawV3Payload)
+		if !ok {
+			return goahttp.ErrInvalidType("secrets", "listSecretsRawV3", "*secrets.ListSecretsRawV3Payload", v)
+		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
+		}
+		values := req.URL.Query()
+		if p.WorkspaceID != nil {
+			values.Add("workspaceId", *p.WorkspaceID)
+		}
+		if p.WorkspaceSlug != nil {
+			values.Add("workspaceSlug", *p.WorkspaceSlug)
+		}
+		if p.Environment != nil {
+			values.Add("environment", *p.Environment)
+		}
+		values.Add("secretPath", p.SecretPath)
+		values.Add("viewSecretValue", fmt.Sprintf("%v", p.ViewSecretValue))
+		values.Add("expandSecretReferences", fmt.Sprintf("%v", p.ExpandSecretReferences))
+		values.Add("recursive", fmt.Sprintf("%v", p.Recursive))
+		values.Add("include_imports", fmt.Sprintf("%v", p.IncludeImports))
+		if p.TagSlugs != nil {
+			values.Add("tagSlugs", *p.TagSlugs)
+		}
+		if p.MetadataFilter != nil {
+			values.Add("metadataFilter", *p.MetadataFilter)
+		}
+		req.URL.RawQuery = values.Encode()
+		return nil
+	}
+}
+
+// DecodeListSecretsRawV3Response returns a decoder for responses returned by
+// the secrets listSecretsRawV3 endpoint. restoreBody controls whether the
+// response body should be restored after having been read.
+// DecodeListSecretsRawV3Response may return the following errors:
+//   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
+//   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
+//   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
+//   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
+//   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
+//   - error: internal error
+func DecodeListSecretsRawV3Response(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
+	return func(resp *http.Response) (any, error) {
+		if restoreBody {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			resp.Body = io.NopCloser(bytes.NewBuffer(b))
+			defer func() {
+				resp.Body = io.NopCloser(bytes.NewBuffer(b))
+			}()
+		} else {
+			defer resp.Body.Close()
+		}
+		switch resp.StatusCode {
+		case http.StatusOK:
+			var (
+				body ListSecretsRawV3ResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsRawV3", err)
+			}
+			p := NewListSecretsRawV3ListSecretsResultOK(&body)
+			view := "default"
+			vres := &secretsviews.ListSecretsResult{Projected: p, View: view}
+			if err = secretsviews.ValidateListSecretsResult(vres); err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsRawV3", err)
+			}
+			res := secrets.NewListSecretsResult(vres)
+			return res, nil
+		case http.StatusBadRequest:
+			var (
+				body ListSecretsRawV3BadRequestResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsRawV3", err)
+			}
+			err = ValidateListSecretsRawV3BadRequestResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsRawV3", err)
+			}
+			return nil, NewListSecretsRawV3BadRequest(&body)
+		case http.StatusUnauthorized:
+			var (
+				body ListSecretsRawV3UnauthorizedResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsRawV3", err)
+			}
+			err = ValidateListSecretsRawV3UnauthorizedResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsRawV3", err)
+			}
+			return nil, NewListSecretsRawV3Unauthorized(&body)
+		case http.StatusForbidden:
+			var (
+				body ListSecretsRawV3ForbiddenResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsRawV3", err)
+			}
+			err = ValidateListSecretsRawV3ForbiddenResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsRawV3", err)
+			}
+			return nil, NewListSecretsRawV3Forbidden(&body)
+		case http.StatusNotFound:
+			var (
+				body ListSecretsRawV3NotFoundResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsRawV3", err)
+			}
+			err = ValidateListSecretsRawV3NotFoundResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsRawV3", err)
+			}
+			return nil, NewListSecretsRawV3NotFound(&body)
+		case http.StatusInternalServerError:
+			var (
+				body ListSecretsRawV3InternalErrorResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "listSecretsRawV3", err)
+			}
+			err = ValidateListSecretsRawV3InternalErrorResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "listSecretsRawV3", err)
+			}
+			return nil, NewListSecretsRawV3InternalError(&body)
+		default:
+			body, _ := io.ReadAll(resp.Body)
+			return nil, goahttp.ErrInvalidResponse("secrets", "listSecretsRawV3", resp.StatusCode, string(body))
+		}
+	}
+}
+
+// BuildGetSecretByNameRawV3Request instantiates a HTTP request object with
+// method and path set to call the "secrets" service "getSecretByNameRawV3"
+// endpoint
+func (c *Client) BuildGetSecretByNameRawV3Request(ctx context.Context, v any) (*http.Request, error) {
+	var (
+		secretName string
+	)
+	{
+		p, ok := v.(*secrets.GetSecretByNameRawV3Payload)
+		if !ok {
+			return nil, goahttp.ErrInvalidType("secrets", "getSecretByNameRawV3", "*secrets.GetSecretByNameRawV3Payload", v)
+		}
+		secretName = p.SecretName
+	}
+	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: GetSecretByNameRawV3SecretsPath(secretName)}
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, goahttp.ErrInvalidURL("secrets", "getSecretByNameRawV3", u.String(), err)
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+
+	return req, nil
+}
+
+// EncodeGetSecretByNameRawV3Request returns an encoder for requests sent to
+// the secrets getSecretByNameRawV3 server.
+func EncodeGetSecretByNameRawV3Request(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, any) error {
+	return func(req *http.Request, v any) error {
+		p, ok := v.(*secrets.GetSecretByNameRawV3Payload)
+		if !ok {
+			return goahttp.ErrInvalidType("secrets", "getSecretByNameRawV3", "*secrets.GetSecretByNameRawV3Payload", v)
+		}
+		{
+			head := p.Token
+			if !strings.Contains(head, " ") {
+				req.Header.Set("Authorization", "Bearer "+head)
+			} else {
+				req.Header.Set("Authorization", head)
+			}
+		}
+		values := req.URL.Query()
+		if p.WorkspaceID != nil {
+			values.Add("workspaceId", *p.WorkspaceID)
+		}
+		if p.WorkspaceSlug != nil {
+			values.Add("workspaceSlug", *p.WorkspaceSlug)
+		}
+		if p.Environment != nil {
+			values.Add("environment", *p.Environment)
+		}
+		values.Add("secretPath", p.SecretPath)
+		if p.Version != nil {
+			values.Add("version", fmt.Sprintf("%v", *p.Version))
+		}
+		values.Add("type", p.Type)
+		values.Add("viewSecretValue", fmt.Sprintf("%v", p.ViewSecretValue))
+		values.Add("expandSecretReferences", fmt.Sprintf("%v", p.ExpandSecretReferences))
+		values.Add("include_imports", fmt.Sprintf("%v", p.IncludeImports))
+		req.URL.RawQuery = values.Encode()
+		return nil
+	}
+}
+
+// DecodeGetSecretByNameRawV3Response returns a decoder for responses returned
+// by the secrets getSecretByNameRawV3 endpoint. restoreBody controls whether
+// the response body should be restored after having been read.
+// DecodeGetSecretByNameRawV3Response may return the following errors:
+//   - "bad_request" (type *secrets.APIErrorResult): http.StatusBadRequest
+//   - "unauthorized" (type *secrets.APIErrorResult): http.StatusUnauthorized
+//   - "forbidden" (type *secrets.APIErrorResult): http.StatusForbidden
+//   - "not_found" (type *secrets.APIErrorResult): http.StatusNotFound
+//   - "internal_error" (type *secrets.APIErrorResult): http.StatusInternalServerError
+//   - error: internal error
+func DecodeGetSecretByNameRawV3Response(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (any, error) {
+	return func(resp *http.Response) (any, error) {
+		if restoreBody {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			resp.Body = io.NopCloser(bytes.NewBuffer(b))
+			defer func() {
+				resp.Body = io.NopCloser(bytes.NewBuffer(b))
+			}()
+		} else {
+			defer resp.Body.Close()
+		}
+		switch resp.StatusCode {
+		case http.StatusOK:
+			var (
+				body GetSecretByNameRawV3ResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameRawV3", err)
+			}
+			p := NewGetSecretByNameRawV3GetSecretResultOK(&body)
+			view := "default"
+			vres := &secretsviews.GetSecretResult{Projected: p, View: view}
+			if err = secretsviews.ValidateGetSecretResult(vres); err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameRawV3", err)
+			}
+			res := secrets.NewGetSecretResult(vres)
+			return res, nil
+		case http.StatusBadRequest:
+			var (
+				body GetSecretByNameRawV3BadRequestResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameRawV3", err)
+			}
+			err = ValidateGetSecretByNameRawV3BadRequestResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameRawV3", err)
+			}
+			return nil, NewGetSecretByNameRawV3BadRequest(&body)
+		case http.StatusUnauthorized:
+			var (
+				body GetSecretByNameRawV3UnauthorizedResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameRawV3", err)
+			}
+			err = ValidateGetSecretByNameRawV3UnauthorizedResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameRawV3", err)
+			}
+			return nil, NewGetSecretByNameRawV3Unauthorized(&body)
+		case http.StatusForbidden:
+			var (
+				body GetSecretByNameRawV3ForbiddenResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameRawV3", err)
+			}
+			err = ValidateGetSecretByNameRawV3ForbiddenResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameRawV3", err)
+			}
+			return nil, NewGetSecretByNameRawV3Forbidden(&body)
+		case http.StatusNotFound:
+			var (
+				body GetSecretByNameRawV3NotFoundResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameRawV3", err)
+			}
+			err = ValidateGetSecretByNameRawV3NotFoundResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameRawV3", err)
+			}
+			return nil, NewGetSecretByNameRawV3NotFound(&body)
+		case http.StatusInternalServerError:
+			var (
+				body GetSecretByNameRawV3InternalErrorResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("secrets", "getSecretByNameRawV3", err)
+			}
+			err = ValidateGetSecretByNameRawV3InternalErrorResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("secrets", "getSecretByNameRawV3", err)
+			}
+			return nil, NewGetSecretByNameRawV3InternalError(&body)
+		default:
+			body, _ := io.ReadAll(resp.Body)
+			return nil, goahttp.ErrInvalidResponse("secrets", "getSecretByNameRawV3", resp.StatusCode, string(body))
+		}
+	}
+}
+
+// unmarshalSecretRawResponseBodyToSecretsviewsSecretRawView builds a value of
+// type *secretsviews.SecretRawView from a value of type *SecretRawResponseBody.
+func unmarshalSecretRawResponseBodyToSecretsviewsSecretRawView(v *SecretRawResponseBody) *secretsviews.SecretRawView {
+	res := &secretsviews.SecretRawView{
+		ID:                       v.ID,
+		LegacyID:                 v.LegacyID,
+		Workspace:                v.Workspace,
+		Environment:              v.Environment,
+		Version:                  v.Version,
+		Type:                     v.Type,
+		SecretKey:                v.SecretKey,
+		SecretValue:              v.SecretValue,
+		SecretComment:            v.SecretComment,
+		SecretReminderNote:       v.SecretReminderNote,
+		SecretReminderRepeatDays: v.SecretReminderRepeatDays,
+		SkipMultilineEncoding:    v.SkipMultilineEncoding,
+		CreatedAt:                v.CreatedAt,
+		UpdatedAt:                v.UpdatedAt,
+		IsRotatedSecret:          v.IsRotatedSecret,
+		RotationID:               v.RotationID,
+		SecretPath:               v.SecretPath,
+		SecretValueHidden:        v.SecretValueHidden,
+	}
+	if v.Actor != nil {
+		res.Actor = unmarshalSecretActorResponseBodyToSecretsviewsSecretActorView(v.Actor)
+	}
+	if v.SecretMetadata != nil {
+		res.SecretMetadata = make([]*secretsviews.ResourceMetadataView, len(v.SecretMetadata))
+		for i, val := range v.SecretMetadata {
+			if val == nil {
+				res.SecretMetadata[i] = nil
+				continue
+			}
+			res.SecretMetadata[i] = unmarshalResourceMetadataResponseBodyToSecretsviewsResourceMetadataView(val)
+		}
+	}
+	if v.Tags != nil {
+		res.Tags = make([]*secretsviews.SecretTagView, len(v.Tags))
+		for i, val := range v.Tags {
+			if val == nil {
+				res.Tags[i] = nil
+				continue
+			}
+			res.Tags[i] = unmarshalSecretTagResponseBodyToSecretsviewsSecretTagView(val)
+		}
+	}
+
+	return res
+}
+
+// unmarshalSecretActorResponseBodyToSecretsviewsSecretActorView builds a value
+// of type *secretsviews.SecretActorView from a value of type
+// *SecretActorResponseBody.
+func unmarshalSecretActorResponseBodyToSecretsviewsSecretActorView(v *SecretActorResponseBody) *secretsviews.SecretActorView {
+	if v == nil {
+		return nil
+	}
+	res := &secretsviews.SecretActorView{
+		ActorID:      v.ActorID,
+		ActorType:    v.ActorType,
+		Name:         v.Name,
+		MembershipID: v.MembershipID,
+		GroupID:      v.GroupID,
+	}
+
+	return res
+}
+
+// unmarshalResourceMetadataResponseBodyToSecretsviewsResourceMetadataView
+// builds a value of type *secretsviews.ResourceMetadataView from a value of
+// type *ResourceMetadataResponseBody.
+func unmarshalResourceMetadataResponseBodyToSecretsviewsResourceMetadataView(v *ResourceMetadataResponseBody) *secretsviews.ResourceMetadataView {
+	if v == nil {
+		return nil
+	}
+	res := &secretsviews.ResourceMetadataView{
 		Key:         v.Key,
 		Value:       v.Value,
+		IsEncrypted: v.IsEncrypted,
+	}
+
+	return res
+}
+
+// unmarshalSecretTagResponseBodyToSecretsviewsSecretTagView builds a value of
+// type *secretsviews.SecretTagView from a value of type *SecretTagResponseBody.
+func unmarshalSecretTagResponseBodyToSecretsviewsSecretTagView(v *SecretTagResponseBody) *secretsviews.SecretTagView {
+	if v == nil {
+		return nil
+	}
+	res := &secretsviews.SecretTagView{
+		ID:    v.ID,
+		Slug:  v.Slug,
+		Color: v.Color,
+		Name:  v.Name,
+	}
+
+	return res
+}
+
+// unmarshalSecretImportResponseBodyToSecretsviewsSecretImportView builds a
+// value of type *secretsviews.SecretImportView from a value of type
+// *SecretImportResponseBody.
+func unmarshalSecretImportResponseBodyToSecretsviewsSecretImportView(v *SecretImportResponseBody) *secretsviews.SecretImportView {
+	if v == nil {
+		return nil
+	}
+	res := &secretsviews.SecretImportView{
+		SecretPath:  v.SecretPath,
 		Environment: v.Environment,
-		ProjectID:   v.ProjectID,
+		FolderID:    v.FolderID,
+	}
+	res.Secrets = make([]*secretsviews.ImportSecretRawView, len(v.Secrets))
+	for i, val := range v.Secrets {
+		if val == nil {
+			res.Secrets[i] = nil
+			continue
+		}
+		res.Secrets[i] = unmarshalImportSecretRawResponseBodyToSecretsviewsImportSecretRawView(val)
+	}
+
+	return res
+}
+
+// unmarshalImportSecretRawResponseBodyToSecretsviewsImportSecretRawView builds
+// a value of type *secretsviews.ImportSecretRawView from a value of type
+// *ImportSecretRawResponseBody.
+func unmarshalImportSecretRawResponseBodyToSecretsviewsImportSecretRawView(v *ImportSecretRawResponseBody) *secretsviews.ImportSecretRawView {
+	res := &secretsviews.ImportSecretRawView{
+		ID:                       v.ID,
+		LegacyID:                 v.LegacyID,
+		Workspace:                v.Workspace,
+		Environment:              v.Environment,
+		Version:                  v.Version,
+		Type:                     v.Type,
+		SecretKey:                v.SecretKey,
+		SecretValue:              v.SecretValue,
+		SecretComment:            v.SecretComment,
+		SecretReminderNote:       v.SecretReminderNote,
+		SecretReminderRepeatDays: v.SecretReminderRepeatDays,
+		SkipMultilineEncoding:    v.SkipMultilineEncoding,
+		IsRotatedSecret:          v.IsRotatedSecret,
+		RotationID:               v.RotationID,
+		SecretValueHidden:        v.SecretValueHidden,
+	}
+	if v.Actor != nil {
+		res.Actor = unmarshalSecretActorResponseBodyToSecretsviewsSecretActorView(v.Actor)
+	}
+	if v.SecretMetadata != nil {
+		res.SecretMetadata = make([]*secretsviews.ResourceMetadataView, len(v.SecretMetadata))
+		for i, val := range v.SecretMetadata {
+			if val == nil {
+				res.SecretMetadata[i] = nil
+				continue
+			}
+			res.SecretMetadata[i] = unmarshalResourceMetadataResponseBodyToSecretsviewsResourceMetadataView(val)
+		}
 	}
 
 	return res

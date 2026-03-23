@@ -26,14 +26,14 @@ import (
 func UsageCommands() []string {
 	return []string{
 		"projects (get-health|create-project)",
-		"secrets (get-health|create-secret|get-secret|update-secret|delete-secret|list-secrets)",
+		"secrets (list-secrets-v4|get-secret-by-name-v4|list-secrets-raw-v3|get-secret-by-name-raw-v3)",
 	}
 }
 
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + " " + "projects get-health" + "\n" +
-		os.Args[0] + " " + "secrets get-health" + "\n" +
+		os.Args[0] + " " + "secrets list-secrets-v4 --project-id \"Eos aut voluptas animi excepturi cupiditate.\" --environment \"Tenetur quidem voluptates.\" --secret-path \"Maxime aut.\" --view-secret-value true --expand-secret-references true --recursive false --include-personal-overrides false --include-imports true --tag-slugs \"Minus consequatur non aut officia illum.\" --metadata-filter \"Sunt et sed enim.\" --token \"Officia ea rerum.\"" + "\n" +
 		""
 }
 
@@ -57,41 +57,66 @@ func ParseEndpoint(
 
 		secretsFlags = flag.NewFlagSet("secrets", flag.ContinueOnError)
 
-		secretsGetHealthFlags = flag.NewFlagSet("get-health", flag.ExitOnError)
+		secretsListSecretsV4Flags                        = flag.NewFlagSet("list-secrets-v4", flag.ExitOnError)
+		secretsListSecretsV4ProjectIDFlag                = secretsListSecretsV4Flags.String("project-id", "REQUIRED", "")
+		secretsListSecretsV4EnvironmentFlag              = secretsListSecretsV4Flags.String("environment", "REQUIRED", "")
+		secretsListSecretsV4SecretPathFlag               = secretsListSecretsV4Flags.String("secret-path", "/", "")
+		secretsListSecretsV4ViewSecretValueFlag          = secretsListSecretsV4Flags.String("view-secret-value", "true", "")
+		secretsListSecretsV4ExpandSecretReferencesFlag   = secretsListSecretsV4Flags.String("expand-secret-references", "true", "")
+		secretsListSecretsV4RecursiveFlag                = secretsListSecretsV4Flags.String("recursive", "", "")
+		secretsListSecretsV4IncludePersonalOverridesFlag = secretsListSecretsV4Flags.String("include-personal-overrides", "", "")
+		secretsListSecretsV4IncludeImportsFlag           = secretsListSecretsV4Flags.String("include-imports", "true", "")
+		secretsListSecretsV4TagSlugsFlag                 = secretsListSecretsV4Flags.String("tag-slugs", "", "")
+		secretsListSecretsV4MetadataFilterFlag           = secretsListSecretsV4Flags.String("metadata-filter", "", "")
+		secretsListSecretsV4TokenFlag                    = secretsListSecretsV4Flags.String("token", "REQUIRED", "")
 
-		secretsCreateSecretFlags     = flag.NewFlagSet("create-secret", flag.ExitOnError)
-		secretsCreateSecretBodyFlag  = secretsCreateSecretFlags.String("body", "REQUIRED", "")
-		secretsCreateSecretTokenFlag = secretsCreateSecretFlags.String("token", "REQUIRED", "")
+		secretsGetSecretByNameV4Flags                      = flag.NewFlagSet("get-secret-by-name-v4", flag.ExitOnError)
+		secretsGetSecretByNameV4SecretNameFlag             = secretsGetSecretByNameV4Flags.String("secret-name", "REQUIRED", "Secret name")
+		secretsGetSecretByNameV4ProjectIDFlag              = secretsGetSecretByNameV4Flags.String("project-id", "REQUIRED", "")
+		secretsGetSecretByNameV4EnvironmentFlag            = secretsGetSecretByNameV4Flags.String("environment", "REQUIRED", "")
+		secretsGetSecretByNameV4SecretPathFlag             = secretsGetSecretByNameV4Flags.String("secret-path", "/", "")
+		secretsGetSecretByNameV4VersionFlag                = secretsGetSecretByNameV4Flags.String("version", "", "")
+		secretsGetSecretByNameV4TypeFlag                   = secretsGetSecretByNameV4Flags.String("type", "shared", "")
+		secretsGetSecretByNameV4ViewSecretValueFlag        = secretsGetSecretByNameV4Flags.String("view-secret-value", "true", "")
+		secretsGetSecretByNameV4ExpandSecretReferencesFlag = secretsGetSecretByNameV4Flags.String("expand-secret-references", "true", "")
+		secretsGetSecretByNameV4IncludeImportsFlag         = secretsGetSecretByNameV4Flags.String("include-imports", "true", "")
+		secretsGetSecretByNameV4TokenFlag                  = secretsGetSecretByNameV4Flags.String("token", "REQUIRED", "")
 
-		secretsGetSecretFlags     = flag.NewFlagSet("get-secret", flag.ExitOnError)
-		secretsGetSecretIDFlag    = secretsGetSecretFlags.String("id", "REQUIRED", "Secret ID")
-		secretsGetSecretTokenFlag = secretsGetSecretFlags.String("token", "REQUIRED", "")
+		secretsListSecretsRawV3Flags                      = flag.NewFlagSet("list-secrets-raw-v3", flag.ExitOnError)
+		secretsListSecretsRawV3WorkspaceIDFlag            = secretsListSecretsRawV3Flags.String("workspace-id", "", "")
+		secretsListSecretsRawV3WorkspaceSlugFlag          = secretsListSecretsRawV3Flags.String("workspace-slug", "", "")
+		secretsListSecretsRawV3EnvironmentFlag            = secretsListSecretsRawV3Flags.String("environment", "", "")
+		secretsListSecretsRawV3SecretPathFlag             = secretsListSecretsRawV3Flags.String("secret-path", "/", "")
+		secretsListSecretsRawV3ViewSecretValueFlag        = secretsListSecretsRawV3Flags.String("view-secret-value", "true", "")
+		secretsListSecretsRawV3ExpandSecretReferencesFlag = secretsListSecretsRawV3Flags.String("expand-secret-references", "", "")
+		secretsListSecretsRawV3RecursiveFlag              = secretsListSecretsRawV3Flags.String("recursive", "", "")
+		secretsListSecretsRawV3IncludeImportsFlag         = secretsListSecretsRawV3Flags.String("include-imports", "", "")
+		secretsListSecretsRawV3TagSlugsFlag               = secretsListSecretsRawV3Flags.String("tag-slugs", "", "")
+		secretsListSecretsRawV3MetadataFilterFlag         = secretsListSecretsRawV3Flags.String("metadata-filter", "", "")
+		secretsListSecretsRawV3TokenFlag                  = secretsListSecretsRawV3Flags.String("token", "REQUIRED", "")
 
-		secretsUpdateSecretFlags     = flag.NewFlagSet("update-secret", flag.ExitOnError)
-		secretsUpdateSecretBodyFlag  = secretsUpdateSecretFlags.String("body", "REQUIRED", "")
-		secretsUpdateSecretIDFlag    = secretsUpdateSecretFlags.String("id", "REQUIRED", "Secret ID")
-		secretsUpdateSecretTokenFlag = secretsUpdateSecretFlags.String("token", "REQUIRED", "")
-
-		secretsDeleteSecretFlags     = flag.NewFlagSet("delete-secret", flag.ExitOnError)
-		secretsDeleteSecretIDFlag    = secretsDeleteSecretFlags.String("id", "REQUIRED", "Secret ID")
-		secretsDeleteSecretTokenFlag = secretsDeleteSecretFlags.String("token", "REQUIRED", "")
-
-		secretsListSecretsFlags           = flag.NewFlagSet("list-secrets", flag.ExitOnError)
-		secretsListSecretsProjectIDFlag   = secretsListSecretsFlags.String("project-id", "REQUIRED", "")
-		secretsListSecretsEnvironmentFlag = secretsListSecretsFlags.String("environment", "REQUIRED", "")
-		secretsListSecretsTokenFlag       = secretsListSecretsFlags.String("token", "REQUIRED", "")
+		secretsGetSecretByNameRawV3Flags                      = flag.NewFlagSet("get-secret-by-name-raw-v3", flag.ExitOnError)
+		secretsGetSecretByNameRawV3SecretNameFlag             = secretsGetSecretByNameRawV3Flags.String("secret-name", "REQUIRED", "Secret name")
+		secretsGetSecretByNameRawV3WorkspaceIDFlag            = secretsGetSecretByNameRawV3Flags.String("workspace-id", "", "")
+		secretsGetSecretByNameRawV3WorkspaceSlugFlag          = secretsGetSecretByNameRawV3Flags.String("workspace-slug", "", "")
+		secretsGetSecretByNameRawV3EnvironmentFlag            = secretsGetSecretByNameRawV3Flags.String("environment", "", "")
+		secretsGetSecretByNameRawV3SecretPathFlag             = secretsGetSecretByNameRawV3Flags.String("secret-path", "/", "")
+		secretsGetSecretByNameRawV3VersionFlag                = secretsGetSecretByNameRawV3Flags.String("version", "", "")
+		secretsGetSecretByNameRawV3TypeFlag                   = secretsGetSecretByNameRawV3Flags.String("type", "shared", "")
+		secretsGetSecretByNameRawV3ViewSecretValueFlag        = secretsGetSecretByNameRawV3Flags.String("view-secret-value", "true", "")
+		secretsGetSecretByNameRawV3ExpandSecretReferencesFlag = secretsGetSecretByNameRawV3Flags.String("expand-secret-references", "", "")
+		secretsGetSecretByNameRawV3IncludeImportsFlag         = secretsGetSecretByNameRawV3Flags.String("include-imports", "", "")
+		secretsGetSecretByNameRawV3TokenFlag                  = secretsGetSecretByNameRawV3Flags.String("token", "REQUIRED", "")
 	)
 	projectsFlags.Usage = projectsUsage
 	projectsGetHealthFlags.Usage = projectsGetHealthUsage
 	projectsCreateProjectFlags.Usage = projectsCreateProjectUsage
 
 	secretsFlags.Usage = secretsUsage
-	secretsGetHealthFlags.Usage = secretsGetHealthUsage
-	secretsCreateSecretFlags.Usage = secretsCreateSecretUsage
-	secretsGetSecretFlags.Usage = secretsGetSecretUsage
-	secretsUpdateSecretFlags.Usage = secretsUpdateSecretUsage
-	secretsDeleteSecretFlags.Usage = secretsDeleteSecretUsage
-	secretsListSecretsFlags.Usage = secretsListSecretsUsage
+	secretsListSecretsV4Flags.Usage = secretsListSecretsV4Usage
+	secretsGetSecretByNameV4Flags.Usage = secretsGetSecretByNameV4Usage
+	secretsListSecretsRawV3Flags.Usage = secretsListSecretsRawV3Usage
+	secretsGetSecretByNameRawV3Flags.Usage = secretsGetSecretByNameRawV3Usage
 
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		return nil, nil, err
@@ -139,23 +164,17 @@ func ParseEndpoint(
 
 		case "secrets":
 			switch epn {
-			case "get-health":
-				epf = secretsGetHealthFlags
+			case "list-secrets-v4":
+				epf = secretsListSecretsV4Flags
 
-			case "create-secret":
-				epf = secretsCreateSecretFlags
+			case "get-secret-by-name-v4":
+				epf = secretsGetSecretByNameV4Flags
 
-			case "get-secret":
-				epf = secretsGetSecretFlags
+			case "list-secrets-raw-v3":
+				epf = secretsListSecretsRawV3Flags
 
-			case "update-secret":
-				epf = secretsUpdateSecretFlags
-
-			case "delete-secret":
-				epf = secretsDeleteSecretFlags
-
-			case "list-secrets":
-				epf = secretsListSecretsFlags
+			case "get-secret-by-name-raw-v3":
+				epf = secretsGetSecretByNameRawV3Flags
 
 			}
 
@@ -191,23 +210,18 @@ func ParseEndpoint(
 		case "secrets":
 			c := secretsc.NewClient(scheme, host, doer, enc, dec, restore)
 			switch epn {
-			case "get-health":
-				endpoint = c.GetHealth()
-			case "create-secret":
-				endpoint = c.CreateSecret()
-				data, err = secretsc.BuildCreateSecretPayload(*secretsCreateSecretBodyFlag, *secretsCreateSecretTokenFlag)
-			case "get-secret":
-				endpoint = c.GetSecret()
-				data, err = secretsc.BuildGetSecretPayload(*secretsGetSecretIDFlag, *secretsGetSecretTokenFlag)
-			case "update-secret":
-				endpoint = c.UpdateSecret()
-				data, err = secretsc.BuildUpdateSecretPayload(*secretsUpdateSecretBodyFlag, *secretsUpdateSecretIDFlag, *secretsUpdateSecretTokenFlag)
-			case "delete-secret":
-				endpoint = c.DeleteSecret()
-				data, err = secretsc.BuildDeleteSecretPayload(*secretsDeleteSecretIDFlag, *secretsDeleteSecretTokenFlag)
-			case "list-secrets":
-				endpoint = c.ListSecrets()
-				data, err = secretsc.BuildListSecretsPayload(*secretsListSecretsProjectIDFlag, *secretsListSecretsEnvironmentFlag, *secretsListSecretsTokenFlag)
+			case "list-secrets-v4":
+				endpoint = c.ListSecretsV4()
+				data, err = secretsc.BuildListSecretsV4Payload(*secretsListSecretsV4ProjectIDFlag, *secretsListSecretsV4EnvironmentFlag, *secretsListSecretsV4SecretPathFlag, *secretsListSecretsV4ViewSecretValueFlag, *secretsListSecretsV4ExpandSecretReferencesFlag, *secretsListSecretsV4RecursiveFlag, *secretsListSecretsV4IncludePersonalOverridesFlag, *secretsListSecretsV4IncludeImportsFlag, *secretsListSecretsV4TagSlugsFlag, *secretsListSecretsV4MetadataFilterFlag, *secretsListSecretsV4TokenFlag)
+			case "get-secret-by-name-v4":
+				endpoint = c.GetSecretByNameV4()
+				data, err = secretsc.BuildGetSecretByNameV4Payload(*secretsGetSecretByNameV4SecretNameFlag, *secretsGetSecretByNameV4ProjectIDFlag, *secretsGetSecretByNameV4EnvironmentFlag, *secretsGetSecretByNameV4SecretPathFlag, *secretsGetSecretByNameV4VersionFlag, *secretsGetSecretByNameV4TypeFlag, *secretsGetSecretByNameV4ViewSecretValueFlag, *secretsGetSecretByNameV4ExpandSecretReferencesFlag, *secretsGetSecretByNameV4IncludeImportsFlag, *secretsGetSecretByNameV4TokenFlag)
+			case "list-secrets-raw-v3":
+				endpoint = c.ListSecretsRawV3()
+				data, err = secretsc.BuildListSecretsRawV3Payload(*secretsListSecretsRawV3WorkspaceIDFlag, *secretsListSecretsRawV3WorkspaceSlugFlag, *secretsListSecretsRawV3EnvironmentFlag, *secretsListSecretsRawV3SecretPathFlag, *secretsListSecretsRawV3ViewSecretValueFlag, *secretsListSecretsRawV3ExpandSecretReferencesFlag, *secretsListSecretsRawV3RecursiveFlag, *secretsListSecretsRawV3IncludeImportsFlag, *secretsListSecretsRawV3TagSlugsFlag, *secretsListSecretsRawV3MetadataFilterFlag, *secretsListSecretsRawV3TokenFlag)
+			case "get-secret-by-name-raw-v3":
+				endpoint = c.GetSecretByNameRawV3()
+				data, err = secretsc.BuildGetSecretByNameRawV3Payload(*secretsGetSecretByNameRawV3SecretNameFlag, *secretsGetSecretByNameRawV3WorkspaceIDFlag, *secretsGetSecretByNameRawV3WorkspaceSlugFlag, *secretsGetSecretByNameRawV3EnvironmentFlag, *secretsGetSecretByNameRawV3SecretPathFlag, *secretsGetSecretByNameRawV3VersionFlag, *secretsGetSecretByNameRawV3TypeFlag, *secretsGetSecretByNameRawV3ViewSecretValueFlag, *secretsGetSecretByNameRawV3ExpandSecretReferencesFlag, *secretsGetSecretByNameRawV3IncludeImportsFlag, *secretsGetSecretByNameRawV3TokenFlag)
 			}
 		}
 	}
@@ -262,7 +276,7 @@ func projectsCreateProjectUsage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "projects create-project --body '{\n      \"name\": \"j1k\",\n      \"orgId\": \"Nostrum molestiae mollitia velit.\"\n   }' --token \"Rem sed corrupti ducimus mollitia ducimus quod.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "projects create-project --body '{\n      \"name\": \"q\",\n      \"orgId\": \"Necessitatibus qui harum ut quo.\"\n   }' --token \"Voluptates temporibus ut consequuntur.\"")
 }
 
 // secretsUsage displays the usage of the secrets command and its subcommands.
@@ -270,132 +284,160 @@ func secretsUsage() {
 	fmt.Fprintln(os.Stderr, `Service for managing secrets.`)
 	fmt.Fprintf(os.Stderr, "Usage:\n    %s [globalflags] secrets COMMAND [flags]\n\n", os.Args[0])
 	fmt.Fprintln(os.Stderr, "COMMAND:")
-	fmt.Fprintln(os.Stderr, `    get-health: Health check for the secrets service.`)
-	fmt.Fprintln(os.Stderr, `    create-secret: Create a new secret.`)
-	fmt.Fprintln(os.Stderr, `    get-secret: Get a secret by ID.`)
-	fmt.Fprintln(os.Stderr, `    update-secret: Update an existing secret.`)
-	fmt.Fprintln(os.Stderr, `    delete-secret: Delete a secret by ID.`)
-	fmt.Fprintln(os.Stderr, `    list-secrets: List secrets for an environment.`)
+	fmt.Fprintln(os.Stderr, `    list-secrets-v4: List secrets for a project environment (V4).`)
+	fmt.Fprintln(os.Stderr, `    get-secret-by-name-v4: Get a secret by name (V4).`)
+	fmt.Fprintln(os.Stderr, `    list-secrets-raw-v3: List raw secrets for a project environment (V3, deprecated).`)
+	fmt.Fprintln(os.Stderr, `    get-secret-by-name-raw-v3: Get a raw secret by name (V3, deprecated).`)
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Additional help:")
 	fmt.Fprintf(os.Stderr, "    %s secrets COMMAND --help\n", os.Args[0])
 }
-func secretsGetHealthUsage() {
+func secretsListSecretsV4Usage() {
 	// Header with flags
-	fmt.Fprintf(os.Stderr, "%s [flags] secrets get-health", os.Args[0])
-	fmt.Fprintln(os.Stderr)
-
-	// Description
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, `Health check for the secrets service.`)
-
-	// Flags list
-
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-health")
-}
-
-func secretsCreateSecretUsage() {
-	// Header with flags
-	fmt.Fprintf(os.Stderr, "%s [flags] secrets create-secret", os.Args[0])
-	fmt.Fprint(os.Stderr, " -body JSON")
-	fmt.Fprint(os.Stderr, " -token STRING")
-	fmt.Fprintln(os.Stderr)
-
-	// Description
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, `Create a new secret.`)
-
-	// Flags list
-	fmt.Fprintln(os.Stderr, `    -body JSON: `)
-	fmt.Fprintln(os.Stderr, `    -token STRING: `)
-
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets create-secret --body '{\n      \"environment\": \"Ducimus qui.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Ut aut.\",\n      \"value\": \"Dolor fugiat maxime nisi quas expedita.\"\n   }' --token \"Qui quasi ducimus vel.\"")
-}
-
-func secretsGetSecretUsage() {
-	// Header with flags
-	fmt.Fprintf(os.Stderr, "%s [flags] secrets get-secret", os.Args[0])
-	fmt.Fprint(os.Stderr, " -id STRING")
-	fmt.Fprint(os.Stderr, " -token STRING")
-	fmt.Fprintln(os.Stderr)
-
-	// Description
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, `Get a secret by ID.`)
-
-	// Flags list
-	fmt.Fprintln(os.Stderr, `    -id STRING: Secret ID`)
-	fmt.Fprintln(os.Stderr, `    -token STRING: `)
-
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret --id \"Doloremque qui minus consequatur non aut officia.\" --token \"Voluptatem sunt et sed.\"")
-}
-
-func secretsUpdateSecretUsage() {
-	// Header with flags
-	fmt.Fprintf(os.Stderr, "%s [flags] secrets update-secret", os.Args[0])
-	fmt.Fprint(os.Stderr, " -body JSON")
-	fmt.Fprint(os.Stderr, " -id STRING")
-	fmt.Fprint(os.Stderr, " -token STRING")
-	fmt.Fprintln(os.Stderr)
-
-	// Description
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, `Update an existing secret.`)
-
-	// Flags list
-	fmt.Fprintln(os.Stderr, `    -body JSON: `)
-	fmt.Fprintln(os.Stderr, `    -id STRING: Secret ID`)
-	fmt.Fprintln(os.Stderr, `    -token STRING: `)
-
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets update-secret --body '{\n      \"key\": \"Voluptatibus officia magni et ducimus pariatur.\",\n      \"value\": \"Voluptas inventore est ut.\"\n   }' --id \"Quam rem.\" --token \"Quidem dolor recusandae voluptates et inventore.\"")
-}
-
-func secretsDeleteSecretUsage() {
-	// Header with flags
-	fmt.Fprintf(os.Stderr, "%s [flags] secrets delete-secret", os.Args[0])
-	fmt.Fprint(os.Stderr, " -id STRING")
-	fmt.Fprint(os.Stderr, " -token STRING")
-	fmt.Fprintln(os.Stderr)
-
-	// Description
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, `Delete a secret by ID.`)
-
-	// Flags list
-	fmt.Fprintln(os.Stderr, `    -id STRING: Secret ID`)
-	fmt.Fprintln(os.Stderr, `    -token STRING: `)
-
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets delete-secret --id \"Omnis exercitationem optio laborum voluptates sit.\" --token \"Eum autem.\"")
-}
-
-func secretsListSecretsUsage() {
-	// Header with flags
-	fmt.Fprintf(os.Stderr, "%s [flags] secrets list-secrets", os.Args[0])
+	fmt.Fprintf(os.Stderr, "%s [flags] secrets list-secrets-v4", os.Args[0])
 	fmt.Fprint(os.Stderr, " -project-id STRING")
 	fmt.Fprint(os.Stderr, " -environment STRING")
+	fmt.Fprint(os.Stderr, " -secret-path STRING")
+	fmt.Fprint(os.Stderr, " -view-secret-value BOOL")
+	fmt.Fprint(os.Stderr, " -expand-secret-references BOOL")
+	fmt.Fprint(os.Stderr, " -recursive BOOL")
+	fmt.Fprint(os.Stderr, " -include-personal-overrides BOOL")
+	fmt.Fprint(os.Stderr, " -include-imports BOOL")
+	fmt.Fprint(os.Stderr, " -tag-slugs STRING")
+	fmt.Fprint(os.Stderr, " -metadata-filter STRING")
 	fmt.Fprint(os.Stderr, " -token STRING")
 	fmt.Fprintln(os.Stderr)
 
 	// Description
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, `List secrets for an environment.`)
+	fmt.Fprintln(os.Stderr, `List secrets for a project environment (V4).`)
 
 	// Flags list
 	fmt.Fprintln(os.Stderr, `    -project-id STRING: `)
 	fmt.Fprintln(os.Stderr, `    -environment STRING: `)
+	fmt.Fprintln(os.Stderr, `    -secret-path STRING: `)
+	fmt.Fprintln(os.Stderr, `    -view-secret-value BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -expand-secret-references BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -recursive BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -include-personal-overrides BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -include-imports BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -tag-slugs STRING: `)
+	fmt.Fprintln(os.Stderr, `    -metadata-filter STRING: `)
 	fmt.Fprintln(os.Stderr, `    -token STRING: `)
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets --project-id \"Et et accusamus laborum vitae.\" --environment \"Molestiae dolores.\" --token \"Nihil harum in.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets-v4 --project-id \"Eos aut voluptas animi excepturi cupiditate.\" --environment \"Tenetur quidem voluptates.\" --secret-path \"Maxime aut.\" --view-secret-value true --expand-secret-references true --recursive false --include-personal-overrides false --include-imports true --tag-slugs \"Minus consequatur non aut officia illum.\" --metadata-filter \"Sunt et sed enim.\" --token \"Officia ea rerum.\"")
+}
+
+func secretsGetSecretByNameV4Usage() {
+	// Header with flags
+	fmt.Fprintf(os.Stderr, "%s [flags] secrets get-secret-by-name-v4", os.Args[0])
+	fmt.Fprint(os.Stderr, " -secret-name STRING")
+	fmt.Fprint(os.Stderr, " -project-id STRING")
+	fmt.Fprint(os.Stderr, " -environment STRING")
+	fmt.Fprint(os.Stderr, " -secret-path STRING")
+	fmt.Fprint(os.Stderr, " -version INT")
+	fmt.Fprint(os.Stderr, " -type STRING")
+	fmt.Fprint(os.Stderr, " -view-secret-value BOOL")
+	fmt.Fprint(os.Stderr, " -expand-secret-references BOOL")
+	fmt.Fprint(os.Stderr, " -include-imports BOOL")
+	fmt.Fprint(os.Stderr, " -token STRING")
+	fmt.Fprintln(os.Stderr)
+
+	// Description
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, `Get a secret by name (V4).`)
+
+	// Flags list
+	fmt.Fprintln(os.Stderr, `    -secret-name STRING: Secret name`)
+	fmt.Fprintln(os.Stderr, `    -project-id STRING: `)
+	fmt.Fprintln(os.Stderr, `    -environment STRING: `)
+	fmt.Fprintln(os.Stderr, `    -secret-path STRING: `)
+	fmt.Fprintln(os.Stderr, `    -version INT: `)
+	fmt.Fprintln(os.Stderr, `    -type STRING: `)
+	fmt.Fprintln(os.Stderr, `    -view-secret-value BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -expand-secret-references BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -include-imports BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
+
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Example:")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret-by-name-v4 --secret-name \"9s\" --project-id \"Adipisci labore enim.\" --environment \"Non aut corrupti odio reiciendis porro.\" --secret-path \"Deleniti cupiditate.\" --version 3309525106578863021 --type \"personal\" --view-secret-value false --expand-secret-references false --include-imports true --token \"Sint commodi repellat nemo et.\"")
+}
+
+func secretsListSecretsRawV3Usage() {
+	// Header with flags
+	fmt.Fprintf(os.Stderr, "%s [flags] secrets list-secrets-raw-v3", os.Args[0])
+	fmt.Fprint(os.Stderr, " -workspace-id STRING")
+	fmt.Fprint(os.Stderr, " -workspace-slug STRING")
+	fmt.Fprint(os.Stderr, " -environment STRING")
+	fmt.Fprint(os.Stderr, " -secret-path STRING")
+	fmt.Fprint(os.Stderr, " -view-secret-value BOOL")
+	fmt.Fprint(os.Stderr, " -expand-secret-references BOOL")
+	fmt.Fprint(os.Stderr, " -recursive BOOL")
+	fmt.Fprint(os.Stderr, " -include-imports BOOL")
+	fmt.Fprint(os.Stderr, " -tag-slugs STRING")
+	fmt.Fprint(os.Stderr, " -metadata-filter STRING")
+	fmt.Fprint(os.Stderr, " -token STRING")
+	fmt.Fprintln(os.Stderr)
+
+	// Description
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, `List raw secrets for a project environment (V3, deprecated).`)
+
+	// Flags list
+	fmt.Fprintln(os.Stderr, `    -workspace-id STRING: `)
+	fmt.Fprintln(os.Stderr, `    -workspace-slug STRING: `)
+	fmt.Fprintln(os.Stderr, `    -environment STRING: `)
+	fmt.Fprintln(os.Stderr, `    -secret-path STRING: `)
+	fmt.Fprintln(os.Stderr, `    -view-secret-value BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -expand-secret-references BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -recursive BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -include-imports BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -tag-slugs STRING: `)
+	fmt.Fprintln(os.Stderr, `    -metadata-filter STRING: `)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
+
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Example:")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets-raw-v3 --workspace-id \"Provident delectus et et aut.\" --workspace-slug \"Nostrum et repellat.\" --environment \"Blanditiis sunt ut.\" --secret-path \"Quibusdam numquam dolorem cum enim.\" --view-secret-value false --expand-secret-references true --recursive false --include-imports false --tag-slugs \"Et reiciendis eligendi voluptatem incidunt.\" --metadata-filter \"Earum blanditiis consequatur fugiat qui.\" --token \"Delectus sed ex vel architecto.\"")
+}
+
+func secretsGetSecretByNameRawV3Usage() {
+	// Header with flags
+	fmt.Fprintf(os.Stderr, "%s [flags] secrets get-secret-by-name-raw-v3", os.Args[0])
+	fmt.Fprint(os.Stderr, " -secret-name STRING")
+	fmt.Fprint(os.Stderr, " -workspace-id STRING")
+	fmt.Fprint(os.Stderr, " -workspace-slug STRING")
+	fmt.Fprint(os.Stderr, " -environment STRING")
+	fmt.Fprint(os.Stderr, " -secret-path STRING")
+	fmt.Fprint(os.Stderr, " -version INT")
+	fmt.Fprint(os.Stderr, " -type STRING")
+	fmt.Fprint(os.Stderr, " -view-secret-value BOOL")
+	fmt.Fprint(os.Stderr, " -expand-secret-references BOOL")
+	fmt.Fprint(os.Stderr, " -include-imports BOOL")
+	fmt.Fprint(os.Stderr, " -token STRING")
+	fmt.Fprintln(os.Stderr)
+
+	// Description
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, `Get a raw secret by name (V3, deprecated).`)
+
+	// Flags list
+	fmt.Fprintln(os.Stderr, `    -secret-name STRING: Secret name`)
+	fmt.Fprintln(os.Stderr, `    -workspace-id STRING: `)
+	fmt.Fprintln(os.Stderr, `    -workspace-slug STRING: `)
+	fmt.Fprintln(os.Stderr, `    -environment STRING: `)
+	fmt.Fprintln(os.Stderr, `    -secret-path STRING: `)
+	fmt.Fprintln(os.Stderr, `    -version INT: `)
+	fmt.Fprintln(os.Stderr, `    -type STRING: `)
+	fmt.Fprintln(os.Stderr, `    -view-secret-value BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -expand-secret-references BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -include-imports BOOL: `)
+	fmt.Fprintln(os.Stderr, `    -token STRING: `)
+
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Example:")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret-by-name-raw-v3 --secret-name \"85\" --workspace-id \"Dolorem fuga quia.\" --workspace-slug \"Deleniti repellendus.\" --environment \"Quia magni atque voluptatem.\" --secret-path \"Harum fuga natus et.\" --version 8184023905617809374 --type \"personal\" --view-secret-value false --expand-secret-references true --include-imports true --token \"Voluptate in reiciendis tempora.\"")
 }

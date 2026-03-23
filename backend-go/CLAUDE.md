@@ -32,7 +32,7 @@ Never edit generated code in `gen/` directories — always regenerate.
 ### Key Directories
 
 ```
-cmd/infisical/main.go          # Entry point: config → DB → services.Registry → server
+cmd/infisical/main.go          # Entry point: config → DB → api.Registry → server
 cmd/dev/pg_gen/main.go         # go-jet codegen utility
 internal/
 ├── config/                    # Env-var config via koanf (186+ settings)
@@ -42,22 +42,33 @@ internal/
 │   └── ormify/                # Generic CRUD: DAL[M any] with FindByID, Create, Update, etc.
 ├── keystore/                  # Redis key-value + PG advisory locks
 ├── server/
-│   ├── design/{platform,secretmanager}/  # Goa DSL (source of truth)
-│   └── gen/                              # Goa generated (DO NOT EDIT)
-├── services/
-│   ├── services.go            # Root DI wiring (NewRegistry)
-│   ├── shared/                # Cross-product: permission, kms, serverconfig, secretfolder
-│   ├── platform/              # Platform services (projects, etc.)
-│   └── secretmanager/         # Secret manager services (secrets, etc.)
+│   ├── design/
+│   │   ├── auth/              # Goa security schemes (JWT, identity, service token)
+│   │   ├── common/            # Shared error types
+│   │   ├── platform/          # Platform Goa DSL
+│   │   └── secretmanager/     # Secret manager Goa DSL
+│   ├── gen/                   # Goa generated (DO NOT EDIT)
+│   └── api/                   # Goa endpoint implementations
+│       ├── api.go             # Root DI wiring (NewRegistry)
+│       ├── platform/          # Platform API (projects, etc.)
+│       └── secretmanager/     # Secret manager API (secrets, etc.)
+├── services/                  # Shared business logic (cross-product)
+│   ├── libs.go                # SharedServices wiring
+│   ├── auth/                  # Authentication & token validation
+│   ├── permission/            # CASL-based permission checks
+│   ├── kms/                   # Key management service
+│   ├── license/               # License validation
+│   ├── secretmanager/         # Shared secret manager services (secretfolder, secretimport)
+│   └── serverconfig/          # Server configuration
 └── testutil/                  # Test infra (testcontainers, fluent HTTP builder)
 ```
 
-### Service & DI Pattern
+### Two-Tier Service Architecture
 
-Factory functions with explicit dependencies, wired in `services.go` via `NewRegistry()`. Three tiers:
-1. **Shared** (`services/shared/`) — cross-product, instantiated once
-2. **Product registries** (`services/platform/`, `services/secretmanager/`) — product-specific wiring
-3. **Domain services** — implement Goa-generated interfaces
+- **`server/api/`** — Goa endpoint implementations. Each module implements a Goa-generated `Service` interface and orchestrates shared services. Always 1:1 with a Goa endpoint. These should NOT be imported by anything outside `server/`.
+- **`services/`** — Shared business logic (auth, permission, kms, etc.). Consumed by API implementations and by each other. No dependency on Goa-generated code.
+
+DI wiring: `api.NewRegistry()` constructs shared services first, then passes them into product-specific API registries.
 
 ### Data Access (DAL)
 
@@ -84,7 +95,7 @@ Tests run with `-race`. Infrastructure shared across packages via file lock + `.
 
 1. Define API in Goa DSL (`internal/server/design/<product>/`)
 2. `make gen-goa`
-3. Create service in `internal/services/<product>/<name>/` implementing generated interface
-4. Wire in `services.go`, mount in `internal/server/<product>.go`
+3. Create API implementation in `internal/server/api/<product>/<name>/` implementing generated interface
+4. Wire in `api.go`, mount in `internal/server/<product>.go`
 5. Add tests with `setupMux()` pattern
 6. `make test` + `make lint`

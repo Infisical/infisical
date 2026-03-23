@@ -17,12 +17,10 @@ import (
 
 // Endpoints wraps the "secrets" service endpoints.
 type Endpoints struct {
-	GetHealth    goa.Endpoint
-	CreateSecret goa.Endpoint
-	GetSecret    goa.Endpoint
-	UpdateSecret goa.Endpoint
-	DeleteSecret goa.Endpoint
-	ListSecrets  goa.Endpoint
+	ListSecretsV4        goa.Endpoint
+	GetSecretByNameV4    goa.Endpoint
+	ListSecretsRawV3     goa.Endpoint
+	GetSecretByNameRawV3 goa.Endpoint
 }
 
 // NewEndpoints wraps the methods of the "secrets" service with endpoints.
@@ -30,38 +28,26 @@ func NewEndpoints(s Service) *Endpoints {
 	// Casting service to Auther interface
 	a := s.(Auther)
 	return &Endpoints{
-		GetHealth:    NewGetHealthEndpoint(s),
-		CreateSecret: NewCreateSecretEndpoint(s, a.JWTAuth),
-		GetSecret:    NewGetSecretEndpoint(s, a.JWTAuth),
-		UpdateSecret: NewUpdateSecretEndpoint(s, a.JWTAuth),
-		DeleteSecret: NewDeleteSecretEndpoint(s, a.JWTAuth),
-		ListSecrets:  NewListSecretsEndpoint(s, a.JWTAuth),
+		ListSecretsV4:        NewListSecretsV4Endpoint(s, a.JWTAuth),
+		GetSecretByNameV4:    NewGetSecretByNameV4Endpoint(s, a.JWTAuth),
+		ListSecretsRawV3:     NewListSecretsRawV3Endpoint(s, a.JWTAuth),
+		GetSecretByNameRawV3: NewGetSecretByNameRawV3Endpoint(s, a.JWTAuth),
 	}
 }
 
 // Use applies the given middleware to all the "secrets" service endpoints.
 func (e *Endpoints) Use(m func(goa.Endpoint) goa.Endpoint) {
-	e.GetHealth = m(e.GetHealth)
-	e.CreateSecret = m(e.CreateSecret)
-	e.GetSecret = m(e.GetSecret)
-	e.UpdateSecret = m(e.UpdateSecret)
-	e.DeleteSecret = m(e.DeleteSecret)
-	e.ListSecrets = m(e.ListSecrets)
+	e.ListSecretsV4 = m(e.ListSecretsV4)
+	e.GetSecretByNameV4 = m(e.GetSecretByNameV4)
+	e.ListSecretsRawV3 = m(e.ListSecretsRawV3)
+	e.GetSecretByNameRawV3 = m(e.GetSecretByNameRawV3)
 }
 
-// NewGetHealthEndpoint returns an endpoint function that calls the method
-// "getHealth" of service "secrets".
-func NewGetHealthEndpoint(s Service) goa.Endpoint {
+// NewListSecretsV4Endpoint returns an endpoint function that calls the method
+// "listSecretsV4" of service "secrets".
+func NewListSecretsV4Endpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
-		return s.GetHealth(ctx)
-	}
-}
-
-// NewCreateSecretEndpoint returns an endpoint function that calls the method
-// "createSecret" of service "secrets".
-func NewCreateSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
-	return func(ctx context.Context, req any) (any, error) {
-		p := req.(*CreateSecretPayload)
+		p := req.(*ListSecretsV4Payload)
 		var err error
 		sc := security.JWTScheme{
 			Name:           "jwt",
@@ -88,20 +74,20 @@ func NewCreateSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endp
 		if err != nil {
 			return nil, err
 		}
-		res, err := s.CreateSecret(ctx, p)
+		res, err := s.ListSecretsV4(ctx, p)
 		if err != nil {
 			return nil, err
 		}
-		vres := NewViewedSecretResult(res, "default")
+		vres := NewViewedListSecretsResult(res, "default")
 		return vres, nil
 	}
 }
 
-// NewGetSecretEndpoint returns an endpoint function that calls the method
-// "getSecret" of service "secrets".
-func NewGetSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
+// NewGetSecretByNameV4Endpoint returns an endpoint function that calls the
+// method "getSecretByNameV4" of service "secrets".
+func NewGetSecretByNameV4Endpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
-		p := req.(*GetSecretPayload)
+		p := req.(*GetSecretByNameV4Payload)
 		var err error
 		sc := security.JWTScheme{
 			Name:           "jwt",
@@ -128,20 +114,20 @@ func NewGetSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoin
 		if err != nil {
 			return nil, err
 		}
-		res, err := s.GetSecret(ctx, p)
+		res, err := s.GetSecretByNameV4(ctx, p)
 		if err != nil {
 			return nil, err
 		}
-		vres := NewViewedSecretResult(res, "default")
+		vres := NewViewedGetSecretResult(res, "default")
 		return vres, nil
 	}
 }
 
-// NewUpdateSecretEndpoint returns an endpoint function that calls the method
-// "updateSecret" of service "secrets".
-func NewUpdateSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
+// NewListSecretsRawV3Endpoint returns an endpoint function that calls the
+// method "listSecretsRawV3" of service "secrets".
+func NewListSecretsRawV3Endpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
-		p := req.(*UpdateSecretPayload)
+		p := req.(*ListSecretsRawV3Payload)
 		var err error
 		sc := security.JWTScheme{
 			Name:           "jwt",
@@ -168,20 +154,20 @@ func NewUpdateSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endp
 		if err != nil {
 			return nil, err
 		}
-		res, err := s.UpdateSecret(ctx, p)
+		res, err := s.ListSecretsRawV3(ctx, p)
 		if err != nil {
 			return nil, err
 		}
-		vres := NewViewedSecretResult(res, "default")
+		vres := NewViewedListSecretsResult(res, "default")
 		return vres, nil
 	}
 }
 
-// NewDeleteSecretEndpoint returns an endpoint function that calls the method
-// "deleteSecret" of service "secrets".
-func NewDeleteSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
+// NewGetSecretByNameRawV3Endpoint returns an endpoint function that calls the
+// method "getSecretByNameRawV3" of service "secrets".
+func NewGetSecretByNameRawV3Endpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
-		p := req.(*DeleteSecretPayload)
+		p := req.(*GetSecretByNameRawV3Payload)
 		var err error
 		sc := security.JWTScheme{
 			Name:           "jwt",
@@ -208,46 +194,11 @@ func NewDeleteSecretEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endp
 		if err != nil {
 			return nil, err
 		}
-		return nil, s.DeleteSecret(ctx, p)
-	}
-}
-
-// NewListSecretsEndpoint returns an endpoint function that calls the method
-// "listSecrets" of service "secrets".
-func NewListSecretsEndpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
-	return func(ctx context.Context, req any) (any, error) {
-		p := req.(*ListSecretsPayload)
-		var err error
-		sc := security.JWTScheme{
-			Name:           "jwt",
-			Scopes:         []string{},
-			RequiredScopes: []string{},
-		}
-		ctx, err = authJWTFn(ctx, p.Token, &sc)
-		if err != nil {
-			sc := security.JWTScheme{
-				Name:           "identity_access_token",
-				Scopes:         []string{},
-				RequiredScopes: []string{},
-			}
-			ctx, err = authJWTFn(ctx, p.Token, &sc)
-		}
-		if err != nil {
-			sc := security.JWTScheme{
-				Name:           "service_token",
-				Scopes:         []string{},
-				RequiredScopes: []string{},
-			}
-			ctx, err = authJWTFn(ctx, p.Token, &sc)
-		}
+		res, err := s.GetSecretByNameRawV3(ctx, p)
 		if err != nil {
 			return nil, err
 		}
-		res, err := s.ListSecrets(ctx, p)
-		if err != nil {
-			return nil, err
-		}
-		vres := NewViewedSecretResultCollection(res, "default")
+		vres := NewViewedGetSecretResult(res, "default")
 		return vres, nil
 	}
 }

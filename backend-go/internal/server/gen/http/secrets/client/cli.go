@@ -9,121 +9,407 @@
 package client
 
 import (
-	"encoding/json"
 	"fmt"
+	"strconv"
+	"unicode/utf8"
 
 	secrets "github.com/infisical/api/internal/server/gen/secrets"
+	goa "goa.design/goa/v3/pkg"
 )
 
-// BuildCreateSecretPayload builds the payload for the secrets createSecret
+// BuildListSecretsV4Payload builds the payload for the secrets listSecretsV4
 // endpoint from CLI flags.
-func BuildCreateSecretPayload(secretsCreateSecretBody string, secretsCreateSecretToken string) (*secrets.CreateSecretPayload, error) {
+func BuildListSecretsV4Payload(secretsListSecretsV4ProjectID string, secretsListSecretsV4Environment string, secretsListSecretsV4SecretPath string, secretsListSecretsV4ViewSecretValue string, secretsListSecretsV4ExpandSecretReferences string, secretsListSecretsV4Recursive string, secretsListSecretsV4IncludePersonalOverrides string, secretsListSecretsV4IncludeImports string, secretsListSecretsV4TagSlugs string, secretsListSecretsV4MetadataFilter string, secretsListSecretsV4Token string) (*secrets.ListSecretsV4Payload, error) {
 	var err error
-	var body CreateSecretRequestBody
-	{
-		err = json.Unmarshal([]byte(secretsCreateSecretBody), &body)
-		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"environment\": \"Ducimus qui.\",\n      \"key\": \"DATABASE_URL\",\n      \"projectId\": \"Ut aut.\",\n      \"value\": \"Dolor fugiat maxime nisi quas expedita.\"\n   }'")
-		}
-	}
-	var token string
-	{
-		token = secretsCreateSecretToken
-	}
-	v := &secrets.CreateSecretPayload{
-		Key:         body.Key,
-		Value:       body.Value,
-		Environment: body.Environment,
-		ProjectID:   body.ProjectID,
-	}
-	v.Token = token
-
-	return v, nil
-}
-
-// BuildGetSecretPayload builds the payload for the secrets getSecret endpoint
-// from CLI flags.
-func BuildGetSecretPayload(secretsGetSecretID string, secretsGetSecretToken string) (*secrets.GetSecretPayload, error) {
-	var id string
-	{
-		id = secretsGetSecretID
-	}
-	var token string
-	{
-		token = secretsGetSecretToken
-	}
-	v := &secrets.GetSecretPayload{}
-	v.ID = id
-	v.Token = token
-
-	return v, nil
-}
-
-// BuildUpdateSecretPayload builds the payload for the secrets updateSecret
-// endpoint from CLI flags.
-func BuildUpdateSecretPayload(secretsUpdateSecretBody string, secretsUpdateSecretID string, secretsUpdateSecretToken string) (*secrets.UpdateSecretPayload, error) {
-	var err error
-	var body UpdateSecretRequestBody
-	{
-		err = json.Unmarshal([]byte(secretsUpdateSecretBody), &body)
-		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"key\": \"Voluptatibus officia magni et ducimus pariatur.\",\n      \"value\": \"Voluptas inventore est ut.\"\n   }'")
-		}
-	}
-	var id string
-	{
-		id = secretsUpdateSecretID
-	}
-	var token string
-	{
-		token = secretsUpdateSecretToken
-	}
-	v := &secrets.UpdateSecretPayload{
-		Key:   body.Key,
-		Value: body.Value,
-	}
-	v.ID = id
-	v.Token = token
-
-	return v, nil
-}
-
-// BuildDeleteSecretPayload builds the payload for the secrets deleteSecret
-// endpoint from CLI flags.
-func BuildDeleteSecretPayload(secretsDeleteSecretID string, secretsDeleteSecretToken string) (*secrets.DeleteSecretPayload, error) {
-	var id string
-	{
-		id = secretsDeleteSecretID
-	}
-	var token string
-	{
-		token = secretsDeleteSecretToken
-	}
-	v := &secrets.DeleteSecretPayload{}
-	v.ID = id
-	v.Token = token
-
-	return v, nil
-}
-
-// BuildListSecretsPayload builds the payload for the secrets listSecrets
-// endpoint from CLI flags.
-func BuildListSecretsPayload(secretsListSecretsProjectID string, secretsListSecretsEnvironment string, secretsListSecretsToken string) (*secrets.ListSecretsPayload, error) {
 	var projectID string
 	{
-		projectID = secretsListSecretsProjectID
+		projectID = secretsListSecretsV4ProjectID
 	}
 	var environment string
 	{
-		environment = secretsListSecretsEnvironment
+		environment = secretsListSecretsV4Environment
+	}
+	var secretPath string
+	{
+		if secretsListSecretsV4SecretPath != "" {
+			secretPath = secretsListSecretsV4SecretPath
+		}
+	}
+	var viewSecretValue bool
+	{
+		if secretsListSecretsV4ViewSecretValue != "" {
+			viewSecretValue, err = strconv.ParseBool(secretsListSecretsV4ViewSecretValue)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for viewSecretValue, must be BOOL")
+			}
+		}
+	}
+	var expandSecretReferences bool
+	{
+		if secretsListSecretsV4ExpandSecretReferences != "" {
+			expandSecretReferences, err = strconv.ParseBool(secretsListSecretsV4ExpandSecretReferences)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for expandSecretReferences, must be BOOL")
+			}
+		}
+	}
+	var recursive bool
+	{
+		if secretsListSecretsV4Recursive != "" {
+			recursive, err = strconv.ParseBool(secretsListSecretsV4Recursive)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for recursive, must be BOOL")
+			}
+		}
+	}
+	var includePersonalOverrides bool
+	{
+		if secretsListSecretsV4IncludePersonalOverrides != "" {
+			includePersonalOverrides, err = strconv.ParseBool(secretsListSecretsV4IncludePersonalOverrides)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for includePersonalOverrides, must be BOOL")
+			}
+		}
+	}
+	var includeImports bool
+	{
+		if secretsListSecretsV4IncludeImports != "" {
+			includeImports, err = strconv.ParseBool(secretsListSecretsV4IncludeImports)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for includeImports, must be BOOL")
+			}
+		}
+	}
+	var tagSlugs *string
+	{
+		if secretsListSecretsV4TagSlugs != "" {
+			tagSlugs = &secretsListSecretsV4TagSlugs
+		}
+	}
+	var metadataFilter *string
+	{
+		if secretsListSecretsV4MetadataFilter != "" {
+			metadataFilter = &secretsListSecretsV4MetadataFilter
+		}
 	}
 	var token string
 	{
-		token = secretsListSecretsToken
+		token = secretsListSecretsV4Token
 	}
-	v := &secrets.ListSecretsPayload{}
+	v := &secrets.ListSecretsV4Payload{}
 	v.ProjectID = projectID
 	v.Environment = environment
+	v.SecretPath = secretPath
+	v.ViewSecretValue = viewSecretValue
+	v.ExpandSecretReferences = expandSecretReferences
+	v.Recursive = recursive
+	v.IncludePersonalOverrides = includePersonalOverrides
+	v.IncludeImports = includeImports
+	v.TagSlugs = tagSlugs
+	v.MetadataFilter = metadataFilter
+	v.Token = token
+
+	return v, nil
+}
+
+// BuildGetSecretByNameV4Payload builds the payload for the secrets
+// getSecretByNameV4 endpoint from CLI flags.
+func BuildGetSecretByNameV4Payload(secretsGetSecretByNameV4SecretName string, secretsGetSecretByNameV4ProjectID string, secretsGetSecretByNameV4Environment string, secretsGetSecretByNameV4SecretPath string, secretsGetSecretByNameV4Version string, secretsGetSecretByNameV4Type string, secretsGetSecretByNameV4ViewSecretValue string, secretsGetSecretByNameV4ExpandSecretReferences string, secretsGetSecretByNameV4IncludeImports string, secretsGetSecretByNameV4Token string) (*secrets.GetSecretByNameV4Payload, error) {
+	var err error
+	var secretName string
+	{
+		secretName = secretsGetSecretByNameV4SecretName
+		if utf8.RuneCountInString(secretName) < 1 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("secretName", secretName, utf8.RuneCountInString(secretName), 1, true))
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	var projectID string
+	{
+		projectID = secretsGetSecretByNameV4ProjectID
+	}
+	var environment string
+	{
+		environment = secretsGetSecretByNameV4Environment
+	}
+	var secretPath string
+	{
+		if secretsGetSecretByNameV4SecretPath != "" {
+			secretPath = secretsGetSecretByNameV4SecretPath
+		}
+	}
+	var version *int
+	{
+		if secretsGetSecretByNameV4Version != "" {
+			var v int64
+			v, err = strconv.ParseInt(secretsGetSecretByNameV4Version, 10, strconv.IntSize)
+			val := int(v)
+			version = &val
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for version, must be INT")
+			}
+		}
+	}
+	var type_ string
+	{
+		if secretsGetSecretByNameV4Type != "" {
+			type_ = secretsGetSecretByNameV4Type
+			if !(type_ == "shared" || type_ == "personal") {
+				err = goa.MergeErrors(err, goa.InvalidEnumValueError("type", type_, []any{"shared", "personal"}))
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	var viewSecretValue bool
+	{
+		if secretsGetSecretByNameV4ViewSecretValue != "" {
+			viewSecretValue, err = strconv.ParseBool(secretsGetSecretByNameV4ViewSecretValue)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for viewSecretValue, must be BOOL")
+			}
+		}
+	}
+	var expandSecretReferences bool
+	{
+		if secretsGetSecretByNameV4ExpandSecretReferences != "" {
+			expandSecretReferences, err = strconv.ParseBool(secretsGetSecretByNameV4ExpandSecretReferences)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for expandSecretReferences, must be BOOL")
+			}
+		}
+	}
+	var includeImports bool
+	{
+		if secretsGetSecretByNameV4IncludeImports != "" {
+			includeImports, err = strconv.ParseBool(secretsGetSecretByNameV4IncludeImports)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for includeImports, must be BOOL")
+			}
+		}
+	}
+	var token string
+	{
+		token = secretsGetSecretByNameV4Token
+	}
+	v := &secrets.GetSecretByNameV4Payload{}
+	v.SecretName = secretName
+	v.ProjectID = projectID
+	v.Environment = environment
+	v.SecretPath = secretPath
+	v.Version = version
+	v.Type = type_
+	v.ViewSecretValue = viewSecretValue
+	v.ExpandSecretReferences = expandSecretReferences
+	v.IncludeImports = includeImports
+	v.Token = token
+
+	return v, nil
+}
+
+// BuildListSecretsRawV3Payload builds the payload for the secrets
+// listSecretsRawV3 endpoint from CLI flags.
+func BuildListSecretsRawV3Payload(secretsListSecretsRawV3WorkspaceID string, secretsListSecretsRawV3WorkspaceSlug string, secretsListSecretsRawV3Environment string, secretsListSecretsRawV3SecretPath string, secretsListSecretsRawV3ViewSecretValue string, secretsListSecretsRawV3ExpandSecretReferences string, secretsListSecretsRawV3Recursive string, secretsListSecretsRawV3IncludeImports string, secretsListSecretsRawV3TagSlugs string, secretsListSecretsRawV3MetadataFilter string, secretsListSecretsRawV3Token string) (*secrets.ListSecretsRawV3Payload, error) {
+	var err error
+	var workspaceID *string
+	{
+		if secretsListSecretsRawV3WorkspaceID != "" {
+			workspaceID = &secretsListSecretsRawV3WorkspaceID
+		}
+	}
+	var workspaceSlug *string
+	{
+		if secretsListSecretsRawV3WorkspaceSlug != "" {
+			workspaceSlug = &secretsListSecretsRawV3WorkspaceSlug
+		}
+	}
+	var environment *string
+	{
+		if secretsListSecretsRawV3Environment != "" {
+			environment = &secretsListSecretsRawV3Environment
+		}
+	}
+	var secretPath string
+	{
+		if secretsListSecretsRawV3SecretPath != "" {
+			secretPath = secretsListSecretsRawV3SecretPath
+		}
+	}
+	var viewSecretValue bool
+	{
+		if secretsListSecretsRawV3ViewSecretValue != "" {
+			viewSecretValue, err = strconv.ParseBool(secretsListSecretsRawV3ViewSecretValue)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for viewSecretValue, must be BOOL")
+			}
+		}
+	}
+	var expandSecretReferences bool
+	{
+		if secretsListSecretsRawV3ExpandSecretReferences != "" {
+			expandSecretReferences, err = strconv.ParseBool(secretsListSecretsRawV3ExpandSecretReferences)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for expandSecretReferences, must be BOOL")
+			}
+		}
+	}
+	var recursive bool
+	{
+		if secretsListSecretsRawV3Recursive != "" {
+			recursive, err = strconv.ParseBool(secretsListSecretsRawV3Recursive)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for recursive, must be BOOL")
+			}
+		}
+	}
+	var includeImports bool
+	{
+		if secretsListSecretsRawV3IncludeImports != "" {
+			includeImports, err = strconv.ParseBool(secretsListSecretsRawV3IncludeImports)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for includeImports, must be BOOL")
+			}
+		}
+	}
+	var tagSlugs *string
+	{
+		if secretsListSecretsRawV3TagSlugs != "" {
+			tagSlugs = &secretsListSecretsRawV3TagSlugs
+		}
+	}
+	var metadataFilter *string
+	{
+		if secretsListSecretsRawV3MetadataFilter != "" {
+			metadataFilter = &secretsListSecretsRawV3MetadataFilter
+		}
+	}
+	var token string
+	{
+		token = secretsListSecretsRawV3Token
+	}
+	v := &secrets.ListSecretsRawV3Payload{}
+	v.WorkspaceID = workspaceID
+	v.WorkspaceSlug = workspaceSlug
+	v.Environment = environment
+	v.SecretPath = secretPath
+	v.ViewSecretValue = viewSecretValue
+	v.ExpandSecretReferences = expandSecretReferences
+	v.Recursive = recursive
+	v.IncludeImports = includeImports
+	v.TagSlugs = tagSlugs
+	v.MetadataFilter = metadataFilter
+	v.Token = token
+
+	return v, nil
+}
+
+// BuildGetSecretByNameRawV3Payload builds the payload for the secrets
+// getSecretByNameRawV3 endpoint from CLI flags.
+func BuildGetSecretByNameRawV3Payload(secretsGetSecretByNameRawV3SecretName string, secretsGetSecretByNameRawV3WorkspaceID string, secretsGetSecretByNameRawV3WorkspaceSlug string, secretsGetSecretByNameRawV3Environment string, secretsGetSecretByNameRawV3SecretPath string, secretsGetSecretByNameRawV3Version string, secretsGetSecretByNameRawV3Type string, secretsGetSecretByNameRawV3ViewSecretValue string, secretsGetSecretByNameRawV3ExpandSecretReferences string, secretsGetSecretByNameRawV3IncludeImports string, secretsGetSecretByNameRawV3Token string) (*secrets.GetSecretByNameRawV3Payload, error) {
+	var err error
+	var secretName string
+	{
+		secretName = secretsGetSecretByNameRawV3SecretName
+		if utf8.RuneCountInString(secretName) < 1 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("secretName", secretName, utf8.RuneCountInString(secretName), 1, true))
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	var workspaceID *string
+	{
+		if secretsGetSecretByNameRawV3WorkspaceID != "" {
+			workspaceID = &secretsGetSecretByNameRawV3WorkspaceID
+		}
+	}
+	var workspaceSlug *string
+	{
+		if secretsGetSecretByNameRawV3WorkspaceSlug != "" {
+			workspaceSlug = &secretsGetSecretByNameRawV3WorkspaceSlug
+		}
+	}
+	var environment *string
+	{
+		if secretsGetSecretByNameRawV3Environment != "" {
+			environment = &secretsGetSecretByNameRawV3Environment
+		}
+	}
+	var secretPath string
+	{
+		if secretsGetSecretByNameRawV3SecretPath != "" {
+			secretPath = secretsGetSecretByNameRawV3SecretPath
+		}
+	}
+	var version *int
+	{
+		if secretsGetSecretByNameRawV3Version != "" {
+			var v int64
+			v, err = strconv.ParseInt(secretsGetSecretByNameRawV3Version, 10, strconv.IntSize)
+			val := int(v)
+			version = &val
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for version, must be INT")
+			}
+		}
+	}
+	var type_ string
+	{
+		if secretsGetSecretByNameRawV3Type != "" {
+			type_ = secretsGetSecretByNameRawV3Type
+			if !(type_ == "shared" || type_ == "personal") {
+				err = goa.MergeErrors(err, goa.InvalidEnumValueError("type", type_, []any{"shared", "personal"}))
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	var viewSecretValue bool
+	{
+		if secretsGetSecretByNameRawV3ViewSecretValue != "" {
+			viewSecretValue, err = strconv.ParseBool(secretsGetSecretByNameRawV3ViewSecretValue)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for viewSecretValue, must be BOOL")
+			}
+		}
+	}
+	var expandSecretReferences bool
+	{
+		if secretsGetSecretByNameRawV3ExpandSecretReferences != "" {
+			expandSecretReferences, err = strconv.ParseBool(secretsGetSecretByNameRawV3ExpandSecretReferences)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for expandSecretReferences, must be BOOL")
+			}
+		}
+	}
+	var includeImports bool
+	{
+		if secretsGetSecretByNameRawV3IncludeImports != "" {
+			includeImports, err = strconv.ParseBool(secretsGetSecretByNameRawV3IncludeImports)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for includeImports, must be BOOL")
+			}
+		}
+	}
+	var token string
+	{
+		token = secretsGetSecretByNameRawV3Token
+	}
+	v := &secrets.GetSecretByNameRawV3Payload{}
+	v.SecretName = secretName
+	v.WorkspaceID = workspaceID
+	v.WorkspaceSlug = workspaceSlug
+	v.Environment = environment
+	v.SecretPath = secretPath
+	v.Version = version
+	v.Type = type_
+	v.ViewSecretValue = viewSecretValue
+	v.ExpandSecretReferences = expandSecretReferences
+	v.IncludeImports = includeImports
 	v.Token = token
 
 	return v, nil

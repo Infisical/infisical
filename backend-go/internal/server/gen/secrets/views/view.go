@@ -12,116 +12,390 @@ import (
 	goa "goa.design/goa/v3/pkg"
 )
 
-// SecretResult is the viewed result type that is projected based on a view.
-type SecretResult struct {
+// ListSecretsResult is the viewed result type that is projected based on a
+// view.
+type ListSecretsResult struct {
 	// Type to project
-	Projected *SecretResultView
+	Projected *ListSecretsResultView
 	// View to render
 	View string
 }
 
-// SecretResultCollection is the viewed result type that is projected based on
-// a view.
-type SecretResultCollection struct {
+// GetSecretResult is the viewed result type that is projected based on a view.
+type GetSecretResult struct {
 	// Type to project
-	Projected SecretResultCollectionView
+	Projected *GetSecretResultView
 	// View to render
 	View string
 }
 
-// SecretResultView is a type that runs validations on a projected type.
-type SecretResultView struct {
+// ListSecretsResultView is a type that runs validations on a projected type.
+type ListSecretsResultView struct {
+	// List of secrets
+	Secrets []*SecretRawView
+	// Imported secret blocks
+	Imports []*SecretImportView
+}
+
+// SecretRawView is a type that runs validations on a projected type.
+type SecretRawView struct {
 	// Secret ID
 	ID *string
-	// Secret key
-	Key *string
-	// Secret value
-	Value *string
+	// Legacy secret ID
+	LegacyID *string `json:"_id"`
+	// Workspace/project ID
+	Workspace *string
 	// Environment slug
 	Environment *string
-	// Project ID
-	ProjectID *string
+	// Secret version
+	Version *int
+	// Secret type (shared or personal)
+	Type *string
+	// Secret key
+	SecretKey *string
+	// Secret value
+	SecretValue *string
+	// Secret comment
+	SecretComment *string
+	// Reminder note
+	SecretReminderNote *string
+	// Reminder repeat days
+	SecretReminderRepeatDays *int
+	// Skip multiline encoding
+	SkipMultilineEncoding *bool
+	// Creation timestamp
+	CreatedAt *string
+	// Last update timestamp
+	UpdatedAt *string
+	// Last modifier
+	Actor *SecretActorView
+	// Whether this is a rotated secret
+	IsRotatedSecret *bool
+	// Rotation ID (UUID)
+	RotationID *string
+	// Path of the secret
+	SecretPath *string
+	// Whether the secret value is hidden
+	SecretValueHidden *bool
+	// Secret metadata entries
+	SecretMetadata []*ResourceMetadataView
+	// Tags attached to the secret
+	Tags []*SecretTagView
 }
 
-// SecretResultCollectionView is a type that runs validations on a projected
-// type.
-type SecretResultCollectionView []*SecretResultView
+// SecretActorView is a type that runs validations on a projected type.
+type SecretActorView struct {
+	// Actor ID
+	ActorID *string
+	// Actor type
+	ActorType *string
+	// Actor name
+	Name *string
+	// Membership ID
+	MembershipID *string
+	// Group ID
+	GroupID *string
+}
+
+// ResourceMetadataView is a type that runs validations on a projected type.
+type ResourceMetadataView struct {
+	// Metadata key
+	Key *string
+	// Metadata value
+	Value *string
+	// Whether the value is encrypted
+	IsEncrypted *bool
+}
+
+// SecretTagView is a type that runs validations on a projected type.
+type SecretTagView struct {
+	// Tag ID (UUID)
+	ID *string
+	// Tag slug
+	Slug *string
+	// Tag color
+	Color **string
+	// Tag name
+	Name *string
+}
+
+// SecretImportView is a type that runs validations on a projected type.
+type SecretImportView struct {
+	// Import source path
+	SecretPath *string
+	// Import source environment
+	Environment *string
+	// Import source folder ID
+	FolderID *string
+	// Imported secrets
+	Secrets []*ImportSecretRawView
+}
+
+// ImportSecretRawView is a type that runs validations on a projected type.
+type ImportSecretRawView struct {
+	// Secret ID
+	ID *string
+	// Legacy secret ID
+	LegacyID *string `json:"_id"`
+	// Workspace/project ID
+	Workspace *string
+	// Environment slug
+	Environment *string
+	// Secret version
+	Version *int
+	// Secret type (shared or personal)
+	Type *string
+	// Secret key
+	SecretKey *string
+	// Secret value
+	SecretValue *string
+	// Secret comment
+	SecretComment *string
+	// Reminder note
+	SecretReminderNote *string
+	// Reminder repeat days
+	SecretReminderRepeatDays *int
+	// Skip multiline encoding
+	SkipMultilineEncoding *bool
+	// Last modifier
+	Actor *SecretActorView
+	// Whether this is a rotated secret
+	IsRotatedSecret *bool
+	// Rotation ID (UUID)
+	RotationID *string
+	// Whether the secret value is hidden
+	SecretValueHidden *bool
+	// Secret metadata entries
+	SecretMetadata []*ResourceMetadataView
+}
+
+// GetSecretResultView is a type that runs validations on a projected type.
+type GetSecretResultView struct {
+	// The requested secret
+	Secret *SecretRawView
+}
 
 var (
-	// SecretResultMap is a map indexing the attribute names of SecretResult by
-	// view name.
-	SecretResultMap = map[string][]string{
+	// ListSecretsResultMap is a map indexing the attribute names of
+	// ListSecretsResult by view name.
+	ListSecretsResultMap = map[string][]string{
 		"default": {
-			"id",
-			"key",
-			"value",
-			"environment",
-			"projectId",
+			"secrets",
+			"imports",
 		},
 	}
-	// SecretResultCollectionMap is a map indexing the attribute names of
-	// SecretResultCollection by view name.
-	SecretResultCollectionMap = map[string][]string{
+	// GetSecretResultMap is a map indexing the attribute names of GetSecretResult
+	// by view name.
+	GetSecretResultMap = map[string][]string{
 		"default": {
-			"id",
-			"key",
-			"value",
-			"environment",
-			"projectId",
+			"secret",
 		},
 	}
 )
 
-// ValidateSecretResult runs the validations defined on the viewed result type
-// SecretResult.
-func ValidateSecretResult(result *SecretResult) (err error) {
+// ValidateListSecretsResult runs the validations defined on the viewed result
+// type ListSecretsResult.
+func ValidateListSecretsResult(result *ListSecretsResult) (err error) {
 	switch result.View {
 	case "default", "":
-		err = ValidateSecretResultView(result.Projected)
+		err = ValidateListSecretsResultView(result.Projected)
 	default:
 		err = goa.InvalidEnumValueError("view", result.View, []any{"default"})
 	}
 	return
 }
 
-// ValidateSecretResultCollection runs the validations defined on the viewed
-// result type SecretResultCollection.
-func ValidateSecretResultCollection(result SecretResultCollection) (err error) {
+// ValidateGetSecretResult runs the validations defined on the viewed result
+// type GetSecretResult.
+func ValidateGetSecretResult(result *GetSecretResult) (err error) {
 	switch result.View {
 	case "default", "":
-		err = ValidateSecretResultCollectionView(result.Projected)
+		err = ValidateGetSecretResultView(result.Projected)
 	default:
 		err = goa.InvalidEnumValueError("view", result.View, []any{"default"})
 	}
 	return
 }
 
-// ValidateSecretResultView runs the validations defined on SecretResultView
-// using the "default" view.
-func ValidateSecretResultView(result *SecretResultView) (err error) {
+// ValidateListSecretsResultView runs the validations defined on
+// ListSecretsResultView using the "default" view.
+func ValidateListSecretsResultView(result *ListSecretsResultView) (err error) {
+	if result.Secrets == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secrets", "result"))
+	}
+	for _, e := range result.Secrets {
+		if e != nil {
+			if err2 := ValidateSecretRawView(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
+	}
+	for _, e := range result.Imports {
+		if e != nil {
+			if err2 := ValidateSecretImportView(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
+	}
+	return
+}
+
+// ValidateSecretRawView runs the validations defined on SecretRawView.
+func ValidateSecretRawView(result *SecretRawView) (err error) {
 	if result.ID == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("id", "result"))
 	}
-	if result.Key == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("key", "result"))
+	if result.LegacyID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("legacyId", "result"))
 	}
-	if result.Value == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("value", "result"))
+	if result.Workspace == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("workspace", "result"))
 	}
 	if result.Environment == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("environment", "result"))
 	}
-	if result.ProjectID == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("projectId", "result"))
+	if result.Version == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("version", "result"))
+	}
+	if result.Type == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("type", "result"))
+	}
+	if result.SecretKey == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretKey", "result"))
+	}
+	if result.SecretValue == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretValue", "result"))
+	}
+	if result.SecretComment == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretComment", "result"))
+	}
+	if result.CreatedAt == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("createdAt", "result"))
+	}
+	if result.UpdatedAt == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("updatedAt", "result"))
+	}
+	if result.SecretValueHidden == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretValueHidden", "result"))
+	}
+	for _, e := range result.SecretMetadata {
+		if e != nil {
+			if err2 := ValidateResourceMetadataView(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
+	}
+	for _, e := range result.Tags {
+		if e != nil {
+			if err2 := ValidateSecretTagView(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
 	}
 	return
 }
 
-// ValidateSecretResultCollectionView runs the validations defined on
-// SecretResultCollectionView using the "default" view.
-func ValidateSecretResultCollectionView(result SecretResultCollectionView) (err error) {
-	for _, item := range result {
-		if err2 := ValidateSecretResultView(item); err2 != nil {
+// ValidateSecretActorView runs the validations defined on SecretActorView.
+func ValidateSecretActorView(result *SecretActorView) (err error) {
+
+	return
+}
+
+// ValidateResourceMetadataView runs the validations defined on
+// ResourceMetadataView.
+func ValidateResourceMetadataView(result *ResourceMetadataView) (err error) {
+	if result.Key == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("key", "result"))
+	}
+	return
+}
+
+// ValidateSecretTagView runs the validations defined on SecretTagView.
+func ValidateSecretTagView(result *SecretTagView) (err error) {
+	if result.ID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("id", "result"))
+	}
+	if result.Slug == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("slug", "result"))
+	}
+	if result.Name == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("name", "result"))
+	}
+	return
+}
+
+// ValidateSecretImportView runs the validations defined on SecretImportView.
+func ValidateSecretImportView(result *SecretImportView) (err error) {
+	if result.SecretPath == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretPath", "result"))
+	}
+	if result.Environment == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("environment", "result"))
+	}
+	if result.Secrets == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secrets", "result"))
+	}
+	for _, e := range result.Secrets {
+		if e != nil {
+			if err2 := ValidateImportSecretRawView(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
+	}
+	return
+}
+
+// ValidateImportSecretRawView runs the validations defined on
+// ImportSecretRawView.
+func ValidateImportSecretRawView(result *ImportSecretRawView) (err error) {
+	if result.ID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("id", "result"))
+	}
+	if result.LegacyID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("legacyId", "result"))
+	}
+	if result.Workspace == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("workspace", "result"))
+	}
+	if result.Environment == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("environment", "result"))
+	}
+	if result.Version == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("version", "result"))
+	}
+	if result.Type == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("type", "result"))
+	}
+	if result.SecretKey == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretKey", "result"))
+	}
+	if result.SecretValue == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretValue", "result"))
+	}
+	if result.SecretComment == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretComment", "result"))
+	}
+	if result.SecretValueHidden == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secretValueHidden", "result"))
+	}
+	for _, e := range result.SecretMetadata {
+		if e != nil {
+			if err2 := ValidateResourceMetadataView(e); err2 != nil {
+				err = goa.MergeErrors(err, err2)
+			}
+		}
+	}
+	return
+}
+
+// ValidateGetSecretResultView runs the validations defined on
+// GetSecretResultView using the "default" view.
+func ValidateGetSecretResultView(result *GetSecretResultView) (err error) {
+	if result.Secret == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("secret", "result"))
+	}
+	if result.Secret != nil {
+		if err2 := ValidateSecretRawView(result.Secret); err2 != nil {
 			err = goa.MergeErrors(err, err2)
 		}
 	}

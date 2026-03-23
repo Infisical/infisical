@@ -16,120 +16,89 @@ import (
 
 // Client is the "secrets" service client.
 type Client struct {
-	GetHealthEndpoint    goa.Endpoint
-	CreateSecretEndpoint goa.Endpoint
-	GetSecretEndpoint    goa.Endpoint
-	UpdateSecretEndpoint goa.Endpoint
-	DeleteSecretEndpoint goa.Endpoint
-	ListSecretsEndpoint  goa.Endpoint
+	ListSecretsV4Endpoint        goa.Endpoint
+	GetSecretByNameV4Endpoint    goa.Endpoint
+	ListSecretsRawV3Endpoint     goa.Endpoint
+	GetSecretByNameRawV3Endpoint goa.Endpoint
 }
 
 // NewClient initializes a "secrets" service client given the endpoints.
-func NewClient(getHealth, createSecret, getSecret, updateSecret, deleteSecret, listSecrets goa.Endpoint) *Client {
+func NewClient(listSecretsV4, getSecretByNameV4, listSecretsRawV3, getSecretByNameRawV3 goa.Endpoint) *Client {
 	return &Client{
-		GetHealthEndpoint:    getHealth,
-		CreateSecretEndpoint: createSecret,
-		GetSecretEndpoint:    getSecret,
-		UpdateSecretEndpoint: updateSecret,
-		DeleteSecretEndpoint: deleteSecret,
-		ListSecretsEndpoint:  listSecrets,
+		ListSecretsV4Endpoint:        listSecretsV4,
+		GetSecretByNameV4Endpoint:    getSecretByNameV4,
+		ListSecretsRawV3Endpoint:     listSecretsRawV3,
+		GetSecretByNameRawV3Endpoint: getSecretByNameRawV3,
 	}
 }
 
-// GetHealth calls the "getHealth" endpoint of the "secrets" service.
-// GetHealth may return the following errors:
+// ListSecretsV4 calls the "listSecretsV4" endpoint of the "secrets" service.
+// ListSecretsV4 may return the following errors:
 //   - "bad_request" (type *APIErrorResult)
 //   - "unauthorized" (type *APIErrorResult)
 //   - "forbidden" (type *APIErrorResult)
 //   - "not_found" (type *APIErrorResult)
 //   - "internal_error" (type *APIErrorResult)
 //   - error: internal error
-func (c *Client) GetHealth(ctx context.Context) (res string, err error) {
+func (c *Client) ListSecretsV4(ctx context.Context, p *ListSecretsV4Payload) (res *ListSecretsResult, err error) {
 	var ires any
-	ires, err = c.GetHealthEndpoint(ctx, nil)
+	ires, err = c.ListSecretsV4Endpoint(ctx, p)
 	if err != nil {
 		return
 	}
-	return ires.(string), nil
+	return ires.(*ListSecretsResult), nil
 }
 
-// CreateSecret calls the "createSecret" endpoint of the "secrets" service.
-// CreateSecret may return the following errors:
+// GetSecretByNameV4 calls the "getSecretByNameV4" endpoint of the "secrets"
+// service.
+// GetSecretByNameV4 may return the following errors:
 //   - "bad_request" (type *APIErrorResult)
 //   - "unauthorized" (type *APIErrorResult)
 //   - "forbidden" (type *APIErrorResult)
 //   - "not_found" (type *APIErrorResult)
 //   - "internal_error" (type *APIErrorResult)
 //   - error: internal error
-func (c *Client) CreateSecret(ctx context.Context, p *CreateSecretPayload) (res *SecretResult, err error) {
+func (c *Client) GetSecretByNameV4(ctx context.Context, p *GetSecretByNameV4Payload) (res *GetSecretResult, err error) {
 	var ires any
-	ires, err = c.CreateSecretEndpoint(ctx, p)
+	ires, err = c.GetSecretByNameV4Endpoint(ctx, p)
 	if err != nil {
 		return
 	}
-	return ires.(*SecretResult), nil
+	return ires.(*GetSecretResult), nil
 }
 
-// GetSecret calls the "getSecret" endpoint of the "secrets" service.
-// GetSecret may return the following errors:
+// ListSecretsRawV3 calls the "listSecretsRawV3" endpoint of the "secrets"
+// service.
+// ListSecretsRawV3 may return the following errors:
 //   - "bad_request" (type *APIErrorResult)
 //   - "unauthorized" (type *APIErrorResult)
 //   - "forbidden" (type *APIErrorResult)
 //   - "not_found" (type *APIErrorResult)
 //   - "internal_error" (type *APIErrorResult)
 //   - error: internal error
-func (c *Client) GetSecret(ctx context.Context, p *GetSecretPayload) (res *SecretResult, err error) {
+func (c *Client) ListSecretsRawV3(ctx context.Context, p *ListSecretsRawV3Payload) (res *ListSecretsResult, err error) {
 	var ires any
-	ires, err = c.GetSecretEndpoint(ctx, p)
+	ires, err = c.ListSecretsRawV3Endpoint(ctx, p)
 	if err != nil {
 		return
 	}
-	return ires.(*SecretResult), nil
+	return ires.(*ListSecretsResult), nil
 }
 
-// UpdateSecret calls the "updateSecret" endpoint of the "secrets" service.
-// UpdateSecret may return the following errors:
+// GetSecretByNameRawV3 calls the "getSecretByNameRawV3" endpoint of the
+// "secrets" service.
+// GetSecretByNameRawV3 may return the following errors:
 //   - "bad_request" (type *APIErrorResult)
 //   - "unauthorized" (type *APIErrorResult)
 //   - "forbidden" (type *APIErrorResult)
 //   - "not_found" (type *APIErrorResult)
 //   - "internal_error" (type *APIErrorResult)
 //   - error: internal error
-func (c *Client) UpdateSecret(ctx context.Context, p *UpdateSecretPayload) (res *SecretResult, err error) {
+func (c *Client) GetSecretByNameRawV3(ctx context.Context, p *GetSecretByNameRawV3Payload) (res *GetSecretResult, err error) {
 	var ires any
-	ires, err = c.UpdateSecretEndpoint(ctx, p)
+	ires, err = c.GetSecretByNameRawV3Endpoint(ctx, p)
 	if err != nil {
 		return
 	}
-	return ires.(*SecretResult), nil
-}
-
-// DeleteSecret calls the "deleteSecret" endpoint of the "secrets" service.
-// DeleteSecret may return the following errors:
-//   - "bad_request" (type *APIErrorResult)
-//   - "unauthorized" (type *APIErrorResult)
-//   - "forbidden" (type *APIErrorResult)
-//   - "not_found" (type *APIErrorResult)
-//   - "internal_error" (type *APIErrorResult)
-//   - error: internal error
-func (c *Client) DeleteSecret(ctx context.Context, p *DeleteSecretPayload) (err error) {
-	_, err = c.DeleteSecretEndpoint(ctx, p)
-	return
-}
-
-// ListSecrets calls the "listSecrets" endpoint of the "secrets" service.
-// ListSecrets may return the following errors:
-//   - "bad_request" (type *APIErrorResult)
-//   - "unauthorized" (type *APIErrorResult)
-//   - "forbidden" (type *APIErrorResult)
-//   - "not_found" (type *APIErrorResult)
-//   - "internal_error" (type *APIErrorResult)
-//   - error: internal error
-func (c *Client) ListSecrets(ctx context.Context, p *ListSecretsPayload) (res SecretResultCollection, err error) {
-	var ires any
-	ires, err = c.ListSecretsEndpoint(ctx, p)
-	if err != nil {
-		return
-	}
-	return ires.(SecretResultCollection), nil
+	return ires.(*GetSecretResult), nil
 }

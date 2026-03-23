@@ -52,10 +52,12 @@ linters:
 
     exhaustruct:
       include:
-        # Only enforce full initialization on service dependency structs.
+        # Enforce full initialization on dependency structs (services + API layer).
         - 'github\.com/infisical/api/internal/services/.*Deps$'
+        - 'github\.com/infisical/api/internal/server/api/.*Deps$'
         # Enforce full initialization on service structs to catch missing wiring in constructors.
         - 'github\.com/infisical/api/internal/services/.+\.service$'
+        - 'github\.com/infisical/api/internal/server/api/.+\.service$'
 
     govet:
       enable-all: true

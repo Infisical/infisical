@@ -17,18 +17,14 @@ import (
 
 // Service for managing secrets.
 type Service interface {
-	// Health check for the secrets service.
-	GetHealth(context.Context) (res string, err error)
-	// Create a new secret.
-	CreateSecret(context.Context, *CreateSecretPayload) (res *SecretResult, err error)
-	// Get a secret by ID.
-	GetSecret(context.Context, *GetSecretPayload) (res *SecretResult, err error)
-	// Update an existing secret.
-	UpdateSecret(context.Context, *UpdateSecretPayload) (res *SecretResult, err error)
-	// Delete a secret by ID.
-	DeleteSecret(context.Context, *DeleteSecretPayload) (err error)
-	// List secrets for an environment.
-	ListSecrets(context.Context, *ListSecretsPayload) (res SecretResultCollection, err error)
+	// List secrets for a project environment (V4).
+	ListSecretsV4(context.Context, *ListSecretsV4Payload) (res *ListSecretsResult, err error)
+	// Get a secret by name (V4).
+	GetSecretByNameV4(context.Context, *GetSecretByNameV4Payload) (res *GetSecretResult, err error)
+	// List raw secrets for a project environment (V3, deprecated).
+	ListSecretsRawV3(context.Context, *ListSecretsRawV3Payload) (res *ListSecretsResult, err error)
+	// Get a raw secret by name (V3, deprecated).
+	GetSecretByNameRawV3(context.Context, *GetSecretByNameRawV3Payload) (res *GetSecretResult, err error)
 }
 
 // Auther defines the authorization functions to be implemented by the service.
@@ -51,7 +47,7 @@ const ServiceName = "secrets"
 // MethodNames lists the service method names as defined in the design. These
 // are the same values that are set in the endpoint request contexts under the
 // MethodKey key.
-var MethodNames = [6]string{"getHealth", "createSecret", "getSecret", "updateSecret", "deleteSecret", "listSecrets"}
+var MethodNames = [4]string{"listSecretsV4", "getSecretByNameV4", "listSecretsRawV3", "getSecretByNameRawV3"}
 
 type APIErrorResult struct {
 	// HTTP status code
@@ -64,73 +60,248 @@ type APIErrorResult struct {
 	Details any
 }
 
-// CreateSecretPayload is the payload type of the secrets service createSecret
-// method.
-type CreateSecretPayload struct {
+// GetSecretByNameRawV3Payload is the payload type of the secrets service
+// getSecretByNameRawV3 method.
+type GetSecretByNameRawV3Payload struct {
 	Token string
+	// Secret name
+	SecretName string `json:"secretName"`
+	// Workspace/project ID
+	WorkspaceID *string `json:"workspaceId"`
+	// Workspace/project slug
+	WorkspaceSlug *string `json:"workspaceSlug"`
+	// Environment slug
+	Environment *string `json:"environment"`
+	// Secret path
+	SecretPath string `json:"secretPath"`
+	// Secret version
+	Version *int `json:"version"`
+	// Secret type (shared or personal)
+	Type string `json:"type"`
+	// Whether to include the secret value
+	ViewSecretValue bool `json:"viewSecretValue"`
+	// Whether to expand secret references
+	ExpandSecretReferences bool `json:"expandSecretReferences"`
+	// Whether to include imported secrets
+	IncludeImports bool `json:"include_imports"`
+}
+
+// GetSecretByNameV4Payload is the payload type of the secrets service
+// getSecretByNameV4 method.
+type GetSecretByNameV4Payload struct {
+	Token string
+	// Secret name
+	SecretName string `json:"secretName"`
+	// Project ID
+	ProjectID string `json:"projectId"`
+	// Environment slug
+	Environment string `json:"environment"`
+	// Secret path
+	SecretPath string `json:"secretPath"`
+	// Secret version
+	Version *int `json:"version"`
+	// Secret type (shared or personal)
+	Type string `json:"type"`
+	// Whether to include the secret value
+	ViewSecretValue bool `json:"viewSecretValue"`
+	// Whether to expand secret references
+	ExpandSecretReferences bool `json:"expandSecretReferences"`
+	// Whether to include imported secrets
+	IncludeImports bool `json:"includeImports"`
+}
+
+// GetSecretResult is the result type of the secrets service getSecretByNameV4
+// method.
+type GetSecretResult struct {
+	// The requested secret
+	Secret *SecretRaw
+}
+
+type ImportSecretRaw struct {
+	// Secret ID
+	ID string
+	// Legacy secret ID
+	LegacyID string `json:"_id"`
+	// Workspace/project ID
+	Workspace string
+	// Environment slug
+	Environment string
+	// Secret version
+	Version int
+	// Secret type (shared or personal)
+	Type string
 	// Secret key
+	SecretKey string
+	// Secret value
+	SecretValue string
+	// Secret comment
+	SecretComment string
+	// Reminder note
+	SecretReminderNote *string
+	// Reminder repeat days
+	SecretReminderRepeatDays *int
+	// Skip multiline encoding
+	SkipMultilineEncoding *bool
+	// Last modifier
+	Actor *SecretActor
+	// Whether this is a rotated secret
+	IsRotatedSecret *bool
+	// Rotation ID (UUID)
+	RotationID *string
+	// Whether the secret value is hidden
+	SecretValueHidden bool
+	// Secret metadata entries
+	SecretMetadata []*ResourceMetadata
+}
+
+// ListSecretsRawV3Payload is the payload type of the secrets service
+// listSecretsRawV3 method.
+type ListSecretsRawV3Payload struct {
+	Token string
+	// Workspace/project ID
+	WorkspaceID *string `json:"workspaceId"`
+	// Workspace/project slug
+	WorkspaceSlug *string `json:"workspaceSlug"`
+	// Environment slug
+	Environment *string `json:"environment"`
+	// Secret path
+	SecretPath string `json:"secretPath"`
+	// Whether to include the secret value
+	ViewSecretValue bool `json:"viewSecretValue"`
+	// Whether to expand secret references
+	ExpandSecretReferences bool `json:"expandSecretReferences"`
+	// Whether to list secrets recursively
+	Recursive bool `json:"recursive"`
+	// Whether to include imported secrets
+	IncludeImports bool `json:"include_imports"`
+	// Comma-separated tag slugs to filter by
+	TagSlugs *string `json:"tagSlugs"`
+	// Pipe-delimited metadata filter (key=k,value=v|...)
+	MetadataFilter *string `json:"metadataFilter"`
+}
+
+// ListSecretsResult is the result type of the secrets service listSecretsV4
+// method.
+type ListSecretsResult struct {
+	// List of secrets
+	Secrets []*SecretRaw
+	// Imported secret blocks
+	Imports []*SecretImport
+}
+
+// ListSecretsV4Payload is the payload type of the secrets service
+// listSecretsV4 method.
+type ListSecretsV4Payload struct {
+	Token string
+	// Project ID
+	ProjectID string `json:"projectId"`
+	// Environment slug
+	Environment string `json:"environment"`
+	// Secret path
+	SecretPath string `json:"secretPath"`
+	// Whether to include the secret value
+	ViewSecretValue bool `json:"viewSecretValue"`
+	// Whether to expand secret references
+	ExpandSecretReferences bool `json:"expandSecretReferences"`
+	// Whether to list secrets recursively
+	Recursive bool `json:"recursive"`
+	// Whether to include personal overrides
+	IncludePersonalOverrides bool `json:"includePersonalOverrides"`
+	// Whether to include imported secrets
+	IncludeImports bool `json:"includeImports"`
+	// Comma-separated tag slugs to filter by
+	TagSlugs *string `json:"tagSlugs"`
+	// Pipe-delimited metadata filter (key=k,value=v|...)
+	MetadataFilter *string `json:"metadataFilter"`
+}
+
+type ResourceMetadata struct {
+	// Metadata key
 	Key string
-	// Secret value
+	// Metadata value
 	Value string
+	// Whether the value is encrypted
+	IsEncrypted bool
+}
+
+type SecretActor struct {
+	// Actor ID
+	ActorID *string
+	// Actor type
+	ActorType *string
+	// Actor name
+	Name *string
+	// Membership ID
+	MembershipID *string
+	// Group ID
+	GroupID *string
+}
+
+type SecretImport struct {
+	// Import source path
+	SecretPath string
+	// Import source environment
+	Environment string
+	// Import source folder ID
+	FolderID *string
+	// Imported secrets
+	Secrets []*ImportSecretRaw
+}
+
+type SecretRaw struct {
+	// Secret ID
+	ID string
+	// Legacy secret ID
+	LegacyID string `json:"_id"`
+	// Workspace/project ID
+	Workspace string
 	// Environment slug
 	Environment string
-	// Project ID
-	ProjectID string
-}
-
-// DeleteSecretPayload is the payload type of the secrets service deleteSecret
-// method.
-type DeleteSecretPayload struct {
-	Token string
-	// Secret ID
-	ID string
-}
-
-// GetSecretPayload is the payload type of the secrets service getSecret method.
-type GetSecretPayload struct {
-	Token string
-	// Secret ID
-	ID string
-}
-
-// ListSecretsPayload is the payload type of the secrets service listSecrets
-// method.
-type ListSecretsPayload struct {
-	Token string
-	// Project ID
-	ProjectID string
-	// Environment slug
-	Environment string
-}
-
-// SecretResult is the result type of the secrets service createSecret method.
-type SecretResult struct {
-	// Secret ID
-	ID string
+	// Secret version
+	Version int
+	// Secret type (shared or personal)
+	Type string
 	// Secret key
-	Key string
+	SecretKey string
 	// Secret value
-	Value string
-	// Environment slug
-	Environment string
-	// Project ID
-	ProjectID string
+	SecretValue string
+	// Secret comment
+	SecretComment string
+	// Reminder note
+	SecretReminderNote *string
+	// Reminder repeat days
+	SecretReminderRepeatDays *int
+	// Skip multiline encoding
+	SkipMultilineEncoding *bool
+	// Creation timestamp
+	CreatedAt string
+	// Last update timestamp
+	UpdatedAt string
+	// Last modifier
+	Actor *SecretActor
+	// Whether this is a rotated secret
+	IsRotatedSecret *bool
+	// Rotation ID (UUID)
+	RotationID *string
+	// Path of the secret
+	SecretPath *string
+	// Whether the secret value is hidden
+	SecretValueHidden bool
+	// Secret metadata entries
+	SecretMetadata []*ResourceMetadata
+	// Tags attached to the secret
+	Tags []*SecretTag
 }
 
-// SecretResultCollection is the result type of the secrets service listSecrets
-// method.
-type SecretResultCollection []*SecretResult
-
-// UpdateSecretPayload is the payload type of the secrets service updateSecret
-// method.
-type UpdateSecretPayload struct {
-	Token string
-	// Secret ID
+type SecretTag struct {
+	// Tag ID (UUID)
 	ID string
-	// Secret key
-	Key *string
-	// Secret value
-	Value *string
+	// Tag slug
+	Slug string
+	// Tag color
+	Color **string
+	// Tag name
+	Name string
 }
 
 // Error returns an error description.
@@ -150,84 +321,443 @@ func (e *APIErrorResult) GoaErrorName() string {
 	return "bad_request"
 }
 
-// NewSecretResult initializes result type SecretResult from viewed result type
-// SecretResult.
-func NewSecretResult(vres *secretsviews.SecretResult) *SecretResult {
-	return newSecretResult(vres.Projected)
+// NewListSecretsResult initializes result type ListSecretsResult from viewed
+// result type ListSecretsResult.
+func NewListSecretsResult(vres *secretsviews.ListSecretsResult) *ListSecretsResult {
+	return newListSecretsResult(vres.Projected)
 }
 
-// NewViewedSecretResult initializes viewed result type SecretResult from
-// result type SecretResult using the given view.
-func NewViewedSecretResult(res *SecretResult, view string) *secretsviews.SecretResult {
-	p := newSecretResultView(res)
-	return &secretsviews.SecretResult{Projected: p, View: "default"}
+// NewViewedListSecretsResult initializes viewed result type ListSecretsResult
+// from result type ListSecretsResult using the given view.
+func NewViewedListSecretsResult(res *ListSecretsResult, view string) *secretsviews.ListSecretsResult {
+	p := newListSecretsResultView(res)
+	return &secretsviews.ListSecretsResult{Projected: p, View: "default"}
 }
 
-// NewSecretResultCollection initializes result type SecretResultCollection
-// from viewed result type SecretResultCollection.
-func NewSecretResultCollection(vres secretsviews.SecretResultCollection) SecretResultCollection {
-	return newSecretResultCollection(vres.Projected)
+// NewGetSecretResult initializes result type GetSecretResult from viewed
+// result type GetSecretResult.
+func NewGetSecretResult(vres *secretsviews.GetSecretResult) *GetSecretResult {
+	return newGetSecretResult(vres.Projected)
 }
 
-// NewViewedSecretResultCollection initializes viewed result type
-// SecretResultCollection from result type SecretResultCollection using the
-// given view.
-func NewViewedSecretResultCollection(res SecretResultCollection, view string) secretsviews.SecretResultCollection {
-	p := newSecretResultCollectionView(res)
-	return secretsviews.SecretResultCollection{Projected: p, View: "default"}
+// NewViewedGetSecretResult initializes viewed result type GetSecretResult from
+// result type GetSecretResult using the given view.
+func NewViewedGetSecretResult(res *GetSecretResult, view string) *secretsviews.GetSecretResult {
+	p := newGetSecretResultView(res)
+	return &secretsviews.GetSecretResult{Projected: p, View: "default"}
 }
 
-// newSecretResult converts projected type SecretResult to service type
-// SecretResult.
-func newSecretResult(vres *secretsviews.SecretResultView) *SecretResult {
-	res := &SecretResult{}
-	if vres.ID != nil {
-		res.ID = *vres.ID
+// newListSecretsResult converts projected type ListSecretsResult to service
+// type ListSecretsResult.
+func newListSecretsResult(vres *secretsviews.ListSecretsResultView) *ListSecretsResult {
+	res := &ListSecretsResult{}
+	if vres.Secrets != nil {
+		res.Secrets = make([]*SecretRaw, len(vres.Secrets))
+		for i, val := range vres.Secrets {
+			if val == nil {
+				res.Secrets[i] = nil
+				continue
+			}
+			res.Secrets[i] = transformSecretsviewsSecretRawViewToSecretRaw(val)
+		}
 	}
-	if vres.Key != nil {
-		res.Key = *vres.Key
-	}
-	if vres.Value != nil {
-		res.Value = *vres.Value
-	}
-	if vres.Environment != nil {
-		res.Environment = *vres.Environment
-	}
-	if vres.ProjectID != nil {
-		res.ProjectID = *vres.ProjectID
+	if vres.Imports != nil {
+		res.Imports = make([]*SecretImport, len(vres.Imports))
+		for i, val := range vres.Imports {
+			if val == nil {
+				res.Imports[i] = nil
+				continue
+			}
+			res.Imports[i] = transformSecretsviewsSecretImportViewToSecretImport(val)
+		}
 	}
 	return res
 }
 
-// newSecretResultView projects result type SecretResult to projected type
-// SecretResultView using the "default" view.
-func newSecretResultView(res *SecretResult) *secretsviews.SecretResultView {
-	vres := &secretsviews.SecretResultView{
-		ID:          &res.ID,
-		Key:         &res.Key,
-		Value:       &res.Value,
-		Environment: &res.Environment,
-		ProjectID:   &res.ProjectID,
+// newListSecretsResultView projects result type ListSecretsResult to projected
+// type ListSecretsResultView using the "default" view.
+func newListSecretsResultView(res *ListSecretsResult) *secretsviews.ListSecretsResultView {
+	vres := &secretsviews.ListSecretsResultView{}
+	if res.Secrets != nil {
+		vres.Secrets = make([]*secretsviews.SecretRawView, len(res.Secrets))
+		for i, val := range res.Secrets {
+			if val == nil {
+				vres.Secrets[i] = nil
+				continue
+			}
+			vres.Secrets[i] = transformSecretRawToSecretsviewsSecretRawView(val)
+		}
+	} else {
+		vres.Secrets = []*secretsviews.SecretRawView{}
+	}
+	if res.Imports != nil {
+		vres.Imports = make([]*secretsviews.SecretImportView, len(res.Imports))
+		for i, val := range res.Imports {
+			if val == nil {
+				vres.Imports[i] = nil
+				continue
+			}
+			vres.Imports[i] = transformSecretImportToSecretsviewsSecretImportView(val)
+		}
 	}
 	return vres
 }
 
-// newSecretResultCollection converts projected type SecretResultCollection to
-// service type SecretResultCollection.
-func newSecretResultCollection(vres secretsviews.SecretResultCollectionView) SecretResultCollection {
-	res := make(SecretResultCollection, len(vres))
-	for i, n := range vres {
-		res[i] = newSecretResult(n)
+// newGetSecretResult converts projected type GetSecretResult to service type
+// GetSecretResult.
+func newGetSecretResult(vres *secretsviews.GetSecretResultView) *GetSecretResult {
+	res := &GetSecretResult{}
+	if vres.Secret != nil {
+		res.Secret = transformSecretsviewsSecretRawViewToSecretRaw(vres.Secret)
 	}
 	return res
 }
 
-// newSecretResultCollectionView projects result type SecretResultCollection to
-// projected type SecretResultCollectionView using the "default" view.
-func newSecretResultCollectionView(res SecretResultCollection) secretsviews.SecretResultCollectionView {
-	vres := make(secretsviews.SecretResultCollectionView, len(res))
-	for i, n := range res {
-		vres[i] = newSecretResultView(n)
+// newGetSecretResultView projects result type GetSecretResult to projected
+// type GetSecretResultView using the "default" view.
+func newGetSecretResultView(res *GetSecretResult) *secretsviews.GetSecretResultView {
+	vres := &secretsviews.GetSecretResultView{}
+	if res.Secret != nil {
+		vres.Secret = transformSecretRawToSecretsviewsSecretRawView(res.Secret)
 	}
 	return vres
+}
+
+// transformSecretsviewsSecretRawViewToSecretRaw builds a value of type
+// *SecretRaw from a value of type *secretsviews.SecretRawView.
+func transformSecretsviewsSecretRawViewToSecretRaw(v *secretsviews.SecretRawView) *SecretRaw {
+	if v == nil {
+		return nil
+	}
+	res := &SecretRaw{
+		ID:                       *v.ID,
+		LegacyID:                 *v.LegacyID,
+		Workspace:                *v.Workspace,
+		Environment:              *v.Environment,
+		Version:                  *v.Version,
+		Type:                     *v.Type,
+		SecretKey:                *v.SecretKey,
+		SecretValue:              *v.SecretValue,
+		SecretComment:            *v.SecretComment,
+		SecretReminderNote:       v.SecretReminderNote,
+		SecretReminderRepeatDays: v.SecretReminderRepeatDays,
+		SkipMultilineEncoding:    v.SkipMultilineEncoding,
+		CreatedAt:                *v.CreatedAt,
+		UpdatedAt:                *v.UpdatedAt,
+		IsRotatedSecret:          v.IsRotatedSecret,
+		RotationID:               v.RotationID,
+		SecretPath:               v.SecretPath,
+		SecretValueHidden:        *v.SecretValueHidden,
+	}
+	if v.Actor != nil {
+		res.Actor = transformSecretsviewsSecretActorViewToSecretActor(v.Actor)
+	}
+	if v.SecretMetadata != nil {
+		res.SecretMetadata = make([]*ResourceMetadata, len(v.SecretMetadata))
+		for i, val := range v.SecretMetadata {
+			if val == nil {
+				res.SecretMetadata[i] = nil
+				continue
+			}
+			res.SecretMetadata[i] = transformSecretsviewsResourceMetadataViewToResourceMetadata(val)
+		}
+	}
+	if v.Tags != nil {
+		res.Tags = make([]*SecretTag, len(v.Tags))
+		for i, val := range v.Tags {
+			if val == nil {
+				res.Tags[i] = nil
+				continue
+			}
+			res.Tags[i] = transformSecretsviewsSecretTagViewToSecretTag(val)
+		}
+	}
+
+	return res
+}
+
+// transformSecretsviewsSecretActorViewToSecretActor builds a value of type
+// *SecretActor from a value of type *secretsviews.SecretActorView.
+func transformSecretsviewsSecretActorViewToSecretActor(v *secretsviews.SecretActorView) *SecretActor {
+	if v == nil {
+		return nil
+	}
+	res := &SecretActor{
+		ActorID:      v.ActorID,
+		ActorType:    v.ActorType,
+		Name:         v.Name,
+		MembershipID: v.MembershipID,
+		GroupID:      v.GroupID,
+	}
+
+	return res
+}
+
+// transformSecretsviewsResourceMetadataViewToResourceMetadata builds a value
+// of type *ResourceMetadata from a value of type
+// *secretsviews.ResourceMetadataView.
+func transformSecretsviewsResourceMetadataViewToResourceMetadata(v *secretsviews.ResourceMetadataView) *ResourceMetadata {
+	if v == nil {
+		return nil
+	}
+	res := &ResourceMetadata{
+		Key: *v.Key,
+	}
+	if v.Value != nil {
+		res.Value = *v.Value
+	}
+	if v.IsEncrypted != nil {
+		res.IsEncrypted = *v.IsEncrypted
+	}
+	if v.Value == nil {
+		res.Value = ""
+	}
+	if v.IsEncrypted == nil {
+		res.IsEncrypted = false
+	}
+
+	return res
+}
+
+// transformSecretsviewsSecretTagViewToSecretTag builds a value of type
+// *SecretTag from a value of type *secretsviews.SecretTagView.
+func transformSecretsviewsSecretTagViewToSecretTag(v *secretsviews.SecretTagView) *SecretTag {
+	if v == nil {
+		return nil
+	}
+	res := &SecretTag{
+		ID:    *v.ID,
+		Slug:  *v.Slug,
+		Color: v.Color,
+		Name:  *v.Name,
+	}
+
+	return res
+}
+
+// transformSecretsviewsSecretImportViewToSecretImport builds a value of type
+// *SecretImport from a value of type *secretsviews.SecretImportView.
+func transformSecretsviewsSecretImportViewToSecretImport(v *secretsviews.SecretImportView) *SecretImport {
+	if v == nil {
+		return nil
+	}
+	res := &SecretImport{
+		SecretPath:  *v.SecretPath,
+		Environment: *v.Environment,
+		FolderID:    v.FolderID,
+	}
+	if v.Secrets != nil {
+		res.Secrets = make([]*ImportSecretRaw, len(v.Secrets))
+		for i, val := range v.Secrets {
+			if val == nil {
+				res.Secrets[i] = nil
+				continue
+			}
+			res.Secrets[i] = transformSecretsviewsImportSecretRawViewToImportSecretRaw(val)
+		}
+	} else {
+		res.Secrets = []*ImportSecretRaw{}
+	}
+
+	return res
+}
+
+// transformSecretsviewsImportSecretRawViewToImportSecretRaw builds a value of
+// type *ImportSecretRaw from a value of type *secretsviews.ImportSecretRawView.
+func transformSecretsviewsImportSecretRawViewToImportSecretRaw(v *secretsviews.ImportSecretRawView) *ImportSecretRaw {
+	res := &ImportSecretRaw{
+		ID:                       *v.ID,
+		LegacyID:                 *v.LegacyID,
+		Workspace:                *v.Workspace,
+		Environment:              *v.Environment,
+		Version:                  *v.Version,
+		Type:                     *v.Type,
+		SecretKey:                *v.SecretKey,
+		SecretValue:              *v.SecretValue,
+		SecretComment:            *v.SecretComment,
+		SecretReminderNote:       v.SecretReminderNote,
+		SecretReminderRepeatDays: v.SecretReminderRepeatDays,
+		SkipMultilineEncoding:    v.SkipMultilineEncoding,
+		IsRotatedSecret:          v.IsRotatedSecret,
+		RotationID:               v.RotationID,
+		SecretValueHidden:        *v.SecretValueHidden,
+	}
+	if v.Actor != nil {
+		res.Actor = transformSecretsviewsSecretActorViewToSecretActor(v.Actor)
+	}
+	if v.SecretMetadata != nil {
+		res.SecretMetadata = make([]*ResourceMetadata, len(v.SecretMetadata))
+		for i, val := range v.SecretMetadata {
+			if val == nil {
+				res.SecretMetadata[i] = nil
+				continue
+			}
+			res.SecretMetadata[i] = transformSecretsviewsResourceMetadataViewToResourceMetadata(val)
+		}
+	}
+
+	return res
+}
+
+// transformSecretRawToSecretsviewsSecretRawView builds a value of type
+// *secretsviews.SecretRawView from a value of type *SecretRaw.
+func transformSecretRawToSecretsviewsSecretRawView(v *SecretRaw) *secretsviews.SecretRawView {
+	res := &secretsviews.SecretRawView{
+		ID:                       &v.ID,
+		LegacyID:                 &v.LegacyID,
+		Workspace:                &v.Workspace,
+		Environment:              &v.Environment,
+		Version:                  &v.Version,
+		Type:                     &v.Type,
+		SecretKey:                &v.SecretKey,
+		SecretValue:              &v.SecretValue,
+		SecretComment:            &v.SecretComment,
+		SecretReminderNote:       v.SecretReminderNote,
+		SecretReminderRepeatDays: v.SecretReminderRepeatDays,
+		SkipMultilineEncoding:    v.SkipMultilineEncoding,
+		CreatedAt:                &v.CreatedAt,
+		UpdatedAt:                &v.UpdatedAt,
+		IsRotatedSecret:          v.IsRotatedSecret,
+		RotationID:               v.RotationID,
+		SecretPath:               v.SecretPath,
+		SecretValueHidden:        &v.SecretValueHidden,
+	}
+	if v.Actor != nil {
+		res.Actor = transformSecretActorToSecretsviewsSecretActorView(v.Actor)
+	}
+	if v.SecretMetadata != nil {
+		res.SecretMetadata = make([]*secretsviews.ResourceMetadataView, len(v.SecretMetadata))
+		for i, val := range v.SecretMetadata {
+			if val == nil {
+				res.SecretMetadata[i] = nil
+				continue
+			}
+			res.SecretMetadata[i] = transformResourceMetadataToSecretsviewsResourceMetadataView(val)
+		}
+	}
+	if v.Tags != nil {
+		res.Tags = make([]*secretsviews.SecretTagView, len(v.Tags))
+		for i, val := range v.Tags {
+			if val == nil {
+				res.Tags[i] = nil
+				continue
+			}
+			res.Tags[i] = transformSecretTagToSecretsviewsSecretTagView(val)
+		}
+	}
+
+	return res
+}
+
+// transformSecretActorToSecretsviewsSecretActorView builds a value of type
+// *secretsviews.SecretActorView from a value of type *SecretActor.
+func transformSecretActorToSecretsviewsSecretActorView(v *SecretActor) *secretsviews.SecretActorView {
+	if v == nil {
+		return nil
+	}
+	res := &secretsviews.SecretActorView{
+		ActorID:      v.ActorID,
+		ActorType:    v.ActorType,
+		Name:         v.Name,
+		MembershipID: v.MembershipID,
+		GroupID:      v.GroupID,
+	}
+
+	return res
+}
+
+// transformResourceMetadataToSecretsviewsResourceMetadataView builds a value
+// of type *secretsviews.ResourceMetadataView from a value of type
+// *ResourceMetadata.
+func transformResourceMetadataToSecretsviewsResourceMetadataView(v *ResourceMetadata) *secretsviews.ResourceMetadataView {
+	if v == nil {
+		return nil
+	}
+	res := &secretsviews.ResourceMetadataView{
+		Key:         &v.Key,
+		Value:       &v.Value,
+		IsEncrypted: &v.IsEncrypted,
+	}
+
+	return res
+}
+
+// transformSecretTagToSecretsviewsSecretTagView builds a value of type
+// *secretsviews.SecretTagView from a value of type *SecretTag.
+func transformSecretTagToSecretsviewsSecretTagView(v *SecretTag) *secretsviews.SecretTagView {
+	if v == nil {
+		return nil
+	}
+	res := &secretsviews.SecretTagView{
+		ID:    &v.ID,
+		Slug:  &v.Slug,
+		Color: v.Color,
+		Name:  &v.Name,
+	}
+
+	return res
+}
+
+// transformSecretImportToSecretsviewsSecretImportView builds a value of type
+// *secretsviews.SecretImportView from a value of type *SecretImport.
+func transformSecretImportToSecretsviewsSecretImportView(v *SecretImport) *secretsviews.SecretImportView {
+	if v == nil {
+		return nil
+	}
+	res := &secretsviews.SecretImportView{
+		SecretPath:  &v.SecretPath,
+		Environment: &v.Environment,
+		FolderID:    v.FolderID,
+	}
+	if v.Secrets != nil {
+		res.Secrets = make([]*secretsviews.ImportSecretRawView, len(v.Secrets))
+		for i, val := range v.Secrets {
+			if val == nil {
+				res.Secrets[i] = nil
+				continue
+			}
+			res.Secrets[i] = transformImportSecretRawToSecretsviewsImportSecretRawView(val)
+		}
+	} else {
+		res.Secrets = []*secretsviews.ImportSecretRawView{}
+	}
+
+	return res
+}
+
+// transformImportSecretRawToSecretsviewsImportSecretRawView builds a value of
+// type *secretsviews.ImportSecretRawView from a value of type *ImportSecretRaw.
+func transformImportSecretRawToSecretsviewsImportSecretRawView(v *ImportSecretRaw) *secretsviews.ImportSecretRawView {
+	res := &secretsviews.ImportSecretRawView{
+		ID:                       &v.ID,
+		LegacyID:                 &v.LegacyID,
+		Workspace:                &v.Workspace,
+		Environment:              &v.Environment,
+		Version:                  &v.Version,
+		Type:                     &v.Type,
+		SecretKey:                &v.SecretKey,
+		SecretValue:              &v.SecretValue,
+		SecretComment:            &v.SecretComment,
+		SecretReminderNote:       v.SecretReminderNote,
+		SecretReminderRepeatDays: v.SecretReminderRepeatDays,
+		SkipMultilineEncoding:    v.SkipMultilineEncoding,
+		IsRotatedSecret:          v.IsRotatedSecret,
+		RotationID:               v.RotationID,
+		SecretValueHidden:        &v.SecretValueHidden,
+	}
+	if v.Actor != nil {
+		res.Actor = transformSecretActorToSecretsviewsSecretActorView(v.Actor)
+	}
+	if v.SecretMetadata != nil {
+		res.SecretMetadata = make([]*secretsviews.ResourceMetadataView, len(v.SecretMetadata))
+		for i, val := range v.SecretMetadata {
+			if val == nil {
+				res.SecretMetadata[i] = nil
+				continue
+			}
+			res.SecretMetadata[i] = transformResourceMetadataToSecretsviewsResourceMetadataView(val)
+		}
+	}
+
+	return res
 }
