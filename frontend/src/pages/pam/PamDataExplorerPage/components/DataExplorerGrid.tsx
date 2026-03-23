@@ -345,7 +345,6 @@ export const DataExplorerGrid = ({
     async (_rows: Record<string, unknown>[], rowIndices: number[]) => {
       const tempIdsToRemove: string[] = [];
       const deleteStatements: string[] = [];
-      const rowsToDelete: Record<string, unknown>[] = [];
 
       rowIndices.forEach((idx) => {
         const row = currentData[idx];
@@ -354,7 +353,6 @@ export const DataExplorerGrid = ({
         if (tempId) {
           tempIdsToRemove.push(tempId);
         } else {
-          rowsToDelete.push(row);
           deleteStatements.push(
             buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
           );

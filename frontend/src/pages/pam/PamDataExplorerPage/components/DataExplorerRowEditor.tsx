@@ -1,3 +1,5 @@
+// NOTE: This component is not currently wired up but is kept for future use
+// as a side-sheet row editor for the data explorer grid.
 import { useEffect, useState } from "react";
 
 import { Badge } from "@app/components/v3/generic/Badge";
