@@ -138,6 +138,9 @@ export function buildUpdateQuery(params: {
   primaryKeyMatch: Record<string, unknown>;
 }): string {
   const { schema, table, changes, primaryKeyMatch } = params;
+  if (Object.keys(primaryKeyMatch).length === 0) {
+    throw new Error("UPDATE requires at least one primary key condition");
+  }
   const tableName = `${quoteIdent(schema)}.${quoteIdent(table)}`;
   const setClauses = Object.entries(changes)
     .map(([col, val]) => `${quoteIdent(col)} = ${quoteLiteral(val)}`)
@@ -154,6 +157,9 @@ export function buildDeleteQuery(params: {
   primaryKeyMatch: Record<string, unknown>;
 }): string {
   const { schema, table, primaryKeyMatch } = params;
+  if (Object.keys(primaryKeyMatch).length === 0) {
+    throw new Error("DELETE requires at least one primary key condition");
+  }
   const tableName = `${quoteIdent(schema)}.${quoteIdent(table)}`;
   const whereClauses = Object.entries(primaryKeyMatch)
     .map(([col, val]) => `${quoteIdent(col)} = ${quoteLiteral(val)}`)
