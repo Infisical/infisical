@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { AlertTriangleIcon, DatabaseIcon, ShieldCheckIcon, WifiOffIcon } from "lucide-react";
+import { AlertTriangleIcon, DatabaseIcon, ShieldCheckIcon, UnplugIcon } from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
 import {
@@ -363,7 +363,7 @@ export const PamDataExplorerPage = () => {
   if (hasDisconnected && !isConnected && !isConnecting) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <WifiOffIcon className="size-8 text-mineshaft-400" />
+        <UnplugIcon className="size-8 text-mineshaft-400" />
         <h2 className="text-sm font-medium text-mineshaft-100">Disconnected</h2>
         <p className="text-xs text-mineshaft-400">
           {disconnectReason ?? "The database connection was closed."}
