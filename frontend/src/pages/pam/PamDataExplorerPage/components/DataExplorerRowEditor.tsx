@@ -12,9 +12,9 @@ import {
 } from "@app/components/v3/generic/Sheet";
 import { TextArea } from "@app/components/v3/generic/TextArea";
 
-import type { ColumnInfo } from "../data-browser-types";
+import type { ColumnInfo } from "../data-explorer-types";
 
-type DataBrowserRowEditorProps = {
+type DataExplorerRowEditorProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   row: Record<string, unknown> | null;
@@ -25,14 +25,14 @@ type DataBrowserRowEditorProps = {
 
 const JSON_TYPES = new Set(["json", "jsonb", "xml"]);
 
-export const DataBrowserRowEditor = ({
+export const DataExplorerRowEditor = ({
   isOpen,
   onOpenChange,
   row,
   columns,
   primaryKeys,
   onApply
-}: DataBrowserRowEditorProps) => {
+}: DataExplorerRowEditorProps) => {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
 
   useEffect(() => {

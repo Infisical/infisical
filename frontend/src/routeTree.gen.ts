@@ -247,7 +247,7 @@ import { Route as secretManagerIntegrationsAwsParameterStoreConfigurePageRouteIm
 import { Route as secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreAuthorizePage/route'
 import { Route as pamPamDiscoveryDetailPageRouteImport } from './pages/pam/PamDiscoveryDetailPage/route'
 import { Route as certManagerInstallationDetailsByIDPageRouteImport } from './pages/cert-manager/InstallationDetailsByIDPage/route'
-import { Route as pamPamDataBrowserPageRouteImport } from './pages/pam/PamDataBrowserPage/route'
+import { Route as pamPamDataExplorerPageRouteImport } from './pages/pam/PamDataExplorerPage/route'
 import { Route as pamPamAccountAccessPageRouteImport } from './pages/pam/PamAccountAccessPage/route'
 import { Route as secretManagerIntegrationsVercelOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/VercelOauthCallbackPage/route'
 import { Route as secretManagerSecretSyncDetailsByIDPageRouteImport } from './pages/secret-manager/SecretSyncDetailsByIDPage/route'
@@ -2372,13 +2372,12 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
     } as any,
   )
 
-const pamPamDataBrowserPageRouteRoute = pamPamDataBrowserPageRouteImport.update(
-  {
-    id: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser',
-    path: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser',
+const pamPamDataExplorerPageRouteRoute =
+  pamPamDataExplorerPageRouteImport.update({
+    id: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer',
+    path: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer',
     getParentRoute: () => middlewaresInjectOrgDetailsRoute,
-  } as any,
-)
+  } as any)
 
 const pamPamAccountAccessPageRouteRoute =
   pamPamAccountAccessPageRouteImport.update({
@@ -4463,11 +4462,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof pamPamAccountAccessPageRouteImport
       parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
-    '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser': {
-      id: '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser'
-      path: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser'
-      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser'
-      preLoaderRoute: typeof pamPamDataBrowserPageRouteImport
+    '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer': {
+      id: '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer'
+      path: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer'
+      fullPath: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer'
+      preLoaderRoute: typeof pamPamDataExplorerPageRouteImport
       parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId': {
@@ -5611,7 +5610,7 @@ interface middlewaresInjectOrgDetailsRouteChildren {
   redirectsOrganizationRedirectRoute: typeof redirectsOrganizationRedirectRoute
   redirectsProjectRedirectRoute: typeof redirectsProjectRedirectRoute
   pamPamAccountAccessPageRouteRoute: typeof pamPamAccountAccessPageRouteRoute
-  pamPamDataBrowserPageRouteRoute: typeof pamPamDataBrowserPageRouteRoute
+  pamPamDataExplorerPageRouteRoute: typeof pamPamDataExplorerPageRouteRoute
 }
 
 const middlewaresInjectOrgDetailsRouteChildren: middlewaresInjectOrgDetailsRouteChildren =
@@ -5622,7 +5621,7 @@ const middlewaresInjectOrgDetailsRouteChildren: middlewaresInjectOrgDetailsRoute
     redirectsOrganizationRedirectRoute: redirectsOrganizationRedirectRoute,
     redirectsProjectRedirectRoute: redirectsProjectRedirectRoute,
     pamPamAccountAccessPageRouteRoute: pamPamAccountAccessPageRouteRoute,
-    pamPamDataBrowserPageRouteRoute: pamPamDataBrowserPageRouteRoute,
+    pamPamDataExplorerPageRouteRoute: pamPamDataExplorerPageRouteRoute,
   }
 
 const middlewaresInjectOrgDetailsRouteWithChildren =
@@ -6021,7 +6020,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser': typeof pamPamDataBrowserPageRouteRoute
+  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer': typeof pamPamDataExplorerPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/': typeof secretManagerCommitDetailsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
@@ -6277,7 +6276,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
-  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser': typeof pamPamDataBrowserPageRouteRoute
+  '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer': typeof pamPamDataExplorerPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId': typeof secretManagerCommitDetailsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId': typeof pamPamAccountByIDPageRouteRoute
@@ -6562,7 +6561,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId': typeof secretManagerSecretSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsVercelOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
-  '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser': typeof pamPamDataBrowserPageRouteRoute
+  '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer': typeof pamPamDataExplorerPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/': typeof secretManagerCommitDetailsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore': typeof secretManagerCommitDetailsPageComponentsRollbackPreviewTabRouteRoute
@@ -6838,7 +6837,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback'
     | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser'
+    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore'
@@ -7093,7 +7092,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback'
     | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
-    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser'
+    | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId'
     | '/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore'
     | '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId'
@@ -7376,7 +7375,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback'
     | '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access'
-    | '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser'
+    | '/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore'
@@ -7499,7 +7498,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/organization/$",
         "/_authenticate/_inject-org-details/projects/$",
         "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access",
-        "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser"
+        "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer"
       ]
     },
     "/_authenticate/personal-settings": {
@@ -8886,8 +8885,8 @@ export const routeTree = rootRoute
       "filePath": "pam/PamAccountAccessPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details"
     },
-    "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser": {
-      "filePath": "pam/PamDataBrowserPage/route.tsx",
+    "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer": {
+      "filePath": "pam/PamDataExplorerPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId": {

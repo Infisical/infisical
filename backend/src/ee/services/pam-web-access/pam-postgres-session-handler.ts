@@ -6,7 +6,7 @@ import {
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-types";
 import { logger } from "@app/lib/logger";
 
-import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-browser-metadata";
+import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-explorer-metadata";
 import {
   PostgresClientMessageSchema,
   PostgresClientMessageType,

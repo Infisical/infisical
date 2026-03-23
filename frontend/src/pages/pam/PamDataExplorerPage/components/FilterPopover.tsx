@@ -12,7 +12,7 @@ import {
   SelectValue
 } from "@app/components/v3/generic/Select";
 
-import type { ColumnInfo } from "../data-browser-types";
+import type { ColumnInfo } from "../data-explorer-types";
 import type { FilterCondition, FilterOperator } from "../sql-generation";
 
 function getFilterPlaceholder(columnType: string, operator: FilterOperator): string {

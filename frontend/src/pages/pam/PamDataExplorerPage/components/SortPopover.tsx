@@ -4,7 +4,7 @@ import { ArrowUpDownIcon, SearchIcon } from "lucide-react";
 import { Button } from "@app/components/v3/generic/Button";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v3/generic/Popover";
 
-import type { ColumnInfo } from "../data-browser-types";
+import type { ColumnInfo } from "../data-explorer-types";
 import type { SortCondition } from "../sql-generation";
 
 type SortPopoverProps = {

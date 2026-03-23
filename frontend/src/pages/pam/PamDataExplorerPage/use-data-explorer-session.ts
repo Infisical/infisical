@@ -4,16 +4,16 @@ import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 
 import type {
-  DataBrowserClientMessage,
-  DataBrowserServerMessage,
+  DataExplorerClientMessage,
+  DataExplorerServerMessage,
   FieldInfo,
   SchemaInfo,
   TableDetail,
   TableInfo
-} from "./data-browser-types";
+} from "./data-explorer-types";
 
 type PendingRequest = {
-  resolve: (msg: DataBrowserServerMessage) => void;
+  resolve: (msg: DataExplorerServerMessage) => void;
   reject: (err: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 };
@@ -35,7 +35,7 @@ type ApprovalState = {
   errorMessage?: string;
 };
 
-type UseDataBrowserSessionOptions = {
+type UseDataExplorerSessionOptions = {
   accountId: string;
   projectId: string;
   orgId: string;
@@ -46,14 +46,14 @@ type UseDataBrowserSessionOptions = {
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
-export const useDataBrowserSession = ({
+export const useDataExplorerSession = ({
   accountId,
   projectId,
   orgId,
   resourceName,
   accountName,
   onSessionEnd
-}: UseDataBrowserSessionOptions) => {
+}: UseDataExplorerSessionOptions) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -91,9 +91,9 @@ export const useDataBrowserSession = ({
       wsRef.current = ws;
 
       ws.onmessage = (event) => {
-        let serverMsg: DataBrowserServerMessage;
+        let serverMsg: DataExplorerServerMessage;
         try {
-          serverMsg = JSON.parse(event.data as string) as DataBrowserServerMessage;
+          serverMsg = JSON.parse(event.data as string) as DataExplorerServerMessage;
         } catch {
           return;
         }
@@ -329,13 +329,13 @@ export const useDataBrowserSession = ({
 
   const sendRequest = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async <T extends DataBrowserServerMessage>(msg: Record<string, any>): Promise<T> => {
+    async <T extends DataExplorerServerMessage>(msg: Record<string, any>): Promise<T> => {
       if (readyPromiseRef.current) {
         await readyPromiseRef.current;
       }
 
       const id = crypto.randomUUID();
-      const fullMsg = { ...msg, id } as DataBrowserClientMessage;
+      const fullMsg = { ...msg, id } as DataExplorerClientMessage;
 
       return new Promise<T>((resolve, reject) => {
         const timer = setTimeout(() => {
@@ -344,7 +344,7 @@ export const useDataBrowserSession = ({
         }, REQUEST_TIMEOUT_MS);
 
         pendingRequestsRef.current.set(id, {
-          resolve: resolve as (m: DataBrowserServerMessage) => void,
+          resolve: resolve as (m: DataExplorerServerMessage) => void,
           reject,
           timer
         });
@@ -363,7 +363,7 @@ export const useDataBrowserSession = ({
   );
 
   const fetchSchemas = useCallback(async (): Promise<SchemaInfo[]> => {
-    const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "schemas" }>>({
+    const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "schemas" }>>({
       type: "get-schemas"
     });
     return resp.data;
@@ -371,7 +371,7 @@ export const useDataBrowserSession = ({
 
   const fetchTables = useCallback(
     async (schema: string): Promise<TableInfo[]> => {
-      const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "tables" }>>({
+      const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "tables" }>>({
         type: "get-tables",
         schema
       });
@@ -382,7 +382,7 @@ export const useDataBrowserSession = ({
 
   const fetchTableDetail = useCallback(
     async (schema: string, table: string): Promise<TableDetail> => {
-      const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "table-detail" }>>({
+      const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "table-detail" }>>({
         type: "get-table-detail",
         schema,
         table
@@ -402,7 +402,7 @@ export const useDataBrowserSession = ({
       command: string;
       executionTimeMs: number;
     }> => {
-      const resp = await sendRequest<Extract<DataBrowserServerMessage, { type: "query-result" }>>({
+      const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "query-result" }>>({
         type: "query",
         sql
       });

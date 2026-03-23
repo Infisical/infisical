@@ -134,7 +134,7 @@ describe("handlePostgresSession", () => {
     expect(pgInstance.end).toHaveBeenCalled();
   });
 
-  test("handles get-schemas data browser message", async () => {
+  test("handles get-schemas data explorer message", async () => {
     const ctx = createMockContext();
     await handlePostgresSession(ctx, mockParams);
 

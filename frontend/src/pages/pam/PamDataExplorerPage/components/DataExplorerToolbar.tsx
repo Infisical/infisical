@@ -13,12 +13,12 @@ import {
 import { Button } from "@app/components/v3/generic/Button";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v3/generic/Popover";
 
-import type { ColumnInfo } from "../data-browser-types";
+import type { ColumnInfo } from "../data-explorer-types";
 import type { FilterCondition, SortCondition } from "../sql-generation";
 import { FilterPopover } from "./FilterPopover";
 import { SortPopover } from "./SortPopover";
 
-type DataBrowserToolbarProps = {
+type DataExplorerToolbarProps = {
   columns: ColumnInfo[];
   filters: FilterCondition[];
   onFiltersChange: (filters: FilterCondition[]) => void;
@@ -43,7 +43,7 @@ type DataBrowserToolbarProps = {
   isRefreshing?: boolean;
 };
 
-export const DataBrowserToolbar = ({
+export const DataExplorerToolbar = ({
   columns,
   filters,
   onFiltersChange,
@@ -66,7 +66,7 @@ export const DataBrowserToolbar = ({
   hasPrimaryKey,
   onRefresh,
   isRefreshing = false
-}: DataBrowserToolbarProps) => {
+}: DataExplorerToolbarProps) => {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, totalCount);

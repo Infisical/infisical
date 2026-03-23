@@ -1,12 +1,12 @@
-// WebSocket message types for the Postgres Data Browser
+// WebSocket message types for the Postgres Data Explorer
 
-export type DataBrowserClientMessage =
+export type DataExplorerClientMessage =
   | { type: "get-schemas"; id: string }
   | { type: "get-tables"; id: string; schema: string }
   | { type: "get-table-detail"; id: string; schema: string; table: string }
   | { type: "query"; id: string; sql: string };
 
-export type DataBrowserServerMessage =
+export type DataExplorerServerMessage =
   | { type: "schemas"; id: string; data: SchemaInfo[] }
   | { type: "tables"; id: string; data: TableInfo[] }
   | { type: "table-detail"; id: string; data: TableDetail }

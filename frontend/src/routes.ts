@@ -410,9 +410,9 @@ const pamAccessRoute = route(
   "pam/PamAccountAccessPage/route.tsx"
 );
 
-const pamDataBrowserRoute = route(
-  "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-browser",
-  "pam/PamDataBrowserPage/route.tsx"
+const pamDataExplorerRoute = route(
+  "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer",
+  "pam/PamDataExplorerPage/route.tsx"
 );
 
 const organizationRoutes = route("/organizations/$orgId", [
@@ -484,7 +484,7 @@ export const routes = rootRoute("root.tsx", [
       route("/projects/$", "redirects/project-redirect.tsx"),
       adminRoute,
       pamAccessRoute,
-      pamDataBrowserRoute,
+      pamDataExplorerRoute,
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
         route("/organizations/$orgId/secret-manager/$projectId", [

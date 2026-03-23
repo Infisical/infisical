@@ -7,7 +7,7 @@ import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 
-import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-browser-types";
+import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
 import type { FilterCondition, SortCondition } from "../sql-generation";
 import {
   buildCountQuery,
@@ -17,9 +17,9 @@ import {
   buildUpdateQuery,
   wrapInTransaction
 } from "../sql-generation";
-import { DataBrowserToolbar } from "./DataBrowserToolbar";
+import { DataExplorerToolbar } from "./DataExplorerToolbar";
 
-type DataBrowserGridProps = {
+type DataExplorerGridProps = {
   tableDetail: TableDetail | null;
   schema: string;
   table: string;
@@ -172,7 +172,7 @@ function getPkMatch(row: Record<string, unknown>, primaryKeys: string[]): Record
   return match;
 }
 
-export const DataBrowserGrid = ({
+export const DataExplorerGrid = ({
   tableDetail,
   schema,
   table,
@@ -180,7 +180,7 @@ export const DataBrowserGrid = ({
   isLoading,
   onChangeCountUpdate,
   onFullRefresh
-}: DataBrowserGridProps) => {
+}: DataExplorerGridProps) => {
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -237,7 +237,7 @@ export const DataBrowserGrid = ({
 
         // These two queries don't share a database snapshot (the backend processes them
         // sequentially, not in a single transaction), so the count could be off by 1 if
-        // another session modifies data between them. Acceptable for a data browser.
+        // another session modifies data between them. Acceptable for a data explorer.
         const [dataResult, countResult] = await Promise.all([
           executeQuery(selectSql),
           executeQuery(countSql)
@@ -625,7 +625,7 @@ export const DataBrowserGrid = ({
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <DataBrowserToolbar
+      <DataExplorerToolbar
         columns={tableColumns}
         filters={filters}
         onFiltersChange={handleFiltersChange}
@@ -660,7 +660,7 @@ export const DataBrowserGrid = ({
       )}
 
       {/* Dice UI DataGrid */}
-      <div className="data-browser-grid flex flex-1 flex-col overflow-hidden text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
+      <div className="data-explorer-grid flex flex-1 flex-col overflow-hidden text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
         {isDataLoading && !hasLoadedRef.current && (
           <div className="space-y-1 p-4">
             {Array.from({ length: 10 }).map((_, i) => (

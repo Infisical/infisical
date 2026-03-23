@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-browser-metadata";
+import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-explorer-metadata";
 
 describe("getSchemasQuery", () => {
   test("returns SQL with no parameters", () => {

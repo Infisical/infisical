@@ -1,4 +1,4 @@
-// Client-side SQL generation for the Postgres Data Browser.
+// Client-side SQL generation for the Postgres Data Explorer.
 // All identifiers are properly quoted to prevent SQL injection.
 
 export function quoteIdent(name: string): string {

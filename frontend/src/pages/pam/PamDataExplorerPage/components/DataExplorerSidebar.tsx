@@ -6,9 +6,9 @@ import { UnstableInput } from "@app/components/v3/generic/Input";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { cn } from "@app/components/v3/utils";
 
-import type { SchemaInfo, TableInfo } from "../data-browser-types";
+import type { SchemaInfo, TableInfo } from "../data-explorer-types";
 
-type DataBrowserSidebarProps = {
+type DataExplorerSidebarProps = {
   schemas: SchemaInfo[];
   selectedSchema: string;
   onSchemaChange: (schema: string) => void;
@@ -19,7 +19,7 @@ type DataBrowserSidebarProps = {
   isLoadingTables: boolean;
 };
 
-export const DataBrowserSidebar = ({
+export const DataExplorerSidebar = ({
   schemas,
   selectedSchema,
   onSchemaChange,
@@ -28,7 +28,7 @@ export const DataBrowserSidebar = ({
   onTableSelect,
   isLoadingSchemas,
   isLoadingTables
-}: DataBrowserSidebarProps) => {
+}: DataExplorerSidebarProps) => {
   const [search, setSearch] = useState("");
 
   // Reset search when schema changes

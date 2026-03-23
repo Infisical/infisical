@@ -27,7 +27,7 @@ export enum PostgresServerMessageType {
 const CorrelatedBaseSchema = z.object({ id: z.string().uuid() });
 
 // =====================================================================
-// Client messages (browser → server) — single flat discriminated union
+// Client messages (client → server) — single flat discriminated union
 // =====================================================================
 
 const InputSchema = z.object({ type: z.literal(PostgresClientMessageType.Input), data: z.string() });
@@ -66,7 +66,7 @@ export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
 export type TPostgresClientMessage = z.infer<typeof PostgresClientMessageSchema>;
 
 // =====================================================================
-// Server messages (server → browser) — single flat discriminated union
+// Server messages (server → client) — single flat discriminated union
 // =====================================================================
 
 const OutputSchema = z.object({

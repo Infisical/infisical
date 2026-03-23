@@ -1,4 +1,4 @@
-// System catalog SQL queries for the Postgres Data Browser.
+// System catalog SQL queries for the Postgres Data Explorer.
 // All queries use parameterized inputs ($1, $2) — no string interpolation.
 
 export const getSchemasQuery = () => ({

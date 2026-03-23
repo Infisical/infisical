@@ -16,12 +16,12 @@ import {
 import { Button } from "@app/components/v3/generic/Button";
 import { useGetPamAccountById } from "@app/hooks/api/pam";
 
-import { DataBrowserGrid } from "./components/DataBrowserGrid";
-import { DataBrowserSidebar } from "./components/DataBrowserSidebar";
-import type { SchemaInfo, TableDetail, TableInfo } from "./data-browser-types";
-import { useDataBrowserSession } from "./use-data-browser-session";
+import { DataExplorerGrid } from "./components/DataExplorerGrid";
+import { DataExplorerSidebar } from "./components/DataExplorerSidebar";
+import type { SchemaInfo, TableDetail, TableInfo } from "./data-explorer-types";
+import { useDataExplorerSession } from "./use-data-explorer-session";
 
-export const PamDataBrowserPage = () => {
+export const PamDataExplorerPage = () => {
   const { accountId, projectId, orgId } = useParams({
     strict: false
   }) as {
@@ -65,7 +65,7 @@ export const PamDataBrowserPage = () => {
     fetchTables,
     fetchTableDetail,
     executeQuery
-  } = useDataBrowserSession({
+  } = useDataExplorerSession({
     accountId,
     projectId,
     orgId,
@@ -394,7 +394,7 @@ export const PamDataBrowserPage = () => {
     <div ref={mountRef} className="flex h-screen w-screen flex-col bg-bunker-800">
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
-        <DataBrowserSidebar
+        <DataExplorerSidebar
           schemas={schemas}
           selectedSchema={selectedSchema}
           onSchemaChange={handleSchemaChange}
@@ -406,7 +406,7 @@ export const PamDataBrowserPage = () => {
         />
 
         {selectedTable ? (
-          <DataBrowserGrid
+          <DataExplorerGrid
             key={`${selectedSchema}.${selectedTable}`}
             tableDetail={tableDetail}
             schema={selectedSchema}
