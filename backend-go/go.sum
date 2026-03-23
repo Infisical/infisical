@@ -12,8 +12,6 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ThalesGroup/crypto11 v1.6.0 h1:Og9EMn44fBS4GNnGnH1aqHnF2wL6F7IU/RhpJajWX/4=
 github.com/ThalesGroup/crypto11 v1.6.0/go.mod h1:H6LRjN5R5SHxTrLqGNteisLDI0/IC6+SGx1pHtbwizE=
-github.com/akhilmhdh/piccolo v0.0.1 h1:J8RcyL4Ab/ZTeRNbJTBiDt8AQ34cXoJDaaSFloz2+z0=
-github.com/akhilmhdh/piccolo v0.0.1/go.mod h1:Gg6SdMpMYptnXjOzM77mkk3l1TiM/f9Tit4MWnK8Gew=
 github.com/bmatcuk/doublestar/v4 v4.10.0 h1:zU9WiOla1YA122oLM6i4EXvGW62DvKZVxIe6TYWexEs=
 github.com/bmatcuk/doublestar/v4 v4.10.0/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
@@ -99,10 +97,6 @@ github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 h1:JeSE6pjso5T
 github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674/go.mod h1:r4w70xmWCQKmi1ONH4KIaBptdivuRPyosB9RmPlGEwA=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 h1:HWRh5R2+9EifMyIHV7ZV+MIZqgz+PMpZ14Jynv3O2Zs=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0/go.mod h1:JfhWUomR1baixubs02l85lZYYOm7LV6om4ceouMv45c=
-github.com/infisical/gocasl v0.0.6 h1:sk/BedG7L8EXbvzECaxhj9DA24eJcxvIaepMtT9oZHw=
-github.com/infisical/gocasl v0.0.6/go.mod h1:7CBkAfFQFVqCUchdPG9U7lHQ1kHD7v7N/N7QbsMWj0A=
-github.com/infisical/gocasl v0.0.7-0.20260323074412-9ae2a92ae56e h1:QYDSEHhyX8EEllFL6mDyu7eL8dSaJm50dliGrorwgwY=
-github.com/infisical/gocasl v0.0.7-0.20260323074412-9ae2a92ae56e/go.mod h1:7CBkAfFQFVqCUchdPG9U7lHQ1kHD7v7N/N7QbsMWj0A=
 github.com/infisical/gocasl v0.0.7 h1:heG7W8O0Iq+iCWmscUm2cd29QuIq7mN9cSETm7DY7BY=
 github.com/infisical/gocasl v0.0.7/go.mod h1:7CBkAfFQFVqCUchdPG9U7lHQ1kHD7v7N/N7QbsMWj0A=
 github.com/jackc/chunkreader v1.0.0/go.mod h1:RT6O25fNZIuasFJRyZ4R/Y2BbhasbmZXF9QQ7T3kePo=

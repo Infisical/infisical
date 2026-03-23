@@ -29,7 +29,6 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/akhilmhdh/piccolo v0.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -115,7 +114,6 @@ require (
 )
 
 tool (
-	github.com/akhilmhdh/piccolo
 	github.com/go-jet/jet/v2/cmd/jet
 	goa.design/goa/v3/cmd/goa
 )
