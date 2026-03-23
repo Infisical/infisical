@@ -2,20 +2,28 @@ package infra
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 	"sync"
 
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
 )
 
+// licenseFeaturePath is the path to the compiled license-fns module inside the Node.js container.
+const licenseFeaturePath = "/backend/dist/ee/services/license/license-fns.mjs"
+
 // Builder configures which services to spin up for an integration test.
 type Builder struct {
 	wantPostgres bool
 	wantRedis    bool
 	wantNodeJS   bool
+	nodeJSFiles  []testcontainers.ContainerFile
+	eeFeatures   []string // license feature names to enable (e.g. "rbac", "groups")
 }
 
 // New creates a new infrastructure builder.
@@ -34,6 +42,40 @@ func (b *Builder) WithNodeJSApi() *Builder {
 	b.wantPostgres = true
 	b.wantRedis = true
 	return b
+}
+
+// WithNodeJSFile adds a file override that will be copied into the Node.js
+// container before it starts. Use Reader for in-memory content or HostFilePath
+// for a file on disk.
+func (b *Builder) WithNodeJSFile(file testcontainers.ContainerFile) *Builder {
+	b.nodeJSFiles = append(b.nodeJSFiles, file)
+	return b
+}
+
+// WithEEFeatures enables enterprise license features in the Node.js container
+// by patching the compiled license-fns.mjs before the app starts.
+// Feature names correspond to properties in getDefaultOnPremFeatures (e.g. "rbac", "groups").
+func (b *Builder) WithEEFeatures(features ...string) *Builder {
+	b.eeFeatures = append(b.eeFeatures, features...)
+	return b
+}
+
+// buildNodeJSCmd returns the container Cmd override when EE feature patches are needed.
+// It generates sed expressions to flip feature flags from false to true in the compiled JS,
+// then chains the original entrypoint.
+func (b *Builder) buildNodeJSCmd() []string {
+	if len(b.eeFeatures) == 0 {
+		return nil
+	}
+
+	var sedExprs []string
+	for _, feature := range b.eeFeatures {
+		// Match the property in the compiled JS object literal, e.g. "rbac: false" → "rbac: true"
+		sedExprs = append(sedExprs, fmt.Sprintf("s/%s: false/%s: true/g", feature, feature))
+	}
+
+	sedCmd := fmt.Sprintf("sed -i '%s' %s", strings.Join(sedExprs, "; "), licenseFeaturePath)
+	return []string{"sh", "-c", sedCmd + " && ./standalone-entrypoint.sh"}
 }
 
 // MustStart spins up the configured containers and returns a ready-to-use Stack.
@@ -79,7 +121,7 @@ func (b *Builder) MustStart() *Stack {
 
 	// 3. Start NodeJS after Postgres and Redis are healthy.
 	if b.wantNodeJS {
-		stack.nodejs, err = startNodeJS(ctx, net.Name)
+		stack.nodejs, err = startNodeJS(ctx, net.Name, b.nodeJSFiles, b.buildNodeJSCmd())
 		if err != nil {
 			log.Fatalf("infra: %v", err)
 		}
@@ -105,6 +147,11 @@ func (b *Builder) MustStart() *Stack {
 	// 7. Bootstrap admin user/org/identity via the NodeJS API.
 	if b.wantNodeJS {
 		stack.nodejs.bootstrap()
+	}
+
+	// 8. Give NodeJSService access to DB for seeding helpers (e.g. toggling email verified).
+	if b.wantNodeJS && stack.db != nil {
+		stack.nodejs.db = stack.db
 	}
 
 	log.Println("infra: stack ready")

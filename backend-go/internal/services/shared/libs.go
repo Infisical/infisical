@@ -32,7 +32,7 @@ type SharedServices struct {
 }
 
 func NewSharedServices(ctx context.Context, deps SharedServicesDeps) (*SharedServices, error) {
-	permissionDAL := permission.NewDAL()
+	permissionDAL := permission.NewDAL(deps.DB)
 	kmsDAL := kms.NewDAL(deps.DB, deps.KeyStore)
 
 	kmsSvc, err := kms.NewSharedService(kms.Deps{
@@ -57,7 +57,7 @@ func NewSharedServices(ctx context.Context, deps SharedServicesDeps) (*SharedSer
 	return &SharedServices{
 		Config:      deps.Config,
 		AuthHandler: authHandler,
-		Permission:  permission.NewSharedService(permission.Deps{DAL: permissionDAL}),
+		Permission:  permission.NewSharedService(deps.Logger, permission.Deps{DAL: permissionDAL}),
 		KMS:         kmsSvc,
 		License:     licenseSvc,
 	}, nil

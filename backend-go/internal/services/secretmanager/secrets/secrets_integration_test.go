@@ -41,8 +41,8 @@ func TestMain(m *testing.M) {
 func setupMux(t *testing.T) *testutil.TestMux {
 	t.Helper()
 
-	permDAL := permission.NewDAL()
-	permLib := permission.NewSharedService(permission.Deps{DAL: permDAL})
+	permDAL := permission.NewDAL(stack.DB())
+	permLib := permission.NewSharedService(testutil.NopLogger(), permission.Deps{DAL: permDAL})
 
 	authDAL := auth.NewDAL(stack.DB())
 	authHandler := auth.NewAuthHandler(authDAL, infra.AuthSecret)

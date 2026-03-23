@@ -19,12 +19,12 @@ Never edit generated code in `gen/` directories — always regenerate.
 ## Code Rules
 
 - **Linting**: All code must pass `make lint`. Do not suppress with `//nolint` unless clearly justified.
-- **Context first**: Every function doing I/O or calling one **must accept `context.Context` as its first argument**. Exception: pure in-memory utility functions.
-- **Explicit logger**: Services receive `*slog.Logger` via constructor — **never use `slog.Default()` or package-level `slog.*` functions** inside services. Tag with `logger.With("service", "name")`.
+- **Constructor signature**: Both services and DALs initialize with `(logger *slog.Logger, deps Deps)`. All external dependencies go in a `Deps` struct (name must end with `Deps`). The `exhaustruct` linter enforces every field is set at the call site — no silent nil dependencies.
+- **Context everywhere**: Every service and DAL method that does I/O **must accept `context.Context` as its first argument**. Constructors are the only exception.
+- **Explicit logger**: Services and DALs receive `*slog.Logger` via constructor — **never use `slog.Default()` or package-level `slog.*` functions**. Tag with `logger.With("service", "name")`.
 - **Interfaces for dependencies**: Consumer defines the interface (narrow, only needed methods). Accept interfaces, not concrete types.
-- **Service constructor signature**: `<NewService|NewSharedService>(ctx context.Context, logger *slog.Logger, deps Deps)`. All external dependencies go in a `Deps` struct (name must end with `Deps`). The `exhaustruct` linter enforces every field is set at the call site — no silent nil dependencies.
 - **DAL boundary**: Services must not import `table`, `postgres`, or `qrm`. All queries go through a DAL. Always use type-safe go-jet — no raw SQL (exception: `pg_advisory_xact_lock`).
-- **Database error wrapping**: All `err` values returned from DAL/database calls must be wrapped with `errutil.DatabaseErr("<user-facing message>").WithErr(err)`. This logs the real DB error internally but only shows the safe message to clients. Never return raw database errors to the caller.
+- **Database error wrapping**: All `err` values returned from DAL/database calls must be wrapped with `errutil.DatabaseErr("<user-facing message>").WithErr(err)` at the service/caller level, NOT inside DAL methods. This logs the real DB error internally but only shows the safe message to clients.
 - **Lean code**: Inline helpers with one caller. Only extract when shared. Split DAL files by functionality.
 
 ## Architecture
