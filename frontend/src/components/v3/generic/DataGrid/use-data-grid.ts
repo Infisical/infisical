@@ -1774,6 +1774,7 @@ function useDataGrid<TData>({
             isSelecting: false
           });
           store.setState("focusedCell", { rowIndex, columnId });
+          store.setState("rowSelection", {});
         });
       }
 

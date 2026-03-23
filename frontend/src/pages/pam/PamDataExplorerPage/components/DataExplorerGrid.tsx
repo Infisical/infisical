@@ -243,8 +243,12 @@ export const DataExplorerGrid = ({
           executeQuery(countSql)
         ]);
 
-        setOriginalData(dataResult.rows);
-        setCurrentData(dataResult.rows);
+        const taggedRows = dataResult.rows.map((row: Record<string, unknown>) => ({
+          ...row,
+          __originalPkKey: getRowKey(row, primaryKeys)
+        }));
+        setOriginalData(taggedRows);
+        setCurrentData(taggedRows);
         setExecutionTimeMs(dataResult.executionTimeMs);
         setTotalCount(Number(countResult.rows[0]?.count ?? 0));
         setNewRowTempIds(new Set());
@@ -314,7 +318,8 @@ export const DataExplorerGrid = ({
     if (!originalDataByPk) return count;
     currentData.forEach((row) => {
       if (row.tempRowId && newRowTempIds.has(String(row.tempRowId))) return;
-      const key = getRowKey(row, primaryKeys);
+      const key = row.__originalPkKey as string;
+      if (!key) return;
       const original = originalDataByPk.get(key);
       if (!original) return;
       const hasChanges = tableColumns.some(
@@ -439,7 +444,8 @@ export const DataExplorerGrid = ({
       const pkMap = originalDataByPk;
       currentData.forEach((row) => {
         if (row.tempRowId) return;
-        const original = pkMap ? pkMap.get(getRowKey(row, primaryKeys)) : undefined;
+        const key = row.__originalPkKey as string;
+        const original = key && pkMap ? pkMap.get(key) : undefined;
         if (!original) return;
         const changes: Record<string, unknown> = {};
         tableColumns.forEach((col) => {
@@ -515,7 +521,8 @@ export const DataExplorerGrid = ({
     if (row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId))) return true;
     const pkMap = originalDataByPkRef.current;
     if (!pkMap) return false;
-    const key = getRowKey(row, primaryKeysRef.current);
+    const key = row.__originalPkKey as string;
+    if (!key) return false;
     const original = pkMap.get(key);
     if (!original) return false;
     return String(row[columnId] ?? "") !== String(original[columnId] ?? "");
@@ -525,6 +532,7 @@ export const DataExplorerGrid = ({
   const getRowId = useCallback(
     (row: Record<string, unknown>, index: number) => {
       if (row.tempRowId) return String(row.tempRowId);
+      if (row.__originalPkKey) return row.__originalPkKey as string;
       if (primaryKeys.length > 0) return getRowKey(row, primaryKeys);
       return String(index);
     },
