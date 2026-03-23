@@ -50,6 +50,7 @@ import {
   DEFAULT_WEB_SESSION_DURATION_MS,
   MAX_WEB_SESSIONS_PER_USER,
   SessionEndReason,
+  TerminalServerMessageType,
   TIssueWebSocketTicketDTO,
   TSessionContext,
   TSessionHandlerResult,
@@ -127,7 +128,7 @@ export const pamWebAccessServiceFactory = ({
   };
 
   const sendSessionEnd = (socket: WebSocket, reason: SessionEndReason): void => {
-    sendMessage(socket, { type: "session_end", reason });
+    sendMessage(socket, { type: TerminalServerMessageType.SessionEnd, reason });
   };
 
   /**
@@ -138,7 +139,7 @@ export const pamWebAccessServiceFactory = ({
   const sendSessionEndAndClose = (socket: WebSocket, reason: SessionEndReason): void => {
     try {
       if (socket.readyState === socket.OPEN) {
-        const parsed = WebSocketServerMessageSchema.parse({ type: "session_end", reason });
+        const parsed = WebSocketServerMessageSchema.parse({ type: TerminalServerMessageType.SessionEnd, reason });
         socket.send(JSON.stringify(parsed), () => {
           socket.close();
         });
@@ -435,7 +436,7 @@ export const pamWebAccessServiceFactory = ({
       const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);
       if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
         sendMessage(socket, {
-          type: "output",
+          type: TerminalServerMessageType.Output,
           data: `${SessionEndReason.SessionLimitReached}\n`
         });
         sendSessionEndAndClose(socket, SessionEndReason.SessionLimitReached);

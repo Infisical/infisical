@@ -1,9 +1,12 @@
 import { z } from "zod";
 
-// Redis accepts input and control only (command-line REPL, no PTY resize)
+export enum RedisClientMessageType {
+  Input = "input",
+  Control = "control"
+}
 
-const InputSchema = z.object({ type: z.literal("input"), data: z.string() });
-const ControlSchema = z.object({ type: z.literal("control"), data: z.string() });
+const InputSchema = z.object({ type: z.literal(RedisClientMessageType.Input), data: z.string() });
+const ControlSchema = z.object({ type: z.literal(RedisClientMessageType.Control), data: z.string() });
 
 export const RedisClientMessageSchema = z.discriminatedUnion("type", [InputSchema, ControlSchema]);
 

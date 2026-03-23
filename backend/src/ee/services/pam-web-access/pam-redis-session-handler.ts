@@ -7,9 +7,14 @@ import {
 import { logger } from "@app/lib/logger";
 
 import { formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
-import { RedisClientMessageSchema } from "./pam-redis-ws-types";
+import { RedisClientMessageSchema, RedisClientMessageType } from "./pam-redis-ws-types";
 import { parseClientMessage, resolveEndReason } from "./pam-web-access-fns";
-import { SessionEndReason, TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
+import {
+  SessionEndReason,
+  TerminalServerMessageType,
+  TSessionContext,
+  TSessionHandlerResult
+} from "./pam-web-access-types";
 
 type TRedisSessionParams = {
   connectionDetails: TRedisResourceConnectionDetails;
@@ -78,7 +83,7 @@ export const handleRedisSession = async (
   const prompt = `${connectionDetails.host}:${connectionDetails.port}> `;
 
   sendMessage({
-    type: "ready",
+    type: TerminalServerMessageType.Ready,
     data: `Connected to ${resourceName} (${connectionDetails.host}:${connectionDetails.port}) as ${credentials.username || "default"}\n\n`,
     prompt
   });
@@ -94,14 +99,14 @@ export const handleRedisSession = async (
         const message = parseClientMessage(rawData, RedisClientMessageSchema);
         if (!message) {
           sendMessage({
-            type: "output",
+            type: TerminalServerMessageType.Output,
             data: "Invalid message format\n",
             prompt
           });
           return;
         }
 
-        if (message.type === "control") {
+        if (message.type === RedisClientMessageType.Control) {
           if (message.data === "quit") {
             sendSessionEnd(SessionEndReason.UserQuit);
             onCleanup();
@@ -114,7 +119,7 @@ export const handleRedisSession = async (
           return;
         }
 
-        if (message.type === "input") {
+        if (message.type === RedisClientMessageType.Input) {
           const result = await executeCommand(redisClient, message.data);
 
           if (result.shouldClose) {
@@ -125,7 +130,7 @@ export const handleRedisSession = async (
           }
 
           sendMessage({
-            type: "output",
+            type: TerminalServerMessageType.Output,
             data: result.output,
             prompt
           });
@@ -134,7 +139,7 @@ export const handleRedisSession = async (
       .catch((err) => {
         logger.error(err, "Error processing Redis message");
         sendMessage({
-          type: "output",
+          type: TerminalServerMessageType.Output,
           data: "Internal error\n",
           prompt
         });

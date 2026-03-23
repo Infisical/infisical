@@ -6,7 +6,8 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type WebSocket from "ws";
 
-import type { TSessionContext, TWebSocketServerMessage } from "./pam-web-access-types";
+import { PostgresClientMessageType, PostgresServerMessageType } from "./pam-postgres-ws-types";
+import { TerminalServerMessageType, type TSessionContext, type TWebSocketServerMessage } from "./pam-web-access-types";
 
 // Mock logger
 vi.mock("@app/lib/logger", () => ({
@@ -111,7 +112,7 @@ describe("handlePostgresSession", () => {
     );
     expect(ctx.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: "ready"
+        type: TerminalServerMessageType.Ready
       })
     );
     expect(result.cleanup).toBeDefined();
@@ -149,7 +150,9 @@ describe("handlePostgresSession", () => {
     const onMessage = messageCall?.[1] as ((data: Buffer) => void) | undefined;
 
     if (onMessage) {
-      const msg = Buffer.from(JSON.stringify({ type: "get-schemas", id: "550e8400-e29b-41d4-a716-446655440000" }));
+      const msg = Buffer.from(
+        JSON.stringify({ type: PostgresClientMessageType.GetSchemas, id: "550e8400-e29b-41d4-a716-446655440000" })
+      );
       onMessage(msg);
 
       // Wait for async processing
@@ -158,7 +161,7 @@ describe("handlePostgresSession", () => {
       });
 
       expect((ctx.socket as unknown as { send: ReturnType<typeof vi.fn> }).send).toHaveBeenCalledWith(
-        expect.stringContaining('"schemas"')
+        expect.stringContaining(`"${PostgresServerMessageType.Schemas}"`)
       );
     }
   });

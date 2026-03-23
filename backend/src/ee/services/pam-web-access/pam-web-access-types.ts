@@ -13,15 +13,21 @@ export enum SessionEndReason {
   SessionLimitReached = "Maximum concurrent sessions reached. Please close an existing session first."
 }
 
+export enum TerminalServerMessageType {
+  Ready = "ready",
+  Output = "output",
+  SessionEnd = "session_end"
+}
+
 // Terminal server message schema — used by TSessionContext.sendMessage
 export const WebSocketServerMessageSchema = z.discriminatedUnion("type", [
   z.object({
-    type: z.enum(["ready", "output"]),
+    type: z.enum([TerminalServerMessageType.Ready, TerminalServerMessageType.Output]),
     data: z.string(),
     prompt: z.string().default("")
   }),
   z.object({
-    type: z.literal("session_end"),
+    type: z.literal(TerminalServerMessageType.SessionEnd),
     reason: z.nativeEnum(SessionEndReason)
   })
 ]);

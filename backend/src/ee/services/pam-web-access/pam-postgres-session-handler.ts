@@ -7,10 +7,20 @@ import {
 import { logger } from "@app/lib/logger";
 
 import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-browser-metadata";
-import { PostgresClientMessageSchema, type TPostgresCorrelatedServerMessage } from "./pam-postgres-ws-types";
+import {
+  PostgresClientMessageSchema,
+  PostgresClientMessageType,
+  PostgresServerMessageType,
+  type TPostgresCorrelatedServerMessage
+} from "./pam-postgres-ws-types";
 import { parseClientMessage, resolveEndReason } from "./pam-web-access-fns";
 import { createPamSqlRepl } from "./pam-web-access-repl";
-import { SessionEndReason, TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
+import {
+  SessionEndReason,
+  TerminalServerMessageType,
+  TSessionContext,
+  TSessionHandlerResult
+} from "./pam-web-access-types";
 
 type TPostgresSessionParams = {
   connectionDetails: TPostgresResourceConnectionDetails;
@@ -44,7 +54,7 @@ export const handlePostgresSession = async (
   const repl = createPamSqlRepl(pgClient);
 
   sendMessage({
-    type: "ready",
+    type: TerminalServerMessageType.Ready,
     data: `Connected to ${resourceName} (${connectionDetails.database}) as ${credentials.username}\n\n`,
     prompt: "=> "
   });
@@ -74,7 +84,7 @@ export const handlePostgresSession = async (
     }
 
     sendResponse({
-      type: "error",
+      type: PostgresServerMessageType.Error,
       id,
       error: pgErr.message ?? "Query execution failed",
       detail: pgErr.detail,
@@ -91,7 +101,7 @@ export const handlePostgresSession = async (
         const message = parseClientMessage(rawData, PostgresClientMessageSchema);
         if (!message) {
           sendMessage({
-            type: "output",
+            type: TerminalServerMessageType.Output,
             data: "Invalid message format\n",
             prompt: repl.getPrompt()
           });
@@ -99,12 +109,12 @@ export const handlePostgresSession = async (
         }
 
         switch (message.type) {
-          case "get-schemas": {
+          case PostgresClientMessageType.GetSchemas: {
             try {
               const query = getSchemasQuery();
               const result = await pgClient.query(query.text, query.values);
               sendResponse({
-                type: "schemas",
+                type: PostgresServerMessageType.Schemas,
                 id: message.id,
                 data: result.rows as { name: string }[]
               });
@@ -114,12 +124,12 @@ export const handlePostgresSession = async (
             break;
           }
 
-          case "get-tables": {
+          case PostgresClientMessageType.GetTables: {
             try {
               const query = getTablesQuery(message.schema);
               const result = await pgClient.query(query.text, query.values);
               sendResponse({
-                type: "tables",
+                type: PostgresServerMessageType.Tables,
                 id: message.id,
                 data: result.rows as { name: string; tableType: string }[]
               });
@@ -129,14 +139,14 @@ export const handlePostgresSession = async (
             break;
           }
 
-          case "get-table-detail": {
+          case PostgresClientMessageType.GetTableDetail: {
             try {
               const query = getTableDetailQuery(message.schema, message.table);
               const result = await pgClient.query<{ result: string }>(query.text, query.values);
               const rawDetail = result.rows[0]?.result;
               if (!rawDetail) {
                 sendResponse({
-                  type: "error",
+                  type: PostgresServerMessageType.Error,
                   id: message.id,
                   error: "Table not found or no metadata available"
                 });
@@ -147,7 +157,7 @@ export const handlePostgresSession = async (
                   ? (JSON.parse(rawDetail) as Record<string, unknown>)
                   : (rawDetail as unknown as Record<string, unknown>);
               sendResponse({
-                type: "table-detail",
+                type: PostgresServerMessageType.TableDetail,
                 id: message.id,
                 data: detail as {
                   columns: {
@@ -172,7 +182,7 @@ export const handlePostgresSession = async (
             break;
           }
 
-          case "query": {
+          case PostgresClientMessageType.Query: {
             try {
               // Multi-statement SQL (transactions) is executed via PostgreSQL's simple query
               // protocol, which returns only the last statement's result. For transaction-wrapped
@@ -181,7 +191,7 @@ export const handlePostgresSession = async (
               const result = await pgClient.query(message.sql);
               const executionTimeMs = Math.round(performance.now() - startTime);
               sendResponse({
-                type: "query-result",
+                type: PostgresServerMessageType.QueryResult,
                 id: message.id,
                 rows: (result.rows ?? []) as Record<string, unknown>[],
                 fields: (result.fields ?? []).map((f) => ({ name: f.name })),
@@ -195,7 +205,7 @@ export const handlePostgresSession = async (
             break;
           }
 
-          case "control": {
+          case PostgresClientMessageType.Control: {
             if (message.data === "quit") {
               sendSessionEnd(SessionEndReason.UserQuit);
               onCleanup();
@@ -208,7 +218,7 @@ export const handlePostgresSession = async (
             break;
           }
 
-          case "input": {
+          case PostgresClientMessageType.Input: {
             const replResult = await repl.processInput(message.data);
 
             if (replResult.shouldClose) {
@@ -219,7 +229,7 @@ export const handlePostgresSession = async (
             }
 
             sendMessage({
-              type: "output",
+              type: TerminalServerMessageType.Output,
               data: replResult.output,
               prompt: replResult.prompt
             });
@@ -233,7 +243,7 @@ export const handlePostgresSession = async (
       .catch((err) => {
         logger.error(err, "Error processing Postgres message");
         sendMessage({
-          type: "output",
+          type: TerminalServerMessageType.Output,
           data: "Internal error\n",
           prompt: "=> "
         });
