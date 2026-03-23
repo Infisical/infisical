@@ -5,6 +5,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tooltip } from "@app/components/v2";
 import { eventToNameMap, userAgentTypeToNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import {
+  ActorSuggestion,
+  useAuditLogActorSuggestions
+} from "@app/hooks/api/auditLogs/useAuditLogActorSuggestions";
 
 export interface AppliedFilter {
   property: string;
@@ -12,7 +16,7 @@ export interface AppliedFilter {
   label?: string;
 }
 
-type Suggestion = { value: string; label: string };
+type Suggestion = { value: string; label: string; actorType?: ActorType };
 
 type FilterProperty = {
   key: string;
@@ -36,6 +40,10 @@ const FILTER_PROPERTIES: FilterProperty[] = [
     suggestions: Object.values(ActorType).map((val) => ({ value: val, label: val }))
   },
   {
+    key: "actor_id",
+    hints: "filter by specific user or identity ID"
+  },
+  {
     key: "source",
     hints: "web, cli, k8-operator, terraform, ...",
     suggestions: Object.entries(userAgentTypeToNameMap).map(([value, label]) => ({
@@ -45,8 +53,8 @@ const FILTER_PROPERTIES: FilterProperty[] = [
   },
   { key: "project", hints: "project ID" },
   { key: "environment", hints: "e.g. production, staging, dev" },
-  { key: "secret_path", displayLabel: "secret path", hints: "e.g. /, /app, /services" },
-  { key: "secret_key", displayLabel: "secret key", hints: "e.g. DATABASE_URL, API_KEY" }
+  { key: "secret_path", hints: "e.g. /, /app, /services" },
+  { key: "secret_key", hints: "e.g. DATABASE_URL, API_KEY" }
 ];
 
 const PROJECT_DEPENDENT_KEYS = new Set(["environment", "secret_path", "secret_key"]);
@@ -61,15 +69,25 @@ type Props = {
   filters: AppliedFilter[];
   onFiltersChange: (filters: AppliedFilter[]) => void;
   hasProjectContext?: boolean;
+  projectId?: string;
 };
 
-export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext }: Props) => {
+export const AuditSearchFilter = ({
+  filters,
+  onFiltersChange,
+  hasProjectContext,
+  projectId
+}: Props) => {
+  const currentActorType = filters.find((f) => f.property === "actor")?.value as
+    | ActorType
+    | undefined;
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isKeyboardNav = useRef(false);
 
   const colonIndex = query.indexOf(":");
   const isTypingValue = colonIndex > 0;
@@ -82,17 +100,22 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
   const isComposing = isTypingValue && (propertyDef || isFreetext);
   const hasProjectFilter =
     hasProjectContext || filters.some((filter) => filter.property === "project");
+  const hasActorId = propertyKey === "actor_id" || filters.some((f) => f.property === "actor_id");
+  const { suggestions: actorIdSuggestions } = useAuditLogActorSuggestions(
+    currentActorType,
+    hasActorId,
+    projectId
+  );
 
   const valueSuggestions = useMemo(() => {
-    if (!propertyDef?.suggestions) return [];
-    if (!typedValue) return propertyDef.suggestions;
+    const suggestions = propertyKey === "actor_id" ? actorIdSuggestions : propertyDef?.suggestions;
+    if (!suggestions?.length) return [];
+    if (!typedValue) return suggestions;
     const lower = typedValue.toLowerCase();
-    return propertyDef.suggestions.filter(
-      (suggestion) =>
-        suggestion.value.toLowerCase().includes(lower) ||
-        suggestion.label.toLowerCase().includes(lower)
+    return suggestions.filter(
+      (s) => s.value.toLowerCase().includes(lower) || s.label.toLowerCase().includes(lower)
     );
-  }, [propertyDef, typedValue]);
+  }, [propertyKey, propertyDef, actorIdSuggestions, typedValue]);
 
   const filteredProperties = useMemo(
     () =>
@@ -112,9 +135,17 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isComposing) inputRef.current?.focus();
   }, [isComposing]);
+
+  useEffect(() => {
+    if (highlightedIndex < 0 || !dropdownRef.current) return;
+    const item = dropdownRef.current.querySelector(`[data-index="${highlightedIndex}"]`);
+    if (item) item.scrollIntoView({ block: "nearest" });
+  }, [highlightedIndex]);
 
   const focusInput = () => setTimeout(() => inputRef.current?.focus(), 0);
 
@@ -174,7 +205,25 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
   };
 
   const selectSuggestion = (suggestion: Suggestion) => {
-    if (propertyKey) addFilter(propertyKey, suggestion.value, suggestion.label);
+    if (!propertyKey) return;
+
+    if (propertyKey !== "actor_id" || !suggestion.actorType) {
+      addFilter(propertyKey, suggestion.value, suggestion.label);
+      return;
+    }
+
+    const actorIdFilter: AppliedFilter = {
+      property: "actor_id",
+      value: suggestion.value,
+      label: suggestion.label
+    };
+    const actorFilter: AppliedFilter = { property: "actor", value: suggestion.actorType };
+
+    const otherFilters = filters.filter((f) => f.property !== "actor" && f.property !== "actor_id");
+
+    onFiltersChange([...otherFilters, actorFilter, actorIdFilter]);
+    resetQuery();
+    focusInput();
   };
 
   const navigableItems = isTypingValue
@@ -194,10 +243,12 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
         break;
       case "ArrowDown":
         keyEvent.preventDefault();
+        isKeyboardNav.current = true;
         setHighlightedIndex((prev) => (prev < navigableItems.length - 1 ? prev + 1 : 0));
         break;
       case "ArrowUp":
         keyEvent.preventDefault();
+        isKeyboardNav.current = true;
         setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : navigableItems.length - 1));
         break;
       case "Escape":
@@ -214,7 +265,19 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
 
   const showPropertyDropdown = isOpen && !isTypingValue;
   const showSuggestionDropdown =
-    isOpen && isTypingValue && !isFreetext && valueSuggestions.length > 0;
+    isOpen &&
+    isTypingValue &&
+    valueSuggestions.length > 0 &&
+    (propertyKey === "actor_id" || !isFreetext);
+
+  const handleMouseEnter = (index: number) => {
+    if (isKeyboardNav.current) return;
+    setHighlightedIndex(index);
+  };
+
+  const handleMouseMove = () => {
+    isKeyboardNav.current = false;
+  };
 
   const dropdownRowClass = (active: boolean) =>
     `flex w-full items-center gap-3 px-3 py-1.5 text-sm transition-colors ${
@@ -253,19 +316,42 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
     </span>
   );
 
+  const actorIdWarning = useMemo<string | null>(() => {
+    const actorIdFilter = filters.find((f) => f.property === "actor_id");
+    if (!actorIdFilter) return null;
+    // Warn when no actor type is set — backend defaults to userId key
+    if (!currentActorType) return "An actor type filter is required for accurate results";
+    // Warn if a suggestion-picked value doesn't match the current actor type's list
+    if (!actorIdFilter.label) return null;
+    if (!actorIdSuggestions.some((s) => s.value === actorIdFilter.value)) {
+      return "This ID does not match the selected actor type and may not return results";
+    }
+    return null;
+  }, [filters, actorIdSuggestions, currentActorType]);
+
+  const getChipWarning = (filter: AppliedFilter): string | null => {
+    if (!hasProjectFilter && PROJECT_DEPENDENT_KEYS.has(filter.property)) {
+      return "Requires a project ID filter to take effect";
+    }
+    if (filter.property === "actor_id" && actorIdWarning) {
+      return actorIdWarning;
+    }
+    return null;
+  };
+
   const renderChip = (filter: AppliedFilter, index: number) => {
-    const isOrphaned = !hasProjectFilter && PROJECT_DEPENDENT_KEYS.has(filter.property);
+    const warning = getChipWarning(filter);
 
     const chip = (
       <span
         key={`${filter.property}-${filter.value}`}
         className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 font-mono text-xs ${
-          isOrphaned
+          warning
             ? "border-yellow-700/60 bg-yellow-900/20"
             : "border-mineshaft-500 bg-mineshaft-700"
         }`}
       >
-        {isOrphaned && <FontAwesomeIcon icon={faWarning} className="h-2.5 w-2.5 text-yellow-600" />}
+        {warning && <FontAwesomeIcon icon={faWarning} className="h-2.5 w-2.5 text-yellow-600" />}
         <button
           type="button"
           className="text-bunker-200 transition-colors hover:text-mineshaft-100"
@@ -290,13 +376,9 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
       </span>
     );
 
-    if (isOrphaned) {
+    if (warning) {
       return (
-        <Tooltip
-          key={`${filter.property}-${filter.value}`}
-          content="Requires a project ID filter to take effect"
-          size="sm"
-        >
+        <Tooltip key={`${filter.property}-${filter.value}`} content={warning} size="sm">
           {chip}
         </Tooltip>
       );
@@ -355,7 +437,8 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
                 type="button"
                 className={dropdownRowClass(highlightedIndex === index)}
                 onClick={() => selectProperty(prop.key)}
-                onMouseEnter={() => setHighlightedIndex(index)}
+                onMouseMove={handleMouseMove}
+                onMouseEnter={() => handleMouseEnter(index)}
               >
                 <FontAwesomeIcon icon={faPlus} className="h-3 w-3 shrink-0 text-mineshaft-400" />
                 <span className="font-mono text-xs font-medium text-bunker-200">
@@ -387,24 +470,105 @@ export const AuditSearchFilter = ({ filters, onFiltersChange, hasProjectContext 
       )}
 
       {showSuggestionDropdown && (
-        <div className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
+        <div
+          ref={dropdownRef}
+          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg"
+        >
           <div className="py-2">
-            <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">Suggestions</div>
-            {valueSuggestions.map((suggestion, index) => (
-              <button
-                key={suggestion.value}
-                type="button"
-                className={dropdownRowClass(highlightedIndex === index)}
-                onClick={() => selectSuggestion(suggestion)}
-                onMouseEnter={() => setHighlightedIndex(index)}
-              >
-                <FontAwesomeIcon icon={faPlus} className="h-3 w-3 shrink-0 text-mineshaft-400" />
-                <span className="font-mono text-xs text-bunker-200">
-                  <span className="font-medium">{getDisplayLabel(propertyKey || "")}:</span>
-                  <span className="ml-0.5">{suggestion.label}</span>
-                </span>
-              </button>
-            ))}
+            {propertyKey === "actor_id" && !currentActorType ? (
+              <>
+                {(valueSuggestions as ActorSuggestion[]).some(
+                  (s) => s.actorType === ActorType.USER
+                ) && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">Users</div>
+                    {(valueSuggestions as ActorSuggestion[]).map((suggestion, index) =>
+                      suggestion.actorType === ActorType.USER ? (
+                        <button
+                          key={`${suggestion.actorType}-${suggestion.value}`}
+                          type="button"
+                          data-index={index}
+                          className={dropdownRowClass(highlightedIndex === index)}
+                          onClick={() => selectSuggestion(suggestion)}
+                          onMouseMove={handleMouseMove}
+                          onMouseEnter={() => handleMouseEnter(index)}
+                        >
+                          <FontAwesomeIcon
+                            icon={faPlus}
+                            className="h-3 w-3 shrink-0 text-mineshaft-400"
+                          />
+                          <span className="font-mono text-xs text-bunker-200">
+                            <span className="font-medium">
+                              {getDisplayLabel(propertyKey || "")}:
+                            </span>
+                            <span className="ml-0.5">{suggestion.label}</span>
+                          </span>
+                        </button>
+                      ) : null
+                    )}
+                  </>
+                )}
+                {(valueSuggestions as ActorSuggestion[]).some(
+                  (s) => s.actorType === ActorType.IDENTITY
+                ) && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">
+                      Identities
+                    </div>
+                    {(valueSuggestions as ActorSuggestion[]).map((suggestion, index) =>
+                      suggestion.actorType === ActorType.IDENTITY ? (
+                        <button
+                          key={`${suggestion.actorType}-${suggestion.value}`}
+                          type="button"
+                          data-index={index}
+                          className={dropdownRowClass(highlightedIndex === index)}
+                          onClick={() => selectSuggestion(suggestion)}
+                          onMouseMove={handleMouseMove}
+                          onMouseEnter={() => handleMouseEnter(index)}
+                        >
+                          <FontAwesomeIcon
+                            icon={faPlus}
+                            className="h-3 w-3 shrink-0 text-mineshaft-400"
+                          />
+                          <span className="font-mono text-xs text-bunker-200">
+                            <span className="font-medium">
+                              {getDisplayLabel(propertyKey || "")}:
+                            </span>
+                            <span className="ml-0.5">{suggestion.label}</span>
+                          </span>
+                        </button>
+                      ) : null
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">
+                  Suggestions
+                </div>
+                {valueSuggestions.map((suggestion, index) => (
+                  <button
+                    key={suggestion.value}
+                    type="button"
+                    data-index={index}
+                    className={dropdownRowClass(highlightedIndex === index)}
+                    onClick={() => selectSuggestion(suggestion)}
+                    onMouseMove={handleMouseMove}
+                    onMouseEnter={() => handleMouseEnter(index)}
+                  >
+                    <FontAwesomeIcon
+                      icon={faPlus}
+                      className="h-3 w-3 shrink-0 text-mineshaft-400"
+                    />
+                    <span className="font-mono text-xs text-bunker-200">
+                      <span className="font-medium">{getDisplayLabel(propertyKey || "")}:</span>
+                      <span className="ml-0.5">{suggestion.label}</span>
+                    </span>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -418,6 +582,7 @@ export const appliedFiltersToLogFilter = (
   eventType: EventType[];
   userAgentType?: UserAgentType;
   actorType?: ActorType;
+  actor?: string;
   projectId?: string;
   environment?: string;
   secretPath?: string;
@@ -454,6 +619,9 @@ export const appliedFiltersToLogFilter = (
       case "secret_key":
         result.secretKey = value;
         break;
+      case "actor_id":
+        result.actor = value;
+        break;
       default:
         break;
     }
@@ -466,12 +634,14 @@ export const logFilterToAppliedFilters = (filter: {
   eventType?: EventType[];
   userAgentType?: UserAgentType;
   actorType?: ActorType;
+  actor?: string;
 }): AppliedFilter[] => {
   const chips: AppliedFilter[] = [];
 
   filter.eventType?.forEach((eventType) => chips.push({ property: "event", value: eventType }));
   if (filter.userAgentType) chips.push({ property: "source", value: filter.userAgentType });
   if (filter.actorType) chips.push({ property: "actor", value: filter.actorType });
+  if (filter.actor) chips.push({ property: "actor_id", value: filter.actor });
 
   return chips;
 };

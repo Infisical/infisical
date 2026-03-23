@@ -699,6 +699,20 @@ export enum EventType {
   PKI_SIGNER_SIGN = "pki-signer-sign"
 }
 
+// Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
+// Derived from the *ActorMetadata interfaces below. Note that ACME_PROFILE and EST_ACCOUNT
+// both use "profileId" as their identifying key — this is intentional and matches their
+// respective metadata schemas (AcmeProfileActorMetadata, EstAccountActorMetadata).
+export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> = {
+  [ActorType.USER]: "userId",
+  [ActorType.IDENTITY]: "identityId",
+  [ActorType.KMIP_CLIENT]: "clientId",
+  [ActorType.SERVICE]: "serviceId",
+  [ActorType.ACME_PROFILE]: "profileId",
+  [ActorType.ACME_ACCOUNT]: "accountId",
+  [ActorType.EST_ACCOUNT]: "profileId"
+};
+
 export const filterableSecretEvents: EventType[] = [
   EventType.GET_SECRET,
   EventType.DELETE_SECRETS,
