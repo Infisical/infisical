@@ -42,10 +42,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import {
-  PermissionConditionOperators,
-  ProjectPermissionSecretActions
-} from "@app/context/ProjectPermissionContext/types";
+import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretAccessListEntry } from "@app/hooks/api/secrets/types";

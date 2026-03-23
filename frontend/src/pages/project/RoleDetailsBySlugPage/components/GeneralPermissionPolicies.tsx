@@ -1,5 +1,12 @@
 import { cloneElement, Fragment, RefObject, useMemo } from "react";
-import { Control, Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import {
+  Control,
+  Controller,
+  useFieldArray,
+  useFormContext,
+  useFormState,
+  useWatch
+} from "react-hook-form";
 import { components, MultiValueProps, MultiValueRemoveProps, OptionProps } from "react-select";
 import { CheckIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -115,6 +122,12 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
 }: ActionsMultiSelectProps<T>) => {
   const { setValue } = useFormContext<TFormSchema>();
 
+  const { errors } = useFormState({
+    control,
+    name: `permissions.${subject}.${rootIndex}.actionRequired` as any
+  });
+  const actionsError = (errors?.permissions as any)?.[subject]?.[rootIndex]?.actionRequired;
+
   const permissionRule = useWatch({
     control,
     name: `permissions.${subject}.${rootIndex}` as any,
@@ -206,25 +219,31 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
   };
 
   return (
-    <FilterableSelect
-      isMulti
-      value={selectedActions}
-      onChange={handleChange}
-      options={actionOptions}
-      placeholder="Select actions..."
-      isDisabled={isDisabled}
-      isClearable={!isDisabled}
-      className="w-full"
-      menuPosition="fixed"
-      {...(menuPortalContainerRef?.current
-        ? { menuPortalTarget: menuPortalContainerRef.current }
-        : {})}
-      components={{
-        Option: OptionWithDescription,
-        MultiValueRemove,
-        MultiValue: MultiValueWithTooltip
-      }}
-    />
+    <div className="flex w-full flex-col">
+      <FilterableSelect
+        isMulti
+        value={selectedActions}
+        onChange={handleChange}
+        options={actionOptions}
+        placeholder="Select actions..."
+        isDisabled={isDisabled}
+        isClearable={!isDisabled}
+        className="w-full"
+        menuPosition="fixed"
+        {...(menuPortalContainerRef?.current
+          ? { menuPortalTarget: menuPortalContainerRef.current }
+          : {})}
+        components={{
+          Option: OptionWithDescription,
+          MultiValueRemove,
+          MultiValue: MultiValueWithTooltip
+        }}
+        isError={actionsError}
+      />
+      {actionsError && (
+        <span className="mt-1 text-xs text-danger">{actionsError.message as string}</span>
+      )}
+    </div>
   );
 };
 
@@ -336,10 +355,10 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                 <div
                   className={twMerge(
                     "relative rounded-md border border-l-[6px] border-border bg-card px-5 py-4 transition-colors duration-300",
-                    isInverted ? "border-l-red-600/50" : "border-l-green-600/50"
+                    isInverted ? "border-l-danger/50" : "border-l-success/50"
                   )}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-start gap-2">
                     {isConditionalSubjects(subject) && (
                       <Controller
                         defaultValue={false as any}
