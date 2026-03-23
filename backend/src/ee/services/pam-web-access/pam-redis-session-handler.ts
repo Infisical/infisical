@@ -7,9 +7,9 @@ import {
 import { logger } from "@app/lib/logger";
 
 import { formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
-import { parseRedisClientMessage } from "./pam-redis-ws-types";
-import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
-import { resolveEndReason, SessionEndReason, WsMessageType } from "./pam-ws-shared-types";
+import { RedisClientMessageSchema } from "./pam-redis-ws-types";
+import { parseClientMessage, resolveEndReason } from "./pam-web-access-fns";
+import { SessionEndReason, TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 
 type TRedisSessionParams = {
   connectionDetails: TRedisResourceConnectionDetails;
@@ -78,7 +78,7 @@ export const handleRedisSession = async (
   const prompt = `${connectionDetails.host}:${connectionDetails.port}> `;
 
   sendMessage({
-    type: WsMessageType.Ready,
+    type: "ready",
     data: `Connected to ${resourceName} (${connectionDetails.host}:${connectionDetails.port}) as ${credentials.username || "default"}\n\n`,
     prompt
   });
@@ -91,17 +91,17 @@ export const handleRedisSession = async (
   socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
     processingPromise = processingPromise
       .then(async () => {
-        const message = parseRedisClientMessage(rawData);
+        const message = parseClientMessage(rawData, RedisClientMessageSchema);
         if (!message) {
           sendMessage({
-            type: WsMessageType.Output,
+            type: "output",
             data: "Invalid message format\n",
             prompt
           });
           return;
         }
 
-        if (message.type === WsMessageType.Control) {
+        if (message.type === "control") {
           if (message.data === "quit") {
             sendSessionEnd(SessionEndReason.UserQuit);
             onCleanup();
@@ -114,7 +114,7 @@ export const handleRedisSession = async (
           return;
         }
 
-        if (message.type === WsMessageType.Input) {
+        if (message.type === "input") {
           const result = await executeCommand(redisClient, message.data);
 
           if (result.shouldClose) {
@@ -125,7 +125,7 @@ export const handleRedisSession = async (
           }
 
           sendMessage({
-            type: WsMessageType.Output,
+            type: "output",
             data: result.output,
             prompt
           });
@@ -134,7 +134,7 @@ export const handleRedisSession = async (
       .catch((err) => {
         logger.error(err, "Error processing Redis message");
         sendMessage({
-          type: WsMessageType.Output,
+          type: "output",
           data: "Internal error\n",
           prompt
         });

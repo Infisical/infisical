@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  rawBufferToString,
-  SessionEndReason,
-  WsOutputMessageSchema,
-  WsSessionEndMessageSchema
-} from "./pam-ws-shared-types";
+import { SessionEndReason } from "./pam-web-access-types";
 
 // --- Shared base for correlated request/response messages ---
 
@@ -53,6 +48,17 @@ export type TPostgresClientMessage = z.infer<typeof PostgresClientMessageSchema>
 // =====================================================================
 // Server messages (server → browser) — single flat discriminated union
 // =====================================================================
+
+const OutputSchema = z.object({
+  type: z.enum(["ready", "output"]),
+  data: z.string(),
+  prompt: z.string().default("")
+});
+
+const SessionEndSchema = z.object({
+  type: z.literal("session_end"),
+  reason: z.nativeEnum(SessionEndReason)
+});
 
 const SchemasResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal("schemas"),
@@ -121,8 +127,8 @@ const ErrorResponseSchema = CorrelatedBaseSchema.extend({
 });
 
 export const PostgresServerMessageSchema = z.discriminatedUnion("type", [
-  WsOutputMessageSchema,
-  WsSessionEndMessageSchema,
+  OutputSchema,
+  SessionEndSchema,
   SchemasResponseSchema,
   TablesResponseSchema,
   TableDetailResponseSchema,
@@ -140,21 +146,3 @@ export type TPostgresCorrelatedServerMessage = z.infer<
   | typeof QueryResultResponseSchema
   | typeof ErrorResponseSchema
 >;
-
-// =====================================================================
-// Parser
-// =====================================================================
-
-export const parsePostgresClientMessage = (rawData: Buffer | ArrayBuffer | Buffer[]): TPostgresClientMessage | null => {
-  const str = rawBufferToString(rawData);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(str);
-  } catch {
-    return null;
-  }
-  const result = PostgresClientMessageSchema.safeParse(parsed);
-  return result.success ? result.data : null;
-};
-
-export { SessionEndReason };

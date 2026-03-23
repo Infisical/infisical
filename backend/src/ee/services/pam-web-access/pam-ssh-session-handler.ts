@@ -6,9 +6,9 @@ import {
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-types";
 import { logger } from "@app/lib/logger";
 
-import { parseSshClientMessage } from "./pam-ssh-ws-types";
-import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
-import { resolveEndReason, SessionEndReason, WsMessageType } from "./pam-ws-shared-types";
+import { SshClientMessageSchema } from "./pam-ssh-ws-types";
+import { parseClientMessage, resolveEndReason } from "./pam-web-access-fns";
+import { SessionEndReason, TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 
 type TSSHSessionParams = {
   connectionDetails: TSSHResourceConnectionDetails;
@@ -49,7 +49,7 @@ export const handleSSHSession = async (
 
         // Send Ready message
         sendMessage({
-          type: WsMessageType.Ready,
+          type: "ready",
           data: `Connected to ${resourceName} as ${credentials.username}\r\n`
         });
 
@@ -58,34 +58,34 @@ export const handleSSHSession = async (
         // SSH -> WS: forward output from remote shell to WebSocket
         shellStream.on("data", (data: Buffer) => {
           sendMessage({
-            type: WsMessageType.Output,
+            type: "output",
             data: data.toString("utf-8")
           });
         });
 
         shellStream.stderr.on("data", (data: Buffer) => {
           sendMessage({
-            type: WsMessageType.Output,
+            type: "output",
             data: data.toString("utf-8")
           });
         });
 
         // WS -> SSH: forward input from WebSocket to remote shell
         socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
-          const message = parseSshClientMessage(rawData);
+          const message = parseClientMessage(rawData, SshClientMessageSchema);
           if (!message) return;
 
-          if (message.type === WsMessageType.Input) {
+          if (message.type === "input") {
             // Raw keystroke forwarding — no buffering, no local echo
             shellStream.write(message.data);
-          } else if (message.type === WsMessageType.Resize) {
+          } else if (message.type === "resize") {
             try {
               const { rows, cols } = JSON.parse(message.data) as { rows: number; cols: number };
               shellStream.setWindow(rows, cols, 0, 0);
             } catch {
               logger.debug("Invalid resize data received");
             }
-          } else if (message.type === WsMessageType.Control) {
+          } else if (message.type === "control") {
             if (message.data === "quit") {
               shellStream.close();
               client.end();

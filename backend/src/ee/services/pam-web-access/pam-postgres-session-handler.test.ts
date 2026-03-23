@@ -6,8 +6,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type WebSocket from "ws";
 
-import type { TSessionContext } from "./pam-web-access-types";
-import type { TWsTerminalServerMessage } from "./pam-ws-shared-types";
+import type { TSessionContext, TWebSocketServerMessage } from "./pam-web-access-types";
 
 // Mock logger
 vi.mock("@app/lib/logger", () => ({
@@ -60,8 +59,8 @@ type MockPgClient = {
   on: ReturnType<typeof vi.fn>;
 };
 
-function createMockContext(): TSessionContext & { sentMessages: TWsTerminalServerMessage[] } {
-  const sentMessages: TWsTerminalServerMessage[] = [];
+function createMockContext(): TSessionContext & { sentMessages: TWebSocketServerMessage[] } {
+  const sentMessages: TWebSocketServerMessage[] = [];
   return {
     socket: {
       on: vi.fn(),
@@ -73,7 +72,7 @@ function createMockContext(): TSessionContext & { sentMessages: TWsTerminalServe
     relayPort: 5432,
     resourceName: "test-db",
     sessionId: "test-session",
-    sendMessage: vi.fn((msg: TWsTerminalServerMessage) => {
+    sendMessage: vi.fn((msg: TWebSocketServerMessage) => {
       sentMessages.push(msg);
     }),
     sendSessionEnd: vi.fn(),

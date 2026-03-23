@@ -56,8 +56,7 @@ import {
   TWebSocketServerMessage,
   WebSocketServerMessageSchema,
   WS_IDLE_TIMEOUT_MS,
-  WS_PING_INTERVAL_MS,
-  WsMessageType
+  WS_PING_INTERVAL_MS
 } from "./pam-web-access-types";
 
 const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH, PamResource.Redis];
@@ -128,7 +127,7 @@ export const pamWebAccessServiceFactory = ({
   };
 
   const sendSessionEnd = (socket: WebSocket, reason: SessionEndReason): void => {
-    sendMessage(socket, { type: WsMessageType.SessionEnd, reason });
+    sendMessage(socket, { type: "session_end", reason });
   };
 
   /**
@@ -139,7 +138,7 @@ export const pamWebAccessServiceFactory = ({
   const sendSessionEndAndClose = (socket: WebSocket, reason: SessionEndReason): void => {
     try {
       if (socket.readyState === socket.OPEN) {
-        const parsed = WebSocketServerMessageSchema.parse({ type: WsMessageType.SessionEnd, reason });
+        const parsed = WebSocketServerMessageSchema.parse({ type: "session_end", reason });
         socket.send(JSON.stringify(parsed), () => {
           socket.close();
         });
@@ -436,7 +435,7 @@ export const pamWebAccessServiceFactory = ({
       const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);
       if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
         sendMessage(socket, {
-          type: WsMessageType.Output,
+          type: "output",
           data: `${SessionEndReason.SessionLimitReached}\n`
         });
         sendSessionEndAndClose(socket, SessionEndReason.SessionLimitReached);

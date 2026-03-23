@@ -1,14 +1,32 @@
 import type WebSocket from "ws";
+import { z } from "zod";
 
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectServiceActor } from "@app/lib/types";
 
-import { type SessionEndReason, type TWsTerminalServerMessage } from "./pam-ws-shared-types";
+export enum SessionEndReason {
+  SessionCompleted = "Session duration complete. Connection closed.",
+  UserQuit = "Goodbye!",
+  ConnectionLost = "Connection lost. Session ended.",
+  SetupFailed = "Failed to establish connection.",
+  IdleTimeout = "Session closed due to inactivity.",
+  SessionLimitReached = "Maximum concurrent sessions reached. Please close an existing session first."
+}
 
-// Re-export shared enums for convenience (used by pam-web-access-service.ts)
-export type { TWsTerminalServerMessage as TWebSocketServerMessage } from "./pam-ws-shared-types";
-export { SessionEndReason, WsMessageType } from "./pam-ws-shared-types";
-export { WsTerminalServerMessageSchema as WebSocketServerMessageSchema } from "./pam-ws-shared-types";
+// Terminal server message schema — used by TSessionContext.sendMessage
+export const WebSocketServerMessageSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.enum(["ready", "output"]),
+    data: z.string(),
+    prompt: z.string().default("")
+  }),
+  z.object({
+    type: z.literal("session_end"),
+    reason: z.nativeEnum(SessionEndReason)
+  })
+]);
+
+export type TWebSocketServerMessage = z.input<typeof WebSocketServerMessageSchema>;
 
 // Default session duration for web access sessions (1 hour in ms)
 export const DEFAULT_WEB_SESSION_DURATION_MS = 60 * 60 * 1000;
@@ -27,7 +45,7 @@ export type TSessionContext = {
   relayPort: number;
   resourceName: string;
   sessionId: string;
-  sendMessage: (msg: TWsTerminalServerMessage) => void;
+  sendMessage: (msg: TWebSocketServerMessage) => void;
   sendSessionEnd: (reason: SessionEndReason) => void;
   isNearSessionExpiry: () => boolean;
   onCleanup: () => void;

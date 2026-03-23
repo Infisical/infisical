@@ -7,10 +7,10 @@ import {
 import { logger } from "@app/lib/logger";
 
 import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-browser-metadata";
-import { parsePostgresClientMessage, type TPostgresCorrelatedServerMessage } from "./pam-postgres-ws-types";
+import { PostgresClientMessageSchema, type TPostgresCorrelatedServerMessage } from "./pam-postgres-ws-types";
+import { parseClientMessage, resolveEndReason } from "./pam-web-access-fns";
 import { createPamSqlRepl } from "./pam-web-access-repl";
-import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
-import { resolveEndReason, SessionEndReason, WsMessageType } from "./pam-ws-shared-types";
+import { SessionEndReason, TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 
 type TPostgresSessionParams = {
   connectionDetails: TPostgresResourceConnectionDetails;
@@ -44,7 +44,7 @@ export const handlePostgresSession = async (
   const repl = createPamSqlRepl(pgClient);
 
   sendMessage({
-    type: WsMessageType.Ready,
+    type: "ready",
     data: `Connected to ${resourceName} (${connectionDetails.database}) as ${credentials.username}\n\n`,
     prompt: "=> "
   });
@@ -88,10 +88,10 @@ export const handlePostgresSession = async (
   socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
     processingPromise = processingPromise
       .then(async () => {
-        const message = parsePostgresClientMessage(rawData);
+        const message = parseClientMessage(rawData, PostgresClientMessageSchema);
         if (!message) {
           sendMessage({
-            type: WsMessageType.Output,
+            type: "output",
             data: "Invalid message format\n",
             prompt: repl.getPrompt()
           });
@@ -219,7 +219,7 @@ export const handlePostgresSession = async (
             }
 
             sendMessage({
-              type: WsMessageType.Output,
+              type: "output",
               data: replResult.output,
               prompt: replResult.prompt
             });
@@ -233,7 +233,7 @@ export const handlePostgresSession = async (
       .catch((err) => {
         logger.error(err, "Error processing Postgres message");
         sendMessage({
-          type: WsMessageType.Output,
+          type: "output",
           data: "Internal error\n",
           prompt: "=> "
         });
