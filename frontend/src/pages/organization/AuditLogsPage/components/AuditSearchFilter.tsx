@@ -87,6 +87,7 @@ export const AuditSearchFilter = ({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isKeyboardNav = useRef(false);
 
   const colonIndex = query.indexOf(":");
   const isTypingValue = colonIndex > 0;
@@ -134,9 +135,17 @@ export const AuditSearchFilter = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isComposing) inputRef.current?.focus();
   }, [isComposing]);
+
+  useEffect(() => {
+    if (highlightedIndex < 0 || !dropdownRef.current) return;
+    const item = dropdownRef.current.querySelector(`[data-index="${highlightedIndex}"]`);
+    if (item) item.scrollIntoView({ block: "nearest" });
+  }, [highlightedIndex]);
 
   const focusInput = () => setTimeout(() => inputRef.current?.focus(), 0);
 
@@ -234,10 +243,12 @@ export const AuditSearchFilter = ({
         break;
       case "ArrowDown":
         keyEvent.preventDefault();
+        isKeyboardNav.current = true;
         setHighlightedIndex((prev) => (prev < navigableItems.length - 1 ? prev + 1 : 0));
         break;
       case "ArrowUp":
         keyEvent.preventDefault();
+        isKeyboardNav.current = true;
         setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : navigableItems.length - 1));
         break;
       case "Escape":
@@ -258,6 +269,15 @@ export const AuditSearchFilter = ({
     isTypingValue &&
     valueSuggestions.length > 0 &&
     (propertyKey === "actor_id" || !isFreetext);
+
+  const handleMouseEnter = (index: number) => {
+    if (isKeyboardNav.current) return;
+    setHighlightedIndex(index);
+  };
+
+  const handleMouseMove = () => {
+    isKeyboardNav.current = false;
+  };
 
   const dropdownRowClass = (active: boolean) =>
     `flex w-full items-center gap-3 px-3 py-1.5 text-sm transition-colors ${
@@ -417,7 +437,8 @@ export const AuditSearchFilter = ({
                 type="button"
                 className={dropdownRowClass(highlightedIndex === index)}
                 onClick={() => selectProperty(prop.key)}
-                onMouseEnter={() => setHighlightedIndex(index)}
+                onMouseMove={handleMouseMove}
+                onMouseEnter={() => handleMouseEnter(index)}
               >
                 <FontAwesomeIcon icon={faPlus} className="h-3 w-3 shrink-0 text-mineshaft-400" />
                 <span className="font-mono text-xs font-medium text-bunker-200">
@@ -449,7 +470,10 @@ export const AuditSearchFilter = ({
       )}
 
       {showSuggestionDropdown && (
-        <div className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
+        <div
+          ref={dropdownRef}
+          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg"
+        >
           <div className="py-2">
             {propertyKey === "actor_id" && !currentActorType ? (
               <>
@@ -463,9 +487,11 @@ export const AuditSearchFilter = ({
                         <button
                           key={`${suggestion.actorType}-${suggestion.value}`}
                           type="button"
+                          data-index={index}
                           className={dropdownRowClass(highlightedIndex === index)}
                           onClick={() => selectSuggestion(suggestion)}
-                          onMouseEnter={() => setHighlightedIndex(index)}
+                          onMouseMove={handleMouseMove}
+                onMouseEnter={() => handleMouseEnter(index)}
                         >
                           <FontAwesomeIcon
                             icon={faPlus}
@@ -494,9 +520,11 @@ export const AuditSearchFilter = ({
                         <button
                           key={`${suggestion.actorType}-${suggestion.value}`}
                           type="button"
+                          data-index={index}
                           className={dropdownRowClass(highlightedIndex === index)}
                           onClick={() => selectSuggestion(suggestion)}
-                          onMouseEnter={() => setHighlightedIndex(index)}
+                          onMouseMove={handleMouseMove}
+                onMouseEnter={() => handleMouseEnter(index)}
                         >
                           <FontAwesomeIcon
                             icon={faPlus}
@@ -523,9 +551,11 @@ export const AuditSearchFilter = ({
                   <button
                     key={suggestion.value}
                     type="button"
+                    data-index={index}
                     className={dropdownRowClass(highlightedIndex === index)}
                     onClick={() => selectSuggestion(suggestion)}
-                    onMouseEnter={() => setHighlightedIndex(index)}
+                    onMouseMove={handleMouseMove}
+                onMouseEnter={() => handleMouseEnter(index)}
                   >
                     <FontAwesomeIcon
                       icon={faPlus}
