@@ -149,7 +149,7 @@ export const groupServiceFactory = ({
     }
 
     const group = await groupDAL.transaction(async (tx) => {
-      const groupSlug = slug || slugify(`${name}-${alphaNumericNanoId(4)}`);
+      const groupSlug = slug ? slugify(slug) : slugify(`${name}-${alphaNumericNanoId(4)}`);
 
       const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
       if (existingGroup) {
@@ -268,27 +268,28 @@ export const groupServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    if (!isLinkedGroup && name) {
-      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
-      if (existingGroup && existingGroup.id !== id) {
-        throw new BadRequestError({
-          message: `Failed to update group with name '${name}'. Group with the same name already exists`
-        });
-      }
-    }
-
-    if (!isLinkedGroup && slug) {
-      const normalizedSlug = slugify(slug);
-      const existingGroupWithSlug = await groupDAL.findOne({ orgId: actorOrgId, slug: normalizedSlug });
-      if (existingGroupWithSlug && existingGroupWithSlug.id !== id) {
-        throw new BadRequestError({ message: `Group with slug "${normalizedSlug}" already exists` });
-      }
-    }
+    const normalizedSlug = slug ? slugify(slug) : undefined;
 
     const updatedGroup = await groupDAL.transaction(async (tx): Promise<TGroups> => {
+      if (!isLinkedGroup && name) {
+        const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
+        if (existingGroup && existingGroup.id !== id) {
+          throw new BadRequestError({
+            message: `Failed to update group with name '${name}'. Group with the same name already exists`
+          });
+        }
+      }
+
+      if (!isLinkedGroup && normalizedSlug) {
+        const existingGroupWithSlug = await groupDAL.findOne({ orgId: actorOrgId, slug: normalizedSlug }, tx);
+        if (existingGroupWithSlug && existingGroupWithSlug.id !== id) {
+          throw new BadRequestError({ message: `Group with slug "${normalizedSlug}" already exists` });
+        }
+      }
+
       const [nameSlugRow] =
         !isLinkedGroup && (name || slug)
-          ? await groupDAL.update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
+          ? await groupDAL.update({ id: group.id }, { name, slug: normalizedSlug }, tx)
           : [];
 
       if (role) {
