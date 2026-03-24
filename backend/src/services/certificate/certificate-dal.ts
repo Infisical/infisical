@@ -57,7 +57,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     profileIds,
     fromDate,
     toDate,
-    metadataFilter
+    metadataFilter,
+    extendedKeyUsage
   }: {
     projectId: string;
     friendlyName?: string;
@@ -68,6 +69,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     fromDate?: Date;
     toDate?: Date;
     metadataFilter?: Array<{ key: string; value?: string }>;
+    extendedKeyUsage?: string;
   }) => {
     try {
       interface CountResult {
@@ -146,6 +148,13 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       if (metadataFilter && metadataFilter.length > 0) {
         query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
+      }
+
+      if (extendedKeyUsage) {
+        // PostgreSQL array containment: extendedKeyUsages @> ARRAY['codeSigning']::text[]
+        query = query.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [
+          extendedKeyUsage
+        ]);
       }
 
       const count = await query.count("*").first();
@@ -358,6 +367,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         fromDate?: Date;
         toDate?: Date;
         metadataFilter?: Array<{ key: string; value?: string }>;
+        extendedKeyUsage?: string;
       }
     >,
     options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
@@ -379,6 +389,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         fromDate,
         toDate,
         metadataFilter,
+        extendedKeyUsage,
         ...regularFilters
       } = filter;
 
@@ -454,6 +465,13 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       if (metadataFilter && metadataFilter.length > 0) {
         query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
+      }
+
+      if (extendedKeyUsage) {
+        // PostgreSQL array containment: extendedKeyUsages @> ARRAY['codeSigning']::text[]
+        query = query.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [
+          extendedKeyUsage
+        ]);
       }
 
       if (permissionFilters) {

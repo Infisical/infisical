@@ -16,13 +16,23 @@ import {
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import {
+  CreateCodeSigningPolicySchema,
+  UpdateCodeSigningPolicySchema
+} from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
+import {
   CreatePamAccessPolicySchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-type TCreatePolicySchema = typeof CreatePamAccessPolicySchema | typeof CreateCertRequestPolicySchema;
-type TUpdatePolicySchema = typeof UpdatePamAccessPolicySchema | typeof UpdateCertRequestPolicySchema;
+type TCreatePolicySchema =
+  | typeof CreatePamAccessPolicySchema
+  | typeof CreateCertRequestPolicySchema
+  | typeof CreateCodeSigningPolicySchema;
+type TUpdatePolicySchema =
+  | typeof UpdatePamAccessPolicySchema
+  | typeof UpdateCertRequestPolicySchema
+  | typeof UpdateCodeSigningPolicySchema;
 
 export const registerApprovalPolicyEndpoints = ({
   server,
@@ -313,18 +323,29 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // To prevent type errors when accessing req.auth.user
-      if (req.auth.authMode !== AuthMode.JWT) {
-        throw new BadRequestError({ message: "You can only request access using JWT auth tokens." });
+      let requesterName: string;
+      let requesterEmail: string;
+      let machineIdentityId: string | undefined;
+
+      if (req.auth.authMode === AuthMode.JWT) {
+        requesterName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
+        requesterEmail = req.auth.user.email ?? "";
+      } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
+        requesterName = req.auth.identityName ?? "Machine Identity";
+        requesterEmail = "";
+        machineIdentityId = req.auth.identityId;
+      } else {
+        throw new BadRequestError({ message: "Unsupported auth mode for approval requests." });
       }
 
       const { request } = await server.services.approvalPolicy.createRequest(
         policyType,
         {
-          requesterName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
-          requesterEmail: req.auth.user.email ?? "",
+          requesterName,
+          requesterEmail,
+          machineIdentityId,
           ...req.body
         },
         req.permission

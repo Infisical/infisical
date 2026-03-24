@@ -3,8 +3,18 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
 
+import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
+import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
+import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { createNotification } from "@app/components/notifications";
-import { Button, Input } from "@app/components/v2";
+import {
+  Button,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableInput
+} from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
@@ -61,16 +71,11 @@ export const LoginLdapPage = () => {
         type: "error"
       });
     }
-
-    // TODO: add callback port support
-
-    // const callbackPort = queryParams.get("callback_port");
-    // window.open(`/api/v1/ldap/redirect/saml2/${ssoIdentifier}${callbackPort ? `?callback_port=${callbackPort}` : ""}`);
-    // window.close();
   };
 
   return (
-    <div className="flex h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="relative flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
+      <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -78,92 +83,71 @@ export const LoginLdapPage = () => {
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
-      <Link to="/">
-        <div className="mt-20 mb-4 flex justify-center">
-          <img
-            src="/images/gradientLogo.svg"
-            style={{
-              height: "90px",
-              width: "120px"
-            }}
-            alt="Infisical logo"
-          />
-        </div>
-      </Link>
-      <div className="mx-auto w-full max-w-md md:px-6">
-        <p className="mx-auto mb-8 flex w-max justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-          What&apos;s your LDAP Login?
-        </p>
-        <form onSubmit={handleSubmission}>
-          {!config.defaultAuthOrgSlug && !passedOrgSlug && (
-            <div className="relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
-              <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
-                <Input
-                  value={organizationSlug}
-                  onChange={(e) => setOrganizationSlug(e.target.value)}
+      <AuthPageHeader>
+        <Button asChild>
+          <Link to="/signup">Sign Up</Link>
+        </Button>
+      </AuthPageHeader>
+      <div className="relative z-10 my-auto flex flex-col items-center py-10">
+        <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
+          <UnstableCard className="w-full items-stretch gap-0 p-6">
+            <UnstableCardHeader className="mb-4 gap-4">
+              <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+                LDAP Login
+              </UnstableCardTitle>
+            </UnstableCardHeader>
+            <UnstableCardContent>
+              {!config.defaultAuthOrgSlug && !passedOrgSlug && (
+                <div className="w-full">
+                  <UnstableInput
+                    value={organizationSlug}
+                    onChange={(e) => setOrganizationSlug(e.target.value)}
+                    type="text"
+                    placeholder="Enter your organization slug..."
+                    required
+                    className="h-10"
+                  />
+                </div>
+              )}
+              <div className="mt-2 w-full">
+                <UnstableInput
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   type="text"
-                  placeholder="Enter your organization slug..."
-                  isRequired
-                  autoComplete="email"
-                  id="email"
-                  className="h-12"
+                  placeholder="Enter your LDAP username..."
+                  required
+                  disabled={passedUsername !== null}
+                  className="h-10"
                 />
               </div>
-            </div>
-          )}
-          <div className="relative mx-auto mt-2 flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
-            <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
-              <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                type="text"
-                placeholder="Enter your LDAP username..."
-                isRequired
-                autoComplete="email"
-                id="email"
-                className="h-12"
-                isDisabled={passedUsername !== null}
-              />
-            </div>
-          </div>
-          <div className="relative mx-auto mt-2 flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
-            <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
-              <Input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder="Enter your LDAP password..."
-                isRequired
-                autoComplete="current-password"
-                id="current-password"
-                className="select:-webkit-autofill:focus h-10"
-              />
-            </div>
-          </div>
-          <div className="mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center md:min-w-88 lg:w-1/6">
-            <Button
-              type="submit"
-              colorSchema="primary"
-              variant="outline_bg"
-              isFullWidth
-              className="h-14"
-            >
-              {t("login.login")}
-            </Button>
-          </div>
+              <div className="mt-2 w-full">
+                <UnstableInput
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type="password"
+                  placeholder="Enter your LDAP password..."
+                  required
+                  autoComplete="current-password"
+                  className="h-10"
+                />
+              </div>
+              <div className="mt-4 w-full">
+                <Button type="submit" variant="project" size="lg" isFullWidth>
+                  {t("login.login")}
+                </Button>
+              </div>
+              <div className="mt-6 flex flex-row justify-center text-xs text-label">
+                <button onClick={() => navigate({ to: "/login" })} type="button">
+                  <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                    {t("login.other-option")}
+                  </span>
+                </button>
+              </div>
+            </UnstableCardContent>
+          </UnstableCard>
         </form>
-        <div className="mt-4 flex flex-row items-center justify-center">
-          <button
-            onClick={() => {
-              navigate({ to: "/login" });
-            }}
-            type="button"
-            className="mt-2 cursor-pointer text-sm text-bunker-300 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
-          >
-            {t("login.other-option")}
-          </button>
-        </div>
       </div>
+      <AuthPageFooter />
     </div>
   );
 };

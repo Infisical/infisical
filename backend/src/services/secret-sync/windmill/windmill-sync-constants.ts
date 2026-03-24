@@ -6,5 +6,6 @@ export const WINDMILL_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Windmill",
   destination: SecretSync.Windmill,
   connection: AppConnection.Windmill,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

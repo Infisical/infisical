@@ -38,6 +38,10 @@ import {
   SanitizedAzureDnsConnectionSchema
 } from "@app/services/app-connection/azure-dns/azure-dns-connection-schema";
 import {
+  AzureEntraIdConnectionListItemSchema,
+  SanitizedAzureEntraIdConnectionSchema
+} from "@app/services/app-connection/azure-entra-id";
+import {
   AzureKeyVaultConnectionListItemSchema,
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
@@ -74,6 +78,10 @@ import {
   DNSMadeEasyConnectionListItemSchema,
   SanitizedDNSMadeEasyConnectionSchema
 } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-schema";
+import {
+  ExternalInfisicalConnectionListItemSchema,
+  SanitizedExternalInfisicalConnectionSchema
+} from "@app/services/app-connection/external-infisical";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -208,7 +216,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options,
-  ...SanitizedVenafiConnectionSchema.options
+  ...SanitizedAzureEntraIdConnectionSchema.options,
+  ...SanitizedVenafiConnectionSchema.options,
+  ...SanitizedExternalInfisicalConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -263,7 +273,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SshConnectionListItemSchema,
   DbtConnectionListItemSchema,
   OpenRouterConnectionListItemSchema,
-  VenafiConnectionListItemSchema
+  AzureEntraIdConnectionListItemSchema,
+  VenafiConnectionListItemSchema,
+  ExternalInfisicalConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

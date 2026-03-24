@@ -1,7 +1,7 @@
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-service";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -101,14 +101,12 @@ export const pkiDiscoveryQueueFactory = ({
     });
 
     void queueService
-      .queue(QueueName.PkiDiscoveryScan, QueueJobs.PkiDiscoveryScheduledScan, undefined, {
-        repeat: {
-          pattern: "0 2 * * *",
-          utc: true,
-          key: "pki-discovery-scheduled-scan"
-        },
-        jobId: "pki-discovery-scheduled-scan-cron"
-      })
+      .upsertJobScheduler(
+        QueueName.PkiDiscoveryScan,
+        `${JOB_SCHEDULER_PREFIX}:pki-discovery-scheduled-scan`,
+        { pattern: "0 2 * * *" },
+        { name: QueueJobs.PkiDiscoveryScheduledScan }
+      )
       .catch((err) => logger.error(err, "Failed to schedule PKI discovery cron"));
   };
 

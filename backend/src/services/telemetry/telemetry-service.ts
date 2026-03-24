@@ -8,9 +8,10 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
+import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
 export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
@@ -97,6 +98,55 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         );
       } catch (error) {
         logger.error(error);
+      }
+    }
+  };
+
+  const sendHubSpotSignupEvent = async (
+    email: string,
+    signupMethod: HubSpotSignupMethod,
+    firstName?: string,
+    lastName?: string
+  ) => {
+    const instanceType = licenseService.getInstanceType();
+    if (
+      appCfg.isProductionMode &&
+      instanceType === InstanceType.Cloud &&
+      appCfg.HUBSPOT_PORTAL_ID &&
+      appCfg.HUBSPOT_SIGNUP_FORM_ID
+    ) {
+      try {
+        const fields: { name: string; value: string }[] = [
+          { name: "email", value: email },
+          { name: "signup_method", value: signupMethod }
+        ];
+
+        const optionalFields: Record<string, string | undefined> = {
+          firstname: firstName,
+          lastname: lastName
+        };
+
+        for (const [name, value] of Object.entries(optionalFields)) {
+          if (value) fields.push({ name, value });
+        }
+
+        await request.post(
+          `https://api.hsforms.com/submissions/v3/integration/submit/${appCfg.HUBSPOT_PORTAL_ID}/${appCfg.HUBSPOT_SIGNUP_FORM_ID}`,
+          {
+            fields,
+            context: {
+              pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
+              pageName: "App Signup"
+            }
+          },
+          {
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        );
+      } catch (error) {
+        logger.error(error, "Failed to send HubSpot signup event");
       }
     }
   };
@@ -370,7 +420,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const identifyUser = (
+  const TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify";
+  const TELEMETRY_IDENTIFY_CACHE_TTL = 600; // 10 minutes
+
+  // In-memory fallback dedup set to limit blast radius during Redis outages
+  const inMemoryIdentifyDedup = new Set<string>();
+
+  const identifyUser = async (
     distinctId: string,
     properties: {
       email?: string;
@@ -381,12 +437,35 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       isMfaEnabled?: boolean;
       isEmailVerified?: boolean;
       superAdmin?: boolean;
-    }
+    },
+    { skipDedup }: { skipDedup?: boolean } = {}
   ) => {
     if (postHog && distinctId) {
       const instanceType = licenseService.getInstanceType();
       if (instanceType === InstanceType.Cloud) {
-        postHog.identify({ distinctId, properties });
+        if (!skipDedup) {
+          try {
+            const cacheKey = `${TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX}:${distinctId}`;
+            // Atomic SET NX + EX: only the first caller within the TTL window proceeds
+            const wasSet = await keyStore.setItemWithExpiryNX(cacheKey, TELEMETRY_IDENTIFY_CACHE_TTL, "1");
+            if (!wasSet) return;
+          } catch (error) {
+            logger.error(error, `Failed to check PostHog identify dedup cache for distinctId=${distinctId}`);
+            // In-memory fallback to limit blast radius during Redis outage
+            if (inMemoryIdentifyDedup.has(distinctId)) return;
+            inMemoryIdentifyDedup.add(distinctId);
+            const timer = setTimeout(
+              () => inMemoryIdentifyDedup.delete(distinctId),
+              TELEMETRY_IDENTIFY_CACHE_TTL * 1000
+            );
+            timer.unref();
+          }
+        }
+        try {
+          postHog.identify({ distinctId, properties });
+        } catch (err) {
+          logger.error(err, `Failed to call postHog.identify for distinctId=${distinctId}`);
+        }
       }
     }
   };
@@ -428,8 +507,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         }
 
         const distinctId = `identity-${identityId}`;
+        const enrichedProperties = {
+          ...properties,
+          actorType: ActorType.IDENTITY,
+          ...(properties.name ? { name: `[Machine Identity] ${properties.name}` } : {})
+        };
         try {
-          postHog.identify({ distinctId, properties });
+          postHog.identify({ distinctId, properties: enrichedProperties });
         } catch (err) {
           logger.error(err, `Failed to call postHog.identify for machine identity [identityId=${identityId}]`);
         }
@@ -439,12 +523,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
   const flushAll = async () => {
     if (postHog) {
-      await postHog.shutdownAsync();
+      await postHog.shutdown();
     }
   };
 
   return {
     sendLoopsEvent,
+    sendHubSpotSignupEvent,
     sendPostHogEvents,
     identifyUser,
     identifyIdentity,

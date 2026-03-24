@@ -47,6 +47,7 @@ export const ChefSyncListItemSchema = z
     connection: z.literal(AppConnection.Chef),
     destination: z.literal(SecretSync.Chef),
     canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true),
     enterprise: z.boolean()
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Chef] }));

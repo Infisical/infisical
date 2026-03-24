@@ -289,24 +289,30 @@ const Page = () => {
                       </UnstableAlertTitle>
                       <UnstableAlertDescription>
                         <p>
-                          This machine identity&apos;s authentication methods are managed by your
-                          {isSubOrgIdentity ? "sub-" : ""}organization. <br /> To make changes,{" "}
+                          This machine identity&apos;s authentication methods are managed by your{" "}
+                          {isSubOrgIdentity ? "sub-" : ""}organization
                           <OrgPermissionCan
                             I={OrgPermissionIdentityActions.Read}
                             an={OrgPermissionSubjects.Identity}
                           >
                             {(isAllowed) =>
                               isAllowed ? (
-                                <Link
-                                  to="/organizations/$orgId/identities/$identityId"
-                                  className="inline-block cursor-pointer text-foreground underline underline-offset-2"
-                                  params={{
-                                    identityId,
-                                    orgId: identityMembershipDetails.identity.orgId
-                                  }}
-                                >
-                                  go to {isSubOrgIdentity ? "sub-" : ""}organization access control
-                                </Link>
+                                <>
+                                  <span>
+                                    <br /> To make changes,{" "}
+                                  </span>
+                                  <Link
+                                    to="/organizations/$orgId/identities/$identityId"
+                                    className="inline-block cursor-pointer text-foreground underline underline-offset-2"
+                                    params={{
+                                      identityId,
+                                      orgId: identityMembershipDetails.identity.orgId
+                                    }}
+                                  >
+                                    go to {isSubOrgIdentity ? "sub-" : ""}organization access
+                                    control
+                                  </Link>
+                                </>
                               ) : null
                             }
                           </OrgPermissionCan>

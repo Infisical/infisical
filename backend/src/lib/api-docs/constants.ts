@@ -71,6 +71,7 @@ export enum ApiDocsTags {
   PkiAlerting = "PKI Alerting",
   PkiDiscovery = "PKI Discovery",
   PkiInstallations = "PKI Installations",
+  PkiSigners = "PKI Signers",
   PkiSubscribers = "PKI Subscribers",
   PkiAcme = "PKI ACME",
   SshCertificates = "SSH Certificates",
@@ -1022,7 +1023,9 @@ export const PROJECTS = {
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
     metadata:
-      "Filter by metadata key-value pairs. Each entry should have a key (required) and optionally a value to match against."
+      "Filter by metadata key-value pairs. Each entry should have a key (required) and optionally a value to match against.",
+    extendedKeyUsage:
+      "Filter by extended key usage. Only certificates containing this EKU will be returned (e.g. 'codeSigning', 'serverAuth')."
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
@@ -1414,7 +1417,10 @@ export const AUDIT_LOGS = {
     endDate: "The date to end the export at.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th audit log.",
     limit: "The number of audit logs to return.",
-    actor: "The actor to filter the audit logs by."
+    actor:
+      "The ID of a specific actor to filter audit logs by. For user actors this is the userId; for identity actors this is the identityId. When filtering non-user actor types, the actorType parameter must also be provided.",
+    actorType:
+      "The type of actor to filter audit logs by. Must be provided when the actor parameter targets a non-user actor type (e.g. identity, kmipClient)."
   }
 } as const;
 
@@ -2104,6 +2110,9 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   INSTALL_CERT_VENAFI: {
     caId: "The ID of the CA to install the certificate for via Venafi."
+  },
+  INSTALL_CERT_ADCS: {
+    caId: "The ID of the CA to install the certificate for via Azure AD CS."
   },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
@@ -2847,6 +2856,10 @@ export const SecretSyncs = {
     },
     FLYIO: {
       autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
+    },
+    AZURE_KEY_VAULT: {
+      disableCertificateImport:
+        "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
     }
   },
   DESTINATION_CONFIG: {
@@ -2865,6 +2878,11 @@ export const SecretSyncs = {
       owner: "The name of the GitHub account owner of the repository.",
       repo: "The name of the GitHub repository.",
       env: "The name of the GitHub environment."
+    },
+    AZURE_ENTRA_ID_SCIM: {
+      servicePrincipalId:
+        "The Object ID of the Azure Entra ID Enterprise Application service principal to sync the SCIM token to.",
+      servicePrincipalDisplayName: "The display name of the Azure Entra ID Enterprise Application service principal."
     },
     AZURE_KEY_VAULT: {
       vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",
@@ -3033,6 +3051,11 @@ export const SecretSyncs = {
       orgName: "The CircleCI organization name to sync secrets to.",
       projectId: "The CircleCI project ID to sync secrets to.",
       projectName: "The CircleCI project name to sync secrets to."
+    },
+    EXTERNAL_INFISICAL: {
+      projectId: "The ID of the project on the external Infisical instance to sync secrets to.",
+      environment: "The environment slug on the external Infisical instance to sync secrets to.",
+      secretPath: "The secret path on the external Infisical instance to sync secrets to."
     }
   }
 };
@@ -3128,6 +3151,13 @@ export const SecretRotations = {
       password:
         'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
     },
+    HP_ILO: {
+      username: "The username of the HP iLO account to rotate the password for.",
+      rotationMethod:
+        'Whether the rotation should be performed using "login-as-target" (the target user\'s own credentials) or "login-as-root" (the SSH connection\'s admin credentials). Defaults to "login-as-root".',
+      password:
+        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
+    },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {
         base: "The password requirements to use when generating the new password.",
@@ -3205,6 +3235,10 @@ export const SecretRotations = {
       password: "The name of the secret that the rotated password will be mapped to."
     },
     WINDOWS_LOCAL_ACCOUNT: {
+      username: "The name of the secret that the username will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
+    HP_ILO: {
       username: "The name of the secret that the username will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },

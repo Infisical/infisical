@@ -2,7 +2,7 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -28,13 +28,6 @@ export const certificateV3QueueServiceFactory = ({
     if (appCfg.isSecondaryInstance) {
       return;
     }
-
-    await queueService.stopRepeatableJob(
-      QueueName.CertificateV3AutoRenewal,
-      QueueJobs.CertificateV3DailyAutoRenewal,
-      { pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE, utc: true },
-      QueueName.CertificateV3AutoRenewal
-    );
 
     queueService.start(QueueName.CertificateV3AutoRenewal, async () => {
       try {
@@ -139,13 +132,12 @@ export const certificateV3QueueServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.CertificateV3AutoRenewal, QueueJobs.CertificateV3DailyAutoRenewal, undefined, {
-      jobId: QueueJobs.CertificateV3DailyAutoRenewal,
-      repeat: {
-        pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE,
-        key: QueueJobs.CertificateV3DailyAutoRenewal
-      }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.CertificateV3AutoRenewal,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.CertificateV3DailyAutoRenewal}`,
+      { pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE },
+      { name: QueueJobs.CertificateV3DailyAutoRenewal }
+    );
   };
 
   return {

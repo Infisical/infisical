@@ -39,6 +39,11 @@ type Props = {
   ) => void;
 };
 
+const EXTERNAL_CA_TYPES_WITH_RENEWAL = new Set([
+  CaSigningConfigType.VENAFI,
+  CaSigningConfigType.AZURE_ADCS
+]);
+
 export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) => {
   const { data } = useGetCa({
     caId,
@@ -75,7 +80,9 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
                     if (
                       ca.configuration.type === InternalCaType.INTERMEDIATE &&
                       !ca.configuration.parentCaId &&
-                      signingConfig?.type !== CaSigningConfigType.VENAFI
+                      !EXTERNAL_CA_TYPES_WITH_RENEWAL.has(
+                        signingConfig?.type as CaSigningConfigType
+                      )
                     ) {
                       handlePopUpOpen("installCaCert", {
                         caId: ca.id,

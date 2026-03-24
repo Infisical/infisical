@@ -21,7 +21,16 @@ export const ActiveDirectoryDiscoveryListItemSchema = z.object({
 export const ActiveDirectoryDiscoveryConfigurationSchema = z.object({
   domainFQDN: z.string().trim().min(1).max(255),
   dcAddress: z.string().trim().min(1).max(255),
-  port: z.coerce.number().int().min(1).max(65535)
+  ldapPort: z.coerce.number().int().min(1).max(65535),
+  useLdaps: z.boolean(),
+  winrmPort: z.coerce.number().int().min(1).max(65535),
+  useWinrmHttps: z.boolean(),
+  discoverDependencies: z.boolean(),
+  caCert: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional()
 });
 
 export const ActiveDirectoryDiscoveryCredentialsSchema = z.object({

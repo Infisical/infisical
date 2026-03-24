@@ -335,6 +335,10 @@ export const ROUTE_PATHS = Object.freeze({
     CertificateDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
+    ),
+    SignerDetailByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId"
     )
   },
   Ssh: {

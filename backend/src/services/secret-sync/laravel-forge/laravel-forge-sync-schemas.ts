@@ -66,6 +66,7 @@ export const LaravelForgeSyncListItemSchema = z
     name: z.literal("Laravel Forge"),
     connection: z.literal(AppConnection.LaravelForge),
     destination: z.literal(SecretSync.LaravelForge),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.LaravelForge] }));

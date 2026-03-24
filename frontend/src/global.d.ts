@@ -8,5 +8,6 @@ declare global {
       INTERCOM_ID?: string;
       TELEMETRY_CAPTURING_ENABLED: string;
     };
+    dataLayer?: Record<string, unknown>[];
   }
 }

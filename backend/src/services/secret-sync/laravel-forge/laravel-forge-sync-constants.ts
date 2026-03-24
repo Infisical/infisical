@@ -6,5 +6,6 @@ export const LARAVEL_FORGE_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Laravel Forge",
   destination: SecretSync.LaravelForge,
   connection: AppConnection.LaravelForge,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

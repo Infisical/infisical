@@ -183,6 +183,14 @@ export enum ProjectPermissionPkiCertificateInstallationActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCodeSigningActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Sign = "sign"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -326,6 +334,7 @@ export enum ProjectPermissionSub {
   PkiSyncs = "pki-syncs",
   PkiDiscovery = "pki-discovery",
   PkiCertificateInstallations = "pki-certificate-installations",
+  CodeSigners = "code-signers",
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
@@ -362,6 +371,10 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
   },
   [ProjectPermissionSub.Identity]: {
+    [ProjectPermissionIdentityActions.Read]: ["identityId"],
+    [ProjectPermissionIdentityActions.Create]: [],
+    [ProjectPermissionIdentityActions.Edit]: ["identityId"],
+    [ProjectPermissionIdentityActions.Delete]: ["identityId"],
     [ProjectPermissionIdentityActions.GrantPrivileges]: [
       "identityId",
       "assignableRole",
@@ -373,7 +386,12 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
       "identityId",
       "assignableSubject",
       "assignableAction"
-    ]
+    ],
+    [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
+    [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
+    [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
   },
   [ProjectPermissionSub.Groups]: {
     [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "assignableRole"],
@@ -470,10 +488,11 @@ export type CertificateAuthoritySubjectFields = {
 
 export type CertificateSubjectFields = {
   commonName?: string;
-  altNames?: string;
+  altNames?: string[];
   serialNumber?: string;
   friendlyName?: string;
   status?: string;
+  metadata?: { key: string; value: string }[];
 };
 
 export type CertificateProfileSubjectFields = {
@@ -532,6 +551,7 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionPkiDiscoveryActions, ProjectPermissionSub.PkiDiscovery]
   | [ProjectPermissionPkiCertificateInstallationActions, ProjectPermissionSub.PkiCertificateInstallations]
+  | [ProjectPermissionCodeSigningActions, ProjectPermissionSub.CodeSigners]
   | [
       ProjectPermissionActions,
       (
@@ -869,7 +889,8 @@ const SecretConditionV2Schema = z
     ]),
     secretTags: z
       .object({
-        [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+        [PermissionConditionOperators.$ALL]: PermissionConditionSchema[PermissionConditionOperators.$ALL]
       })
       .partial(),
     eventType: z.union([
@@ -1342,7 +1363,25 @@ const CertificateConditionSchema = z
           [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
-    ])
+    ]),
+    metadata: z.object({
+      [PermissionConditionOperators.$ELEMENTMATCH]: z
+        .object({
+          key: z
+            .object({
+              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+            })
+            .partial(),
+          value: z
+            .object({
+              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+            })
+            .partial()
+        })
+        .partial()
+    })
   })
   .partial();
 
@@ -1500,6 +1539,12 @@ const GeneralPermissionSchema = [
       .literal(ProjectPermissionSub.PkiCertificateInstallations)
       .describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPkiCertificateInstallationActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.CodeSigners).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCodeSigningActions).describe(
       "Describe what action an entity can take."
     )
   }),

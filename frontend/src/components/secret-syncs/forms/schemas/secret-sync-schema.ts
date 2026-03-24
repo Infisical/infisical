@@ -5,6 +5,7 @@ import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sy
 import { AwsSecretsManagerSyncDestinationSchema } from "./aws-secrets-manager-sync-destination-schema";
 import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configuration-sync-destination-schema";
 import { AzureDevOpsSyncDestinationSchema } from "./azure-devops-sync-destination-schema";
+import { AzureEntraIdScimSyncDestinationSchema } from "./azure-entra-id-scim-sync-destination-schema";
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
 import { BitbucketSyncDestinationSchema } from "./bitbucket-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
@@ -15,6 +16,7 @@ import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-de
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
+import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
@@ -71,7 +73,9 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   BitbucketSyncDestinationSchema,
   LaravelForgeSyncDestinationSchema,
   ChefSyncDestinationSchema,
-  CircleCISyncDestinationSchema
+  CircleCISyncDestinationSchema,
+  AzureEntraIdScimSyncDestinationSchema,
+  ExternalInfisicalSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

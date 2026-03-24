@@ -71,6 +71,12 @@ import {
   TValidateAzureDnsConnectionCredentialsSchema
 } from "./azure-dns/azure-dns-connection-types";
 import {
+  TAzureEntraIdConnection,
+  TAzureEntraIdConnectionConfig,
+  TAzureEntraIdConnectionInput,
+  TValidateAzureEntraIdConnectionCredentialsSchema
+} from "./azure-entra-id/azure-entra-id-connection-types";
+import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
   TAzureKeyVaultConnectionInput,
@@ -130,6 +136,12 @@ import {
   TDNSMadeEasyConnectionInput,
   TValidateDNSMadeEasyConnectionCredentialsSchema
 } from "./dns-made-easy/dns-made-easy-connection-types";
+import {
+  TExternalInfisicalConnection,
+  TExternalInfisicalConnectionConfig,
+  TExternalInfisicalConnectionInput,
+  TValidateExternalInfisicalConnectionCredentialsSchema
+} from "./external-infisical";
 import {
   TFlyioConnection,
   TFlyioConnectionConfig,
@@ -358,7 +370,9 @@ export type TAppConnection = { id: string } & (
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
+  | TAzureEntraIdConnection
   | TVenafiConnection
+  | TExternalInfisicalConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -421,7 +435,9 @@ export type TAppConnectionInput = { id: string } & (
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
+  | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
+  | TExternalInfisicalConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -513,7 +529,9 @@ export type TAppConnectionConfig =
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
   | TCircleCIConnectionConfig
-  | TVenafiConnectionConfig;
+  | TAzureEntraIdConnectionConfig
+  | TVenafiConnectionConfig
+  | TExternalInfisicalConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -567,7 +585,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema
-  | TValidateVenafiConnectionCredentialsSchema;
+  | TValidateAzureEntraIdConnectionCredentialsSchema
+  | TValidateVenafiConnectionCredentialsSchema
+  | TValidateExternalInfisicalConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

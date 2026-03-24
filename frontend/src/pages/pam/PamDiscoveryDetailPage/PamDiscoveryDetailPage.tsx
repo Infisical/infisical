@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -31,6 +31,9 @@ import {
   UnstableAlert,
   UnstableAlertDescription,
   UnstableAlertTitle,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
@@ -52,13 +55,14 @@ import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamDiscoveryActions } from "@app/context/ProjectPermissionContext/types";
 import { usePagination } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api";
+import { PamResourceType } from "@app/hooks/api/pam";
 import type {
-  PamDiscoveryType,
   TPamDiscoverySource,
   TPamDiscoverySourceRunProgress
 } from "@app/hooks/api/pamDiscovery";
 import {
   PAM_DISCOVERY_TYPE_MAP,
+  PamDiscoveryType,
   useDeletePamDiscoverySource,
   useGetDiscoveredAccounts,
   useGetDiscoveredResources,
@@ -172,8 +176,46 @@ const DiscoveryConfigurationSection = ({
           <DetailValue>{(source.discoveryConfiguration?.dcAddress as string) || "-"}</DetailValue>
         </Detail>
         <Detail>
-          <DetailLabel>Port</DetailLabel>
-          <DetailValue>{(source.discoveryConfiguration?.port as number) ?? "-"}</DetailValue>
+          <DetailLabel>LDAP Port</DetailLabel>
+          <DetailValue>
+            {(source.discoveryConfiguration?.ldapPort as number) ||
+              (source.discoveryConfiguration?.port as number) ||
+              "-"}
+            {Boolean(source.discoveryConfiguration?.useLdaps) && (
+              <Badge variant="info" className="ml-2">
+                LDAPS
+              </Badge>
+            )}
+          </DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>WinRM Port</DetailLabel>
+          <DetailValue>
+            {(source.discoveryConfiguration?.winrmPort as number) ?? "-"}
+            {Boolean(source.discoveryConfiguration?.useWinrmHttps) && (
+              <Badge variant="info" className="ml-2">
+                HTTPS
+              </Badge>
+            )}
+          </DetailValue>
+        </Detail>
+        {(source.discoveryConfiguration?.caCert as string) && (
+          <Detail>
+            <DetailLabel>CA Certificate</DetailLabel>
+            <DetailValue>
+              <Badge variant="success">Provided</Badge>
+            </DetailValue>
+          </Detail>
+        )}
+        <Detail>
+          <DetailLabel>Dependency Discovery</DetailLabel>
+          <DetailValue>
+            {source.discoveryConfiguration?.discoverDependencies ? (
+              <Badge variant="success">Enabled</Badge>
+            ) : (
+              <Badge variant="neutral">Disabled</Badge>
+            )}
+          </DetailValue>
         </Detail>
       </div>
     </div>
@@ -226,15 +268,22 @@ const formatDuration = (startedAt?: string | null, completedAt?: string | null):
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 };
 
-const formatWindowsFileTime = (fileTime?: string): string => {
-  if (!fileTime) return "-";
+const formatIsoDate = (isoDate?: string): string => {
+  if (!isoDate) return "-";
   try {
-    const ms = Number(BigInt(fileTime) / 10000n - 11644473600000n);
-    if (Number.isNaN(ms) || ms <= 0) return "-";
-    return format(new Date(ms), "MMM d, yyyy HH:mm");
+    return format(new Date(isoDate), "MM/dd/yy, HH:mm");
   } catch {
     return "-";
   }
+};
+
+const LiveDuration = ({ startedAt }: { startedAt: string }) => {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{formatDuration(startedAt, null)}</>;
 };
 
 const PROGRESS_BADGE_MAP: Record<string, "success" | "danger" | "info" | "neutral"> = {
@@ -264,7 +313,12 @@ const RunExpandedContent = ({
             <span className="text-xs font-medium tracking-wider text-muted uppercase">
               AD Enumeration
             </span>
-            <Badge variant={PROGRESS_BADGE_MAP[adEnum.status] || "info"}>{adEnum.status}</Badge>
+            <Badge
+              variant={PROGRESS_BADGE_MAP[adEnum.status] || "info"}
+              className={adEnum.status === "running" ? "animate-pulse" : undefined}
+            >
+              {adEnum.status}
+            </Badge>
             {adEnum.error && adEnum.error !== errorMessage && (
               <span className="text-xs text-red-400">{adEnum.error}</span>
             )}
@@ -275,7 +329,12 @@ const RunExpandedContent = ({
             <span className="text-xs font-medium tracking-wider text-muted uppercase">
               Dependency Scan
             </span>
-            <Badge variant={PROGRESS_BADGE_MAP[depScan.status] || "info"}>{depScan.status}</Badge>
+            <Badge
+              variant={PROGRESS_BADGE_MAP[depScan.status] || "info"}
+              className={depScan.status === "running" ? "animate-pulse" : undefined}
+            >
+              {depScan.status}
+            </Badge>
             {depScan.totalMachines !== undefined && (
               <span className="text-xs text-muted">
                 {depScan.scannedMachines ?? 0}/{depScan.totalMachines} machines
@@ -303,6 +362,13 @@ const RunExpandedContent = ({
           <span className="text-xs font-medium tracking-wider text-muted uppercase">
             Machine Errors
           </span>
+          <div className="mb-0.5 flex items-center gap-2 rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
+            <InfoIcon className="size-4 shrink-0" />
+            <span className="whitespace-pre-wrap">
+              Machines without WinRM enabled will fail with &quot;socket hang up&quot;. This is
+              expected for domain controllers and machines not configured for remote management.
+            </span>
+          </div>
           <div className="flex flex-col gap-1">
             {Object.entries(machineErrors).map(([host, err]) => (
               <div
@@ -322,27 +388,63 @@ const RunExpandedContent = ({
 
 const RunsTab = ({
   discoverySourceId,
-  discoveryType
+  discoveryType,
+  autoExpandLatestRunning,
+  onAutoExpandConsumed,
+  isDependencyDiscoveryDisabled
 }: {
   discoverySourceId: string;
   discoveryType: PamDiscoveryType;
+  autoExpandLatestRunning?: boolean;
+  onAutoExpandConsumed?: () => void;
+  isDependencyDiscoveryDisabled?: boolean;
 }) => {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
     initPerPage: 20
   });
 
-  const { data, isPending } = useListPamDiscoverySourceRuns(discoverySourceId, discoveryType, {
-    offset,
-    limit: perPage
-  });
+  const [isPolling, setIsPolling] = useState(false);
+
+  const { data, isPending } = useListPamDiscoverySourceRuns(
+    discoverySourceId,
+    discoveryType,
+    { offset, limit: perPage },
+    { refetchInterval: isPolling ? 3000 : false }
+  );
 
   const runs = data?.runs || [];
   const totalCount = data?.totalCount || 0;
+  const hasActiveRun = runs.some((r) => r.status === "running");
+
+  // Enable/disable polling based on whether any run is active
+  useEffect(() => {
+    setIsPolling(hasActiveRun);
+  }, [hasActiveRun]);
+
+  // Auto-expand the latest running run
+  useEffect(() => {
+    if (!autoExpandLatestRunning) return;
+    const runningRun = runs.find((r) => r.status === "running");
+    if (runningRun) {
+      setExpandedRunId(runningRun.id);
+      onAutoExpandConsumed?.();
+    }
+  }, [runs, autoExpandLatestRunning, onAutoExpandConsumed]);
   const COL_COUNT = 8;
 
   return (
     <div>
+      {discoveryType === PamDiscoveryType.ActiveDirectory && isDependencyDiscoveryDisabled && (
+        <UnstableAlert variant="org" className="mb-4">
+          <InfoIcon />
+          <UnstableAlertTitle>Dependency discovery is disabled</UnstableAlertTitle>
+          <UnstableAlertDescription>
+            Windows Services, Scheduled Tasks, and IIS App Pools will not be discovered. Enable
+            &quot;Discover Dependencies&quot; in the source configuration to scan for dependencies
+          </UnstableAlertDescription>
+        </UnstableAlert>
+      )}
       <UnstableTable>
         <UnstableTableHeader>
           <UnstableTableRow>
@@ -405,13 +507,22 @@ const RunsTab = ({
                       {run.startedAt ? format(new Date(run.startedAt), "MMM d, yyyy hh:mm a") : "-"}
                     </UnstableTableCell>
                     <UnstableTableCell className="text-muted">
-                      {formatDuration(run.startedAt, run.completedAt)}
+                      {run.status === "running" && run.startedAt ? (
+                        <LiveDuration startedAt={run.startedAt} />
+                      ) : (
+                        formatDuration(run.startedAt, run.completedAt)
+                      )}
                     </UnstableTableCell>
                     <UnstableTableCell className="text-muted capitalize">
                       {run.triggeredBy}
                     </UnstableTableCell>
                     <UnstableTableCell>
-                      <Badge variant={STATUS_BADGE_MAP[run.status] || "info"}>{run.status}</Badge>
+                      <Badge
+                        variant={STATUS_BADGE_MAP[run.status] || "info"}
+                        className={run.status === "running" ? "animate-pulse" : undefined}
+                      >
+                        {run.status}
+                      </Badge>
                     </UnstableTableCell>
                     <UnstableTableCell>
                       <Tooltip>
@@ -557,6 +668,7 @@ const ResourcesTab = ({
             <UnstableTableHead>Name</UnstableTableHead>
             <UnstableTableHead>Type</UnstableTableHead>
             <UnstableTableHead>OS Version</UnstableTableHead>
+            <UnstableTableHead>Deps.</UnstableTableHead>
             <UnstableTableHead>Last Discovered</UnstableTableHead>
             <UnstableTableHead>Status</UnstableTableHead>
           </UnstableTableRow>
@@ -564,14 +676,14 @@ const ResourcesTab = ({
         <UnstableTableBody>
           {isPending && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={5} className="text-center text-muted">
+              <UnstableTableCell colSpan={6} className="text-center text-muted">
                 Loading resources...
               </UnstableTableCell>
             </UnstableTableRow>
           )}
           {!isPending && resources.length === 0 && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={5}>
+              <UnstableTableCell colSpan={6}>
                 <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                   <UnstableEmptyHeader>
                     <UnstableEmptyTitle>No discovered resources</UnstableEmptyTitle>
@@ -614,6 +726,11 @@ const ResourcesTab = ({
                         ` ${resource.resourceInternalMetadata?.osVersionDetail}`}
                     </TooltipContent>
                   </Tooltip>
+                </UnstableTableCell>
+                <UnstableTableCell
+                  className={resource.dependencyCount ? "text-muted" : "text-mineshaft-500"}
+                >
+                  {resource.dependencyCount ?? 0}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {format(new Date(resource.lastDiscoveredAt), "MMM d, yyyy HH:mm")}
@@ -680,6 +797,7 @@ const AccountsTab = ({
             <UnstableTableHead>Name</UnstableTableHead>
             <UnstableTableHead>Resource</UnstableTableHead>
             <UnstableTableHead>Type</UnstableTableHead>
+            <UnstableTableHead>Deps.</UnstableTableHead>
             <UnstableTableHead>Last Logon</UnstableTableHead>
             <UnstableTableHead>Last Discovered</UnstableTableHead>
             <UnstableTableHead>Status</UnstableTableHead>
@@ -688,14 +806,14 @@ const AccountsTab = ({
         <UnstableTableBody>
           {isPending && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={6} className="text-center text-muted">
+              <UnstableTableCell colSpan={7} className="text-center text-muted">
                 Loading accounts...
               </UnstableTableCell>
             </UnstableTableRow>
           )}
           {!isPending && accounts.length === 0 && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={6}>
+              <UnstableTableCell colSpan={7}>
                 <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                   <UnstableEmptyHeader>
                     <UnstableEmptyTitle>No discovered accounts</UnstableEmptyTitle>
@@ -723,15 +841,36 @@ const AccountsTab = ({
                 }
               >
                 <UnstableTableCell className="font-medium">{account.accountName}</UnstableTableCell>
-                <UnstableTableCell className="text-muted">{account.resourceName}</UnstableTableCell>
-                <UnstableTableCell className="text-muted capitalize">
-                  {account.internalMetadata?.accountType ?? "-"}
+                <UnstableTableCell className="text-muted">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex max-w-36">
+                        <span className="truncate">{account.resourceName}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>{account.resourceName}</TooltipContent>
+                  </Tooltip>
+                </UnstableTableCell>
+                <UnstableTableCell>
+                  <div className="flex items-center gap-2">
+                    {account.resourceType === PamResourceType.ActiveDirectory && (
+                      <Badge variant="info">AD</Badge>
+                    )}
+                    <span className="text-muted capitalize">
+                      {account.internalMetadata?.accountType ?? "-"}
+                    </span>
+                  </div>
+                </UnstableTableCell>
+                <UnstableTableCell
+                  className={account.dependencyCount ? "text-muted" : "text-mineshaft-500"}
+                >
+                  {account.dependencyCount ?? 0}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
-                  {formatWindowsFileTime(account.internalMetadata?.lastLogonTimestamp)}
+                  {formatIsoDate(account.internalMetadata?.lastLogon)}
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
-                  {format(new Date(account.lastDiscoveredAt), "MMM d, yyyy HH:mm")}
+                  {format(new Date(account.lastDiscoveredAt), "MM/dd/yy, HH:mm")}
                 </UnstableTableCell>
                 <UnstableTableCell>
                   {account.isStale ? (
@@ -765,12 +904,31 @@ const PageContent = () => {
     discoveryType?: string;
     projectId?: string;
   };
+  const selectedTab = useSearch({
+    strict: false,
+    select: (el) => el.selectedTab
+  });
 
   const { discoverySourceId, projectId } = params;
   const discoveryType = params.discoveryType as PamDiscoveryType;
 
+  const handleTabChange = (tab: string) => {
+    navigate({
+      to: "/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId",
+      search: (prev) => ({ ...prev, selectedTab: tab }),
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        discoveryType,
+        discoverySourceId: discoverySourceId!
+      }
+    });
+  };
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [shouldAutoExpand, setShouldAutoExpand] = useState(false);
+  const handleAutoExpandConsumed = useCallback(() => setShouldAutoExpand(false), []);
 
   const { data: source, isPending } = useGetPamDiscoverySource(
     discoverySourceId || "",
@@ -818,6 +976,8 @@ const PageContent = () => {
         discoveryType: source.discoveryType
       });
       createNotification({ text: "Scan triggered successfully", type: "success" });
+      handleTabChange("runs");
+      setShouldAutoExpand(true);
     } catch {
       createNotification({ text: "Failed to trigger scan", type: "error" });
     }
@@ -862,22 +1022,6 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ProjectPermissionCan
-            I={ProjectPermissionPamDiscoveryActions.RunScan}
-            a={ProjectPermissionSub.PamDiscovery}
-          >
-            {(isAllowed) => (
-              <Button
-                variant="neutral"
-                onClick={handleTriggerScan}
-                isDisabled={!isAllowed}
-                isPending={triggerScanMutation.isPending}
-              >
-                <PlayIcon className="size-4" />
-                Trigger Scan
-              </Button>
-            )}
-          </ProjectPermissionCan>
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -927,30 +1071,62 @@ const PageContent = () => {
         </div>
 
         {/* Right Column - Tabbed Content */}
-        <div className="flex-1">
-          <Tabs defaultValue="runs">
-            <TabList>
-              <Tab value="runs">Runs</Tab>
-              <Tab value="resources">Resources</Tab>
-              <Tab value="accounts">Accounts</Tab>
-            </TabList>
-            <TabPanel value="runs">
-              <RunsTab discoverySourceId={source.id} discoveryType={source.discoveryType} />
-            </TabPanel>
-            <TabPanel value="resources">
-              <ResourcesTab
-                discoverySourceId={source.id}
-                discoveryType={source.discoveryType}
-                projectId={projectId!}
-              />
-            </TabPanel>
-            <TabPanel value="accounts">
-              <AccountsTab
-                discoverySourceId={source.id}
-                discoveryType={source.discoveryType}
-                projectId={projectId!}
-              />
-            </TabPanel>
+        <div className="flex w-full min-w-0">
+          <Tabs value={selectedTab} onValueChange={handleTabChange} className="w-full">
+            <UnstableCard className="py-3">
+              <UnstableCardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <TabList className="w-fit">
+                    <Tab value="runs">Runs</Tab>
+                    <Tab value="resources">Resources</Tab>
+                    <Tab value="accounts">Accounts</Tab>
+                  </TabList>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionPamDiscoveryActions.RunScan}
+                    a={ProjectPermissionSub.PamDiscovery}
+                  >
+                    {(isAllowed) => (
+                      <Button
+                        variant="neutral"
+                        onClick={handleTriggerScan}
+                        isDisabled={!isAllowed}
+                        isPending={triggerScanMutation.isPending}
+                      >
+                        <PlayIcon className="size-4" />
+                        Trigger Scan
+                      </Button>
+                    )}
+                  </ProjectPermissionCan>
+                </div>
+              </UnstableCardHeader>
+              <UnstableCardContent>
+                <TabPanel value="runs" className="p-0">
+                  <RunsTab
+                    discoverySourceId={source.id}
+                    discoveryType={source.discoveryType}
+                    autoExpandLatestRunning={shouldAutoExpand}
+                    onAutoExpandConsumed={handleAutoExpandConsumed}
+                    isDependencyDiscoveryDisabled={
+                      !source.discoveryConfiguration?.discoverDependencies
+                    }
+                  />
+                </TabPanel>
+                <TabPanel value="resources" className="p-0">
+                  <ResourcesTab
+                    discoverySourceId={source.id}
+                    discoveryType={source.discoveryType}
+                    projectId={projectId!}
+                  />
+                </TabPanel>
+                <TabPanel value="accounts" className="p-0">
+                  <AccountsTab
+                    discoverySourceId={source.id}
+                    discoveryType={source.discoveryType}
+                    projectId={projectId!}
+                  />
+                </TabPanel>
+              </UnstableCardContent>
+            </UnstableCard>
           </Tabs>
         </div>
       </div>

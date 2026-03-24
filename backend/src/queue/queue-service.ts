@@ -1,4 +1,4 @@
-import { Job, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
+import { Job, JobSchedulerJson, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TQueueJobs } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -51,6 +51,11 @@ import { TQueueJobsDALFactory } from "./queue-jobs-dal";
 import { PersistenceQueueStatus } from "./queue-types";
 
 const RECOVERY_BATCH_SIZE = 500;
+
+// Scheduler IDs are prefixed so they never collide with legacy repeatable-job
+// iteration IDs that may still be pending in Redis after the migration.
+// Bump the version if a future migration needs the same trick.
+export const JOB_SCHEDULER_PREFIX = "jsv1";
 
 export enum QueueName {
   // Internal queues for durable queue recovery
@@ -105,7 +110,8 @@ export enum QueueName {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
-  CaAutoRenewal = "ca-auto-renewal"
+  CaAutoRenewal = "ca-auto-renewal",
+  CertificateCleanup = "certificate-cleanup"
 }
 
 export enum QueueJobs {
@@ -176,7 +182,10 @@ export enum QueueJobs {
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
-  CaVenafiInstall = "ca-venafi-install-job"
+  CaVenafiInstall = "ca-venafi-install-job",
+  CaAdcsInstall = "ca-adcs-install-job",
+  CertificateCleanup = "certificate-cleanup-job",
+  DailySecretSyncRetry = "daily-secret-sync-retry-job"
 }
 
 export type TQueueOptions = {
@@ -189,6 +198,7 @@ export type TQueueOptions = {
     type: "exponential" | "fixed";
     delay: number;
   };
+  // @deprecated Use upsertJobScheduler instead.
   repeat?: {
     pattern?: string;
     every?: number;
@@ -386,6 +396,10 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.SecretSyncSendActionFailedNotifications;
         payload: TQueueSendSecretSyncActionFailedNotificationsDTO;
+      }
+    | {
+        name: QueueJobs.DailySecretSyncRetry;
+        payload: undefined;
       };
   [QueueName.SecretRotationV2]:
     | {
@@ -539,7 +553,15 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.CaVenafiInstall;
         payload: { caId: string; maxPathLength?: number };
+      }
+    | {
+        name: QueueJobs.CaAdcsInstall;
+        payload: { caId: string; maxPathLength?: number };
       };
+  [QueueName.CertificateCleanup]: {
+    name: QueueJobs.CertificateCleanup;
+    payload: undefined;
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -593,27 +615,47 @@ export type TQueueServiceFactory = {
     opts: TQueueOptions
   ) => Promise<void>;
   shutdown: () => Promise<void>;
+  // @deprecated Use removeJobScheduler instead.
   stopRepeatableJob: <T extends QueueName>(
     name: T,
     job: TQueueJobTypes[T]["name"],
     repeatOpt: RepeatOptions,
     jobId?: string
   ) => Promise<boolean | undefined>;
+  // @deprecated Use stopJobById for delayed jobs. Use removeJobScheduler for schedulers.
   stopRepeatableJobByJobId: <T extends QueueName>(name: T, jobId: string) => Promise<boolean>;
+  // @deprecated Use removeJobScheduler instead.
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
+  // @deprecated Use getJobSchedulers instead.
   getRepeatableJobs: (
     name: QueueName,
     startOffset?: number,
     endOffset?: number
-  ) => Promise<{ key: string; name: string; id: string | null }[]>;
+  ) => Promise<{ key: string; name: string; id?: string | null }[]>;
   getDelayedJobs: (
     name: QueueName,
     startOffset?: number,
     endOffset?: number
   ) => Promise<{ delay: number; timestamp: number; repeatJobKey?: string; data?: unknown }[]>;
   updateJobHeartbeat: <T extends QueueName>(queueName: T, jobId: string) => Promise<void>;
+  upsertJobScheduler: <T extends QueueName>(
+    name: T,
+    schedulerId: string,
+    repeatConfig: { pattern?: string; every?: number },
+    jobTemplate?: {
+      name?: TQueueJobTypes[T]["name"];
+      data?: TQueueJobTypes[T]["payload"];
+      opts?: {
+        removeOnComplete?: boolean | { count: number };
+        removeOnFail?: boolean | { count: number };
+        delay?: number;
+      };
+    }
+  ) => Promise<void>;
+  removeJobScheduler: <T extends QueueName>(name: T, schedulerId: string) => Promise<void>;
+  getJobSchedulers: (name: QueueName, start?: number, end?: number) => Promise<JobSchedulerJson[]>;
 };
 
 export const queueServiceFactory = (
@@ -622,15 +664,11 @@ export const queueServiceFactory = (
 ): TQueueServiceFactory => {
   const isClusterMode = Boolean(redisCfg?.REDIS_CLUSTER_HOSTS);
   const connection = buildRedisFromConfig(redisCfg);
-  const queueContainer = {} as Record<
-    QueueName,
-    Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
-  >;
+  const queueContainer: Partial<Record<QueueName, Queue<TQueueJobTypes[QueueName]["payload"], void, string>>> = {};
 
-  const workerContainer = {} as Record<
-    QueueName,
-    Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
-  >;
+  const workerContainer: Partial<
+    Record<QueueName, Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
+  > = {};
 
   const persistantQueues = new Set<QueueName>();
 
@@ -920,16 +958,18 @@ export const queueServiceFactory = (
         removeOnFail: true
       });
 
-      // Schedule reconciliation job (runs every 2 minute)
-      await queueContainer[QueueName.QueueInternalReconciliation].add(QueueJobs.QueueReconciliation, undefined, {
-        jobId: "queue-reconciliation-cron",
-        repeat: {
-          pattern: "*/2 * * * *",
-          key: "queue-reconciliation-cron"
-        },
-        removeOnComplete: true,
-        removeOnFail: true
-      });
+      // Schedule reconciliation job (runs every 2 minutes)
+      // Uses the wrapper which handles legacy repeatable + orphaned delayed job cleanup.
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      await upsertJobScheduler(
+        QueueName.QueueInternalReconciliation,
+        `${JOB_SCHEDULER_PREFIX}:queue-reconciliation-cron`,
+        { pattern: "*/2 * * * *" },
+        {
+          name: QueueJobs.QueueReconciliation,
+          opts: { removeOnComplete: true, removeOnFail: true }
+        }
+      );
 
       logger.info("Internal queue recovery and reconciliation workers started");
     }
@@ -995,7 +1035,7 @@ export const queueServiceFactory = (
       persistentQueueConfigs.set(name, persistenceConfig);
       persistantQueues.add(name);
 
-      workerContainer[name].on("active", (job) => {
+      workerContainer[name]?.on("active", (job) => {
         if (job.id) {
           void queueJobsDAL
             .update(
@@ -1012,7 +1052,7 @@ export const queueServiceFactory = (
         }
       });
 
-      workerContainer[name].on("completed", (job) => {
+      workerContainer[name]?.on("completed", (job) => {
         if (job.id) {
           void queueJobsDAL
             .update(
@@ -1028,7 +1068,7 @@ export const queueServiceFactory = (
         }
       });
 
-      workerContainer[name].on("failed", (job, error) => {
+      workerContainer[name]?.on("failed", (job, error) => {
         if (job?.id) {
           void queueJobsDAL.updateJobFailure(name, job.id, error.message).catch((err) => {
             logger.error(err, "Failed to update queue job status failed");
@@ -1045,7 +1085,7 @@ export const queueServiceFactory = (
     }
 
     const worker = workerContainer[name];
-    worker.on(event, listener);
+    worker?.on(event, listener);
   };
 
   const queue: TQueueServiceFactory["queue"] = async (name, job, data, opts) => {
@@ -1076,12 +1116,12 @@ export const queueServiceFactory = (
           tx
         );
         // if this fails transaction rollback happens
-        await q.add(job, data, finalOptions);
+        await q?.add(job, data, finalOptions);
       });
       return;
     }
 
-    await q.add(job, data, finalOptions);
+    await q?.add(job, data, finalOptions);
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {
@@ -1107,21 +1147,29 @@ export const queueServiceFactory = (
 
   const stopRepeatableJobByJobId: TQueueServiceFactory["stopRepeatableJobByJobId"] = async (name, jobId) => {
     const q = queueContainer[name];
+    if (!q) {
+      return true;
+    }
+
     const job = await q.getJob(jobId);
-    if (!job) return true;
-    if (!job.repeatJobKey) return true;
+    if (!job?.repeatJobKey) {
+      return true;
+    }
     await job.remove();
     return q.removeRepeatableByKey(job.repeatJobKey);
   };
 
   const stopRepeatableJobByKey: TQueueServiceFactory["stopRepeatableJobByKey"] = async (name, repeatJobKey) => {
     const q = queueContainer[name];
-    return q.removeRepeatableByKey(repeatJobKey);
+    if (!q) {
+      return true;
+    }
+    return q?.removeRepeatableByKey(repeatJobKey);
   };
 
   const stopJobById: TQueueServiceFactory["stopJobById"] = async (name, jobId) => {
     const q = queueContainer[name];
-    const job = await q.getJob(jobId);
+    const job = await q?.getJob(jobId);
 
     const isPersistantQueue = persistantQueues.has(name);
     if (isPersistantQueue) {
@@ -1133,16 +1181,14 @@ export const queueServiceFactory = (
 
   const clearQueue: TQueueServiceFactory["clearQueue"] = async (name) => {
     const q = queueContainer[name];
-    await q.drain();
+    await q?.drain();
   };
 
   const shutdown: TQueueServiceFactory["shutdown"] = async () => {
-    // Stop internal queue repeatable jobs
+    // Stop internal queue scheduler jobs
     try {
       const reconciliationQueue = queueContainer[QueueName.QueueInternalReconciliation];
-      if (reconciliationQueue) {
-        await reconciliationQueue.removeRepeatableByKey("queue-reconciliation-cron");
-      }
+      await reconciliationQueue?.removeJobScheduler(`${JOB_SCHEDULER_PREFIX}:queue-reconciliation-cron`);
     } catch {
       // Ignore errors during shutdown
     }
@@ -1160,6 +1206,98 @@ export const queueServiceFactory = (
     await queueJobsDAL.update({ queueName, jobId }, { lastHeartBeat: new Date() });
   };
 
+  const upsertJobScheduler: TQueueServiceFactory["upsertJobScheduler"] = async (
+    name,
+    schedulerId,
+    repeatConfig,
+    jobTemplate
+  ) => {
+    const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    // Remove legacy repeatable jobs that don't use the job scheduler prefix.
+    // This prevents duplicate execution after migrating from queue.add({repeat}) to upsertJobScheduler.
+    try {
+      const repeatableJobs = await q.getRepeatableJobs();
+      const legacyJobs = repeatableJobs.filter((job) => !job.key.startsWith(JOB_SCHEDULER_PREFIX));
+      await Promise.all(
+        legacyJobs.map((job) =>
+          q.removeRepeatableByKey(job.key).then(() => {
+            logger.info({ queue: name, key: job.key }, "Removed legacy repeatable job");
+          })
+        )
+      );
+    } catch (err) {
+      logger.error(err, `Failed to clean up legacy repeatable jobs for queue '${name}'`);
+    }
+
+    // Remove orphaned delayed jobs left behind by legacy repeatable schedules.
+    // removeRepeatableByKey cleans up the ZSET entry and its delayed job, but workers may
+    // have already processed the old delayed job and re-created the next iteration before
+    // the ZSET entry was removed. Runs before and after upsert to handle the race window.
+    const $removeLegacyDelayedJobs = async () => {
+      const delayedJobs = await q.getDelayed();
+      const legacyDelayedJobs = delayedJobs.filter(
+        (job) => job?.id?.startsWith("repeat:") && !job.id.includes(JOB_SCHEDULER_PREFIX)
+      );
+      await Promise.all(
+        legacyDelayedJobs.map((job) =>
+          job
+            .remove()
+            .then(() => {
+              logger.info({ queue: name, jobId: job.id }, "Removed orphaned legacy delayed job");
+            })
+            .catch((removeErr: unknown) => {
+              logger.warn(
+                { queue: name, jobId: job.id, error: removeErr },
+                "Failed to remove orphaned legacy delayed job"
+              );
+            })
+        )
+      );
+    };
+
+    try {
+      await $removeLegacyDelayedJobs();
+    } catch (err) {
+      logger.error(err, `Failed to clean up orphaned legacy delayed jobs for queue '${name}'`);
+    }
+
+    await q.upsertJobScheduler(
+      schedulerId,
+      { ...repeatConfig, utc: true },
+      {
+        name: jobTemplate?.name ?? schedulerId,
+        data: jobTemplate?.data,
+        opts: {
+          removeOnComplete: true,
+          removeOnFail: true,
+          ...jobTemplate?.opts
+        }
+      }
+    );
+
+    try {
+      await $removeLegacyDelayedJobs();
+    } catch (err) {
+      logger.error(err, `Failed second-pass cleanup of orphaned legacy delayed jobs for queue '${name}'`);
+    }
+  };
+
+  const removeJobScheduler: TQueueServiceFactory["removeJobScheduler"] = async (name, schedulerId) => {
+    const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    await q.removeJobScheduler(schedulerId);
+  };
+
+  const getJobSchedulers: TQueueServiceFactory["getJobSchedulers"] = async (name, startOffset, endOffset) => {
+    const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    return q.getJobSchedulers(startOffset, endOffset);
+  };
+
   return {
     initialize,
     start,
@@ -1173,6 +1311,9 @@ export const queueServiceFactory = (
     stopJobById,
     getRepeatableJobs,
     getDelayedJobs,
-    updateJobHeartbeat
+    updateJobHeartbeat,
+    upsertJobScheduler,
+    removeJobScheduler,
+    getJobSchedulers
   };
 };

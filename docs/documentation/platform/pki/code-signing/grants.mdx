@@ -1,0 +1,42 @@
+---
+title: "Grants"
+sidebarTitle: "Grants"
+description: "Learn how to view and manage signing grants."
+---
+
+A grant is the authorization that allows a user or machine identity to perform signing operations with a specific signer. Grants are automatically created when a [signing request](/documentation/platform/pki/code-signing/signing-requests) is fully approved.
+
+## Viewing Grants
+
+Head to **Code Signing > Approvals > Grants** to view all grants. You can filter by status:
+
+- **Active**: Grants that are currently valid and can be used for signing.
+- **Expired**: Grants that have expired (time window ended, signing quota exhausted, or TTL reached).
+- **Revoked**: Grants that were manually revoked by an administrator.
+
+![Grants page](/images/platform/pki/code-signing/grants.png)
+
+## Revoking a Grant
+
+Administrators can revoke an active grant at any time. To revoke a grant, press the **Revoke** action on the grant row and optionally provide a reason.
+
+Once revoked, the grant can no longer be used for signing operations. The user must request a new grant through the signing workflow.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="I approved a request but the grant wasn't issued">
+    If the signing policy has multiple steps, your approval may have completed only one step. The grant is issued only after all approval steps are completed. Check the request details to see which step is currently pending.
+  </Accordion>
+  <Accordion title="My grant expired before I finished signing">
+    Depending on the policy constraints:
+    - **Time Window**: Your valid until date has passed. Request a new grant with a longer window.
+    - **Max Signings**: You used all your allowed sign operations. Request a new grant with a higher count.
+  </Accordion>
+  <Accordion title="Can I extend an active grant?">
+    Grants cannot be extended. You need to create a new signing request for additional signing access.
+  </Accordion>
+  <Accordion title="What happens to in-flight signing operations when a grant is revoked?">
+    If a signing operation is already being processed when the grant is revoked, the operation will complete. Subsequent signing attempts with the revoked grant will be denied.
+  </Accordion>
+</AccordionGroup>

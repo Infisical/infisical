@@ -8,6 +8,7 @@ import { AwsIamUserSecretRotationParametersFields } from "./AwsIamUserSecretRota
 import { AzureClientSecretRotationParametersFields } from "./AzureClientSecretRotationParametersFields";
 import { DatabricksServicePrincipalSecretRotationParametersFields } from "./DatabricksServicePrincipalSecretRotationParametersFields";
 import { DbtServiceTokenRotationParametersFields } from "./DbtServiceTokenRotationParametersFields";
+import { HpIloRotationParametersFields } from "./HpIloRotationParametersFields";
 import { LdapPasswordRotationParametersFields } from "./LdapPasswordRotationParametersFields";
 import { MongoRotationParametersFields } from "./MongoRotationParametersFields";
 import { OktaClientSecretRotationParametersFields } from "./OktaClientSecretRotationParametersFields";
@@ -34,7 +35,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationParametersFields,
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationParametersFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationParametersFields,
-  [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationParametersFields
+  [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationParametersFields,
+  [SecretRotation.HpIloLocalAccount]: HpIloRotationParametersFields
 };
 
 export const SecretRotationV2ParametersFields = () => {

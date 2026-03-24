@@ -5,6 +5,7 @@ import { PermissionConditionOperators } from "@app/lib/casl";
 
 export const PermissionConditionSchema = {
   [PermissionConditionOperators.$IN]: z.string().trim().min(1).array(),
+  [PermissionConditionOperators.$ALL]: z.string().trim().min(1).array(),
   [PermissionConditionOperators.$EQ]: z.string().min(1),
   [PermissionConditionOperators.$NEQ]: z.string().min(1),
   [PermissionConditionOperators.$GLOB]: z

@@ -49,12 +49,14 @@ import {
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
+import { AzureEntraIdConnectionMethod } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
+import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -152,7 +154,9 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.SMB]: { name: "SMB", image: "SMB.png", size: 50 },
   [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
   [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" },
-  [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" }
+  [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
+  [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
+  [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -243,6 +247,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return { name: "API Key & Secret", icon: faKey };
     case AzureDNSConnectionMethod.ClientSecret:
+    case AzureEntraIdConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
@@ -252,6 +257,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "SSH Key", icon: faKey };
     case SmbConnectionMethod.Credentials:
       return { name: "Credentials", icon: faLock };
+    case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
+      return { name: "Machine Identity - Universal Auth", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

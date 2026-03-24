@@ -2,14 +2,17 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
+import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
+import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
+import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
-import EnterEmailStep from "@app/components/auth/EnterEmailStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { Button } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -25,7 +28,6 @@ export const SignUpPage = () => {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
   const { data: serverDetails } = useFetchServerStatus();
-  const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { t } = useTranslation();
   const { mutateAsync } = useVerifySignupEmailVerificationCode();
@@ -79,12 +81,8 @@ export const SignUpPage = () => {
   }, [step]);
 
   const renderView = (registerStep: number) => {
-    if (isSignupWithEmail && registerStep === 1) {
-      return <EnterEmailStep email={email} setEmail={setEmail} incrementStep={incrementStep} />;
-    }
-
-    if (!isSignupWithEmail && registerStep === 1) {
-      return <InitialSignupStep setIsSignupWithEmail={setIsSignupWithEmail} />;
+    if (registerStep === 1) {
+      return <InitialSignupStep email={email} setEmail={setEmail} incrementStep={incrementStep} />;
     }
 
     if (registerStep === 2) {
@@ -125,7 +123,8 @@ export const SignUpPage = () => {
   };
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
+      <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -133,10 +132,17 @@ export const SignUpPage = () => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <div className="mt-20 mb-4 flex justify-center">
-        <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
+      <AuthPageHeader>
+        <Button asChild>
+          <Link to="/login">Log In</Link>
+        </Button>
+      </AuthPageHeader>
+      <div className="relative z-10 my-auto flex flex-col items-center py-10">
+        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
+          {renderView(step)}
+        </form>
       </div>
-      <form onSubmit={(e) => e.preventDefault()}>{renderView(step)}</form>
+      <AuthPageFooter />
     </div>
   );
 };

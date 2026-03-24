@@ -2410,12 +2410,16 @@ export const certificateV3ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
-        altNames: certificate.altNames ?? undefined,
-        serialNumber: certificate.serialNumber
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certificate.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -2523,12 +2527,16 @@ export const certificateV3ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
-        altNames: certificate.altNames ?? undefined,
-        serialNumber: certificate.serialNumber
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certificate.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -2587,14 +2595,30 @@ export const certificateV3ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const currentMetadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
+    const currentMetadata = currentMetadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
-        altNames: certificate.altNames ?? undefined,
-        serialNumber: certificate.serialNumber
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certificate.serialNumber,
+        metadata: currentMetadata
       })
     );
+
+    if (metadata) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Edit,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificate.commonName,
+          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: certificate.serialNumber,
+          metadata
+        })
+      );
+    }
 
     let updatedMetadata: Array<{ key: string; value: string }> = [];
 
