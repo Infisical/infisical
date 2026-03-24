@@ -1156,6 +1156,7 @@ interface LoginIdentityUniversalAuthFailedEvent {
     clientId: string;
     identityId: string | null;
     reason: string;
+    message: string;
   };
 }
 

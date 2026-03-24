@@ -38,6 +38,7 @@ import { TIdentityUaDALFactory } from "./identity-ua-dal";
 import {
   TAttachUaDTO,
   TClearUaLockoutsDTO,
+  TCreateLoginFailedAuditLogDTO,
   TCreateUaClientSecretDTO,
   TGetUaClientSecretsDTO,
   TGetUaDTO,
@@ -45,7 +46,6 @@ import {
   TLoginUaDTO,
   TRevokeUaClientSecretDTO,
   TRevokeUaDTO,
-  TThrowUnauthorizedWithAuditLogDTO,
   TUpdateUaDTO
 } from "./identity-ua-types";
 
@@ -84,7 +84,7 @@ export const identityUaServiceFactory = ({
   identityDAL,
   auditLogService
 }: TIdentityUaServiceFactoryDep) => {
-  const throwUnauthorizedWithAuditLog = async ({
+  const createLoginFailedAuditLog = async ({
     message,
     clientId,
     identityId,
@@ -93,7 +93,7 @@ export const identityUaServiceFactory = ({
     ip,
     userAgent,
     userAgentType
-  }: TThrowUnauthorizedWithAuditLogDTO): Promise<never> => {
+  }: TCreateLoginFailedAuditLogDTO): Promise<void> => {
     await auditLogService.createAuditLog({
       actor: { type: ActorType.UNKNOWN_USER, metadata: {} },
       orgId,
@@ -102,17 +102,16 @@ export const identityUaServiceFactory = ({
       userAgentType,
       event: {
         type: EventType.LOGIN_IDENTITY_UA_AUTH_FAILED,
-        metadata: { clientId, identityId, reason }
+        metadata: { clientId, identityId, reason, message }
       }
     });
-    throw new UnauthorizedError({ message });
   };
 
   const login = async ({ clientId, clientSecret, ip, organizationSlug, userAgent, userAgentType }: TLoginUaDTO) => {
     const appCfg = getConfig();
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
-      await throwUnauthorizedWithAuditLog({
+      await createLoginFailedAuditLog({
         message: "Invalid credentials",
         clientId,
         identityId: null,
@@ -121,6 +120,7 @@ export const identityUaServiceFactory = ({
         userAgent,
         userAgentType
       });
+      throw new UnauthorizedError({ message: "Invalid credentials" });
     }
 
     const identity = await identityDAL.findById(identityUa.identityId);
@@ -146,7 +146,7 @@ export const identityUaServiceFactory = ({
       }
 
       if (lockout && lockout.lockedOut) {
-        await throwUnauthorizedWithAuditLog({
+        await createLoginFailedAuditLog({
           message: "This identity auth method is temporarily locked, please try again later",
           clientId,
           identityId: identityUa.identityId,
@@ -155,6 +155,9 @@ export const identityUaServiceFactory = ({
           ip,
           userAgent,
           userAgentType
+        });
+        throw new UnauthorizedError({
+          message: "This identity auth method is temporarily locked, please try again later"
         });
       }
 
@@ -197,7 +200,7 @@ export const identityUaServiceFactory = ({
             }
 
             if (lockout.lockedOut) {
-              await throwUnauthorizedWithAuditLog({
+              await createLoginFailedAuditLog({
                 message: "This identity auth method is temporarily locked, please try again later",
                 clientId,
                 identityId: identityUa.identityId,
@@ -206,6 +209,9 @@ export const identityUaServiceFactory = ({
                 ip,
                 userAgent,
                 userAgentType
+              });
+              throw new UnauthorizedError({
+                message: "This identity auth method is temporarily locked, please try again later"
               });
             }
 
@@ -234,7 +240,7 @@ export const identityUaServiceFactory = ({
           }
         }
 
-        await throwUnauthorizedWithAuditLog({
+        await createLoginFailedAuditLog({
           message: "Invalid credentials",
           clientId,
           identityId: identityUa.identityId,
@@ -244,6 +250,7 @@ export const identityUaServiceFactory = ({
           userAgent,
           userAgentType
         });
+        throw new UnauthorizedError({ message: "Invalid credentials" });
       } else if (lockout) {
         // If credentials are valid, clear any existing lockout record
         await keyStore.deleteItem(LOCKOUT_KEY);
@@ -261,7 +268,7 @@ export const identityUaServiceFactory = ({
             isClientSecretRevoked: true
           });
 
-          await throwUnauthorizedWithAuditLog({
+          await createLoginFailedAuditLog({
             message: "Access denied due to expired client secret",
             clientId,
             identityId: identityUa.identityId,
@@ -271,6 +278,7 @@ export const identityUaServiceFactory = ({
             userAgent,
             userAgentType
           });
+          throw new UnauthorizedError({ message: "Access denied due to expired client secret" });
         }
       }
 
@@ -280,7 +288,7 @@ export const identityUaServiceFactory = ({
         await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
           isClientSecretRevoked: true
         });
-        await throwUnauthorizedWithAuditLog({
+        await createLoginFailedAuditLog({
           message: "Access denied due to client secret usage limit reached",
           clientId,
           identityId: identityUa.identityId,
@@ -290,6 +298,7 @@ export const identityUaServiceFactory = ({
           userAgent,
           userAgentType
         });
+        throw new UnauthorizedError({ message: "Access denied due to client secret usage limit reached" });
       }
 
       const accessTokenTTLParams =
@@ -321,7 +330,7 @@ export const identityUaServiceFactory = ({
           });
 
           if (!subOrgMembership) {
-            await throwUnauthorizedWithAuditLog({
+            await createLoginFailedAuditLog({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
               clientId,
               identityId: identityUa.identityId,
@@ -330,6 +339,9 @@ export const identityUaServiceFactory = ({
               ip,
               userAgent,
               userAgentType
+            });
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${organizationSlug}`
             });
           }
 

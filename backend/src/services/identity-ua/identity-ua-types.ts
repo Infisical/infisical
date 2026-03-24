@@ -72,7 +72,7 @@ export type TGetUniversalAuthClientSecretByIdDTO = {
   clientSecretId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TThrowUnauthorizedWithAuditLogDTO = {
+export type TCreateLoginFailedAuditLogDTO = {
   message: string;
   clientId: string;
   identityId: string | null;
