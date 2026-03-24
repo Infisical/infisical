@@ -29,8 +29,16 @@ type Props = {
 export const ConstraintCard = ({ index, onRemove }: Props) => {
   const { control, watch } = useFormContext<TRuleForm>();
   const constraintType = watch(`enforcement.inputs.constraints.${index}.type`);
+  const allConstraints = watch("enforcement.inputs.constraints");
 
   const constraintOption = CONSTRAINT_OPTIONS.find((o) => o.type === constraintType);
+
+  // Determine which targets are already used by other constraints of the same type
+  const otherTargets = new Set(
+    allConstraints
+      ?.filter((c, i) => i !== index && c.type === constraintType)
+      .map((c) => c.appliesTo)
+  );
 
   const Icon = constraintOption?.icon;
   const placeholder = constraintOption?.placeholder;
@@ -66,8 +74,18 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value={ConstraintTarget.SecretKey}>Secret Key</SelectItem>
-                  <SelectItem value={ConstraintTarget.SecretValue}>Secret Value</SelectItem>
+                  <SelectItem
+                    value={ConstraintTarget.SecretKey}
+                    disabled={otherTargets.has(ConstraintTarget.SecretKey)}
+                  >
+                    Secret Key
+                  </SelectItem>
+                  <SelectItem
+                    value={ConstraintTarget.SecretValue}
+                    disabled={otherTargets.has(ConstraintTarget.SecretValue)}
+                  >
+                    Secret Value
+                  </SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -81,17 +99,20 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
             control={control}
             name={`enforcement.inputs.constraints.${index}.value`}
             render={({ field, fieldState: { error } }) => (
-              <UnstableInput
-                {...field}
-                type={
-                  constraintType === ConstraintType.MinLength ||
-                  constraintType === ConstraintType.MaxLength
-                    ? "number"
-                    : "text"
-                }
-                placeholder={placeholder?.toString() || undefined}
-                isError={Boolean(error)}
-              />
+              <div>
+                <UnstableInput
+                  {...field}
+                  type={
+                    constraintType === ConstraintType.MinLength ||
+                    constraintType === ConstraintType.MaxLength
+                      ? "number"
+                      : "text"
+                  }
+                  placeholder={placeholder?.toString() || undefined}
+                  isError={Boolean(error)}
+                />
+                {error?.message && <p className="mt-1 text-xs text-danger">{error.message}</p>}
+              </div>
             )}
           />
         </div>

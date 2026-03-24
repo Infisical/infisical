@@ -89,7 +89,16 @@ export const constraintSchema = z.object({
 });
 
 const staticSecretsInputsSchema = z.object({
-  constraints: z.array(constraintSchema).min(1, "At least one constraint is required")
+  constraints: z
+    .array(constraintSchema)
+    .min(1, "At least one constraint is required")
+    .refine(
+      (constraints) => {
+        const pairs = constraints.map((c) => `${c.type}:${c.appliesTo}`);
+        return new Set(pairs).size === pairs.length;
+      },
+      { message: "Duplicate constraint for the same target" }
+    )
 });
 
 export const ruleFormSchema = z.object({

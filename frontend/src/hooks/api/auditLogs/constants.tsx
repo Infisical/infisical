@@ -358,7 +358,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_DYNAMIC_SECRET_LEASE]: "Delete Dynamic Secret Lease",
   [EventType.RENEW_DYNAMIC_SECRET_LEASE]: "Renew Dynamic Secret Lease",
   [EventType.LIST_DYNAMIC_SECRET_LEASES]: "List Dynamic Secret Leases",
-  [EventType.GET_DYNAMIC_SECRET_LEASE]: "Get Dynamic Secret Lease"
+  [EventType.GET_DYNAMIC_SECRET_LEASE]: "Get Dynamic Secret Lease",
+
+  [EventType.SECRET_VALIDATION_RULE_CREATE]: "Create Secret Validation Rule",
+  [EventType.SECRET_VALIDATION_RULE_UPDATE]: "Update Secret Validation Rule",
+  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

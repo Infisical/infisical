@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -54,7 +55,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         name: z.string().trim().min(1).max(100),
         description: z.string().trim().max(500).nullable().optional(),
         environmentSlug: z.string().trim().min(1).optional(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().min(1),
         rule: SecretValidationRuleInputSchema
       }),
       response: {
@@ -78,6 +79,22 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         type: req.body.rule.type,
         inputs: req.body.rule.inputs
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.SECRET_VALIDATION_RULE_CREATE,
+          metadata: {
+            ruleId: rule.id,
+            name: rule.name,
+            type: rule.type,
+            environmentSlug: req.body.environmentSlug,
+            secretPath: rule.secretPath
+          }
+        }
+      });
+
       return { rule };
     }
   });
@@ -97,7 +114,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         name: z.string().trim().min(1).max(100).optional(),
         description: z.string().trim().max(500).nullable().optional(),
         environmentSlug: z.string().trim().min(1).optional(),
-        secretPath: z.string().trim().optional(),
+        secretPath: z.string().trim().min(1).optional(),
         type: z.nativeEnum(SecretValidationRuleType).optional(),
         inputs: staticSecretsInputsSchema.optional(),
         isActive: z.boolean().optional()
@@ -119,6 +136,23 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         ruleId: req.params.ruleId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.SECRET_VALIDATION_RULE_UPDATE,
+          metadata: {
+            ruleId: req.params.ruleId,
+            name: req.body.name,
+            type: req.body.type,
+            environmentSlug: req.body.environmentSlug,
+            secretPath: req.body.secretPath,
+            isActive: req.body.isActive
+          }
+        }
+      });
+
       return { rule };
     }
   });
@@ -150,6 +184,19 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         projectId: req.params.projectId,
         ruleId: req.params.ruleId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.SECRET_VALIDATION_RULE_DELETE,
+          metadata: {
+            ruleId: req.params.ruleId,
+            name: rule.name
+          }
+        }
+      });
+
       return { rule };
     }
   });

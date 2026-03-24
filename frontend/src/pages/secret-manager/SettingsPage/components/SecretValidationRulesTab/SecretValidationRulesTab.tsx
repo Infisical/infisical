@@ -113,9 +113,11 @@ const RuleFormContent = ({
   });
 
   const watchedConstraints = form.watch("enforcement.inputs.constraints");
-  const usedConstraintTypes = new Set(watchedConstraints?.map((c) => c.type));
+  const usedConstraintPairs = new Set(watchedConstraints?.map((c) => `${c.type}:${c.appliesTo}`));
   const availableConstraintOptions = CONSTRAINT_OPTIONS.filter(
-    (opt) => !usedConstraintTypes.has(opt.type)
+    (opt) =>
+      !usedConstraintPairs.has(`${opt.type}:${ConstraintTarget.SecretKey}`) ||
+      !usedConstraintPairs.has(`${opt.type}:${ConstraintTarget.SecretValue}`)
   );
 
   return (
@@ -131,7 +133,7 @@ const RuleFormContent = ({
           </div>
         )}
         <div
-          className={`thin-scrollbar flex-1 space-y-6 overflow-y-auto p-6 transition-opacity ${!isActive ? "pointer-events-none opacity-40" : ""}`}
+          className={`flex-1 space-y-6 p-6 transition-opacity ${!isActive ? "pointer-events-none opacity-40" : ""}`}
         >
           {/* Name & Description */}
           <div className="space-y-4">
@@ -216,7 +218,24 @@ const RuleFormContent = ({
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-muted">Folder Path</label>
+                <label className="text-xs font-medium text-muted">
+                  <div className="flex items-center gap-2">
+                    <p>Folder Path</p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-4 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-wrap">
+                        {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
+                        <p>
+                          The folder path is a glob pattern to match secret paths. As an example,
+                          /** will match all paths, /services/* will match all paths in the
+                          /services folder and its subfolders.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </label>
                 <Controller
                   control={control}
                   name="folderPath"
@@ -239,24 +258,33 @@ const RuleFormContent = ({
                     </Button>
                   </UnstableDropdownMenuTrigger>
                   <UnstableDropdownMenuContent align="end">
-                    {availableConstraintOptions.map((opt) => (
-                      <UnstableDropdownMenuItem
-                        key={opt.type}
-                        onClick={() =>
-                          append({
-                            type: opt.type,
-                            appliesTo: ConstraintTarget.SecretValue,
-                            value: ""
-                          })
-                        }
-                      >
-                        <opt.icon className="mr-2 size-4" />
-                        <div>
-                          <div className="text-sm">{opt.label}</div>
-                          <div className="text-xs text-muted">{opt.description}</div>
-                        </div>
-                      </UnstableDropdownMenuItem>
-                    ))}
+                    {availableConstraintOptions.map((opt) => {
+                      const valueUsed = usedConstraintPairs.has(
+                        `${opt.type}:${ConstraintTarget.SecretValue}`
+                      );
+                      const defaultTarget = valueUsed
+                        ? ConstraintTarget.SecretKey
+                        : ConstraintTarget.SecretValue;
+
+                      return (
+                        <UnstableDropdownMenuItem
+                          key={opt.type}
+                          onClick={() =>
+                            append({
+                              type: opt.type,
+                              appliesTo: defaultTarget,
+                              value: ""
+                            })
+                          }
+                        >
+                          <opt.icon className="mr-2 size-4" />
+                          <div>
+                            <div className="text-sm">{opt.label}</div>
+                            <div className="text-xs text-muted">{opt.description}</div>
+                          </div>
+                        </UnstableDropdownMenuItem>
+                      );
+                    })}
                   </UnstableDropdownMenuContent>
                 </UnstableDropdownMenu>
               )}
@@ -265,9 +293,11 @@ const RuleFormContent = ({
             {fields.length === 0 && (
               <div className="rounded-md border border-dashed border-border py-8 text-center">
                 <p className="text-sm text-muted">No constraints added yet</p>
-                {errors.enforcement?.inputs?.constraints?.root?.message && (
+                {(errors.enforcement?.inputs?.constraints?.root?.message ||
+                  errors.enforcement?.inputs?.constraints?.message) && (
                   <p className="mt-1 text-xs text-danger">
-                    {errors.enforcement?.inputs?.constraints?.root?.message}
+                    {errors.enforcement?.inputs?.constraints?.root?.message ||
+                      errors.enforcement?.inputs?.constraints?.message}
                   </p>
                 )}
               </div>
@@ -279,11 +309,14 @@ const RuleFormContent = ({
               ))}
             </div>
 
-            {fields.length > 0 && errors.enforcement?.inputs?.constraints?.root?.message && (
-              <p className="mt-1 text-xs text-danger">
-                {errors.enforcement?.inputs?.constraints?.root?.message}
-              </p>
-            )}
+            {fields.length > 0 &&
+              (errors.enforcement?.inputs?.constraints?.root?.message ||
+                errors.enforcement?.inputs?.constraints?.message) && (
+                <p className="mt-1 text-xs text-danger">
+                  {errors.enforcement?.inputs?.constraints?.root?.message ||
+                    errors.enforcement?.inputs?.constraints?.message}
+                </p>
+              )}
           </div>
         </div>
 
@@ -310,6 +343,7 @@ export const SecretValidationRulesTab = () => {
   const { currentProject } = useProject();
   const [sheetState, setSheetState] = useState<SheetState>({ open: false });
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const { data: rules = [], isLoading } = useListSecretValidationRules({
     projectId: currentProject.id
@@ -333,54 +367,42 @@ export const SecretValidationRulesTab = () => {
 
   const handleDelete = async () => {
     if (!deleteRuleId) return;
-    try {
-      await deleteRule.mutateAsync({ projectId: currentProject.id, ruleId: deleteRuleId });
-      createNotification({ text: "Rule deleted", type: "success" });
-    } catch {
-      createNotification({ text: "Failed to delete rule", type: "error" });
-    } finally {
-      setDeleteRuleId(null);
-    }
+    await deleteRule
+      .mutateAsync({ projectId: currentProject.id, ruleId: deleteRuleId })
+      .finally(() => setDeleteRuleId(null));
   };
 
   const handleClose = () => setSheetState({ open: false });
 
   const handleSubmit = async (data: TRuleForm, isActive?: boolean) => {
-    try {
-      if (sheetState.open && sheetState.mode === "edit") {
-        await updateRule.mutateAsync({
-          projectId: currentProject.id,
-          ruleId: sheetState.ruleId,
-          name: data.name,
-          description: data.description,
-          isActive,
-          environmentSlug: data.environment ?? undefined,
-          secretPath: data.folderPath,
+    if (sheetState.open && sheetState.mode === "edit") {
+      await updateRule.mutateAsync({
+        projectId: currentProject.id,
+        ruleId: sheetState.ruleId,
+        name: data.name,
+        description: data.description,
+        isActive,
+        environmentSlug: data.environment ?? undefined,
+        secretPath: data.folderPath,
+        type: data.enforcement.type as string as SecretValidationRuleType,
+        inputs: data.enforcement.inputs
+      });
+      createNotification({ text: "Rule updated", type: "success" });
+    } else {
+      await createRule.mutateAsync({
+        projectId: currentProject.id,
+        name: data.name,
+        description: data.description,
+        environmentSlug: data.environment ?? undefined,
+        secretPath: data.folderPath,
+        rule: {
           type: data.enforcement.type as string as SecretValidationRuleType,
           inputs: data.enforcement.inputs
-        });
-        createNotification({ text: "Rule updated", type: "success" });
-      } else {
-        await createRule.mutateAsync({
-          projectId: currentProject.id,
-          name: data.name,
-          description: data.description,
-          environmentSlug: data.environment ?? undefined,
-          secretPath: data.folderPath,
-          rule: {
-            type: data.enforcement.type as string as SecretValidationRuleType,
-            inputs: data.enforcement.inputs
-          }
-        });
-        createNotification({ text: "Rule created", type: "success" });
-      }
-      handleClose();
-    } catch {
-      createNotification({
-        text: `Failed to ${sheetState.open && sheetState.mode === "edit" ? "update" : "create"} rule`,
-        type: "error"
+        }
       });
+      createNotification({ text: "Rule created", type: "success" });
     }
+    handleClose();
   };
 
   const editingRule =
@@ -530,7 +552,12 @@ export const SecretValidationRulesTab = () => {
 
       <AlertDialog
         open={deleteRuleId !== null}
-        onOpenChange={(open) => !open && setDeleteRuleId(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteRuleId(null);
+            setDeleteConfirmation("");
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -539,9 +566,27 @@ export const SecretValidationRulesTab = () => {
               Are you sure you want to delete this rule? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="w-full pb-4">
+            <p className="mb-2 text-sm text-muted">
+              Enter the rule name{" "}
+              <span className="font-medium text-foreground">
+                {rules.find((r) => r.id === deleteRuleId)?.name}
+              </span>{" "}
+              to confirm the deletion
+            </p>
+            <UnstableInput
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              placeholder={rules.find((r) => r.id === deleteRuleId)?.name}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={handleDelete}>
+            <AlertDialogAction
+              variant="danger"
+              onClick={handleDelete}
+              disabled={deleteConfirmation !== rules.find((r) => r.id === deleteRuleId)?.name}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
