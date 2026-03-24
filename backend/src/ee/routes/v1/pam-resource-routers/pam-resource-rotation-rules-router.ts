@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -37,10 +38,26 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const rules = await server.services.pamResourceRotationRules.listByResourceId(
-        req.params.resourceId,
+      const { resourceId } = req.params;
+
+      const { rules, resource } = await server.services.pamResourceRotationRules.listByResourceId(
+        resourceId,
         req.permission
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: resource.projectId,
+        event: {
+          type: EventType.PAM_RESOURCE_ROTATION_RULE_LIST,
+          metadata: {
+            resourceId,
+            resourceName: resource.name,
+            count: rules.length
+          }
+        }
+      });
 
       return { rules };
     }
@@ -72,13 +89,33 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const rule = await server.services.pamResourceRotationRules.create(
+      const { resourceId } = req.params;
+
+      const { rule, resource } = await server.services.pamResourceRotationRules.create(
         {
-          resourceId: req.params.resourceId,
+          resourceId,
           ...req.body
         },
         req.permission
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: resource.projectId,
+        event: {
+          type: EventType.PAM_RESOURCE_ROTATION_RULE_CREATE,
+          metadata: {
+            resourceId,
+            resourceName: resource.name,
+            ruleId: rule.id,
+            ruleName: rule.name ?? undefined,
+            namePattern: rule.namePattern,
+            enabled: rule.enabled,
+            intervalSeconds: rule.intervalSeconds
+          }
+        }
+      });
 
       return { rule };
     }
@@ -111,12 +148,32 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const rule = await server.services.pamResourceRotationRules.updateById(
-        req.params.resourceId,
-        req.params.ruleId,
+      const { resourceId, ruleId } = req.params;
+
+      const { rule, resource } = await server.services.pamResourceRotationRules.updateById(
+        resourceId,
+        ruleId,
         req.body,
         req.permission
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: resource.projectId,
+        event: {
+          type: EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE,
+          metadata: {
+            resourceId,
+            resourceName: resource.name,
+            ruleId,
+            ruleName: req.body.name,
+            namePattern: req.body.namePattern,
+            enabled: req.body.enabled,
+            intervalSeconds: req.body.intervalSeconds
+          }
+        }
+      });
 
       return { rule };
     }
@@ -143,11 +200,29 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const rule = await server.services.pamResourceRotationRules.deleteById(
-        req.params.resourceId,
-        req.params.ruleId,
+      const { resourceId, ruleId } = req.params;
+
+      const { rule, resource } = await server.services.pamResourceRotationRules.deleteById(
+        resourceId,
+        ruleId,
         req.permission
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: resource.projectId,
+        event: {
+          type: EventType.PAM_RESOURCE_ROTATION_RULE_DELETE,
+          metadata: {
+            resourceId,
+            resourceName: resource.name,
+            ruleId,
+            ruleName: rule.name,
+            namePattern: rule.namePattern
+          }
+        }
+      });
 
       return { rule };
     }
@@ -176,11 +251,28 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const rules = await server.services.pamResourceRotationRules.reorderRules(
-        req.params.resourceId,
-        req.body.ruleIds,
+      const { resourceId } = req.params;
+      const { ruleIds } = req.body;
+
+      const { rules, resource } = await server.services.pamResourceRotationRules.reorderRules(
+        resourceId,
+        ruleIds,
         req.permission
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: resource.projectId,
+        event: {
+          type: EventType.PAM_RESOURCE_ROTATION_RULE_REORDER,
+          metadata: {
+            resourceId,
+            resourceName: resource.name,
+            ruleIds
+          }
+        }
+      });
 
       return { rules };
     }

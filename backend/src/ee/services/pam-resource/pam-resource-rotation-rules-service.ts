@@ -62,7 +62,8 @@ export const pamResourceRotationRulesServiceFactory = ({
       subject(ProjectPermissionSub.PamResources, { name: resource.name })
     );
 
-    return pamResourceRotationRulesDAL.findByResourceId(resourceId);
+    const rules = await pamResourceRotationRulesDAL.findByResourceId(resourceId);
+    return { rules, resource };
   };
 
   const create = async (
@@ -81,7 +82,7 @@ export const pamResourceRotationRulesServiceFactory = ({
     },
     actor: OrgServiceActor
   ) => {
-    await ensureEditPermission(resourceId, actor);
+    const resource = await ensureEditPermission(resourceId, actor);
 
     if (enabled && (intervalSeconds === undefined || intervalSeconds === null)) {
       throw new BadRequestError({ message: "Interval is required when the rule is enabled" });
@@ -94,7 +95,7 @@ export const pamResourceRotationRulesServiceFactory = ({
       throw new BadRequestError({ message: `Invalid glob pattern: ${namePattern}` });
     }
 
-    return pamResourceRotationRulesDAL.transaction(async (tx) => {
+    const rule = await pamResourceRotationRulesDAL.transaction(async (tx) => {
       const maxPriority = await pamResourceRotationRulesDAL.getMaxPriority(resourceId, tx);
 
       return pamResourceRotationRulesDAL.create(
@@ -109,6 +110,8 @@ export const pamResourceRotationRulesServiceFactory = ({
         tx
       );
     });
+
+    return { rule, resource };
   };
 
   const updateById = async (
@@ -122,17 +125,18 @@ export const pamResourceRotationRulesServiceFactory = ({
     },
     actor: OrgServiceActor
   ) => {
-    const rule = await pamResourceRotationRulesDAL.findById(ruleId);
-    if (!rule) throw new NotFoundError({ message: `Rotation rule with ID '${ruleId}' not found` });
+    const existingRule = await pamResourceRotationRulesDAL.findById(ruleId);
+    if (!existingRule) throw new NotFoundError({ message: `Rotation rule with ID '${ruleId}' not found` });
 
-    if (rule.resourceId !== resourceId) {
+    if (existingRule.resourceId !== resourceId) {
       throw new BadRequestError({ message: `Rule '${ruleId}' does not belong to resource '${resourceId}'` });
     }
 
-    await ensureEditPermission(rule.resourceId, actor);
+    const resource = await ensureEditPermission(existingRule.resourceId, actor);
 
-    const finalEnabled = updates.enabled ?? rule.enabled;
-    const finalInterval = updates.intervalSeconds !== undefined ? updates.intervalSeconds : rule.intervalSeconds;
+    const finalEnabled = updates.enabled ?? existingRule.enabled;
+    const finalInterval =
+      updates.intervalSeconds !== undefined ? updates.intervalSeconds : existingRule.intervalSeconds;
 
     if (finalEnabled && (finalInterval === undefined || finalInterval === null)) {
       throw new BadRequestError({ message: "Interval is required when the rule is enabled" });
@@ -146,24 +150,26 @@ export const pamResourceRotationRulesServiceFactory = ({
       }
     }
 
-    return pamResourceRotationRulesDAL.updateById(ruleId, updates);
+    const rule = await pamResourceRotationRulesDAL.updateById(ruleId, updates);
+    return { rule, resource };
   };
 
   const deleteById = async (resourceId: string, ruleId: string, actor: OrgServiceActor) => {
-    const rule = await pamResourceRotationRulesDAL.findById(ruleId);
-    if (!rule) throw new NotFoundError({ message: `Rotation rule with ID '${ruleId}' not found` });
+    const existingRule = await pamResourceRotationRulesDAL.findById(ruleId);
+    if (!existingRule) throw new NotFoundError({ message: `Rotation rule with ID '${ruleId}' not found` });
 
-    if (rule.resourceId !== resourceId) {
+    if (existingRule.resourceId !== resourceId) {
       throw new BadRequestError({ message: `Rule '${ruleId}' does not belong to resource '${resourceId}'` });
     }
 
-    await ensureEditPermission(rule.resourceId, actor);
+    const resource = await ensureEditPermission(existingRule.resourceId, actor);
 
-    return pamResourceRotationRulesDAL.deleteById(ruleId);
+    const rule = await pamResourceRotationRulesDAL.deleteById(ruleId);
+    return { rule, resource };
   };
 
   const reorderRules = async (resourceId: string, orderedRuleIds: string[], actor: OrgServiceActor) => {
-    await ensureEditPermission(resourceId, actor);
+    const resource = await ensureEditPermission(resourceId, actor);
 
     const existingRules = await pamResourceRotationRulesDAL.findByResourceId(resourceId);
     const existingIds = new Set(existingRules.map((r) => r.id));
@@ -196,7 +202,8 @@ export const pamResourceRotationRulesServiceFactory = ({
       }
     });
 
-    return pamResourceRotationRulesDAL.findByResourceId(resourceId);
+    const rules = await pamResourceRotationRulesDAL.findByResourceId(resourceId);
+    return { rules, resource };
   };
 
   return {

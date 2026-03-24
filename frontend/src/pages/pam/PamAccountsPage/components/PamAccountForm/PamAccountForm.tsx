@@ -87,7 +87,12 @@ const CreateForm = ({
       );
     case PamResourceType.MsSQL:
       return (
-        <MsSQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+        <MsSQLAccountForm
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
       );
     case PamResourceType.Redis:
       return (
@@ -184,7 +189,9 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
         <MySQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
       );
     case PamResourceType.MsSQL:
-      return <MsSQLAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <MsSQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.Redis:
       return (
         <RedisAccountForm

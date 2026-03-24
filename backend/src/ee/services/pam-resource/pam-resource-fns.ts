@@ -22,7 +22,6 @@ export const listResourceOptions = () => {
     getAwsIamResourceListItem(),
     getKubernetesResourceListItem(),
     getRedisResourceListItem(),
-    getSshResourceListItem(),
     getWindowsResourceListItem(),
     getActiveDirectoryResourceListItem(),
     getSshResourceListItem()

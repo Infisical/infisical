@@ -65,7 +65,7 @@ const CreateForm = ({ resourceType, closeSheet, projectId }: CreateFormProps) =>
     case PamResourceType.MySQL:
       return <MySQLResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.MsSQL:
-      return <MsSQLResourceForm onSubmit={onSubmit} />;
+      return <MsSQLResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.Redis:
       return <RedisResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.SSH:
@@ -118,7 +118,7 @@ const UpdateForm = ({ resource, closeSheet }: UpdateFormProps) => {
     case PamResourceType.MySQL:
       return <MySQLResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.MsSQL:
-      return <MsSQLResourceForm resource={resource} onSubmit={onSubmit} />;
+      return <MsSQLResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.Redis:
       return <RedisResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.SSH:
