@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faGripVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -53,6 +54,19 @@ type Props = {
   projectSlug: string;
   editValues?: TAccessApprovalPolicy;
 };
+
+const durationSchema = z
+  .string()
+  .trim()
+  .nullish()
+  .refine(
+    (val) => {
+      if (!val || val === "never") return true;
+      const parsed = ms(val);
+      return typeof parsed === "number" && parsed > 0;
+    },
+    { message: "Invalid duration format. Use formats like '1h', '3d', '72h'." }
+  );
 
 const formSchema = z
   .object({
@@ -106,8 +120,8 @@ const formSchema = z
       .array()
       .default([])
       .optional(),
-    maxTimePeriod: z.string().trim().nullish(),
-    requestExpirationTime: z.string().trim().nullish()
+    maxTimePeriod: durationSchema,
+    requestExpirationTime: durationSchema
   })
   .superRefine((data, ctx) => {
     if (data.policyType === PolicyType.ChangePolicy) {

@@ -231,7 +231,8 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const approval = await accessApprovalRequestDAL.transaction(async (tx) => {
-      const expiresAt = policy.requestExpirationTime ? new Date(Date.now() + ms(policy.requestExpirationTime)) : null;
+      const parsedMs = policy.requestExpirationTime ? ms(policy.requestExpirationTime) : null;
+      const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
       const approvalRequest = await accessApprovalRequestDAL.create(
         {
