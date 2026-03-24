@@ -297,22 +297,51 @@ export const secretValidationRuleServiceFactory = ({
   /**
    * Fetch all rules for a project and enforce them against the given secrets.
    * Called by secret write paths before the DB transaction starts.
+   *
+   * When `expandSecretReferences` is provided, secret values containing
+   * interpolation references (e.g. `${env.key}`) will be expanded to their
+   * resolved values before validation so that constraints apply to the true
+   * secret value rather than the raw reference string.
    */
   const validateSecrets = async ({
     projectId,
+    environment,
     envId,
     secretPath,
-    secrets
+    secrets,
+    expandSecretReferences
   }: {
     projectId: string;
+    environment: string;
     envId: string;
     secretPath: string;
     secrets: { key: string; value?: string }[];
+    expandSecretReferences?: (input: {
+      value?: string;
+      secretPath: string;
+      environment: string;
+      secretKey: string;
+    }) => Promise<string | undefined>;
   }) => {
     if (!secrets.length) return;
 
     const rules = await secretValidationRuleDAL.find({ projectId, isActive: true });
     if (!rules.length) return;
+
+    let resolvedSecrets = secrets;
+    if (expandSecretReferences) {
+      resolvedSecrets = await Promise.all(
+        secrets.map(async (s) => ({
+          key: s.key,
+          value: await expandSecretReferences({
+            value: s.value,
+            secretPath,
+            environment,
+            secretKey: s.key
+          })
+        }))
+      );
+    }
 
     const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -329,7 +358,7 @@ export const secretValidationRuleServiceFactory = ({
       })),
       envId,
       secretPath,
-      secrets
+      secrets: resolvedSecrets
     });
   };
 
