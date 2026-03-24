@@ -76,8 +76,8 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
         200: z.object({
           iamUsers: z
             .object({
-              UserName: z.string().optional(),
-              Arn: z.string().optional()
+              UserName: z.string(),
+              Arn: z.string()
             })
             .array()
         })
@@ -94,7 +94,12 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
         req.permission
       );
 
-      return { iamUsers };
+      return {
+        iamUsers: iamUsers.map((user) => ({
+          UserName: user.UserName ?? "",
+          Arn: user.Arn ?? ""
+        }))
+      };
     }
   });
 };

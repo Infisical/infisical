@@ -217,8 +217,9 @@ const getParameterStoreTagsRecord = async (
         })
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      awsParameterStoreTagsRecord[key] = Object.fromEntries(tags.TagList?.map((tag) => [tag.Key, tag.Value]) ?? []);
+      awsParameterStoreTagsRecord[key] = Object.fromEntries(
+        tags.TagList?.map((tag) => [tag.Key ?? "", tag.Value ?? ""]) ?? []
+      );
     } catch (e) {
       // users aren't required to provide tag permissions to use sync so we handle gracefully if unauthorized
       // and they aren't trying to configure tags

@@ -89,9 +89,9 @@ const listAwsKmsKeys = async (
 };
 
 const listAwsIamUsers = async (appConnection: TAwsConnection) => {
-  const { credentials } = await getAwsConnectionConfig(appConnection);
+  const { region, credentials } = await getAwsConnectionConfig(appConnection);
 
-  const iam = new IAMClient({ credentials });
+  const iam = new IAMClient({ credentials, region });
 
   const userEntries: User[] = [];
   let userMarker: string | undefined;
