@@ -3516,7 +3516,9 @@ export const SECRET_SHARING = {
     accessType:
       "Determines who can access the shared secret. 'organization' restricts access to users within your organization. 'anyone' allows access to anyone with the link. Defaults to 'organization'.",
     authorizedEmails:
-      "An optional array of email addresses that are authorized to view this secret. Only users with these email addresses will be able to access the secret. Maximum 100 emails."
+      "An optional array of email addresses that are authorized to view this secret. Only users with these email addresses will be able to access the secret. Maximum 100 emails.",
+    allowUnauthorizedEmails:
+      "When true, emails not belonging to organization members are allowed. External recipients will receive the secret link via email and must use the password to access it."
   },
   DELETE: {
     id: "The ID of the shared secret to delete."

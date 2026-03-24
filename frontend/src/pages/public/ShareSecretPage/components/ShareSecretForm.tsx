@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faRedo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -65,7 +65,8 @@ const schema = z.object({
       {
         message: "Must be a comma-separated list of valid emails (max 100) or empty."
       }
-    )
+    ),
+  allowUnauthorizedEmails: z.boolean().optional()
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -108,7 +109,8 @@ export const ShareSecretForm = ({
     reset,
     handleSubmit,
     formState: { isSubmitting },
-    watch
+    watch,
+    setValue
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -121,6 +123,17 @@ export const ShareSecretForm = ({
   });
 
   const isLimitingView = watch("shouldLimitView");
+  const isAllowingUnauthorizedEmails = watch("allowUnauthorizedEmails");
+  const accessType = watch("accessType");
+
+  const isOrgAccess =
+    accessType === SecretSharingAccessType.Organization || !allowSecretSharingOutsideOrganization;
+
+  useEffect(() => {
+    if (isOrgAccess) {
+      setValue("allowUnauthorizedEmails", false);
+    }
+  }, [isOrgAccess, setValue]);
 
   const onFormSubmit = async ({
     name,
@@ -128,9 +141,9 @@ export const ShareSecretForm = ({
     secret,
     expiresIn,
     viewLimit,
-    accessType,
     emails,
-    shouldLimitView
+    shouldLimitView,
+    allowUnauthorizedEmails
   }: FormData) => {
     const processedEmails = emails ? emails.split(",").map((e) => e.trim()) : undefined;
 
@@ -141,7 +154,8 @@ export const ShareSecretForm = ({
       expiresIn,
       maxViews: shouldLimitView ? Number(viewLimit) : undefined,
       accessType,
-      authorizedEmails: processedEmails
+      emails: processedEmails,
+      allowUnauthorizedEmails
     });
 
     if (processedEmails && processedEmails.length > 0) {
@@ -388,37 +402,78 @@ export const ShareSecretForm = ({
                 )}
               </div>
               {!isPublic && (
-                <Controller
-                  control={control}
-                  name="emails"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Authorized Emails"
-                      isOptional
-                      helperText="Recipients must have an Infisical account to verify identity"
-                      tooltipText={
-                        <>
+                <>
+                  <Controller
+                    control={control}
+                    name="emails"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Authorized Emails"
+                        isOptional
+                        helperText={
+                          isAllowingUnauthorizedEmails
+                            ? "External recipients will receive a link and need the password to access the secret."
+                            : "Recipients must have an Infisical account to verify identity"
+                        }
+                        tooltipText={
+                          <>
+                            <p>
+                              Unique secret links will be emailed to each individual. The secret
+                              will only be accessible to those links.
+                            </p>
+                            <p className="mt-2">
+                              {isAllowingUnauthorizedEmails
+                                ? "External recipients (not in your organization) will need the password to view the secret. Authorized recipients will be able to view the secret without a password."
+                                : "Recipients must have an Infisical account to verify their identity."}
+                            </p>
+                          </>
+                        }
+                        tooltipClassName="max-w-sm"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <Input
+                          {...field}
+                          placeholder="user1@example.com, user2@example.com"
+                          autoComplete="off"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="allowUnauthorizedEmails"
+                    render={({
+                      field: { onChange, value: isChecked, ...field },
+                      fieldState: { error }
+                    }) => (
+                      <FormControl
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                        tooltipText={
                           <p>
-                            Unique secret links will be emailed to each individual. The secret will
-                            only be accessible to those links.
+                            When enabled, emails not registered in Infisical will receive the secret
+                            link via email but will need the password to access the secret.
                           </p>
-                          <p className="mt-2">
-                            Recipients must have an Infisical account to verify their identity.
-                          </p>
-                        </>
-                      }
-                      tooltipClassName="max-w-sm"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        {...field}
-                        placeholder="user1@example.com, user2@example.com"
-                        autoComplete="off"
-                      />
-                    </FormControl>
-                  )}
-                />
+                        }
+                        tooltipClassName="max-w-sm"
+                      >
+                        <Switch
+                          className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${isOrgAccess ? "opacity-50" : ""}`}
+                          thumbClassName="bg-mineshaft-800"
+                          containerClassName="flex-row-reverse w-fit"
+                          isChecked={isOrgAccess ? false : (isChecked ?? false)}
+                          onCheckedChange={onChange}
+                          isDisabled={isOrgAccess}
+                          id="allow-unauthorized-emails"
+                          {...field}
+                        >
+                          Allow unauthorized emails
+                        </Switch>
+                      </FormControl>
+                    )}
+                  />
+                </>
               )}
             </AccordionContent>
           </AccordionItem>

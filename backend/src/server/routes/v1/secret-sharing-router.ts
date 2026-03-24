@@ -266,14 +266,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             .nativeEnum(SecretSharingAccessType)
             .default(SecretSharingAccessType.Organization)
             .describe(SECRET_SHARING.CREATE.accessType),
-          authorizedEmails: z
+          emails: z
             .string()
             .email()
             .array()
             .max(100)
             .optional()
             .transform((val) => (val ? [...new Set(val)] : undefined))
-            .describe(SECRET_SHARING.CREATE.authorizedEmails)
+            .describe(SECRET_SHARING.CREATE.authorizedEmails),
+          allowUnauthorizedEmails: z.boolean().optional().describe(SECRET_SHARING.CREATE.allowUnauthorizedEmails)
         })
         .superRefine((data, ctx) => {
           const duration = ms(data.expiresIn);
