@@ -618,7 +618,7 @@ export const accessApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "The request has been closed" });
     }
 
-    if (accessApprovalRequest.expiresAt && new Date() > accessApprovalRequest.expiresAt) {
+    if (accessApprovalRequest.expiresAt && new Date() > new Date(accessApprovalRequest.expiresAt)) {
       throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
     }
 

@@ -31,6 +31,9 @@ const maxTimePeriodSchema = z
     return val;
   });
 
+const MIN_EXPIRATION_MS = 60 * 1000; // 1 minute
+const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+
 const requestExpirationTimeSchema = z
   .string()
   .trim()
@@ -47,6 +50,23 @@ const requestExpirationTimeSchema = z
       });
       return z.NEVER;
     }
+
+    if (parsedMs < MIN_EXPIRATION_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Request expiration time must be at least 1 minute."
+      });
+      return z.NEVER;
+    }
+
+    if (parsedMs > MAX_EXPIRATION_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Request expiration time cannot exceed 1 year."
+      });
+      return z.NEVER;
+    }
+
     return val;
   });
 

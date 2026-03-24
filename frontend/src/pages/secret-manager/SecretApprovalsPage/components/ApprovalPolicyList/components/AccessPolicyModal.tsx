@@ -55,18 +55,40 @@ type Props = {
   editValues?: TAccessApprovalPolicy;
 };
 
+const MIN_EXPIRATION_MS = 60 * 1000; // 1 minute
+const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+
 const durationSchema = z
   .string()
   .trim()
   .nullish()
-  .refine(
-    (val) => {
-      if (!val || val === "never") return true;
-      const parsed = ms(val);
-      return typeof parsed === "number" && parsed > 0;
-    },
-    { message: "Invalid duration format. Use formats like '1h', '3d', '72h'." }
-  );
+  .superRefine((val, ctx) => {
+    if (!val || val === "never") return;
+    const parsed = ms(val);
+
+    if (typeof parsed !== "number" || parsed <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid duration format. Use formats like '1h', '3d', '72h'."
+      });
+      return;
+    }
+
+    if (parsed < MIN_EXPIRATION_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Duration must be at least 1 minute."
+      });
+      return;
+    }
+
+    if (parsed > MAX_EXPIRATION_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Duration cannot exceed 1 year."
+      });
+    }
+  });
 
 const formSchema = z
   .object({
@@ -460,7 +482,7 @@ const Form = ({
                 label="Policy Name"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                className="flex-1"
+                className="min-w-0 flex-[2]"
               >
                 <Input {...field} value={field.value || ""} />
               </FormControl>
@@ -477,7 +499,7 @@ const Form = ({
                   tooltipText="The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="shrink"
+                  className="w-36 shrink-0"
                 >
                   <Input {...field} value={field.value || ""} placeholder="permanent" />
                 </FormControl>
@@ -495,7 +517,7 @@ const Form = ({
                   tooltipText="Time before unapproved requests expire. Ex: 1h, 3d, 72h"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="shrink"
+                  className="w-36 shrink-0"
                 >
                   <Input {...field} value={field.value || ""} placeholder="never expires" />
                 </FormControl>
