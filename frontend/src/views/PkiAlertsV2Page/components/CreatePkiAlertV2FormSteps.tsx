@@ -131,17 +131,26 @@ export const CreatePkiAlertV2FormSteps = ({
   const watchedEventType = watch("eventType");
   const watchedAlertBefore = watch("alertBefore");
 
+  const previewEnabledTypes = [
+    PkiAlertEventTypeV2.EXPIRATION,
+    PkiAlertEventTypeV2.RENEWAL,
+    PkiAlertEventTypeV2.REVOCATION
+  ];
+  const isPreviewEnabled = !!currentProject?.id && previewEnabledTypes.includes(watchedEventType);
+
   const { data: currentCertificatesData, isLoading: isLoadingCurrentCertificates } =
     useGetPkiAlertV2CurrentMatchingCertificates(
       {
         projectId: currentProject?.id || "",
         filters: watchedFilters || [],
-        alertBefore: watchedAlertBefore || "30d",
+        ...(watchedEventType === PkiAlertEventTypeV2.EXPIRATION
+          ? { alertBefore: watchedAlertBefore || "30d" }
+          : {}),
         limit: certificatesPerPage,
         offset: (certificatesPage - 1) * certificatesPerPage
       },
       {
-        enabled: !!currentProject?.id && watchedEventType === PkiAlertEventTypeV2.EXPIRATION,
+        enabled: isPreviewEnabled,
         refetchOnWindowFocus: false
       }
     );
@@ -576,8 +585,12 @@ export const CreatePkiAlertV2FormSteps = ({
         <Tab.Panel>
           <div className="space-y-6">
             <p className="mb-4 text-sm text-bunker-300">
-              Preview certificates that match your filter criteria. This helps verify your filters
-              are targeting the correct certificates.
+              {watchedEventType === PkiAlertEventTypeV2.EXPIRATION &&
+                "Preview certificates that will expire within the configured alert window and match your filter criteria."}
+              {watchedEventType === PkiAlertEventTypeV2.RENEWAL &&
+                "Preview active certificates that match your filter criteria. When any of these certificates are renewed, this alert will trigger."}
+              {watchedEventType === PkiAlertEventTypeV2.REVOCATION &&
+                "Preview active certificates that match your filter criteria. When any of these certificates are revoked, this alert will trigger."}
             </p>
 
             <div className="space-y-4">
@@ -592,18 +605,6 @@ export const CreatePkiAlertV2FormSteps = ({
                   </THead>
                   <TBody>
                     {(() => {
-                      if (watchedEventType !== PkiAlertEventTypeV2.EXPIRATION) {
-                        return (
-                          <Tr>
-                            <Td colSpan={3} className="py-8 text-center text-gray-400">
-                              Certificate preview is available for expiration alerts. For other
-                              alert types, notifications are triggered in real time when the event
-                              occurs.
-                            </Td>
-                          </Tr>
-                        );
-                      }
-
                       if (isLoadingCurrentCertificates) {
                         return Array.from({ length: 5 }, (_, index) => (
                           <Tr key={`skeleton-row-${index}`}>

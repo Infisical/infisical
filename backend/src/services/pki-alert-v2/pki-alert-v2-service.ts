@@ -569,12 +569,6 @@ export const pkiAlertV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
-    try {
-      parseTimeToPostgresInterval(alertBefore);
-    } catch (error) {
-      throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
-    }
-
     const options: {
       limit: number;
       offset: number;
@@ -583,9 +577,18 @@ export const pkiAlertV2ServiceFactory = ({
     } = {
       limit,
       offset,
-      showPreview: true,
-      alertBefore: parseTimeToPostgresInterval(alertBefore)
+      showPreview: true
     };
+
+    if (alertBefore) {
+      try {
+        options.alertBefore = parseTimeToPostgresInterval(alertBefore);
+      } catch (error) {
+        throw new BadRequestError({
+          message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'"
+        });
+      }
+    }
 
     const result = await pkiAlertV2DAL.findMatchingCertificates(projectId, filters, options);
 

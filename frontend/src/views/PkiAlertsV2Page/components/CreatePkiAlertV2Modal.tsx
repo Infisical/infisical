@@ -60,15 +60,24 @@ const TABS_WITHOUT_PREVIEW: TFormTab[] = [
   { name: "Review", key: "review", fields: [] }
 ];
 
+const hasPreviewTab = (eventType?: PkiAlertEventTypeV2): boolean => {
+  return (
+    !eventType ||
+    eventType === PkiAlertEventTypeV2.EXPIRATION ||
+    eventType === PkiAlertEventTypeV2.RENEWAL ||
+    eventType === PkiAlertEventTypeV2.REVOCATION
+  );
+};
+
 const getFormTabs = (eventType?: PkiAlertEventTypeV2): TFormTab[] => {
-  if (eventType === PkiAlertEventTypeV2.EXPIRATION || !eventType) {
+  if (hasPreviewTab(eventType)) {
     return TABS_WITH_PREVIEW;
   }
   return TABS_WITHOUT_PREVIEW;
 };
 
 const getChannelsTabIndex = (eventType?: PkiAlertEventTypeV2): number => {
-  return eventType === PkiAlertEventTypeV2.EXPIRATION || !eventType ? 3 : 2;
+  return hasPreviewTab(eventType) ? 3 : 2;
 };
 
 export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alertId }: Props) => {
@@ -308,7 +317,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
         <form
           className={twMerge(
             "flex flex-col",
-            watchedEventType === PkiAlertEventTypeV2.EXPIRATION ? "min-h-[60vh]" : "min-h-[40vh]",
+            hasPreviewTab(watchedEventType) ? "min-h-[60vh]" : "min-h-[40vh]",
             isFinalStep && "max-h-[70vh] overflow-y-auto"
           )}
         >
@@ -340,7 +349,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
                   <CreatePkiAlertV2FormSteps
                     expandedChannel={expandedChannel}
                     setExpandedChannel={setExpandedChannel}
-                    showPreview={watchedEventType === PkiAlertEventTypeV2.EXPIRATION}
+                    showPreview={hasPreviewTab(watchedEventType)}
                   />
                 </Tab.Panels>
               </Tab.Group>

@@ -276,7 +276,7 @@ export type TListMatchingCertificatesDTO = TGenericPermission & {
 export type TListCurrentMatchingCertificatesDTO = TGenericPermission & {
   projectId: string;
   filters: TPkiFilters;
-  alertBefore: string;
+  alertBefore?: string;
   limit?: number;
   offset?: number;
 };

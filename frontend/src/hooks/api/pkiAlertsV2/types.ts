@@ -176,7 +176,7 @@ export interface TGetPkiAlertV2MatchingCertificatesResponse {
 export interface TGetPkiAlertV2CurrentMatchingCertificates {
   projectId: string;
   filters: TPkiFilterRuleV2[];
-  alertBefore: string;
+  alertBefore?: string;
   limit?: number;
   offset?: number;
 }
