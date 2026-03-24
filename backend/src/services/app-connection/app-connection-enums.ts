@@ -50,7 +50,9 @@ export enum AppConnection {
   SMB = "smb",
   OpenRouter = "open-router",
   CircleCI = "circleci",
-  Venafi = "venafi"
+  AzureEntraId = "azure-entra-id",
+  Venafi = "venafi",
+  ExternalInfisical = "external-infisical"
 }
 
 export enum AWSRegion {

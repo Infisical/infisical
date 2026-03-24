@@ -49,6 +49,7 @@ export const VercelSyncListItemSchema = z
     name: z.literal("Vercel"),
     connection: z.literal(AppConnection.Vercel),
     destination: z.literal(SecretSync.Vercel),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Vercel] }));

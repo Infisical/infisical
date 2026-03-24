@@ -524,7 +524,8 @@ export const useListWorkspaceCertificates = ({
   profileIds,
   fromDate,
   toDate,
-  metadataFilter
+  metadataFilter,
+  extendedKeyUsage
 }: {
   projectId: string;
   offset: number;
@@ -538,6 +539,7 @@ export const useListWorkspaceCertificates = ({
   fromDate?: Date;
   toDate?: Date;
   metadataFilter?: Array<{ key: string; value?: string }>;
+  extendedKeyUsage?: string;
 }) => {
   return useQuery({
     queryKey: projectKeys.specificProjectCertificates({
@@ -552,7 +554,8 @@ export const useListWorkspaceCertificates = ({
       profileIds,
       fromDate,
       toDate,
-      metadataFilter
+      metadataFilter,
+      extendedKeyUsage
     }),
     queryFn: async () => {
       const {
@@ -570,7 +573,8 @@ export const useListWorkspaceCertificates = ({
           ...(profileIds && profileIds.length > 0 && { profileIds }),
           ...(fromDate && { fromDate: fromDate.toISOString() }),
           ...(toDate && { toDate: toDate.toISOString() }),
-          ...(metadataFilter && metadataFilter.length > 0 && { metadata: metadataFilter })
+          ...(metadataFilter && metadataFilter.length > 0 && { metadata: metadataFilter }),
+          ...(extendedKeyUsage && { extendedKeyUsage })
         }
       );
 

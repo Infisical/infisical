@@ -6,5 +6,6 @@ export const CLOUDFLARE_WORKERS_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Cloudflare Workers",
   destination: SecretSync.CloudflareWorkers,
   connection: AppConnection.Cloudflare,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };

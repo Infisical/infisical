@@ -10,7 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -127,12 +127,16 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: certWithDetails.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certWithDetails.commonName,
-        altNames: certWithDetails.altNames ?? undefined,
-        serialNumber: certWithDetails.serialNumber
+        altNames: certWithDetails.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certWithDetails.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -201,9 +205,6 @@ export const certificateServiceFactory = ({
       }
     }
 
-    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
-    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
-
     return {
       cert: {
         ...cert,
@@ -239,12 +240,16 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -277,16 +282,36 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Delete,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 
-    const deletedCert = await certificateDAL.deleteById(cert.id);
+    let deletedCert;
+    try {
+      deletedCert = await certificateDAL.deleteById(cert.id);
+    } catch (err) {
+      const innerError = err instanceof DatabaseError ? (err.error as { code?: string; constraint?: string }) : null;
+      if (innerError?.code === "23503") {
+        if (innerError.constraint === "pki_signers_certificateid_foreign") {
+          throw new BadRequestError({
+            message: "Cannot delete certificate because it is currently in use by a code signing signer"
+          });
+        }
+        throw new BadRequestError({
+          message: "Cannot delete certificate because it is referenced by another resource"
+        });
+      }
+      throw err;
+    }
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -341,14 +366,18 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Delete,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
-        status: cert.status
+        status: cert.status,
+        metadata: certMetadata
       })
     );
 
@@ -430,12 +459,16 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -739,24 +772,29 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
-        status: cert.status
+        status: cert.status,
+        metadata: certMetadata
       })
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
-        status: cert.status
+        status: cert.status,
+        metadata: certMetadata
       })
     );
 
@@ -867,14 +905,18 @@ export const certificateServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
         serialNumber: cert.serialNumber,
         friendlyName: cert.friendlyName,
-        status: cert.status
+        status: cert.status,
+        metadata: certMetadata
       })
     );
 

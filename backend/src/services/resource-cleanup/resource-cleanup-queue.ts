@@ -4,7 +4,7 @@ import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-d
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TQueueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
@@ -102,22 +102,14 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.DailyResourceCleanUp, QueueJobs.DailyResourceCleanUp, undefined, {
-      jobId: QueueJobs.DailyResourceCleanUp,
-      repeat: {
-        pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
-        key: QueueJobs.DailyResourceCleanUp
-      }
-    });
-
-    // Hourly cleanup routine
-    await queueService.stopRepeatableJob(
-      QueueName.FrequentResourceCleanUp,
-      QueueJobs.FrequentResourceCleanUp,
-      { pattern: "0 * * * *", utc: true },
-      QueueName.FrequentResourceCleanUp // just a job id
+    await queueService.upsertJobScheduler(
+      QueueName.DailyResourceCleanUp,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyResourceCleanUp}`,
+      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *" },
+      { name: QueueJobs.DailyResourceCleanUp }
     );
 
+    // Hourly cleanup routine
     queueService.start(QueueName.FrequentResourceCleanUp, async () => {
       try {
         logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
@@ -129,13 +121,12 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       }
     });
 
-    await queueService.queue(QueueName.FrequentResourceCleanUp, QueueJobs.FrequentResourceCleanUp, undefined, {
-      jobId: QueueJobs.FrequentResourceCleanUp,
-      repeat: {
-        pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *",
-        key: QueueJobs.FrequentResourceCleanUp
-      }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.FrequentResourceCleanUp,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.FrequentResourceCleanUp}`,
+      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *" },
+      { name: QueueJobs.FrequentResourceCleanUp }
+    );
   };
 
   return {

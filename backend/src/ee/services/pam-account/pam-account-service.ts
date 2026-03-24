@@ -50,6 +50,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
@@ -90,6 +91,7 @@ type TPamAccountServiceFactoryDep = {
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "countByAccountIds">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -111,7 +113,8 @@ export const pamAccountServiceFactory = ({
   approvalPolicyDAL,
   approvalRequestGrantsDAL,
   pamSessionExpirationService,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  pamAccountDependenciesDAL
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
     {
@@ -553,10 +556,16 @@ export const pamAccountServiceFactory = ({
       }
     }
 
+    // Fetch dependency counts for all permitted accounts
+    const permittedAccountIds = decryptedAndPermittedAccounts.map((a) => a.id);
+    const dependencyCountMap =
+      permittedAccountIds.length > 0 ? await pamAccountDependenciesDAL.countByAccountIds(permittedAccountIds) : {};
+
     return {
       accounts: decryptedAndPermittedAccounts.map((a) => ({
         ...a,
-        metadata: metadataByAccountId[a.id] || []
+        metadata: metadataByAccountId[a.id] || [],
+        dependencyCount: dependencyCountMap[a.id] || 0
       })),
       totalCount
     };

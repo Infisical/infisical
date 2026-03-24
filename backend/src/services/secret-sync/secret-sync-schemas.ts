@@ -6,12 +6,12 @@ import { SecretSyncs } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { slugSchema } from "@app/server/lib/schemas";
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
-import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
   destination,
-  syncOptionsConfig: { canImportSecrets },
+  syncOptionsConfig: { canImportSecrets, supportsKeySchema = true, supportsDisableSecretDeletion = true },
   merge,
   isUpdateSchema
 }: {
@@ -20,40 +20,50 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
   merge?: T;
   isUpdateSchema?: boolean;
 }) => {
+  const syncName = SECRET_SYNC_NAME_MAP[destination];
+
   const baseSchema = z.object({
     initialSyncBehavior: (canImportSecrets
       ? z.nativeEnum(SecretSyncInitialSyncBehavior)
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
     ).describe(SecretSyncs.SYNC_OPTIONS(destination).initialSyncBehavior),
-    keySchema: z
-      .string()
-      .optional()
-      .refine(
-        (val) => {
-          if (!val) return true;
+    keySchema: supportsKeySchema
+      ? z
+          .string()
+          .optional()
+          .refine(
+            (val) => {
+              if (!val) return true;
 
-          const allowedOptionalPlaceholders = ["{{environment}}"];
+              const allowedOptionalPlaceholders = ["{{environment}}"];
 
-          const allowedPlaceholdersRegexPart = ["{{secretKey}}", ...allowedOptionalPlaceholders]
-            .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
-            .join("|");
+              const allowedPlaceholdersRegexPart = ["{{secretKey}}", ...allowedOptionalPlaceholders]
+                .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
+                .join("|");
 
-          const allowedContentRegex = new RE2(`^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`);
-          const contentIsValid = allowedContentRegex.test(val);
+              const allowedContentRegex = new RE2(`^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`);
+              const contentIsValid = allowedContentRegex.test(val);
 
-          // Check if {{secretKey}} is present
-          const secretKeyRegex = new RE2(/\{\{secretKey\}\}/);
-          const secretKeyIsPresent = secretKeyRegex.test(val);
+              // Check if {{secretKey}} is present
+              const secretKeyRegex = new RE2(/\{\{secretKey\}\}/);
+              const secretKeyIsPresent = secretKeyRegex.test(val);
 
-          return contentIsValid && secretKeyIsPresent;
-        },
-        {
-          message:
-            "Key schema must include exactly one {{secretKey}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
-        }
-      )
-      .describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema),
-    disableSecretDeletion: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
+              return contentIsValid && secretKeyIsPresent;
+            },
+            {
+              message:
+                "Key schema must include exactly one {{secretKey}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+            }
+          )
+          .describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema)
+      : z
+          .string()
+          .optional()
+          .transform(() => undefined)
+          .describe(`Not supported for ${syncName} syncs.`),
+    disableSecretDeletion: supportsDisableSecretDeletion
+      ? z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
+      : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`)
   });
 
   const schema = merge ? baseSchema.merge(merge) : baseSchema;

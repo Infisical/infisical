@@ -114,6 +114,7 @@
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
                       "integrations/app-connections/azure-dns",
+                      "integrations/app-connections/azure-entra-id",
                       "integrations/app-connections/azure-key-vault",
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
@@ -133,6 +134,7 @@
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/ssh",
@@ -401,6 +403,7 @@
                 "group": "Contributing to platform",
                 "pages": [
                   "contributing/platform/developing",
+                  "contributing/platform/pam-development",
                   "contributing/platform/backend/how-to-create-a-feature",
                   "contributing/platform/backend/folder-structure"
                 ]
@@ -465,6 +468,7 @@
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
+                      "documentation/platform/secret-rotation/hp-ilo-local-account",
                       "documentation/platform/secret-rotation/okta-client-secret",
                       "documentation/platform/secret-rotation/openrouter-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
@@ -565,12 +569,13 @@
                       "integrations/secret-syncs/aws-secrets-manager",
                       "integrations/secret-syncs/azure-app-configuration",
                       "integrations/secret-syncs/azure-devops",
+                      "integrations/secret-syncs/azure-entra-id-scim",
                       "integrations/secret-syncs/azure-key-vault",
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
                       "integrations/secret-syncs/checkly",
-                      "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/chef",
+                      "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
@@ -582,6 +587,7 @@
                       "integrations/secret-syncs/hashicorp-vault",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
+                      "integrations/secret-syncs/external-infisical",
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/northflank",
@@ -687,7 +693,8 @@
                     "pages": [
                       "documentation/platform/pki/concepts/certificate-mgmt",
                       "documentation/platform/pki/concepts/certificate-lifecycle",
-                      "documentation/platform/pki/concepts/certificate-components"
+                      "documentation/platform/pki/concepts/certificate-components",
+                      "documentation/platform/pki/concepts/code-signing"
                     ]
                   },
                   {
@@ -747,7 +754,40 @@
                       "documentation/platform/pki/alerting/pagerduty-alerts"
                     ]
                   },
-                  "documentation/platform/pki/approvals"
+                  "documentation/platform/pki/approvals",
+                  {
+                    "group": "Code Signing",
+                    "pages": [
+                      "documentation/platform/pki/code-signing/overview",
+                      "documentation/platform/pki/code-signing/signers",
+                      {
+                        "group": "Approvals",
+                        "pages": [
+                          "documentation/platform/pki/code-signing/signing-policies",
+                          "documentation/platform/pki/code-signing/signing-requests",
+                          "documentation/platform/pki/code-signing/grants"
+                        ]
+                      },
+                      "documentation/platform/pki/code-signing/pkcs11-module",
+                      {
+                        "group": "Guides",
+                        "pages": [
+                          "documentation/platform/pki/code-signing/guides/pkcs11-jarsigner",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-osslsigncode",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-apksigner",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-cosign",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-openssl",
+                          "documentation/platform/pki/code-signing/guides/pkcs11-gpg"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Settings",
+                    "pages": [
+                      "documentation/platform/pki/settings/certificate-cleanup"
+                    ]
+                  }
                 ]
               },
               {
@@ -832,6 +872,13 @@
                       "documentation/platform/pam/getting-started/accounts"
                     ]
                   },
+                  {
+                    "group": "Discovery",
+                    "pages": [
+                      "documentation/platform/pam/discovery/overview",
+                      "documentation/platform/pam/discovery/active-directory"
+                    ]
+                  },
                   "documentation/platform/pam/architecture"
                 ]
               },
@@ -847,6 +894,7 @@
                     "pages": [
                       "documentation/platform/pam/product-reference/web-access/overview",
                       "documentation/platform/pam/product-reference/web-access/postgresql",
+                      "documentation/platform/pam/product-reference/web-access/redis",
                       "documentation/platform/pam/product-reference/web-access/ssh"
                     ]
                   }
@@ -1288,6 +1336,18 @@
                     ]
                   },
                   {
+                    "group": "Azure Entra ID",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/azure-entra-id/list",
+                      "api-reference/endpoints/app-connections/azure-entra-id/available",
+                      "api-reference/endpoints/app-connections/azure-entra-id/get-by-id",
+                      "api-reference/endpoints/app-connections/azure-entra-id/get-by-name",
+                      "api-reference/endpoints/app-connections/azure-entra-id/create",
+                      "api-reference/endpoints/app-connections/azure-entra-id/update",
+                      "api-reference/endpoints/app-connections/azure-entra-id/delete"
+                    ]
+                  },
+                  {
                     "group": "Azure Key Vault",
                     "pages": [
                       "api-reference/endpoints/app-connections/azure-key-vault/list",
@@ -1499,6 +1559,18 @@
                       "api-reference/endpoints/app-connections/humanitec/create",
                       "api-reference/endpoints/app-connections/humanitec/update",
                       "api-reference/endpoints/app-connections/humanitec/delete"
+                    ]
+                  },
+                  {
+                    "group": "Infisical",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/external-infisical/list",
+                      "api-reference/endpoints/app-connections/external-infisical/available",
+                      "api-reference/endpoints/app-connections/external-infisical/get-by-id",
+                      "api-reference/endpoints/app-connections/external-infisical/get-by-name",
+                      "api-reference/endpoints/app-connections/external-infisical/create",
+                      "api-reference/endpoints/app-connections/external-infisical/update",
+                      "api-reference/endpoints/app-connections/external-infisical/delete"
                     ]
                   },
                   {
@@ -2250,6 +2322,20 @@
                     ]
                   },
                   {
+                    "group": "HP iLO Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/create",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/list",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/update",
+                      "api-reference/endpoints/secret-rotations/hp-ilo-local-account/reconcile"
+                    ]
+                  },
+                  {
                     "group": "Unix/Linux Local Account",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
@@ -2352,6 +2438,20 @@
                       "api-reference/endpoints/secret-syncs/azure-devops/sync-secrets",
                       "api-reference/endpoints/secret-syncs/azure-devops/import-secrets",
                       "api-reference/endpoints/secret-syncs/azure-devops/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Azure Entra ID SCIM",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/list",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/get-by-id",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/get-by-name",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
                     ]
                   },
                   {
@@ -2581,6 +2681,20 @@
                     ]
                   },
                   {
+                    "group": "Infisical",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/external-infisical/list",
+                      "api-reference/endpoints/secret-syncs/external-infisical/get-by-id",
+                      "api-reference/endpoints/secret-syncs/external-infisical/get-by-name",
+                      "api-reference/endpoints/secret-syncs/external-infisical/create",
+                      "api-reference/endpoints/secret-syncs/external-infisical/update",
+                      "api-reference/endpoints/secret-syncs/external-infisical/delete",
+                      "api-reference/endpoints/secret-syncs/external-infisical/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/external-infisical/import-secrets",
+                      "api-reference/endpoints/secret-syncs/external-infisical/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Laravel Forge",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/laravel-forge/list",
@@ -2806,7 +2920,8 @@
                         "pages": [
                           "api-reference/endpoints/certificate-authorities/internal/sign-intermediate",
                           "api-reference/endpoints/certificate-authorities/internal/import-cert",
-                          "api-reference/endpoints/certificate-authorities/internal/install-cert-venafi"
+                          "api-reference/endpoints/certificate-authorities/internal/install-cert-venafi",
+                          "api-reference/endpoints/certificate-authorities/internal/install-cert-adcs"
                         ]
                       },
                       {

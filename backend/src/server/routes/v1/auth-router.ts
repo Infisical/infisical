@@ -23,16 +23,23 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { decodedToken } = await server.services.authToken.validateRefreshToken(req.cookies.jid);
       const appCfg = getConfig();
 
-      await server.services.login.logout(decodedToken.userId, decodedToken.tokenVersionId);
+      try {
+        const { decodedToken } = await server.services.authToken.validateRefreshToken(req.cookies.jid);
+        await server.services.login.logout(decodedToken.userId, decodedToken.tokenVersionId);
+      } catch (err) {
+        // If token validation fails (e.g. expired/malformed refresh token),
+        // we still proceed to clear all session cookies below.
+        req.log.warn(err, "Logout token validation failed; proceeding to clear cookies");
+      }
 
       void res.cookie("jid", "", {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
+        secure: appCfg.HTTPS_ENABLED,
+        maxAge: 0
       });
 
       void res.cookie("infisical-project-assume-privileges", "", {
@@ -89,9 +96,25 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         })
       }
     },
-    handler: async (req) => {
-      const { decodedToken, tokenVersion } = await server.services.authToken.validateRefreshToken(req.cookies.jid);
+    handler: async (req, res) => {
       const appCfg = getConfig();
+
+      let decodedToken;
+      let tokenVersion;
+      try {
+        ({ decodedToken, tokenVersion } = await server.services.authToken.validateRefreshToken(req.cookies.jid));
+      } catch (err) {
+        // Clear the expired/invalid jid cookie so it doesn't cause login loops
+        // when the browser keeps sending the stale cookie on subsequent requests.
+        void res.cookie("jid", "", {
+          httpOnly: true,
+          path: "/",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED,
+          maxAge: 0
+        });
+        throw err;
+      }
       let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
 
       if (decodedToken.organizationId) {

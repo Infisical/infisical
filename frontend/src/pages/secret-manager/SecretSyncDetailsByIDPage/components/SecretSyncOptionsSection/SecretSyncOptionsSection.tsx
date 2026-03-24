@@ -28,6 +28,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
   } = secretSync;
 
   let AdditionalSyncOptionsComponent: ReactNode;
+  let allowEdits: boolean;
 
   switch (destination) {
     case SecretSync.AWSParameterStore:
@@ -77,10 +78,20 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
     case SecretSync.CircleCI:
+    case SecretSync.AzureEntraIdScim:
+    case SecretSync.ExternalInfisical:
       AdditionalSyncOptionsComponent = null;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
+  }
+
+  switch (destination) {
+    case SecretSync.AzureEntraIdScim:
+      allowEdits = false;
+      break;
+    default:
+      allowEdits = true;
   }
 
   const permissionSubject = getSecretSyncPermissionSubject(secretSync);
@@ -90,19 +101,21 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
       <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <h3 className="font-medium text-mineshaft-100">Sync Options</h3>
-          <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
-            {(isAllowed) => (
-              <IconButton
-                variant="plain"
-                colorSchema="secondary"
-                isDisabled={!isAllowed}
-                ariaLabel="Edit sync options"
-                onClick={onEditOptions}
-              >
-                <FontAwesomeIcon icon={faEdit} />
-              </IconButton>
-            )}
-          </ProjectPermissionCan>
+          {allowEdits && (
+            <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
+              {(isAllowed) => (
+                <IconButton
+                  variant="plain"
+                  colorSchema="secondary"
+                  isDisabled={!isAllowed}
+                  ariaLabel="Edit sync options"
+                  onClick={onEditOptions}
+                >
+                  <FontAwesomeIcon icon={faEdit} />
+                </IconButton>
+              )}
+            </ProjectPermissionCan>
+          )}
         </div>
         <div>
           <div className="space-y-3">

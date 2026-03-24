@@ -11,9 +11,12 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretRotationEndpoints = <
   T extends TSecretRotationV2,
@@ -256,6 +259,21 @@ export const registerSecretRotationEndpoints = <
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretRotationV2Created,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            rotationId: secretRotation.id,
+            type,
+            projectId: secretRotation.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send SecretRotationV2Created telemetry event"));
+
       return { secretRotation };
     }
   });
@@ -359,6 +377,21 @@ export const registerSecretRotationEndpoints = <
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretRotationV2Deleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            rotationId,
+            type,
+            projectId: secretRotation.projectId,
+            environment: secretRotation.environment.slug,
+            secretPath: secretRotation.folder.path
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send SecretRotationV2Deleted telemetry event"));
+
       return { secretRotation };
     }
   });
@@ -449,6 +482,21 @@ export const registerSecretRotationEndpoints = <
         },
         req.permission
       )) as T;
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretRotationV2Executed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            rotationId,
+            type,
+            projectId: secretRotation.projectId,
+            environment: secretRotation.environment.slug,
+            secretPath: secretRotation.folder.path
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send SecretRotationV2Executed telemetry event"));
 
       return { secretRotation };
     }

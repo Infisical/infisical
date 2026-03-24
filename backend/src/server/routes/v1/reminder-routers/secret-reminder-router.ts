@@ -3,8 +3,10 @@ import { z } from "zod";
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretReminderRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -63,6 +65,18 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
             nextReminderDate: req.body.nextReminderDate,
             recipients: req.body.recipients
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretReminderCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          secretId: req.params.secretId,
+          reminderRepeatDays: req.body.repeatDays,
+          hasNote: !!req.body.message,
+          isOneTime: !req.body.repeatDays
         }
       });
 

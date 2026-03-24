@@ -8,6 +8,7 @@ import { AwsParameterStoreSyncFields } from "./AwsParameterStoreSyncFields";
 import { AwsSecretsManagerSyncFields } from "./AwsSecretsManagerSyncFields";
 import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFields";
 import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
+import { AzureEntraIdScimSyncFields } from "./AzureEntraIdScimSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { BitbucketSyncFields } from "./BitbucketSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
@@ -18,6 +19,7 @@ import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSyncFields";
+import { ExternalInfisicalSyncFields } from "./ExternalInfisicalSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
@@ -115,6 +117,10 @@ export const SecretSyncDestinationFields = () => {
       return <OctopusDeploySyncFields />;
     case SecretSync.CircleCI:
       return <CircleCISyncFields />;
+    case SecretSync.AzureEntraIdScim:
+      return <AzureEntraIdScimSyncFields />;
+    case SecretSync.ExternalInfisical:
+      return <ExternalInfisicalSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

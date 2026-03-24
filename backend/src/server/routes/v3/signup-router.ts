@@ -136,7 +136,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, organizationId } =
+      const { user, accessToken, refreshToken, organizationId, authMethod } =
         await server.services.signup.completeEmailAccountSignup({
           ...req.body,
           ip: req.realIp,
@@ -146,6 +146,12 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+        void server.services.telemetry.sendHubSpotSignupEvent(
+          user.email,
+          authMethod,
+          user.firstName || "",
+          user.lastName || ""
+        );
       }
 
       void server.services.telemetry.sendPostHogEvents({
@@ -160,16 +166,20 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       const signupDistinctId = user.username ?? user.email ?? "";
       if (signupDistinctId) {
-        void server.services.telemetry.identifyUser(signupDistinctId, {
-          email: user.email ?? undefined,
-          username: user.username,
-          userId: user.id,
-          firstName: user.firstName ?? undefined,
-          lastName: user.lastName ?? undefined,
-          isEmailVerified: user.isEmailVerified ?? undefined,
-          isMfaEnabled: user.isMfaEnabled ?? undefined,
-          superAdmin: user.superAdmin ?? undefined
-        });
+        void server.services.telemetry.identifyUser(
+          signupDistinctId,
+          {
+            email: user.email ?? undefined,
+            username: user.username,
+            userId: user.id,
+            firstName: user.firstName ?? undefined,
+            lastName: user.lastName ?? undefined,
+            isEmailVerified: user.isEmailVerified ?? undefined,
+            isMfaEnabled: user.isMfaEnabled ?? undefined,
+            superAdmin: user.superAdmin ?? undefined
+          },
+          { skipDedup: true }
+        );
       }
 
       void res.setCookie("jid", refreshToken, {
@@ -222,6 +232,12 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+        void server.services.telemetry.sendHubSpotSignupEvent(
+          user.email,
+          "invite",
+          user.firstName || "",
+          user.lastName || ""
+        );
       }
 
       void server.services.telemetry.sendPostHogEvents({
@@ -236,16 +252,20 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       const inviteDistinctId = user.username ?? user.email ?? "";
       if (inviteDistinctId) {
-        void server.services.telemetry.identifyUser(inviteDistinctId, {
-          email: user.email ?? undefined,
-          username: user.username,
-          userId: user.id,
-          firstName: user.firstName ?? undefined,
-          lastName: user.lastName ?? undefined,
-          isEmailVerified: user.isEmailVerified ?? undefined,
-          isMfaEnabled: user.isMfaEnabled ?? undefined,
-          superAdmin: user.superAdmin ?? undefined
-        });
+        void server.services.telemetry.identifyUser(
+          inviteDistinctId,
+          {
+            email: user.email ?? undefined,
+            username: user.username,
+            userId: user.id,
+            firstName: user.firstName ?? undefined,
+            lastName: user.lastName ?? undefined,
+            isEmailVerified: user.isEmailVerified ?? undefined,
+            isMfaEnabled: user.isMfaEnabled ?? undefined,
+            superAdmin: user.superAdmin ?? undefined
+          },
+          { skipDedup: true }
+        );
       }
 
       void res.setCookie("jid", refreshToken, {

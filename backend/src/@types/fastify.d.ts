@@ -76,6 +76,7 @@ import { TCaAutoRenewalQueueFactory } from "@app/services/certificate-authority/
 import { TCaSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { TCertificateCleanupServiceFactory } from "@app/services/certificate-cleanup/certificate-cleanup-service";
 import { TCertificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
@@ -140,6 +141,7 @@ import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secre
 import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { TSignerServiceFactory } from "@app/services/signer/signer-service";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -306,6 +308,7 @@ declare module "fastify" {
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
+      certificateCleanup: TCertificateCleanupServiceFactory;
       certificateV3: TCertificateV3ServiceFactory;
       certificateRequest: TCertificateRequestServiceFactory;
       certificateTemplate: TCertificateTemplateServiceFactory;
@@ -325,6 +328,7 @@ declare module "fastify" {
       pkiSync: TPkiSyncServiceFactory;
       pkiDiscovery: TPkiDiscoveryServiceFactory;
       pkiInstallation: TPkiInstallationServiceFactory;
+      pkiSigner: TSignerServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;

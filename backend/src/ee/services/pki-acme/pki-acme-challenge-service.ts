@@ -19,7 +19,7 @@ import {
   AcmeIncorrectResponseError,
   AcmeServerInternalError
 } from "./pki-acme-errors";
-import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
+import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType, AcmeIdentifierType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
 
 type TPkiAcmeChallengeServiceFactoryDep = {
@@ -64,7 +64,7 @@ export const pkiAcmeChallengeServiceFactory = ({
       }
       const host = challenge.auth.identifierValue;
       // check if host is a private ip address
-      if (isPrivateIp(host)) {
+      if (challenge.auth.identifierType === AcmeIdentifierType.IP && isPrivateIp(host)) {
         throw new BadRequestError({ message: "Private IP addresses are not allowed" });
       }
       if (challenge.type !== AcmeChallengeType.HTTP_01 && challenge.type !== AcmeChallengeType.DNS_01) {
@@ -83,7 +83,12 @@ export const pkiAcmeChallengeServiceFactory = ({
         "Using ACME development HTTP-01 challenge host override"
       );
     }
-    const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, `http://${host}`);
+    // IPv6 addresses need brackets in URLs (e.g., http://[::1]/)
+    // Only bracket if the host is a raw IPv6 address (contains ":" but is a valid IP),
+    // not if it's a hostname:port like "host.docker.internal:8087"
+    const isIPv6 = host.includes(":") && isValidIp(host);
+    const urlHost = isIPv6 ? `[${host}]` : host;
+    const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, `http://${urlHost}`);
     logger.info({ challengeUrl }, "Performing ACME HTTP-01 challenge validation");
 
     // TODO: read config from the profile to get the timeout instead
@@ -94,7 +99,12 @@ export const pkiAcmeChallengeServiceFactory = ({
     const challengeResponse = await axios.get<string>(challengeUrl.toString(), {
       // In case if we override the host in the development mode, still provide the original host in the header
       // to help the upstream server to validate the request
-      headers: { Host: challenge.auth.identifierValue },
+      headers: {
+        Host:
+          challenge.auth.identifierValue.includes(":") && isValidIp(challenge.auth.identifierValue)
+            ? `[${challenge.auth.identifierValue}]`
+            : challenge.auth.identifierValue
+      },
       timeout: timeoutMs,
       responseType: "text",
       validateStatus: () => true

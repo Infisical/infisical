@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { PamAccountDependenciesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ActiveDirectoryResourceListItemSchema,
@@ -21,7 +22,7 @@ import {
   MySQLResourceListItemSchema,
   SanitizedMySQLResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
-import { PamResourceOrderBy } from "@app/ee/services/pam-resource/pam-resource-enums";
+import { PamResource, PamResourceOrderBy } from "@app/ee/services/pam-resource/pam-resource-enums";
 import {
   PostgresResourceListItemSchema,
   SanitizedPostgresResourceSchema
@@ -39,7 +40,7 @@ import {
   WindowsResourceListItemSchema
 } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { OrderByDirection } from "@app/lib/types";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -54,6 +55,11 @@ const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedWindowsResourceSchema,
   SanitizedActiveDirectoryResourceSchema
 ]);
+
+const SanitizedResourceWithFavoriteSchema = z.intersection(
+  SanitizedResourceSchema,
+  z.object({ isFavorite: z.boolean().default(false) })
+);
 
 const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   PostgresResourceListItemSchema,
@@ -117,7 +123,7 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          resources: SanitizedResourceSchema.array(),
+          resources: SanitizedResourceWithFavoriteSchema.array(),
           totalCount: z.number().default(0)
         })
       }
@@ -183,7 +189,7 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          resources: SanitizedResourceSchema.array(),
+          resources: SanitizedResourceWithFavoriteSchema.array(),
           totalCount: z.number().default(0)
         })
       }
@@ -220,6 +226,78 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
       });
 
       return { resources, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:resourceType/:resourceId/dependencies",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getPamResourceDependencies",
+      description: "List dependencies that run on this resource",
+      params: z.object({
+        resourceType: z.nativeEnum(PamResource),
+        resourceId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          dependencies: PamAccountDependenciesSchema.extend({
+            accountName: z.string().nullable()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependencies = await server.services.pamDiscoverySource.getResourceDependencies({
+        resourceId: req.params.resourceId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependencies };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/favorites",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Set a PAM resource favorite status",
+      body: z.object({
+        projectId: z.string().uuid(),
+        resourceId: z.string().uuid(),
+        isFavorite: z.boolean()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, resourceId, isFavorite } = req.body;
+
+      await server.services.pamResource.setUserResourceFavorite({
+        projectId,
+        resourceId,
+        isFavorite,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { message: isFavorite ? "Resource added to favorites" : "Resource removed from favorites" };
     }
   });
 };

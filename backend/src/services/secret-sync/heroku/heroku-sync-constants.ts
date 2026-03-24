@@ -6,5 +6,6 @@ export const HEROKU_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Heroku",
   destination: SecretSync.Heroku,
   connection: AppConnection.Heroku,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

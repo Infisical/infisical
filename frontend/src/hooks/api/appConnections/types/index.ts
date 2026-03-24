@@ -8,6 +8,7 @@ import { TAzureAppConfigurationConnection } from "./azure-app-configuration-conn
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureDNSConnection } from "./azure-dns-connection";
+import { TAzureEntraIdConnection } from "./azure-entra-id-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
@@ -19,6 +20,7 @@ import { TDatabricksConnection } from "./databricks-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
+import { TExternalInfisicalConnection } from "./external-infisical-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
@@ -61,6 +63,7 @@ export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-dns-connection";
+export * from "./azure-entra-id-connection";
 export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
@@ -71,6 +74,7 @@ export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./dbt-connection";
 export * from "./dns-made-easy-connection";
+export * from "./external-infisical-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
@@ -157,7 +161,9 @@ export type TAppConnection =
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
-  | TVenafiConnection;
+  | TAzureEntraIdConnection
+  | TVenafiConnection
+  | TExternalInfisicalConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

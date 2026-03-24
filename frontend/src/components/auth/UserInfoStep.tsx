@@ -1,17 +1,29 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Eye, EyeOff, X } from "lucide-react";
 
+import {
+  Button,
+  FieldError,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  TextArea,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableIconButton,
+  UnstableInput
+} from "@app/components/v3";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 
-import InputField from "../basic/InputField";
 import checkPassword from "../utilities/checks/password/checkPassword";
 import SecurityClient from "../utilities/SecurityClient";
-import { Button, Input } from "../v2";
 
 interface UserInfoStepProps {
   incrementStep: () => void;
@@ -66,6 +78,7 @@ export default function UserInfoStep({
 }: UserInfoStepProps): JSX.Element {
   const [nameError, setNameError] = useState(false);
   const [organizationNameError, setOrganizationNameError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [errors, setErrors] = useState<Errors>({});
 
@@ -113,6 +126,11 @@ export default function UserInfoStep({
         SecurityClient.setToken(response.token);
         SecurityClient.setProviderAuthToken("");
 
+        if (isInfisicalCloud()) {
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push({ event: "signup_completed" });
+        }
+
         if (response.organizationId) {
           await selectOrganization({ organizationId: response.organizationId });
         }
@@ -138,118 +156,113 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
-      <p className="text-medium mx-8 mb-6 flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
-        {t("signup.step3-message")}
-      </p>
-      <div className="mx-auto mb-36 h-full w-max rounded-xl py-6 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800 md:px-8">
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
-          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Your Name
-          </p>
-          <Input
-            placeholder="Jane Doe"
-            onChange={(e) => setName(e.target.value)}
-            value={name}
-            isRequired
-            autoComplete="given-name"
-            className="h-12"
-          />
-          {nameError && (
-            <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
-              Please, specify your name
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+        <UnstableCardHeader className="mb-4 gap-2">
+          <UnstableCardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+            {t("signup.step3-message")}
+          </UnstableCardTitle>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <div className="flex w-full flex-col items-stretch py-2">
+            <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Your Name</p>
+            <UnstableInput
+              placeholder="Jane Doe"
+              onChange={(e) => setName(e.target.value)}
+              value={name}
+              required
+              autoComplete="given-name"
+              isError={nameError}
+            />
+            {nameError && <FieldError>Please, specify your name</FieldError>}
+          </div>
+          <div className="flex w-full flex-col items-stretch py-2">
+            <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Organization Name</p>
+            <UnstableInput
+              placeholder="Infisical"
+              onChange={(e) => setOrganizationName(e.target.value)}
+              value={organizationName}
+              maxLength={64}
+              required
+              isError={organizationNameError}
+            />
+            {organizationNameError && (
+              <FieldError>Please, specify your organization name</FieldError>
+            )}
+          </div>
+          <div className="flex w-full flex-col items-stretch py-2">
+            <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">
+              Where did you hear about us? <span className="font-light">(optional)</span>
             </p>
-          )}
-        </div>
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
-          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Organization Name
-          </p>
-          <Input
-            placeholder="Infisical"
-            onChange={(e) => setOrganizationName(e.target.value)}
-            value={organizationName}
-            maxLength={64}
-            isRequired
-            className="h-12"
-          />
-          {organizationNameError && (
-            <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
-              Please, specify your organization name
+            <TextArea
+              placeholder=""
+              onChange={(e) => setAttributionSource(e.target.value)}
+              value={attributionSource}
+              rows={2}
+            />
+          </div>
+          <div className="flex w-full flex-col items-stretch py-2">
+            <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">
+              {t("section.password.password")}
             </p>
-          )}
-        </div>
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
-          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Where did you hear about us? <span className="font-light">(optional)</span>
-          </p>
-          <Input
-            placeholder=""
-            onChange={(e) => setAttributionSource(e.target.value)}
-            value={attributionSource}
-            className="h-12"
-          />
-        </div>
-        <div className="mt-2 flex max-h-60 w-full min-w-[20rem] flex-col items-center justify-center rounded-lg py-2 lg:w-1/6">
-          <InputField
-            label={t("section.password.password")}
-            onChangeHandler={async (pass: string) => {
-              setPassword(pass);
-              await checkPassword({
-                password: pass,
-                setErrors
-              });
-            }}
-            type="password"
-            value={password}
-            isRequired
-            error={Object.keys(errors).length > 0}
-            autoComplete="new-password"
-            id="new-password"
-          />
-          {Object.keys(errors).length > 0 && (
-            <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-              <div className="mb-2 text-sm text-gray-400">
-                {t("section.password.validate-base")}
-              </div>
-              {Object.keys(errors).map((key) => {
-                if (errors[key as keyof Errors]) {
-                  return (
-                    <div className="items-top ml-1 flex flex-row justify-start" key={key}>
-                      <div>
-                        <FontAwesomeIcon
-                          icon={faXmark}
-                          className="text-md mr-2.5 ml-0.5 text-red"
-                        />
+            <InputGroup className="h-10">
+              <InputGroupInput
+                value={password}
+                onChange={async (e) => {
+                  setPassword(e.target.value);
+                  await checkPassword({ password: e.target.value, setErrors });
+                }}
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter a strong password..."
+                required
+                autoComplete="new-password"
+                id="new-password"
+              />
+              <InputGroupAddon align="inline-end">
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </UnstableIconButton>
+              </InputGroupAddon>
+            </InputGroup>
+            {Object.keys(errors).length > 0 && (
+              <div className="mt-4 flex w-full flex-col items-start rounded-md border border-border bg-container px-3 py-2.5">
+                <div className="mb-1 text-sm text-gray-400">
+                  {t("section.password.validate-base")}
+                </div>
+                {Object.keys(errors).map((key) => {
+                  if (errors[key as keyof Errors]) {
+                    return (
+                      <div className="items-top flex flex-row justify-start" key={key}>
+                        <X className="mt-0.5 mr-2 size-4 shrink-0 text-danger" />
+                        <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
                       </div>
-                      <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
-                    </div>
-                  );
-                }
-
-                return null;
-              })}
-            </div>
-          )}
-        </div>
-        <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
-          <div className="text-l w-full py-1 text-lg">
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            )}
+          </div>
+          <div className="mt-4 w-full">
             <Button
               type="submit"
               onClick={signupErrorCheck}
-              size="sm"
+              variant="project"
+              size="lg"
               isFullWidth
-              className="h-14"
-              colorSchema="primary"
-              variant="outline_bg"
-              isLoading={isLoading}
+              isPending={isLoading}
+              isDisabled={isLoading}
             >
-              {" "}
-              {String(t("signup.signup"))}{" "}
+              {String(t("signup.signup"))}
             </Button>
           </div>
-        </div>
-      </div>
+        </UnstableCardContent>
+      </UnstableCard>
     </div>
   );
 }

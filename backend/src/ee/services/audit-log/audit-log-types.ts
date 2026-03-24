@@ -35,6 +35,11 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import {
+  TAWSAuthDetails,
+  TKubernetesAuthDetails,
+  TOidcAuthDetails
+} from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
@@ -340,6 +345,7 @@ export enum EventType {
   GET_CA_CRLS = "get-certificate-authority-crls",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
+  INSTALL_CA_CERT_ADCS = "install-ca-cert-adcs",
   CREATE_CA_SIGNING_CONFIG = "create-ca-signing-config",
   GET_CA_SIGNING_CONFIG = "get-ca-signing-config",
   UPDATE_CA_SIGNING_CONFIG = "update-ca-signing-config",
@@ -410,6 +416,8 @@ export enum EventType {
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   UPDATE_CERTIFICATE_METADATA = "update-certificate-metadata",
+  UPDATE_CERTIFICATE_CLEANUP_CONFIG = "update-certificate-cleanup-config",
+  CERTIFICATE_CLEANUP_COMPLETED = "certificate-cleanup-completed",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
   CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
   GET_CERTIFICATE_REQUEST = "get-certificate-request",
@@ -678,8 +686,32 @@ export enum EventType {
   GET_PKI_INSTALLATION = "get-pki-installation",
   GET_PKI_INSTALLATIONS = "get-pki-installations",
   UPDATE_PKI_INSTALLATION = "update-pki-installation",
-  DELETE_PKI_INSTALLATION = "delete-pki-installation"
+  DELETE_PKI_INSTALLATION = "delete-pki-installation",
+
+  // Code Signing
+  CREATE_PKI_SIGNER = "create-pki-signer",
+  UPDATE_PKI_SIGNER = "update-pki-signer",
+  DELETE_PKI_SIGNER = "delete-pki-signer",
+  GET_PKI_SIGNER = "get-pki-signer",
+  GET_PKI_SIGNERS = "get-pki-signers",
+  GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
+  GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
+  PKI_SIGNER_SIGN = "pki-signer-sign"
 }
+
+// Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
+// Derived from the *ActorMetadata interfaces below. Note that ACME_PROFILE and EST_ACCOUNT
+// both use "profileId" as their identifying key — this is intentional and matches their
+// respective metadata schemas (AcmeProfileActorMetadata, EstAccountActorMetadata).
+export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> = {
+  [ActorType.USER]: "userId",
+  [ActorType.IDENTITY]: "identityId",
+  [ActorType.KMIP_CLIENT]: "clientId",
+  [ActorType.SERVICE]: "serviceId",
+  [ActorType.ACME_PROFILE]: "profileId",
+  [ActorType.ACME_ACCOUNT]: "accountId",
+  [ActorType.EST_ACCOUNT]: "profileId"
+};
 
 export const filterableSecretEvents: EventType[] = [
   EventType.GET_SECRET,
@@ -708,6 +740,10 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
   permission?: Record<string, unknown>;
+
+  aws?: TAWSAuthDetails;
+  kubernetes?: TKubernetesAuthDetails;
+  oidc?: TOidcAuthDetails;
 }
 
 interface ScimClientActorMetadata {}
@@ -2570,6 +2606,14 @@ interface InstallCaCertVenafi {
   };
 }
 
+interface InstallCaCertAdcs {
+  type: EventType.INSTALL_CA_CERT_ADCS;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
 interface CreateCaSigningConfig {
   type: EventType.CREATE_CA_SIGNING_CONFIG;
   metadata: {
@@ -3567,6 +3611,9 @@ interface SecretSyncSyncSecretsEvent {
     syncMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+    createdSecretKeys?: string[];
+    updatedSecretKeys?: string[];
+    deletedSecretKeys?: string[];
   };
 }
 
@@ -3771,6 +3818,74 @@ interface DeletePkiInstallationEvent {
   metadata: {
     installationId: string;
     name: string | null;
+  };
+}
+
+interface CreatePkiSignerEvent {
+  type: EventType.CREATE_PKI_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+    certificateId: string;
+    approvalPolicyId?: string | null;
+  };
+}
+
+interface UpdatePkiSignerEvent {
+  type: EventType.UPDATE_PKI_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface DeletePkiSignerEvent {
+  type: EventType.DELETE_PKI_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface GetPkiSignerEvent {
+  type: EventType.GET_PKI_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface GetPkiSignersEvent {
+  type: EventType.GET_PKI_SIGNERS;
+  metadata: {
+    count: number;
+    offset: number;
+    limit: number;
+  };
+}
+
+interface GetPkiSignerPublicKeyEvent {
+  type: EventType.GET_PKI_SIGNER_PUBLIC_KEY;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface GetPkiSigningOperationsEvent {
+  type: EventType.GET_PKI_SIGNING_OPERATIONS;
+  metadata: {
+    signerId: string;
+    count: number;
+  };
+}
+
+interface PkiSignerSignEvent {
+  type: EventType.PKI_SIGNER_SIGN;
+  metadata: {
+    signerId: string;
+    name: string;
+    signingAlgorithm: string;
   };
 }
 
@@ -4754,6 +4869,24 @@ interface UpdateCertificateMetadataEvent {
   };
 }
 
+interface UpdateCertificateCleanupConfigEvent {
+  type: EventType.UPDATE_CERTIFICATE_CLEANUP_CONFIG;
+  metadata: {
+    projectId: string;
+    isEnabled: boolean;
+    postExpiryRetentionDays: number;
+    skipCertsWithActiveSyncs: boolean;
+  };
+}
+
+interface CertificateCleanupCompletedEvent {
+  type: EventType.CERTIFICATE_CLEANUP_COMPLETED;
+  metadata: {
+    deletedCount: number;
+    certificateSerialNumbers: string[];
+  };
+}
+
 interface DisableCertificateRenewalConfigEvent {
   type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -5507,6 +5640,7 @@ export type Event =
   | GetCaCrls
   | GenerateCaCertificate
   | InstallCaCertVenafi
+  | InstallCaCertAdcs
   | CreateCaSigningConfig
   | GetCaSigningConfig
   | UpdateCaSigningConfig
@@ -5648,6 +5782,14 @@ export type Event =
   | GetPkiInstallationsEvent
   | UpdatePkiInstallationEvent
   | DeletePkiInstallationEvent
+  | CreatePkiSignerEvent
+  | UpdatePkiSignerEvent
+  | DeletePkiSignerEvent
+  | GetPkiSignerEvent
+  | GetPkiSignersEvent
+  | GetPkiSignerPublicKeyEvent
+  | GetPkiSigningOperationsEvent
+  | PkiSignerSignEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent
@@ -5822,4 +5964,6 @@ export type Event =
   | CreateDynamicSecretLeaseEvent
   | DeleteDynamicSecretLeaseEvent
   | RenewDynamicSecretLeaseEvent
-  | GetDynamicSecretLeaseEvent;
+  | GetDynamicSecretLeaseEvent
+  | UpdateCertificateCleanupConfigEvent
+  | CertificateCleanupCompletedEvent;

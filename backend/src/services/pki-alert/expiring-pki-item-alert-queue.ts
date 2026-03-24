@@ -1,5 +1,5 @@
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 
 type TDailyExpiringPkiItemAlertQueueServiceFactoryDep = {
@@ -23,19 +23,12 @@ export const dailyExpiringPkiItemAlertQueueServiceFactory = ({
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
   const startSendingAlerts = async () => {
-    // clear previous job
-    await queueService.stopRepeatableJob(
+    await queueService.upsertJobScheduler(
       QueueName.DailyExpiringPkiItemAlert,
-      QueueJobs.DailyExpiringPkiItemAlert,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.DailyExpiringPkiItemAlert // just a job id
+      `${JOB_SCHEDULER_PREFIX}:${QueueName.DailyExpiringPkiItemAlert}`,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.DailyExpiringPkiItemAlert, opts: { delay: 5000 } }
     );
-
-    await queueService.queue(QueueName.DailyExpiringPkiItemAlert, QueueJobs.DailyExpiringPkiItemAlert, undefined, {
-      delay: 5000,
-      jobId: QueueName.DailyExpiringPkiItemAlert,
-      repeat: { pattern: "0 0 * * *", utc: true, key: QueueName.DailyExpiringPkiItemAlert }
-    });
   };
 
   queueService.listen(QueueName.DailyExpiringPkiItemAlert, "failed", (_, err) => {

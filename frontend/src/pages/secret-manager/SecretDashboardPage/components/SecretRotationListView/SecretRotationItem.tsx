@@ -21,6 +21,7 @@ import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPerm
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
@@ -75,6 +76,16 @@ export const SecretRotationItem = ({
   const { name: rotationType, image } = SECRET_ROTATION_MAP[type];
   const [showSecrets, setShowSecrets] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
+
+  const showReconcileButton =
+    (secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
+      secretRotation.parameters.rotationMethod ===
+        UnixLinuxLocalAccountRotationMethod.LoginAsTarget) ||
+    (secretRotation.type === SecretRotation.WindowsLocalAccount &&
+      secretRotation.parameters.rotationMethod ===
+        WindowsLocalAccountRotationMethod.LoginAsTarget) ||
+    (secretRotation.type === SecretRotation.HpIloLocalAccount &&
+      secretRotation.parameters.rotationMethod === HpIloRotationMethod.LoginAsTarget);
 
   return (
     <>
@@ -187,12 +198,7 @@ export const SecretRotationItem = ({
                 </IconButton>
               )}
             </ProjectPermissionCan>
-            {((secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
-              secretRotation.parameters.rotationMethod ===
-                UnixLinuxLocalAccountRotationMethod.LoginAsTarget) ||
-              (secretRotation.type === SecretRotation.WindowsLocalAccount &&
-                secretRotation.parameters.rotationMethod ===
-                  WindowsLocalAccountRotationMethod.LoginAsTarget)) && (
+            {showReconcileButton && (
               <ProjectPermissionCan
                 I={ProjectPermissionSecretRotationActions.RotateSecrets}
                 a={subject(ProjectPermissionSub.SecretRotation, {

@@ -17,6 +17,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import {
@@ -43,6 +44,7 @@ type Props = {
   importedBy?: ProjectSecretsImportedBy[] | null;
   usedBySecretSyncs?: UsedBySecretSyncs[];
   secretsToDeleteKeys: string[];
+  visibleEnvs: ProjectEnv[];
 };
 
 export const SelectionPanel = ({
@@ -51,7 +53,8 @@ export const SelectionPanel = ({
   selectedEntries,
   importedBy,
   secretsToDeleteKeys,
-  usedBySecretSyncs = []
+  usedBySecretSyncs = [],
+  visibleEnvs
 }: Props) => {
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
@@ -292,6 +295,7 @@ export const SelectionPanel = ({
         isOpen={popUp.bulkMoveSecrets.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("bulkMoveSecrets", isOpen)}
         environments={userAvailableEnvs}
+        visibleEnvs={visibleEnvs}
         projectId={projectId}
         projectSlug={currentProject.slug}
         sourceSecretPath={secretPath}

@@ -55,6 +55,7 @@ export const NorthflankSyncListItemSchema = z
     name: z.literal("Northflank"),
     connection: z.literal(AppConnection.Northflank),
     destination: z.literal(SecretSync.Northflank),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Northflank] }));

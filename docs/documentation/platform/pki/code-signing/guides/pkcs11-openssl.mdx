@@ -1,0 +1,199 @@
+---
+title: "Sign with OpenSSL"
+sidebarTitle: "OpenSSL"
+description: "Use the Infisical PKCS#11 module with OpenSSL's pkcs11 engine for general-purpose signing."
+---
+
+In the following steps, we explore how to use OpenSSL with the Infisical PKCS#11 module via the `libp11` engine. OpenSSL is a versatile foundation for signing any file format. It is useful when you need raw signatures, custom signing pipelines, or integration with tools that wrap OpenSSL.
+
+## Prerequisites
+
+- An Infisical project with a [signer](/documentation/platform/pki/code-signing/signers) configured
+- An active [signing grant](/documentation/platform/pki/code-signing/grants) for the signer
+- A [machine identity](/documentation/platform/identities/machine-identities) with Universal Auth and `Sign` permission on the signer
+- The Infisical PKCS#11 module [installed and configured](/documentation/platform/pki/code-signing/pkcs11-module)
+- OpenSSL 1.1.1 or later
+- `libp11` (OpenSSL PKCS#11 engine)
+
+## Step 1: Install the PKCS#11 Engine
+
+<Tabs>
+  <Tab title="Ubuntu / Debian">
+    ```bash
+    sudo apt-get update
+    sudo apt-get install -y opensc libengine-pkcs11-openssl
+    ```
+  </Tab>
+  <Tab title="macOS (Homebrew)">
+    ```bash
+    brew install opensc libp11
+    ```
+  </Tab>
+  <Tab title="RHEL / Fedora">
+    ```bash
+    sudo dnf install opensc p11-kit engine-pkcs11
+    ```
+  </Tab>
+</Tabs>
+
+Verify the engine is available:
+
+```bash
+openssl engine pkcs11 -t
+```
+
+The output confirms the engine is loaded:
+
+```
+(pkcs11) pkcs11 engine
+     [ available ]
+```
+
+## Step 2: Create an OpenSSL Configuration
+
+Create an OpenSSL config file `infisical-openssl.cnf` to set up the PKCS#11 engine:
+
+```ini
+openssl_conf = openssl_init
+
+[openssl_init]
+engines = engine_section
+
+[engine_section]
+pkcs11 = pkcs11_section
+
+[pkcs11_section]
+engine_id = pkcs11
+MODULE_PATH = /usr/local/lib/libinfisical-pkcs11.so
+init = 0
+```
+
+Set this as the active OpenSSL config:
+
+```bash
+export OPENSSL_CONF=/path/to/infisical-openssl.cnf
+```
+
+## Step 3: Sign a File
+
+Sign a file using the PKCS#11 key. The same command works for both RSA and ECDSA keys. OpenSSL automatically selects the correct algorithm based on the key type:
+
+```bash
+openssl dgst -sha256 \
+  -engine pkcs11 \
+  -keyform engine \
+  -sign "pkcs11:object=release-signer;type=private" \
+  -out document.sig \
+  document.txt
+```
+
+<Note>
+  - The `object` in the PKCS#11 URI must match your signer name exactly.
+  - The output is a raw signature file (PKCS#1 for RSA, DER-encoded for ECDSA).
+</Note>
+
+### Sign with RSA-PSS Padding
+
+For RSA keys, you can use PSS padding instead of the default PKCS#1 v1.5:
+
+```bash
+openssl dgst -sha256 \
+  -engine pkcs11 \
+  -keyform engine \
+  -sign "pkcs11:object=release-signer;type=private" \
+  -sigopt rsa_padding_mode:pss \
+  -sigopt rsa_pss_saltlen:32 \
+  -out document.sig \
+  document.txt
+```
+
+<Note>
+  RSA-PSS requires the signer's key to support the `RSASSA_PSS` mechanism. This is only available with RSA keys.
+</Note>
+
+## Step 4: Verify the Signature
+
+Extract the public key or certificate from PKCS#11, then verify:
+
+```bash
+# Extract the certificate and public key
+pkcs11-tool --module /usr/local/lib/libinfisical-pkcs11.so \
+  --slot 0 --read-object --type cert --label release-signer \
+  --output-file cert.der
+openssl x509 -inform DER -in cert.der -pubkey -noout > pubkey.pem
+
+# Verify the signature
+openssl dgst -sha256 \
+  -verify pubkey.pem \
+  -signature document.sig \
+  document.txt
+```
+
+The output confirms the signature is valid:
+
+```
+Verified OK
+```
+
+## Common Use Cases
+
+### Sign a Checksum Manifest
+
+```bash
+# Generate checksums
+sha256sum *.tar.gz > SHA256SUMS
+
+# Sign the manifest
+openssl dgst -sha256 \
+  -engine pkcs11 \
+  -keyform engine \
+  -sign "pkcs11:object=release-signer;type=private" \
+  -out SHA256SUMS.sig \
+  SHA256SUMS
+```
+
+### Create a Detached S/MIME Signature
+
+```bash
+openssl cms -sign \
+  -engine pkcs11 \
+  -keyform engine \
+  -inkey "pkcs11:object=release-signer;type=private" \
+  -signer signer-cert.pem \
+  -in document.pdf \
+  -out document.pdf.p7s \
+  -outform DER \
+  -binary
+```
+
+## CI/CD Integration
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_CLIENT_SECRET}"
+export INFISICAL_PKCS11_CONFIG="/path/to/pkcs11.conf"
+export OPENSSL_CONF="/path/to/infisical-openssl.cnf"
+
+# Sign release artifacts
+for file in dist/*.tar.gz; do
+  openssl dgst -sha256 \
+    -engine pkcs11 \
+    -keyform engine \
+    -sign "pkcs11:object=release-signer;type=private" \
+    -out "${file}.sig" \
+    "${file}"
+done
+```
+
+## Troubleshooting
+
+For any issue, enable debug logging in your config file (`"log_level": "debug"`, `"log_file": "/tmp/infisical-pkcs11.log"`) to get detailed output.
+
+<AccordionGroup>
+  <Accordion title="Engine 'pkcs11' not found or key errors">
+    Ensure `libp11` is installed and the object name in the PKCS#11 URI matches your signer name exactly. Check the engine is registered with `openssl engine -t pkcs11`.
+  </Accordion>
+  <Accordion title="OpenSSL 3.0+ deprecation warnings">
+    OpenSSL 3.0 deprecated engines in favor of providers. The `libp11` engine still works but may show warnings. For a provider-based approach, use [`pkcs11-provider`](https://github.com/latchset/pkcs11-provider) instead.
+  </Accordion>
+</AccordionGroup>

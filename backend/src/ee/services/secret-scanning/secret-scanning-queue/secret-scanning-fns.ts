@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -40,9 +40,12 @@ export async function cloneRepo(
   repoPath: string
 ): Promise<void> {
   const cloneUrl = `https://x-access-token:${installationAcccessToken}@github.com/${repositoryFullName}.git`;
-  const command = `git clone ${cloneUrl} ${repoPath} --bare`;
+
+  // eslint-disable-next-line no-new
+  new URL(cloneUrl);
+
   return new Promise((resolve, reject) => {
-    exec(command, (error) => {
+    execFile("git", ["clone", cloneUrl, repoPath, "--bare"], (error) => {
       if (error) {
         reject(error);
       } else {
@@ -54,8 +57,7 @@ export async function cloneRepo(
 
 export function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `cd ${repoPath} && infisical scan --exit-code=77 -r "${outputPath}"`;
-    exec(command, (error) => {
+    execFile("infisical", ["scan", "--exit-code=77", "-r", outputPath], { cwd: repoPath }, (error) => {
       if (error && error.code !== 77) {
         reject(error);
       } else {
@@ -67,8 +69,11 @@ export function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Pr
 
 export function runInfisicalScan(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `cat "${inputPath}" | infisical scan --exit-code=77 --pipe -r "${outputPath}" ${configPath ? `-c "${configPath}"` : ""}`;
-    exec(command, (error) => {
+    const args = ["scan", "--exit-code=77", "--source", inputPath, "--no-git", "-r", outputPath];
+    if (configPath) {
+      args.push("-c", configPath);
+    }
+    execFile("infisical", args, (error) => {
       if (error && error.code !== 77) {
         reject(error);
       } else {

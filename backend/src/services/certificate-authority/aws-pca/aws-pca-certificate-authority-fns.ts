@@ -177,7 +177,7 @@ const createPcaClient = async ({
   return new ACMPCAClient({
     sha256: CustomAWSHasher,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
-    credentials: awsConfig.credentials!,
+    credentials: awsConfig.credentials,
     region: awsConfig.region
   });
 };

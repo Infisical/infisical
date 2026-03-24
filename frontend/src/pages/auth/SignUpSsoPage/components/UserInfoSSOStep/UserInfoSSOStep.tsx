@@ -6,7 +6,17 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Input } from "@app/components/v2";
+import {
+  Button,
+  FieldError,
+  TextArea,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableInput
+} from "@app/components/v3";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
@@ -23,19 +33,6 @@ type Props = {
   forceDefaultOrg?: boolean;
 };
 
-/**
- * This is the step of the sign up flow where people provife their name/surname and password
- * @param {object} obj
- * @param {string} obj.verificationToken - the token which we use to verify the legitness of a user
- * @param {string} obj.incrementStep - a function to move to the next signup step
- * @param {string} obj.email - email of a user who is signing up
- * @param {string} obj.password - user's password
- * @param {string} obj.setPassword - function managing the state of user's password
- * @param {string} obj.firstName - user's first name
- * @param {string} obj.setFirstName  - function managing the state of user's first name
- * @param {string} obj.lastName - user's lastName
- * @param {string} obj.setLastName - function managing the state of user's last name
- */
 export const UserInfoSSOStep = ({
   username,
   name,
@@ -100,6 +97,11 @@ export const UserInfoSSOStep = ({
         SecurityClient.setSignupToken("");
         SecurityClient.setToken(response.token);
         SecurityClient.setProviderAuthToken("");
+
+        if (isInfisicalCloud()) {
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push({ event: "signup_completed" });
+        }
 
         const userOrgs = await fetchOrganizations();
         const orgId = userOrgs[0]?.id;
@@ -167,82 +169,71 @@ export const UserInfoSSOStep = ({
   }
 
   return (
-    <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
-      <p className="text-medium mx-8 mb-6 flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
-        {t("signup.step3-message")}
-      </p>
-      <div className="mx-auto mb-36 h-full w-max rounded-xl py-6 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800 md:px-8">
-        <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
-          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Your Name
-          </p>
-          <Input
-            placeholder="Jane Doe"
-            value={name}
-            disabled
-            isRequired
-            autoComplete="given-name"
-            className="h-12"
-          />
-          {nameError && (
-            <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
-              Please, specify your name
-            </p>
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+        <UnstableCardHeader className="mb-4 gap-2">
+          <UnstableCardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+            {t("signup.step3-message")}
+          </UnstableCardTitle>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <div className="flex w-full flex-col items-stretch py-2">
+            <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Your Name</p>
+            <UnstableInput
+              placeholder="Jane Doe"
+              value={name}
+              disabled
+              required
+              autoComplete="given-name"
+              isError={nameError}
+            />
+            {nameError && <FieldError>Please, specify your name</FieldError>}
+          </div>
+          {!forceDefaultOrg && providerOrganizationName === undefined && (
+            <div className="flex w-full flex-col items-stretch py-2">
+              <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Organization Name</p>
+              <UnstableInput
+                placeholder="Infisical"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                required
+                maxLength={64}
+                disabled={forceDefaultOrg}
+                isError={organizationNameError}
+              />
+              {organizationNameError && (
+                <FieldError>Please, specify your organization name</FieldError>
+              )}
+            </div>
           )}
-        </div>
-        {!forceDefaultOrg && providerOrganizationName === undefined && (
-          <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
-            <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-              Organization Name
-            </p>
-            <Input
-              placeholder="Infisical"
-              value={organizationName}
-              onChange={(e) => setOrganizationName(e.target.value)}
-              isRequired
-              className="h-12"
-              maxLength={64}
-              isDisabled={forceDefaultOrg}
-            />
-            {organizationNameError && (
-              <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
-                Please, specify your organization name
+          {providerOrganizationName === undefined && (
+            <div className="flex w-full flex-col items-stretch py-2">
+              <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">
+                Where did you hear about us? <span className="font-light">(optional)</span>
               </p>
-            )}
-          </div>
-        )}
-        {providerOrganizationName === undefined && (
-          <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
-            <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-              Where did you hear about us? <span className="font-light">(optional)</span>
-            </p>
-            <Input
-              placeholder=""
-              onChange={(e) => setAttributionSource(e.target.value)}
-              value={attributionSource}
-              className="h-12"
-            />
-          </div>
-        )}
-        <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
-          <div className="text-l w-full py-1 text-lg">
+              <TextArea
+                placeholder=""
+                onChange={(e) => setAttributionSource(e.target.value)}
+                value={attributionSource}
+                rows={2}
+              />
+            </div>
+          )}
+          <div className="mt-4 w-full">
             <Button
               type="submit"
               onClick={signupErrorCheck}
-              size="sm"
+              variant="project"
+              size="lg"
               isFullWidth
-              className="h-12"
-              colorSchema="primary"
-              variant="outline_bg"
-              isLoading={isLoading}
+              isPending={isLoading}
               isDisabled={isLoading}
             >
-              {" "}
-              {String(t("signup.signup"))}{" "}
+              {String(t("signup.signup"))}
             </Button>
           </div>
-        </div>
-      </div>
+        </UnstableCardContent>
+      </UnstableCard>
     </div>
   );
 };

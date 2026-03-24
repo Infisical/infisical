@@ -6,5 +6,6 @@ export const OCTOPUS_DEPLOY_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Octopus Deploy",
   destination: SecretSync.OctopusDeploy,
   connection: AppConnection.OctopusDeploy,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: false
 };
