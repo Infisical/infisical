@@ -3,7 +3,27 @@ import { logger } from "@app/lib/logger";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
-import { TCertificatePreview, TChannelResult, TEmailChannelConfig } from "./pki-alert-v2-types";
+import {
+  getRevocationReasonLabel,
+  PkiAlertEventType,
+  TCertificatePreview,
+  TChannelResult,
+  TEmailChannelConfig
+} from "./pki-alert-v2-types";
+
+const getEmailEventLabel = (eventType: PkiAlertEventType): string => {
+  switch (eventType) {
+    case PkiAlertEventType.ISSUANCE:
+      return "Issuance";
+    case PkiAlertEventType.RENEWAL:
+      return "Renewal";
+    case PkiAlertEventType.REVOCATION:
+      return "Revocation";
+    case PkiAlertEventType.EXPIRATION:
+    default:
+      return "Expiration";
+  }
+};
 
 const isEmailErrorRetryable = (err: Error): boolean => {
   const msg = err.message.toLowerCase();
@@ -19,20 +39,27 @@ export const sendEmailNotification = async (
   alertName: string,
   alertBeforeDays: number,
   projectId: string,
-  matchingCertificates: TCertificatePreview[]
+  matchingCertificates: TCertificatePreview[],
+  eventType: PkiAlertEventType = PkiAlertEventType.EXPIRATION
 ): Promise<void> => {
+  const eventLabel = getEmailEventLabel(eventType);
+
   await smtpService.sendMail({
     recipients: config.recipients,
-    subjectLine: `Infisical Certificate Alert - ${alertName}`,
+    subjectLine: `Infisical Certificate ${eventLabel} Alert - ${alertName}`,
     substitutions: {
       alertName,
       alertBeforeDays,
       projectId,
+      eventLabel,
       items: matchingCertificates.map((cert) => ({
         type: "Certificate",
         friendlyName: cert.commonName,
         serialNumber: cert.serialNumber,
-        expiryDate: cert.notAfter.toLocaleDateString()
+        expiryDate: cert.notAfter.toLocaleDateString(),
+        ...(eventType === PkiAlertEventType.REVOCATION
+          ? { revocationReason: getRevocationReasonLabel(cert.revocationReason) }
+          : {})
       }))
     },
     template: SmtpTemplates.PkiExpirationAlert
@@ -46,7 +73,8 @@ export const sendEmailNotificationWithRetry = async (
   alertBeforeDays: number,
   projectId: string,
   matchingCertificates: TCertificatePreview[],
-  channelId: string
+  channelId: string,
+  eventType: PkiAlertEventType = PkiAlertEventType.EXPIRATION
 ): Promise<TChannelResult> => {
   const { maxRetries, delayMs } = PKI_ALERT_RETRY_CONFIG;
   let lastError: Error | undefined;
@@ -54,7 +82,15 @@ export const sendEmailNotificationWithRetry = async (
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      await sendEmailNotification(smtpService, config, alertName, alertBeforeDays, projectId, matchingCertificates);
+      await sendEmailNotification(
+        smtpService,
+        config,
+        alertName,
+        alertBeforeDays,
+        projectId,
+        matchingCertificates,
+        eventType
+      );
       return { success: true };
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));

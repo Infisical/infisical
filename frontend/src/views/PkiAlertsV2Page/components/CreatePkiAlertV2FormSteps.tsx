@@ -80,6 +80,7 @@ const MAX_CHANNELS = 10;
 interface CreatePkiAlertV2FormStepsProps {
   expandedChannel: string | undefined;
   setExpandedChannel: (channel: string | undefined) => void;
+  showPreview?: boolean;
 }
 
 type ChannelUIState = {
@@ -93,7 +94,8 @@ type ChannelUIState = {
 
 export const CreatePkiAlertV2FormSteps = ({
   expandedChannel,
-  setExpandedChannel
+  setExpandedChannel,
+  showPreview = true
 }: CreatePkiAlertV2FormStepsProps) => {
   const {
     control,
@@ -129,17 +131,26 @@ export const CreatePkiAlertV2FormSteps = ({
   const watchedEventType = watch("eventType");
   const watchedAlertBefore = watch("alertBefore");
 
+  const previewEnabledTypes = [
+    PkiAlertEventTypeV2.EXPIRATION,
+    PkiAlertEventTypeV2.RENEWAL,
+    PkiAlertEventTypeV2.REVOCATION
+  ];
+  const isPreviewEnabled = !!currentProject?.id && previewEnabledTypes.includes(watchedEventType);
+
   const { data: currentCertificatesData, isLoading: isLoadingCurrentCertificates } =
     useGetPkiAlertV2CurrentMatchingCertificates(
       {
         projectId: currentProject?.id || "",
         filters: watchedFilters || [],
-        alertBefore: watchedAlertBefore || "30d",
+        ...(watchedEventType === PkiAlertEventTypeV2.EXPIRATION
+          ? { alertBefore: watchedAlertBefore || "30d" }
+          : {}),
         limit: certificatesPerPage,
         offset: (certificatesPage - 1) * certificatesPerPage
       },
       {
-        enabled: !!currentProject?.id && watchedEventType === PkiAlertEventTypeV2.EXPIRATION,
+        enabled: isPreviewEnabled,
         refetchOnWindowFocus: false
       }
     );
@@ -343,6 +354,13 @@ export const CreatePkiAlertV2FormSteps = ({
                   >
                     <SelectItem value={PkiAlertEventTypeV2.EXPIRATION}>
                       Certificate Expiration
+                    </SelectItem>
+                    <SelectItem value={PkiAlertEventTypeV2.ISSUANCE}>
+                      Certificate Issuance
+                    </SelectItem>
+                    <SelectItem value={PkiAlertEventTypeV2.RENEWAL}>Certificate Renewal</SelectItem>
+                    <SelectItem value={PkiAlertEventTypeV2.REVOCATION}>
+                      Certificate Revocation
                     </SelectItem>
                   </Select>
                 </FormControl>
@@ -563,112 +581,108 @@ export const CreatePkiAlertV2FormSteps = ({
         </div>
       </Tab.Panel>
 
-      <Tab.Panel>
-        <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
-            Preview all certificates that match your filter criteria. This shows all non-expired
-            certificates that would be monitored by this alert.
-          </p>
+      {showPreview && (
+        <Tab.Panel>
+          <div className="space-y-6">
+            <p className="mb-4 text-sm text-bunker-300">
+              {watchedEventType === PkiAlertEventTypeV2.EXPIRATION &&
+                "Preview certificates that will expire within the configured alert window and match your filter criteria."}
+              {watchedEventType === PkiAlertEventTypeV2.RENEWAL &&
+                "Preview active certificates that match your filter criteria. When any of these certificates are renewed, this alert will trigger."}
+              {watchedEventType === PkiAlertEventTypeV2.REVOCATION &&
+                "Preview active certificates that match your filter criteria. When any of these certificates are revoked, this alert will trigger."}
+            </p>
 
-          <div className="space-y-4">
-            <TableContainer>
-              <Table>
-                <THead>
-                  <Tr>
-                    <Th className="w-1/2">SAN / CN</Th>
-                    <Th className="w-1/4">Not Before</Th>
-                    <Th className="w-1/4">Not After</Th>
-                  </Tr>
-                </THead>
-                <TBody>
-                  {(() => {
-                    if (watchedEventType !== PkiAlertEventTypeV2.EXPIRATION) {
+            <div className="space-y-4">
+              <TableContainer>
+                <Table>
+                  <THead>
+                    <Tr>
+                      <Th className="w-1/2">SAN / CN</Th>
+                      <Th className="w-1/4">Not Before</Th>
+                      <Th className="w-1/4">Not After</Th>
+                    </Tr>
+                  </THead>
+                  <TBody>
+                    {(() => {
+                      if (isLoadingCurrentCertificates) {
+                        return Array.from({ length: 5 }, (_, index) => (
+                          <Tr key={`skeleton-row-${index}`}>
+                            <Td>
+                              <Skeleton className="h-4 w-32" />
+                            </Td>
+                            <Td>
+                              <Skeleton className="h-4 w-24" />
+                            </Td>
+                            <Td>
+                              <Skeleton className="h-4 w-24" />
+                            </Td>
+                          </Tr>
+                        ));
+                      }
+
+                      if (currentCertificatesData?.certificates?.length) {
+                        return currentCertificatesData.certificates.map((cert) => (
+                          <Tr key={cert.id} className="group h-10">
+                            <Td className="max-w-0">
+                              <div className="flex items-center gap-2">
+                                <CertificateDisplayName
+                                  cert={{
+                                    altNames: cert.san?.join(", ") || null,
+                                    commonName: cert.commonName
+                                  }}
+                                  maxLength={48}
+                                  fallback="—"
+                                />
+                                {(cert.enrollmentType === "ca" ||
+                                  cert.enrollmentType === "internal-ca") && (
+                                  <Badge variant="info" className="shrink-0 text-xs">
+                                    CA
+                                  </Badge>
+                                )}
+                              </div>
+                            </Td>
+                            <Td>
+                              {cert.notBefore
+                                ? new Date(cert.notBefore).toLocaleDateString("en-CA")
+                                : "-"}
+                            </Td>
+                            <Td>
+                              {cert.notAfter
+                                ? new Date(cert.notAfter).toLocaleDateString("en-CA")
+                                : "-"}
+                            </Td>
+                          </Tr>
+                        ));
+                      }
+
                       return (
                         <Tr>
                           <Td colSpan={3} className="py-8 text-center text-gray-400">
-                            Preview is only available for Certificate Expiration alerts
+                            No certificates currently match this alert&apos;s criteria
                           </Td>
                         </Tr>
                       );
-                    }
+                    })()}
+                  </TBody>
+                </Table>
+              </TableContainer>
 
-                    if (isLoadingCurrentCertificates) {
-                      return Array.from({ length: 5 }, (_, index) => (
-                        <Tr key={`skeleton-row-${index}`}>
-                          <Td>
-                            <Skeleton className="h-4 w-32" />
-                          </Td>
-                          <Td>
-                            <Skeleton className="h-4 w-24" />
-                          </Td>
-                          <Td>
-                            <Skeleton className="h-4 w-24" />
-                          </Td>
-                        </Tr>
-                      ));
-                    }
-
-                    if (currentCertificatesData?.certificates?.length) {
-                      return currentCertificatesData.certificates.map((cert) => (
-                        <Tr key={cert.id} className="group h-10">
-                          <Td className="max-w-0">
-                            <div className="flex items-center gap-2">
-                              <CertificateDisplayName
-                                cert={{
-                                  altNames: cert.san?.join(", ") || null,
-                                  commonName: cert.commonName
-                                }}
-                                maxLength={48}
-                                fallback="—"
-                              />
-                              {(cert.enrollmentType === "ca" ||
-                                cert.enrollmentType === "internal-ca") && (
-                                <Badge variant="info" className="shrink-0 text-xs">
-                                  CA
-                                </Badge>
-                              )}
-                            </div>
-                          </Td>
-                          <Td>
-                            {cert.notBefore
-                              ? new Date(cert.notBefore).toLocaleDateString("en-CA")
-                              : "-"}
-                          </Td>
-                          <Td>
-                            {cert.notAfter
-                              ? new Date(cert.notAfter).toLocaleDateString("en-CA")
-                              : "-"}
-                          </Td>
-                        </Tr>
-                      ));
-                    }
-
-                    return (
-                      <Tr>
-                        <Td colSpan={3} className="py-8 text-center text-gray-400">
-                          No certificates currently match this alert&apos;s criteria
-                        </Td>
-                      </Tr>
-                    );
-                  })()}
-                </TBody>
-              </Table>
-            </TableContainer>
-
-            {(currentCertificatesData?.total || 0) > 0 && (
-              <div className="flex justify-center">
-                <Pagination
-                  count={currentCertificatesData?.total || 0}
-                  page={certificatesPage}
-                  onChangePage={setCertificatesPage}
-                  perPage={certificatesPerPage}
-                  onChangePerPage={() => {}}
-                />
-              </div>
-            )}
+              {(currentCertificatesData?.total || 0) > 0 && (
+                <div className="flex justify-center">
+                  <Pagination
+                    count={currentCertificatesData?.total || 0}
+                    page={certificatesPage}
+                    onChangePage={setCertificatesPage}
+                    perPage={certificatesPerPage}
+                    onChangePerPage={() => {}}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </Tab.Panel>
+        </Tab.Panel>
+      )}
 
       <Tab.Panel>
         <div className="flex min-h-[400px] flex-col gap-6">

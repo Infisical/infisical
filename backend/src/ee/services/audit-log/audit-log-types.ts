@@ -2760,7 +2760,7 @@ interface CreatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     name: string;
-    alertBefore: string;
+    alertBefore?: string;
     eventType: PkiAlertEventType;
     recipientEmails?: string;
   };

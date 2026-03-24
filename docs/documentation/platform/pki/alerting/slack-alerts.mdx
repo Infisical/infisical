@@ -35,10 +35,10 @@ Infisical can send PKI certificate alert notifications to a Slack channel using 
 
     Here's some guidance for each field in the alert configuration sequence:
 
-    - **Alert Type**: The type of alert to create such as **Certificate Expiration**.
-    - **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+    - **Alert Type**: The type of certificate event to alert on. Options are **Certificate Expiration**, **Certificate Issuance**, **Certificate Renewal**, and **Certificate Revocation**.
+    - **Alert Name**: A slug friendly name for the alert such as `tls-expiry-alert`.
     - **Description**: An optional description for the alert.
-    - **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+    - **Alert Before** *(Expiration alerts only)*: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
     - **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
   </Step>
   <Step title="Add a Slack Notification Channel">
@@ -52,4 +52,4 @@ Infisical can send PKI certificate alert notifications to a Slack channel using 
 Keep your webhook URL secure. Anyone with access to it can post messages to your Slack channel.
 </Note>
 
-Slack messages include alert details and the two most urgent expiring certificates, with a link to view all certificates in Infisical.
+Slack messages include alert details and the two most relevant certificates, with a link to view all certificates in Infisical. Messages are color coded by event type: amber for expiration, green for issuance, blue for renewal, and red for revocation.

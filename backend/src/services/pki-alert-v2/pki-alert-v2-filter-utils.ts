@@ -322,15 +322,6 @@ export const applyCertificateFilters = (
 ): Knex.QueryBuilder => {
   let filteredQuery = query.where(`${TableName.Certificate}.projectId`, projectId);
 
-  const needsProfileJoin = requiresProfileJoin(filters);
-  if (needsProfileJoin) {
-    filteredQuery = filteredQuery.leftJoin(
-      `${TableName.PkiCertificateProfile} as profile`,
-      `${TableName.Certificate}.profileId`,
-      "profile.id"
-    );
-  }
-
   filters.forEach((filter) => {
     switch (filter.field) {
       case PkiFilterField.PROFILE_NAME:

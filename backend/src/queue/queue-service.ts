@@ -28,6 +28,7 @@ import {
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { ExternalPlatforms } from "@app/services/external-migration/external-migration-types";
 import { TCreateUserNotificationDTO } from "@app/services/notification/notification-types";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import {
   TQueuePkiSyncImportCertificatesByIdDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
@@ -71,6 +72,7 @@ export enum QueueName {
   FrequentResourceCleanUp = "frequent-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing = "daily-pki-alert-v2-processing",
+  PkiAlertV2Event = "pki-alert-v2-event",
   PkiSyncCleanup = "pki-sync-cleanup",
   PkiSubscriber = "pki-subscriber",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
@@ -128,6 +130,7 @@ export enum QueueJobs {
   FrequentResourceCleanUp = "frequent-resource-cleanup-job",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing = "daily-pki-alert-v2-processing",
+  PkiAlertV2ProcessEvent = "pki-alert-v2-process-event",
   PkiSyncCleanup = "pki-sync-cleanup-job",
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
@@ -253,6 +256,14 @@ export type TQueueJobTypes = {
   [QueueName.DailyPkiAlertV2Processing]: {
     name: QueueJobs.DailyPkiAlertV2Processing;
     payload: undefined;
+  };
+  [QueueName.PkiAlertV2Event]: {
+    name: QueueJobs.PkiAlertV2ProcessEvent;
+    payload: {
+      certificateId: string;
+      projectId: string;
+      eventType: PkiAlertEventType;
+    };
   };
   [QueueName.PkiSyncCleanup]: {
     name: QueueJobs.PkiSyncCleanup;
