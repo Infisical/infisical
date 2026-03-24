@@ -166,18 +166,16 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         accountId: z.string().uuid()
       }),
       response: {
-        202: z.object({
-          success: z.boolean(),
-          accountId: z.string().uuid()
+        200: z.object({
+          account: SanitizedAccountSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req, res) => {
-      await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+    handler: async (req) => {
+      const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
 
-      void res.status(202);
-      return { success: true, accountId: req.params.accountId };
+      return { account };
     }
   });
 

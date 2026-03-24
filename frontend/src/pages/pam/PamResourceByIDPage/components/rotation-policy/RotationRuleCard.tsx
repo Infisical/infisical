@@ -109,7 +109,7 @@ export const RotationRuleCard = ({
             </FieldContent>
           </Field>
           <Field>
-            <FieldLabel>Account Pattern</FieldLabel>
+            <FieldLabel>Account Name Pattern</FieldLabel>
             <FieldContent>
               <UnstableInput
                 value={localPattern}

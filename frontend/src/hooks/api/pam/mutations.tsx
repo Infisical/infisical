@@ -346,13 +346,16 @@ export const useManualRotateAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ accountId }: { accountId: string }) => {
-      const { data } = await apiRequest.post<{ success: boolean; accountId: string }>(
+      const { data } = await apiRequest.post<{ account: TPamAccount }>(
         `/api/v1/pam/accounts/${accountId}/rotate`
       );
-      return data;
+      return data.account;
     },
-    onSuccess: (_, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
+    onSuccess: (account) => {
+      queryClient.setQueryData(pamKeys.getAccount(account.id), account);
+      queryClient.invalidateQueries({
+        queryKey: pamKeys.listAccounts({ projectId: account.projectId })
+      });
     }
   });
 };

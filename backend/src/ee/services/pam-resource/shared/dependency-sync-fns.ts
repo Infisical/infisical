@@ -1,3 +1,4 @@
+import pLimit from "p-limit";
 import RE2 from "re2";
 import { runPowershell } from "winrm-client";
 
@@ -14,6 +15,8 @@ import { PamAccountDependencyType, PamDependencySyncStatus } from "../../pam-dis
 import { decryptResource } from "../pam-resource-fns";
 import { TPostRotateContext } from "../pam-resource-types";
 import { TWindowsResourceConnectionDetails } from "../windows-server/windows-server-resource-types";
+
+const DEPENDENCY_SYNC_RESOURCE_CONCURRENCY = 5;
 
 // Sanitize a string for safe use inside PowerShell single-quoted strings:
 // - doubles single quotes (PowerShell escape)
@@ -110,6 +113,12 @@ type TWinrmConfig = {
   winrmTlsServerName?: string;
 };
 
+export type TDependencySyncResult = {
+  total: number;
+  succeeded: number;
+  failed: number;
+};
+
 export const syncDependenciesAfterRotation = async ({
   accountId,
   newCredentials,
@@ -120,10 +129,10 @@ export const syncDependenciesAfterRotation = async ({
   gatewayId,
   resolveHostname,
   formatWinrmUsername
-}: TSyncDependenciesParams) => {
+}: TSyncDependenciesParams): Promise<TDependencySyncResult> => {
   const allDeps = await ctx.pamAccountDependenciesDAL.findByAccountId(accountId);
   const enabledDeps = allDeps.filter((d) => d.isRotationSyncEnabled);
-  if (!enabledDeps.length) return;
+  if (!enabledDeps.length) return { total: 0, succeeded: 0, failed: 0 };
 
   const grouped = groupBy(enabledDeps, (d) => d.resourceId);
 
@@ -145,6 +154,10 @@ export const syncDependenciesAfterRotation = async ({
     return encryptor;
   };
 
+  // Track success/failure counts
+  let succeededCount = 0;
+  let failedCount = 0;
+
   const failAllDeps = async (deps: typeof enabledDeps, msg: string) => {
     let encryptedMsg: Buffer | null = null;
     try {
@@ -161,94 +174,143 @@ export const syncDependenciesAfterRotation = async ({
         })
       )
     );
+    failedCount += deps.length;
   };
 
+  const limit = pLimit(DEPENDENCY_SYNC_RESOURCE_CONCURRENCY);
+
   await Promise.all(
-    Object.entries(grouped).map(async ([resourceId, deps]) => {
-      const resource = resourceMap.get(resourceId);
-      if (!resource) {
-        const msg = `Resource ${resourceId} not found`;
-        logger.warn(`[DependencySync] ${msg}, skipping`);
-        await failAllDeps(deps, msg);
-        return;
-      }
-
-      // Get hostname and WinRM config from the target resource's connection details
-      let hostname: string | null = null;
-      let winrmConfig: TWinrmConfig = {
-        winrmPort: 5986,
-        useWinrmHttps: true,
-        winrmRejectUnauthorized: true
-      };
-
-      try {
-        const decrypted = await decryptResource(resource, projectId, ctx.kmsService);
-        const connDetails = decrypted.connectionDetails as TWindowsResourceConnectionDetails;
-        hostname = connDetails.hostname;
-        winrmConfig = {
-          winrmPort: connDetails.winrmPort,
-          useWinrmHttps: connDetails.useWinrmHttps,
-          winrmRejectUnauthorized: connDetails.winrmRejectUnauthorized,
-          winrmCaCert: connDetails.winrmCaCert,
-          winrmTlsServerName: connDetails.winrmTlsServerName
-        };
-      } catch (err) {
-        logger.error(err, `[DependencySync] Failed to decrypt resource ${resourceId}`);
-        await failAllDeps(deps, `Failed to decrypt resource connection details`);
-        return;
-      }
-
-      if (!hostname) {
-        const msg = `No hostname found for resource ${resourceId}`;
-        logger.warn(`[DependencySync] ${msg}, skipping`);
-        await failAllDeps(deps, msg);
-        return;
-      }
-
-      const winrmUsername = formatWinrmUsername
-        ? formatWinrmUsername(rotationCredentials.username, hostname, resource.resourceType)
-        : rotationCredentials.username;
-
-      // Resolve hostname — use custom resolver (e.g. DC DNS) if provided, otherwise use as-is
-      let resolvedHost = hostname;
-      if (resolveHostname) {
-        try {
-          resolvedHost = await resolveHostname(hostname);
-        } catch (err) {
-          logger.warn(err, `[DependencySync] Failed to resolve hostname ${hostname}, using original`);
+    Object.entries(grouped).map(([resourceId, deps]) =>
+      limit(async () => {
+        const resource = resourceMap.get(resourceId);
+        if (!resource) {
+          const msg = `Resource ${resourceId} not found`;
+          logger.warn(`[DependencySync] ${msg}, skipping`);
+          await failAllDeps(deps, msg);
+          return;
         }
-      }
 
-      const [targetHost] = await verifyHostInputValidity({
-        host: resolvedHost,
-        isGateway: true,
-        isDynamicSecret: false
-      });
+        // Get hostname and WinRM config from the target resource's connection details
+        let hostname: string | null = null;
+        let winrmConfig: TWinrmConfig = {
+          winrmPort: 5986,
+          useWinrmHttps: true,
+          winrmRejectUnauthorized: true
+        };
 
-      // eslint-disable-next-line no-restricted-syntax
-      for (const dep of deps) {
         try {
-          // eslint-disable-next-line no-await-in-loop
-          await ctx.pamAccountDependenciesDAL.updateById(dep.id, { syncStatus: PamDependencySyncStatus.Pending });
+          const decrypted = await decryptResource(resource, projectId, ctx.kmsService);
+          const connDetails = decrypted.connectionDetails as TWindowsResourceConnectionDetails;
+          hostname = connDetails.hostname;
+          winrmConfig = {
+            winrmPort: connDetails.winrmPort,
+            useWinrmHttps: connDetails.useWinrmHttps,
+            winrmRejectUnauthorized: connDetails.winrmRejectUnauthorized,
+            winrmCaCert: connDetails.winrmCaCert,
+            winrmTlsServerName: connDetails.winrmTlsServerName
+          };
+        } catch (err) {
+          logger.error(err, `[DependencySync] Failed to decrypt resource ${resourceId}`);
+          await failAllDeps(deps, `Failed to decrypt resource connection details`);
+          return;
+        }
 
-          const script = buildDependencySyncScript(dep, newCredentials.username, newCredentials.password);
+        if (!hostname) {
+          const msg = `No hostname found for resource ${resourceId}`;
+          logger.warn(`[DependencySync] ${msg}, skipping`);
+          await failAllDeps(deps, msg);
+          return;
+        }
 
-          // eslint-disable-next-line no-await-in-loop
-          const depConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-            gatewayId,
-            targetHost,
-            targetPort: winrmConfig.winrmPort
-          });
+        const winrmUsername = formatWinrmUsername
+          ? formatWinrmUsername(rotationCredentials.username, hostname, resource.resourceType)
+          : rotationCredentials.username;
 
-          if (!depConnectionDetails) {
-            const msg = "Unable to establish gateway connection for dependency sync";
-            logger.warn(`[DependencySync] ${msg} [dep=${dep.name}]`);
+        // Resolve hostname — use custom resolver (e.g. DC DNS) if provided, otherwise use as-is
+        let resolvedHost = hostname;
+        if (resolveHostname) {
+          try {
+            resolvedHost = await resolveHostname(hostname);
+          } catch (err) {
+            logger.warn(err, `[DependencySync] Failed to resolve hostname ${hostname}, using original`);
+          }
+        }
+
+        const [targetHost] = await verifyHostInputValidity({
+          host: resolvedHost,
+          isGateway: true,
+          isDynamicSecret: false
+        });
+
+        // Get gateway connection once for all dependencies on this resource
+        const connectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+          gatewayId,
+          targetHost,
+          targetPort: winrmConfig.winrmPort
+        });
+
+        if (!connectionDetails) {
+          const msg = "Unable to establish gateway connection for dependency sync";
+          logger.warn(`[DependencySync] ${msg} [resourceId=${resourceId}]`);
+          await failAllDeps(deps, msg);
+          return;
+        }
+
+        // Process dependencies sequentially for this resource (same WinRM connection target)
+        // eslint-disable-next-line no-restricted-syntax
+        for (const dep of deps) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            await ctx.pamAccountDependenciesDAL.updateById(dep.id, { syncStatus: PamDependencySyncStatus.Pending });
+
+            const script = buildDependencySyncScript(dep, newCredentials.username, newCredentials.password);
+
+            // eslint-disable-next-line no-await-in-loop
+            await withGatewayV2Proxy(
+              async (proxyPort) => {
+                await runPowershell(
+                  script,
+                  "localhost",
+                  winrmUsername,
+                  rotationCredentials.password,
+                  proxyPort,
+                  winrmConfig.useWinrmHttps,
+                  winrmConfig.winrmRejectUnauthorized,
+                  winrmConfig.winrmCaCert,
+                  winrmConfig.winrmTlsServerName
+                );
+              },
+              {
+                protocol: GatewayProxyProtocol.Tcp,
+                relayHost: connectionDetails.relayHost,
+                gateway: connectionDetails.gateway,
+                relay: connectionDetails.relay
+              }
+            );
+
+            // eslint-disable-next-line no-await-in-loop
+            await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
+              syncStatus: PamDependencySyncStatus.Success,
+              lastSyncedAt: new Date(),
+              encryptedLastSyncMessage: null
+            });
+
+            succeededCount += 1;
+            logger.info(`[DependencySync] Synced ${dep.dependencyType} '${dep.name}' on resource ${resourceId}`);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(
+              error,
+              `[DependencySync] Failed to sync ${dep.dependencyType} '${dep.name}' on resource ${resourceId}`
+            );
 
             let encryptedLastSyncMessage: Buffer | null = null;
             try {
               // eslint-disable-next-line no-await-in-loop
               const enc = await getEncryptor();
-              const { cipherTextBlob } = enc({ plainText: Buffer.from(msg) });
+              const { cipherTextBlob } = enc({
+                plainText: Buffer.from(errorMessage)
+              });
               encryptedLastSyncMessage = cipherTextBlob;
             } catch (err) {
               logger.error(err, `[DependencySync] Failed to encrypt error message for [depId=${dep.id}]`);
@@ -260,67 +322,16 @@ export const syncDependenciesAfterRotation = async ({
               encryptedLastSyncMessage
             });
 
-            // eslint-disable-next-line no-continue
-            continue;
+            failedCount += 1;
           }
-
-          // eslint-disable-next-line no-await-in-loop
-          await withGatewayV2Proxy(
-            async (proxyPort) => {
-              await runPowershell(
-                script,
-                "localhost",
-                winrmUsername,
-                rotationCredentials.password,
-                proxyPort,
-                winrmConfig.useWinrmHttps,
-                winrmConfig.winrmRejectUnauthorized,
-                winrmConfig.winrmCaCert,
-                winrmConfig.winrmTlsServerName
-              );
-            },
-            {
-              protocol: GatewayProxyProtocol.Tcp,
-              relayHost: depConnectionDetails.relayHost,
-              gateway: depConnectionDetails.gateway,
-              relay: depConnectionDetails.relay
-            }
-          );
-
-          // eslint-disable-next-line no-await-in-loop
-          await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
-            syncStatus: PamDependencySyncStatus.Success,
-            lastSyncedAt: new Date(),
-            encryptedLastSyncMessage: null
-          });
-
-          logger.info(`[DependencySync] Synced ${dep.dependencyType} '${dep.name}' on resource ${resourceId}`);
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.error(
-            error,
-            `[DependencySync] Failed to sync ${dep.dependencyType} '${dep.name}' on resource ${resourceId}`
-          );
-
-          let encryptedLastSyncMessage: Buffer | null = null;
-          try {
-            // eslint-disable-next-line no-await-in-loop
-            const enc = await getEncryptor();
-            const { cipherTextBlob } = enc({
-              plainText: Buffer.from(errorMessage)
-            });
-            encryptedLastSyncMessage = cipherTextBlob;
-          } catch (err) {
-            logger.error(err, `[DependencySync] Failed to encrypt error message for [depId=${dep.id}]`);
-          }
-
-          // eslint-disable-next-line no-await-in-loop
-          await ctx.pamAccountDependenciesDAL.updateById(dep.id, {
-            syncStatus: PamDependencySyncStatus.Failed,
-            encryptedLastSyncMessage
-          });
         }
-      }
-    })
+      })
+    )
   );
+
+  return {
+    total: enabledDeps.length,
+    succeeded: succeededCount,
+    failed: failedCount
+  };
 };

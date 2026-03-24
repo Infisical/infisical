@@ -209,14 +209,32 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const handleRotateAccount = async (accountId: string) => {
     try {
       setRotatingAccountIds((prev) => new Set(prev).add(accountId));
-      await manualRotate.mutateAsync({ accountId });
-      createNotification({ text: "Account rotation triggered", type: "success" });
+      const updatedAccount = await manualRotate.mutateAsync({ accountId });
+
+      // Clear from local rotating state since we now have the final status
+      setRotatingAccountIds((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+
+      if (updatedAccount.rotationStatus === PamAccountRotationStatus.Success) {
+        createNotification({ text: "Credential rotation completed successfully", type: "success" });
+      } else if (updatedAccount.rotationStatus === PamAccountRotationStatus.PartialSuccess) {
+        createNotification({
+          text: "Credential rotation completed with warnings",
+          type: "warning"
+        });
+      } else if (updatedAccount.rotationStatus === PamAccountRotationStatus.Failed) {
+        createNotification({ text: "Credential rotation failed", type: "error" });
+      }
     } catch {
       setRotatingAccountIds((prev) => {
         const next = new Set(prev);
         next.delete(accountId);
         return next;
       });
+      createNotification({ text: "Failed to trigger rotation", type: "error" });
     }
   };
 

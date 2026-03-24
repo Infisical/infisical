@@ -1346,11 +1346,12 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Account is already being rotated" });
     }
 
-    void rotateAccount(account).catch((err) => {
-      logger.error(err, `Background rotation failed for account [accountId=${accountId}]`);
-    });
+    await rotateAccount(account);
 
-    return { accountId };
+    const updatedAccount = await pamAccountDAL.findById(accountId);
+    if (!updatedAccount) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+
+    return updatedAccount;
   };
 
   return {

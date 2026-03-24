@@ -30,10 +30,15 @@ export const resolveDnsTcp = (hostname: string, proxyPort: number): Promise<stri
       if (responseData.length >= 2) {
         const msgLen = responseData.readUInt16BE(0);
         if (responseData.length >= 2 + msgLen) {
-          const response = dnsPacket.streamDecode(responseData);
-          const aRecord = response.answers?.find((a) => a.type === "A");
-          socket.destroy();
-          resolve(aRecord && "data" in aRecord ? (aRecord.data as string) : null);
+          try {
+            const response = dnsPacket.streamDecode(responseData);
+            const aRecord = response.answers?.find((a) => a.type === "A");
+            socket.destroy();
+            resolve(aRecord && "data" in aRecord ? (aRecord.data as string) : null);
+          } catch {
+            socket.destroy();
+            resolve(null);
+          }
         }
       }
     });

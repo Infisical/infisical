@@ -170,8 +170,18 @@ const PageContent = () => {
     );
 
     try {
-      createNotification({ text: "Credential rotation triggered", type: "success" });
-      await rotateAccount.mutateAsync({ accountId: account.id });
+      const updatedAccount = await rotateAccount.mutateAsync({ accountId: account.id });
+
+      if (updatedAccount.rotationStatus === PamAccountRotationStatus.Success) {
+        createNotification({ text: "Credential rotation completed successfully", type: "success" });
+      } else if (updatedAccount.rotationStatus === PamAccountRotationStatus.PartialSuccess) {
+        createNotification({
+          text: "Credential rotation completed with warnings",
+          type: "warning"
+        });
+      } else if (updatedAccount.rotationStatus === PamAccountRotationStatus.Failed) {
+        createNotification({ text: "Credential rotation failed", type: "error" });
+      }
     } catch {
       // Revert optimistic update on failure
       queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(account.id) });
