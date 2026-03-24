@@ -149,6 +149,8 @@ export const groupServiceFactory = ({
     }
 
     const group = await groupDAL.transaction(async (tx) => {
+      const groupSlug = slug || slugify(`${name}-${alphaNumericNanoId(4)}`);
+
       const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
       if (existingGroup) {
         throw new BadRequestError({
@@ -156,10 +158,15 @@ export const groupServiceFactory = ({
         });
       }
 
+      const existingGroupWithSlug = await groupDAL.findOne({ orgId: actorOrgId, slug: groupSlug }, tx);
+      if (existingGroupWithSlug) {
+        throw new BadRequestError({ message: `Group with slug "${groupSlug}" already exists` });
+      }
+
       const newGroup = await groupDAL.create(
         {
           name,
-          slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
+          slug: groupSlug,
           orgId: actorOrgId
         },
         tx
@@ -267,6 +274,14 @@ export const groupServiceFactory = ({
         throw new BadRequestError({
           message: `Failed to update group with name '${name}'. Group with the same name already exists`
         });
+      }
+    }
+
+    if (!isLinkedGroup && slug) {
+      const normalizedSlug = slugify(slug);
+      const existingGroupWithSlug = await groupDAL.findOne({ orgId: actorOrgId, slug: normalizedSlug });
+      if (existingGroupWithSlug && existingGroupWithSlug.id !== id) {
+        throw new BadRequestError({ message: `Group with slug "${normalizedSlug}" already exists` });
       }
     }
 
