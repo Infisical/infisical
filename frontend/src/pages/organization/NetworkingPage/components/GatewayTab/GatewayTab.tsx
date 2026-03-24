@@ -47,19 +47,25 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
 import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
+import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 
-const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
+const GatewayHealthStatus = ({
+  heartbeat,
+  lastHealthCheckStatus
+}: {
+  heartbeat?: string;
+  lastHealthCheckStatus?: GatewayHealthCheckStatus | null;
+}) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  const isHealthy = heartbeatDate && heartbeatDate >= oneHourAgo;
+  const isHealthy = lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
+
   const tooltipContent = heartbeatDate
-    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
-    : "No heartbeat data available";
+    ? `Last health check: ${heartbeatDate.toLocaleString()}`
+    : "No health check data available";
 
   return (
     <Tooltip content={tooltipContent}>
@@ -181,7 +187,12 @@ export const GatewayTab = withPermission(
                       </div>
                     </Td>
                     <Td>
-                      <GatewayHealthStatus heartbeat={el.heartbeat} />
+                      <GatewayHealthStatus
+                        heartbeat={el.heartbeat}
+                        lastHealthCheckStatus={
+                          "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
+                        }
+                      />
                     </Td>
                     <Td className="w-5">
                       <Tooltip className="max-w-sm text-center" content="Options">

@@ -13,7 +13,8 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   name: true,
   createdAt: true,
   updatedAt: true,
-  heartbeat: true
+  heartbeat: true,
+  lastHealthCheckStatus: true
 });
 
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {

@@ -22,7 +22,7 @@ export const useTriggerGatewayV2Heartbeat = () => {
     mutationFn: (id: string) => {
       return apiRequest.post(`/api/v2/gateways/${id}/heartbeat`);
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries(gatewaysQueryKeys.list());
     }
   });

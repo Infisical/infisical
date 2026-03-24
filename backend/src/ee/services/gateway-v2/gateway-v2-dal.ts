@@ -5,6 +5,8 @@ import { GatewaysV2Schema, TableName, TGatewaysV2 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
+import { GatewayHealthCheckStatus } from "./gateway-v2-types";
+
 export type TGatewayV2DALFactory = ReturnType<typeof gatewayV2DalFactory>;
 
 export const gatewayV2DalFactory = (db: TDbClient) => {
@@ -26,7 +28,11 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
 
       if (isHeartbeatStale) {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        void query.where(`${TableName.GatewayV2}.heartbeat`, "<", oneHourAgo);
+        void query.where((builder) => {
+          void builder
+            .where(`${TableName.GatewayV2}.heartbeat`, "<", oneHourAgo)
+            .orWhere(`${TableName.GatewayV2}.lastHealthCheckStatus`, GatewayHealthCheckStatus.Failed);
+        });
         void query.where((v) => {
           void v
             .whereNull(`${TableName.GatewayV2}.healthAlertedAt`)
