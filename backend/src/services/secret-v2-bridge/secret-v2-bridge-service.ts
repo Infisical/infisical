@@ -1155,7 +1155,18 @@ export const secretV2BridgeServiceFactory = ({
 
     // ETag/304 short-circuit: check Redis for stored ETag before expensive permission/KMS/cache work
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId);
-    const etagField = `${actorId}:${generateCacheKeyFromData(params)}`;
+    const etagField = `${actorId}:${generateCacheKeyFromData({
+      environment,
+      path,
+      recursive,
+      includeImports,
+      expandSecretReferences: shouldExpandSecretReferences,
+      expandPersonalOverrides,
+      personalOverridesBehavior,
+      secretImportReferencesBehavior,
+      viewSecretValue,
+      ...params
+    })}`;
 
     if (ifNoneMatch) {
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);

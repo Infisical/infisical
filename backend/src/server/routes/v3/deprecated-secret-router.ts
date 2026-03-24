@@ -328,7 +328,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       const { secrets, imports, etag, notModified } = result;
 
       if (etag) {
-        void reply.header("etag", etag);
+        void reply.header("ETag", etag);
       }
 
       if (notModified) {
