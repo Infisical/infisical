@@ -165,7 +165,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               enforcementLevel: z.string(),
               deletedAt: z.date().nullish(),
               allowedSelfApprovals: z.boolean(),
-              maxTimePeriod: z.string().nullable().optional()
+              maxTimePeriod: z.string().nullable().optional(),
+              requestExpirationTime: z.string().nullable().optional()
             }),
             reviewers: z
               .object({

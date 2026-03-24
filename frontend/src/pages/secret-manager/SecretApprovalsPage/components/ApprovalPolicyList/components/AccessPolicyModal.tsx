@@ -106,7 +106,8 @@ const formSchema = z
       .array()
       .default([])
       .optional(),
-    maxTimePeriod: z.string().trim().nullish()
+    maxTimePeriod: z.string().trim().nullish(),
+    requestExpirationTime: z.string().trim().nullish()
   })
   .superRefine((data, ctx) => {
     if (data.policyType === PolicyType.ChangePolicy) {
@@ -172,6 +173,8 @@ const Form = ({
               .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
           approvals: editValues?.approvals,
           allowedSelfApprovals: editValues?.allowedSelfApprovals,
+          maxTimePeriod: editValues?.maxTimePeriod,
+          requestExpirationTime: editValues?.requestExpirationTime,
           sequenceApprovers: editValues.approvers?.reduce(
             (acc, curr) => {
               if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
@@ -463,6 +466,24 @@ const Form = ({
                   className="shrink"
                 >
                   <Input {...field} value={field.value || ""} placeholder="permanent" />
+                </FormControl>
+              )}
+            />
+          )}
+
+          {isAccessPolicyType && (
+            <Controller
+              control={control}
+              name="requestExpirationTime"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Request Expiration"
+                  tooltipText="Time before unapproved requests expire. Ex: 1h, 3d, 72h"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  className="shrink"
+                >
+                  <Input {...field} value={field.value || ""} placeholder="never expires" />
                 </FormControl>
               )}
             />

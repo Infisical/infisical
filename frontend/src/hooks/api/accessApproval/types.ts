@@ -19,6 +19,7 @@ export type TAccessApprovalPolicy = {
   bypassers?: Bypasser[];
   allowedSelfApprovals: boolean;
   maxTimePeriod?: string | null;
+  requestExpirationTime?: string | null;
 };
 
 export enum ApproverType {
@@ -97,6 +98,7 @@ export type TAccessApprovalRequest = {
     deletedAt: Date | null;
     allowedSelfApprovals: boolean;
     maxTimePeriod?: string | null;
+    requestExpirationTime?: string | null;
   };
 
   reviewers: {
@@ -108,6 +110,7 @@ export type TAccessApprovalRequest = {
   note?: string;
   editNote?: string;
   editedByUserId?: string;
+  expiresAt?: Date | null;
 };
 
 export type TAccessApproval = {
@@ -188,6 +191,7 @@ export type TCreateAccessPolicyDTO = {
   allowedSelfApprovals: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
+  requestExpirationTime?: string | null;
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -204,6 +208,7 @@ export type TUpdateAccessPolicyDTO = {
   projectSlug: string;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
+  requestExpirationTime?: string | null;
 };
 
 export type TDeleteSecretPolicyDTO = {

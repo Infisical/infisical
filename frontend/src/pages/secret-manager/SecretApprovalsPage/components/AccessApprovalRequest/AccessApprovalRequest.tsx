@@ -27,6 +27,7 @@ import {
   EmptyState,
   Input,
   Pagination,
+  Switch,
   Tooltip
 } from "@app/components/v2";
 import { Badge, DocumentationLinkBadge } from "@app/components/v3";
@@ -115,6 +116,7 @@ export const AccessApprovalRequest = ({
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [requestedByFilter, setRequestedByFilter] = useState<string | undefined>(undefined);
   const [envFilter, setEnvFilter] = useState<string | undefined>(undefined);
+  const [showExpired, setShowExpired] = useState(true);
 
   const { data: requestCount } = useGetAccessRequestsCount({
     projectSlug
@@ -143,6 +145,10 @@ export const AccessApprovalRequest = ({
     setUserTablePreference("accessRequestsTable", PreferenceKey.PerPage, newPerPage);
   };
 
+  const isRequestExpired = useCallback((request: TAccessApprovalRequest) => {
+    return request.expiresAt && new Date(request.expiresAt) < new Date();
+  }, []);
+
   const filteredRequests = useMemo(() => {
     let accessRequests: typeof requests;
 
@@ -151,15 +157,21 @@ export const AccessApprovalRequest = ({
         (request) =>
           !request.policy.deletedAt &&
           !request.isApproved &&
-          !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
+          !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) &&
+          !isRequestExpired(request)
       );
-    if (statusFilter === "close")
+    else if (statusFilter === "close")
       accessRequests = requests?.filter(
         (request) =>
           request.policy.deletedAt ||
           request.isApproved ||
-          request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
+          request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) ||
+          isRequestExpired(request)
       );
+
+    if (!showExpired && statusFilter === "close") {
+      accessRequests = accessRequests?.filter((request) => !isRequestExpired(request));
+    }
 
     return (
       accessRequests?.filter((request) => {
@@ -175,7 +187,7 @@ export const AccessApprovalRequest = ({
         );
       }) ?? []
     );
-  }, [requests, statusFilter, requestedByFilter, envFilter, search]);
+  }, [requests, statusFilter, requestedByFilter, envFilter, search, isRequestExpired, showExpired]);
 
   useResetPageHelper({
     totalCount: filteredRequests.length,
@@ -211,12 +223,25 @@ export const AccessApprovalRequest = ({
         icon: null
       };
 
-      const isExpired =
+      const isAccessExpired =
         request.privilege &&
         request.isApproved &&
         new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
 
-      if (isExpired)
+      const hasRequestExpired =
+        !isAccepted &&
+        !isRejectedByAnyone &&
+        request.expiresAt &&
+        new Date(request.expiresAt) < new Date();
+
+      if (hasRequestExpired)
+        displayData = {
+          label: "Expired",
+          type: "danger",
+          icon: TimerIcon,
+          tooltipContent: `Expired ${format(request.expiresAt!, "M/d/yyyy h:mm aa")}`
+        };
+      else if (isAccessExpired)
         displayData = {
           label: "Access Expired",
           type: "danger",
@@ -343,17 +368,17 @@ export const AccessApprovalRequest = ({
               if (evt.key === "Enter") setStatusFilter("open");
             }}
             className={twMerge(
-              "font-medium",
-              statusFilter === "close" && "text-gray-500 duration-100 hover:text-gray-400"
+              "cursor-pointer font-medium",
+              statusFilter !== "open" && "text-gray-500 duration-100 hover:text-gray-400"
             )}
           >
             <FontAwesomeIcon icon={faLock} className="mr-2" />
-            {!!requestCount && requestCount?.pendingCount} Pending
+            {requestCount?.pendingCount ?? 0} Pending
           </div>
           <div
             className={twMerge(
-              "font-medium",
-              statusFilter === "open" && "text-gray-500 duration-100 hover:text-gray-400"
+              "cursor-pointer font-medium",
+              statusFilter !== "close" && "text-gray-500 duration-100 hover:text-gray-400"
             )}
             role="button"
             tabIndex={0}
@@ -363,9 +388,20 @@ export const AccessApprovalRequest = ({
             }}
           >
             <FontAwesomeIcon icon={faCheck} className="mr-2" />
-            {!!requestCount && requestCount.finalizedCount} Closed
+            {requestCount?.finalizedCount ?? 0} Closed
           </div>
           <div className="flex grow justify-end space-x-8">
+            {statusFilter === "close" && (
+              <Switch
+                id="show-expired-toggle"
+                isChecked={showExpired}
+                onCheckedChange={setShowExpired}
+                containerClassName="cursor-pointer text-sm"
+                className="cursor-pointer"
+              >
+                Show Expired
+              </Switch>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button
@@ -496,19 +532,40 @@ export const AccessApprovalRequest = ({
                         </div>
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-3">
+                    <div className="flex shrink-0 items-center gap-4">
                       {request.requestedByUserId === user.id && (
                         <div className="flex items-center gap-1.5 text-xs whitespace-nowrap text-bunker-300">
                           <FontAwesomeIcon icon={faUser} size="sm" />
                           <span>Requested By You</span>
                         </div>
                       )}
-                      <Tooltip content={details.displayData.tooltipContent}>
-                        <Badge variant={details.displayData.type}>
-                          {StatusIcon && <StatusIcon />}
-                          {details.displayData.label}
-                        </Badge>
-                      </Tooltip>
+                      {request.expiresAt &&
+                        request.status === ApprovalStatus.PENDING &&
+                        !isRequestExpired(request) && (
+                          <Tooltip
+                            content={`Expires ${format(request.expiresAt, "M/d/yyyy h:mm aa")}`}
+                          >
+                            <Badge
+                              variant={
+                                new Date(request.expiresAt).getTime() - Date.now() <
+                                24 * 60 * 60 * 1000
+                                  ? "danger"
+                                  : "warning"
+                              }
+                            >
+                              <TimerIcon />
+                              Expires in {formatDistance(new Date(request.expiresAt), new Date())}
+                            </Badge>
+                          </Tooltip>
+                        )}
+                      <div className="flex w-32 justify-end">
+                        <Tooltip content={details.displayData.tooltipContent}>
+                          <Badge variant={details.displayData.type}>
+                            {StatusIcon && <StatusIcon />}
+                            {details.displayData.label}
+                          </Badge>
+                        </Tooltip>
+                      </div>
                     </div>
                   </div>
                 </div>
