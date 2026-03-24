@@ -221,8 +221,9 @@ export const accessApprovalRequestServiceFactory = ({
           });
 
           const isRejected = reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED);
+          const isRequestExpired = duplicateRequest.expiresAt && new Date(duplicateRequest.expiresAt) < new Date();
 
-          if (!isRejected && duplicateRequest.status === ApprovalStatus.PENDING) {
+          if (!isRejected && !isRequestExpired && duplicateRequest.status === ApprovalStatus.PENDING) {
             throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
           }
         }
@@ -230,6 +231,9 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const approval = await accessApprovalRequestDAL.transaction(async (tx) => {
+      const parsedMs = policy.requestExpirationTime ? ms(policy.requestExpirationTime) : null;
+      const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
+
       const approvalRequest = await accessApprovalRequestDAL.create(
         {
           policyId: policy.id,
@@ -237,7 +241,8 @@ export const accessApprovalRequestServiceFactory = ({
           temporaryRange: temporaryRange || null,
           permissions: JSON.stringify(requestedPermissions),
           isTemporary,
-          note: note || null
+          note: note || null,
+          expiresAt
         },
         tx
       );
@@ -361,6 +366,10 @@ export const accessApprovalRequestServiceFactory = ({
 
     if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
       throw new BadRequestError({ message: "The request has been closed" });
+    }
+
+    if (accessApprovalRequest.expiresAt && new Date(accessApprovalRequest.expiresAt) < new Date()) {
+      throw new BadRequestError({ message: "This access request has expired" });
     }
 
     const editedByUser = await userDAL.findById(actorId);
@@ -607,6 +616,10 @@ export const accessApprovalRequestServiceFactory = ({
     const existingReviews = await accessApprovalRequestReviewerDAL.find({ requestId: accessApprovalRequest.id });
     if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
       throw new BadRequestError({ message: "The request has been closed" });
+    }
+
+    if (accessApprovalRequest.expiresAt && new Date() > new Date(accessApprovalRequest.expiresAt)) {
+      throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
     }
 
     const reviewsGroupById = groupBy(
