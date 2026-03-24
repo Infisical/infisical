@@ -1571,7 +1571,7 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
+  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretValidationRuleDAL,
     projectEnvDAL,
@@ -1689,7 +1689,8 @@ export const registerRoutes = async (
     secretApprovalRequestService,
     licenseService,
     reminderService,
-    secretVersionV2DAL: secretVersionV2BridgeDAL
+    secretVersionV2DAL: secretVersionV2BridgeDAL,
+    secretV2BridgeDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({

@@ -171,6 +171,7 @@ export const permissionServiceFactory = ({
       tx,
       expiry: KeyStoreTtls.ProjectPermissionDalVersionTtl
     });
+    await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId));
   };
 
   // akhilmdhh: will bring this up later
