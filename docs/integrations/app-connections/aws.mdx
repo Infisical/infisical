@@ -12,9 +12,11 @@ Infisical supports two methods for connecting to AWS.
         <Accordion title="Self-Hosted Instance">
             To connect your self-hosted Infisical instance with AWS, you need to set up an AWS IAM User account that can assume the configured AWS IAM Role.
 
-            If your instance is deployed on AWS, the aws-sdk will automatically retrieve the credentials. Ensure that you assign the provided permission policy to your deployed instance, such as ECS or EC2.
+            <Note>
+              If your Infisical instance is deployed on AWS (e.g. EC2, ECS, or EKS), you do not need to provide static credentials. When the `INF_APP_CONNECTION_AWS_ACCESS_KEY_ID` and `INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY` environment variables are not set, Infisical will automatically retrieve credentials from your instance's environment (instance profile, task role, or IRSA). Simply ensure that the IAM role attached to your compute has the permission policy below to assume your target roles.
+            </Note>
 
-            The following steps are for instances not deployed on AWS:
+            The following steps are for instances **not** deployed on AWS:
             <Steps>
                 <Step title="Create an IAM User">
                     Navigate to [Create IAM User](https://console.aws.amazon.com/iamv2/home#/users/create) in your AWS Console.
