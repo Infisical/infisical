@@ -154,5 +154,20 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     });
   };
 
-  return { ...appConnectionOrm, findAppConnectionUsageById, findWithProjectDetails };
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.AppConnection)
+      .leftJoin(TableName.Project, `${TableName.AppConnection}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.AppConnection}.gatewayId`, gatewayId)
+      .select(
+        db.ref("id").withSchema(TableName.AppConnection),
+        db.ref("name").withSchema(TableName.AppConnection),
+        db.ref("app").withSchema(TableName.AppConnection),
+        db.ref("projectId").withSchema(TableName.AppConnection),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  return { ...appConnectionOrm, findAppConnectionUsageById, findWithProjectDetails, findByGatewayId };
 };
