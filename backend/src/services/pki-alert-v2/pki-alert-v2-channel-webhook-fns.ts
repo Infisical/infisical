@@ -103,7 +103,7 @@ const buildEventData = (params: {
     alert: {
       id: params.alert.id,
       name: params.alert.name,
-      alertBefore: params.alert.alertBefore,
+      ...(params.alert.alertBefore ? { alertBefore: params.alert.alertBefore } : {}),
       projectId: params.alert.projectId
     },
     certificates: transformCertificates(params.certificates),

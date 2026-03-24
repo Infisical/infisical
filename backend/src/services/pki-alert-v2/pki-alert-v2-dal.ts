@@ -400,6 +400,15 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       }
 
       let certCountQuery = (tx || db.replicaNode()).count("* as count").from(TableName.Certificate);
+
+      if (needsProfileJoin) {
+        certCountQuery = certCountQuery.leftJoin(
+          `${TableName.PkiCertificateProfile} as profile`,
+          `${TableName.Certificate}.profileId`,
+          "profile.id"
+        );
+      }
+
       certCountQuery = applyCertificateFilters(certCountQuery, filters, projectId) as typeof certCountQuery;
 
       if (options?.certificateId) {
@@ -467,11 +476,16 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.revocationReason`
         ];
 
-        if (needsProfileJoin) {
-          selectColumns.push("profile.slug as profileName");
-        }
+        selectColumns.push("profile.slug as profileName");
 
-        let certificateQuery = (tx || db.replicaNode()).select(selectColumns).from(TableName.Certificate);
+        let certificateQuery = (tx || db.replicaNode())
+          .select(selectColumns)
+          .from(TableName.Certificate)
+          .leftJoin(
+            `${TableName.PkiCertificateProfile} as profile`,
+            `${TableName.Certificate}.profileId`,
+            "profile.id"
+          );
 
         certificateQuery = applyCertificateFilters(certificateQuery, filters, projectId) as typeof certificateQuery;
 

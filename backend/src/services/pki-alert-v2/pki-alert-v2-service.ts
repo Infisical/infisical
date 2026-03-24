@@ -29,6 +29,7 @@ import {
   PkiAlertEventType,
   PkiAlertRunStatus,
   PkiWebhookEventType,
+  TAlertInfo,
   TAlertV2Response,
   TCertificatePreview,
   TChannelConfig,
@@ -226,7 +227,7 @@ export const pkiAlertV2ServiceFactory = ({
           name,
           description,
           eventType,
-          alertBefore,
+          alertBefore: eventType === PkiAlertEventType.EXPIRATION ? alertBefore : null,
           filters,
           enabled,
           notificationConfig
@@ -367,7 +368,7 @@ export const pkiAlertV2ServiceFactory = ({
       name?: string;
       description?: string;
       eventType?: PkiAlertEventType;
-      alertBefore?: string;
+      alertBefore?: string | null;
       filters?: TPkiFilterRule[];
       enabled?: boolean;
       notificationConfig?: { enableDailyNotification: boolean } | null;
@@ -375,7 +376,11 @@ export const pkiAlertV2ServiceFactory = ({
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (eventType !== undefined) updateData.eventType = eventType;
-    if (alertBefore !== undefined) updateData.alertBefore = alertBefore;
+    if (resultingEventType !== PkiAlertEventType.EXPIRATION) {
+      updateData.alertBefore = null;
+    } else if (alertBefore !== undefined) {
+      updateData.alertBefore = alertBefore;
+    }
     if (filters !== undefined) updateData.filters = filters;
     if (enabled !== undefined) updateData.enabled = enabled;
     if (notificationConfig !== undefined) updateData.notificationConfig = notificationConfig;
@@ -628,10 +633,10 @@ export const pkiAlertV2ServiceFactory = ({
     const errors: string[] = [];
 
     const alertBeforeDays = alertBefore ? parseTimeToDays(alertBefore) : 0;
-    const alertData = {
+    const alertData: TAlertInfo = {
       id: alertId,
       name: alertName,
-      alertBefore,
+      ...(alertBefore ? { alertBefore } : {}),
       projectId
     };
     const webhookEventType = alertEventTypeToWebhookEventType[eventType];
@@ -849,7 +854,7 @@ export const pkiAlertV2ServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
 
     // Create test data (SSRF validation is done in sendWebhookNotification)
-    const alertData = {
+    const alertData: TAlertInfo = {
       id: "00000000-0000-0000-0000-000000000000",
       name: "Test Alert",
       alertBefore: "30d",
