@@ -161,6 +161,24 @@ export const main = async ({
 
     await server.register(helmet, { contentSecurityPolicy: false });
 
+    // CVE-2026-25223: Reject Content-Type headers containing tab characters
+    // Fastify v4 content-type-parser splits on semicolons before routing to body parser.
+    // A tab character before a semicolon causes the parser to see a different MIME type
+    // than the validator, allowing schema validation to be bypassed entirely.
+    // This preValidation hook blocks the attack vector until Fastify v5 upgrade.
+    // See: https://github.com/fastify/fastify/security/advisories/GHSA-jx2c-rxcm-jvmq
+    server.addHook("onRequest", async (request, reply) => {
+      const contentType = request.headers["content-type"];
+      if (contentType && /\t/.test(contentType)) {
+        return reply.status(400).send({
+          statusCode: 400,
+          error: "Bad Request",
+          message: "Invalid Content-Type header"
+        });
+      }
+    });
+
+
     await server.register(maintenanceMode);
 
     await server.register(fastifyRequestContext, {
