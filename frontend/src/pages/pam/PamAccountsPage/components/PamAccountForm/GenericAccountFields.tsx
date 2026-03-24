@@ -43,7 +43,7 @@ export const GenericAccountFields = () => {
                   {...field}
                   autoFocus
                   isError={Boolean(error)}
-                  placeholder="my-discovery-source"
+                  placeholder="my-account-name"
                 />
               </div>
               <FieldError errors={[error]} />

@@ -96,19 +96,19 @@ export const RotationRuleCard = ({
             <Label className="opacity-50">Do Not Rotate</Label>
           )}
         </div>
-        <div className="flex gap-2">
-          <Field className="w-2/5 shrink-0">
-            <FieldLabel>Rule Name</FieldLabel>
-            <FieldContent>
-              <UnstableInput
-                value={localName}
-                onChange={(e) => setLocalName(e.target.value)}
-                onBlur={handleNameBlur}
-                placeholder="e.g., Service accounts"
-              />
-            </FieldContent>
-          </Field>
-          <Field>
+        <Field>
+          <FieldLabel>Rule Name</FieldLabel>
+          <FieldContent>
+            <UnstableInput
+              value={localName}
+              onChange={(e) => setLocalName(e.target.value)}
+              onBlur={handleNameBlur}
+              placeholder="e.g., Service accounts"
+            />
+          </FieldContent>
+        </Field>
+        <div className="flex gap-4">
+          <Field className="flex-1">
             <FieldLabel>Account Name Pattern</FieldLabel>
             <FieldContent>
               <UnstableInput
@@ -121,7 +121,7 @@ export const RotationRuleCard = ({
             </FieldContent>
           </Field>
           {rule.enabled && (
-            <Field>
+            <Field className="w-40">
               <FieldLabel>Interval (days)</FieldLabel>
               <FieldContent>
                 <UnstableInput
@@ -135,7 +135,7 @@ export const RotationRuleCard = ({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col items-center justify-center gap-1">
         <UnstableIconButton variant="ghost" size="xs" onClick={onDelete}>
           <TrashIcon className="text-danger" />
         </UnstableIconButton>

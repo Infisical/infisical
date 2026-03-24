@@ -1314,44 +1314,60 @@ export const pamAccountServiceFactory = ({
   };
 
   const triggerManualRotation = async (accountId: string, actor: OrgServiceActor) => {
-    const account = await pamAccountDAL.findById(accountId);
-    if (!account) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
-
-    const resource = await pamResourceDAL.findById(account.resourceId);
-    if (!resource) throw new NotFoundError({ message: `Resource not found` });
+    const accountWithResource = await pamAccountDAL.findByIdWithResourceDetails(accountId);
+    if (!accountWithResource) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
       actorId: actor.id,
       actorOrgId: actor.orgId,
-      projectId: account.projectId,
+      projectId: accountWithResource.projectId,
       actionProjectType: ActionProjectType.PAM
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.TriggerRotation,
       subject(ProjectPermissionSub.PamAccounts, {
-        resourceName: resource.name,
-        accountName: account.name
+        resourceName: accountWithResource.resource.name,
+        accountName: accountWithResource.name
       })
     );
 
-    if (!resource.encryptedRotationAccountCredentials) {
+    if (!accountWithResource.resource.encryptedRotationAccountCredentials) {
       throw new BadRequestError({ message: "Rotation credentials are not configured on this resource" });
     }
 
     // Immediate check. There's an actual atomic lock in rotateAccount
-    if (account.rotationStatus === PamAccountRotationStatus.Rotating) {
+    if (accountWithResource.rotationStatus === PamAccountRotationStatus.Rotating) {
       throw new BadRequestError({ message: "Account is already being rotated" });
     }
 
-    await rotateAccount(account);
+    await rotateAccount(accountWithResource);
 
-    const updatedAccount = await pamAccountDAL.findById(accountId);
-    if (!updatedAccount) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    const updatedAccountWithResource = await pamAccountDAL.findByIdWithResourceDetails(accountId);
+    if (!updatedAccountWithResource) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
 
-    return updatedAccount;
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds([updatedAccountWithResource.id]);
+    const accountMetadata = metadataByAccountId[updatedAccountWithResource.id] || [];
+
+    const decryptedAccount = await decryptAccount(
+      updatedAccountWithResource,
+      updatedAccountWithResource.projectId,
+      kmsService
+    );
+
+    return {
+      ...decryptedAccount,
+      metadata: accountMetadata,
+      resourceType: updatedAccountWithResource.resource.resourceType,
+      resource: {
+        id: updatedAccountWithResource.resource.id,
+        name: updatedAccountWithResource.resource.name,
+        resourceType: updatedAccountWithResource.resource.resourceType,
+        rotationCredentialsConfigured: !!updatedAccountWithResource.resource.encryptedRotationAccountCredentials
+      }
+    };
   };
 
   return {
