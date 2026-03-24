@@ -11,6 +11,7 @@ import { PamAccountHeader } from "../PamAccountHeader";
 import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { KubernetesAccountForm } from "./KubernetesAccountForm";
+import { MsSQLAccountForm } from "./MsSQLAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 import { RedisAccountForm } from "./RedisAccountForm";
@@ -78,6 +79,10 @@ const CreateForm = ({
     case PamResourceType.MySQL:
       return (
         <MySQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+      );
+    case PamResourceType.MsSQL:
+      return (
+        <MsSQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
       );
     case PamResourceType.Redis:
       return (
@@ -159,6 +164,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       return <PostgresAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.MySQL:
       return <MySQLAccountForm account={account as any} onSubmit={onSubmit} />;
+    case PamResourceType.MsSQL:
+      return <MsSQLAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.Redis:
       return (
         <RedisAccountForm

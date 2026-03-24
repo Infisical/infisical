@@ -886,6 +886,7 @@ export const pamAccountServiceFactory = ({
     switch (resourceType) {
       case PamResource.Postgres:
       case PamResource.MySQL:
+      case PamResource.MsSQL:
         {
           const connectionCredentials = (await decryptResourceConnectionDetails({
             encryptedConnectionDetails: resource.encryptedConnectionDetails,

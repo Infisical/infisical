@@ -15,6 +15,10 @@ import {
   SanitizedKubernetesResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import {
+  MsSQLResourceListItemSchema,
+  SanitizedMsSQLResourceSchema
+} from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
+import {
   MySQLResourceListItemSchema,
   SanitizedMySQLResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
@@ -43,6 +47,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedPostgresResourceSchema,
   SanitizedMySQLResourceSchema,
+  SanitizedMsSQLResourceSchema,
   SanitizedSSHResourceSchema,
   SanitizedKubernetesResourceSchema,
   SanitizedAwsIamResourceSchema,
@@ -59,6 +64,7 @@ const SanitizedResourceWithFavoriteSchema = z.intersection(
 const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   PostgresResourceListItemSchema,
   MySQLResourceListItemSchema,
+  MsSQLResourceListItemSchema,
   SSHResourceListItemSchema,
   KubernetesResourceListItemSchema,
   AwsIamResourceListItemSchema,

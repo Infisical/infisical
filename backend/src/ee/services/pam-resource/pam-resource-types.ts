@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-duplicate-type-constituents */
 import { z } from "zod";
 
 import { TPamResources } from "@app/db/schemas";
@@ -23,6 +24,12 @@ import {
   TKubernetesResource,
   TKubernetesResourceConnectionDetails
 } from "./kubernetes/kubernetes-resource-types";
+import {
+  TMsSQLAccount,
+  TMsSQLAccountCredentials,
+  TMsSQLResource,
+  TMsSQLResourceConnectionDetails
+} from "./mssql/mssql-resource-types";
 import {
   TMySQLAccount,
   TMySQLAccountCredentials,
@@ -61,6 +68,7 @@ import {
 export type TPamResource =
   | TPostgresResource
   | TMySQLResource
+  | TMsSQLResource
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
@@ -71,6 +79,7 @@ export type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
+  | TMsSQLResourceConnectionDetails
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
@@ -83,6 +92,7 @@ export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindo
 export type TPamAccount =
   | TPostgresAccount
   | TMySQLAccount
+  | TMsSQLAccount
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
@@ -92,8 +102,8 @@ export type TPamAccount =
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | TMySQLAccountCredentials
+  | TMsSQLAccountCredentials
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials

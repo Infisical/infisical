@@ -14,6 +14,11 @@ import {
   UpdateKubernetesAccountSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import {
+  CreateMsSQLAccountSchema,
+  SanitizedMsSQLAccountWithResourceSchema,
+  UpdateMsSQLAccountSchema
+} from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
+import {
   CreateMySQLAccountSchema,
   SanitizedMySQLAccountWithResourceSchema,
   UpdateMySQLAccountSchema
@@ -59,6 +64,15 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedMySQLAccountWithResourceSchema,
       createAccountSchema: CreateMySQLAccountSchema,
       updateAccountSchema: UpdateMySQLAccountSchema
+    });
+  },
+  [PamResource.MsSQL]: async (server: FastifyZodProvider) => {
+    registerPamAccountEndpoints({
+      server,
+      resourceType: PamResource.MsSQL,
+      accountResponseSchema: SanitizedMsSQLAccountWithResourceSchema,
+      createAccountSchema: CreateMsSQLAccountSchema,
+      updateAccountSchema: UpdateMsSQLAccountSchema
     });
   },
   [PamResource.Redis]: async (server: FastifyZodProvider) => {
