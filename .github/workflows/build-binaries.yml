@@ -7,12 +7,18 @@ on:
                 description: "Version number"
                 required: true
                 type: string
+permissions:
+    contents: read
+
 defaults:
     run:
         working-directory: ./backend
 
 jobs:
     build-and-deploy:
+        env:
+            VERSION: ${{ github.event.inputs.version }}
+            CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
         strategy:
             matrix:
                 arch: [x64, arm64]
@@ -67,7 +73,7 @@ jobs:
               run: |
                   cat <<EOF > infisical-core/DEBIAN/control
                   Package: infisical-core
-                  Version: ${{ github.event.inputs.version }}
+                  Version: $VERSION
                   Section: base
                   Priority: optional
                   Architecture: ${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}
@@ -108,7 +114,7 @@ jobs:
                   %global __os_install_post /usr/lib/rpm/brp-compress %{nil}
 
                   Name:           infisical-core
-                  Version:        ${{ github.event.inputs.version }}
+                  Version:        $VERSION
                   Release:        1%{?dist}
                   Summary:        Infisical Core standalone executable
                   License:        Proprietary
@@ -174,16 +180,16 @@ jobs:
             - name: Publish to Cloudsmith (Debian/Ubuntu)
               if: matrix.os == 'linux'
               working-directory: ./backend
-              run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.deb
+              run: cloudsmith push deb --republish --no-wait-for-sync --api-key=$CLOUDSMITH_API_KEY infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.deb
 
             # Publish .rpm file to Cloudsmith (Red Hat-based systems only)
             - name: Publish .rpm to Cloudsmith
               if: matrix.os == 'linux'
               working-directory: ./backend
-              run: cloudsmith push rpm --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.rpm
+              run: cloudsmith push rpm --republish --no-wait-for-sync --api-key=$CLOUDSMITH_API_KEY infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.rpm
 
             # Publish .exe file to Cloudsmith (Windows only)
             - name: Publish to Cloudsmith (Windows)
               if: matrix.os == 'win'
               working-directory: ./backend
-              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ github.event.inputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version $VERSION --api-key $CLOUDSMITH_API_KEY
