@@ -149,7 +149,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         .object({
           projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
           environment: z.string().optional().describe(AUDIT_LOGS.EXPORT.environment),
-          actorType: z.nativeEnum(ActorType).optional(),
+          actorType: z.nativeEnum(ActorType).optional().describe(AUDIT_LOGS.EXPORT.actorType),
           secretPath: z
             .string()
             .optional()

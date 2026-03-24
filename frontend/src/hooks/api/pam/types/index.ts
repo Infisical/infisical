@@ -9,6 +9,7 @@ import {
 import { TActiveDirectoryAccount, TActiveDirectoryResource } from "./active-directory-resource";
 import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
 import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
+import { TMsSQLAccount, TMsSQLResource } from "./mssql-resource";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TRedisAccount, TRedisResource } from "./redis-resource";
@@ -18,6 +19,7 @@ import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
 export * from "./active-directory-resource";
 export * from "./aws-iam-resource";
 export * from "./kubernetes-resource";
+export * from "./mssql-resource";
 export * from "./mysql-resource";
 export * from "./postgres-resource";
 export * from "./redis-resource";
@@ -27,6 +29,7 @@ export * from "./windows-server-resource";
 export type TPamResource =
   | TPostgresResource
   | TMySQLResource
+  | TMsSQLResource
   | TRedisResource
   | TSSHResource
   | TAwsIamResource
@@ -37,6 +40,7 @@ export type TPamResource =
 export type TPamAccount =
   | TPostgresAccount
   | TMySQLAccount
+  | TMsSQLAccount
   | TRedisAccount
   | TSSHAccount
   | TAwsIamAccount

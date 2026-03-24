@@ -22,6 +22,7 @@ type TPamResourceFactoryImplementation = TPamResourceFactory<
 export const PAM_RESOURCE_FACTORY_MAP: Record<PamResource, TPamResourceFactoryImplementation> = {
   [PamResource.Postgres]: sqlResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.MySQL]: sqlResourceFactory as TPamResourceFactoryImplementation,
+  [PamResource.MsSQL]: sqlResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.SSH]: sshResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.Kubernetes]: kubernetesResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.AwsIam]: awsIamResourceFactory as TPamResourceFactoryImplementation,

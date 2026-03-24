@@ -10,6 +10,7 @@ import { DiscriminativePick } from "@app/types";
 import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { KubernetesAccountForm } from "./KubernetesAccountForm";
+import { MsSQLAccountForm } from "./MsSQLAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 import { RedisAccountForm } from "./RedisAccountForm";
@@ -83,6 +84,10 @@ const CreateForm = ({
           resourceId={resourceId}
           resourceType={resourceType}
         />
+      );
+    case PamResourceType.MsSQL:
+      return (
+        <MsSQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
       );
     case PamResourceType.Redis:
       return (
@@ -178,6 +183,8 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
       return (
         <MySQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
       );
+    case PamResourceType.MsSQL:
+      return <MsSQLAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.Redis:
       return (
         <RedisAccountForm

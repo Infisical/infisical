@@ -7,7 +7,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { EventType, filterableSecretEvents } from "./audit-log-types";
+import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
 
 type TAuditLogWithProjectName = TAuditLogs & { projectName: string | null };
 
@@ -88,8 +88,14 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
 
     // Optional: actor ID filter - queries the actorMetadata JSON field
     if (arg.actorId) {
-      conditions.push("JSONExtractString(actorMetadata, 'userId') = {actorId:String}");
-      params.actorId = arg.actorId;
+      const metadataKey = arg.actorType
+        ? ACTOR_TYPE_TO_METADATA_ID_KEY[arg.actorType]
+        : ACTOR_TYPE_TO_METADATA_ID_KEY[ActorType.USER];
+      if (metadataKey) {
+        conditions.push("JSONExtractString(actorMetadata, {actorMetaKey:String}) = {actorId:String}");
+        params.actorMetaKey = metadataKey;
+        params.actorId = arg.actorId;
+      }
     }
 
     // Optional: event type filter
