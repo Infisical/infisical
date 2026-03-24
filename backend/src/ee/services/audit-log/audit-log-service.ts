@@ -112,7 +112,7 @@ export const auditLogServiceFactory = ({
     // add all cases in which project id or org id cannot be added
     if (
       data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH &&
-      data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED
+      data.event.type !== EventType.LOGIN_IDENTITY_UA_AUTH_FAILED
     ) {
       if (!data.projectId && !data.orgId)
         throw new BadRequestError({ message: "Must specify either project id or org id" });

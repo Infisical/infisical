@@ -71,14 +71,3 @@ export type TGetUniversalAuthClientSecretByIdDTO = {
   identityId: string;
   clientSecretId: string;
 } & Omit<TProjectPermission, "projectId">;
-
-export type TCreateLoginFailedAuditLogDTO = {
-  message: string;
-  clientId: string;
-  identityId: string | null;
-  reason: string;
-  orgId?: string;
-  ip?: string;
-  userAgent?: string;
-  userAgentType?: UserAgentType;
-};

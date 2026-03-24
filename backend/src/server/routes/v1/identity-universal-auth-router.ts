@@ -3,12 +3,13 @@ import { z } from "zod";
 import { IdentityAuthMethod, IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, UNIVERSAL_AUTH } from "@app/lib/api-docs";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -53,56 +54,76 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const {
-        identityUa,
-        accessToken,
-        identityAccessToken,
-        validClientSecretInfo,
-        identity,
-        accessTokenTTL,
-        accessTokenMaxTTL
-      } = await server.services.identityUa.login({
-        ...req.body,
-        ip: req.realIp,
-        userAgent: req.auditLogInfo.userAgent,
-        userAgentType: req.auditLogInfo.userAgentType
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
-          metadata: {
-            clientSecretId: validClientSecretInfo.id,
-            identityId: identityUa.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identityUniversalAuthId: identityUa.id
-          }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.MachineIdentityLogin,
-          distinctId: `identity-${identityUa.identityId}`,
-          organizationId: identity.orgId,
-          properties: {
-            identityId: identityUa.identityId,
-            orgId: identity.orgId,
-            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
-          }
-        })
-        .catch((error) => {
-          logger.error(error, `Failed to send telemetry event [identityId=${identityUa.identityId}]`);
+      try {
+        const {
+          identityUa,
+          accessToken,
+          identityAccessToken,
+          validClientSecretInfo,
+          identity,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identityUa.login({
+          ...req.body,
+          ip: req.realIp,
+          userAgent: req.auditLogInfo.userAgent,
+          userAgentType: req.auditLogInfo.userAgentType
         });
 
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: accessTokenTTL,
-        accessTokenMaxTTL
-      };
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
+            metadata: {
+              clientSecretId: validClientSecretInfo.id,
+              identityId: identityUa.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identityUniversalAuthId: identityUa.id
+            }
+          }
+        });
+
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${identityUa.identityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: identityUa.identityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${identityUa.identityId}]`);
+          });
+
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (error instanceof UnauthorizedError && error.detail) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: { type: ActorType.UNKNOWN_USER, metadata: {} },
+            orgId: error.detail.orgId as string | undefined,
+            event: {
+              type: EventType.LOGIN_IDENTITY_UA_AUTH_FAILED,
+              metadata: {
+                clientId: req.body.clientId,
+                identityId: (error.detail.identityId as string) ?? null,
+                reason: error.detail.reason as string,
+                message: error.message
+              }
+            }
+          });
+        }
+        throw error;
+      }
     }
   });
 

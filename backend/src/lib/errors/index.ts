@@ -41,10 +41,18 @@ export class UnauthorizedError extends Error {
 
   error: unknown;
 
-  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown } = {}) {
+  detail?: Record<string, unknown>;
+
+  constructor({
+    name,
+    error,
+    message,
+    detail
+  }: { message?: string; name?: string; error?: unknown; detail?: Record<string, unknown> } = {}) {
     super(message ?? "You are not allowed to access this resource");
     this.name = name || "UnauthorizedError";
     this.error = error;
+    this.detail = detail;
   }
 }
 
