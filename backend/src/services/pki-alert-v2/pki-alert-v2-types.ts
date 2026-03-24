@@ -98,7 +98,7 @@ export type TCertificateData = {
   status: string;
   daysUntilExpiry: number;
   revokedAt?: string;
-  revocationReason?: number;
+  revocationReason?: string;
 };
 
 export type TPkiWebhookPayload = {

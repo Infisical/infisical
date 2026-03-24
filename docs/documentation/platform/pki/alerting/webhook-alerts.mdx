@@ -82,9 +82,9 @@ Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https:
 
 ### Issuance, Renewal, and Revocation Alert Payload
 
-Event driven alerts (issuance, renewal, revocation) share the same payload structure. The `type` and `subject` fields reflect the specific event, and `alertBefore` is omitted since these are real time notifications.
+These alerts are sent in real time the moment a certificate event occurs. Each notification contains a single certificate. The `type` and `subject` fields reflect the specific event, and `alertBefore` is omitted.
 
-For revocation alerts, each certificate in the array will also include `revokedAt` and `revocationReason` fields when available.
+For revocation alerts, the certificate object also includes `revokedAt` and `revocationReason` fields.
 
 ```json
 {

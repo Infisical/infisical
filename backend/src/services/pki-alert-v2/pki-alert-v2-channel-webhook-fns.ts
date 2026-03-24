@@ -10,6 +10,7 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url
 
 import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
 import {
+  getRevocationReasonLabel,
   PkiWebhookEventType,
   TAlertInfo,
   TCertificateData,
@@ -75,7 +76,9 @@ const transformCertificates = (certificates: TCertificatePreview[]): TCertificat
       status: cert.status,
       daysUntilExpiry,
       ...(cert.revokedAt ? { revokedAt: new Date(cert.revokedAt).toISOString() } : {}),
-      ...(cert.revocationReason != null ? { revocationReason: cert.revocationReason } : {})
+      ...(cert.revocationReason != null
+        ? { revocationReason: getRevocationReasonLabel(cert.revocationReason) ?? String(cert.revocationReason) }
+        : {})
     };
   });
 };

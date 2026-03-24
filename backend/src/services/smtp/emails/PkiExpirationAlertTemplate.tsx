@@ -59,7 +59,21 @@ export const PkiExpirationAlertTemplate = ({
     message = `Alert ${alertName}: ${items.length === 1 ? "A" : `${items.length}`} ${certificateText} ${items.length === 1 ? "has" : "have"} ${verb}.`;
   }
 
-  const listHeading = isExpiration ? "Expiring certificates:" : "Affected certificates:";
+  const getListHeading = () => {
+    if (isExpiration) return "Expiring certificates:";
+    switch (eventLabel) {
+      case "Issuance":
+        return "Issued certificates:";
+      case "Renewal":
+        return "Renewed certificates:";
+      case "Revocation":
+        return "Revoked certificates:";
+      default:
+        return "Certificates:";
+    }
+  };
+
+  const listHeading = getListHeading();
 
   return (
     <BaseEmailWrapper title={title} preview={message} siteUrl={siteUrl}>

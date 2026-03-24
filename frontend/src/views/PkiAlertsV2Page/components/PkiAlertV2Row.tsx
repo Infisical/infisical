@@ -21,7 +21,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { TPkiAlertV2, useUpdatePkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
+import { PkiAlertEventTypeV2, TPkiAlertV2, useUpdatePkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
 
 import { formatAlertBefore, formatEventType } from "../utils/pki-alert-formatters";
 
@@ -73,7 +73,13 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
           {alert.enabled ? "Enabled" : "Disabled"}
         </Badge>
       </Td>
-      <Td className="text-gray-300">{formatAlertBefore(alert.alertBefore)}</Td>
+      <Td className="text-gray-300">
+        {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
+          formatAlertBefore(alert.alertBefore)
+        ) : (
+          <span className="text-mineshaft-500">—</span>
+        )}
+      </Td>
       <Td>
         {alert.lastRun ? (
           <Tooltip
