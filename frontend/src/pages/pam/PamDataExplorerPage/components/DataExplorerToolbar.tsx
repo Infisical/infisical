@@ -211,10 +211,18 @@ const LimitOffsetPopover = ({
   };
   const limitError = getLimitError();
 
+  const offsetNum = Number(offsetInput);
+  const getOffsetError = (): string | null => {
+    if (offsetInput === "" || Number.isNaN(offsetNum)) return "Must be a number";
+    if (offsetNum < 0) return "Must be 0 or greater";
+    return null;
+  };
+  const offsetError = getOffsetError();
+
   const applyChanges = () => {
-    if (limitError) return;
+    if (limitError || offsetError) return;
     const newLimit = Math.max(1, Math.min(1000, limitNum || 50));
-    const newOffset = Math.max(0, Number(offsetInput) || 0);
+    const newOffset = Math.max(0, offsetNum || 0);
     onPageSizeChange(newLimit);
     onOffsetChange(newOffset);
     setOpen(false);
@@ -252,16 +260,23 @@ const LimitOffsetPopover = ({
                 value={offsetInput}
                 onChange={(e) => setOffsetInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && applyChanges()}
-                className="h-8 w-16 rounded border border-border bg-transparent text-center text-sm text-mineshaft-200 outline-none focus:border-ring"
+                className={`h-8 w-16 rounded border bg-transparent text-center text-sm text-mineshaft-200 outline-none ${
+                  offsetError
+                    ? "border-red-500 focus:border-red-500"
+                    : "border-border focus:border-ring"
+                }`}
+                min={0}
               />
             </div>
           </div>
-          {limitError && <p className="text-center text-[10px] text-red-400">{limitError}</p>}
+          {(limitError || offsetError) && (
+            <p className="text-center text-[10px] text-red-400">{limitError || offsetError}</p>
+          )}
           <Button
             variant="outline"
             size="xs"
             onClick={applyChanges}
-            disabled={Boolean(limitError)}
+            disabled={Boolean(limitError || offsetError)}
             className="w-full"
           >
             Apply
