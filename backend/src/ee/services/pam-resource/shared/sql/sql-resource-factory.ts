@@ -105,7 +105,8 @@ const makeSqlConnection = (
               //          (like being able to do an auth handshake regardless pass or not)
               if (
                 connectOnly &&
-                error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"`
+                (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
+                  error.message === `role "${TEST_CONNECTION_USERNAME}" does not exist`)
               ) {
                 return;
               }
@@ -343,7 +344,10 @@ export const sqlResourceFactory: TPamResourceFactory<
     } catch (error) {
       // TODO: extract these logic into each SQL connection
       if (error instanceof BadRequestError) {
-        if (error.message === `password authentication failed for user "${credentials.username}"`) {
+        if (
+          error.message === `password authentication failed for user "${credentials.username}"` ||
+          error.message === `role "${credentials.username}" does not exist`
+        ) {
           throw new BadRequestError({
             message: "Account credentials invalid: Username or password incorrect"
           });
@@ -385,7 +389,10 @@ export const sqlResourceFactory: TPamResourceFactory<
       );
     } catch (error) {
       if (error instanceof BadRequestError) {
-        if (error.message === `password authentication failed for user "${rotationAccountCredentials.username}"`) {
+        if (
+          error.message === `password authentication failed for user "${rotationAccountCredentials.username}"` ||
+          error.message === `role "${rotationAccountCredentials.username}" does not exist`
+        ) {
           throw new BadRequestError({
             message: "Management credentials invalid: Username or password incorrect"
           });
