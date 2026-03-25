@@ -74,6 +74,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
       case PamResourceType.MsSQL:
+      case PamResourceType.MongoDB:
         return `infisical pam db access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.Redis:
         return `infisical pam redis access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;

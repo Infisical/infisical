@@ -22,7 +22,7 @@ const SSLStatusBadge = ({ enabled }: { enabled: boolean }) => (
   </div>
 );
 
-const SqlConnectionDetails = ({
+const DbConnectionDetails = ({
   connectionDetails
 }: {
   connectionDetails: { host: string; port: number; database: string; sslEnabled: boolean };
@@ -189,7 +189,8 @@ const ConnectionDetailsContent = ({ resource }: Props) => {
     case PamResourceType.Postgres:
     case PamResourceType.MySQL:
     case PamResourceType.MsSQL:
-      return <SqlConnectionDetails connectionDetails={resource.connectionDetails} />;
+    case PamResourceType.MongoDB:
+      return <DbConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.SSH:
       return <SSHConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.Redis:

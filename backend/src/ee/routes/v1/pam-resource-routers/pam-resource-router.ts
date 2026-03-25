@@ -15,6 +15,10 @@ import {
   SanitizedKubernetesResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import {
+  MongoDBResourceListItemSchema,
+  SanitizedMongoDBResourceSchema
+} from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import {
   MsSQLResourceListItemSchema,
   SanitizedMsSQLResourceSchema
 } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
@@ -52,6 +56,7 @@ const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedKubernetesResourceSchema,
   SanitizedAwsIamResourceSchema,
   SanitizedRedisResourceSchema,
+  SanitizedMongoDBResourceSchema,
   SanitizedWindowsResourceSchema,
   SanitizedActiveDirectoryResourceSchema
 ]);
@@ -69,6 +74,7 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   KubernetesResourceListItemSchema,
   AwsIamResourceListItemSchema,
   RedisResourceListItemSchema,
+  MongoDBResourceListItemSchema,
   WindowsResourceListItemSchema,
   ActiveDirectoryResourceListItemSchema
 ]);

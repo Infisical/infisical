@@ -14,6 +14,11 @@ import {
   UpdateKubernetesResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import {
+  CreateMongoDBResourceSchema,
+  SanitizedMongoDBResourceSchema,
+  UpdateMongoDBResourceSchema
+} from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import {
   CreateMsSQLResourceSchema,
   MsSQLResourceSchema,
   UpdateMsSQLResourceSchema
@@ -116,6 +121,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: SanitizedRedisResourceSchema,
       createResourceSchema: CreateRedisResourceSchema,
       updateResourceSchema: UpdateRedisResourceSchema
+    });
+  },
+  [PamResource.MongoDB]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.MongoDB,
+      resourceResponseSchema: SanitizedMongoDBResourceSchema,
+      createResourceSchema: CreateMongoDBResourceSchema,
+      updateResourceSchema: UpdateMongoDBResourceSchema
     });
   },
   [PamResource.Windows]: async (server: FastifyZodProvider) => {

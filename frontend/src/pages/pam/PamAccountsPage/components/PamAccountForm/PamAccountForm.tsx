@@ -11,6 +11,7 @@ import { PamAccountHeader } from "../PamAccountHeader";
 import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { KubernetesAccountForm } from "./KubernetesAccountForm";
+import { MongoDBAccountForm } from "./MongoDBAccountForm";
 import { MsSQLAccountForm } from "./MsSQLAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
@@ -88,6 +89,14 @@ const CreateForm = ({
       return (
         <RedisAccountForm
           onSubmit={onSubmit as Parameters<typeof RedisAccountForm>[0]["onSubmit"]}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
+    case PamResourceType.MongoDB:
+      return (
+        <MongoDBAccountForm
+          onSubmit={onSubmit}
           resourceId={resourceId}
           resourceType={resourceType}
         />
@@ -173,6 +182,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
           onSubmit={onSubmit as Parameters<typeof RedisAccountForm>[0]["onSubmit"]}
         />
       );
+    case PamResourceType.MongoDB:
+      return <MongoDBAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SshAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.Kubernetes:

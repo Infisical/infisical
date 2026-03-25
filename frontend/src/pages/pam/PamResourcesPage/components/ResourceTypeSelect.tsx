@@ -26,7 +26,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       // We are temporarily showing these resources so that we can gauge interest before committing
       { name: "OracleDB", resource: PamResourceType.OracleDB },
       { name: "SQLite", resource: PamResourceType.SQLite },
-      { name: "MongoDB", resource: PamResourceType.MongoDB },
       { name: "Cassandra", resource: PamResourceType.Cassandra },
       { name: "CockroachDB", resource: PamResourceType.CockroachDB },
       { name: "DynamoDB", resource: PamResourceType.DynamoDB },
@@ -65,7 +64,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     if (
       resource === PamResourceType.RDP ||
       resource === PamResourceType.MCP ||
-      resource === PamResourceType.MongoDB ||
       resource === PamResourceType.WebApp ||
       resource === PamResourceType.Cassandra ||
       resource === PamResourceType.CockroachDB ||

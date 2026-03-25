@@ -12,6 +12,7 @@ import { PamResourceHeader } from "../PamResourceHeader";
 import { ActiveDirectoryResourceForm } from "./ActiveDirectoryResourceForm";
 import { AwsIamResourceForm } from "./AwsIamResourceForm";
 import { KubernetesResourceForm } from "./KubernetesResourceForm";
+import { MongoDBResourceForm } from "./MongoDBResourceForm";
 import { MsSQLResourceForm } from "./MsSQLResourceForm";
 import { MySQLResourceForm } from "./MySQLResourceForm";
 import { PostgresResourceForm } from "./PostgresResourceForm";
@@ -62,6 +63,8 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <MsSQLResourceForm onSubmit={onSubmit} />;
     case PamResourceType.Redis:
       return <RedisResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.MongoDB:
+      return <MongoDBResourceForm onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SSHResourceForm onSubmit={onSubmit} />;
     case PamResourceType.Kubernetes:
@@ -107,6 +110,8 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <MsSQLResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.Redis:
       return <RedisResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.MongoDB:
+      return <MongoDBResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SSHResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.Kubernetes:
