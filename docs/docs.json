@@ -510,7 +510,8 @@
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
                   },
-                  "documentation/platform/webhooks"
+                  "documentation/platform/webhooks",
+                  "documentation/platform/secret-validation-rules"
                 ]
               },
               {

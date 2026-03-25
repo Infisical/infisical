@@ -3,3 +3,4 @@ export { BackfillSecretReferenceSecretion } from "./BackfillSecretReferenceSecti
 export { EnforceEncryptedMetadataSection } from "./EnforceEncryptedMetadataSection";
 export { EnvironmentSection } from "./EnvironmentSection";
 export { SecretTagsSection } from "./SecretTagsSection";
+export { SecretValidationRulesTab } from "./SecretValidationRulesTab";

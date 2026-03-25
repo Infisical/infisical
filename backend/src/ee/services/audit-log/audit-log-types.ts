@@ -696,7 +696,12 @@ export enum EventType {
   GET_PKI_SIGNERS = "get-pki-signers",
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
-  PKI_SIGNER_SIGN = "pki-signer-sign"
+  PKI_SIGNER_SIGN = "pki-signer-sign",
+
+  // Secret Validation Rules
+  SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
+  SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -5470,6 +5475,37 @@ interface ListDynamicSecretLeasesEvent {
   };
 }
 
+interface SecretValidationRuleCreateEvent {
+  type: EventType.SECRET_VALIDATION_RULE_CREATE;
+  metadata: {
+    ruleId: string;
+    name: string;
+    type: string;
+    environmentSlug?: string;
+    secretPath: string;
+  };
+}
+
+interface SecretValidationRuleUpdateEvent {
+  type: EventType.SECRET_VALIDATION_RULE_UPDATE;
+  metadata: {
+    ruleId: string;
+    name?: string;
+    type?: string;
+    environmentSlug?: string | null;
+    secretPath?: string;
+    isActive?: boolean;
+  };
+}
+
+interface SecretValidationRuleDeleteEvent {
+  type: EventType.SECRET_VALIDATION_RULE_DELETE;
+  metadata: {
+    ruleId: string;
+    name: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -5966,4 +6002,7 @@ export type Event =
   | RenewDynamicSecretLeaseEvent
   | GetDynamicSecretLeaseEvent
   | UpdateCertificateCleanupConfigEvent
-  | CertificateCleanupCompletedEvent;
+  | CertificateCleanupCompletedEvent
+  | SecretValidationRuleCreateEvent
+  | SecretValidationRuleUpdateEvent
+  | SecretValidationRuleDeleteEvent;
