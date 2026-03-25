@@ -51,7 +51,7 @@ const GetTableDetailRequestSchema = CorrelatedBaseSchema.extend({
 
 const QueryRequestSchema = CorrelatedBaseSchema.extend({
   type: z.literal(PostgresClientMessageType.Query),
-  sql: z.string()
+  sql: z.string().max(50 * 1024)
 });
 
 export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
