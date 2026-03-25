@@ -105,7 +105,6 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             )
         }).omit({
           authorizedEmails: true,
-          externalEmails: true,
           allowExternalEmails: true
         })
       }
@@ -273,7 +272,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             .nativeEnum(SecretSharingAccessType)
             .default(SecretSharingAccessType.Organization)
             .describe(SECRET_SHARING.CREATE.accessType),
-          emails: z
+          authorizedEmails: z
             .string()
             .email()
             .array()
@@ -310,11 +309,11 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             });
           }
 
-          if (data.allowExternalEmails && (!data.emails || data.emails.length === 0)) {
+          if (data.allowExternalEmails && (!data.authorizedEmails || data.authorizedEmails.length === 0)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: "Emails are required when allowing external emails",
-              path: ["emails"]
+              path: ["authorizedEmails"]
             });
           }
 
@@ -334,13 +333,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { authorizedEmails, ...restBody } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createSharedSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.body
+        ...restBody,
+        emails: authorizedEmails
       });
 
       await server.services.auditLog.createAuditLog({

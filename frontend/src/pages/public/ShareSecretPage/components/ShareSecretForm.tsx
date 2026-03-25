@@ -149,7 +149,7 @@ export const ShareSecretForm = ({
       expiresIn,
       maxViews: shouldLimitView ? Number(viewLimit) : undefined,
       accessType: formAccessType,
-      emails: processedEmails,
+      authorizedEmails: processedEmails,
       allowExternalEmails
     });
 

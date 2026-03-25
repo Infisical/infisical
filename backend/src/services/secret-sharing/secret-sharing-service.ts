@@ -159,17 +159,16 @@ export const secretSharingServiceFactory = ({
 
     const encryptWithRoot = kmsService.encryptWithRootKey();
 
-    const authorizedEmails: string[] = [];
+    const orgMemberEmails: string[] = [];
 
     if (emails && emails.length > 0) {
-      const uniqueEmails = [...new Set(emails)];
       const allOrgMembers = await orgDAL.findAllOrgMembers(orgId);
 
-      // Check to see that all emails are a part of the organization (if enforced) while also collecting a list of emails which are in the org
-      for (const email of uniqueEmails) {
-        if (allOrgMembers.some((v) => v.user.email === email)) {
-          authorizedEmails.push(email);
-          // If the email is not part of the org, but access type / org settings require it
+      for (const email of emails) {
+        const isOrgMember = allOrgMembers.some((v) => v.user.email === email);
+
+        if (isOrgMember) {
+          orgMemberEmails.push(email);
         } else if (
           !allowExternalEmails ||
           !rootOrg.allowSecretSharingOutsideOrganization ||
@@ -182,10 +181,9 @@ export const secretSharingServiceFactory = ({
       }
     }
 
-    // When non-org emails are present, a password is required so external recipients can authenticate
-    const externalEmails = emails ? [...new Set(emails)].filter((e) => !authorizedEmails.includes(e)) : [];
-
-    if (externalEmails.length > 0 && !password) {
+    // When external emails are allowed, a password is required so external recipients can authenticate
+    // const hasExternalEmails = emails && emails.length > orgMemberEmails.length;
+    if (allowExternalEmails && !password) {
       throw new BadRequestError({
         message: "A password is required when sharing secrets with users outside your organization"
       });
@@ -196,6 +194,8 @@ export const secretSharingServiceFactory = ({
     const id = crypto.randomBytes(32).toString("hex");
     const hashedPassword = password ? await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS) : null;
 
+    // When allowExternalEmails is true, don't store any emails — access is password-based only.
+    // When allowExternalEmails is false, store org member emails for access control.
     const newSharedSecret = await secretSharingDAL.create({
       identifier: id,
       iv: null,
@@ -211,15 +211,14 @@ export const secretSharingServiceFactory = ({
       ...(actor === ActorType.IDENTITY && { identityId: actorId }),
       orgId,
       accessType,
-      authorizedEmails: authorizedEmails.length > 0 ? JSON.stringify(authorizedEmails) : undefined,
-      externalEmails: externalEmails.length > 0 ? JSON.stringify(externalEmails) : undefined,
+      authorizedEmails: orgMemberEmails.length > 0 ? JSON.stringify(orgMemberEmails) : undefined,
       allowExternalEmails: Boolean(allowExternalEmails)
     });
 
     const mappedSharedSecret = mapIdentifierToId(newSharedSecret);
 
-    // Loop through authorized emails to define the display name in email (only for authorized org members)
-    if (authorizedEmails.length > 0) {
+    // Loop through  emails to define the display name in email (only for authorized org members)
+    if (emails && emails.length > 0) {
       let displayUsername: string | undefined;
 
       if (actor === ActorType.USER) {
@@ -240,22 +239,18 @@ export const secretSharingServiceFactory = ({
         displayUsername = `${identity.name} (Machine Identity)`;
       }
 
-      const allEmails = [...new Set([...authorizedEmails, ...externalEmails])];
-
-      for await (const email of allEmails) {
+      for await (const email of emails) {
         try {
-          // Only show the username to emails which are part of the organization
-          const senderUsername = authorizedEmails.includes(email) ? displayUsername : undefined;
-          const isExternalEmail = !authorizedEmails.includes(email);
+          const isOrgMember = orgMemberEmails.includes(email);
 
           await smtpService.sendMail({
             recipients: [email],
             subjectLine: "A secret has been shared with you",
             substitutions: {
               name,
-              senderUsername,
+              senderUsername: isOrgMember ? displayUsername : undefined,
               secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${mappedSharedSecret.id}`,
-              isPasswordProtected: isExternalEmail && Boolean(password) // password protected is only necessary for external users
+              isPasswordProtected: allowExternalEmails && Boolean(password) // if allow external emails, all secrets are password protected
             },
             template: SmtpTemplates.SecretRequestCompleted
           });
@@ -580,10 +575,6 @@ export const secretSharingServiceFactory = ({
   };
 
   // Checks whether external (non-org) email access is available for this secret.
-  const $hasExternalEmailAccess = (sharedSecret: TSecretSharing): boolean => {
-    const hasExternalEmails = sharedSecret.externalEmails && (sharedSecret.externalEmails as string[]).length > 0;
-    return Boolean(hasExternalEmails && sharedSecret.allowExternalEmails);
-  };
 
   const getSharedSecretById = async (sharedSecretId: string, orgId?: string, actorId?: string) => {
     const sharedSecret = await secretSharingDAL.findOne({
@@ -621,7 +612,7 @@ export const secretSharingServiceFactory = ({
 
     const isAuthorizedUser = await $isAuthorizedEmailUser(sharedSecret, actorId);
 
-    if (!isAuthorizedUser && !$hasExternalEmailAccess(sharedSecret)) {
+    if (!isAuthorizedUser && !sharedSecret.allowExternalEmails) {
       if (!actorId) {
         throw new UnauthorizedError({ message: "Authentication required to view this secret" });
       }
@@ -676,7 +667,7 @@ export const secretSharingServiceFactory = ({
 
       const isAuthorizedUser = await $isAuthorizedEmailUser(sharedSecret, actorId);
 
-      if (!isAuthorizedUser && !$hasExternalEmailAccess(sharedSecret)) {
+      if (!isAuthorizedUser && !sharedSecret.allowExternalEmails) {
         if (!actorId) {
           throw new UnauthorizedError();
         }
