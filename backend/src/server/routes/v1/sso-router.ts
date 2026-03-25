@@ -615,7 +615,6 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           { skipDedup: true }
         );
       }
-
       if ([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB].includes(data.decodedProviderToken.authMethod)) {
         void res.setCookie("jid", data.token.refresh, {
           httpOnly: true,
