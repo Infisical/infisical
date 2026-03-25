@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
 
 import { createNotification } from "@app/components/notifications";
+import { ContentLoader } from "@app/components/v2";
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
@@ -194,10 +195,10 @@ export const DataExplorerGrid = ({
   const [sorts, setSorts] = useState<SortCondition[]>([]);
   const [executionTimeMs, setExecutionTimeMs] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDataLoading, setIsDataLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [newRowTempIds, setNewRowTempIds] = useState<Set<string>>(new Set());
   const newRowCounterRef = useRef(0);
-  const hasLoadedRef = useRef(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const primaryKeys = tableDetail?.primaryKeys ?? [];
   const foreignKeys = tableDetail?.foreignKeys ?? [];
@@ -256,7 +257,7 @@ export const DataExplorerGrid = ({
         setNewRowTempIds(new Set());
         setSelectedRowCount(0);
         selectedRowsRef.current = [];
-        hasLoadedRef.current = true;
+        setHasLoaded(true);
         return dataResult.rows.length;
       } catch (err) {
         createNotification({
@@ -283,20 +284,24 @@ export const DataExplorerGrid = ({
   }
 
   const handleFiltersChange = useCallback((newFilters: FilterCondition[]) => {
+    setIsDataLoading(true);
     setFilters(newFilters);
     setOffset(0);
   }, []);
 
   const handleSortsChange = useCallback((newSorts: SortCondition[]) => {
+    setIsDataLoading(true);
     setSorts(newSorts);
     setOffset(0);
   }, []);
 
   const handleOffsetChange = useCallback((newOffset: number) => {
+    setIsDataLoading(true);
     setOffset(Math.max(0, newOffset));
   }, []);
 
   const handlePageSizeChange = useCallback((newSize: number) => {
+    setIsDataLoading(true);
     setPageSize(newSize);
     setOffset(0);
   }, []);
@@ -675,7 +680,7 @@ export const DataExplorerGrid = ({
           if (onFullRefresh) await onFullRefresh();
           await fetchData(offset, pageSize, filters, sorts);
         }}
-        isRefreshing={isDataLoading && hasLoadedRef.current}
+        isRefreshing={isDataLoading && hasLoaded}
       />
 
       {!hasPrimaryKey && (
@@ -685,17 +690,15 @@ export const DataExplorerGrid = ({
       )}
 
       {/* Dice UI DataGrid */}
-      <div className="data-explorer-grid flex flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
-        {isDataLoading && !hasLoadedRef.current && (
-          <div className="space-y-1 p-4">
-            {Array.from({ length: 10 }).map((_, i) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <Skeleton key={i} className="h-8 w-full" />
-            ))}
-          </div>
-        )}
-        {(!isDataLoading || hasLoadedRef.current) && (
+      <div className="data-explorer-grid relative flex flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
+        {isDataLoading && !hasLoaded && <ContentLoader className="h-full" />}
+        {(!isDataLoading || hasLoaded) && (
           <DataGrid {...gridProps} className="min-h-0 flex-1" stretchColumns />
+        )}
+        {isDataLoading && hasLoaded && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-bunker-800/60">
+            <ContentLoader className="h-auto" lottieClassName="h-24 w-24" />
+          </div>
         )}
       </div>
     </div>
