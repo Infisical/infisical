@@ -207,6 +207,7 @@ export const DataExplorerGrid = ({
   const [newRowTempIds, setNewRowTempIds] = useState<Set<string>>(new Set());
   const newRowCounterRef = useRef(0);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const isFetchingRef = useRef(false);
 
   const primaryKeys = tableDetail?.primaryKeys ?? [];
   const foreignKeys = tableDetail?.foreignKeys ?? [];
@@ -233,6 +234,7 @@ export const DataExplorerGrid = ({
   const fetchData = useCallback(
     async (o: number, ps: number, f: FilterCondition[], s: SortCondition[]): Promise<number> => {
       if (!tableDetail) return 0;
+      isFetchingRef.current = true;
       setIsDataLoading(true);
       try {
         const selectSql = buildSelectQuery({
@@ -275,6 +277,7 @@ export const DataExplorerGrid = ({
         });
         return 0;
       } finally {
+        isFetchingRef.current = false;
         setIsDataLoading(false);
       }
     },
@@ -289,23 +292,32 @@ export const DataExplorerGrid = ({
   if (fetchKey !== prevFetchKeyRef.current && tableDetail && !isLoading) {
     prevFetchKeyRef.current = fetchKey;
     fetchData(offset, pageSize, filters, sorts);
+  } else if (isDataLoading && hasLoaded && !isFetchingRef.current) {
+    // Handlers eagerly set isDataLoading so the overlay appears immediately.
+    // If the fetchKey didn't actually change (e.g. applying empty filters when
+    // none were active), no fetch runs — reset loading to avoid getting stuck.
+    setIsDataLoading(false);
   }
 
   const handleFiltersChange = useCallback((newFilters: FilterCondition[]) => {
+    setIsDataLoading(true);
     setFilters(newFilters);
     setOffset(0);
   }, []);
 
   const handleSortsChange = useCallback((newSorts: SortCondition[]) => {
+    setIsDataLoading(true);
     setSorts(newSorts);
     setOffset(0);
   }, []);
 
   const handleOffsetChange = useCallback((newOffset: number) => {
+    setIsDataLoading(true);
     setOffset(Math.max(0, newOffset));
   }, []);
 
   const handlePageSizeChange = useCallback((newSize: number) => {
+    setIsDataLoading(true);
     setPageSize(newSize);
     setOffset(0);
   }, []);
@@ -698,9 +710,11 @@ export const DataExplorerGrid = ({
       {/* Dice UI DataGrid */}
       <div className="data-explorer-grid relative flex flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
         {isDataLoading && !hasLoaded && <ContentLoader className="h-full" />}
-        {(!isDataLoading || hasLoaded) && (
-          <DataGrid {...gridProps} className="min-h-0 flex-1" stretchColumns />
-        )}
+        <DataGrid
+          {...gridProps}
+          className={`min-h-0 flex-1 ${isDataLoading && !hasLoaded ? "hidden" : ""}`}
+          stretchColumns
+        />
         {isDataLoading && hasLoaded && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-bunker-800/60">
             <ContentLoader className="h-auto" lottieClassName="h-24 w-24" />
