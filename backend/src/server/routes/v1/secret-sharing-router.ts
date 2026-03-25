@@ -274,7 +274,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             .optional()
             .transform((val) => (val ? [...new Set(val)] : undefined))
             .describe(SECRET_SHARING.CREATE.authorizedEmails),
-          allowUnauthorizedEmails: z.boolean().optional().describe(SECRET_SHARING.CREATE.allowUnauthorizedEmails)
+          allowExternalEmails: z.boolean().optional().describe(SECRET_SHARING.CREATE.allowExternalEmails)
         })
         .superRefine((data, ctx) => {
           const duration = ms(data.expiresIn);
@@ -300,6 +300,22 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
               code: z.ZodIssueCode.custom,
               message: "Expiration time cannot be less than 5 minutes",
               path: ["expiresIn"]
+            });
+          }
+
+          if (data.allowExternalEmails && (!data.emails || data.emails.length === 0)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Emails are required when allowing external emails",
+              path: ["emails"]
+            });
+          }
+
+          if (data.allowExternalEmails && data.accessType === SecretSharingAccessType.Organization) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Cannot allow external emails when access is restricted to organization members",
+              path: ["allowExternalEmails"]
             });
           }
         }),

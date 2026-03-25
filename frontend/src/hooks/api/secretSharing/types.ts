@@ -33,7 +33,7 @@ export type TCreateSharedSecretRequest = {
   maxViews?: number;
   accessType?: SecretSharingAccessType;
   emails?: string[];
-  allowUnauthorizedEmails?: boolean;
+  allowExternalEmails?: boolean;
 };
 
 export type TCreateSecretRequestRequestDTO = {

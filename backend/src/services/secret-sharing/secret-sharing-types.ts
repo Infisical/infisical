@@ -23,7 +23,7 @@ export type TSharedSecretPermission = {
   name?: string;
   password?: string;
   emails?: string[];
-  allowUnauthorizedEmails?: boolean;
+  allowExternalEmails?: boolean;
 };
 
 export type TCreatePublicSharedSecretDTO = {

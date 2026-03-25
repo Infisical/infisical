@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faRedo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -66,7 +66,7 @@ const schema = z.object({
         message: "Must be a comma-separated list of valid emails (max 100) or empty."
       }
     ),
-  allowUnauthorizedEmails: z.boolean().optional()
+  allowExternalEmails: z.boolean().optional()
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -109,8 +109,7 @@ export const ShareSecretForm = ({
     reset,
     handleSubmit,
     formState: { isSubmitting },
-    watch,
-    setValue
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -123,17 +122,11 @@ export const ShareSecretForm = ({
   });
 
   const isLimitingView = watch("shouldLimitView");
-  const isAllowingUnauthorizedEmails = watch("allowUnauthorizedEmails");
+  const isAllowingExternalEmails = watch("allowExternalEmails");
   const accessType = watch("accessType");
 
   const isOrgAccess =
     accessType === SecretSharingAccessType.Organization || !allowSecretSharingOutsideOrganization;
-
-  useEffect(() => {
-    if (isOrgAccess) {
-      setValue("allowUnauthorizedEmails", false);
-    }
-  }, [isOrgAccess, setValue]);
 
   const onFormSubmit = async ({
     name,
@@ -141,9 +134,10 @@ export const ShareSecretForm = ({
     secret,
     expiresIn,
     viewLimit,
+    accessType: formAccessType,
     emails,
     shouldLimitView,
-    allowUnauthorizedEmails
+    allowExternalEmails
   }: FormData) => {
     const processedEmails = emails ? emails.split(",").map((e) => e.trim()) : undefined;
 
@@ -153,9 +147,9 @@ export const ShareSecretForm = ({
       secretValue: secret,
       expiresIn,
       maxViews: shouldLimitView ? Number(viewLimit) : undefined,
-      accessType,
+      accessType: formAccessType,
       emails: processedEmails,
-      allowUnauthorizedEmails
+      allowExternalEmails
     });
 
     if (processedEmails && processedEmails.length > 0) {
@@ -411,7 +405,7 @@ export const ShareSecretForm = ({
                         label="Authorized Emails"
                         isOptional
                         helperText={
-                          isAllowingUnauthorizedEmails
+                          isAllowingExternalEmails
                             ? "External recipients will receive a link and need the password to access the secret."
                             : "Recipients must have an Infisical account to verify identity"
                         }
@@ -422,7 +416,7 @@ export const ShareSecretForm = ({
                               will only be accessible to those links.
                             </p>
                             <p className="mt-2">
-                              {isAllowingUnauthorizedEmails
+                              {isAllowingExternalEmails
                                 ? "External recipients (not in your organization) will need the password to view the secret. Authorized recipients will be able to view the secret without a password."
                                 : "Recipients must have an Infisical account to verify their identity."}
                             </p>
@@ -442,7 +436,7 @@ export const ShareSecretForm = ({
                   />
                   <Controller
                     control={control}
-                    name="allowUnauthorizedEmails"
+                    name="allowExternalEmails"
                     render={({
                       field: { onChange, value: isChecked, ...field },
                       fieldState: { error }
@@ -465,10 +459,10 @@ export const ShareSecretForm = ({
                           isChecked={isOrgAccess ? false : (isChecked ?? false)}
                           onCheckedChange={onChange}
                           isDisabled={isOrgAccess}
-                          id="allow-unauthorized-emails"
+                          id="allow-external-emails"
                           {...field}
                         >
-                          Allow unauthorized emails
+                          Allow external recipients
                         </Switch>
                       </FormControl>
                     )}

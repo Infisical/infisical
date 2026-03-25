@@ -113,7 +113,7 @@ export const secretSharingServiceFactory = ({
     expiresIn,
     maxViews,
     emails,
-    allowUnauthorizedEmails
+    allowExternalEmails
   }: TCreateSharedSecretDTO) => {
     const appCfg = getConfig();
 
@@ -170,7 +170,7 @@ export const secretSharingServiceFactory = ({
           authorizedEmails.push(email);
           // If the email is not part of the org, but access type / org settings require it
         } else if (
-          !allowUnauthorizedEmails ||
+          !allowExternalEmails ||
           !rootOrg.allowSecretSharingOutsideOrganization ||
           accessType === SecretSharingAccessType.Organization
         ) {
@@ -182,9 +182,9 @@ export const secretSharingServiceFactory = ({
     }
 
     // When non-org emails are present, a password is required so external recipients can authenticate
-    const nonAuthorizedEmails = emails ? emails.filter((e) => !authorizedEmails.includes(e)) : [];
+    const externalEmails = emails ? emails.filter((e) => !authorizedEmails.includes(e)) : [];
 
-    if (nonAuthorizedEmails.length > 0 && !password) {
+    if (externalEmails.length > 0 && !password) {
       throw new BadRequestError({
         message: "A password is required when sharing secrets with users outside your organization"
       });
@@ -210,13 +210,14 @@ export const secretSharingServiceFactory = ({
       ...(actor === ActorType.IDENTITY && { identityId: actorId }),
       orgId,
       accessType,
-      authorizedEmails: authorizedEmails.length > 0 ? JSON.stringify(authorizedEmails) : undefined
+      authorizedEmails: authorizedEmails.length > 0 ? JSON.stringify(authorizedEmails) : undefined,
+      externalEmails: externalEmails.length > 0 ? JSON.stringify(externalEmails) : undefined
     });
 
     const mappedSharedSecret = mapIdentifierToId(newSharedSecret);
 
-    // Loop through recipients and send out emails with unique access links
-    if (authorizedEmails) {
+    // Loop through recipients and send out emails
+    if (authorizedEmails.length > 0 || externalEmails.length > 0) {
       let displayUsername: string | undefined;
 
       if (actor === ActorType.USER) {
@@ -237,12 +238,12 @@ export const secretSharingServiceFactory = ({
         displayUsername = `${identity.name} (Machine Identity)`;
       }
 
-      const allEmails = [...new Set([...authorizedEmails, ...nonAuthorizedEmails])];
+      const allEmails = [...new Set([...authorizedEmails, ...externalEmails])];
 
       for await (const email of allEmails) {
         try {
           // Only show the username to emails which are part of the organization
-          const senderUsername = authorizedEmails.includes(email) ? displayUsername : undefined;
+          const senderUsername = allEmails.includes(email) ? displayUsername : undefined;
           const isExternalEmail = !authorizedEmails.includes(email);
 
           await smtpService.sendMail({
@@ -252,7 +253,7 @@ export const secretSharingServiceFactory = ({
               name,
               senderUsername,
               secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${mappedSharedSecret.id}`,
-              isPasswordProtected: isExternalEmail && Boolean(password)
+              isPasswordProtected: isExternalEmail && Boolean(password) // password protected is only necessary for external users
             },
             template: SmtpTemplates.SecretRequestCompleted
           });
@@ -558,8 +559,12 @@ export const secretSharingServiceFactory = ({
     };
   };
 
+  // Validates that the current user is authorized to view a secret shared to specific emails.
   const $validateAuthorizedEmails = async (sharedSecret: TSecretSharing, actorId?: string) => {
-    if (sharedSecret.authorizedEmails && (sharedSecret.authorizedEmails as string[]).length > 0) {
+    const hasAuthorizedEmails = sharedSecret.authorizedEmails && (sharedSecret.authorizedEmails as string[]).length > 0;
+    const hasExternalEmails = sharedSecret.externalEmails && (sharedSecret.externalEmails as string[]).length > 0;
+
+    if (hasAuthorizedEmails || hasExternalEmails) {
       if (actorId) {
         // Authenticated user — verify email is in authorized list
         const user = await userDAL.findById(actorId);
@@ -567,7 +572,7 @@ export const secretSharingServiceFactory = ({
           throw new UnauthorizedError({ message: "Authentication required to view this secret" });
         }
 
-        if (!(sharedSecret.authorizedEmails as string[]).includes(user.email)) {
+        if (hasAuthorizedEmails && !(sharedSecret.authorizedEmails as string[]).includes(user.email)) {
           throw new ForbiddenRequestError({ message: "You are not authorized to view this secret" });
         }
       } else if (!sharedSecret.password) {

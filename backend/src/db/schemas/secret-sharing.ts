@@ -29,6 +29,7 @@ export const SecretSharingSchema = z.object({
   identifier: z.string().nullable().optional(),
   type: z.string().default("share"),
   authorizedEmails: z.unknown().nullable().optional(),
+  externalEmails: z.unknown().nullable().optional(),
   identityId: z.string().uuid().nullable().optional()
 });
 
