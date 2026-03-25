@@ -264,7 +264,7 @@ export const identityUaServiceFactory = ({
           if (!subOrgMembership) {
             throw new UnauthorizedError({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: { reason: "sub_org_not_authorized", identityId: identityUa.identityId, orgId: identity.orgId }
+              detail: { reason: "sub_org_unauthorized", identityId: identityUa.identityId, orgId: identity.orgId }
             });
           }
 
