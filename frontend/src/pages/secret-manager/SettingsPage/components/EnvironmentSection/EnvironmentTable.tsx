@@ -3,7 +3,6 @@ import {
   faArrowUp,
   faCheck,
   faPencil,
-  faTimes,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -104,7 +103,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                   }
                 >
                   <FontAwesomeIcon
-                    icon={allowSecretExport !== false ? faCheck : faTimes}
+                    icon={allowSecretExport !== false ? faCheck : faXmark}
                     className={allowSecretExport !== false ? "text-green-500" : "text-red-500"}
                   />
                 </Tooltip>

@@ -136,7 +136,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .optional()
           // split by comma and trim the strings
           .transform((el) => (el ? el.split(",").map((i) => i.trim()) : [])),
-        purpose: z.enum(["view", "export"]).optional().describe("The purpose of the request. When set to 'export', the server checks if secret export is allowed for this environment.")
+        purpose: z.literal("export").optional().describe("When set to 'export', the server checks if secret export is allowed for this environment and returns 403 if disabled.")
       }),
       response: {
         200: z.object({
@@ -182,16 +182,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
-      if (req.query.purpose === "export") {
-        const envs = await server.services.projectEnv.getEnvironmentsByProjectId(projectId);
-        const targetEnv = envs.find((e) => e.slug === environment);
-        if (targetEnv && targetEnv.allowSecretExport === false) {
-          throw new ForbiddenRequestError({
-            message: "Secret export is disabled for this environment. An administrator has restricted secret downloads."
-          });
-        }
-      }
-
       const { secrets, imports } = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -212,6 +202,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs
       });
+
+      // Check export restriction AFTER getSecretsRaw has verified project access/RBAC.
+      // This ensures no information leak about export settings for projects the user lacks access to.
+      if (req.query.purpose === "export") {
+        const envs = await server.services.projectEnv.getEnvironmentsByProjectId(projectId);
+        const targetEnv = envs.find((e) => e.slug === environment);
+        if (targetEnv && targetEnv.allowSecretExport === false) {
+          throw new ForbiddenRequestError({
+            message: "Secret export is disabled for this environment. An administrator has restricted secret downloads."
+          });
+        }
+      }
+
       await server.services.auditLog.createAuditLog({
         projectId,
         ...req.auditLogInfo,
