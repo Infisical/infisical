@@ -560,36 +560,23 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  // Validates that an authenticated org member is authorized to view a secret shared to specific emails.
-  const $validateAuthorizedEmailAccess = async (sharedSecret: TSecretSharing, actorId?: string) => {
+  // Checks if the authenticated user is in the authorizedEmails list (org members).
+  // Returns true if no email restriction exists or user is authorized; false otherwise.
+  const $isAuthorizedEmailUser = async (sharedSecret: TSecretSharing, actorId?: string): Promise<boolean> => {
     const hasAuthorizedEmails = sharedSecret.authorizedEmails && (sharedSecret.authorizedEmails as string[]).length > 0;
 
-    if (!hasAuthorizedEmails) return;
-
-    if (!actorId) {
-      throw new UnauthorizedError({ message: "Authentication required to view this secret" });
-    }
+    if (!hasAuthorizedEmails || !actorId) return false;
 
     const user = await userDAL.findById(actorId);
-    if (!user || !user.email) {
-      throw new UnauthorizedError({ message: "Authentication required to view this secret" });
-    }
+    if (!user || !user.email) return false;
 
-    if (!(sharedSecret.authorizedEmails as string[]).includes(user.email)) {
-      throw new ForbiddenRequestError({ message: "You are not authorized to view this secret" });
-    }
+    return (sharedSecret.authorizedEmails as string[]).includes(user.email);
   };
 
-  // Validates that a secret is properly configured for external (non-org) email access.
-  // External users authenticate via password — actual password verification is handled by the caller.
-  const $validateExternalEmailAccess = (sharedSecret: TSecretSharing) => {
+  // Checks whether external (non-org) email access is available for this secret.
+  const $hasExternalEmailAccess = (sharedSecret: TSecretSharing): boolean => {
     const hasExternalEmails = sharedSecret.externalEmails && (sharedSecret.externalEmails as string[]).length > 0;
-
-    if (!hasExternalEmails || !sharedSecret.allowExternalEmails) return;
-
-    if (!sharedSecret.password) {
-      throw new BadRequestError({ message: "A password is required for secrets shared with external emails" });
-    }
+    return Boolean(hasExternalEmails && sharedSecret.allowExternalEmails);
   };
 
   const getSharedSecretById = async (sharedSecretId: string, orgId?: string, actorId?: string) => {
@@ -626,12 +613,19 @@ export const secretSharingServiceFactory = ({
       throw new NotFoundError({ message: "The shared secret has reached its view limit" });
     }
 
-    await $validateAuthorizedEmailAccess(sharedSecret, actorId);
-    $validateExternalEmailAccess(sharedSecret);
+    const isAuthorizedUser = await $isAuthorizedEmailUser(sharedSecret, actorId);
+
+    if (!isAuthorizedUser && !$hasExternalEmailAccess(sharedSecret)) {
+      if (!actorId) {
+        throw new UnauthorizedError({ message: "Authentication required to view this secret" });
+      }
+      throw new ForbiddenRequestError({ message: "You are not authorized to view this secret" });
+    }
 
     return {
       ...mapIdentifierToId(sharedSecret),
-      isPasswordProtected: Boolean(sharedSecret.password)
+      isPasswordProtected: Boolean(sharedSecret.password),
+      isAuthorizedUser
     };
   };
 
@@ -674,8 +668,14 @@ export const secretSharingServiceFactory = ({
         throw new ForbiddenRequestError();
       }
 
-      await $validateAuthorizedEmailAccess(sharedSecret, actorId);
-      $validateExternalEmailAccess(sharedSecret);
+      const isAuthorizedUser = await $isAuthorizedEmailUser(sharedSecret, actorId);
+
+      if (!isAuthorizedUser && !$hasExternalEmailAccess(sharedSecret)) {
+        if (!actorId) {
+          throw new UnauthorizedError();
+        }
+        throw new ForbiddenRequestError();
+      }
 
       // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
       // or can be safely sent to the client.

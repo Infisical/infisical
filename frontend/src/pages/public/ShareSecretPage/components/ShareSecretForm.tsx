@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy, faRedo } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faInfoCircle, faRedo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
@@ -18,7 +18,8 @@ import {
   Input,
   Select,
   SelectItem,
-  Switch
+  Switch,
+  Tooltip
 } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
@@ -402,11 +403,11 @@ export const ShareSecretForm = ({
                     name="emails"
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        label="Authorized Emails"
+                        label="Emails"
                         isOptional
                         helperText={
                           isAllowingExternalEmails
-                            ? "External recipients will receive a link and need the password to access the secret."
+                            ? "All recipients will receive a link and need the password to access the secret. They don't need an Infisical account."
                             : "Recipients must have an Infisical account to verify identity"
                         }
                         tooltipText={
@@ -441,17 +442,7 @@ export const ShareSecretForm = ({
                       field: { onChange, value: isChecked, ...field },
                       fieldState: { error }
                     }) => (
-                      <FormControl
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                        tooltipText={
-                          <p>
-                            When enabled, emails not registered in Infisical will receive the secret
-                            link via email but will need the password to access the secret.
-                          </p>
-                        }
-                        tooltipClassName="max-w-sm"
-                      >
+                      <FormControl errorText={error?.message} isError={Boolean(error)}>
                         <Switch
                           className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${isOrgAccess ? "opacity-50" : ""}`}
                           thumbClassName="bg-mineshaft-800"
@@ -462,7 +453,16 @@ export const ShareSecretForm = ({
                           id="allow-external-emails"
                           {...field}
                         >
-                          Allow external recipients
+                          <span className="flex items-center">
+                            Allow external recipients
+                            <Tooltip content="When enabled, the defined emails will receive the secret link via email but will need the password to access the secret.">
+                              <FontAwesomeIcon
+                                icon={faInfoCircle}
+                                size="xs"
+                                className="ml-1 text-mineshaft-400"
+                              />
+                            </Tooltip>
+                          </span>
                         </Switch>
                       </FormControl>
                     )}

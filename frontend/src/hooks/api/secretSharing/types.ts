@@ -74,6 +74,7 @@ export type TSanitizedSharedSecret = {
 
 export type TSharedSecretPublicDetails = TSanitizedSharedSecret & {
   isPasswordProtected: boolean;
+  isAuthorizedUser: boolean;
 };
 
 export type TAccessSharedSecretResponse = {
