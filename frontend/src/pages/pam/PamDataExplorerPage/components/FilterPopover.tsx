@@ -156,7 +156,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[520px] p-3" align="start">
+      <PopoverContent className="w-[580px] p-3" align="start">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm font-medium text-mineshaft-200">Filters</span>
           {draft.length > 0 && (
@@ -180,7 +180,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                     value={filter.column}
                     onValueChange={(val) => updateFilter(index, { column: val })}
                   >
-                    <SelectTrigger size="sm" className="w-32 text-xs text-mineshaft-200">
+                    <SelectTrigger size="sm" className="w-40 text-xs text-mineshaft-200" title={filter.column}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

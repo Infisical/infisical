@@ -53,7 +53,7 @@ export const SortPopover = ({ columns, sorts, onSortsChange }: SortPopoverProps)
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[260px] p-0" align="start">
+      <PopoverContent className="w-[300px] p-0" align="start">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-mineshaft-600 px-3 py-2">
           <span className="text-sm font-medium text-mineshaft-200">Sort by</span>
@@ -102,7 +102,7 @@ export const SortPopover = ({ columns, sorts, onSortsChange }: SortPopoverProps)
                     : "border-mineshaft-500"
                 }`}
               />
-              <span className="truncate">{col.name}</span>
+              <span className="truncate" title={col.name}>{col.name}</span>
             </button>
           ))}
           {filteredColumns.length === 0 && (

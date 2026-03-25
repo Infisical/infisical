@@ -48,8 +48,8 @@ function getColumnSize(col: ColumnInfo): number {
   if (t === "uuid") return 280;
   if (t === "json" || t === "jsonb") return 250;
   if (t === "text" || t === "xml") return 220;
-  // Scale with column name length as a rough heuristic
-  return Math.max(140, Math.min(250, col.name.length * 10 + 80));
+  // Scale with column name length as a rough heuristic (higher minimum for wide/special chars)
+  return Math.max(150, Math.min(300, col.name.length * 10 + 100));
 }
 
 type RowData = Record<string, unknown>;
