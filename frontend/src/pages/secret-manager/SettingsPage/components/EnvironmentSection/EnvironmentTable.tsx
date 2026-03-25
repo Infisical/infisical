@@ -1,4 +1,11 @@
-import { faArrowDown, faArrowUp, faCheck, faPencil, faTimes, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowDown,
+  faArrowUp,
+  faCheck,
+  faPencil,
+  faTimes,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -89,7 +96,13 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
               <Td>{name}</Td>
               <Td>{slug}</Td>
               <Td>
-                <Tooltip content={allowSecretExport !== false ? "Secret export is allowed" : "Secret export is disabled"}>
+                <Tooltip
+                  content={
+                    allowSecretExport !== false
+                      ? "Secret export is allowed"
+                      : "Secret export is disabled"
+                  }
+                >
                   <FontAwesomeIcon
                     icon={allowSecretExport !== false ? faCheck : faTimes}
                     className={allowSecretExport !== false ? "text-green-500" : "text-red-500"}

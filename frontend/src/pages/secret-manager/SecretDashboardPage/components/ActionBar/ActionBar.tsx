@@ -1243,7 +1243,9 @@ export const ActionBar = ({
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={currentProject.slug}
-        environments={[{ slug: environment, name: environment, id: "not-used", allowSecretExport: true }]}
+        environments={[
+          { slug: environment, name: environment, id: "not-used", allowSecretExport: true }
+        ]}
         secretPath={secretPath}
         isSingleEnvironmentMode
       />

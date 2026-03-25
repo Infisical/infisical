@@ -82,11 +82,11 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         </UnstableIconButton>
       </TooltipTrigger>
       <TooltipContent>
-        {isExportDisabled
-          ? "Secret export is disabled for this environment"
-          : environments.length !== 1
-            ? "Select a single environment to download secrets"
-            : "Download secrets"}
+        {(() => {
+          if (isExportDisabled) return "Secret export is disabled for this environment";
+          if (environments.length !== 1) return "Select a single environment to download secrets";
+          return "Download secrets";
+        })()}
       </TooltipContent>
     </Tooltip>
   );
