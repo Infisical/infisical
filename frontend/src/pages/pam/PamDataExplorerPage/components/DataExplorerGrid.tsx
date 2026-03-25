@@ -664,7 +664,6 @@ export const DataExplorerGrid = ({
         onDiscard={handleDiscard}
         isSaving={isSaving}
         onAddRecord={handleAddRecord}
-        hasNewRow={newRowTempIds.size > 0}
         selectedRowCount={selectedRowCount}
         onDeleteSelected={handleDeleteSelected}
         totalCount={totalCount}
