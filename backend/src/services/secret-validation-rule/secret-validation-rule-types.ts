@@ -42,7 +42,7 @@ export type TUpdateSecretValidationRuleDTO = {
   ruleId: string;
   name?: string;
   description?: string | null;
-  environmentSlug?: string;
+  environmentSlug?: string | null;
   secretPath?: string;
   type?: SecretValidationRuleType;
   inputs?: TSecretValidationRuleInputs;

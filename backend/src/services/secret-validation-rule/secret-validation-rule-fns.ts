@@ -177,6 +177,11 @@ const TARGET_LABELS: Record<ConstraintTarget, string> = {
 };
 
 const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate): string | null => {
+  // Skip value constraints when no value mutation is occurring (e.g. key-only rename)
+  if (constraint.appliesTo === ConstraintTarget.SecretValue && secret.value === undefined) {
+    return null;
+  }
+
   const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
   const targetLabel = TARGET_LABELS[constraint.appliesTo];
 

@@ -8,6 +8,9 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
 import { checkForOverlappingRules, enforceSecretValidationRules } from "./secret-validation-rule-fns";
 import { parseSecretValidationRuleInputs } from "./secret-validation-rule-schemas";
@@ -22,6 +25,8 @@ import {
 type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  secretDAL: TSecretV2BridgeDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: TKmsServiceFactory;
 };
@@ -31,6 +36,8 @@ export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValida
 export const secretValidationRuleServiceFactory = ({
   secretValidationRuleDAL,
   projectEnvDAL,
+  folderDAL,
+  secretDAL,
   permissionService,
   kmsService
 }: TSecretValidationRuleServiceFactoryDep) => {
@@ -308,40 +315,45 @@ export const secretValidationRuleServiceFactory = ({
     environment,
     envId,
     secretPath,
-    secrets,
-    expandSecretReferences
+    secrets
   }: {
     projectId: string;
     environment: string;
     envId: string;
     secretPath: string;
     secrets: { key: string; value?: string }[];
-    expandSecretReferences?: (input: {
-      value?: string;
-      secretPath: string;
-      environment: string;
-      secretKey: string;
-    }) => Promise<string | undefined>;
   }) => {
     if (!secrets.length) return;
 
     const rules = await secretValidationRuleDAL.find({ projectId, isActive: true });
     if (!rules.length) return;
 
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId,
+      folderDAL,
+      secretDAL,
+      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
+      canExpandValue: () => true
+    });
+
     let resolvedSecrets = secrets;
-    if (expandSecretReferences) {
-      resolvedSecrets = await Promise.all(
-        secrets.map(async (s) => ({
-          key: s.key,
-          value: await expandSecretReferences({
-            value: s.value,
-            secretPath,
-            environment,
-            secretKey: s.key
-          })
-        }))
-      );
-    }
+
+    resolvedSecrets = await Promise.all(
+      secrets.map(async (s) => ({
+        key: s.key,
+        value: await expandSecretReferences({
+          value: s.value,
+          secretPath,
+          environment,
+          secretKey: s.key
+        })
+      }))
+    );
 
     const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,

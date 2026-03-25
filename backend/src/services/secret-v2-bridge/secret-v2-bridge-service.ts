@@ -262,28 +262,6 @@ export const secretV2BridgeServiceFactory = ({
     return referredSecrets;
   };
 
-  /**
-   * Build an expandSecretReferences function scoped to a project.
-   * Used by secret validation to resolve interpolation references
-   * (e.g. `${env.key}`) to their true values before enforcing constraints.
-   */
-  const $buildSecretExpander = async (projectId: string) => {
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const { expandSecretReferences } = expandSecretReferencesFactory({
-      projectId,
-      folderDAL,
-      secretDAL,
-      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
-      canExpandValue: () => true
-    });
-
-    return expandSecretReferences;
-  };
-
   const createSecret = async ({
     actor,
     actorId,
@@ -371,14 +349,12 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    const expandSecretValue = await $buildSecretExpander(projectId);
     await secretValidationRuleService.validateSecrets({
       projectId,
       environment,
       envId: folder.envId,
       secretPath,
-      secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }],
-      expandSecretReferences: expandSecretValue
+      secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
     });
 
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
@@ -635,14 +611,12 @@ export const secretV2BridgeServiceFactory = ({
     // Validate against secret validation rules (key rename and/or value change)
     const finalKey = inputSecret.newSecretName || secretName;
     if (secretValue || inputSecret.newSecretName) {
-      const expandSecretValue = await $buildSecretExpander(projectId);
       await secretValidationRuleService.validateSecrets({
         projectId,
         environment,
         envId: folder.envId,
         secretPath,
-        secrets: [{ key: finalKey, value: secretValue }],
-        expandSecretReferences: expandSecretValue
+        secrets: [{ key: finalKey, value: secretValue }]
       });
     }
 
@@ -1911,14 +1885,12 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    const expandSecretValue = await $buildSecretExpander(projectId);
     await secretValidationRuleService.validateSecrets({
       projectId,
       environment,
       envId: folder.envId,
       secretPath,
-      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })),
-      expandSecretReferences: expandSecretValue
+      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
     });
 
     // get all tags
@@ -2111,8 +2083,6 @@ export const secretV2BridgeServiceFactory = ({
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-    const expandSecretValueForValidation = await $buildSecretExpander(projectId);
-
     // Function to execute the bulk update operation
     const executeBulkUpdate = async (tx: Knex) => {
       const updatedSecrets: Array<
@@ -2300,8 +2270,7 @@ export const secretV2BridgeServiceFactory = ({
             environment,
             envId: folder.envId,
             secretPath,
-            secrets: secretsToValidate,
-            expandSecretReferences: expandSecretValueForValidation
+            secrets: secretsToValidate
           });
         }
 

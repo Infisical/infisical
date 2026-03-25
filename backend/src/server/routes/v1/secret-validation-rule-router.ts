@@ -113,7 +113,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
       body: z.object({
         name: z.string().trim().min(1).max(100).optional(),
         description: z.string().trim().max(500).nullable().optional(),
-        environmentSlug: z.string().trim().min(1).optional(),
+        environmentSlug: z.string().trim().min(1).nullable().optional(),
         secretPath: z.string().trim().min(1).optional(),
         type: z.nativeEnum(SecretValidationRuleType).optional(),
         inputs: staticSecretsInputsSchema.optional(),

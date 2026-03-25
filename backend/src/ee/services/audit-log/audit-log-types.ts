@@ -5478,7 +5478,7 @@ interface SecretValidationRuleUpdateEvent {
     ruleId: string;
     name?: string;
     type?: string;
-    environmentSlug?: string;
+    environmentSlug?: string | null;
     secretPath?: string;
     isActive?: boolean;
   };

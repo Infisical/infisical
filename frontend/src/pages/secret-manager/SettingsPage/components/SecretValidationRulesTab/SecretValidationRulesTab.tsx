@@ -398,7 +398,7 @@ export const SecretValidationRulesTab = () => {
         name: data.name,
         description: data.description,
         isActive,
-        environmentSlug: data.environment ?? undefined,
+        environmentSlug: data.environment ?? null,
         secretPath: data.folderPath,
         type: data.enforcement.type as string as SecretValidationRuleType,
         inputs: data.enforcement.inputs

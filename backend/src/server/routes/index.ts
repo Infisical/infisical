@@ -1576,7 +1576,9 @@ export const registerRoutes = async (
     secretValidationRuleDAL,
     projectEnvDAL,
     permissionService,
-    kmsService
+    kmsService,
+    folderDAL,
+    secretDAL: secretV2BridgeDAL
   });
   const folderService = secretFolderServiceFactory({
     permissionService,
