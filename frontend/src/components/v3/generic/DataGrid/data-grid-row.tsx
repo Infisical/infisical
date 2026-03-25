@@ -12,7 +12,8 @@ import {
   getCellKey,
   getColumnBorderVisibility,
   getColumnPinningStyle,
-  getRowHeightValue
+  getRowHeightValue,
+  sanitizeCssId
 } from "./data-grid-utils";
 
 interface DataGridRowProps<TData> extends React.ComponentProps<"div"> {
@@ -252,7 +253,7 @@ function DataGridRowImpl<TData>({
             })}
             style={{
               ...getColumnPinningStyle({ column: cell.column, dir }),
-              width: `calc(var(--col-${columnId}-size) * 1px)`
+              width: `calc(var(--col-${sanitizeCssId(columnId)}-size) * 1px)`
             }}
           >
             {typeof cell.column.columnDef.header === "function" ? (

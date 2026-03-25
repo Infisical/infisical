@@ -61,6 +61,10 @@ export function matchSelectOption(
   )?.value;
 }
 
+export function sanitizeCssId(id: string): string {
+  return id.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
 export function getCellKey(rowIndex: number, columnId: string) {
   return `${rowIndex}:${columnId}`;
 }

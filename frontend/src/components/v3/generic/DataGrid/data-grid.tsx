@@ -10,7 +10,12 @@ import { DataGridPasteDialog } from "./data-grid-paste-dialog";
 import { DataGridRow } from "./data-grid-row";
 import { DataGridSearch } from "./data-grid-search";
 import type { Direction } from "./data-grid-types";
-import { flexRender, getColumnBorderVisibility, getColumnPinningStyle } from "./data-grid-utils";
+import {
+  flexRender,
+  getColumnBorderVisibility,
+  getColumnPinningStyle,
+  sanitizeCssId
+} from "./data-grid-utils";
 import type { useDataGrid } from "./use-data-grid";
 
 const EMPTY_CELL_SELECTION_SET = new Set<string>();
@@ -160,7 +165,7 @@ export function DataGrid<TData>({
                     })}
                     style={{
                       ...getColumnPinningStyle({ column: header.column, dir }),
-                      width: `calc(var(--header-${header.id}-size) * 1px)`
+                      width: `calc(var(--header-${sanitizeCssId(header.id)}-size) * 1px)`
                     }}
                   >
                     {/* eslint-disable-next-line no-nested-ternary */}

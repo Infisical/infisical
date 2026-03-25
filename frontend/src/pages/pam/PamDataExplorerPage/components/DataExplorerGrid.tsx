@@ -674,7 +674,7 @@ export const DataExplorerGrid = ({
       )}
 
       {/* Dice UI DataGrid */}
-      <div className="data-explorer-grid flex flex-1 flex-col overflow-hidden text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
+      <div className="data-explorer-grid flex flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-mineshaft-900 [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
         {isDataLoading && !hasLoadedRef.current && (
           <div className="space-y-1 p-4">
             {Array.from({ length: 10 }).map((_, i) => (

@@ -43,6 +43,7 @@ import {
   getScrollDirection,
   matchSelectOption,
   parseCellKey,
+  sanitizeCssId,
   scrollCellIntoView
 } from "./data-grid-utils";
 
@@ -2083,8 +2084,8 @@ function useDataGrid<TData>({
     const headers = table.getFlatHeaders();
     const colSizes: { [key: string]: number } = {};
     for (const header of headers) {
-      colSizes[`--header-${header.id}-size`] = header.getSize();
-      colSizes[`--col-${header.column.id}-size`] = header.column.getSize();
+      colSizes[`--header-${sanitizeCssId(header.id)}-size`] = header.getSize();
+      colSizes[`--col-${sanitizeCssId(header.column.id)}-size`] = header.column.getSize();
     }
     return colSizes;
   }, [table.getState().columnSizingInfo, table.getState().columnSizing, columns]);
