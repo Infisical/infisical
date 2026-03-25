@@ -838,7 +838,8 @@
                   "documentation/platform/kms/overview",
                   "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/kmip"
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/sigstore-cosign"
                 ]
               }
             ]
