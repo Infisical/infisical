@@ -37,6 +37,14 @@ type DataExplorerGridProps = {
 
 const ROW_KEY_PREFIX = "__new_";
 
+function cellValuesEqual(a: unknown, b: unknown): boolean {
+  if (a === null && b === null) return true;
+  if (a === null || b === null) return false;
+  if (a === undefined && b === undefined) return true;
+  if (a === undefined || b === undefined) return false;
+  return String(a) === String(b);
+}
+
 function pgTypeToCellOpts(): CellOpts {
   return { variant: "short-text" };
 }
@@ -323,7 +331,7 @@ export const DataExplorerGrid = ({
       const original = originalDataByPk.get(key);
       if (!original) return;
       const hasChanges = tableColumns.some(
-        (col) => String(row[col.name] ?? "") !== String(original[col.name] ?? "")
+        (col) => !cellValuesEqual(row[col.name], original[col.name])
       );
       if (hasChanges) count += 1;
     });
@@ -449,7 +457,7 @@ export const DataExplorerGrid = ({
         if (!original) return;
         const changes: Record<string, unknown> = {};
         tableColumns.forEach((col) => {
-          if (String(row[col.name] ?? "") !== String(original[col.name] ?? "")) {
+          if (!cellValuesEqual(row[col.name], original[col.name])) {
             changes[col.name] = row[col.name];
           }
         });
@@ -525,7 +533,7 @@ export const DataExplorerGrid = ({
     if (!key) return false;
     const original = pkMap.get(key);
     if (!original) return false;
-    return String(row[columnId] ?? "") !== String(original[columnId] ?? "");
+    return !cellValuesEqual(row[columnId], original[columnId]);
   }, []);
 
   // Stable row identity for TanStack Table
