@@ -292,24 +292,20 @@ export const DataExplorerGrid = ({
   }
 
   const handleFiltersChange = useCallback((newFilters: FilterCondition[]) => {
-    setIsDataLoading(true);
     setFilters(newFilters);
     setOffset(0);
   }, []);
 
   const handleSortsChange = useCallback((newSorts: SortCondition[]) => {
-    setIsDataLoading(true);
     setSorts(newSorts);
     setOffset(0);
   }, []);
 
   const handleOffsetChange = useCallback((newOffset: number) => {
-    setIsDataLoading(true);
     setOffset(Math.max(0, newOffset));
   }, []);
 
   const handlePageSizeChange = useCallback((newSize: number) => {
-    setIsDataLoading(true);
     setPageSize(newSize);
     setOffset(0);
   }, []);
