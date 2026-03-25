@@ -169,6 +169,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     }
   };
 
+  useEffect(() => {
+    if (isCodeComplete && !isLoading && mfaCode.trim()) {
+      const syntheticEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
+      verifyMfa(syntheticEvent);
+    }
+  }, [mfaCode]);
+
   const handleResendMfaCode = async () => {
     try {
       setIsLoadingResend(true);
@@ -439,6 +446,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   type="text"
                   fields={6}
                   onChange={setMfaCode}
+                  autoComplete="one-time-code"
                   className="mt-6 mb-2"
                   {...codeInputProps}
                 />
@@ -453,6 +461,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   type="text"
                   fields={showRecoveryCodeInput ? 8 : 6}
                   onChange={setMfaCode}
+                  autoComplete="one-time-code"
                   className="mb-2"
                   {...codeInputProps}
                 />
@@ -468,6 +477,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   type="text"
                   fields={6}
                   onChange={setMfaCode}
+                  autoComplete="one-time-code"
                   className="mt-2 mb-2"
                   {...codeInputPropsPhone}
                 />
@@ -482,6 +492,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   type="text"
                   fields={showRecoveryCodeInput ? 8 : 6}
                   onChange={setMfaCode}
+                  autoComplete="one-time-code"
                   className="mb-2"
                   {...codeInputPropsPhone}
                 />

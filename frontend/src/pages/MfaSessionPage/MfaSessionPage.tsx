@@ -126,6 +126,13 @@ export const MfaSessionPage = () => {
     }
   };
 
+  useEffect(() => {
+    if (isCodeComplete && !isLoading && mfaCode.trim()) {
+      const syntheticEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
+      handleVerifyMfa(syntheticEvent);
+    }
+  }, [mfaCode]);
+
   const handleWebAuthnVerification = async () => {
     if (!sessionStatus?.mfaMethod) return;
 
@@ -269,6 +276,7 @@ export const MfaSessionPage = () => {
                   fields={getExpectedCodeLength()}
                   onChange={setMfaCode}
                   value={mfaCode}
+                  autoComplete="one-time-code"
                   className="mb-2"
                   {...codeInputProps}
                 />
@@ -283,6 +291,7 @@ export const MfaSessionPage = () => {
                   fields={getExpectedCodeLength()}
                   onChange={setMfaCode}
                   value={mfaCode}
+                  autoComplete="one-time-code"
                   className="mb-2"
                   {...codeInputPropsPhone}
                 />
