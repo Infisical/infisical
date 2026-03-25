@@ -22,6 +22,7 @@ import { DataExplorerToolbar } from "./DataExplorerToolbar";
 
 type DataExplorerGridProps = {
   tableDetail: TableDetail | null;
+  tableType?: string;
   schema: string;
   table: string;
   executeQuery: (sql: string) => Promise<{
@@ -179,6 +180,7 @@ function getPkMatch(row: Record<string, unknown>, primaryKeys: string[]): Record
 
 export const DataExplorerGrid = ({
   tableDetail,
+  tableType,
   schema,
   table,
   executeQuery,
@@ -685,7 +687,9 @@ export const DataExplorerGrid = ({
 
       {!hasPrimaryKey && (
         <div className="border-b border-yellow-600/30 bg-yellow-950/20 px-3 py-1.5 text-xs text-yellow-400">
-          This table has no primary key. Browsing is read-only — editing requires a primary key.
+          {tableType === "view" || tableType === "materialized_view"
+            ? "This view is read-only."
+            : "This table has no primary key. Browsing is read-only — editing requires a primary key."}
         </div>
       )}
 

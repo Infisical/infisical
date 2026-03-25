@@ -397,6 +397,7 @@ export const PamDataExplorerPage = () => {
           <DataExplorerGrid
             key={`${selectedSchema}.${selectedTable}`}
             tableDetail={tableDetail}
+            tableType={tables.find((t) => t.name === selectedTable)?.tableType}
             schema={selectedSchema}
             table={selectedTable}
             executeQuery={executeQuery}
