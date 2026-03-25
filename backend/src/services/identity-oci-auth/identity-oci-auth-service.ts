@@ -73,7 +73,10 @@ export const identityOciAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityOciAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -100,7 +103,8 @@ export const identityOciAuthServiceFactory = ({
 
       if (data.compartmentId !== identityOciAuth.tenancyOcid) {
         throw new UnauthorizedError({
-          message: "Access denied: OCI account isn't part of tenancy."
+          message: "Access denied: OCI account isn't part of tenancy.",
+          detail: { reason: "tenancy_not_allowed", identityId: identity.id, orgId: identity.orgId }
         });
       }
 
@@ -109,7 +113,8 @@ export const identityOciAuthServiceFactory = ({
 
         if (!isAccountAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: OCI account username not allowed."
+            message: "Access denied: OCI account username not allowed.",
+            detail: { reason: "username_not_allowed", identityId: identity.id, orgId: identity.orgId }
           });
       }
 
@@ -129,7 +134,8 @@ export const identityOciAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
             });
           }
 

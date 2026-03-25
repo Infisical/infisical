@@ -84,7 +84,10 @@ export const identityOidcAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityOidcAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -116,21 +119,24 @@ export const identityOidcAuthServiceFactory = ({
         discoveryDoc = response.data;
       } catch (error) {
         throw new UnauthorizedError({
-          message: `Access denied: Failed to fetch OIDC discovery document from ${identityOidcAuth.oidcDiscoveryUrl}. ${error instanceof Error ? error.message : String(error)}`
+          message: `Access denied: Failed to fetch OIDC discovery document from ${identityOidcAuth.oidcDiscoveryUrl}. ${error instanceof Error ? error.message : String(error)}`,
+          detail: { reason: "discovery_document_fetch_failed", identityId: identity.id, orgId: identity.orgId }
         });
       }
 
       const jwksUri = discoveryDoc.jwks_uri;
       if (!jwksUri) {
         throw new UnauthorizedError({
-          message: `Access denied: OIDC discovery document does not contain a jwks_uri. The identity provider may be misconfigured.`
+          message: `Access denied: OIDC discovery document does not contain a jwks_uri. The identity provider may be misconfigured.`,
+          detail: { reason: "missing_jwks_uri", identityId: identity.id, orgId: identity.orgId }
         });
       }
 
       const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
       if (!decodedToken) {
         throw new UnauthorizedError({
-          message: "Invalid JWT"
+          message: "Invalid JWT",
+          detail: { reason: "invalid_jwt", identityId: identity.id, orgId: identity.orgId }
         });
       }
 
@@ -151,11 +157,13 @@ export const identityOidcAuthServiceFactory = ({
         } catch (error) {
           if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
             throw new UnauthorizedError({
-              message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the OIDC provider's JWKS endpoint. This may indicate an invalid token or misconfigured OIDC provider.`
+              message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the OIDC provider's JWKS endpoint. This may indicate an invalid token or misconfigured OIDC provider.`,
+              detail: { reason: "signing_key_not_found", identityId: identity.id, orgId: identity.orgId }
             });
           }
           throw new UnauthorizedError({
-            message: `Access denied: Failed to retrieve signing key from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
+            message: `Access denied: Failed to retrieve signing key from OIDC provider: ${error instanceof Error ? error.message : String(error)}`,
+            detail: { reason: "signing_key_retrieval_failed", identityId: identity.id, orgId: identity.orgId }
           });
         }
 
@@ -166,7 +174,8 @@ export const identityOidcAuthServiceFactory = ({
         } catch (error) {
           if (error instanceof jwt.JsonWebTokenError) {
             throw new UnauthorizedError({
-              message: `Access denied: ${error.message}`
+              message: `Access denied: ${error.message}`,
+              detail: { reason: "jwt_verification_failed", identityId: identity.id, orgId: identity.orgId }
             });
           }
           throw error;
@@ -182,13 +191,15 @@ export const identityOidcAuthServiceFactory = ({
           allSigningKeys = await client.getSigningKeys();
         } catch (error) {
           throw new UnauthorizedError({
-            message: `Access denied: Failed to retrieve signing keys from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
+            message: `Access denied: Failed to retrieve signing keys from OIDC provider: ${error instanceof Error ? error.message : String(error)}`,
+            detail: { reason: "signing_keys_retrieval_failed", identityId: identity.id, orgId: identity.orgId }
           });
         }
 
         if (!allSigningKeys || allSigningKeys.length === 0) {
           throw new UnauthorizedError({
-            message: "Access denied: No signing keys available from OIDC provider's JWKS endpoint."
+            message: "Access denied: No signing keys available from OIDC provider's JWKS endpoint.",
+            detail: { reason: "no_signing_keys", identityId: identity.id, orgId: identity.orgId }
           });
         }
 
@@ -196,7 +207,8 @@ export const identityOidcAuthServiceFactory = ({
         const MAX_KEYS_TO_TRY = 10;
         if (allSigningKeys.length > MAX_KEYS_TO_TRY) {
           throw new UnauthorizedError({
-            message: `Access denied: OIDC provider has ${allSigningKeys.length} signing keys. Tokens must include 'kid' header when provider has more than ${MAX_KEYS_TO_TRY} keys.`
+            message: `Access denied: OIDC provider has ${allSigningKeys.length} signing keys. Tokens must include 'kid' header when provider has more than ${MAX_KEYS_TO_TRY} keys.`,
+            detail: { reason: "too_many_signing_keys", identityId: identity.id, orgId: identity.orgId }
           });
         }
 
@@ -223,7 +235,8 @@ export const identityOidcAuthServiceFactory = ({
 
         if (!verified) {
           throw new UnauthorizedError({
-            message: `Access denied: Unable to verify JWT signature with any available signing key. ${lastError ? lastError.message : "Invalid token"}`
+            message: `Access denied: Unable to verify JWT signature with any available signing key. ${lastError ? lastError.message : "Invalid token"}`,
+            detail: { reason: "jwt_verification_failed", identityId: identity.id, orgId: identity.orgId }
           });
         }
       }
@@ -231,7 +244,8 @@ export const identityOidcAuthServiceFactory = ({
       // Ensure tokenData was successfully assigned
       if (!tokenData) {
         throw new UnauthorizedError({
-          message: "Access denied: Failed to verify JWT token"
+          message: "Access denied: Failed to verify JWT token",
+          detail: { reason: "jwt_verification_failed", identityId: identity.id, orgId: identity.orgId }
         });
       }
 
@@ -252,7 +266,8 @@ export const identityOidcAuthServiceFactory = ({
             .some((policyValue) => doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue))
         ) {
           throw new UnauthorizedError({
-            message: "Access denied: OIDC audience not allowed."
+            message: "Access denied: OIDC audience not allowed.",
+            detail: { reason: "audience_not_allowed", identityId: identity.id, orgId: identity.orgId }
           });
         }
       }
@@ -264,14 +279,16 @@ export const identityOidcAuthServiceFactory = ({
 
           if (!value) {
             throw new UnauthorizedError({
-              message: `Access denied: token has no ${claimKey} field`
+              message: `Access denied: token has no ${claimKey} field`,
+              detail: { reason: "missing_claim", identityId: identity.id, orgId: identity.orgId }
             });
           }
 
           // handle both single and multi-valued claims
           if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(value, claimEntry))) {
             throw new UnauthorizedError({
-              message: "Access denied: OIDC claim not allowed."
+              message: "Access denied: OIDC claim not allowed.",
+              detail: { reason: "claim_not_allowed", identityId: identity.id, orgId: identity.orgId }
             });
           }
         });
@@ -284,7 +301,8 @@ export const identityOidcAuthServiceFactory = ({
           const value = getValueByDot(verifiedTokenData, claimKey);
           if (!value) {
             throw new UnauthorizedError({
-              message: `Access denied: token has no ${claimKey} field`
+              message: `Access denied: token has no ${claimKey} field`,
+              detail: { reason: "missing_metadata_claim", identityId: identity.id, orgId: identity.orgId }
             });
           }
           filteredClaims[permissionKey] = value.toString();
@@ -307,7 +325,8 @@ export const identityOidcAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
             });
           }
 

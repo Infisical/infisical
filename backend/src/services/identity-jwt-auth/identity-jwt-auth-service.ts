@@ -83,7 +83,10 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityJwtAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -100,7 +103,8 @@ export const identityJwtAuthServiceFactory = ({
       const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
       if (!decodedToken) {
         throw new UnauthorizedError({
-          message: "Invalid JWT"
+          message: "Invalid JWT",
+          detail: { reason: "invalid_jwt", identityId: identity.id, orgId: identity.orgId }
         });
       }
 
@@ -132,7 +136,8 @@ export const identityJwtAuthServiceFactory = ({
         } catch (error) {
           if (error instanceof jwt.JsonWebTokenError) {
             throw new UnauthorizedError({
-              message: `Access denied: ${error.message}`
+              message: `Access denied: ${error.message}`,
+              detail: { reason: "jwt_verification_failed", identityId: identity.id, orgId: identity.orgId }
             });
           }
 
@@ -158,7 +163,8 @@ export const identityJwtAuthServiceFactory = ({
 
         if (!isMatchAnyKey) {
           throw new UnauthorizedError({
-            message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`
+            message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`,
+            detail: { reason: "jwt_verification_failed", identityId: identity.id, orgId: identity.orgId }
           });
         }
       }
@@ -174,7 +180,8 @@ export const identityJwtAuthServiceFactory = ({
       if (identityJwtAuth.boundSubject) {
         if (!tokenData.sub) {
           throw new UnauthorizedError({
-            message: "Access denied: token has no subject field"
+            message: "Access denied: token has no subject field",
+            detail: { reason: "missing_subject", identityId: identity.id, orgId: identity.orgId }
           });
         }
 
@@ -188,7 +195,8 @@ export const identityJwtAuthServiceFactory = ({
       if (identityJwtAuth.boundAudiences) {
         if (!tokenData.aud) {
           throw new UnauthorizedError({
-            message: "Access denied: token has no audience field"
+            message: "Access denied: token has no audience field",
+            detail: { reason: "missing_audience", identityId: identity.id, orgId: identity.orgId }
           });
         }
 
@@ -198,7 +206,8 @@ export const identityJwtAuthServiceFactory = ({
             .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
         ) {
           throw new UnauthorizedError({
-            message: "Access denied: token audience not allowed"
+            message: "Access denied: token audience not allowed",
+            detail: { reason: "audience_not_allowed", identityId: identity.id, orgId: identity.orgId }
           });
         }
       }
@@ -210,14 +219,16 @@ export const identityJwtAuthServiceFactory = ({
 
           if (!value) {
             throw new UnauthorizedError({
-              message: `Access denied: token has no ${claimKey} field`
+              message: `Access denied: token has no ${claimKey} field`,
+              detail: { reason: "missing_claim", identityId: identity.id, orgId: identity.orgId }
             });
           }
 
           // handle both single and multi-valued claims
           if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
             throw new UnauthorizedError({
-              message: `Access denied: claim mismatch for field ${claimKey}`
+              message: `Access denied: claim mismatch for field ${claimKey}`,
+              detail: { reason: "claim_mismatch", identityId: identity.id, orgId: identity.orgId }
             });
           }
         });
@@ -239,7 +250,8 @@ export const identityJwtAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
             });
           }
 

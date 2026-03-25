@@ -3,12 +3,13 @@ import { z } from "zod";
 import { IdentityAuthMethod, IdentityOidcAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OIDC_AUTH } from "@app/lib/api-docs";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   validateOidcAuthAudiencesField,
@@ -65,47 +66,66 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       }
     },
     handler: async (req) => {
-      const { identityOidcAuth, accessToken, identityAccessToken, identity, oidcTokenData } =
-        await server.services.identityOidcAuth.login(req.body);
+      try {
+        const { identityOidcAuth, accessToken, identityAccessToken, identity, oidcTokenData } =
+          await server.services.identityOidcAuth.login(req.body);
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_OIDC_AUTH,
-          metadata: {
-            identityId: identityOidcAuth.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identityOidcAuthId: identityOidcAuth.id,
-            oidcClaimsReceived:
-              Buffer.from(JSON.stringify(oidcTokenData), "utf8").byteLength < MAX_OIDC_CLAIM_SIZE
-                ? oidcTokenData
-                : { payload: "Error: Payload exceeds 32KB, provided oidc claim not recorded in audit log." }
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_OIDC_AUTH,
+            metadata: {
+              identityId: identityOidcAuth.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identityOidcAuthId: identityOidcAuth.id,
+              oidcClaimsReceived:
+                Buffer.from(JSON.stringify(oidcTokenData), "utf8").byteLength < MAX_OIDC_CLAIM_SIZE
+                  ? oidcTokenData
+                  : { payload: "Error: Payload exceeds 32KB, provided oidc claim not recorded in audit log." }
+            }
           }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.MachineIdentityLogin,
-          distinctId: `identity-${identityOidcAuth.identityId}`,
-          organizationId: identity.orgId,
-          properties: {
-            identityId: identityOidcAuth.identityId,
-            orgId: identity.orgId,
-            authMethod: IdentityAuthMethod.OIDC_AUTH
-          }
-        })
-        .catch((error) => {
-          logger.error(error, `Failed to send telemetry event [identityId=${identityOidcAuth.identityId}]`);
         });
 
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identityOidcAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL
-      };
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${identityOidcAuth.identityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: identityOidcAuth.identityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.OIDC_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${identityOidcAuth.identityId}]`);
+          });
+
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identityOidcAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (error instanceof UnauthorizedError && error.detail?.orgId && error.detail?.identityId) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: { type: ActorType.UNKNOWN_USER, metadata: {} },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_OIDC_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reason: error.detail.reason as string,
+                message: error.message
+              }
+            }
+          });
+        }
+        throw error;
+      }
     }
   });
 

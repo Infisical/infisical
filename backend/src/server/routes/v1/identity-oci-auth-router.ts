@@ -3,12 +3,13 @@ import { z } from "zod";
 import { IdentityAuthMethod, IdentityOciAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OCI_AUTH } from "@app/lib/api-docs";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateTenancy, validateUsernames } from "@app/services/identity-oci-auth/identity-oci-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -58,43 +59,62 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const { identityOciAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityOciAuth.login(req.body);
+      try {
+        const { identityOciAuth, accessToken, identityAccessToken, identity } =
+          await server.services.identityOciAuth.login(req.body);
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_OCI_AUTH,
-          metadata: {
-            identityId: identityOciAuth.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identityOciAuthId: identityOciAuth.id
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_OCI_AUTH,
+            metadata: {
+              identityId: identityOciAuth.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identityOciAuthId: identityOciAuth.id
+            }
           }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.MachineIdentityLogin,
-          distinctId: `identity-${identityOciAuth.identityId}`,
-          organizationId: identity.orgId,
-          properties: {
-            identityId: identityOciAuth.identityId,
-            orgId: identity.orgId,
-            authMethod: IdentityAuthMethod.OCI_AUTH
-          }
-        })
-        .catch((error) => {
-          logger.error(error, `Failed to send telemetry event [identityId=${identityOciAuth.identityId}]`);
         });
 
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identityOciAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL
-      };
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${identityOciAuth.identityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: identityOciAuth.identityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.OCI_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${identityOciAuth.identityId}]`);
+          });
+
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identityOciAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (error instanceof UnauthorizedError && error.detail?.orgId && error.detail?.identityId) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: { type: ActorType.UNKNOWN_USER, metadata: {} },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_OCI_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reason: error.detail.reason as string,
+                message: error.message
+              }
+            }
+          });
+        }
+        throw error;
+      }
     }
   });
 

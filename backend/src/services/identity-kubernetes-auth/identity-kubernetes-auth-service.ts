@@ -258,7 +258,10 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityKubernetesAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -485,13 +488,18 @@ export const identityKubernetesAuthServiceFactory = ({
       }
 
       if ("error" in data.status)
-        throw new UnauthorizedError({ message: data.status.error, name: "KubernetesTokenReviewError" });
+        throw new UnauthorizedError({
+          message: data.status.error,
+          name: "KubernetesTokenReviewError",
+          detail: { reason: "token_review_error", identityId: identity.id, orgId: identity.orgId }
+        });
 
       // check the response to determine if the token is valid
       if (!(data.status && data.status.authenticated))
         throw new UnauthorizedError({
           message: "Kubernetes token not authenticated",
-          name: "KubernetesTokenReviewError"
+          name: "KubernetesTokenReviewError",
+          detail: { reason: "token_not_authenticated", identityId: identity.id, orgId: identity.orgId }
         });
 
       const { namespace: targetNamespace, name: targetName } = extractK8sUsername(data.status.user.username);
@@ -506,7 +514,8 @@ export const identityKubernetesAuthServiceFactory = ({
 
         if (!isNamespaceAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: K8s namespace not allowed."
+            message: "Access denied: K8s namespace not allowed.",
+            detail: { reason: "namespace_not_allowed", identityId: identity.id, orgId: identity.orgId }
           });
       }
 
@@ -520,7 +529,8 @@ export const identityKubernetesAuthServiceFactory = ({
 
         if (!isNameAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: K8s name not allowed."
+            message: "Access denied: K8s name not allowed.",
+            detail: { reason: "name_not_allowed", identityId: identity.id, orgId: identity.orgId }
           });
       }
 
@@ -532,7 +542,8 @@ export const identityKubernetesAuthServiceFactory = ({
 
         if (!isAudienceAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: K8s audience not allowed."
+            message: "Access denied: K8s audience not allowed.",
+            detail: { reason: "audience_not_allowed", identityId: identity.id, orgId: identity.orgId }
           });
       }
 
@@ -552,7 +563,8 @@ export const identityKubernetesAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
             });
           }
 

@@ -3,12 +3,13 @@ import { z } from "zod";
 import { IdentityAuthMethod, IdentityAzureAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AZURE_AUTH } from "@app/lib/api-docs";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateAzureAuthField } from "@app/services/identity-azure-auth/identity-azure-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -41,43 +42,62 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { identityAzureAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityAzureAuth.login(req.body);
+      try {
+        const { identityAzureAuth, accessToken, identityAccessToken, identity } =
+          await server.services.identityAzureAuth.login(req.body);
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_AZURE_AUTH,
-          metadata: {
-            identityId: identityAzureAuth.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identityAzureAuthId: identityAzureAuth.id
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_AZURE_AUTH,
+            metadata: {
+              identityId: identityAzureAuth.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identityAzureAuthId: identityAzureAuth.id
+            }
           }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.MachineIdentityLogin,
-          distinctId: `identity-${identityAzureAuth.identityId}`,
-          organizationId: identity.orgId,
-          properties: {
-            identityId: identityAzureAuth.identityId,
-            orgId: identity.orgId,
-            authMethod: IdentityAuthMethod.AZURE_AUTH
-          }
-        })
-        .catch((error) => {
-          logger.error(error, `Failed to send telemetry event [identityId=${identityAzureAuth.identityId}]`);
         });
 
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identityAzureAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityAzureAuth.accessTokenMaxTTL
-      };
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${identityAzureAuth.identityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: identityAzureAuth.identityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.AZURE_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${identityAzureAuth.identityId}]`);
+          });
+
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identityAzureAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityAzureAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (error instanceof UnauthorizedError && error.detail?.orgId && error.detail?.identityId) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: { type: ActorType.UNKNOWN_USER, metadata: {} },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_AZURE_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reason: error.detail.reason as string,
+                message: error.message
+              }
+            }
+          });
+        }
+        throw error;
+      }
     }
   });
 
