@@ -51,15 +51,18 @@ function pgTypeToCellOpts(): CellOpts {
   return { variant: "short-text" };
 }
 
-function getColumnSize(col: ColumnInfo): number {
+function getColumnSize(col: ColumnInfo, hasIndicator: boolean): number {
+  // Extra width for PK/FK icon + badge + type label in header
+  const indicatorExtra = hasIndicator ? 40 : 0;
   const t = col.type.toLowerCase();
-  if (t === "boolean" || t === "bool" || t === "smallint" || t === "int2") return 100;
-  if (t === "integer" || t === "int4" || t === "serial") return 120;
-  if (t === "uuid") return 280;
-  if (t === "json" || t === "jsonb") return 250;
-  if (t === "text" || t === "xml") return 220;
-  // Scale with column name length as a rough heuristic (higher minimum for wide/special chars)
-  return Math.max(150, Math.min(300, col.name.length * 10 + 100));
+  if (t === "boolean" || t === "bool" || t === "smallint" || t === "int2")
+    return 100 + indicatorExtra;
+  if (t === "integer" || t === "int4" || t === "serial") return 120 + indicatorExtra;
+  if (t === "uuid") return 280 + indicatorExtra;
+  if (t === "json" || t === "jsonb") return 250 + indicatorExtra;
+  if (t === "text" || t === "xml") return 220 + indicatorExtra;
+  // Scale with column name length as a rough heuristic
+  return Math.max(180, Math.min(350, col.name.length * 10 + 120)) + indicatorExtra;
 }
 
 type RowData = Record<string, unknown>;
@@ -142,23 +145,26 @@ function buildColumnDefs(
     });
   });
 
-  return cols.map((col) => ({
-    id: col.name,
-    accessorKey: col.name,
-    header: col.name,
-    meta: {
-      label: col.name,
-      typeLabel: col.type,
-      cell: pgTypeToCellOpts(),
-      columnIndicator: getColumnIndicator(col.name, primaryKeys, fkMap)
-    },
-    size: getColumnSize(col),
-    minSize: 80,
-    maxSize: 600,
-    enableSorting: true,
-    enablePinning: true,
-    enableHiding: true
-  }));
+  return cols.map((col) => {
+    const columnIndicator = getColumnIndicator(col.name, primaryKeys, fkMap);
+    return {
+      id: col.name,
+      accessorKey: col.name,
+      header: col.name,
+      meta: {
+        label: col.name,
+        typeLabel: col.type,
+        cell: pgTypeToCellOpts(),
+        columnIndicator
+      },
+      size: getColumnSize(col, Boolean(columnIndicator)),
+      minSize: 80,
+      maxSize: 600,
+      enableSorting: true,
+      enablePinning: true,
+      enableHiding: true
+    };
+  });
 }
 
 function getRowKey(row: Record<string, unknown>, primaryKeys: string[]): string {

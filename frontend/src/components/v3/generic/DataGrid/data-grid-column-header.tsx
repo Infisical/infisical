@@ -33,7 +33,7 @@ export function DataGridColumnHeader<TData, TValue>({
         )}
         {...props}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           {/* eslint-disable-next-line no-nested-ternary */}
           {column.columnDef.meta?.columnIndicator?.type === "pk" ? (
             <KeyRoundIcon size={12} className="shrink-0 text-yellow-500" />
