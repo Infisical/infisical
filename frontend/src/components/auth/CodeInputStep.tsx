@@ -91,7 +91,7 @@ export default function CodeInputStep({
     if (localCode.length === 6 && !isCodeInputCheckLoading) {
       incrementStep();
     }
-  }, [localCode]);
+  }, [localCode, isCodeInputCheckLoading, incrementStep]);
 
   const resendVerificationEmail = async () => {
     setIsResendingVerificationEmail(true);

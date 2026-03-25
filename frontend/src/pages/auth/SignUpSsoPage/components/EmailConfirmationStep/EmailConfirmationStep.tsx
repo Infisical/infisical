@@ -106,9 +106,10 @@ export const EmailConfirmationStep = ({
   };
 
   useEffect(() => {
-    if (code.length === 6 && !isLoading) {
+    if (code.length === 6) {
       checkCode();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
   const resendCode = async () => {

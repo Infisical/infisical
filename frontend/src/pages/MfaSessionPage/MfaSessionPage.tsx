@@ -131,7 +131,7 @@ export const MfaSessionPage = () => {
       const syntheticEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
       handleVerifyMfa(syntheticEvent);
     }
-  }, [mfaCode]);
+  }, [mfaCode, isCodeComplete, isLoading, handleVerifyMfa]);
 
   const handleWebAuthnVerification = async () => {
     if (!sessionStatus?.mfaMethod) return;

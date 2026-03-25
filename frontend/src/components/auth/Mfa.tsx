@@ -174,7 +174,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       const syntheticEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
       verifyMfa(syntheticEvent);
     }
-  }, [mfaCode]);
+  }, [mfaCode, isCodeComplete, isLoading, verifyMfa]);
 
   const handleResendMfaCode = async () => {
     try {
@@ -461,7 +461,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   type="text"
                   fields={showRecoveryCodeInput ? 8 : 6}
                   onChange={setMfaCode}
-                  autoComplete="one-time-code"
+                  autoComplete={showRecoveryCodeInput ? "off" : "one-time-code"}
                   className="mb-2"
                   {...codeInputProps}
                 />
@@ -492,7 +492,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   type="text"
                   fields={showRecoveryCodeInput ? 8 : 6}
                   onChange={setMfaCode}
-                  autoComplete="one-time-code"
+                  autoComplete={showRecoveryCodeInput ? "off" : "one-time-code"}
                   className="mb-2"
                   {...codeInputPropsPhone}
                 />
