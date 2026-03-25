@@ -136,7 +136,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .optional()
           // split by comma and trim the strings
           .transform((el) => (el ? el.split(",").map((i) => i.trim()) : [])),
-        purpose: z.literal("export").optional().describe("When set to 'export', the server checks if secret export is allowed for this environment and returns 403 if disabled.")
+        purpose: z
+          .literal("export")
+          .optional()
+          .describe(
+            "When set to 'export', the server checks if secret export is allowed for this environment and returns 403 if disabled."
+          )
       }),
       response: {
         200: z.object({
