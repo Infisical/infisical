@@ -480,6 +480,20 @@ export const DataExplorerGrid = ({
       }
 
       const sql = wrapInTransaction(statements);
+
+      // The WebSocket maxPayload is 64 KB. Guard against sending a query
+      // that would exceed the limit and silently kill the connection.
+      const MAX_QUERY_SIZE = 50 * 1024;
+      if (sql.length > MAX_QUERY_SIZE) {
+        createNotification({
+          title: "Save failed",
+          text: "Changes are too large to save at once. Try saving fewer or smaller changes.",
+          type: "error"
+        });
+        setIsSaving(false);
+        return;
+      }
+
       await executeQuery(sql);
       createNotification({
         text: `Saved ${statements.length} change${statements.length !== 1 ? "s" : ""}`,

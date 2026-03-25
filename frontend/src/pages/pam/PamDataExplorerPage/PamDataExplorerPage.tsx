@@ -72,6 +72,7 @@ export const PamDataExplorerPage = () => {
     resourceName: account?.resource?.name ?? "",
     accountName: account?.name ?? "",
     onSessionEnd: (reason?: string) => {
+      unsavedChangeCountRef.current = 0;
       setHasDisconnected(true);
       setDisconnectReason(reason ?? null);
     }
