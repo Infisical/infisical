@@ -62,6 +62,17 @@ export const PasswordStep = ({
         providerAuthToken
       });
 
+      if (oauthLogin.isMfaEnabled) {
+        SecurityClient.setMfaToken(oauthLogin.token);
+        if (oauthLogin.mfaMethod) {
+          setRequiredMfaMethod(oauthLogin.mfaMethod as MfaMethod);
+        }
+        toggleShowMfa.on();
+        setMfaSuccessCallback(() => handleExchange);
+        setIsLoading(false);
+        return;
+      }
+
       // unset provider auth token in case it was used
       SecurityClient.setProviderAuthToken("");
       // set JWT token

@@ -22,6 +22,7 @@ import {
   LoginV3DTO,
   LoginV3Res,
   MfaMethod,
+  OauthTokenExchangeRes,
   ResetPasswordDTO,
   ResetPasswordV2DTO,
   ResetUserPasswordV2DTO,
@@ -123,7 +124,10 @@ export const useLogin2 = () => {
 };
 
 export const oauthTokenExchange = async (details: TOauthTokenExchangeDTO) => {
-  const { data } = await apiRequest.post<Login2Res>("/api/v1/sso/token-exchange", details);
+  const { data } = await apiRequest.post<OauthTokenExchangeRes>(
+    "/api/v1/sso/token-exchange",
+    details
+  );
   return data;
 };
 

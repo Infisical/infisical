@@ -74,6 +74,11 @@ export type Login2Res = {
   tag?: string;
 };
 
+export type OauthTokenExchangeRes = Login2Res & {
+  isMfaEnabled?: boolean;
+  mfaMethod?: string;
+};
+
 export type LoginV3Res = {
   accessToken: string;
   mfaEnabled: boolean;
