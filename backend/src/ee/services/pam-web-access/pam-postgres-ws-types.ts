@@ -97,14 +97,14 @@ const TableDetailResponseSchema = CorrelatedBaseSchema.extend({
       z.object({
         name: z.string(),
         type: z.string(),
-        // TODO: re-enable when UI needs this
+        // Left commented out so the schema doesn't have to be modified if the UI ever needs these standard catalog values
         // typeOid: z.number(),
         nullable: z.boolean(),
-        // TODO: re-enable when UI needs this
+        // Left commented out so the schema doesn't have to be modified if the UI ever needs these standard catalog values
         // defaultValue: z.string().nullable(),
         // isIdentity: z.boolean(),
         identityGeneration: z.string().nullable()
-        // TODO: re-enable when UI needs this
+        // Left commented out so the schema doesn't have to be modified if the UI ever needs these standard catalog values
         // isArray: z.boolean(),
         // maxLength: z.number().nullable()
       })
@@ -119,7 +119,7 @@ const TableDetailResponseSchema = CorrelatedBaseSchema.extend({
         targetColumns: z.array(z.string())
       })
     )
-    // TODO: re-enable when UI needs these
+    // Left commented out so the schema doesn't have to be modified if the UI ever needs these standard catalog values
     // enums: z.record(z.string(), z.array(z.string()))
   })
 });
@@ -130,7 +130,7 @@ const QueryResultResponseSchema = CorrelatedBaseSchema.extend({
   fields: z.array(
     z.object({
       name: z.string()
-      // TODO: re-enable when UI needs this
+      // Left commented out so the schema doesn't have to be modified if the UI ever needs this standard catalog value
       // dataTypeID: z.number()
     })
   ),

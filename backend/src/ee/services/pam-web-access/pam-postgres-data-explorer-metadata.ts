@@ -50,17 +50,17 @@ export const getTableDetailQuery = (schema: string, table: string) => ({
           'type', CASE WHEN a.attndims > 0 OR t.typelem != 0 AND t.typlen = -1
                        THEN (SELECT bt.typname FROM pg_type bt WHERE bt.oid = t.typelem) || '[]'
                        ELSE t.typname END,
-          -- TODO: re-enable when UI needs this
+          -- Left commented out so the query doesn't have to be modified if the UI ever needs these standard catalog values
           -- 'typeOid', a.atttypid,
           'nullable', NOT a.attnotnull,
-          -- TODO: re-enable when UI needs this
+          -- Left commented out so the query doesn't have to be modified if the UI ever needs these standard catalog values
           -- 'defaultValue', pg_get_expr(d.adbin, d.adrelid),
           -- 'isIdentity', a.attidentity != '',
           'identityGeneration', CASE a.attidentity
             WHEN 'a' THEN 'ALWAYS'
             WHEN 'd' THEN 'BY DEFAULT'
             ELSE null END
-          -- TODO: re-enable when UI needs this
+          -- Left commented out so the query doesn't have to be modified if the UI ever needs these standard catalog values
           -- 'isArray', a.attndims > 0 OR (t.typelem != 0 AND t.typlen = -1),
           -- 'maxLength', CASE WHEN a.atttypmod > 0 THEN a.atttypmod - 4 ELSE null END
         ) ORDER BY a.attnum
