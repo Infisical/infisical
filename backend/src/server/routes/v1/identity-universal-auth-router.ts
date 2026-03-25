@@ -106,16 +106,16 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           accessTokenMaxTTL
         };
       } catch (error) {
-        if (error instanceof UnauthorizedError && error.detail) {
+        if (error instanceof UnauthorizedError && error.detail && error.detail.orgId && error.detail.identityId) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             actor: { type: ActorType.UNKNOWN_USER, metadata: {} },
-            orgId: error.detail.orgId as string | undefined,
+            orgId: error.detail.orgId as string,
             event: {
               type: EventType.LOGIN_IDENTITY_UA_AUTH_FAILED,
               metadata: {
                 clientId: req.body.clientId,
-                identityId: (error.detail.identityId as string) ?? null,
+                identityId: error.detail.identityId as string,
                 reason: error.detail.reason as string,
                 message: error.message
               }
