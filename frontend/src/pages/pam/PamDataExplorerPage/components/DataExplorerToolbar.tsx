@@ -69,7 +69,10 @@ export const DataExplorerToolbar = ({
   const rangeEnd = Math.min(offset + pageSize, totalCount);
 
   return (
-    <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
+    <div
+      className="flex items-center justify-between border-b border-border px-3 py-1.5"
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <div className="flex items-center gap-2">
         <FilterPopover columns={columns} filters={filters} onFiltersChange={onFiltersChange} />
         <SortPopover columns={columns} sorts={sorts} onSortsChange={onSortsChange} />

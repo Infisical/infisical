@@ -123,6 +123,7 @@ interface UseDataGridProps<TData>
   enableSearch?: boolean;
   enablePaste?: boolean;
   readOnly?: boolean;
+  onRowSelectionChange?: (rowSelection: RowSelectionState) => void;
 }
 
 function useDataGrid<TData>({
@@ -408,7 +409,8 @@ function useDataGrid<TData>({
       });
       store.setState("rowSelection", {});
     });
-  }, [store]);
+    propsRef.current.onRowSelectionChange?.({});
+  }, [store, propsRef]);
 
   const selectAll = React.useCallback(() => {
     const allCells = new Set<string>();
@@ -1132,6 +1134,7 @@ function useDataGrid<TData>({
         store.setState("rowSelection", {});
         store.setState("editingCell", null);
       });
+      propsRef.current.onRowSelectionChange?.({});
 
       requestAnimationFrame(() => {
         const currentTable = tableRef.current;
@@ -1722,6 +1725,7 @@ function useDataGrid<TData>({
           });
           store.setState("rowSelection", {});
         });
+        propsRef.current.onRowSelectionChange?.({});
       }
     },
     [store, propsRef]
@@ -1777,6 +1781,7 @@ function useDataGrid<TData>({
           store.setState("focusedCell", { rowIndex, columnId });
           store.setState("rowSelection", {});
         });
+        propsRef.current.onRowSelectionChange?.({});
       }
 
       store.setState("contextMenu", {
@@ -1855,8 +1860,9 @@ function useDataGrid<TData>({
         store.setState("focusedCell", null);
         store.setState("editingCell", null);
       });
+      propsRef.current.onRowSelectionChange?.(newRowSelection);
     },
-    [store, columnIds]
+    [store, columnIds, propsRef]
   );
 
   const onRowSelect = React.useCallback(

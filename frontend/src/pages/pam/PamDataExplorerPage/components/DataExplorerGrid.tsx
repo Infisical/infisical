@@ -64,11 +64,9 @@ type RowData = Record<string, unknown>;
 
 type SelectionMeta = {
   onRowSelect?: (rowIndex: number, checked: boolean, shiftKey: boolean) => void;
-  onSelectionCountChange?: () => void;
 };
 
 function SelectHeader({ table: t }: HeaderContext<RowData, unknown>) {
-  const meta = t.options.meta as SelectionMeta | undefined;
   const isAllSelected = t.getIsAllRowsSelected();
   const isSomeSelected = t.getIsSomeRowsSelected();
   return (
@@ -77,7 +75,6 @@ function SelectHeader({ table: t }: HeaderContext<RowData, unknown>) {
       isIndeterminate={isSomeSelected && !isAllSelected}
       onCheckedChange={() => {
         t.toggleAllRowsSelected(!isAllSelected);
-        requestAnimationFrame(() => meta?.onSelectionCountChange?.());
       }}
     />
   );
@@ -95,7 +92,6 @@ function SelectCell({ row, table: t }: CellContext<RowData, unknown>) {
         } else {
           row.toggleSelected(Boolean(checked));
         }
-        requestAnimationFrame(() => meta?.onSelectionCountChange?.());
       }}
     />
   );
@@ -214,8 +210,6 @@ export const DataExplorerGrid = ({
   const gridRef = useRef<ReturnType<typeof useDataGrid<Record<string, unknown>>>["table"] | null>(
     null
   );
-  // Snapshot selected rows so the toolbar delete button can use them even after
-  // the DataGrid's outside-click handler clears row selection on mousedown.
   const selectedRowsRef = useRef<Record<string, unknown>[]>([]);
 
   // Build TanStack Table column definitions from PG metadata
@@ -561,14 +555,6 @@ export const DataExplorerGrid = ({
     [primaryKeys]
   );
 
-  const syncSelectionCount = useCallback(() => {
-    if (gridRef.current) {
-      const { rows } = gridRef.current.getSelectedRowModel();
-      setSelectedRowCount(rows.length);
-      selectedRowsRef.current = rows.map((r) => r.original as Record<string, unknown>);
-    }
-  }, []);
-
   // Dice UI DataGrid
   const gridProps = useDataGrid<Record<string, unknown>>({
     data: currentData,
@@ -580,7 +566,18 @@ export const DataExplorerGrid = ({
     enableSearch: true,
     enablePaste: hasPrimaryKey,
     onRowsDelete: hasPrimaryKey ? handleRowsDelete : undefined,
-    meta: { onSelectionCountChange: syncSelectionCount, getIsCellDirty } as Record<string, unknown>
+    onRowSelectionChange: (rowSelection) => {
+      const selectedIds = new Set(Object.keys(rowSelection).filter((k) => rowSelection[k]));
+      setSelectedRowCount(selectedIds.size);
+      if (selectedIds.size > 0) {
+        selectedRowsRef.current = currentData.filter((_row, idx) =>
+          selectedIds.has(getRowId(_row, idx))
+        );
+      } else {
+        selectedRowsRef.current = [];
+      }
+    },
+    meta: { getIsCellDirty } as Record<string, unknown>
   });
   gridRef.current = gridProps.table;
 
@@ -639,6 +636,7 @@ export const DataExplorerGrid = ({
       }
     }
 
+    gridRef.current?.resetRowSelection();
     selectedRowsRef.current = [];
     setSelectedRowCount(0);
   }, [schema, table, primaryKeys, executeQuery, fetchData, offset, pageSize, filters, sorts]);
