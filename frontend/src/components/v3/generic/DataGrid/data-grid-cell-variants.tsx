@@ -201,7 +201,9 @@ export function ShortTextCell<TData>({
           onBlur={onBlur}
           onInput={onInput}
           suppressContentEditableWarning
-          className={cn("size-full overflow-hidden outline-none", {
+          className={cn("size-full outline-none", {
+            "overflow-hidden": !isEditing,
+            "no-scrollbar overflow-x-auto": isEditing,
             "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden": isEditing
           })}
         >
@@ -731,7 +733,9 @@ export function UrlCell<TData>({
           onBlur={onBlur}
           onInput={onInput}
           suppressContentEditableWarning
-          className={cn("size-full overflow-hidden outline-none", {
+          className={cn("size-full outline-none", {
+            "overflow-hidden": !isEditing,
+            "no-scrollbar overflow-x-auto": isEditing,
             "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden": isEditing
           })}
         >
