@@ -1190,7 +1190,7 @@ export const secretApprovalRequestServiceFactory = ({
       events
     });
 
-    if (isSoftEnforcement) {
+    if (isSoftEnforcement && !hasMinApproval) {
       const cfg = getConfig();
       const env = await projectEnvDAL.findOne({ slug: environment, projectId });
       const requestedByUser = await userDAL.findOne({ id: actorId });
