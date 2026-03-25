@@ -1333,9 +1333,10 @@ export const authLoginServiceFactory = ({
     // Check MFA before issuing tokens — mirrors the logic in selectOrganization
     const user = await userDAL.findById(userEnc.userId);
     const org = organizationId ? await orgDAL.findById(organizationId) : null;
-    const shouldCheckMfa = org?.enforceMfa || user.isMfaEnabled;
+    // for now check mfa in this state when your token is org scoped. If not we will do it in select org step
+    const shouldCheckMfa = org?.enforceMfa || user?.isMfaEnabled;
 
-    if (shouldCheckMfa) {
+    if (shouldCheckMfa && organizationId) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
       const orgMfaMethod = org?.enforceMfa ? (org.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
