@@ -390,8 +390,7 @@ export const sqlResourceFactory: TPamResourceFactory<
     } catch (error) {
       if (error instanceof BadRequestError) {
         if (
-          error.message ===
-            `password authentication failed for user "${rotationAccountCredentials.username}"` ||
+          error.message === `password authentication failed for user "${rotationAccountCredentials.username}"` ||
           error.message === `role "${rotationAccountCredentials.username}" does not exist`
         ) {
           throw new BadRequestError({
