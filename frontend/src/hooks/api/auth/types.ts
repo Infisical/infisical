@@ -76,7 +76,7 @@ export type Login2Res = {
 
 export type OauthTokenExchangeRes = Login2Res & {
   isMfaEnabled?: boolean;
-  mfaMethod?: string;
+  mfaMethod?: MfaMethod;
 };
 
 export type LoginV3Res = {
