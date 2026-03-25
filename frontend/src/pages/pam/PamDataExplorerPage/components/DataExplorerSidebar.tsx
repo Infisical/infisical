@@ -105,7 +105,9 @@ export const DataExplorerSidebar = ({
                 )}
               >
                 {getTableIcon(t.tableType)}
-                <span className="truncate" title={t.name}>{t.name}</span>
+                <span className="truncate" title={t.name}>
+                  {t.name}
+                </span>
               </button>
             ))}
           </div>

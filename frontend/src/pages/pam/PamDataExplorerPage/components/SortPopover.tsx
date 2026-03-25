@@ -102,7 +102,9 @@ export const SortPopover = ({ columns, sorts, onSortsChange }: SortPopoverProps)
                     : "border-mineshaft-500"
                 }`}
               />
-              <span className="truncate" title={col.name}>{col.name}</span>
+              <span className="truncate" title={col.name}>
+                {col.name}
+              </span>
             </button>
           ))}
           {filteredColumns.length === 0 && (

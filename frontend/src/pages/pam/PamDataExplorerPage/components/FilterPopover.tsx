@@ -180,7 +180,11 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                     value={filter.column}
                     onValueChange={(val) => updateFilter(index, { column: val })}
                   >
-                    <SelectTrigger size="sm" className="w-40 text-xs text-mineshaft-200" title={filter.column}>
+                    <SelectTrigger
+                      size="sm"
+                      className="w-40 text-xs text-mineshaft-200"
+                      title={filter.column}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
