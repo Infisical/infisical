@@ -113,11 +113,6 @@ export const DataExplorerSidebar = ({
           </div>
         )}
       </div>
-
-      {/* Table count */}
-      <div className="border-t border-border px-3 py-2 text-xs text-accent">
-        {tables.length} table{tables.length !== 1 ? "s" : ""}
-      </div>
     </div>
   );
 };

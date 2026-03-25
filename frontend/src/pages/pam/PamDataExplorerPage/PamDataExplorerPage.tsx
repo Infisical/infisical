@@ -378,19 +378,6 @@ export const PamDataExplorerPage = () => {
 
   // --- Main layout ---
 
-  let statusLabel = "Connected";
-  let statusDotClass = "bg-green-500";
-  if (isConnecting) {
-    statusLabel = "Connecting";
-    statusDotClass = "bg-yellow-500";
-  } else if (!isConnected && hasDisconnected) {
-    statusLabel = "Disconnected";
-    statusDotClass = "bg-mineshaft-400";
-  } else if (!isConnected) {
-    statusLabel = "Connecting";
-    statusDotClass = "bg-yellow-500";
-  }
-
   return (
     <div ref={mountRef} className="flex h-screen w-screen flex-col bg-bunker-800">
       {/* Body */}
@@ -431,18 +418,8 @@ export const PamDataExplorerPage = () => {
 
       {/* Status bar */}
       <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">
-        <span className="flex items-center gap-1.5">
-          <span className={`inline-block size-2 rounded-full ${statusDotClass}`} />
-          <span className="text-mineshaft-300">{statusLabel}</span>
-          {!isConnected && !isConnecting && (
-            <button
-              type="button"
-              onClick={handleReconnect}
-              className="ml-2 text-mineshaft-400 hover:text-green-400"
-            >
-              Reconnect
-            </button>
-          )}
+        <span className="text-mineshaft-400">
+          {tables.length} table{tables.length !== 1 ? "s" : ""}
         </span>
         <div className="flex items-center gap-4">
           <span>
