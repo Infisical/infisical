@@ -106,7 +106,7 @@ git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && 
 Windows Command Prompt:
 
 ```console
-git clone https://github.com/Infisical/infisical && cd infisical && copy .env.dev.example .env && docker compose -f docker-compose.prod.yml up
+git clone https://github.com/Infisical/infisical && cd infisical && copy .env.dev.example .env && docker compose -f docker-compose.dev.yml up
 ```
 
 Create an account at `http://localhost:80`
