@@ -162,10 +162,11 @@ export const secretSharingServiceFactory = ({
     const authorizedEmails: string[] = [];
 
     if (emails && emails.length > 0) {
+      const uniqueEmails = [...new Set(emails)];
       const allOrgMembers = await orgDAL.findAllOrgMembers(orgId);
 
       // Check to see that all emails are a part of the organization (if enforced) while also collecting a list of emails which are in the org
-      for (const email of emails) {
+      for (const email of uniqueEmails) {
         if (allOrgMembers.some((v) => v.user.email === email)) {
           authorizedEmails.push(email);
           // If the email is not part of the org, but access type / org settings require it
@@ -182,7 +183,7 @@ export const secretSharingServiceFactory = ({
     }
 
     // When non-org emails are present, a password is required so external recipients can authenticate
-    const externalEmails = emails ? emails.filter((e) => !authorizedEmails.includes(e)) : [];
+    const externalEmails = emails ? [...new Set(emails)].filter((e) => !authorizedEmails.includes(e)) : [];
 
     if (externalEmails.length > 0 && !password) {
       throw new BadRequestError({
@@ -217,8 +218,8 @@ export const secretSharingServiceFactory = ({
 
     const mappedSharedSecret = mapIdentifierToId(newSharedSecret);
 
-    // Loop through recipients and send out emails
-    if (authorizedEmails.length > 0 || externalEmails.length > 0) {
+    // Loop through authorized emails to define the display name in email (only for authorized org members)
+    if (authorizedEmails.length > 0) {
       let displayUsername: string | undefined;
 
       if (actor === ActorType.USER) {
@@ -244,7 +245,7 @@ export const secretSharingServiceFactory = ({
       for await (const email of allEmails) {
         try {
           // Only show the username to emails which are part of the organization
-          const senderUsername = allEmails.includes(email) ? displayUsername : undefined;
+          const senderUsername = authorizedEmails.includes(email) ? displayUsername : undefined;
           const isExternalEmail = !authorizedEmails.includes(email);
 
           await smtpService.sendMail({
@@ -565,7 +566,12 @@ export const secretSharingServiceFactory = ({
   const $isAuthorizedEmailUser = async (sharedSecret: TSecretSharing, actorId?: string): Promise<boolean> => {
     const hasAuthorizedEmails = sharedSecret.authorizedEmails && (sharedSecret.authorizedEmails as string[]).length > 0;
 
-    if (!hasAuthorizedEmails || !actorId) return false;
+    if (!hasAuthorizedEmails) {
+      // No email restrictions means any authenticated user can access (subject to org restrictions which are checked separately)
+      return true;
+    }
+
+    if (!actorId) return false;
 
     const user = await userDAL.findById(actorId);
     if (!user || !user.email) return false;

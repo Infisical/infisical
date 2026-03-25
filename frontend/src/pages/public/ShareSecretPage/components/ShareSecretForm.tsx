@@ -407,7 +407,7 @@ export const ShareSecretForm = ({
                         isOptional
                         helperText={
                           isAllowingExternalEmails
-                            ? "All recipients will receive a link and need the password to access the secret. They don't need an Infisical account."
+                            ? "All recipients will receive a link and need the password to access the secret. They don't need an Infisical account, but a password is mandatory in this case."
                             : "Recipients must have an Infisical account to verify identity"
                         }
                         tooltipText={
@@ -418,7 +418,7 @@ export const ShareSecretForm = ({
                             </p>
                             <p className="mt-2">
                               {isAllowingExternalEmails
-                                ? "External recipients (not in your organization) will need the password to view the secret. Authorized recipients will be able to view the secret without a password."
+                                ? "External recipients (not in your organization) will need the password to view the secret. Authorized recipients will also need a password if the secret is password-protected."
                                 : "Recipients must have an Infisical account to verify their identity."}
                             </p>
                           </>
