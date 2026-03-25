@@ -33,9 +33,9 @@ type DataExplorerToolbarProps = {
   selectedRowCount: number;
   onDeleteSelected: () => void;
   totalCount: number;
-  page: number;
+  offset: number;
   pageSize: number;
-  onPageChange: (page: number) => void;
+  onOffsetChange: (offset: number) => void;
   onPageSizeChange: (size: number) => void;
   executionTimeMs: number | null;
   hasPrimaryKey: boolean;
@@ -58,18 +58,17 @@ export const DataExplorerToolbar = ({
   selectedRowCount,
   onDeleteSelected,
   totalCount,
-  page,
+  offset,
   pageSize,
-  onPageChange,
+  onOffsetChange,
   onPageSizeChange,
   executionTimeMs,
   hasPrimaryKey,
   onRefresh,
   isRefreshing = false
 }: DataExplorerToolbarProps) => {
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = Math.min(page * pageSize, totalCount);
+  const rangeStart = totalCount === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + pageSize, totalCount);
 
   return (
     <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
@@ -133,8 +132,8 @@ export const DataExplorerToolbar = ({
         <Button
           variant="ghost"
           size="xs"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
+          disabled={offset <= 0}
+          onClick={() => onOffsetChange(Math.max(0, offset - pageSize))}
           className="size-7 p-0"
         >
           <ChevronLeftIcon className="size-3.5" />
@@ -145,15 +144,15 @@ export const DataExplorerToolbar = ({
           rangeStart={rangeStart}
           rangeEnd={rangeEnd}
           pageSize={pageSize}
-          page={page}
+          offset={offset}
           onPageSizeChange={onPageSizeChange}
-          onPageChange={onPageChange}
+          onOffsetChange={onOffsetChange}
         />
         <Button
           variant="ghost"
           size="xs"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
+          disabled={offset + pageSize >= totalCount}
+          onClick={() => onOffsetChange(offset + pageSize)}
           className="size-7 p-0"
         >
           <ChevronRightIcon className="size-3.5" />
@@ -181,9 +180,9 @@ type LimitOffsetPopoverProps = {
   rangeStart: number;
   rangeEnd: number;
   pageSize: number;
-  page: number;
+  offset: number;
   onPageSizeChange: (size: number) => void;
-  onPageChange: (page: number) => void;
+  onOffsetChange: (offset: number) => void;
 };
 
 const LimitOffsetPopover = ({
@@ -191,28 +190,37 @@ const LimitOffsetPopover = ({
   rangeStart,
   rangeEnd,
   pageSize,
-  page,
+  offset,
   onPageSizeChange,
-  onPageChange
+  onOffsetChange
 }: LimitOffsetPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [limitInput, setLimitInput] = useState(String(pageSize));
-  const [offsetInput, setOffsetInput] = useState(String((page - 1) * pageSize));
+  const [offsetInput, setOffsetInput] = useState(String(offset));
 
   const handleOpen = (isOpen: boolean) => {
     if (isOpen) {
       setLimitInput(String(pageSize));
-      setOffsetInput(String((page - 1) * pageSize));
+      setOffsetInput(String(offset));
     }
     setOpen(isOpen);
   };
 
+  const limitNum = Number(limitInput);
+  const getLimitError = (): string | null => {
+    if (limitInput === "" || Number.isNaN(limitNum)) return "Must be a number";
+    if (limitNum < 1) return "Minimum is 1";
+    if (limitNum > 1000) return "Maximum is 1000";
+    return null;
+  };
+  const limitError = getLimitError();
+
   const applyChanges = () => {
-    const newLimit = Math.max(1, Math.min(1000, Number(limitInput) || 50));
+    if (limitError) return;
+    const newLimit = Math.max(1, Math.min(1000, limitNum || 50));
     const newOffset = Math.max(0, Number(offsetInput) || 0);
-    const newPage = Math.floor(newOffset / newLimit) + 1;
     onPageSizeChange(newLimit);
-    onPageChange(newPage);
+    onOffsetChange(newOffset);
     setOpen(false);
   };
 
@@ -224,30 +232,44 @@ const LimitOffsetPopover = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-3" align="center">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-[10px] font-medium text-accent">Limit</span>
-            <input
-              type="number"
-              value={limitInput}
-              onChange={(e) => setLimitInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && applyChanges()}
-              className="h-8 w-16 rounded border border-border bg-transparent text-center text-sm text-mineshaft-200 outline-none focus:border-ring"
-              min={1}
-              max={1000}
-            />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] font-medium text-accent">Limit</span>
+              <input
+                type="number"
+                value={limitInput}
+                onChange={(e) => setLimitInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && applyChanges()}
+                className={`h-8 w-16 rounded border bg-transparent text-center text-sm text-mineshaft-200 outline-none ${
+                  limitError
+                    ? "border-red-500 focus:border-red-500"
+                    : "border-border focus:border-ring"
+                }`}
+                min={1}
+              />
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] font-medium text-accent">Offset</span>
+              <input
+                type="number"
+                value={offsetInput}
+                onChange={(e) => setOffsetInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && applyChanges()}
+                className="h-8 w-16 rounded border border-border bg-transparent text-center text-sm text-mineshaft-200 outline-none focus:border-ring"
+              />
+            </div>
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-[10px] font-medium text-accent">Offset</span>
-            <input
-              type="number"
-              value={offsetInput}
-              onChange={(e) => setOffsetInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && applyChanges()}
-              className="h-8 w-16 rounded border border-border bg-transparent text-center text-sm text-mineshaft-200 outline-none focus:border-ring"
-              min={0}
-            />
-          </div>
+          {limitError && <p className="text-center text-[10px] text-red-400">{limitError}</p>}
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={applyChanges}
+            disabled={Boolean(limitError)}
+            className="w-full"
+          >
+            Apply
+          </Button>
         </div>
       </PopoverContent>
     </Popover>

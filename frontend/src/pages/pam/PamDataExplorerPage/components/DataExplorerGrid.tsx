@@ -184,7 +184,7 @@ export const DataExplorerGrid = ({
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [page, setPage] = useState(1);
+  const [offset, setOffset] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [filters, setFilters] = useState<FilterCondition[]>([]);
   const [sorts, setSorts] = useState<SortCondition[]>([]);
@@ -220,7 +220,7 @@ export const DataExplorerGrid = ({
   );
 
   const fetchData = useCallback(
-    async (p: number, ps: number, f: FilterCondition[], s: SortCondition[]): Promise<number> => {
+    async (o: number, ps: number, f: FilterCondition[], s: SortCondition[]): Promise<number> => {
       if (!tableDetail) return 0;
       setIsDataLoading(true);
       try {
@@ -230,7 +230,7 @@ export const DataExplorerGrid = ({
           filters: f,
           sorts: s,
           limit: ps,
-          offset: (p - 1) * ps,
+          offset: o,
           primaryKeys
         });
         const countSql = buildCountQuery({ schema, table, filters: f });
@@ -274,29 +274,29 @@ export const DataExplorerGrid = ({
   // Table switches are handled by the parent via key={schema.table} which
   // remounts this component with fresh state — no manual reset needed.
   const prevFetchKeyRef = useRef("");
-  const fetchKey = `${schema}.${table}.${page}.${pageSize}.${JSON.stringify(filters)}.${JSON.stringify(sorts)}`;
+  const fetchKey = `${schema}.${table}.${offset}.${pageSize}.${JSON.stringify(filters)}.${JSON.stringify(sorts)}`;
   if (fetchKey !== prevFetchKeyRef.current && tableDetail && !isLoading) {
     prevFetchKeyRef.current = fetchKey;
-    fetchData(page, pageSize, filters, sorts);
+    fetchData(offset, pageSize, filters, sorts);
   }
 
   const handleFiltersChange = useCallback((newFilters: FilterCondition[]) => {
     setFilters(newFilters);
-    setPage(1);
+    setOffset(0);
   }, []);
 
   const handleSortsChange = useCallback((newSorts: SortCondition[]) => {
     setSorts(newSorts);
-    setPage(1);
+    setOffset(0);
   }, []);
 
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
+  const handleOffsetChange = useCallback((newOffset: number) => {
+    setOffset(Math.max(0, newOffset));
   }, []);
 
   const handlePageSizeChange = useCallback((newSize: number) => {
     setPageSize(newSize);
-    setPage(1);
+    setOffset(0);
   }, []);
 
   // PK-based lookup map for O(1) original row matching (avoids index misalignment after prepend)
@@ -386,9 +386,9 @@ export const DataExplorerGrid = ({
             text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
             type: "success"
           });
-          const rowCount = await fetchData(page, pageSize, filters, sorts);
-          if (rowCount === 0 && page > 1) {
-            setPage(page - 1);
+          const rowCount = await fetchData(offset, pageSize, filters, sorts);
+          if (rowCount === 0 && offset > 0) {
+            setOffset(Math.max(0, offset - pageSize));
           }
         } catch (err) {
           createNotification({
@@ -406,7 +406,7 @@ export const DataExplorerGrid = ({
       table,
       executeQuery,
       fetchData,
-      page,
+      offset,
       pageSize,
       filters,
       sorts
@@ -478,7 +478,7 @@ export const DataExplorerGrid = ({
         type: "success"
       });
 
-      await fetchData(page, pageSize, filters, sorts);
+      await fetchData(offset, pageSize, filters, sorts);
     } catch (err) {
       createNotification({
         title: "Save failed",
@@ -498,7 +498,7 @@ export const DataExplorerGrid = ({
     table,
     executeQuery,
     fetchData,
-    page,
+    offset,
     pageSize,
     filters,
     sorts
@@ -604,9 +604,9 @@ export const DataExplorerGrid = ({
           text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
           type: "success"
         });
-        const rowCount = await fetchData(page, pageSize, filters, sorts);
-        if (rowCount === 0 && page > 1) {
-          setPage(page - 1);
+        const rowCount = await fetchData(offset, pageSize, filters, sorts);
+        if (rowCount === 0 && offset > 0) {
+          setOffset(Math.max(0, offset - pageSize));
         }
       } catch (err) {
         createNotification({
@@ -619,7 +619,7 @@ export const DataExplorerGrid = ({
 
     selectedRowsRef.current = [];
     setSelectedRowCount(0);
-  }, [schema, table, primaryKeys, executeQuery, fetchData, page, pageSize, filters, sorts]);
+  }, [schema, table, primaryKeys, executeQuery, fetchData, offset, pageSize, filters, sorts]);
 
   if (!tableDetail) {
     return (
@@ -646,15 +646,15 @@ export const DataExplorerGrid = ({
         selectedRowCount={selectedRowCount}
         onDeleteSelected={handleDeleteSelected}
         totalCount={totalCount}
-        page={page}
+        offset={offset}
         pageSize={pageSize}
-        onPageChange={handlePageChange}
+        onOffsetChange={handleOffsetChange}
         onPageSizeChange={handlePageSizeChange}
         executionTimeMs={executionTimeMs}
         hasPrimaryKey={hasPrimaryKey}
         onRefresh={async () => {
           if (onFullRefresh) await onFullRefresh();
-          await fetchData(page, pageSize, filters, sorts);
+          await fetchData(offset, pageSize, filters, sorts);
         }}
         isRefreshing={isDataLoading && hasLoadedRef.current}
       />
