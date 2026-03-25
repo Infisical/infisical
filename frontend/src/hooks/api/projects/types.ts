@@ -50,6 +50,7 @@ export type ProjectEnv = {
   id: string;
   name: string;
   slug: string;
+  allowSecretExport: boolean;
 };
 
 export type ProjectTag = { id: string; name: string; slug: string };
@@ -119,6 +120,7 @@ export type UpdateEnvironmentDTO = {
   name?: string;
   slug?: string;
   position?: number;
+  allowSecretExport?: boolean;
 };
 
 export type DeleteEnvironmentDTO = { projectId: string; id: string };

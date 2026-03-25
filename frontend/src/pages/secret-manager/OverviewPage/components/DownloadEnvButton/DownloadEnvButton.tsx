@@ -17,8 +17,19 @@ type Props = {
 export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
+  const isExportDisabled = environments.length === 1 && environments[0].allowSecretExport === false;
+
   const handleSecretDownload = async () => {
     if (environments.length !== 1) return;
+
+    if (isExportDisabled) {
+      createNotification({
+        title: "Secret export is disabled",
+        text: "An administrator has disabled secret export for this environment.",
+        type: "error"
+      });
+      return;
+    }
 
     const environment = environments[0].slug;
 
@@ -29,7 +40,8 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         expandSecretReferences: true,
         includeImports: true,
         environment,
-        secretPath
+        secretPath,
+        purpose: "export"
       });
 
       downloadSecretEnvFile(environment, localSecrets, localImportedSecrets);
@@ -62,7 +74,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         <UnstableIconButton
           variant="outline"
           size="md"
-          isDisabled={environments.length !== 1}
+          isDisabled={environments.length !== 1 || isExportDisabled}
           onClick={handleSecretDownload}
           isPending={isDownloading}
         >
@@ -70,9 +82,11 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         </UnstableIconButton>
       </TooltipTrigger>
       <TooltipContent>
-        {environments.length !== 1
-          ? "Select a single environment to download secrets"
-          : "Download secrets"}
+        {isExportDisabled
+          ? "Secret export is disabled for this environment"
+          : environments.length !== 1
+            ? "Select a single environment to download secrets"
+            : "Download secrets"}
       </TooltipContent>
     </Tooltip>
   );

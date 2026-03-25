@@ -26,7 +26,9 @@ import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSc
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
     _id: z.string(),
-    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+    environments: z
+      .object({ name: z.string(), slug: z.string(), id: z.string(), allowSecretExport: z.boolean().default(true) })
+      .array()
   })
 );
 

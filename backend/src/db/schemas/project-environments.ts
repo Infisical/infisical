@@ -13,6 +13,7 @@ export const ProjectEnvironmentsSchema = z.object({
   slug: z.string(),
   position: z.number(),
   projectId: z.string(),
+  allowSecretExport: z.boolean().default(true),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -5,7 +5,7 @@ import { SecretApprovalRequestsSchema, SecretType, ServiceTokenScopes } from "@a
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, RAW_SECRETS } from "@app/lib/api-docs";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit } from "@app/server/config/rateLimiter";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
@@ -135,7 +135,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .describe(RAW_SECRETS.LIST.tagSlugs)
           .optional()
           // split by comma and trim the strings
-          .transform((el) => (el ? el.split(",").map((i) => i.trim()) : []))
+          .transform((el) => (el ? el.split(",").map((i) => i.trim()) : [])),
+        purpose: z.enum(["view", "export"]).optional().describe("The purpose of the request. When set to 'export', the server checks if secret export is allowed for this environment.")
       }),
       response: {
         200: z.object({
@@ -180,6 +181,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
+
+      if (req.query.purpose === "export") {
+        const envs = await server.services.projectEnv.getEnvironmentsByProjectId(projectId);
+        const targetEnv = envs.find((e) => e.slug === environment);
+        if (targetEnv && targetEnv.allowSecretExport === false) {
+          throw new ForbiddenRequestError({
+            message: "Secret export is disabled for this environment. An administrator has restricted secret downloads."
+          });
+        }
+      }
 
       const { secrets, imports } = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,

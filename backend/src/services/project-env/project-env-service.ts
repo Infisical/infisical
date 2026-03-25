@@ -135,7 +135,8 @@ export const projectEnvServiceFactory = ({
     actorAuthMethod,
     name,
     id,
-    position
+    position,
+    allowSecretExport
   }: TUpdateEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -197,7 +198,7 @@ export const projectEnvServiceFactory = ({
             await projectEnvDAL.updateAllPosition(projectId, oldEnv.position, position, tx);
           }
         }
-        return projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
+        return projectEnvDAL.updateById(oldEnv.id, { name, slug, position, allowSecretExport }, tx);
       });
 
       await keyStore.setItemWithExpiry(
@@ -274,6 +275,10 @@ export const projectEnvServiceFactory = ({
     }
   };
 
+  const getEnvironmentsByProjectId = async (projectId: string) => {
+    return projectEnvDAL.find({ projectId });
+  };
+
   const getEnvironmentById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetEnvDTO) => {
     const environment = await projectEnvDAL.findById(id);
 
@@ -301,6 +306,7 @@ export const projectEnvServiceFactory = ({
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
-    getEnvironmentById
+    getEnvironmentById,
+    getEnvironmentsByProjectId
   };
 };

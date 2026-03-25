@@ -56,7 +56,8 @@ export const projectDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("allowSecretExport").withSchema(TableName.Environment).as("envAllowSecretExport")
         )
         .orderBy([
           { column: `${TableName.Project}.name`, order: "asc" },
@@ -71,10 +72,11 @@ export const projectDALFactory = (db: TDbClient) => {
           {
             key: "envId",
             label: "environments" as const,
-            mapper: ({ envId: id, envSlug: slug, envName: name }) => ({
+            mapper: ({ envId: id, envSlug: slug, envName: name, envAllowSecretExport }) => ({
               id,
               slug,
-              name
+              name,
+              allowSecretExport: envAllowSecretExport as boolean
             })
           }
         ]
@@ -118,7 +120,8 @@ export const projectDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("allowSecretExport").withSchema(TableName.Environment).as("envAllowSecretExport")
         )
         .orderBy([
           { column: `${TableName.Project}.name`, order: "asc" },
@@ -133,10 +136,11 @@ export const projectDALFactory = (db: TDbClient) => {
           {
             key: "envId",
             label: "environments" as const,
-            mapper: ({ envId: id, envSlug: slug, envName: name }) => ({
+            mapper: ({ envId: id, envSlug: slug, envName: name, envAllowSecretExport }) => ({
               id,
               slug,
-              name
+              name,
+              allowSecretExport: envAllowSecretExport as boolean
             })
           }
         ]
@@ -188,7 +192,8 @@ export const projectDALFactory = (db: TDbClient) => {
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("allowSecretExport").withSchema(TableName.Environment).as("envAllowSecretExport")
         )
         .orderBy([
           { column: `${TableName.Project}.name`, order: "asc" },
@@ -203,10 +208,11 @@ export const projectDALFactory = (db: TDbClient) => {
           {
             key: "envId",
             label: "environments" as const,
-            mapper: ({ envId, envSlug: slug, envName: name }) => ({
+            mapper: ({ envId, envSlug: slug, envName: name, envAllowSecretExport }) => ({
               id: envId,
               slug,
-              name
+              name,
+              allowSecretExport: envAllowSecretExport as boolean
             })
           }
         ]
@@ -241,7 +247,8 @@ export const projectDALFactory = (db: TDbClient) => {
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("allowSecretExport").withSchema(TableName.Environment).as("envAllowSecretExport")
         )
         .orderBy([
           { column: `${TableName.Project}.name`, order: "asc" },
@@ -256,10 +263,11 @@ export const projectDALFactory = (db: TDbClient) => {
           {
             key: "envId",
             label: "environments" as const,
-            mapper: ({ envId, envSlug, envName: name }) => ({
+            mapper: ({ envId, envSlug, envName: name, envAllowSecretExport }) => ({
               id: envId,
               slug: envSlug,
-              name
+              name,
+              allowSecretExport: envAllowSecretExport as boolean
             })
           }
         ]

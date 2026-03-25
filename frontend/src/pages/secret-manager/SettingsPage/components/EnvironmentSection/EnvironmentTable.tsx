@@ -1,4 +1,4 @@
-import { faArrowDown, faArrowUp, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faCheck, faPencil, faTimes, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -30,11 +30,13 @@ type Props = {
     {
       name,
       slug,
-      id
+      id,
+      allowSecretExport
     }: {
       name: string;
       slug: string;
       id: string;
+      allowSecretExport?: boolean;
     }
   ) => void;
 };
@@ -77,14 +79,23 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
           <Tr>
             <Th>Name</Th>
             <Th>Slug</Th>
+            <Th>Secret Export</Th>
             <Th aria-label="button" />
           </Tr>
         </THead>
         <TBody>
-          {currentProject.environments.map(({ name, slug, id }, pos) => (
+          {currentProject.environments.map(({ name, slug, id, allowSecretExport }, pos) => (
             <Tr key={id}>
               <Td>{name}</Td>
               <Td>{slug}</Td>
+              <Td>
+                <Tooltip content={allowSecretExport !== false ? "Secret export is allowed" : "Secret export is disabled"}>
+                  <FontAwesomeIcon
+                    icon={allowSecretExport !== false ? faCheck : faTimes}
+                    className={allowSecretExport !== false ? "text-green-500" : "text-red-500"}
+                  />
+                </Tooltip>
+              </Td>
               <Td className="flex items-center justify-end">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
@@ -138,7 +149,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                       <IconButton
                         className="mr-3 py-2"
                         onClick={() => {
-                          handlePopUpOpen("updateEnv", { name, slug, id });
+                          handlePopUpOpen("updateEnv", { name, slug, id, allowSecretExport });
                         }}
                         isDisabled={!isAllowed || !isMoreEnvironmentsAllowed}
                         colorSchema="primary"
@@ -174,7 +185,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
           ))}
           {currentProject.environments?.length === 0 && (
             <Tr>
-              <Td colSpan={3}>
+              <Td colSpan={4}>
                 <EmptyState title="No environments found" />
               </Td>
             </Tr>
