@@ -105,7 +105,7 @@ export const ruleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
   environment: z.string().nullable().default(null),
-  folderPath: z.string().default("/**"),
+  folderPath: z.string().min(1, "Folder path is required").default("/**"),
   enforcement: z.object({
     type: z.nativeEnum(RuleType),
     inputs: staticSecretsInputsSchema

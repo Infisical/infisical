@@ -49,7 +49,11 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import {
   useCreateSecretValidationRule,
   useDeleteSecretValidationRule,
@@ -239,7 +243,14 @@ const RuleFormContent = ({
                 <Controller
                   control={control}
                   name="folderPath"
-                  render={({ field }) => <UnstableInput {...field} placeholder="/**" />}
+                  render={({ field, fieldState: { error } }) => (
+                    <div>
+                      <UnstableInput {...field} placeholder="/**" isError={Boolean(error)} />
+                      {error?.message && (
+                        <p className="mt-1 text-xs text-danger">{error.message}</p>
+                      )}
+                    </div>
+                  )}
                 />
               </div>
             </div>
@@ -341,6 +352,11 @@ type SheetState =
 
 export const SecretValidationRulesTab = () => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const canModifySettings = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
   const [sheetState, setSheetState] = useState<SheetState>({ open: false });
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -438,6 +454,7 @@ export const SecretValidationRulesTab = () => {
           <Button
             variant="outline"
             size="xs"
+            disabled={!canModifySettings}
             onClick={() => setSheetState({ open: true, mode: "create" })}
           >
             <PlusIcon className="size-4" />
@@ -463,6 +480,7 @@ export const SecretValidationRulesTab = () => {
                   <Button
                     variant="outline"
                     size="xs"
+                    disabled={!canModifySettings}
                     onClick={() => setSheetState({ open: true, mode: "create" })}
                   >
                     <PlusIcon className="size-4" />
@@ -523,6 +541,7 @@ export const SecretValidationRulesTab = () => {
                             </UnstableDropdownMenuTrigger>
                             <UnstableDropdownMenuContent align="end">
                               <UnstableDropdownMenuItem
+                                isDisabled={!canModifySettings}
                                 onClick={() =>
                                   setSheetState({ open: true, mode: "edit", ruleId: rule.id })
                                 }
@@ -532,6 +551,7 @@ export const SecretValidationRulesTab = () => {
                               </UnstableDropdownMenuItem>
                               <UnstableDropdownMenuItem
                                 variant="danger"
+                                isDisabled={!canModifySettings}
                                 onClick={() => setDeleteRuleId(rule.id)}
                               >
                                 <TrashIcon className="mr-2 size-4" />
