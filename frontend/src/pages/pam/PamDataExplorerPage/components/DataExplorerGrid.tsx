@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
 
+import { EyeIcon } from "lucide-react";
+
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
+import { UnstableAlert, UnstableAlertDescription } from "@app/components/v3/generic/Alert";
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
@@ -718,15 +721,20 @@ export const DataExplorerGrid = ({
       />
 
       {!hasPrimaryKey && (
-        <div className="border-b border-yellow-600/30 bg-yellow-950/20 px-3 py-1.5 text-xs text-yellow-400">
-          {tableType === "view" || tableType === "materialized_view"
-            ? "This view is read-only."
-            : "This table has no primary key. Browsing is read-only — editing requires a primary key."}
+        <div className="shrink-0 px-3 py-3">
+          <UnstableAlert variant="info" className="py-2">
+            <EyeIcon />
+            <UnstableAlertDescription>
+              {tableType === "view" || tableType === "materialized_view"
+                ? "This view is read-only."
+                : "This table has no primary key. Browsing is read-only — editing requires a primary key."}
+            </UnstableAlertDescription>
+          </UnstableAlert>
         </div>
       )}
 
       {/* Dice UI DataGrid */}
-      <div className="data-explorer-grid relative flex flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
+      <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
         {isDataLoading && !hasLoaded && <ContentLoader className="h-full" />}
         <DataGrid
           {...gridProps}
