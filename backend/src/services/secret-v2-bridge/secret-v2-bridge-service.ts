@@ -47,16 +47,11 @@ import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
-import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
-import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
@@ -64,6 +59,11 @@ import {
   TGetASecretByIdDTO,
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
+import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
   MAX_SECRET_CACHE_BYTES,
