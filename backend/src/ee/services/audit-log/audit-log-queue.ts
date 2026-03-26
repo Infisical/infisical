@@ -106,7 +106,7 @@ export const auditLogQueueServiceFactory = async ({
       const plan = await licenseService.getPlan(orgId);
 
       // skip inserting if audit log retention is 0 meaning its not supported
-      if (plan.auditLogsRetentionDays !== 0) {
+      if (plan.auditLogsRetentionDays) {
         // For project actions, set TTL to project-level audit log retention config
         // This condition ensures that the plan's audit log retention days cannot be bypassed
         const ttlInDays =
