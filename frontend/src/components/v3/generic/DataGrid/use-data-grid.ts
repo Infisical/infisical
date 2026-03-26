@@ -1836,7 +1836,15 @@ function useDataGrid<TData>({
       const newRowSelection =
         typeof updater === "function" ? updater(currentState.rowSelection) : updater;
 
-      const selectedRows = Object.keys(newRowSelection).filter((key) => newRowSelection[key]);
+      // Remove false entries so TanStack's getIsSomeRowsSelected works correctly
+      const cleanedRowSelection: RowSelectionState = {};
+      for (const key of Object.keys(newRowSelection)) {
+        if (newRowSelection[key]) {
+          cleanedRowSelection[key] = true;
+        }
+      }
+
+      const selectedRows = Object.keys(cleanedRowSelection);
 
       const selectedCells = new Set<string>();
       const rows = tableRef.current?.getRowModel().rows ?? [];
@@ -1851,7 +1859,7 @@ function useDataGrid<TData>({
       }
 
       store.batch(() => {
-        store.setState("rowSelection", newRowSelection);
+        store.setState("rowSelection", cleanedRowSelection);
         store.setState("selectionState", {
           selectedCells,
           selectionRange: null,
@@ -1860,7 +1868,7 @@ function useDataGrid<TData>({
         store.setState("focusedCell", null);
         store.setState("editingCell", null);
       });
-      propsRef.current.onRowSelectionChange?.(newRowSelection);
+      propsRef.current.onRowSelectionChange?.(cleanedRowSelection);
     },
     [store, columnIds, propsRef]
   );

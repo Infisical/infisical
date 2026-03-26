@@ -115,12 +115,7 @@ export const DataExplorerToolbar = ({
               <SaveIcon className="size-3" />
               Save {changeCount} change{changeCount !== 1 ? "s" : ""}
             </Button>
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={onDiscard}
-              className="gap-1 underline"
-            >
+            <Button variant="ghost" size="xs" onClick={onDiscard} className="gap-1 underline">
               <UndoIcon className="size-3" />
               Discard changes
             </Button>
