@@ -106,7 +106,7 @@ export const DataExplorerToolbar = ({
           <>
             <div className="h-4 w-px bg-border" />
             <Button
-              variant="info"
+              variant="success"
               size="xs"
               onClick={onSave}
               isPending={isSaving}
@@ -115,7 +115,12 @@ export const DataExplorerToolbar = ({
               <SaveIcon className="size-3" />
               Save {changeCount} change{changeCount !== 1 ? "s" : ""}
             </Button>
-            <Button variant="outline" size="xs" onClick={onDiscard} className="gap-1">
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={onDiscard}
+              className="gap-1 underline"
+            >
               <UndoIcon className="size-3" />
               Discard changes
             </Button>
