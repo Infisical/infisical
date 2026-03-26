@@ -278,8 +278,7 @@ export const ShareSecretForm = ({
                       <Tooltip content="Enforced by your organization">
                         <FontAwesomeIcon
                           icon={faLock}
-                          size="xs"
-                          className="ml-2 text-mineshaft-400"
+                          className="ml-2 !align-[-0.2em] text-mineshaft-400"
                         />
                       </Tooltip>
                     )}
@@ -462,20 +461,23 @@ export const ShareSecretForm = ({
                               <Tooltip content="When enabled, the defined emails will receive the secret link via email but will need the password to access the secret.">
                                 <FontAwesomeIcon
                                   icon={faInfoCircle}
-                                  size="xs"
-                                  className="ml-2 text-mineshaft-400"
+                                  className="ml-2 !align-[-0.2em] text-mineshaft-400"
                                 />
                               </Tooltip>
                             </span>
                           </Switch>
                           {!allowSecretSharingOutsideOrganization && (
-                            <Tooltip content="External sharing is disabled by your organization">
-                              <FontAwesomeIcon
-                                icon={faLock}
-                                size="xs"
-                                className="ml-2 text-mineshaft-400"
-                              />
-                            </Tooltip>
+                            <span className="inline-flex items-center">
+                              <Tooltip
+                                content="External sharing is disabled by your organization"
+                                className="items-center"
+                              >
+                                <FontAwesomeIcon
+                                  icon={faLock}
+                                  className="ml-2 !align-[-0.2em] text-mineshaft-400"
+                                />
+                              </Tooltip>
+                            </span>
                           )}
                         </div>
                       </FormControl>
