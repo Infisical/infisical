@@ -73,6 +73,7 @@ export const DataExplorerToolbar = ({
   return (
     <div
       role="toolbar"
+      data-grid-popover=""
       className="flex items-center justify-between border-b border-border px-3 py-1.5"
       onMouseDown={(e) => e.stopPropagation()}
     >
