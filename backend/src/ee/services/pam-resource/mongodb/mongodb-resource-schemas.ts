@@ -10,20 +10,10 @@ import {
   BaseUpdateGatewayPamResourceSchema,
   BaseUpdatePamAccountSchema
 } from "../pam-resource-schemas";
+import { BaseSqlResourceConnectionDetailsSchema } from "../shared/sql/sql-resource-schemas";
 
 // Resources
-export const MongoDBResourceConnectionDetailsSchema = z.object({
-  host: z.string().trim().min(1).max(255),
-  port: z.coerce.number(),
-  database: z.string().trim().min(1).max(255),
-  sslEnabled: z.boolean(),
-  sslRejectUnauthorized: z.boolean(),
-  sslCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
-    .optional()
-});
+export const MongoDBResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
 
 export const MongoDBAccountCredentialsSchema = z.object({
   username: z.string().trim().min(1).max(256, "Username must be 256 characters or less"),

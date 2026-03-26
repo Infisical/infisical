@@ -1,4 +1,5 @@
 import knex from "knex";
+import { MongoClient } from "mongodb";
 import mysql, { Connection } from "mysql2/promise";
 import tls, { PeerCertificate } from "tls";
 
@@ -239,6 +240,57 @@ const makeSqlConnection = (
         close: () => client.destroy()
       };
     }
+    case PamResource.MongoDB: {
+      const isTestConnection = actualUsername === TEST_CONNECTION_USERNAME;
+      const authPart = isTestConnection
+        ? ""
+        : `${encodeURIComponent(actualUsername)}:${encodeURIComponent(actualPassword)}@`;
+
+      const uri = `mongodb://${authPart}localhost:${proxyPort}/${connectionDetails.database}?authSource=${connectionDetails.database}&directConnection=true&serverSelectionTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}&connectTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}`;
+
+      const mongoClient = new MongoClient(uri, {
+        ...(sslEnabled && {
+          tls: true,
+          tlsAllowInvalidCertificates: !sslRejectUnauthorized,
+          tlsInsecure: !sslRejectUnauthorized,
+          checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
+            return tls.checkServerIdentity(host, cert);
+          }
+        }),
+        ...(sslEnabled && sslCertificate && { ca: sslCertificate })
+      });
+
+      return {
+        validate: async (connectOnly) => {
+          try {
+            await mongoClient.connect();
+            await mongoClient.db("admin").command({ ping: 1 });
+          } catch (error) {
+            if (
+              connectOnly &&
+              error instanceof Error &&
+              (error.message.includes("Authentication failed") ||
+                error.message.includes("auth") ||
+                error.message.includes("SCRAM") ||
+                error.message.includes("unauthorized"))
+            ) {
+              return;
+            }
+            throw new BadRequestError({
+              message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+            });
+          }
+        },
+        rotateCredentials: async () => {
+          throw new BadRequestError({
+            message: "Credential rotation is not yet supported for MongoDB resources"
+          });
+        },
+        close: async () => {
+          await mongoClient.close();
+        }
+      };
+    }
     default:
       throw new BadRequestError({
         message: `Unhandled SQL Resource Connection Config: ${resourceType as PamResource}`
@@ -346,7 +398,9 @@ export const sqlResourceFactory: TPamResourceFactory<
       if (error instanceof BadRequestError) {
         if (
           error.message === `password authentication failed for user "${credentials.username}"` ||
-          error.message === `role "${credentials.username}" does not exist`
+          error.message === `role "${credentials.username}" does not exist` ||
+          error.message.includes("Authentication failed") ||
+          error.message.includes("SCRAM")
         ) {
           throw new BadRequestError({
             message: "Account credentials invalid: Username or password incorrect"

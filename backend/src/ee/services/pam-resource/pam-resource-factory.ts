@@ -1,7 +1,6 @@
 import { activeDirectoryResourceFactory } from "./active-directory/active-directory-resource-factory";
 import { awsIamResourceFactory } from "./aws-iam/aws-iam-resource-factory";
 import { kubernetesResourceFactory } from "./kubernetes/kubernetes-resource-factory";
-import { mongodbResourceFactory } from "./mongodb/mongodb-resource-factory";
 import { PamResource } from "./pam-resource-enums";
 import {
   TPamAccountCredentials,
@@ -28,7 +27,7 @@ export const PAM_RESOURCE_FACTORY_MAP: Record<PamResource, TPamResourceFactoryIm
   [PamResource.Kubernetes]: kubernetesResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.AwsIam]: awsIamResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.Redis]: redisResourceFactory as TPamResourceFactoryImplementation,
-  [PamResource.MongoDB]: mongodbResourceFactory as TPamResourceFactoryImplementation,
+  [PamResource.MongoDB]: sqlResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.Windows]: windowsResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.ActiveDirectory]: activeDirectoryResourceFactory as TPamResourceFactoryImplementation
 };
