@@ -1100,6 +1100,13 @@ export const secretRotationV2ServiceFactory = ({
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
 
+      let nextRetryTime: string | undefined;
+      if (!isManualRotation) {
+        nextRetryTime = isFinalAttempt
+          ? "Maximum retry attempts reached"
+          : new Date(Date.now() + 1000 * 2 ** ((retryCount ?? 1) - 1)).toISOString();
+      }
+
       await queueService.queue(
         QueueName.SecretWebhook,
         QueueJobs.SecWebhook,
@@ -1112,9 +1119,7 @@ export const secretRotationV2ServiceFactory = ({
             rotationName: secretRotation.name,
             triggeredManually: isManualRotation,
             errorMessage,
-            nextRetryTime: isFinalAttempt
-              ? "Maximum retry attempts reached"
-              : new Date(Date.now() + 1000 * 2 ** ((retryCount ?? 1) - 1)).toISOString()
+            nextRetryTime
           }
         },
         {
