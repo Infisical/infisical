@@ -338,9 +338,6 @@ export const PamDataExplorerPage = () => {
               >
                 Create Approval Request
               </Button>
-              <Button variant="outline" size="xs" onClick={handleReconnect}>
-                Reconnect
-              </Button>
             </div>
           </div>
         )}
