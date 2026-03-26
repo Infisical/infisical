@@ -14,7 +14,7 @@ export const NoticeBannerV2 = ({ title, children, className, titleClassName }: P
   return (
     <div
       className={twMerge(
-        "flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5",
+        "flex min-w-0 flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5",
         className
       )}
     >

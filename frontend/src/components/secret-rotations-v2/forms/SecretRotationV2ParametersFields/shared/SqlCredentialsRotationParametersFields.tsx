@@ -77,7 +77,7 @@ export const SqlCredentialsRotationParametersFields = () => {
         />
         <NoticeBannerV2 title="Example Create User Statement">
           <p className="mb-3 text-sm text-mineshaft-300">
-            Infisical requires two database users to be created for rotation.
+            Infisical requires two database users to be created for rotation. 111
           </p>
           <p className="mb-3 text-sm text-mineshaft-300">
             These users are intended to be solely managed by Infisical. Altering their login after
@@ -87,11 +87,9 @@ export const SqlCredentialsRotationParametersFields = () => {
             Below is an example statement for creating the required users. You may need to modify it
             to suit your needs.
           </p>
-          <p className="mb-3 text-sm">
-            <pre className="max-h-40 overflow-y-auto rounded-sm border border-mineshaft-700 bg-mineshaft-800 p-2 whitespace-pre-wrap text-mineshaft-300">
-              {rotationOption!.template.createUserStatement}
-            </pre>
-          </p>
+          <pre className="mb-3 max-h-40 overflow-auto rounded-sm border border-mineshaft-700 bg-mineshaft-800 p-2 text-sm break-words whitespace-pre-wrap text-mineshaft-300">
+            {rotationOption!.template.createUserStatement}
+          </pre>
         </NoticeBannerV2>
       </TabPanel>
       <TabPanel value={ParameterTab.Advanced}>

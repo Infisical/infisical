@@ -2,8 +2,6 @@ import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { twMerge } from "tailwind-merge";
-
 import { createNotification } from "@app/components/notifications";
 import { SecretRotationV2ConfigurationFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ConfigurationFields";
 import { SecretRotationV2DetailsFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2DetailsFields";
@@ -167,53 +165,55 @@ export const SecretRotationV2Form = ({
   };
 
   return (
-    <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
-      <FormProvider {...formMethods}>
-        <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-          <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-            {FORM_TABS.map((tab, index) => (
-              <Tab
-                onClick={async (e) => {
-                  e.preventDefault();
-                  const isEnabled = await isTabEnabled(index);
-                  setSelectedTabIndex((prev) => (isEnabled ? index : prev));
-                }}
-                className={({ selected }) =>
-                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
-                    selected
-                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                      : "text-bunker-300"
-                  }`
-                }
-                key={tab.key}
-              >
-                {index + 1}. {tab.name}
-              </Tab>
-            ))}
-          </Tab.List>
-          <Tab.Panels>
-            <Tab.Panel>
-              <SecretRotationV2ConfigurationFields
-                isUpdate={Boolean(secretRotation)}
-                environments={environments}
-              />
-            </Tab.Panel>
-            <Tab.Panel>
-              <SecretRotationV2ParametersFields />
-            </Tab.Panel>
-            <Tab.Panel>
-              <SecretRotationV2SecretsMappingFields />
-            </Tab.Panel>
-            <Tab.Panel>
-              <SecretRotationV2DetailsFields />
-            </Tab.Panel>
-            <Tab.Panel>
-              <SecretRotationV2ReviewFields />
-            </Tab.Panel>
-          </Tab.Panels>
-        </Tab.Group>
-      </FormProvider>
-      <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
+    <form className="flex max-h-[70vh] flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <FormProvider {...formMethods}>
+          <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
+            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+              {FORM_TABS.map((tab, index) => (
+                <Tab
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    const isEnabled = await isTabEnabled(index);
+                    setSelectedTabIndex((prev) => (isEnabled ? index : prev));
+                  }}
+                  className={({ selected }) =>
+                    `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
+                      selected
+                        ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
+                        : "text-bunker-300"
+                    }`
+                  }
+                  key={tab.key}
+                >
+                  {index + 1}. {tab.name}
+                </Tab>
+              ))}
+            </Tab.List>
+            <Tab.Panels>
+              <Tab.Panel>
+                <SecretRotationV2ConfigurationFields
+                  isUpdate={Boolean(secretRotation)}
+                  environments={environments}
+                />
+              </Tab.Panel>
+              <Tab.Panel>
+                <SecretRotationV2ParametersFields />
+              </Tab.Panel>
+              <Tab.Panel>
+                <SecretRotationV2SecretsMappingFields />
+              </Tab.Panel>
+              <Tab.Panel>
+                <SecretRotationV2DetailsFields />
+              </Tab.Panel>
+              <Tab.Panel>
+                <SecretRotationV2ReviewFields />
+              </Tab.Panel>
+            </Tab.Panels>
+          </Tab.Group>
+        </FormProvider>
+      </div>
+      <div className="flex w-full flex-shrink-0 flex-row-reverse justify-between gap-4 pt-4">
         <Button
           onClick={handleNext}
           isLoading={isSubmitting}
