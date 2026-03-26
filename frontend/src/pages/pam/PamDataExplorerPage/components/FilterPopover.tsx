@@ -98,12 +98,13 @@ const OPERATORS: { value: FilterOperator; label: string; needsValue: boolean }[]
 type FilterPopoverProps = {
   columns: ColumnInfo[];
   filters: FilterCondition[];
-  onFiltersChange: (filters: FilterCondition[]) => void;
+  onFiltersChange: (filters: FilterCondition[]) => Promise<boolean>;
 };
 
 export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<FilterCondition[]>(filters);
+  const [isApplying, setIsApplying] = useState(false);
 
   // Sync draft when external filters change (e.g. cleared from outside)
   useEffect(() => {
@@ -112,8 +113,9 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
     }
   }, [filters, open]);
 
-  // Reset draft when popover opens
+  // Reset draft when popover opens; prevent close while applying
   const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen && isApplying) return;
     if (isOpen) {
       setDraft(filters);
     }
@@ -133,14 +135,18 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
     setDraft((prev) => prev.map((f, i) => (i === index ? { ...f, ...update } : f)));
   };
 
-  const clearAll = () => {
-    onFiltersChange([]);
+  const clearAll = async () => {
+    setIsApplying(true);
+    await onFiltersChange([]);
+    setIsApplying(false);
     setOpen(false);
   };
 
-  const applyFilters = () => {
-    onFiltersChange(draft);
-    setOpen(false);
+  const applyFilters = async () => {
+    setIsApplying(true);
+    const success = await onFiltersChange(draft);
+    setIsApplying(false);
+    if (success) setOpen(false);
   };
 
   return (
@@ -241,7 +247,13 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
             <PlusIcon className="size-3" />
             Add filter
           </Button>
-          <Button variant="info" size="xs" onClick={applyFilters} className="gap-1">
+          <Button
+            variant="info"
+            size="xs"
+            onClick={applyFilters}
+            isPending={isApplying}
+            className="gap-1"
+          >
             <CheckIcon className="size-3" />
             Apply
           </Button>

@@ -11,9 +11,15 @@ type SortPopoverProps = {
   columns: ColumnInfo[];
   sorts: SortCondition[];
   onSortsChange: (sorts: SortCondition[]) => void;
+  disabled?: boolean;
 };
 
-export const SortPopover = ({ columns, sorts, onSortsChange }: SortPopoverProps) => {
+export const SortPopover = ({
+  columns,
+  sorts,
+  onSortsChange,
+  disabled = false
+}: SortPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -60,7 +66,7 @@ export const SortPopover = ({ columns, sorts, onSortsChange }: SortPopoverProps)
           <button
             type="button"
             onClick={handleDirectionToggle}
-            disabled={!activeSort}
+            disabled={!activeSort || disabled}
             className="flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-700 disabled:opacity-40"
           >
             {isAscending ? "Ascending" : "Descending"}
@@ -89,7 +95,8 @@ export const SortPopover = ({ columns, sorts, onSortsChange }: SortPopoverProps)
               key={col.name}
               type="button"
               onClick={() => handleColumnSelect(col.name)}
-              className={`flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs transition-colors ${
+              disabled={disabled}
+              className={`flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs transition-colors disabled:opacity-40 ${
                 activeSort?.column === col.name
                   ? "bg-mineshaft-700 text-mineshaft-100"
                   : "text-mineshaft-300 hover:bg-mineshaft-700/50"

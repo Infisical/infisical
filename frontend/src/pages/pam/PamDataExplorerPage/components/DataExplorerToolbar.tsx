@@ -21,7 +21,7 @@ import { SortPopover } from "./SortPopover";
 type DataExplorerToolbarProps = {
   columns: ColumnInfo[];
   filters: FilterCondition[];
-  onFiltersChange: (filters: FilterCondition[]) => void;
+  onFiltersChange: (filters: FilterCondition[]) => Promise<boolean>;
   sorts: SortCondition[];
   onSortsChange: (sorts: SortCondition[]) => void;
   changeCount: number;
@@ -38,6 +38,7 @@ type DataExplorerToolbarProps = {
   onPageSizeChange: (size: number) => void;
   executionTimeMs: number | null;
   hasPrimaryKey: boolean;
+  isDataLoading?: boolean;
   onRefresh: () => void;
   isRefreshing?: boolean;
 };
@@ -62,6 +63,7 @@ export const DataExplorerToolbar = ({
   onPageSizeChange,
   executionTimeMs,
   hasPrimaryKey,
+  isDataLoading = false,
   onRefresh,
   isRefreshing = false
 }: DataExplorerToolbarProps) => {
@@ -76,7 +78,12 @@ export const DataExplorerToolbar = ({
     >
       <div className="flex items-center gap-2">
         <FilterPopover columns={columns} filters={filters} onFiltersChange={onFiltersChange} />
-        <SortPopover columns={columns} sorts={sorts} onSortsChange={onSortsChange} />
+        <SortPopover
+          columns={columns}
+          sorts={sorts}
+          onSortsChange={onSortsChange}
+          disabled={isDataLoading}
+        />
 
         {hasPrimaryKey && (
           <>

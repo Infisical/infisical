@@ -275,7 +275,7 @@ export const DataExplorerGrid = ({
           text: err instanceof Error ? err.message : "Unknown error",
           type: "error"
         });
-        return 0;
+        return -1;
       } finally {
         isFetchingRef.current = false;
         setIsDataLoading(false);
@@ -299,11 +299,22 @@ export const DataExplorerGrid = ({
     setIsDataLoading(false);
   }
 
-  const handleFiltersChange = useCallback((newFilters: FilterCondition[]) => {
-    setIsDataLoading(true);
-    setFilters(newFilters);
-    setOffset(0);
-  }, []);
+  const pageSizeRef = useRef(pageSize);
+  pageSizeRef.current = pageSize;
+  const sortsRef = useRef(sorts);
+  sortsRef.current = sorts;
+
+  const handleFiltersChange = useCallback(
+    async (newFilters: FilterCondition[]): Promise<boolean> => {
+      setFilters(newFilters);
+      setOffset(0);
+      // Update prevFetchKeyRef so the render-time pattern doesn't double-fire
+      prevFetchKeyRef.current = `${schema}.${table}.${0}.${pageSizeRef.current}.${JSON.stringify(newFilters)}.${JSON.stringify(sortsRef.current)}`;
+      const result = await fetchData(0, pageSizeRef.current, newFilters, sortsRef.current);
+      return result >= 0;
+    },
+    [schema, table, fetchData]
+  );
 
   const handleSortsChange = useCallback((newSorts: SortCondition[]) => {
     setIsDataLoading(true);
@@ -692,6 +703,7 @@ export const DataExplorerGrid = ({
         onPageSizeChange={handlePageSizeChange}
         executionTimeMs={executionTimeMs}
         hasPrimaryKey={hasPrimaryKey}
+        isDataLoading={isDataLoading}
         onRefresh={async () => {
           if (onFullRefresh) await onFullRefresh();
           await fetchData(offset, pageSize, filters, sorts);
