@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Input } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { TTerminalEvent } from "@app/hooks/api/pam";
+import { TerminalChannelType, TTerminalEvent } from "@app/hooks/api/pam";
 
 import { aggregateTerminalEvents } from "./terminal-utils";
 
@@ -45,6 +45,13 @@ export const TerminalEventView = ({ events }: Props) => {
           filteredEvents.map((event, index) => {
             const eventKey = `${event.timestamp}-${index}`;
 
+            const channelLabel =
+              event.channelType === TerminalChannelType.Exec
+                ? "Exec"
+                : event.channelType === TerminalChannelType.Sftp
+                  ? "SFTP"
+                  : null;
+
             return (
               <div
                 key={eventKey}
@@ -53,6 +60,16 @@ export const TerminalEventView = ({ events }: Props) => {
                 <div className="flex items-center justify-between text-bunker-400">
                   <div className="flex items-center gap-2 text-xs">
                     <span>{new Date(event.timestamp).toLocaleString()}</span>
+                    {channelLabel && (
+                      <span className="rounded bg-mineshaft-600 px-1.5 py-0.5 text-bunker-300">
+                        {channelLabel}
+                      </span>
+                    )}
+                    {event.eventType === "input" && (
+                      <span className="rounded bg-primary-900/30 px-1.5 py-0.5 text-primary-400">
+                        Command
+                      </span>
+                    )}
                   </div>
                 </div>
 

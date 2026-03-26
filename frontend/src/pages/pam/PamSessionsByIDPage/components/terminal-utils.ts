@@ -1,8 +1,7 @@
-import { TTerminalEvent } from "@app/hooks/api/pam";
+import { TerminalChannelType, TTerminalEvent } from "@app/hooks/api/pam";
 
 // Strip ANSI escape codes from terminal output
 export const stripAnsiCodes = (text: string): string => {
-  // Remove ANSI escape sequences
   // eslint-disable-next-line no-control-regex
   return text.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, "").replace(/\x1b\][0-9];[^\x07]*\x07/g, "");
 };
@@ -13,21 +12,11 @@ const isPrintableText = (text: string): boolean => {
   let printableCount = 0;
   for (let i = 0; i < text.length; i += 1) {
     const code = text.charCodeAt(i);
-    // Allow printable ASCII, newlines, tabs, and common unicode
     if ((code >= 32 && code <= 126) || code === 10 || code === 13 || code === 9 || code > 127) {
       printableCount += 1;
     }
   }
-  // Consider it printable if at least 80% of characters are printable
   return printableCount / text.length >= 0.8;
-};
-
-export type AggregatedTerminalEvent = {
-  timestamp: string;
-  eventType: string;
-  data: string;
-  elapsedTime: number;
-  eventCount: number;
 };
 
 // Decode a single event's base64 data, returning empty string on failure or binary data
@@ -43,53 +32,28 @@ const decodeEventData = (event: TTerminalEvent): string => {
   }
 };
 
-// Check if input is echoed in output (common in interactive terminal sessions)
-const isInputEchoedInOutput = (events: TTerminalEvent[]): boolean => {
-  const inputEvents = events.filter((e) => e.eventType === "input");
-  const outputEvents = events.filter((e) => e.eventType === "output");
-
-  if (inputEvents.length === 0 || outputEvents.length === 0) return false;
-
-  // Decode all output into a single string
-  const allOutput = outputEvents.map((e) => decodeEventData(e)).join("");
-
-  // Check if all non-empty inputs appear in the output (echoed)
-  // If any input is not echoed, return false (likely exec or SFTP)
-  const hasUnechoedInput = inputEvents.some((inputEvent) => {
-    const inputText = decodeEventData(inputEvent).trim();
-    return inputText && !allOutput.includes(inputText);
-  });
-
-  return !hasUnechoedInput;
+export type AggregatedTerminalEvent = {
+  timestamp: string;
+  eventType: string;
+  channelType?: string;
+  data: string;
+  elapsedTime: number;
+  eventCount: number;
 };
 
-// Aggregate consecutive output events to avoid character-by-character display
-export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
-  // Determine if input is echoed in output (interactive terminal vs exec/SFTP)
-  const inputEchoed = isInputEchoedInOutput(events);
+// Aggregate consecutive output events using prompt-based segmentation
+const aggregateOutputEvents = (
+  outputEvents: TTerminalEvent[],
+  channelType?: string
+): AggregatedTerminalEvent[] => {
+  if (outputEvents.length === 0) return [];
 
-  // If input is echoed, only show output to avoid duplication
-  // Otherwise, include both input and output (for exec, SFTP, etc.)
-  let terminalEvents = inputEchoed
-    ? events.filter((e) => e.eventType === "output")
-    : events.filter((e) => e.eventType === "input" || e.eventType === "output");
-
-  // Fall back to input events if no output events (e.g., SFTP with only input messages)
-  if (terminalEvents.length === 0) {
-    terminalEvents = events.filter((e) => e.eventType === "input");
-  }
-
-  if (terminalEvents.length === 0) return [];
-
-  // Decode each event and filter out binary/non-printable data
-  const decodedEvents: { text: string; event: TTerminalEvent }[] = terminalEvents
+  const decodedEvents: { text: string; event: TTerminalEvent }[] = outputEvents
     .map((e) => ({ text: decodeEventData(e), event: e }))
     .filter((e) => e.text.length > 0);
 
   if (decodedEvents.length === 0) return [];
 
-  // Build a character-to-event index mapping
-  // This tracks which original event each character came from
   const charToEventIndex: number[] = [];
   decodedEvents.forEach((decoded, eventIndex) => {
     for (let i = 0; i < decoded.text.length; i += 1) {
@@ -98,9 +62,6 @@ export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTer
   });
 
   const allText = decodedEvents.map((d) => d.text).join("");
-
-  // Split on lines that contain shell prompts
-  // Pattern matches: user@hostname:path# or user@hostname:path$
   const promptPattern = /^[\w-]+@[\w-]+[^\s]*[:#$]\s+/;
 
   const lines = allText.split("\n");
@@ -113,7 +74,6 @@ export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTer
     const hasPrompt = promptPattern.test(line);
 
     if (hasPrompt && currentSegmentLines.length > 0) {
-      // Found a new prompt, save current segment and start new one
       segments.push({
         text: currentSegmentLines.join("\n"),
         startCharIndex: currentSegmentStartChar
@@ -121,15 +81,12 @@ export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTer
       currentSegmentLines = [line];
       currentSegmentStartChar = currentCharIndex;
     } else {
-      // Add line to current segment
       currentSegmentLines.push(line);
     }
 
-    // Account for line length + newline character (except for last line)
     currentCharIndex += line.length + (lineIndex < lines.length - 1 ? 1 : 0);
   });
 
-  // Add the last segment
   if (currentSegmentLines.length > 0) {
     segments.push({
       text: currentSegmentLines.join("\n"),
@@ -137,20 +94,118 @@ export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTer
     });
   }
 
-  // Filter out empty segments and convert to aggregated events
   const validSegments = segments.filter((seg) => seg.text.trim().length > 0);
 
   return validSegments.map((segment) => {
-    // Find the original event that corresponds to the start of this segment
     const eventIndex = charToEventIndex[segment.startCharIndex] ?? 0;
-    const originalEvent = decodedEvents[eventIndex]?.event ?? terminalEvents[0];
+    const originalEvent = decodedEvents[eventIndex]?.event ?? outputEvents[0];
 
     return {
       timestamp: originalEvent.timestamp,
       eventType: "output",
+      channelType,
       data: segment.text,
       elapsedTime: originalEvent.elapsedTime,
       eventCount: 1
     };
   });
+};
+
+// Convert input events to aggregated format
+const convertInputEvents = (
+  inputEvents: TTerminalEvent[],
+  channelType?: string
+): AggregatedTerminalEvent[] => {
+  const results: AggregatedTerminalEvent[] = [];
+
+  inputEvents.forEach((event) => {
+    const text = decodeEventData(event);
+    if (text.trim()) {
+      results.push({
+        timestamp: event.timestamp,
+        eventType: "input",
+        channelType,
+        data: text,
+        elapsedTime: event.elapsedTime,
+        eventCount: 1
+      });
+    }
+  });
+
+  return results;
+};
+
+// Process events that have channelType (new format)
+const processEventsWithChannelType = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
+  const results: AggregatedTerminalEvent[] = [];
+
+  // Group events by channelType
+  const terminalEvents = events.filter((e) => e.channelType === TerminalChannelType.Terminal);
+  const execEvents = events.filter((e) => e.channelType === TerminalChannelType.Exec);
+  const sftpEvents = events.filter((e) => e.channelType === TerminalChannelType.Sftp);
+
+  // Terminal: only show output (input is echoed)
+  const terminalOutputs = terminalEvents.filter((e) => e.eventType === "output");
+  results.push(...aggregateOutputEvents(terminalOutputs, TerminalChannelType.Terminal));
+
+  // Exec: show both input (command) and output (result)
+  const execInputs = execEvents.filter((e) => e.eventType === "input");
+  const execOutputs = execEvents.filter((e) => e.eventType === "output");
+  results.push(...convertInputEvents(execInputs, TerminalChannelType.Exec));
+  results.push(...aggregateOutputEvents(execOutputs, TerminalChannelType.Exec));
+
+  // SFTP: show only input messages (no meaningful output)
+  const sftpInputs = sftpEvents.filter((e) => e.eventType === "input");
+  results.push(...convertInputEvents(sftpInputs, TerminalChannelType.Sftp));
+
+  // Sort by timestamp to maintain chronological order
+  results.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  return results;
+};
+
+// Backwards compatibility: process legacy events without channelType
+// Uses heuristic - only show output events (assumes interactive terminal)
+const processLegacyEvents = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
+  const outputEvents = events.filter((e) => e.eventType === "output");
+
+  // If there are output events, aggregate them (interactive terminal behavior)
+  if (outputEvents.length > 0) {
+    return aggregateOutputEvents(outputEvents);
+  }
+
+  // Fallback: if no output events, show input events (might be SFTP-like)
+  const inputEvents = events.filter((e) => e.eventType === "input");
+  return convertInputEvents(inputEvents);
+};
+
+// Main aggregation function
+export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
+  if (events.length === 0) return [];
+
+  // Check if any events have channelType (new format)
+  const hasChannelType = events.some((e) => e.channelType !== undefined);
+
+  if (hasChannelType) {
+    // New format: use explicit channelType for routing
+    // Handle mixed case: events with channelType + legacy events without
+    const eventsWithChannelType = events.filter((e) => e.channelType !== undefined);
+    const eventsWithoutChannelType = events.filter((e) => e.channelType === undefined);
+
+    const results: AggregatedTerminalEvent[] = [];
+    results.push(...processEventsWithChannelType(eventsWithChannelType));
+
+    // Process legacy events (if any) separately
+    if (eventsWithoutChannelType.length > 0) {
+      results.push(...processLegacyEvents(eventsWithoutChannelType));
+    }
+
+    // Re-sort after merging
+    results.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    return results;
+  }
+
+  // Legacy format: use heuristic approach
+  return processLegacyEvents(events);
 };
