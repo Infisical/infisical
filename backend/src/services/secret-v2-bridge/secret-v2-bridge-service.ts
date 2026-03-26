@@ -10,6 +10,7 @@ import {
   TableName,
   TSecretsV2
 } from "@app/db/schemas";
+import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -46,11 +47,16 @@ import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
+import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
@@ -58,11 +64,6 @@ import {
   TGetASecretByIdDTO,
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
-import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
-import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
   MAX_SECRET_CACHE_BYTES,
@@ -113,6 +114,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionDAL: Pick<TPermissionDALFactory, "getPermissionFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
@@ -159,6 +161,7 @@ export const secretV2BridgeServiceFactory = ({
   folderCommitService,
   folderDAL,
   permissionService,
+  permissionDAL,
   snapshotService,
   secretQueueService,
   secretImportDAL,
@@ -1153,9 +1156,19 @@ export const secretV2BridgeServiceFactory = ({
       ...params
     } = dto;
 
-    // ETag/304 short-circuit: check Redis for stored ETag before expensive permission/KMS/cache work
+    let permissionFingerprint = "";
+
+    if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
+      permissionFingerprint = await permissionDAL.getPermissionFingerprint({
+        projectId,
+        orgId: actorOrgId,
+        actorId,
+        actorType: actor
+      });
+    }
+
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId);
-    const etagField = `${actorId}:${generateCacheKeyFromData({
+    const etagField = `${actorId}:${permissionFingerprint}:${generateCacheKeyFromData({
       environment,
       path,
       recursive,
@@ -1220,7 +1233,7 @@ export const secretV2BridgeServiceFactory = ({
           })),
           imports
         };
-        const cachedEtag = `W/"${generateCacheKeyFromData(payload)}"`;
+        const cachedEtag = `"${generateCacheKeyFromData(payload)}"`;
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
         await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
         return { ...payload, etag: cachedEtag };
@@ -1471,7 +1484,7 @@ export const secretV2BridgeServiceFactory = ({
       if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
         await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
-      const computedEtag = `W/"${generateCacheKeyFromData(payload)}"`;
+      const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
       return { ...payload, etag: computedEtag };
@@ -1543,7 +1556,7 @@ export const secretV2BridgeServiceFactory = ({
     if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
       await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
-    const computedEtag = `W/"${generateCacheKeyFromData(payload)}"`;
+    const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
     return { ...payload, etag: computedEtag };
