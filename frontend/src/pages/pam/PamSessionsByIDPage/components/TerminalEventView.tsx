@@ -8,6 +8,11 @@ import { TerminalChannelType, TTerminalEvent } from "@app/hooks/api/pam";
 
 import { aggregateTerminalEvents } from "./terminal-utils";
 
+const CHANNEL_LABEL_MAP: Record<string, string> = {
+  [TerminalChannelType.Exec]: "Exec",
+  [TerminalChannelType.Sftp]: "SFTP"
+};
+
 type Props = {
   events: TTerminalEvent[];
 };
@@ -45,12 +50,7 @@ export const TerminalEventView = ({ events }: Props) => {
           filteredEvents.map((event, index) => {
             const eventKey = `${event.timestamp}-${index}`;
 
-            const channelLabel =
-              event.channelType === TerminalChannelType.Exec
-                ? "Exec"
-                : event.channelType === TerminalChannelType.Sftp
-                  ? "SFTP"
-                  : null;
+            const channelLabel = event.channelType ? CHANNEL_LABEL_MAP[event.channelType] : null;
 
             return (
               <div
