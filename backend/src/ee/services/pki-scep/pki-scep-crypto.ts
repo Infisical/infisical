@@ -84,34 +84,15 @@ export const rsaVerify = (
   data: Buffer,
   signature: Buffer,
   certificateDer: Buffer,
-  digestAlgorithmOid?: string
+  digestAlgorithmOid: string
 ): boolean => {
+  const algo = DIGEST_OID_TO_ALGO[digestAlgorithmOid];
+  if (!algo) {
+    throw new BadRequestError({ message: `Unsupported digest algorithm OID for verification: ${digestAlgorithmOid}` });
+  }
+
   const cert = new nodeCrypto.X509Certificate(certificateDer);
-  const { publicKey } = cert;
-
-  // If the digest algorithm OID is known from SignerInfo, use it directly
-  if (digestAlgorithmOid) {
-    const algo = DIGEST_OID_TO_ALGO[digestAlgorithmOid];
-    if (algo) {
-      const verifier = nodeCrypto.createVerify(algo);
-      verifier.update(data);
-      return verifier.verify(publicKey, signature);
-    }
-  }
-
-  // Fallback: try all supported algorithms
-  const algorithms = ["RSA-SHA256", "RSA-SHA1", "RSA-SHA384", "RSA-SHA512"];
-  for (const algo of algorithms) {
-    try {
-      const verifier = nodeCrypto.createVerify(algo);
-      verifier.update(data);
-      if (verifier.verify(publicKey, signature)) {
-        return true;
-      }
-    } catch {
-      // Algorithm not supported or key incompatible — try next
-    }
-  }
-
-  return false;
+  const verifier = nodeCrypto.createVerify(algo);
+  verifier.update(data);
+  return verifier.verify(cert.publicKey, signature);
 };

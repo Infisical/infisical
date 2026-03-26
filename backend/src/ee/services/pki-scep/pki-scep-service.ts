@@ -128,7 +128,9 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "SCEP profile not found" });
     }
 
-    return getScepCapabilities();
+    return getScepCapabilities({
+      allowCertBasedRenewal: profile.scepConfig?.allowCertBasedRenewal ?? false
+    });
   };
 
   const getCaCert = async ({ profileId }: TGetCaCertDTO): Promise<Buffer> => {

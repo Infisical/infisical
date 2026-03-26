@@ -51,6 +51,10 @@ export const generateRaCertificate = async (
   };
 };
 
-export const getScepCapabilities = (): string => {
-  return ["POSTPKIOperation", "SHA-256", "SHA-1", "AES", "DES3", "SCEPStandard", "Renewal"].join("\n");
+export const getScepCapabilities = ({ allowCertBasedRenewal }: { allowCertBasedRenewal: boolean }): string => {
+  const caps = ["POSTPKIOperation", "SHA-256", "SHA-1", "AES", "DES3", "SCEPStandard"];
+  if (allowCertBasedRenewal) {
+    caps.push("Renewal");
+  }
+  return caps.join("\n");
 };

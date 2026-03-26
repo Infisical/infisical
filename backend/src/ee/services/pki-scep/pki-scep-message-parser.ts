@@ -1,7 +1,7 @@
 import nodeCrypto from "node:crypto";
 
 import * as asn1js from "asn1js";
-import { Certificate, ContentInfo, SignedData } from "pkijs";
+import { Certificate, type CertificateSetItem, ContentInfo, SignedData, type SignerInfo as PkiSignerInfo } from "pkijs";
 
 import { BadRequestError } from "@app/lib/errors";
 
@@ -28,12 +28,6 @@ export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): T
     throw new BadRequestError({ message: "No certificates found in SCEP SignedData" });
   }
 
-  const signerCert = signedData.certificates[0];
-  if (!(signerCert instanceof Certificate)) {
-    throw new BadRequestError({ message: "Invalid signer certificate in SCEP SignedData" });
-  }
-  const signerCertDer = Buffer.from(signerCert.toSchema().toBER(false));
-
   // Extract SCEP attributes
   if (!signedData.signerInfos || signedData.signerInfos.length === 0) {
     throw new BadRequestError({ message: "No signerInfos found in SCEP SignedData" });
@@ -43,6 +37,15 @@ export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): T
   if (!signerInfo.signedAttrs) {
     throw new BadRequestError({ message: "No signed attributes found" });
   }
+
+  // Match signer certificate by SignerInfo.sid (issuer + serial) per RFC 5652 §5.3
+  // instead of blindly taking the first certificate in the collection.
+  const signerCert = // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    findSignerCertificate(signedData.certificates, signerInfo);
+  if (!signerCert) {
+    throw new BadRequestError({ message: "Signer certificate not found matching SignerInfo issuer/serial" });
+  }
+  const signerCertDer = Buffer.from(signerCert.toSchema().toBER(false));
 
   const scepAttrs = extractScepAttributes(signerInfo.signedAttrs.attributes);
 
@@ -54,38 +57,45 @@ export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): T
     "2.16.840.1.101.3.4.2.3": "sha512"
   };
 
+  // RFC 5652 §11.2: messageDigest MUST be present when signedAttrs is present
   const messageDigestAttr = signerInfo.signedAttrs.attributes.find((a) => a.type === "1.2.840.113549.1.9.4");
-  if (messageDigestAttr && messageDigestAttr.values.length > 0 && signedData.encapContentInfo?.eContent) {
+  if (!messageDigestAttr || messageDigestAttr.values.length === 0) {
+    throw new BadRequestError({ message: "Missing required messageDigest attribute in signed attributes" });
+  }
+
+  const digestAlgoOid = signerInfo.digestAlgorithm.algorithmId;
+  const hashAlgo = DIGEST_OID_TO_HASH[digestAlgoOid];
+  if (!hashAlgo) {
+    throw new BadRequestError({ message: `Unsupported digest algorithm OID: ${digestAlgoOid}` });
+  }
+
+  if (signedData.encapContentInfo?.eContent) {
     const claimedDigest = Buffer.from((messageDigestAttr.values[0] as asn1js.OctetString).valueBlock.valueHexView);
-    const hashAlgo = DIGEST_OID_TO_HASH[signerInfo.digestAlgorithm.algorithmId];
+    const eContentBer = signedData.encapContentInfo.eContent.toBER(false);
+    const eContentParsed = asn1js.fromBER(Buffer.from(eContentBer));
+    const eContentBytes =
+      eContentParsed.result instanceof asn1js.OctetString
+        ? Buffer.from(eContentParsed.result.getValue())
+        : Buffer.from(eContentBer);
+    const computedDigest = nodeCrypto.createHash(hashAlgo).update(eContentBytes).digest();
 
-    if (hashAlgo) {
-      const eContentBer = signedData.encapContentInfo.eContent.toBER(false);
-      const eContentParsed = asn1js.fromBER(Buffer.from(eContentBer));
-      const eContentBytes =
-        eContentParsed.result instanceof asn1js.OctetString
-          ? Buffer.from(eContentParsed.result.getValue())
-          : Buffer.from(eContentBer);
-      const computedDigest = nodeCrypto.createHash(hashAlgo).update(eContentBytes).digest();
-
-      if (!claimedDigest.equals(computedDigest)) {
-        throw new BadRequestError({ message: "SCEP message integrity check failed: messageDigest mismatch" });
-      }
+    if (!claimedDigest.equals(computedDigest)) {
+      throw new BadRequestError({ message: "SCEP message integrity check failed: messageDigest mismatch" });
     }
   }
 
-  // Verify the signature over the signed attributes
-  if (signerInfo.signature) {
-    const signedAttrsDer = Buffer.from(signerInfo.signedAttrs.toSchema().toBER(false));
-    // CMS spec (RFC 5652 §5.4): signed attributes are encoded as SET (0x31) for verification
-    signedAttrsDer[0] = 0x31;
-    const signatureBytes = Buffer.from(signerInfo.signature.valueBlock.valueHexView);
+  // RFC 5652 §5.3: signature field is mandatory in SignerInfo
+  if (!signerInfo.signature) {
+    throw new BadRequestError({ message: "Missing signature in SCEP SignerInfo" });
+  }
 
-    // Extract the digest algorithm from SignerInfo per RFC 5652 §5.3
-    const digestAlgoOid = signerInfo.digestAlgorithm.algorithmId;
-    if (!rsaVerify(signedAttrsDer, signatureBytes, signerCertDer, digestAlgoOid)) {
-      throw new BadRequestError({ message: "SCEP message signature verification failed" });
-    }
+  const signedAttrsDer = Buffer.from(signerInfo.signedAttrs.toSchema().toBER(false));
+  // CMS spec (RFC 5652 §5.4): signed attributes are encoded as SET (0x31) for verification
+  signedAttrsDer[0] = 0x31;
+  const signatureBytes = Buffer.from(signerInfo.signature.valueBlock.valueHexView);
+
+  if (!rsaVerify(signedAttrsDer, signatureBytes, signerCertDer, digestAlgoOid)) {
+    throw new BadRequestError({ message: "SCEP message signature verification failed" });
   }
 
   // For PKCSReq and RenewalReq, decrypt the inner EnvelopedData
@@ -118,6 +128,38 @@ export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): T
     csr,
     clientCipherOid
   };
+};
+
+// Match signer certificate by issuer + serial number from SignerInfo.sid (RFC 5652 §5.3)
+// instead of blindly taking the first certificate in the collection.
+const findSignerCertificate = (certificates: CertificateSetItem[], signerInfo: PkiSignerInfo): Certificate | null => {
+  // pkijs types SignerInfo.sid as any — extract issuer/serial via IssuerAndSerialNumber
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+  const { sid } = signerInfo;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  if (!sid?.issuer?.toSchema || !sid?.serialNumber?.valueBlock) {
+    const first = certificates[0];
+    return first instanceof Certificate ? first : null;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  const sidIssuerDer = Buffer.from(sid.issuer.toSchema().toBER(false) as ArrayBuffer);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const sidSerial = Buffer.from(sid.serialNumber.valueBlock.valueHexView as Uint8Array);
+
+  for (const cert of certificates) {
+    if (cert instanceof Certificate) {
+      const certIssuerDer = Buffer.from(cert.issuer.toSchema().toBER(false));
+      const certSerial = Buffer.from(cert.serialNumber.valueBlock.valueHexView);
+
+      if (sidIssuerDer.equals(certIssuerDer) && sidSerial.equals(certSerial)) {
+        return cert;
+      }
+    }
+  }
+
+  const first = certificates[0];
+  return first instanceof Certificate ? first : null;
 };
 
 const extractEContentBytes = (eContent: asn1js.BaseBlock): Buffer => {
