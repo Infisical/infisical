@@ -51,3 +51,21 @@ If the signature in the header matches the signature that you generated, then yo
   "timestamp": ""
 }
 ```
+
+```json
+{
+  "event": "secrets.rotation-failed",
+  "project": {
+    "workspaceId": "the workspace id",
+    "projectId": "the project id",
+    "projectName": "the project name",
+    "environment": "project environment",
+    "secretPath": "project folder path",
+    "rotationName": "name of the failed rotation",
+    "errorMessage": "error details",
+    "nextRetryTime": "next retry timestamp (if applicable)",
+    "triggeredManually": false
+  },
+  "timestamp": ""
+}
+```
