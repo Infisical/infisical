@@ -170,7 +170,6 @@ export const secretSharingServiceFactory = ({
         if (isOrgMember) {
           orgMemberEmails.push(email);
         } else if (
-          !allowExternalEmails ||
           !rootOrg.allowSecretSharingOutsideOrganization ||
           accessType === SecretSharingAccessType.Organization
         ) {
@@ -185,7 +184,7 @@ export const secretSharingServiceFactory = ({
     // const hasExternalEmails = emails && emails.length > orgMemberEmails.length;
     if (allowExternalEmails && !password) {
       throw new BadRequestError({
-        message: "A password is required when sharing secrets with users outside your organization"
+        message: "A password is required when sharing secrets with users outside of Infisical"
       });
     }
 
@@ -669,9 +668,9 @@ export const secretSharingServiceFactory = ({
 
       if (!isAuthorizedUser && !sharedSecret.allowExternalEmails) {
         if (!actorId) {
-          throw new UnauthorizedError();
+          throw new UnauthorizedError({ message: "Authentication required to view this secret" });
         }
-        throw new ForbiddenRequestError();
+        throw new ForbiddenRequestError({ message: "You are not authorized to view this secret" });
       }
 
       // all secrets pass through here, meaning we check if its expired first and then check if it needs verification

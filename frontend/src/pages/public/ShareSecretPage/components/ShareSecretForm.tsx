@@ -418,7 +418,7 @@ export const ShareSecretForm = ({
                             </p>
                             <p className="mt-2">
                               {isAllowingExternalEmails
-                                ? "External recipients (not in your organization) will need the password to view the secret. Authorized recipients will also need a password if the secret is password-protected."
+                                ? "External recipients (user without an Infisical account) will need the password to view the secret. Authorized recipients will also need a password if the secret is password-protected."
                                 : "Recipients must have an Infisical account to verify their identity."}
                             </p>
                           </>
@@ -442,11 +442,21 @@ export const ShareSecretForm = ({
                       field: { onChange, value: isChecked, ...field },
                       fieldState: { error }
                     }) => (
-                      <FormControl errorText={error?.message} isError={Boolean(error)}>
+                      <FormControl
+                        helperText={
+                          !allowSecretSharingOutsideOrganization ? (
+                            <span className="text-red-500">
+                              External sharing is disabled by your organization
+                            </span>
+                          ) : undefined
+                        }
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
                         <Switch
                           className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${isOrgAccess ? "opacity-50" : ""}`}
                           thumbClassName="bg-mineshaft-800"
-                          containerClassName="flex-row-reverse w-fit"
+                          containerClassName={`flex-row-reverse w-fit ${isOrgAccess ? "pointer-events-none opacity-50" : ""}`}
                           isChecked={isOrgAccess ? false : (isChecked ?? false)}
                           onCheckedChange={onChange}
                           isDisabled={isOrgAccess}
