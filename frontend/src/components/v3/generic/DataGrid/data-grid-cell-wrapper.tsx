@@ -156,7 +156,7 @@ export function DataGridCellWrapper<TData>({
       {...props}
       ref={composedRef}
       className={cn(
-        "size-full px-3 py-1.5 text-start text-sm text-mineshaft-200 outline-none",
+        "flex size-full items-center px-3 py-1.5 text-start text-sm text-mineshaft-200 outline-none **:data-[slot=grid-cell-content]:h-auto",
         {
           "ring-1 ring-ring ring-inset": isFocused,
           "bg-yellow-900/30": isSearchMatch && !isActiveSearchMatch,
