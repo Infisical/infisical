@@ -9,6 +9,7 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
+import { RequireMfaField } from "./RequireMfaField";
 
 const formSchema = genericAccountFieldsSchema.extend({
   credentials: z.object({
@@ -22,7 +23,8 @@ const formSchema = genericAccountFieldsSchema.extend({
       .min(1, "Password is required")
       .max(256, "Password must be 256 characters or less")
   }),
-  rotationEnabled: z.boolean().default(false)
+  rotationEnabled: z.boolean().default(false),
+  requireMfa: z.boolean().nullable().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -54,7 +56,8 @@ export const MongoDBAccountForm = ({ account, onSubmit }: Props) => {
             username: "",
             password: ""
           },
-          rotationEnabled: false
+          rotationEnabled: false,
+          requireMfa: false
         }
   });
 
@@ -127,6 +130,7 @@ export const MongoDBAccountForm = ({ account, onSubmit }: Props) => {
             )}
           />
         </div>
+        <RequireMfaField />
         <MetadataFields />
         <div className="mt-6 flex items-center">
           <Button
