@@ -25,7 +25,6 @@ import {
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { getAuthToken, isLoggedIn } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
-import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
 
@@ -49,7 +48,6 @@ export const SelectOrganizationSection = () => {
   const queryParams = new URLSearchParams(window.location.search);
   const orgId = queryParams.get("org_id");
   const callbackPort = queryParams.get("callback_port");
-  const isBreakglassRoute = queryParams.get("is_admin_login") === "true";
   const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
@@ -105,50 +103,8 @@ export const SelectOrganizationSection = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isBreakglassRoute;
-
-      if (isBreakglassRoute && !organization.bypassOrgAuthEnabled) {
-        createNotification({
-          text: "This organization does not have bypass org auth enabled",
-          type: "error"
-        });
-        return;
-      }
-
-      if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
-        const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
-
-        let url = "";
-        if (organization.googleSsoAuthEnforced) {
-          if (authToken.authMethod !== AuthMethod.GOOGLE) {
-            url = `/api/v1/sso/redirect/google?org_slug=${organization.slug}`;
-            if (callbackPort) {
-              url += `&callback_port=${callbackPort}`;
-            }
-          }
-        } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
-          if (authToken.authMethod !== AuthMethod.OIDC) {
-            url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
-              callbackPort ? `&callbackPort=${callbackPort}` : ""
-            }`;
-          }
-        } else if (organization.orgAuthMethod === AuthMethod.SAML) {
-          if (
-            !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
-          ) {
-            url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
-            if (callbackPort) {
-              url += `?callback_port=${callbackPort}`;
-            }
-          }
-        }
-
-        if (url) {
-          await logout.mutateAsync();
-          window.location.href = url;
-          return;
-        }
-      }
+      // SSO enforcement now happens at login time via domain-based rules,
+      // not at org selection time. Org selection always proceeds directly.
 
       let token;
       let isMfaEnabled;
@@ -230,9 +186,8 @@ export const SelectOrganizationSection = () => {
         return;
       }
 
-      // Sub-org: not in the flat list, so find its root org and inherit its SSO
-      // settings. Overriding only the id means selectOrganization will target the
-      // sub-org while still respecting the root org's auth enforcement rules.
+      // Sub-org: not in the flat list, so find its root org.
+      // Overriding only the id means selectOrganization will target the sub-org.
       const parentEntry = orgsWithSubOrgs.data?.find((rootOrg) =>
         rootOrg.subOrganizations.some((sub) => sub.id === id)
       );

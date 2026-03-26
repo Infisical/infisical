@@ -69,7 +69,6 @@ import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
-import { AuthMethod } from "@app/hooks/api/users/types";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
@@ -398,27 +397,8 @@ export const Navbar = () => {
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
 
-    if (org.authEnforced) {
-      // org has an org-level auth method enabled (e.g. SAML)
-      // -> logout + redirect to SAML SSO
-
-      await logout.mutateAsync();
-      if (org.orgAuthMethod === AuthMethod.OIDC) {
-        window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
-      } else {
-        window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
-      }
-      window.close();
-      return;
-    }
-
-    if (org.googleSsoAuthEnforced) {
-      await logout.mutateAsync();
-      window.open(`/api/v1/sso/redirect/google?org_slug=${org.slug}`);
-      window.close();
-      return;
-    }
-
+    // SSO enforcement is now domain-based and happens at login time,
+    // not when switching organizations.
     handleOrgSelection({ organizationId: org?.id });
   };
 

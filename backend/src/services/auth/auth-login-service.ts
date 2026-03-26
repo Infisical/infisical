@@ -1,29 +1,14 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  OrganizationActionScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TUsers,
-  UserDeviceSchema
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
-import {
-  BadRequestError,
-  DatabaseError,
-  ForbiddenRequestError,
-  NotFoundError,
-  UnauthorizedError
-} from "@app/lib/errors";
-import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { getMinExpiresIn } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -42,8 +27,7 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
-import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
-import { UserAliasType } from "../user-alias/user-alias-types";
+import { TUserAuthenticationDALFactory } from "../user-authentication/user-authentication-dal";
 import { enforceUserLockStatus, getAuthMethodAndOrgId, validateProviderAuthToken, verifyCaptcha } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -63,7 +47,10 @@ import {
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "updateById">;
+  userAuthenticationDAL: Pick<
+    TUserAuthenticationDALFactory,
+    "findByUserId" | "findByExternalIdAndType" | "create" | "deleteById" | "updateById"
+  >;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
@@ -73,13 +60,12 @@ type TAuthLoginServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
 export const authLoginServiceFactory = ({
   userDAL,
-  userAliasDAL,
+  userAuthenticationDAL,
   tokenService,
   smtpService,
   orgDAL,
@@ -88,14 +74,10 @@ export const authLoginServiceFactory = ({
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  keyStore,
-  permissionService
+  keyStore
 }: TAuthLoginServiceFactoryDep) => {
-  /*
-   * Private
-   * Not exported. This is to update user device list
-   * If new device is found. Will be saved and a mail will be send
-   */
+  // ── Private helpers ──
+
   const updateUserDeviceSession = async (user: TUsers, ip: string, userAgent: string, tx?: Knex) => {
     const devices = await UserDeviceSchema.parseAsync(user.devices || []);
     const isDeviceSeen = devices.some((device) => device.ip === ip && device.userAgent === userAgent);
@@ -129,10 +111,6 @@ export const authLoginServiceFactory = ({
     }
   };
 
-  /*
-   * Private
-   * Send mfa code via email
-   * */
   const sendUserMfaCode = async ({ userId, email }: { userId: string; email: string }) => {
     const code = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
@@ -143,18 +121,12 @@ export const authLoginServiceFactory = ({
       template: SmtpTemplates.EmailMfa,
       subjectLine: "Infisical MFA code",
       recipients: [email],
-      substitutions: {
-        code
-      }
+      substitutions: { code }
     });
   };
 
-  /*
-   * Generate the auth and refresh token.
-   * Shared by mfa verification, login verification with mfa disabled, and select organization.
-   * Note: device tracking (updateUserDeviceSession) is intentionally NOT called here —
-   * it must only run after full authentication (including MFA) is complete.
-   */
+  // ── Token generation ──
+
   const generateUserTokens = async (
     {
       user,
@@ -178,14 +150,7 @@ export const authLoginServiceFactory = ({
     tx?: Knex
   ) => {
     const cfg = getConfig();
-    const tokenSession = await tokenService.getUserTokenSession(
-      {
-        userAgent,
-        ip,
-        userId: user.id
-      },
-      tx
-    );
+    const tokenSession = await tokenService.getUserTokenSession({ userAgent, ip, userId: user.id }, tx);
     if (!tokenSession) throw new Error("Failed to create token");
 
     let tokenSessionExpiresIn: string | number = cfg.JWT_AUTH_LIFETIME;
@@ -240,47 +205,49 @@ export const authLoginServiceFactory = ({
     return { access: accessToken, refresh: refreshToken };
   };
 
-  /*
-   * Step 1 of login. To get server public key in exchange of client public key
-   */
+  // ── SRP Login (email/password) ──
+
   const loginGenServerPublicKey = async ({
     email,
     providerAuthToken,
     clientPublicKey
   }: TLoginGenServerPublicKeyDTO) => {
-    // akhilmhdh: case sensitive email resolution
-    const usersByUsername = await userDAL.findUserEncKeyByUsername({
-      username: email
-    });
+    const usersByUsername = await userDAL.findUserEncKeyByUsername({ username: email });
     const userEnc =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
-    const serverCfg = await getServerCfg();
-
-    if (!userEnc || (userEnc && !userEnc.isAccepted)) {
-      throw new Error("Failed to find user");
+    if (!userEnc || !userEnc.isAccepted) {
+      throw new BadRequestError({ message: "Invalid login credentials" });
     }
 
     if (!userEnc.salt || !userEnc.verifier) {
-      throw new BadRequestError({ message: "Salt or verifier not found" });
+      throw new BadRequestError({ message: "Invalid login credentials" });
     }
 
+    const serverCfg = await getServerCfg();
+
+    // Server-level login method check
     if (
       serverCfg.enabledLoginMethods &&
       !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
       !providerAuthToken
     ) {
-      // bypass server configuration when user is an organization admin - this is to prevent lockout
       const userOrgs = await orgDAL.findAllOrgsByUserId(userEnc.userId);
       if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
-        throw new BadRequestError({
-          message: "Login with email is disabled by administrator."
-        });
+        throw new BadRequestError({ message: "Login with email is disabled by administrator." });
       }
     }
 
-    if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
-      validateProviderAuthToken(providerAuthToken as string, email);
+    // Domain-based enforcement: check UserAuthentication.type
+    const userAuth = await userAuthenticationDAL.findByUserId(userEnc.userId);
+    if (userAuth && userAuth.type !== AuthMethod.EMAIL) {
+      // User's domain requires a different auth method — only allow if they have a valid provider token
+      if (!providerAuthToken) {
+        throw new BadRequestError({
+          message: "Invalid login credentials"
+        });
+      }
+      validateProviderAuthToken(providerAuthToken, email);
     }
 
     const serverSrpKey = await generateSrpServerKey(userEnc.salt, userEnc.verifier);
@@ -288,13 +255,10 @@ export const authLoginServiceFactory = ({
       clientPublicKey,
       serverPrivateKey: serverSrpKey.privateKey
     });
-    if (!userEncKeys) throw new Error("Failed  to update encryption key");
+    if (!userEncKeys) throw new Error("Failed to update encryption key");
     return { salt: userEncKeys.salt, serverPublicKey: serverSrpKey.pubKey };
   };
 
-  /*
-   * Step 2 of login. Pass the client proof and with multi factor setup handle the required steps
-   */
   const loginExchangeClientProof = async ({
     email,
     clientProof,
@@ -304,10 +268,7 @@ export const authLoginServiceFactory = ({
     captchaToken,
     password
   }: TLoginClientProofDTO) => {
-    // akhilmhdh: case sensitive email resolution
-    const usersByUsername = await userDAL.findUserEncKeyByUsername({
-      username: email
-    });
+    const usersByUsername = await userDAL.findUserEncKeyByUsername({ username: email });
     const userEnc =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
     if (!userEnc) throw new Error("Failed to find user");
@@ -331,38 +292,22 @@ export const authLoginServiceFactory = ({
     );
 
     if (!isValidClientProof) {
-      await userDAL.update(
-        { id: userEnc.userId },
-        {
-          $incr: {
-            consecutiveFailedPasswordAttempts: 1
-          }
-        }
-      );
-
+      await userDAL.update({ id: userEnc.userId }, { $incr: { consecutiveFailedPasswordAttempts: 1 } });
       throw new Error("Failed to authenticate. Try again?");
     }
 
-    await userDAL.updateById(userEnc.userId, {
-      consecutiveFailedPasswordAttempts: 0
-    });
-    // from password decrypt the private key
+    await userDAL.updateById(userEnc.userId, { consecutiveFailedPasswordAttempts: 0 });
+
     if (password) {
       const privateKey = await getUserPrivateKey(password, userEnc).catch((err) => {
-        logger.error(
-          err,
-          `loginExchangeClientProof: private key generation failed for [userId=${user.id}] and [email=${user.email}] `
-        );
+        logger.error(err, `loginExchangeClientProof: private key generation failed for [userId=${user.id}]`);
         return "";
       });
-
       const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
-
       const { iv, tag, ciphertext, encoding } = crypto
         .encryption()
         .symmetric()
         .encryptWithRootEncryptionKey(privateKey);
-
       await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
         serverPrivateKey: null,
         clientPublicKey: null,
@@ -380,10 +325,7 @@ export const authLoginServiceFactory = ({
     }
 
     const token = await generateUserTokens({
-      user: {
-        ...userEnc,
-        id: userEnc.userId
-      },
+      user: { ...userEnc, id: userEnc.userId },
       ip,
       userAgent,
       authMethod,
@@ -411,13 +353,10 @@ export const authLoginServiceFactory = ({
     const appCfg = getConfig();
 
     try {
-      const usersByUsername = await userDAL.findUserEncKeyByUsername({
-        username: email
-      });
+      const usersByUsername = await userDAL.findUserEncKeyByUsername({ username: email });
       const userEnc =
         usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
-
-      if (!userEnc) throw new BadRequestError({ message: "User not found" });
+      if (!userEnc) throw new BadRequestError({ message: "Invalid login credentials" });
 
       if (userEnc.encryptionVersion !== UserEncryption.V2) {
         throw new BadRequestError({
@@ -427,13 +366,13 @@ export const authLoginServiceFactory = ({
       }
 
       if (!userEnc.hashedPassword) {
-        if (userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
+        const userAuth = await userAuthenticationDAL.findByUserId(userEnc.userId);
+        if (userAuth?.type === AuthMethod.EMAIL) {
           throw new BadRequestError({
             message: "Legacy encryption scheme not supported",
             name: "LegacyEncryptionScheme"
           });
         }
-
         throw new BadRequestError({ message: "No password found" });
       }
 
@@ -441,23 +380,12 @@ export const authLoginServiceFactory = ({
       await verifyCaptcha(userEnc, captchaToken);
 
       if (!(await crypto.hashing().compareHash(password, userEnc.hashedPassword))) {
-        await userDAL.update(
-          { id: userEnc.userId },
-          {
-            $incr: {
-              consecutiveFailedPasswordAttempts: 1
-            }
-          }
-        );
-
+        await userDAL.update({ id: userEnc.userId }, { $incr: { consecutiveFailedPasswordAttempts: 1 } });
         throw new BadRequestError({ message: "Invalid username or email" });
       }
 
       const token = await generateUserTokens({
-        user: {
-          ...userEnc,
-          id: userEnc.userId
-        },
+        user: { ...userEnc, id: userEnc.userId },
         ip,
         userAgent,
         authMethod,
@@ -484,29 +412,13 @@ export const authLoginServiceFactory = ({
           userAgentType: getUserAgentType(userAgent),
           actor: {
             type: ActorType.USER,
-            metadata: {
-              email: userEnc.email,
-              userId: userEnc.userId,
-              username: userEnc.username,
-              authMethod
-            }
+            metadata: { email: userEnc.email, userId: userEnc.userId, username: userEnc.username, authMethod }
           },
-          event: {
-            type: EventType.USER_LOGIN,
-            metadata: {
-              organizationId
-            }
-          }
+          event: { type: EventType.USER_LOGIN, metadata: { organizationId } }
         });
       }
 
-      return {
-        tokens: {
-          accessToken: token.access,
-          refreshToken: token.refresh
-        },
-        user: userEnc
-      } as const;
+      return { tokens: { accessToken: token.access, refreshToken: token.refresh }, user: userEnc } as const;
     } catch (error) {
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
@@ -517,10 +429,13 @@ export const authLoginServiceFactory = ({
           "user_agent.original": userAgent
         });
       }
-
       throw error;
     }
   };
+
+  // ── Organization selection ──
+  // Auth enforcement is now handled by UserAuthentication.type at login time.
+  // This function only checks membership and MFA.
 
   const selectOrganization = async ({
     userAgent,
@@ -534,21 +449,17 @@ export const authLoginServiceFactory = ({
     organizationId: string;
   }) => {
     const cfg = getConfig();
-
     if (!authJwtToken) throw new UnauthorizedError({ name: "Authorization header is required" });
     if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
 
     // eslint-disable-next-line no-param-reassign
-    authJwtToken = authJwtToken.replace("Bearer ", ""); // remove bearer from token
-
-    // The decoded JWT token, which contains the auth method.
+    authJwtToken = authJwtToken.replace("Bearer ", "");
     const decodedToken = crypto.jwt().verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
     const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
     if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
-    // Check user membership in the sub-organization (direct or via group)
     const orgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.USER,
       actorId: user.id,
@@ -564,80 +475,29 @@ export const authLoginServiceFactory = ({
 
     const selectedOrg = await orgDAL.findById(organizationId);
     if (!selectedOrg) {
-      throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
+      throw new BadRequestError({ message: `Organization with ID '${organizationId}' not found` });
     }
 
     const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
-
     let rootOrg = selectedOrg;
 
     if (isSubOrganization) {
-      if (!selectedOrg.rootOrgId) {
-        throw new BadRequestError({
-          message: "Invalid sub-organization"
-        });
-      }
-
+      if (!selectedOrg.rootOrgId) throw new BadRequestError({ message: "Invalid sub-organization" });
       rootOrg = await orgDAL.findById(selectedOrg.rootOrgId);
-      if (!rootOrg) {
-        throw new BadRequestError({
-          message: "Invalid sub-organization"
-        });
-      }
+      if (!rootOrg) throw new BadRequestError({ message: "Invalid sub-organization" });
 
-      // Check user membership in the root organization
       const rootOrgMembership = await membershipUserDAL.findOne({
         actorUserId: user.id,
         scopeOrgId: selectedOrg.rootOrgId,
         scope: AccessScope.Organization,
         status: OrgMembershipStatus.Accepted
       });
-
       if (!rootOrgMembership) {
-        throw new ForbiddenRequestError({
-          message: "User does not have access to the root organization"
-        });
+        throw new ForbiddenRequestError({ message: "User does not have access to the root organization" });
       }
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: user.id,
-      orgId: rootOrg.id,
-      actorAuthMethod: decodedToken.authMethod,
-      actorOrgId: rootOrg.id,
-      scope: OrganizationActionScope.Any
-    });
-    const canBypassSso =
-      rootOrg.bypassOrgAuthEnabled &&
-      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-
-    if (
-      rootOrg.authEnforced &&
-      !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC &&
-      !canBypassSso
-    ) {
-      throw new BadRequestError({
-        message: "Login with the auth method required by your organization."
-      });
-    }
-
-    if (rootOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
-      if (!canBypassSso) {
-        throw new ForbiddenRequestError({
-          message: "Google SSO is enforced for this organization. Please use Google SSO to login.",
-          error: "GoogleSsoEnforced"
-        });
-      }
-    }
-
-    if (decodedToken.authMethod === AuthMethod.GOOGLE) {
-      await orgDAL.updateById(rootOrg.id, {
-        googleSsoAuthLastUsed: new Date()
-      });
-    }
-
+    // MFA check — based on user preference or org enforcement
     const shouldCheckMfa = rootOrg.enforceMfa || user.isMfaEnabled;
     const orgMfaMethod = rootOrg.enforceMfa ? (rootOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
     const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
@@ -646,23 +506,16 @@ export const authLoginServiceFactory = ({
     if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
-      const mfaToken = crypto.jwt().sign(
-        {
-          authMethod: decodedToken.authMethod,
-          authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: user.id
-        },
-        cfg.AUTH_SECRET,
-        {
-          expiresIn: cfg.JWT_MFA_LIFETIME
-        }
-      );
+      const mfaToken = crypto
+        .jwt()
+        .sign(
+          { authMethod: decodedToken.authMethod, authTokenType: AuthTokenType.MFA_TOKEN, userId: user.id },
+          cfg.AUTH_SECRET,
+          { expiresIn: cfg.JWT_MFA_LIFETIME }
+        );
 
       if (mfaMethod === MfaMethod.EMAIL && user.email) {
-        await sendUserMfaCode({
-          userId: user.id,
-          email: user.email
-        });
+        await sendUserMfaCode({ userId: user.id, email: user.email });
       }
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod } as const;
@@ -681,72 +534,7 @@ export const authLoginServiceFactory = ({
       mfaMethod: decodedToken.mfaMethod
     });
 
-    // In the event of this being a break-glass request (non-saml / non-oidc / non-google, when any is enforced)
-    const isAuthEnforcedBypass =
-      rootOrg.authEnforced &&
-      rootOrg.bypassOrgAuthEnabled &&
-      !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC &&
-      decodedToken.authMethod !== AuthMethod.GOOGLE;
-    const isGoogleSsoEnforcedBypass =
-      rootOrg.googleSsoAuthEnforced && rootOrg.bypassOrgAuthEnabled && decodedToken.authMethod !== AuthMethod.GOOGLE;
-    if (isAuthEnforcedBypass || isGoogleSsoEnforcedBypass) {
-      await auditLogService.createAuditLog({
-        orgId: organizationId,
-        ipAddress,
-        userAgent,
-        userAgentType: getUserAgentType(userAgent),
-        actor: {
-          type: ActorType.USER,
-          metadata: {
-            email: user.email,
-            userId: user.id,
-            username: user.username
-          }
-        },
-        event: {
-          type: EventType.ORG_ADMIN_BYPASS_SSO,
-          metadata: {}
-        }
-      });
-
-      // Notify all admins via email (besides the actor)
-      const orgAdmins = await orgDAL.findOrgMembersByRole(organizationId, OrgMembershipRole.Admin);
-      const adminEmails = orgAdmins
-        .filter((admin) => admin.user.id !== user.id)
-        .map((admin) => admin.user.email)
-        .filter(Boolean) as string[];
-
-      if (adminEmails.length > 0) {
-        await notificationService.createUserNotifications(
-          orgAdmins
-            .filter((admin) => admin.user.id !== user.id)
-            .map((admin) => ({
-              userId: admin.user.id,
-              orgId: organizationId,
-              type: NotificationType.ADMIN_SSO_BYPASS,
-              title: "Security Alert: SSO Bypass",
-              body: `The organization member **${user.email}** has bypassed enforced SSO login.`
-            }))
-        );
-
-        await smtpService.sendMail({
-          recipients: adminEmails,
-          subjectLine: "Security Alert: SSO Bypass",
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toISOString(),
-            ip: ipAddress,
-            userAgent,
-            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
-            orgId: organizationId
-          },
-          template: SmtpTemplates.OrgAdminBreakglassAccess
-        });
-      }
-    }
-
-    // Create audit log for organization selection
+    // Audit log for sub-org selection
     if (isSubOrganization) {
       await auditLogService.createAuditLog({
         orgId: organizationId,
@@ -755,12 +543,7 @@ export const authLoginServiceFactory = ({
         userAgentType: getUserAgentType(userAgent),
         actor: {
           type: ActorType.USER,
-          metadata: {
-            email: user.email,
-            userId: user.id,
-            username: user.username,
-            authMethod: decodedToken.authMethod
-          }
+          metadata: { email: user.email, userId: user.id, username: user.username, authMethod: decodedToken.authMethod }
         },
         event: {
           type: EventType.SELECT_SUB_ORGANIZATION,
@@ -779,95 +562,56 @@ export const authLoginServiceFactory = ({
         userAgentType: getUserAgentType(userAgent),
         actor: {
           type: ActorType.USER,
-          metadata: {
-            email: user.email,
-            userId: user.id,
-            username: user.username,
-            authMethod: decodedToken.authMethod
-          }
+          metadata: { email: user.email, userId: user.id, username: user.username, authMethod: decodedToken.authMethod }
         },
-        event: {
-          type: EventType.SELECT_ORGANIZATION,
-          metadata: {
-            organizationId,
-            organizationName: selectedOrg.name
-          }
-        }
+        event: { type: EventType.USER_LOGIN, metadata: { organizationId } }
       });
     }
-    return {
-      ...tokens,
-      user,
-      isMfaEnabled: false
-    };
+
+    return { isMfaEnabled: false, ...tokens, user } as const;
   };
 
-  /*
-   * Multi factor authentication re-send code, Get user id from token
-   * saved in frontend
-   */
-  const resendMfaToken = async (userId: string) => {
-    const user = await userDAL.findById(userId);
-    if (!user || !user.email) return;
-    enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-    await sendUserMfaCode({
-      userId: user.id,
-      email: user.email
-    });
-  };
+  // ── MFA ──
 
   const processFailedMfaAttempt = async (userId: string) => {
     try {
-      const updatedUser = await userDAL.transaction(async (tx) => {
+      return await userDAL.transaction(async (tx) => {
         const PROGRESSIVE_DELAY_INTERVAL = 3;
         const user = await userDAL.updateById(userId, { $incr: { consecutiveFailedMfaAttempts: 1 } }, tx);
-
-        if (!user) {
-          throw new Error("User not found");
-        }
+        if (!user) throw new Error("User not found");
 
         const progressiveDelaysInMins = [5, 30, 60];
 
-        // lock user when failed attempt exceeds threshold
         if (
           user.consecutiveFailedMfaAttempts &&
           user.consecutiveFailedMfaAttempts >= PROGRESSIVE_DELAY_INTERVAL * (progressiveDelaysInMins.length + 1)
         ) {
-          return userDAL.updateById(
-            userId,
-            {
-              isLocked: true,
-              temporaryLockDateEnd: null
-            },
-            tx
-          );
+          return userDAL.updateById(userId, { isLocked: true, temporaryLockDateEnd: null }, tx);
         }
 
-        // delay user only when failed MFA attempts is a multiple of configured delay interval
         if (user.consecutiveFailedMfaAttempts && user.consecutiveFailedMfaAttempts % PROGRESSIVE_DELAY_INTERVAL === 0) {
           const delayIndex = user.consecutiveFailedMfaAttempts / PROGRESSIVE_DELAY_INTERVAL - 1;
           return userDAL.updateById(
             userId,
-            {
-              temporaryLockDateEnd: new Date(new Date().getTime() + progressiveDelaysInMins[delayIndex] * 60 * 1000)
-            },
+            { temporaryLockDateEnd: new Date(new Date().getTime() + progressiveDelaysInMins[delayIndex] * 60 * 1000) },
             tx
           );
         }
 
         return user;
       });
-
-      return updatedUser;
     } catch (error) {
       throw new DatabaseError({ error, name: "Process failed MFA Attempt" });
     }
   };
 
-  /*
-   * Multi factor authentication verification of code
-   * Third step of login in which user completes with mfa
-   * */
+  const resendMfaToken = async (userId: string) => {
+    const user = await userDAL.findById(userId);
+    if (!user || !user.email) return;
+    enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+    await sendUserMfaCode({ userId: user.id, email: user.email });
+  };
+
   const verifyMfaToken = async ({
     userId,
     mfaToken,
@@ -884,104 +628,58 @@ export const authLoginServiceFactory = ({
     try {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
       if (mfaMethod === MfaMethod.EMAIL) {
-        await tokenService.validateTokenForUser({
-          type: TokenType.TOKEN_EMAIL_MFA,
-          userId,
-          code: mfaToken
-        });
+        await tokenService.validateTokenForUser({ type: TokenType.TOKEN_EMAIL_MFA, userId, code: mfaToken });
       } else if (mfaMethod === MfaMethod.TOTP) {
         if (isRecoveryCode) {
-          await totpService.verifyWithUserRecoveryCode({
-            userId,
-            recoveryCode: mfaToken
-          });
+          await totpService.verifyWithUserRecoveryCode({ userId, recoveryCode: mfaToken });
         } else {
-          if (mfaToken.length !== 6) {
-            throw new BadRequestError({
-              message: "Please use a valid TOTP code."
-            });
-          }
-          await totpService.verifyUserTotp({
-            userId,
-            totp: mfaToken
-          });
+          if (mfaToken.length !== 6) throw new BadRequestError({ message: "Please use a valid TOTP code." });
+          await totpService.verifyUserTotp({ userId, totp: mfaToken });
         }
       } else if (mfaMethod === MfaMethod.WEBAUTHN) {
-        if (!mfaToken) {
-          throw new BadRequestError({
-            message: "WebAuthn session token is required"
-          });
-        }
-        // Validate the one-time WebAuthn session token (passed as mfaToken)
-        await tokenService.validateTokenForUser({
-          type: TokenType.TOKEN_WEBAUTHN_SESSION,
-          userId,
-          code: mfaToken
-        });
+        if (!mfaToken) throw new BadRequestError({ message: "WebAuthn session token is required" });
+        await tokenService.validateTokenForUser({ type: TokenType.TOKEN_WEBAUTHN_SESSION, userId, code: mfaToken });
       }
     } catch (err) {
       const updatedUser = await processFailedMfaAttempt(userId);
-      if (updatedUser.isLocked) {
-        if (updatedUser.email) {
-          // Use a keystore lock to prevent sending duplicate unlock emails during concurrent requests
-          let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-          try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.UserMfaLockoutLock(userId)], 3000, {
-              retryCount: 0
+      if (updatedUser.isLocked && updatedUser.email) {
+        let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+        try {
+          lock = await keyStore.acquireLock([KeyStorePrefixes.UserMfaLockoutLock(userId)], 3000, { retryCount: 0 });
+          const emailAlreadySent = await keyStore.getItem(KeyStorePrefixes.UserMfaUnlockEmailSent(userId));
+          if (!emailAlreadySent) {
+            const unlockToken = await tokenService.createTokenForUser({
+              type: TokenType.TOKEN_USER_UNLOCK,
+              userId: updatedUser.id
             });
-
-            // Check if an unlock email was already sent recently (within 5 minutes)
-            const emailAlreadySent = await keyStore.getItem(KeyStorePrefixes.UserMfaUnlockEmailSent(userId));
-            if (!emailAlreadySent) {
-              const unlockToken = await tokenService.createTokenForUser({
-                type: TokenType.TOKEN_USER_UNLOCK,
-                userId: updatedUser.id
-              });
-
-              await smtpService.sendMail({
-                template: SmtpTemplates.UnlockAccount,
-                subjectLine: "Unlock your Infisical account",
-                recipients: [updatedUser.email],
-                substitutions: {
-                  token: unlockToken,
-                  callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock`
-                }
-              });
-
-              // Mark that an unlock email was sent, expires after 5 minutes
-              await keyStore.setItemWithExpiry(KeyStorePrefixes.UserMfaUnlockEmailSent(userId), 300, "1");
-            }
-          } catch (lockErr) {
-            if (lock) {
-              logger.error(lockErr, "Failed to send unlock email");
-            }
-          } finally {
-            if (lock) {
-              await lock.release();
-            }
+            await smtpService.sendMail({
+              template: SmtpTemplates.UnlockAccount,
+              subjectLine: "Unlock your Infisical account",
+              recipients: [updatedUser.email],
+              substitutions: {
+                token: unlockToken,
+                callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock`
+              }
+            });
+            await keyStore.setItemWithExpiry(KeyStorePrefixes.UserMfaUnlockEmailSent(userId), 300, "1");
           }
+        } catch (lockErr) {
+          if (lock) logger.error(lockErr, "Failed to send unlock email");
+        } finally {
+          if (lock) await lock.release();
         }
       }
-
       throw err;
     }
 
     const decodedToken = crypto.jwt().verify(mfaJwtToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
-
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
-    // reset lock states
-    await userDAL.updateById(userId, {
-      consecutiveFailedMfaAttempts: 0,
-      temporaryLockDateEnd: null
-    });
+    await userDAL.updateById(userId, { consecutiveFailedMfaAttempts: 0, temporaryLockDateEnd: null });
 
     const token = await generateUserTokens({
-      user: {
-        ...userEnc,
-        id: userEnc.userId
-      },
+      user: { ...userEnc, id: userEnc.userId },
       ip,
       userAgent,
       organizationId: orgId,
@@ -992,21 +690,10 @@ export const authLoginServiceFactory = ({
 
     return { token, user: userEnc };
   };
-  /*
-   * OAuth2 login for google,github, and other oauth2 provider
-   * */
-  const authMethodToAliasType = (method: AuthMethod): UserAliasType => {
-    switch (method) {
-      case AuthMethod.GOOGLE:
-        return UserAliasType.GOOGLE;
-      case AuthMethod.GITHUB:
-        return UserAliasType.GITHUB;
-      case AuthMethod.GITLAB:
-        return UserAliasType.GITLAB;
-      default:
-        throw new BadRequestError({ message: `Unsupported OAuth auth method: ${method}` });
-    }
-  };
+
+  // ── OAuth2 Login (Google, GitHub, GitLab) ──
+  // Uses UserAuthentication table. Enforces auth type — if a user's
+  // UserAuthentication.type is SSO (e.g., oidc), social login is blocked.
 
   const oauth2Login = async ({
     email,
@@ -1017,89 +704,68 @@ export const authLoginServiceFactory = ({
     orgSlug,
     providerUserId
   }: TOauthLoginDTO) => {
-    const aliasType = authMethodToAliasType(authMethod);
-
-    // Step 1: Look up user by provider alias (stable, immutable ID)
+    // Step 1: Look up user by UserAuthentication record
     let user: TUsers | undefined;
-    let isNewAlias = false;
-    const existingAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
-    if (existingAlias) {
-      user = await userDAL.findById(existingAlias.userId);
+    let isNewAuth = false;
+    const existingAuth = await userAuthenticationDAL.findByExternalIdAndType(providerUserId, authMethod);
+    if (existingAuth) {
+      user = await userDAL.findById(existingAuth.userId);
     }
 
-    // Step 2: Fall back to email lookup for existing users without an alias yet
+    // Step 2: Fall back to email lookup
     if (!user) {
       const usersByUsername = await userDAL.findUserByUsername(email);
       user = usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
       if (user) {
-        isNewAlias = true;
+        const currentAuth = await userAuthenticationDAL.findByUserId(user.id);
+        if (currentAuth && currentAuth.type !== authMethod && currentAuth.type !== AuthMethod.EMAIL) {
+          throw new BadRequestError({
+            message: "Unable to complete login with this method.",
+            name: "Oauth 2 login"
+          });
+        }
+        isNewAuth = true;
       }
     }
 
     const serverCfg = await getServerCfg();
 
+    // Server-level login method checks
     if (serverCfg.enabledLoginMethods && user) {
-      switch (authMethod) {
-        case AuthMethod.GITHUB: {
-          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITHUB)) {
-            // bypass server configuration when user is an organization admin - this is to prevent lockout
-            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
-              throw new BadRequestError({
-                message: "Login with Github is disabled by administrator.",
-                name: "Oauth 2 login"
-              });
-            }
-          }
-          break;
+      const loginMethodMap: Partial<Record<AuthMethod, LoginMethod>> = {
+        [AuthMethod.GITHUB]: LoginMethod.GITHUB,
+        [AuthMethod.GOOGLE]: LoginMethod.GOOGLE,
+        [AuthMethod.GITLAB]: LoginMethod.GITLAB
+      };
+      const requiredLoginMethod = loginMethodMap[authMethod];
+      if (requiredLoginMethod && !serverCfg.enabledLoginMethods.includes(requiredLoginMethod)) {
+        const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+        if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
+          throw new BadRequestError({
+            message: `Login with ${authMethod} is disabled by administrator.`,
+            name: "Oauth 2 login"
+          });
         }
-        case AuthMethod.GOOGLE: {
-          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GOOGLE)) {
-            // bypass server configuration when user is an organization admin - this is to prevent lockout
-            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
-              throw new BadRequestError({
-                message: "Login with Google is disabled by administrator.",
-                name: "Oauth 2 login"
-              });
-            }
-          }
-          break;
-        }
-        case AuthMethod.GITLAB: {
-          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITLAB)) {
-            // bypass server configuration when user is an organization admin - this is to prevent lockout
-            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
-              throw new BadRequestError({
-                message: "Login with Gitlab is disabled by administrator.",
-                name: "Oauth 2 login"
-              });
-            }
-          }
-          break;
-        }
-        default:
-          break;
       }
     }
 
     const appCfg = getConfig();
-
     let orgId = "";
     let orgName: undefined | string;
+
     if (!user) {
-      // Create a new user based on oAuth
+      // Create new user
       if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
 
       if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
         const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
-        if (!allowedDomains.includes(domain))
+        if (!allowedDomains.includes(domain)) {
           throw new BadRequestError({
             message: `Email with a domain (@${domain}) is not supported`,
             name: "Oauth 2 login"
           });
+        }
       }
 
       user = await userDAL.transaction(async (tx) => {
@@ -1110,7 +776,6 @@ export const authLoginServiceFactory = ({
             isEmailVerified: true,
             firstName,
             lastName,
-            authMethods: [authMethod],
             isGhost: false
           },
           tx
@@ -1118,12 +783,12 @@ export const authLoginServiceFactory = ({
 
         if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
           const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
-          if (!defaultOrg) {
+          if (!defaultOrg)
             throw new BadRequestError({
               message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
             });
-          }
           orgId = defaultOrg.id;
+
           const existingMembership = await orgDAL.findEffectiveOrgMembership({
             actorType: ActorType.USER,
             actorId: newUser.id,
@@ -1133,7 +798,6 @@ export const authLoginServiceFactory = ({
 
           if (!existingMembership) {
             const { role, roleId } = await getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole);
-
             const membership = await membershipUserDAL.create(
               {
                 actorUserId: newUser.id,
@@ -1145,46 +809,27 @@ export const authLoginServiceFactory = ({
               },
               tx
             );
-            await membershipRoleDAL.create(
-              {
-                membershipId: membership.id,
-                role,
-                customRoleId: roleId
-              },
-              tx
-            );
+            await membershipRoleDAL.create({ membershipId: membership.id, role, customRoleId: roleId }, tx);
           }
         }
 
-        await userAliasDAL.create(
-          {
-            userId: newUser.id,
-            aliasType,
-            externalId: providerUserId,
-            emails: [email],
-            orgId: orgId || null,
-            isEmailVerified: true
-          },
+        // Create UserAuthentication record
+        await userAuthenticationDAL.create(
+          { userId: newUser.id, type: authMethod, externalId: providerUserId, domain: email.split("@")[1] },
           tx
         );
 
         return newUser;
       });
     } else {
-      const isLinkingRequired = !user?.authMethods?.includes(authMethod);
-      if (isLinkingRequired) {
-        // we update the names here because upon org invitation, the names are set to be NULL
-        // if user is signing up with SSO after invitation, their names should be set based on their SSO profile
-        user = await userDAL.updateById(user.id, {
-          authMethods: [...(user.authMethods || []), authMethod],
-          firstName: !user.isAccepted ? firstName : undefined,
-          lastName: !user.isAccepted ? lastName : undefined
-        });
+      // Existing user — update names if invited but not yet accepted
+      if (!user.isAccepted) {
+        user = await userDAL.updateById(user.id, { firstName, lastName });
       }
 
-      // Sync email/username if the provider email has changed (user found by alias)
+      // Sync email if provider email changed
       const normalizedProviderEmail = email.trim().toLowerCase();
-      if (existingAlias && user.email !== normalizedProviderEmail) {
+      if (existingAuth && user.email !== normalizedProviderEmail) {
         const conflictingUsers = await userDAL.findUserByUsername(normalizedProviderEmail);
         const conflictingUser =
           conflictingUsers?.length > 1
@@ -1199,63 +844,51 @@ export const authLoginServiceFactory = ({
           });
         }
 
-        user = await userDAL.transaction(async (tx) => {
-          const updatedUser = await userDAL.updateById(
-            user!.id,
-            {
-              username: normalizedProviderEmail,
-              email: normalizedProviderEmail
-            },
-            tx
-          );
-
-          await userAliasDAL.updateById(
-            existingAlias.id,
-            {
-              emails: [normalizedProviderEmail]
-            },
-            tx
-          );
-
-          return updatedUser;
-        });
+        user = await userDAL.updateById(user.id, { username: normalizedProviderEmail, email: normalizedProviderEmail });
       }
     }
 
+    // Resolve org from slug if provided
     if (!orgId && orgSlug) {
       const org = await orgDAL.findOrgBySlug(orgSlug);
-
       if (org) {
-        // checks for the membership and only sets the orgId / orgName if the user is a member of the specified org (direct or via group)
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
+        const membership = await orgDAL.findEffectiveOrgMembership({
           actorType: ActorType.USER,
           actorId: user.id,
           orgId: org.id,
           status: OrgMembershipStatus.Accepted
         });
-
-        if (orgMembership?.isActive) {
+        if (membership?.isActive) {
           orgId = org.id;
           orgName = org.name;
         }
       }
     }
 
-    // Self-healing backfill: create alias for existing users found by email fallback
-    if (isNewAlias) {
+    // For existing users found by email who don't have a matching auth record:
+    // If they have no auth record at all, create one (new user completing setup).
+    // If they have a different auth type (e.g., email), block — they need to use
+    // the explicit account linking flow (which requires password confirmation).
+    if (isNewAuth) {
+      const currentAuth = await userAuthenticationDAL.findByUserId(user.id);
+      if (currentAuth) {
+        // User has a different auth method — don't silently swap.
+        // The explicit linking flow (with password confirmation) should be used instead.
+        throw new BadRequestError({
+          message: "Unable to complete login with this method.",
+          name: "Oauth 2 login"
+        });
+      }
       try {
-        await userAliasDAL.create({
+        await userAuthenticationDAL.create({
           userId: user.id,
-          aliasType,
+          type: authMethod,
           externalId: providerUserId,
-          emails: [email],
-          orgId: orgId || null,
-          isEmailVerified: true
+          domain: email.split("@")[1]
         });
       } catch (err) {
-        // Swallow duplicate key errors from the unique index (race condition: concurrent login already created the alias)
         if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
-          logger.warn(`OAuth alias backfill for user ${user.id} skipped: alias already exists`);
+          logger.warn(`OAuth auth backfill for user ${user.id} skipped: record already exists`);
         } else {
           throw err;
         }
@@ -1267,15 +900,9 @@ export const authLoginServiceFactory = ({
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
-
         ...(orgId && orgSlug && orgName !== undefined
-          ? {
-              organizationId: orgId,
-              organizationName: orgName,
-              organizationSlug: orgSlug
-            }
+          ? { organizationId: orgId, organizationName: orgName, organizationSlug: orgSlug }
           : {}),
-
         username: user.username,
         email: user.email,
         isEmailVerified: user.isEmailVerified,
@@ -1284,31 +911,17 @@ export const authLoginServiceFactory = ({
         hasExchangedPrivateKey: true,
         authMethod,
         isUserCompleted,
-        ...(callbackPort
-          ? {
-              callbackPort
-            }
-          : {})
+        ...(callbackPort ? { callbackPort } : {})
       },
       appCfg.AUTH_SECRET,
-      {
-        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
-      }
+      { expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME }
     );
 
     return { isUserCompleted, providerAuthToken, user, orgId, orgName };
   };
 
-  /**
-   * Handles OAuth2 token exchange for user login with private key handoff.
-   *
-   * The process involves exchanging a provider's authorization token for an Infisical access token.
-   * The provider token is returned to the client, who then sends it back to obtain the Infisical access token.
-   *
-   * This approach is used instead of directly sending the access token for the following reasons:
-   * 1. To facilitate easier logic changes from SRP OAuth to simple OAuth.
-   * 2. To avoid attaching the access token to the URL, which could be logged. The provider token has a very short lifespan, reducing security risks.
-   */
+  // ── OAuth2 Token Exchange ──
+
   const oauth2TokenExchange = async ({ userAgent, ip, providerAuthToken, email }: TOauthTokenExchangeDTO) => {
     const appCfg = getConfig();
     const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
@@ -1321,19 +934,14 @@ export const authLoginServiceFactory = ({
         ? decodedProviderToken.orgId
         : undefined;
 
-    // akhilmhdh: case sensitive email resolution
-    const usersByUsername = await userDAL.findUserEncKeyByUsername({
-      username: email
-    });
+    const usersByUsername = await userDAL.findUserEncKeyByUsername({ username: email });
     const userEnc =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
-
     if (!userEnc) throw new BadRequestError({ message: "User encryption not found" });
 
-    // Check MFA before issuing tokens — mirrors the logic in selectOrganization
+    // MFA check
     const user = await userDAL.findById(userEnc.userId);
     const org = organizationId ? await orgDAL.findById(organizationId) : null;
-    // for now check mfa in this state when your token is org scoped. If not we will do it in select org step
     const shouldCheckMfa = org?.enforceMfa || user?.isMfaEnabled;
 
     if (shouldCheckMfa && organizationId) {
@@ -1343,28 +951,20 @@ export const authLoginServiceFactory = ({
       const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
       const mfaMethod = orgMfaMethod ?? userMfaMethod;
 
-      const mfaToken = crypto.jwt().sign(
-        {
-          authMethod,
-          authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: userEnc.userId,
-          organizationId
-        },
-        appCfg.AUTH_SECRET,
-        {
-          expiresIn: appCfg.JWT_MFA_LIFETIME
-        }
-      );
+      const mfaTokenJwt = crypto
+        .jwt()
+        .sign(
+          { authMethod, authTokenType: AuthTokenType.MFA_TOKEN, userId: userEnc.userId, organizationId },
+          appCfg.AUTH_SECRET,
+          { expiresIn: appCfg.JWT_MFA_LIFETIME }
+        );
 
       if (mfaMethod === MfaMethod.EMAIL && userEnc.email) {
-        await sendUserMfaCode({
-          userId: userEnc.userId,
-          email: userEnc.email
-        });
+        await sendUserMfaCode({ userId: userEnc.userId, email: userEnc.email });
       }
 
       return {
-        token: { access: mfaToken, refresh: "" },
+        token: { access: mfaTokenJwt, refresh: "" },
         isMfaEnabled: true,
         mfaMethod,
         user: userEnc,
@@ -1388,20 +988,13 @@ export const authLoginServiceFactory = ({
         userAgentType: getUserAgentType(userAgent),
         actor: {
           type: ActorType.USER,
-          metadata: {
-            email: userEnc.email,
-            userId: userEnc.userId,
-            username: userEnc.username,
-            authMethod: decodedProviderToken.authMethod
-          }
+          metadata: { email: userEnc.email, userId: userEnc.userId, username: userEnc.username, authMethod }
         },
         event: {
           type: EventType.USER_LOGIN,
           metadata: {
             organizationId,
-            ...(isAuthMethodSaml(decodedProviderToken.authMethod) && {
-              authProvider: decodedProviderToken.authMethod
-            })
+            ...(isAuthMethodSaml(decodedProviderToken.authMethod) && { authProvider: decodedProviderToken.authMethod })
           }
         }
       });
@@ -1410,10 +1003,8 @@ export const authLoginServiceFactory = ({
     return { token, isMfaEnabled: false, user: userEnc, decodedProviderToken } as const;
   };
 
-  /*
-   * logout user by incrementing the version by 1 meaning any old session will become invalid
-   * as there number is behind
-   * */
+  // ── Logout ──
+
   const logout = async (userId: string, sessionId: string) => {
     await tokenService.clearTokenSessionById(userId, sessionId);
   };

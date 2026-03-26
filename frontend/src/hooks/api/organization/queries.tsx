@@ -132,8 +132,6 @@ export const useUpdateOrg = () => {
   return useMutation<object, object, UpdateOrgDTO>({
     mutationFn: ({
       name,
-      authEnforced,
-      googleSsoAuthEnforced,
       scimEnabled,
       slug,
       orgId,
@@ -141,7 +139,6 @@ export const useUpdateOrg = () => {
       enforceMfa,
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
-      bypassOrgAuthEnabled,
       userTokenExpiration,
       secretsProductEnabled,
       pkiProductEnabled,
@@ -156,15 +153,12 @@ export const useUpdateOrg = () => {
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
-        authEnforced,
-        googleSsoAuthEnforced,
         scimEnabled,
         slug,
         defaultMembershipRoleSlug,
         enforceMfa,
         selectedMfaMethod,
         allowSecretSharingOutsideOrganization,
-        bypassOrgAuthEnabled,
         userTokenExpiration,
         secretsProductEnabled,
         pkiProductEnabled,

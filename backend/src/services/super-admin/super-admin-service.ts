@@ -44,8 +44,7 @@ import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-team
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
-import { UserAliasType } from "../user-alias/user-alias-types";
+import { TUserAuthenticationDALFactory } from "../user-authentication/user-authentication-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
@@ -72,7 +71,7 @@ type TSuperAdminServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
+  userAuthenticationDAL: Pick<TUserAuthenticationDALFactory, "findByUserId">;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
@@ -130,7 +129,7 @@ export const superAdminServiceFactory = ({
   userDAL,
   identityDAL,
   orgDAL,
-  userAliasDAL,
+  userAuthenticationDAL,
   authService,
   orgService,
   keyStore,
@@ -321,23 +320,18 @@ export const superAdminServiceFactory = ({
 
     if (data.enabledLoginMethods) {
       const superAdminUser = await userDAL.findById(userId);
-      const isSamlConfiguredForUser = Boolean(
-        await userAliasDAL.findOne({
-          userId,
-          aliasType: UserAliasType.SAML
-        })
-      );
-
-      // We do not store SAML and OIDC auth values in the user authMethods field
-      // and so we infer its usage from the user's aliases
+      // Check user's auth type from UserAuthentication table
+      const userAuth = await userAuthenticationDAL.findByUserId(userId);
+      const samlTypes: string[] = [
+        AuthMethod.OKTA_SAML,
+        AuthMethod.AZURE_SAML,
+        AuthMethod.JUMPCLOUD_SAML,
+        AuthMethod.GOOGLE_SAML,
+        AuthMethod.KEYCLOAK_SAML
+      ];
+      const isSamlConfiguredForUser = Boolean(userAuth && samlTypes.includes(userAuth.type));
       const isUserSamlAccessEnabled = isSamlConfiguredForUser && data.enabledLoginMethods.includes(LoginMethod.SAML);
-      const isOidcConfiguredForUser = Boolean(
-        await userAliasDAL.findOne({
-          userId,
-          aliasType: UserAliasType.OIDC
-        })
-      );
-
+      const isOidcConfiguredForUser = Boolean(userAuth && userAuth.type === "oidc");
       const isUserOidcAccessEnabled = isOidcConfiguredForUser && data.enabledLoginMethods.includes(LoginMethod.OIDC);
 
       const loginMethodToAuthMethod = {

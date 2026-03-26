@@ -13,6 +13,7 @@ import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/au
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
+import { TDomainSsoConnectorServiceFactory } from "@app/ee/services/domain-sso-connector/domain-sso-connector-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
@@ -397,6 +398,7 @@ declare module "fastify" {
       appConnectionCredentialRotation: TAppConnectionCredentialRotationServiceFactory;
       caSigningConfig: TCaSigningConfigServiceFactory;
       caAutoRenewalQueue: TCaAutoRenewalQueueFactory;
+      domainSsoConnector: TDomainSsoConnectorServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -36,8 +36,8 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
-import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserAuthenticationDALFactory } from "@app/services/user-authentication/user-authentication-dal";
 
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
 import {
@@ -60,7 +60,10 @@ type TOidcConfigServiceFactoryDep = {
     | "find"
     | "transaction"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
+  userAuthenticationDAL: Pick<
+    TUserAuthenticationDALFactory,
+    "findByUserId" | "findByExternalIdAndType" | "create" | "deleteById" | "updateById"
+  >;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -94,7 +97,7 @@ export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFacto
 export const oidcConfigServiceFactory = ({
   orgDAL,
   userDAL,
-  userAliasDAL,
+  userAuthenticationDAL,
   licenseService,
   permissionService,
   tokenService,
@@ -185,22 +188,20 @@ export const oidcConfigServiceFactory = ({
     }
 
     const appCfg = getConfig();
-    let userAlias = await userAliasDAL.findOne({
-      externalId,
-      orgId,
-      aliasType: UserAliasType.OIDC
-    });
+    // Look up by externalId — auth is org-independent in the new model
+    let userAuth = await userAuthenticationDAL.findByExternalIdAndType(externalId, "oidc");
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     let user: TUsers;
-    if (userAlias) {
+    if (userAuth) {
+      const foundAuth = userAuth; // capture for closure narrowing
       user = await userDAL.transaction(async (tx) => {
-        const foundUser = await userDAL.findById(userAlias.userId, tx);
+        const foundUser = await userDAL.findById(foundAuth.userId, tx);
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: foundAuth.userId,
             [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
             [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
@@ -211,7 +212,7 @@ export const oidcConfigServiceFactory = ({
 
           const membership = await orgDAL.createMembership(
             {
-              actorUserId: userAlias.userId,
+              actorUserId: foundAuth.userId,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
               status: OrgMembershipStatus.Accepted,
@@ -308,28 +309,35 @@ export const oidcConfigServiceFactory = ({
               isEmailVerified: serverCfg.trustOidcEmails,
               username: serverCfg.trustOidcEmails ? email : uniqueUsername,
               lastName,
-              authMethods: [],
               isGhost: false
             },
             tx
           );
         }
 
-        userAlias = await userAliasDAL.create(
-          {
-            userId: newUser.id,
-            aliasType: UserAliasType.OIDC,
-            externalId,
-            emails: email ? [email] : [],
-            orgId,
-            isEmailVerified: serverCfg.trustOidcEmails
-          },
-          tx
-        );
+        // Create or update UserAuthentication record
+        const existingAuth = await userAuthenticationDAL.findByUserId(newUser.id);
+        if (existingAuth && !existingAuth.externalId) {
+          // Takeover case: row exists with null externalId, fill it in
+          await userAuthenticationDAL.updateById(existingAuth.id, { externalId });
+          userAuth = { ...existingAuth, externalId };
+        } else if (!existingAuth) {
+          userAuth = await userAuthenticationDAL.create(
+            {
+              userId: newUser.id,
+              type: "oidc",
+              externalId,
+              domain: email.split("@")[1]
+            },
+            tx
+          );
+        } else {
+          userAuth = existingAuth;
+        }
 
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAuth.userId,
             [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
             [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
@@ -454,22 +462,20 @@ export const oidcConfigServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
+    const isUserCompleted = Boolean(user.isAccepted) && user.isEmailVerified;
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
-        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
+        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,
         organizationId: organization.id,
         organizationSlug: organization.slug,
         hasExchangedPrivateKey: true,
-        aliasId: userAlias.id,
         authMethod: AuthMethod.OIDC,
-        authType: UserAliasType.OIDC,
         isUserCompleted,
         ...(callbackPort && { callbackPort })
       },
@@ -481,11 +487,10 @@ export const oidcConfigServiceFactory = ({
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    if (user.email && !userAlias.isEmailVerified) {
+    if (user.email && !user.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
-        userId: user.id,
-        aliasId: userAlias.id
+        userId: user.id
       });
 
       await smtpService

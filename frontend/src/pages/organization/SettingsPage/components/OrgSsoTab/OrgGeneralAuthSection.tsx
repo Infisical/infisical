@@ -1,463 +1,234 @@
 import { useState } from "react";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Modal, ModalClose, ModalContent, Switch, Tooltip } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
+import { Button } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import type { DomainSsoConnector } from "@app/hooks/api/domainSsoConnector";
 import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  useOrganization,
-  useSubscription
-} from "@app/context";
-import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
-import { usePopUp } from "@app/hooks/usePopUp";
+  useClaimDomain,
+  useDeleteDomainConnector,
+  useTakeoverDomain,
+  useVerifyDomain
+} from "@app/hooks/api/domainSsoConnector";
 
-enum EnforceAuthType {
-  SAML = "saml",
-  GOOGLE = "google",
-  OIDC = "oidc"
-}
-
-export const OrgGeneralAuthSection = ({
-  isSamlConfigured,
-  isOidcConfigured,
-  isGoogleConfigured,
-  isSamlActive,
-  isOidcActive,
-  isLdapActive
-}: {
-  isSamlConfigured: boolean;
-  isOidcConfigured: boolean;
-  isGoogleConfigured: boolean;
+type Props = {
   isSamlActive: boolean;
   isOidcActive: boolean;
   isLdapActive: boolean;
-}) => {
-  const { currentOrg } = useOrganization();
-  const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "upgradePlan",
-    "enforceSamlSsoConfirmation"
-  ] as const);
+};
 
-  const { mutateAsync } = useUpdateOrg();
+export const OrgGeneralAuthSection = ({ isSamlActive, isOidcActive, isLdapActive }: Props) => {
+  const [newDomain, setNewDomain] = useState("");
+  const [connectors, setConnectors] = useState<DomainSsoConnector[]>([]);
 
-  const logout = useLogoutUser();
-  const [bypassEnabledInModal, setBypassEnabledInModal] = useState(false);
-  const [enforcementTypeInModal, setEnforcementTypeInModal] = useState<EnforceAuthType | null>(
-    null
-  );
+  const claimDomain = useClaimDomain();
+  const verifyDomain = useVerifyDomain();
+  const takeoverDomain = useTakeoverDomain();
+  const deleteDomainConnector = useDeleteDomainConnector();
 
-  const handleEnforceSsoConfirm = async () => {
-    if (!currentOrg?.id || !enforcementTypeInModal) return;
+  const getSsoType = () => {
+    if (isOidcActive) return "oidc";
+    if (isSamlActive) return "saml";
+    if (isLdapActive) return "ldap";
+    return "oidc";
+  };
+
+  const handleClaimDomain = async () => {
+    if (!newDomain.trim()) return;
 
     try {
-      if (bypassEnabledInModal && !currentOrg?.bypassOrgAuthEnabled) {
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          bypassOrgAuthEnabled: true
-        });
-      }
-
-      if (enforcementTypeInModal === EnforceAuthType.SAML) {
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          authEnforced: true
-        });
-
-        createNotification({
-          text: "Successfully enabled org-level SAML SSO enforcement",
-          type: "success"
-        });
-
-        handlePopUpToggle("enforceSamlSsoConfirmation", false);
-        setBypassEnabledInModal(false);
-        setEnforcementTypeInModal(null);
-
-        await logout.mutateAsync();
-        window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
-        window.close();
-      } else if (enforcementTypeInModal === EnforceAuthType.GOOGLE) {
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          googleSsoAuthEnforced: true
-        });
-
-        createNotification({
-          text: "Successfully enabled org-level Google SSO enforcement",
-          type: "success"
-        });
-
-        handlePopUpToggle("enforceSamlSsoConfirmation", false);
-        setBypassEnabledInModal(false);
-        setEnforcementTypeInModal(null);
-
-        await logout.mutateAsync();
-        window.open(`/api/v1/sso/redirect/google?org_slug=${currentOrg.slug}`);
-        window.close();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleEnforceOrgAuthToggle = async (value: boolean, type: EnforceAuthType) => {
-    if (!currentOrg?.id) return;
-
-    if (type === EnforceAuthType.SAML) {
-      if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
-        setEnforcementTypeInModal(EnforceAuthType.SAML);
-        handlePopUpOpen("enforceSamlSsoConfirmation");
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        authEnforced: value
+      const connector = await claimDomain.mutateAsync({
+        domain: newDomain.trim().toLowerCase(),
+        type: getSsoType()
       });
-
+      setConnectors((prev) => [...prev, connector]);
+      setNewDomain("");
       createNotification({
-        text: "Successfully disabled org-level SAML SSO enforcement",
-        type: "success"
+        type: "success",
+        text: `Domain "${connector.domain}" claimed. Add the DNS TXT record to verify.`
       });
-      return;
-    }
-
-    if (type === EnforceAuthType.GOOGLE) {
-      if (!subscription?.enforceGoogleSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
-        setEnforcementTypeInModal(EnforceAuthType.GOOGLE);
-        handlePopUpOpen("enforceSamlSsoConfirmation");
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        googleSsoAuthEnforced: value
-      });
-
+    } catch (err: any) {
       createNotification({
-        text: "Successfully disabled org-level Google SSO enforcement",
-        type: "success"
-      });
-    } else if (type === EnforceAuthType.OIDC) {
-      if (!subscription?.oidcSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        authEnforced: value
-      });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} org-level OIDC SSO enforcement`,
-        type: "success"
-      });
-
-      if (value) {
-        await logout.mutateAsync();
-        window.close();
-      }
-    } else {
-      createNotification({
-        text: `Invalid auth enforcement type ${type}`,
-        type: "error"
+        type: "error",
+        text: err?.response?.data?.message || "Failed to claim domain"
       });
     }
   };
 
-  const handleEnableBypassOrgAuthToggle = async (value: boolean) => {
+  const handleVerifyDomain = async (connector: DomainSsoConnector) => {
     try {
-      if (!currentOrg?.id) return;
-      if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        bypassOrgAuthEnabled: value
-      });
-
+      const updated = await verifyDomain.mutateAsync({ connectorId: connector.id });
+      setConnectors((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      createNotification({ type: "success", text: `Domain "${connector.domain}" verified.` });
+    } catch (err: any) {
       createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} admin bypassing of org-level auth`,
-        type: "success"
+        type: "error",
+        text:
+          err?.response?.data?.message ||
+          "DNS verification failed. Make sure the TXT record is set."
       });
-    } catch (err) {
-      console.error(err);
     }
   };
 
-  const isGoogleOAuthEnforced = currentOrg.googleSsoAuthEnforced;
+  const handleTakeover = async (connector: DomainSsoConnector) => {
+    try {
+      await takeoverDomain.mutateAsync({ connectorId: connector.id });
+      createNotification({
+        type: "success",
+        text: `Domain takeover complete. All users on "${connector.domain}" must now use SSO.`
+      });
+    } catch (err: any) {
+      createNotification({
+        type: "error",
+        text: err?.response?.data?.message || "Failed to take over domain"
+      });
+    }
+  };
 
-  const getActiveSsoLabel = () => {
-    if (isSamlActive) return "SAML";
-    if (isOidcActive) return "OIDC";
-    if (isLdapActive) return "LDAP";
-    return "";
+  const handleDelete = async (connector: DomainSsoConnector) => {
+    try {
+      await deleteDomainConnector.mutateAsync({ connectorId: connector.id });
+      setConnectors((prev) => prev.filter((c) => c.id !== connector.id));
+      createNotification({ type: "success", text: `Domain "${connector.domain}" released.` });
+    } catch (err: any) {
+      createNotification({
+        type: "error",
+        text: err?.response?.data?.message || "Failed to delete domain connector"
+      });
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    createNotification({ type: "success", text: "Copied to clipboard" });
   };
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <div>
-        <p className="text-xl font-medium text-gray-200">SSO Enforcement</p>
-        <p className="mt-1 mb-2 text-gray-400">
-          Manage strict enforcement of specific authentication methods for your organization.
+      <div className="mb-4">
+        <p className="text-xl font-medium text-gray-200">Domain SSO Enforcement</p>
+        <p className="mt-1 text-sm text-gray-400">
+          Claim and verify your email domains to enforce SSO for all users on those domains. Once a
+          domain is verified and taken over, users on that domain can only authenticate through your
+          configured SSO provider.
         </p>
       </div>
-      <div className="flex flex-col gap-2 py-4">
-        <div className={twMerge("mt-4", (!isSamlConfigured || isGoogleOAuthEnforced) && "hidden")}>
-          <div className="mb-2 flex justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-md text-mineshaft-100">Enforce SAML SSO</span>
-            </div>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Switch
-                  id="enforce-saml-auth"
-                  onCheckedChange={(value) =>
-                    handleEnforceOrgAuthToggle(value, EnforceAuthType.SAML)
-                  }
-                  isChecked={currentOrg?.authEnforced ?? false}
-                  isDisabled={!isAllowed || currentOrg?.googleSsoAuthEnforced}
-                />
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Enforce users to authenticate via SAML to access this organization.
-            <br />
-            When this is enabled your organization members will only be able to login with SAML.
-          </p>
-        </div>
 
-        <div className={twMerge("mt-4", (!isOidcConfigured || isGoogleOAuthEnforced) && "hidden")}>
-          <div className="mb-2 flex justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-md text-mineshaft-100">Enforce OIDC SSO</span>
-            </div>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Switch
-                  id="enforce-oidc-auth"
-                  isChecked={currentOrg?.authEnforced ?? false}
-                  onCheckedChange={(value) =>
-                    handleEnforceOrgAuthToggle(value, EnforceAuthType.OIDC)
-                  }
-                  isDisabled={!isAllowed}
-                />
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Enforce users to authenticate via OIDC to access this organization.
-            <br />
-            When this is enabled your organization members will only be able to login with OIDC.
-          </p>
-        </div>
-
-        <div className={twMerge("mt-2", !isGoogleConfigured && "hidden")}>
-          <div className="mb-2 flex justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-md text-mineshaft-100">Enforce Google OAuth</span>
-            </div>
-            <OrgPermissionCan
-              I={OrgPermissionActions.Edit}
-              a={OrgPermissionSubjects.Sso}
-              tooltipProps={{
-                className: "max-w-sm",
-                side: "left"
-              }}
-              allowedLabel={
-                isOidcActive || isSamlActive || isLdapActive
-                  ? `You cannot enforce Google OAuth while ${getActiveSsoLabel()} SSO is enabled. Disable ${getActiveSsoLabel()} SSO to enforce Google OAuth.`
-                  : undefined
-              }
-              renderTooltip={isOidcActive || isSamlActive || isLdapActive}
-            >
-              {(isAllowed) => (
-                <div>
-                  <Switch
-                    id="enforce-google-sso"
-                    onCheckedChange={(value) =>
-                      handleEnforceOrgAuthToggle(value, EnforceAuthType.GOOGLE)
-                    }
-                    isChecked={currentOrg?.googleSsoAuthEnforced ?? false}
-                    isDisabled={
-                      !isAllowed ||
-                      currentOrg?.authEnforced ||
-                      isOidcActive ||
-                      isSamlActive ||
-                      isLdapActive
-                    }
-                  />
-                </div>
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Enforce users to authenticate via Google OAuth to access this organization.
-            <br />
-            When this is enabled your organization members will only be able to login with Google
-            OAuth (not Google SAML).
-          </p>
-        </div>
-      </div>
-      <div className="mt-4 py-4">
-        <div className="mb-2 flex justify-between">
-          <div className="flex items-center gap-1">
-            <span className="text-md text-mineshaft-100">Enable Admin SSO Bypass</span>
-            <Tooltip
-              className="max-w-lg"
-              content={
-                <div>
-                  <span>
-                    When enabling admin SSO bypass, we highly recommend enabling MFA enforcement at
-                    the organization-level for security reasons.
-                  </span>
-                  <p className="mt-4">
-                    In case of a lockout, admins can use the{" "}
-                    <a
-                      target="_blank"
-                      className="underline underline-offset-2 hover:text-mineshaft-300"
-                      href="https://infisical.com/docs/documentation/platform/sso/overview#sso-break-glass"
-                      rel="noreferrer"
-                    >
-                      Admin Login Portal
-                    </a>{" "}
-                    at{" "}
-                    <a
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2 hover:text-mineshaft-300"
-                      href={`${window.location.origin}/login/admin`}
-                    >
-                      {window.location.origin}/login/admin
-                    </a>
-                  </p>
-                </div>
-              }
-            >
-              <FontAwesomeIcon
-                icon={faInfoCircle}
-                size="sm"
-                className="mt-0.5 inline-block text-mineshaft-400"
+      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+        {(isAllowed) => (
+          <>
+            <div className="mb-4 flex gap-2">
+              <input
+                type="text"
+                placeholder="company-a.com"
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleClaimDomain()}
+                disabled={!isAllowed}
+                className="flex-1 rounded border border-mineshaft-500 bg-mineshaft-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:border-primary/50 focus:outline-none"
               />
-            </Tooltip>
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-            {(isAllowed) => (
-              <Switch
-                id="allow-admin-bypass"
-                isChecked={currentOrg?.bypassOrgAuthEnabled ?? false}
-                onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
-                isDisabled={!isAllowed}
-              />
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          <span>
-            Allow organization admins to bypass SSO login enforcement when your SSO provider is
-            unavailable, misconfigured, or inaccessible.
-          </span>
-        </p>
-      </div>
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to enforce SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
-      />
-      <Modal
-        isOpen={popUp.enforceSamlSsoConfirmation.isOpen}
-        onOpenChange={(isOpen) => {
-          handlePopUpToggle("enforceSamlSsoConfirmation", isOpen);
-          setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
-          if (!isOpen) {
-            setEnforcementTypeInModal(null);
-          }
-        }}
-      >
-        <ModalContent
-          className="max-w-2xl"
-          title={`Enforce ${enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} SSO`}
-        >
-          <NoticeBannerV2
-            title={`Warning: This action will enforce ${enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} SSO authentication`}
-          >
-            <p className="my-2 text-sm text-mineshaft-300">
-              All users will be required to authenticate via{" "}
-              {enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} SSO to access
-              this organization. Other authentication methods will be disabled.
-            </p>
-            <p className="text-sm font-medium text-mineshaft-200">
-              Before proceeding, ensure your{" "}
-              {enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} provider is
-              available and properly configured to avoid access issues.
-            </p>
-          </NoticeBannerV2>
-
-          {!currentOrg?.bypassOrgAuthEnabled && (
-            <div className="mt-4 flex items-center justify-between rounded-md bg-mineshaft-800/50 py-3 pr-1 pl-2">
-              <div className="flex-1 pr-3">
-                <p className="text-sm font-medium text-gray-200">Enable Admin SSO Bypass</p>
-                <p className="mt-1 text-sm text-gray-400">
-                  Allow organization admins to bypass SSO login enforcement if they experience any
-                  issues with their{" "}
-                  {enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} provider
-                </p>
-              </div>
-              <Switch
-                id="bypass-enabled-modal"
-                isChecked={bypassEnabledInModal}
-                onCheckedChange={setBypassEnabledInModal}
-              />
-            </div>
-          )}
-
-          <div className="mt-6 flex gap-2">
-            <Button
-              onClick={handleEnforceSsoConfirm}
-              className="mr-4"
-              size="sm"
-              colorSchema="primary"
-            >
-              Enable Enforcement
-            </Button>
-            <ModalClose asChild>
               <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => {
-                  handlePopUpToggle("enforceSamlSsoConfirmation", false);
-                  setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
-                  setEnforcementTypeInModal(null);
-                }}
+                onClick={handleClaimDomain}
+                isDisabled={!isAllowed || !newDomain.trim()}
+                isLoading={claimDomain.isPending}
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                size="sm"
               >
-                Cancel
+                Claim Domain
               </Button>
-            </ModalClose>
-          </div>
-        </ModalContent>
-      </Modal>
+            </div>
+
+            {connectors.length > 0 && (
+              <div className="space-y-3">
+                {connectors.map((connector) => (
+                  <div
+                    key={connector.id}
+                    className="flex items-center justify-between rounded border border-mineshaft-600 bg-mineshaft-800 px-4 py-3"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm text-gray-200">{connector.domain}</span>
+                        <span
+                          className={`rounded px-2 py-0.5 text-xs font-medium ${
+                            connector.verificationStatus === "verified"
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-yellow-500/20 text-yellow-400"
+                          }`}
+                        >
+                          {connector.verificationStatus}
+                        </span>
+                        <span className="rounded bg-mineshaft-600 px-2 py-0.5 text-xs text-gray-400">
+                          {connector.type}
+                        </span>
+                      </div>
+
+                      {connector.verificationStatus === "pending" && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-400">
+                            Add this DNS TXT record to verify domain ownership:
+                          </p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <code className="rounded bg-mineshaft-700 px-2 py-1 text-xs text-gray-300">
+                              {connector.verificationToken}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(connector.verificationToken)}
+                              className="text-gray-400 hover:text-gray-200"
+                            >
+                              <FontAwesomeIcon icon={faCopy} size="sm" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {connector.verificationStatus === "pending" && (
+                        <Button
+                          onClick={() => handleVerifyDomain(connector)}
+                          isLoading={verifyDomain.isPending}
+                          isDisabled={!isAllowed}
+                          size="xs"
+                          variant="outline_bg"
+                          leftIcon={<FontAwesomeIcon icon={faCheck} />}
+                        >
+                          Verify
+                        </Button>
+                      )}
+                      {connector.verificationStatus === "verified" && (
+                        <Button
+                          onClick={() => handleTakeover(connector)}
+                          isLoading={takeoverDomain.isPending}
+                          isDisabled={!isAllowed}
+                          size="xs"
+                          colorSchema="primary"
+                        >
+                          Enforce SSO
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => handleDelete(connector)}
+                        isLoading={deleteDomainConnector.isPending}
+                        isDisabled={!isAllowed}
+                        size="xs"
+                        colorSchema="danger"
+                        variant="outline_bg"
+                        leftIcon={<FontAwesomeIcon icon={faTrash} />}
+                      >
+                        Release
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </OrgPermissionCan>
     </div>
   );
 };

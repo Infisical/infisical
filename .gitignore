@@ -75,3 +75,4 @@ backend/bdd/.bdd-infisical-bootstrap-result.json
 
 /npm/bin
 __pycache__
+.claude/worktrees/

@@ -102,8 +102,6 @@ export const OrgSSOSection = (): JSX.Element => {
     }
   };
 
-  const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
-
   return (
     <div className="space-y-4">
       <div className="mb-4 flex items-center justify-between">
@@ -125,27 +123,14 @@ export const OrgSSOSection = (): JSX.Element => {
         <div className="mb-2 flex items-center justify-between pt-4">
           <h2 className="text-md text-mineshaft-100">Enable SAML</h2>
           {!isPending && (
-            <OrgPermissionCan
-              I={OrgPermissionActions.Edit}
-              a={OrgPermissionSubjects.Sso}
-              tooltipProps={{
-                className: "max-w-sm",
-                side: "left"
-              }}
-              allowedLabel={
-                isGoogleOAuthEnabled
-                  ? "You cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
-                  : undefined
-              }
-              renderTooltip={isGoogleOAuthEnabled}
-            >
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
               {(isAllowed) => (
                 <div>
                   <Switch
                     id="enable-saml-sso"
                     onCheckedChange={(value) => handleSamlSSOToggle(value)}
                     isChecked={data ? data.isActive : false}
-                    isDisabled={!isAllowed || isGoogleOAuthEnabled}
+                    isDisabled={!isAllowed}
                   />
                 </div>
               )}

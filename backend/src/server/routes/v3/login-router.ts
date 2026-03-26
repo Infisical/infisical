@@ -69,7 +69,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       if (tokens.isMfaEnabled) {
         return {
-          token: tokens.mfa as string,
+          token: tokens.mfa,
           isMfaEnabled: true,
           mfaMethod: tokens.mfaMethod
         };

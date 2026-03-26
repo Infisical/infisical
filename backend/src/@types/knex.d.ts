@@ -125,6 +125,9 @@ import {
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
+  TDomainSsoConnectors,
+  TDomainSsoConnectorsInsert,
+  TDomainSsoConnectorsUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -614,6 +617,9 @@ import {
   TUserAliases,
   TUserAliasesInsert,
   TUserAliasesUpdate,
+  TUserAuthentications,
+  TUserAuthenticationsInsert,
+  TUserAuthenticationsUpdate,
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
@@ -1719,6 +1725,16 @@ declare module "knex/types/tables" {
       TCertificateCleanupConfigs,
       TCertificateCleanupConfigsInsert,
       TCertificateCleanupConfigsUpdate
+    >;
+    [TableName.UserAuthentication]: KnexOriginal.CompositeTableType<
+      TUserAuthentications,
+      TUserAuthenticationsInsert,
+      TUserAuthenticationsUpdate
+    >;
+    [TableName.DomainSsoConnector]: KnexOriginal.CompositeTableType<
+      TDomainSsoConnectors,
+      TDomainSsoConnectorsInsert,
+      TDomainSsoConnectorsUpdate
     >;
   }
 }

@@ -33,8 +33,8 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
-import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserAuthenticationDALFactory } from "@app/services/user-authentication/user-authentication-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -74,13 +74,17 @@ type TLdapConfigServiceFactoryDep = {
     TUserDALFactory,
     | "create"
     | "findOne"
+    | "findById"
     | "transaction"
     | "updateById"
     | "findUserEncKeyByUserIdsBatch"
     | "find"
     | "findUserEncKeyByUserId"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
+  userAuthenticationDAL: Pick<
+    TUserAuthenticationDALFactory,
+    "findByUserId" | "findByExternalIdAndType" | "create" | "deleteById" | "updateById"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -102,7 +106,7 @@ export const ldapConfigServiceFactory = ({
   projectBotDAL,
   userGroupMembershipDAL,
   userDAL,
-  userAliasDAL,
+  userAuthenticationDAL,
   permissionService,
   licenseService,
   tokenService,
@@ -403,20 +407,18 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    let userAlias = await userAliasDAL.findOne({
-      externalId,
-      orgId,
-      aliasType: UserAliasType.LDAP
-    });
+    // Look up by externalId — auth is org-independent in the new model
+    let userAuth = await userAuthenticationDAL.findByExternalIdAndType(externalId, "ldap");
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    if (userAlias) {
+    if (userAuth) {
+      const foundAuth = userAuth; // capture for closure narrowing
       await userDAL.transaction(async (tx) => {
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: foundAuth.userId,
             [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
             [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
@@ -427,7 +429,7 @@ export const ldapConfigServiceFactory = ({
 
           const membership = await orgDAL.createMembership(
             {
-              actorUserId: userAlias.userId,
+              actorUserId: foundAuth.userId,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
               status: OrgMembershipStatus.Accepted,
@@ -454,7 +456,7 @@ export const ldapConfigServiceFactory = ({
         }
       });
     } else {
-      userAlias = await userDAL.transaction(async (tx) => {
+      await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
         const usersWithSameEmail = await userDAL.find(
@@ -502,29 +504,35 @@ export const ldapConfigServiceFactory = ({
               isEmailVerified: serverCfg.trustLdapEmails,
               firstName,
               lastName,
-              authMethods: [],
               isGhost: false
             },
             tx
           );
         }
 
-        const newUserAlias = await userAliasDAL.create(
-          {
-            userId: newUser.id,
-            username,
-            aliasType: UserAliasType.LDAP,
-            externalId,
-            emails: [email],
-            orgId,
-            isEmailVerified: serverCfg.trustLdapEmails
-          },
-          tx
-        );
+        // Create or update UserAuthentication record
+        const existingAuth = await userAuthenticationDAL.findByUserId(newUser.id);
+        if (existingAuth && !existingAuth.externalId) {
+          // Takeover case: row exists with null externalId, fill it in
+          await userAuthenticationDAL.updateById(existingAuth.id, { externalId });
+          userAuth = { ...existingAuth, externalId };
+        } else if (!existingAuth) {
+          userAuth = await userAuthenticationDAL.create(
+            {
+              userId: newUser.id,
+              type: "ldap",
+              externalId,
+              domain: email.split("@")[1]
+            },
+            tx
+          );
+        } else {
+          userAuth = existingAuth;
+        }
 
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUserAlias.userId,
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAuth.userId,
             [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
             [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
@@ -564,14 +572,13 @@ export const ldapConfigServiceFactory = ({
             tx
           );
         }
-
-        return newUserAlias;
       });
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
+    const foundAuth = userAuth; // capture for closure narrowing
     const user = await userDAL.transaction(async (tx) => {
-      const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
+      const newUser = await userDAL.findById(foundAuth!.userId, tx);
       if (groups) {
         const ldapGroupIdsToBePartOf = (
           await ldapGroupMapDAL.find({
@@ -649,22 +656,20 @@ export const ldapConfigServiceFactory = ({
       return newUser;
     });
 
-    const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
+    const isUserCompleted = Boolean(user.isAccepted) && user.isEmailVerified;
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
         hasExchangedPrivateKey: true,
-        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
+        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,
         organizationId: organization.id,
         organizationSlug: organization.slug,
         authMethod: AuthMethod.LDAP,
-        authType: UserAliasType.LDAP,
-        aliasId: userAlias.id,
         isUserCompleted,
         ...(relayState
           ? {
@@ -678,11 +683,10 @@ export const ldapConfigServiceFactory = ({
       }
     );
 
-    if (user.email && !userAlias.isEmailVerified) {
+    if (user.email && !user.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
-        userId: user.id,
-        aliasId: userAlias.id
+        userId: user.id
       });
 
       await smtpService.sendMail({

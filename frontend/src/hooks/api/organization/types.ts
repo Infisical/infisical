@@ -13,9 +13,6 @@ export type Organization = {
   name: string;
   createAt: string;
   updatedAt: string;
-  authEnforced: boolean;
-  googleSsoAuthEnforced: boolean;
-  bypassOrgAuthEnabled: boolean;
   orgAuthMethod: string;
   scimEnabled: boolean;
   slug: string;
@@ -44,15 +41,12 @@ export type Organization = {
 export type UpdateOrgDTO = {
   orgId: string;
   name?: string;
-  authEnforced?: boolean;
-  googleSsoAuthEnforced?: boolean;
   scimEnabled?: boolean;
   slug?: string;
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
   selectedMfaMethod?: MfaMethod;
   allowSecretSharingOutsideOrganization?: boolean;
-  bypassOrgAuthEnabled?: boolean;
   userTokenExpiration?: string;
   secretsProductEnabled?: boolean;
   pkiProductEnabled?: boolean;

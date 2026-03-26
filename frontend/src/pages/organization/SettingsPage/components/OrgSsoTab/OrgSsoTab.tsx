@@ -61,8 +61,6 @@ export const OrgSsoTab = withPermission(
     const isSamlConfigured =
       samlConfig && (samlConfig.entryPoint || samlConfig.issuer || samlConfig.cert);
     const isLdapConfigured = ldapConfig && ldapConfig.url;
-    const isGoogleConfigured = shouldDisplaySection(LoginMethod.GOOGLE);
-
     const shouldShowCreateIdentityProviderView =
       !isOidcConfigured && !isSamlConfigured && !isLdapConfigured;
 
@@ -184,9 +182,6 @@ export const OrgSsoTab = withPermission(
         <div className="space-y-4">
           {shouldDisplaySection([LoginMethod.SAML, LoginMethod.GOOGLE]) && (
             <OrgGeneralAuthSection
-              isSamlConfigured={isSamlConfigured}
-              isOidcConfigured={isOidcConfigured}
-              isGoogleConfigured={isGoogleConfigured}
               isSamlActive={Boolean(samlConfig?.isActive)}
               isOidcActive={Boolean(oidcConfig?.isActive)}
               isLdapActive={Boolean(ldapConfig?.isActive)}

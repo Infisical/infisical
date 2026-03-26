@@ -276,7 +276,11 @@ export enum TableName {
   PkiSigningOperations = "pki_signing_operations",
 
   QueueJobs = "queue_jobs",
-  CaSigningConfig = "ca_signing_configs"
+  CaSigningConfig = "ca_signing_configs",
+
+  // Domain-based SSO enforcement
+  UserAuthentication = "user_authentications",
+  DomainSsoConnector = "domain_sso_connectors"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

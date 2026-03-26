@@ -1,3 +1,5 @@
+import dns from "node:dns";
+
 import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
 import type { ClickHouseClient } from "@clickhouse/client";
 import { CronJob } from "cron";
@@ -43,6 +45,8 @@ import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
+import { domainSsoConnectorDALFactory } from "@app/ee/services/domain-sso-connector/domain-sso-connector-dal";
+import { domainSsoConnectorServiceFactory } from "@app/ee/services/domain-sso-connector/domain-sso-connector-service";
 import { dynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { dynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers";
@@ -435,6 +439,7 @@ import { upgradePathServiceFactory } from "@app/services/upgrade-path/upgrade-pa
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { userAuthenticationDALFactory } from "@app/services/user-authentication/user-authentication-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-credential-dal";
 import { webAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
@@ -492,6 +497,8 @@ export const registerRoutes = async (
   // db layers
   const userDAL = userDALFactory(db);
   const userAliasDAL = userAliasDALFactory(db);
+  const userAuthenticationDAL = userAuthenticationDALFactory(db);
+  const domainSsoConnectorDAL = domainSsoConnectorDALFactory(db);
   const authDAL = authDALFactory(db);
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
@@ -837,7 +844,7 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     userDAL,
-    userAliasDAL,
+    userAuthenticationDAL,
     samlConfigDAL,
     groupDAL,
     userGroupMembershipDAL,
@@ -952,7 +959,7 @@ export const registerRoutes = async (
     projectBotDAL,
     userGroupMembershipDAL,
     userDAL,
-    userAliasDAL,
+    userAuthenticationDAL,
     permissionService,
     licenseService,
     tokenService,
@@ -1007,7 +1014,7 @@ export const registerRoutes = async (
 
   const loginService = authLoginServiceFactory({
     userDAL,
-    userAliasDAL,
+    userAuthenticationDAL,
     smtpService,
     tokenService,
     orgDAL,
@@ -1016,14 +1023,14 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    keyStore,
-    permissionService
+    keyStore
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,
     authDAL,
     userDAL,
+    userAuthenticationDAL,
     totpConfigDAL
   });
 
@@ -1089,6 +1096,7 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
+    userAuthenticationDAL,
     userGroupMembershipDAL,
     projectKeyDAL,
     projectDAL,
@@ -1110,7 +1118,7 @@ export const registerRoutes = async (
   const superAdminService = superAdminServiceFactory({
     userDAL,
     identityDAL,
-    userAliasDAL,
+    userAuthenticationDAL,
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     authService: loginService,
@@ -2146,7 +2154,7 @@ export const registerRoutes = async (
   const oidcService = oidcConfigServiceFactory({
     orgDAL,
     userDAL,
-    userAliasDAL,
+    userAuthenticationDAL,
     licenseService,
     tokenService,
     smtpService,
@@ -2161,6 +2169,16 @@ export const registerRoutes = async (
     auditLogService,
     membershipGroupDAL,
     membershipRoleDAL
+  });
+
+  const domainSsoConnectorService = domainSsoConnectorServiceFactory({
+    domainSsoConnectorDAL,
+    permissionService,
+    oidcConfigDAL,
+    samlConfigDAL,
+    ldapConfigDAL,
+    userAuthenticationDAL,
+    dnsResolver: { resolveTxt: (domain: string) => dns.promises.resolveTxt(domain) }
   });
 
   const userEngagementService = userEngagementServiceFactory({
@@ -3098,7 +3116,8 @@ export const registerRoutes = async (
     aiMcpActivityLog: aiMcpActivityLogService,
     approvalPolicy: approvalPolicyService,
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
-    caAutoRenewalQueue
+    caAutoRenewalQueue,
+    domainSsoConnector: domainSsoConnectorService
   });
 
   const cronJobs: CronJob[] = [];

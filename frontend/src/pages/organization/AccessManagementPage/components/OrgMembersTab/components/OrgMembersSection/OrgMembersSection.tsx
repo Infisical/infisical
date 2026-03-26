@@ -92,14 +92,6 @@ export const OrgMembersSection = () => {
   const isEnterprise = subscription?.slug === "enterprise";
 
   const handleAddMemberModal = () => {
-    if (currentOrg?.authEnforced) {
-      createNotification({
-        text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
-        type: "error"
-      });
-      return;
-    }
-
     if (!isMoreIdentitiesAllowed && !isEnterprise) {
       handlePopUpOpen("upgradePlan", {
         text: "You have reached the maximum number of members allowed on your current plan. Upgrade to Infisical Pro plan to add more members."

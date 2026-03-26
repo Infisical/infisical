@@ -10,6 +10,7 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
+import { TUserAuthenticationDALFactory } from "../user-authentication/user-authentication-dal";
 import { TAuthDALFactory } from "./auth-dal";
 import {
   ResetPasswordV2Type,
@@ -22,6 +23,7 @@ import { ActorType, AuthMethod } from "./auth-type";
 type TAuthPasswordServiceFactoryDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
+  userAuthenticationDAL: Pick<TUserAuthenticationDALFactory, "findByUserId">;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
@@ -31,6 +33,7 @@ export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
 export const authPaswordServiceFactory = ({
   authDAL,
   userDAL,
+  userAuthenticationDAL,
   tokenService,
   smtpService,
   totpConfigDAL
@@ -43,9 +46,10 @@ export const authPaswordServiceFactory = ({
       throw new BadRequestError({ message: `User encryption key not found for user with ID '${userId}'` });
     }
 
-    if (!user.authMethods?.includes(AuthMethod.EMAIL)) {
+    const userAuth = await userAuthenticationDAL.findByUserId(userId);
+    if (!userAuth || userAuth.type !== AuthMethod.EMAIL) {
       logger.error(
-        { authMethods: user.authMethods },
+        { authType: userAuth?.type },
         "Unable to reset password, no email authentication method is configured"
       );
       throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
@@ -146,8 +150,7 @@ export const authPaswordServiceFactory = ({
 
     if (!user) throw new BadRequestError({ message: `Could not find user with ID ${actor.id}` });
 
-    if (!user.isAccepted || !user.authMethods)
-      throw new BadRequestError({ message: `You must complete signup to set a password` });
+    if (!user.isAccepted) throw new BadRequestError({ message: `You must complete signup to set a password` });
 
     const cfg = getConfig();
 
@@ -186,18 +189,7 @@ export const authPaswordServiceFactory = ({
 
       if (!user) throw new BadRequestError({ message: `Could not find user with ID ${actor.id}` });
 
-      if (!user.isAccepted || !user.authMethods)
-        throw new BadRequestError({ message: `You must complete signup to set a password` });
-
-      if (!user.authMethods.includes(AuthMethod.EMAIL)) {
-        await userDAL.updateById(
-          actor.id,
-          {
-            authMethods: [...user.authMethods, AuthMethod.EMAIL]
-          },
-          tx
-        );
-      }
+      if (!user.isAccepted) throw new BadRequestError({ message: `You must complete signup to set a password` });
 
       const cfg = getConfig();
 

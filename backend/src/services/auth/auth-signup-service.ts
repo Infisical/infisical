@@ -21,6 +21,7 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
+import { TUserAuthenticationDALFactory } from "../user-authentication/user-authentication-dal";
 import { TAuthDALFactory } from "./auth-dal";
 import { validateProviderAuthToken, validateSignUpAuthorization } from "./auth-fns";
 import { TCompleteAccountInviteDTO, TCompleteAccountSignupDTO } from "./auth-signup-type";
@@ -29,6 +30,7 @@ import { AuthMethod, AuthTokenType } from "./auth-type";
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
+  userAuthenticationDAL: Pick<TUserAuthenticationDALFactory, "create" | "findByUserId">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     | "find"
@@ -52,6 +54,7 @@ export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
   authDAL,
   userDAL,
+  userAuthenticationDAL,
   userGroupMembershipDAL,
   projectKeyDAL,
   projectDAL,
@@ -93,7 +96,6 @@ export const authSignupServiceFactory = ({
     }
     if (!user) {
       user = await userDAL.create({
-        authMethods: [AuthMethod.EMAIL],
         username: sanitizedEmail,
         email: sanitizedEmail,
         isGhost: false
@@ -244,6 +246,20 @@ export const authSignupServiceFactory = ({
             tx
           );
         }
+      }
+
+      // Create UserAuthentication record
+      const existingUserAuth = await userAuthenticationDAL.findByUserId(us.id);
+      if (!existingUserAuth) {
+        await userAuthenticationDAL.create(
+          {
+            userId: us.id,
+            type: authMethod || AuthMethod.EMAIL,
+            externalId: authMethod && authMethod !== AuthMethod.EMAIL ? null : sanitizedEmail,
+            domain: sanitizedEmail.split("@")[1]
+          },
+          tx
+        );
       }
 
       return { info: us, key: userEncKey };

@@ -11,6 +11,7 @@ import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
 import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secret-approval-policy-router";
+import { registerDomainSsoConnectorRouter } from "./domain-sso-connector-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
@@ -142,6 +143,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/sso" }
   );
 
+  await server.register(registerDomainSsoConnectorRouter, { prefix: "/domain-sso-connectors" });
   await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerLdapRouter, { prefix: "/ldap" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
