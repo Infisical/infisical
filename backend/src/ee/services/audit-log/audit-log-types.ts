@@ -87,7 +87,8 @@ export type TCreateAuditLogDTO = {
     | KmipClientActor
     | AcmeProfileActor
     | AcmeAccountActor
-    | EstAccountActor;
+    | EstAccountActor
+    | ScepAccountActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -696,7 +697,9 @@ export enum EventType {
   GET_PKI_SIGNERS = "get-pki-signers",
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
-  PKI_SIGNER_SIGN = "pki-signer-sign"
+  PKI_SIGNER_SIGN = "pki-signer-sign",
+  SCEP_ENROLLMENT = "scep-enrollment",
+  SCEP_RENEWAL = "scep-renewal"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -710,7 +713,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.SERVICE]: "serviceId",
   [ActorType.ACME_PROFILE]: "profileId",
   [ActorType.ACME_ACCOUNT]: "accountId",
-  [ActorType.EST_ACCOUNT]: "profileId"
+  [ActorType.EST_ACCOUNT]: "profileId",
+  [ActorType.SCEP_ACCOUNT]: "profileId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -768,6 +772,10 @@ interface EstAccountActorMetadata {
   profileId: string;
 }
 
+interface ScepAccountActorMetadata {
+  profileId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -819,6 +827,10 @@ export interface EstAccountActor {
   type: ActorType.EST_ACCOUNT;
   metadata: EstAccountActorMetadata;
 }
+export interface ScepAccountActor {
+  type: ActorType.SCEP_ACCOUNT;
+  metadata: ScepAccountActorMetadata;
+}
 export type Actor =
   | UserActor
   | ServiceActor
@@ -828,7 +840,8 @@ export type Actor =
   | KmipClientActor
   | AcmeProfileActor
   | AcmeAccountActor
-  | EstAccountActor;
+  | EstAccountActor
+  | ScepAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -5470,6 +5483,38 @@ interface ListDynamicSecretLeasesEvent {
   };
 }
 
+interface ScepEnrollmentEvent {
+  type: EventType.SCEP_ENROLLMENT;
+  metadata: {
+    profileId: string;
+    profileSlug: string;
+    transactionId: string;
+    csrSubject: string;
+    challengeType: "static";
+    status: "success" | "pending" | "failure";
+    failReason?: string;
+    issuedCertificateId?: string;
+    issuedSerialNumber?: string;
+    clientIp: string;
+  };
+}
+
+interface ScepRenewalEvent {
+  type: EventType.SCEP_RENEWAL;
+  metadata: {
+    profileId: string;
+    profileSlug: string;
+    transactionId: string;
+    csrSubject: string;
+    existingCertificateSerial?: string;
+    status: "success" | "pending" | "failure";
+    failReason?: string;
+    issuedCertificateId?: string;
+    issuedSerialNumber?: string;
+    clientIp: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -5966,4 +6011,6 @@ export type Event =
   | RenewDynamicSecretLeaseEvent
   | GetDynamicSecretLeaseEvent
   | UpdateCertificateCleanupConfigEvent
-  | CertificateCleanupCompletedEvent;
+  | CertificateCleanupCompletedEvent
+  | ScepEnrollmentEvent
+  | ScepRenewalEvent;

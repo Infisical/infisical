@@ -21,11 +21,13 @@ interface Props {
   onEditProfile: (profile: TCertificateProfileWithDetails) => void;
   onDeleteProfile: (profile: TCertificateProfileWithDetails) => void;
   onRevealProfileAcmeEabSecret: (profile: TCertificateProfileWithDetails) => void;
+  onViewScepDetails: (profile: TCertificateProfileWithDetails) => void;
 }
 
 export const ProfileList = ({
   onEditProfile,
   onRevealProfileAcmeEabSecret,
+  onViewScepDetails,
   onDeleteProfile
 }: Props) => {
   const { currentProject } = useProject();
@@ -94,6 +96,7 @@ export const ProfileList = ({
                 profile={profile}
                 onEditProfile={onEditProfile}
                 onRevealProfileAcmeEabSecret={onRevealProfileAcmeEabSecret}
+                onViewScepDetails={onViewScepDetails}
                 onDeleteProfile={onDeleteProfile}
               />
             ))}
