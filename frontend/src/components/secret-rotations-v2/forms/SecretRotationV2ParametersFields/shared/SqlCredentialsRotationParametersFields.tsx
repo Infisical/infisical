@@ -77,7 +77,7 @@ export const SqlCredentialsRotationParametersFields = () => {
         />
         <NoticeBannerV2 title="Example Create User Statement">
           <p className="mb-3 text-sm text-mineshaft-300">
-            Infisical requires two database users to be created for rotation. 111
+            Infisical requires two database users to be created for rotation.
           </p>
           <p className="mb-3 text-sm text-mineshaft-300">
             These users are intended to be solely managed by Infisical. Altering their login after
