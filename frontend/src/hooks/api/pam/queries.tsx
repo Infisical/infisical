@@ -11,6 +11,7 @@ import {
   TPamAccountDependency,
   TPamResource,
   TPamResourceDependency,
+  TPamRotationRule,
   TPamSession
 } from "./types";
 
@@ -48,6 +49,7 @@ export const pamKeys = {
   ],
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
   accountDependencies: (accountId: string) => [...pamKeys.account(), "dependencies", accountId],
+  rotationRules: (resourceId: string) => [...pamKeys.resource(), "rotation-rules", resourceId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
@@ -251,6 +253,20 @@ export const useGetPamAccountDependencies = (accountId?: string) => {
       return data.dependencies;
     },
     enabled: !!accountId
+  });
+};
+
+// Rotation Rules
+export const useGetPamRotationRules = (resourceId?: string) => {
+  return useQuery({
+    queryKey: pamKeys.rotationRules(resourceId!),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ rules: TPamRotationRule[] }>(
+        `/api/v1/pam/resources/${resourceId}/rotation-rules`
+      );
+      return data.rules;
+    },
+    enabled: !!resourceId
   });
 };
 

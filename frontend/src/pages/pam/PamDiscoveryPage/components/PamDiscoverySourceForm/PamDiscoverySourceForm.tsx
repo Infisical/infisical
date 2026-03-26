@@ -11,7 +11,7 @@ import { PamDiscoverySourceHeader } from "../PamDiscoverySourceHeader";
 import { ActiveDirectoryDiscoveryForm } from "./ActiveDirectoryDiscoveryForm";
 
 type FormProps = {
-  onComplete: (source: TPamDiscoverySource) => void;
+  closeSheet: () => void;
 } & ({ source: TPamDiscoverySource } | { discoveryType: PamDiscoveryType });
 
 type CreateFormProps = FormProps & {
@@ -23,23 +23,23 @@ type UpdateFormProps = FormProps & {
   source: TPamDiscoverySource;
 };
 
-const CreateForm = ({ discoveryType, onComplete, projectId }: CreateFormProps) => {
+const CreateForm = ({ discoveryType, closeSheet, projectId }: CreateFormProps) => {
   const createPamDiscoverySource = useCreatePamDiscoverySource();
   const { name: discoveryName } = PAM_DISCOVERY_TYPE_MAP[discoveryType];
 
   const onSubmit = async (formData: {
     name: string;
-    gatewayId: string;
+    gateway: { id: string; name: string } | null;
     schedule: string;
     discoveryType: PamDiscoveryType;
     discoveryConfiguration: Record<string, unknown>;
     discoveryCredentials: Record<string, unknown>;
   }) => {
-    const source = await createPamDiscoverySource.mutateAsync({
+    await createPamDiscoverySource.mutateAsync({
       projectId,
       name: formData.name,
       discoveryType: formData.discoveryType,
-      gatewayId: formData.gatewayId,
+      gatewayId: formData.gateway!.id,
       discoveryConfiguration: formData.discoveryConfiguration,
       discoveryCredentials: formData.discoveryCredentials,
       schedule: formData.schedule
@@ -48,34 +48,34 @@ const CreateForm = ({ discoveryType, onComplete, projectId }: CreateFormProps) =
       text: `Successfully created ${discoveryName} discovery source`,
       type: "success"
     });
-    onComplete(source);
+    closeSheet();
   };
 
   switch (discoveryType) {
     case PamDiscoveryType.ActiveDirectory:
-      return <ActiveDirectoryDiscoveryForm onSubmit={onSubmit} />;
+      return <ActiveDirectoryDiscoveryForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     default:
       throw new Error(`Unhandled discovery type: ${discoveryType}`);
   }
 };
 
-const UpdateForm = ({ source, onComplete }: UpdateFormProps) => {
+const UpdateForm = ({ source, closeSheet }: UpdateFormProps) => {
   const updatePamDiscoverySource = useUpdatePamDiscoverySource();
   const { name: discoveryName } = PAM_DISCOVERY_TYPE_MAP[source.discoveryType];
 
   const onSubmit = async (formData: {
     name: string;
-    gatewayId: string;
+    gateway: { id: string; name: string } | null;
     schedule: string;
     discoveryType: PamDiscoveryType;
     discoveryConfiguration: Record<string, unknown>;
     discoveryCredentials: Record<string, unknown>;
   }) => {
-    const updatedSource = await updatePamDiscoverySource.mutateAsync({
+    await updatePamDiscoverySource.mutateAsync({
       discoverySourceId: source.id,
       discoveryType: formData.discoveryType,
       name: formData.name,
-      gatewayId: formData.gatewayId,
+      gatewayId: formData.gateway!.id,
       discoveryConfiguration: formData.discoveryConfiguration,
       discoveryCredentials: formData.discoveryCredentials,
       schedule: formData.schedule
@@ -84,18 +84,20 @@ const UpdateForm = ({ source, onComplete }: UpdateFormProps) => {
       text: `Successfully updated ${discoveryName} discovery source`,
       type: "success"
     });
-    onComplete(updatedSource);
+    closeSheet();
   };
 
   switch (source.discoveryType) {
     case PamDiscoveryType.ActiveDirectory:
-      return <ActiveDirectoryDiscoveryForm source={source} onSubmit={onSubmit} />;
+      return (
+        <ActiveDirectoryDiscoveryForm source={source} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     default:
       throw new Error(`Unhandled discovery type: ${source.discoveryType}`);
   }
 };
 
-type Props = { onBack?: () => void; projectId: string } & Pick<FormProps, "onComplete"> &
+type Props = { onBack?: () => void; projectId: string } & Pick<FormProps, "closeSheet"> &
   (
     | { discoveryType: PamDiscoveryType; source?: undefined }
     | { discoveryType?: undefined; source: TPamDiscoverySource }
@@ -105,7 +107,7 @@ export const PamDiscoverySourceForm = ({ onBack, projectId, ...props }: Props) =
   const { source, discoveryType } = props;
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PamDiscoverySourceHeader
         discoveryType={discoveryType || source.discoveryType}
         onBack={onBack}

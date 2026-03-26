@@ -609,6 +609,11 @@ export enum EventType {
   PAM_DISCOVERY_SOURCE_RUN_GET = "pam-discovery-source-run-get",
   PAM_DISCOVERY_SOURCE_RESOURCE_LIST = "pam-discovery-source-resource-list",
   PAM_DISCOVERY_SOURCE_ACCOUNT_LIST = "pam-discovery-source-account-list",
+  PAM_RESOURCE_ROTATION_RULE_LIST = "pam-resource-rotation-rule-list",
+  PAM_RESOURCE_ROTATION_RULE_CREATE = "pam-resource-rotation-rule-create",
+  PAM_RESOURCE_ROTATION_RULE_UPDATE = "pam-resource-rotation-rule-update",
+  PAM_RESOURCE_ROTATION_RULE_DELETE = "pam-resource-rotation-rule-delete",
+  PAM_RESOURCE_ROTATION_RULE_REORDER = "pam-resource-rotation-rule-reorder",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -4666,8 +4671,6 @@ interface PamAccountCreateEvent {
     folderId?: string | null;
     name: string;
     description?: string | null;
-    rotationEnabled: boolean;
-    rotationIntervalSeconds?: number | null;
     requireMfa?: boolean | null;
   };
 }
@@ -4680,8 +4683,6 @@ interface PamAccountUpdateEvent {
     resourceType: string;
     name?: string;
     description?: string | null;
-    rotationEnabled?: boolean;
-    rotationIntervalSeconds?: number | null;
     requireMfa?: boolean | null;
   };
 }
@@ -4853,6 +4854,61 @@ interface PamDiscoverySourceAccountListEvent {
     sourceName: string;
     discoveryType: string;
     count: number;
+  };
+}
+
+interface PamResourceRotationRuleListEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_LIST;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    count: number;
+  };
+}
+
+interface PamResourceRotationRuleCreateEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_CREATE;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    ruleId: string;
+    ruleName?: string;
+    namePattern: string;
+    enabled: boolean;
+    intervalSeconds?: number | null;
+  };
+}
+
+interface PamResourceRotationRuleUpdateEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    ruleId: string;
+    ruleName?: string | null;
+    namePattern?: string;
+    enabled?: boolean;
+    intervalSeconds?: number | null;
+  };
+}
+
+interface PamResourceRotationRuleDeleteEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_DELETE;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    ruleId: string;
+    ruleName?: string | null;
+    namePattern: string;
+  };
+}
+
+interface PamResourceRotationRuleReorderEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_REORDER;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    ruleIds: string[];
   };
 }
 
@@ -5935,6 +5991,11 @@ export type Event =
   | PamDiscoverySourceRunGetEvent
   | PamDiscoverySourceResourceListEvent
   | PamDiscoverySourceAccountListEvent
+  | PamResourceRotationRuleListEvent
+  | PamResourceRotationRuleCreateEvent
+  | PamResourceRotationRuleUpdateEvent
+  | PamResourceRotationRuleDeleteEvent
+  | PamResourceRotationRuleReorderEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

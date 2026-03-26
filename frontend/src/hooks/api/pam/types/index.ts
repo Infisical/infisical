@@ -143,6 +143,7 @@ export type TUpdatePamResourceDTO = Partial<
   resourceType: PamResourceType;
   adServerResourceId?: string | null;
   metadata?: { key: string; value: string }[];
+  rotationAccountCredentials?: { username: string; password: string } | null;
 };
 
 export type TDeletePamResourceDTO = {
@@ -211,9 +212,51 @@ export type TPamAccountDependency = {
   data: Record<string, unknown>;
   source: string;
   isRotationSyncEnabled: boolean;
+  syncStatus?: string | null;
+  lastSyncedAt?: string | null;
+  lastSyncMessage?: string | null;
   resourceName?: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TPamRotationRule = {
+  id: string;
+  resourceId: string;
+  name?: string | null;
+  namePattern: string;
+  enabled: boolean;
+  intervalSeconds?: number | null;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCreatePamRotationRuleDTO = {
+  resourceId: string;
+  name?: string;
+  namePattern: string;
+  enabled: boolean;
+  intervalSeconds?: number | null;
+};
+
+export type TUpdatePamRotationRuleDTO = {
+  resourceId: string;
+  ruleId: string;
+  name?: string | null;
+  namePattern?: string;
+  enabled?: boolean;
+  intervalSeconds?: number | null;
+};
+
+export type TDeletePamRotationRuleDTO = {
+  resourceId: string;
+  ruleId: string;
+};
+
+export type TReorderPamRotationRulesDTO = {
+  resourceId: string;
+  ruleIds: string[];
 };
 
 export type TPamResourceDependency = TPamAccountDependency & {

@@ -290,6 +290,11 @@ export enum EventType {
   PAM_DISCOVERY_SOURCE_RUN_GET = "pam-discovery-source-run-get",
   PAM_DISCOVERY_SOURCE_RESOURCE_LIST = "pam-discovery-source-resource-list",
   PAM_DISCOVERY_SOURCE_ACCOUNT_LIST = "pam-discovery-source-account-list",
+  PAM_RESOURCE_ROTATION_RULE_LIST = "pam-resource-rotation-rule-list",
+  PAM_RESOURCE_ROTATION_RULE_CREATE = "pam-resource-rotation-rule-create",
+  PAM_RESOURCE_ROTATION_RULE_UPDATE = "pam-resource-rotation-rule-update",
+  PAM_RESOURCE_ROTATION_RULE_DELETE = "pam-resource-rotation-rule-delete",
+  PAM_RESOURCE_ROTATION_RULE_REORDER = "pam-resource-rotation-rule-reorder",
 
   CREATE_CERTIFICATE_PROFILE = "create-certificate-profile",
   UPDATE_CERTIFICATE_PROFILE = "update-certificate-profile",
