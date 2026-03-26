@@ -26,7 +26,7 @@ import { slugSchema } from "@app/lib/schemas";
 const formSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
   description: z.string().max(500).optional(),
-  type: z.nativeEnum(ProjectType).optional()
+  type: z.nativeEnum(ProjectType)
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -84,13 +84,17 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
     defaultValues: {
       name: projectTemplate?.name,
       description: projectTemplate?.description,
-      type: ProjectType.SecretManager
+      type: projectTemplate?.type ?? ProjectType.SecretManager
     }
   });
 
   const onFormSubmit = async (data: FormData) => {
     const mutation = projectTemplate
-      ? updateProjectTemplate.mutateAsync({ templateId: projectTemplate.id, ...data })
+      ? updateProjectTemplate.mutateAsync({
+          templateId: projectTemplate.id,
+          name: data.name,
+          description: data.description
+        })
       : createProjectTemplate.mutateAsync({ ...data });
 
     const template = await mutation;
@@ -114,42 +118,44 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
       >
         <Input autoFocus placeholder="my-project-template" {...register("name")} />
       </FormControl>
-      <Controller
-        control={control}
-        name="type"
-        defaultValue={ProjectType.SecretManager}
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Project Type"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            className="flex-1"
-          >
-            <div className="mt-2 grid grid-cols-3 gap-3">
-              {PROJECT_TYPE_MENU_ITEMS.map((el) => (
-                <div
-                  key={el.value}
-                  className={twMerge(
-                    "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 px-2 py-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
-                    field.value === el.value && "border-primary-400 bg-mineshaft-600 opacity-100"
-                  )}
-                  onClick={() => field.onChange(el.value)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      field.onChange(el.value);
-                    }
-                  }}
-                >
-                  <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
-                  <div className="text-center text-xs">{el.label}</div>
-                </div>
-              ))}
-            </div>
-          </FormControl>
-        )}
-      />
+      {!projectTemplate && (
+        <Controller
+          control={control}
+          name="type"
+          defaultValue={ProjectType.SecretManager}
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Project Type"
+              isError={Boolean(error)}
+              errorText={error?.message}
+              className="flex-1"
+            >
+              <div className="mt-2 grid grid-cols-3 gap-3">
+                {PROJECT_TYPE_MENU_ITEMS.map((el) => (
+                  <div
+                    key={el.value}
+                    className={twMerge(
+                      "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 px-2 py-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
+                      field.value === el.value && "border-primary-400 bg-mineshaft-600 opacity-100"
+                    )}
+                    onClick={() => field.onChange(el.value)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        field.onChange(el.value);
+                      }
+                    }}
+                  >
+                    <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
+                    <div className="text-center text-xs">{el.label}</div>
+                  </div>
+                ))}
+              </div>
+            </FormControl>
+          )}
+        />
+      )}
       <FormControl
         label="Description (optional)"
         errorText={errors.description?.message}

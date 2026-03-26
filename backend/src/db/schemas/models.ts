@@ -276,7 +276,8 @@ export enum TableName {
   PkiSigningOperations = "pki_signing_operations",
 
   QueueJobs = "queue_jobs",
-  CaSigningConfig = "ca_signing_configs"
+  CaSigningConfig = "ca_signing_configs",
+  SecretValidationRule = "secret_validation_rules"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

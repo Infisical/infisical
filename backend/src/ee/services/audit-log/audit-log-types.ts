@@ -698,6 +698,11 @@ export enum EventType {
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
   PKI_SIGNER_SIGN = "pki-signer-sign",
 
+  // Secret Validation Rules
+  SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
+  SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
+
   // Secret Export
   EXPORT_SECRETS = "export-secrets",
   EXPORT_SECRETS_BLOCKED = "export-secrets-blocked"
@@ -5491,6 +5496,37 @@ interface ListDynamicSecretLeasesEvent {
   };
 }
 
+interface SecretValidationRuleCreateEvent {
+  type: EventType.SECRET_VALIDATION_RULE_CREATE;
+  metadata: {
+    ruleId: string;
+    name: string;
+    type: string;
+    environmentSlug?: string;
+    secretPath: string;
+  };
+}
+
+interface SecretValidationRuleUpdateEvent {
+  type: EventType.SECRET_VALIDATION_RULE_UPDATE;
+  metadata: {
+    ruleId: string;
+    name?: string;
+    type?: string;
+    environmentSlug?: string | null;
+    secretPath?: string;
+    isActive?: boolean;
+  };
+}
+
+interface SecretValidationRuleDeleteEvent {
+  type: EventType.SECRET_VALIDATION_RULE_DELETE;
+  metadata: {
+    ruleId: string;
+    name: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -5988,5 +6024,8 @@ export type Event =
   | GetDynamicSecretLeaseEvent
   | UpdateCertificateCleanupConfigEvent
   | CertificateCleanupCompletedEvent
+  | SecretValidationRuleCreateEvent
+  | SecretValidationRuleUpdateEvent
+  | SecretValidationRuleDeleteEvent
   | ExportSecretsEvent
   | ExportSecretsBlockedEvent;

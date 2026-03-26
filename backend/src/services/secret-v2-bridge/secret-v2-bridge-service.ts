@@ -61,6 +61,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
   MAX_SECRET_CACHE_BYTES,
@@ -135,6 +136,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem" | "pgGetIntItem">;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -161,7 +163,8 @@ export const secretV2BridgeServiceFactory = ({
   kmsService,
   resourceMetadataDAL,
   keyStore,
-  reminderService
+  reminderService,
+  secretValidationRuleService
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -345,6 +348,14 @@ export const secretV2BridgeServiceFactory = ({
       ],
       project.secretDetectionIgnoreValues || []
     );
+
+    await secretValidationRuleService.validateSecrets({
+      projectId,
+      environment,
+      envId: folder.envId,
+      secretPath,
+      secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
+    });
 
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
     const allSecretReferences = nestedReferences.concat(
@@ -595,6 +606,18 @@ export const secretV2BridgeServiceFactory = ({
         ],
         project.secretDetectionIgnoreValues || []
       );
+    }
+
+    // Validate against secret validation rules (key rename and/or value change)
+    const finalKey = inputSecret.newSecretName || secretName;
+    if (secretValue || inputSecret.newSecretName) {
+      await secretValidationRuleService.validateSecrets({
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: [{ key: finalKey, value: secretValue }]
+      });
     }
 
     if (secretValue) {
@@ -1862,6 +1885,14 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
+    await secretValidationRuleService.validateSecrets({
+      projectId,
+      environment,
+      envId: folder.envId,
+      secretPath,
+      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+    });
+
     // get all tags
     const sanitizedTagIds = [...new Set(deduplicatedSecrets.flatMap(({ tagIds = [] }) => tagIds))];
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
@@ -2222,6 +2253,26 @@ export const secretV2BridgeServiceFactory = ({
             })),
           project.secretDetectionIgnoreValues || []
         );
+
+        // Validate against secret validation rules for all secrets being updated or created (upsert)
+        const secretsToValidate = [
+          ...secretsToUpdate
+            .filter((el) => el.secretValue || el.newSecretName)
+            .map((el) => ({ key: el.newSecretName || el.secretKey, value: el.secretValue })),
+          ...(updateMode === SecretUpdateMode.Upsert
+            ? secretsToCreate.map((el) => ({ key: el.secretKey, value: el.secretValue }))
+            : [])
+        ];
+        if (secretsToValidate.length) {
+          // eslint-disable-next-line no-await-in-loop
+          await secretValidationRuleService.validateSecrets({
+            projectId,
+            environment,
+            envId: folder.envId,
+            secretPath,
+            secrets: secretsToValidate
+          });
+        }
 
         const secretKeyUpdates: {
           secretId: string;

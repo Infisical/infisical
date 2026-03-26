@@ -140,6 +140,7 @@ import { TSecretReplicationServiceFactory } from "@app/services/secret-replicati
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSignerServiceFactory } from "@app/services/signer/signer-service";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
@@ -272,6 +273,7 @@ declare module "fastify" {
       secret: TSecretServiceFactory;
       secretReplication: TSecretReplicationServiceFactory;
       secretTag: TSecretTagServiceFactory;
+      secretValidationRule: TSecretValidationRuleServiceFactory;
       secretImport: TSecretImportServiceFactory;
       projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
