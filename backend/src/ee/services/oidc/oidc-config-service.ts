@@ -63,7 +63,13 @@ type TOidcConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
+    | "createMembership"
+    | "updateMembershipById"
+    | "findMembership"
+    | "findOrgById"
+    | "findOne"
+    | "updateById"
+    | "acceptSubOrgInvitedMembershipsForUser"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
@@ -238,6 +244,11 @@ export const oidcConfigServiceFactory = ({
           );
         }
 
+        // Accept any Invited sub-org memberships now that the user has authenticated via root org SSO.
+        // Unconditional — isAccepted is false on first login for SCIM-provisioned users, but SSO
+        // authentication is the authoritative signal to accept sub-org memberships.
+        await orgDAL.acceptSubOrgInvitedMembershipsForUser(foundUser.id, orgId, tx);
+
         return foundUser;
       });
     } else {
@@ -349,6 +360,9 @@ export const oidcConfigServiceFactory = ({
             tx
           );
         }
+
+        // Accept any Invited sub-org memberships now that the user has authenticated via root org SSO.
+        await orgDAL.acceptSubOrgInvitedMembershipsForUser(newUser.id, orgId, tx);
 
         return newUser;
       });
