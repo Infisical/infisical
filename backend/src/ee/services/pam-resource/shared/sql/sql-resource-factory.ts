@@ -265,7 +265,7 @@ const makeSqlConnection = (
         validate: async (connectOnly) => {
           try {
             await mongoClient.connect();
-            await mongoClient.db("admin").command({ ping: 1 });
+            await mongoClient.db(connectionDetails.database).command({ ping: 1 });
           } catch (error) {
             if (
               connectOnly &&
