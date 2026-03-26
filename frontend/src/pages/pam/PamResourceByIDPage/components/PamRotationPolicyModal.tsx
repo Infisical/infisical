@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { InfoIcon, PlusIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -311,6 +311,18 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
               </UnstableAlert>
             )}
 
+          {/* Local account warning for Windows Server resources */}
+          {resource.resourceType === PamResourceType.Windows && (
+            <UnstableAlert variant="info">
+              <InfoIcon />
+              <UnstableAlertTitle>Local Accounts Only</UnstableAlertTitle>
+              <UnstableAlertDescription>
+                Rotation on Windows Server resources applies to local machine accounts only. To
+                rotate domain accounts, configure rotation on the Active Directory resource instead.
+              </UnstableAlertDescription>
+            </UnstableAlert>
+          )}
+
           {/* Rotation Credentials */}
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
@@ -387,8 +399,11 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
           <div>
             <div className="mb-3 flex items-center justify-between">
               <div className="flex flex-col gap-1">
-                <Label>Rotation Rules</Label>
-                <p className="text-xs text-muted">Rules are evaluated top-to-bottom by priority</p>
+                <Label>Auto Rotation Rules</Label>
+                <p className="text-xs text-muted">
+                  Rules are evaluated top-to-bottom by priority and define which accounts get their
+                  credentials automatically rotated
+                </p>
               </div>
 
               <Button variant="neutral" size="xs" onClick={handleAddRule}>

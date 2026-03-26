@@ -319,7 +319,7 @@ const RunExpandedContent = ({
         {adEnum && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium tracking-wider text-label uppercase">
-              AD Enumeration
+              Directory Scan
             </span>
             <Badge
               variant={PROGRESS_BADGE_MAP[adEnum.status] || "info"}
@@ -335,7 +335,7 @@ const RunExpandedContent = ({
         {depScan && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium tracking-wider text-label uppercase">
-              Machine Enumeration
+              Host Scan
             </span>
             <Badge
               variant={PROGRESS_BADGE_MAP[depScan.status] || "info"}
@@ -345,7 +345,7 @@ const RunExpandedContent = ({
             </Badge>
             {depScan.totalMachines !== undefined && (
               <span className="text-xs text-muted">
-                {depScan.scannedMachines ?? 0}/{depScan.totalMachines} machines
+                {depScan.scannedMachines ?? 0}/{depScan.totalMachines} hosts
                 {(depScan.failedMachines ?? 0) > 0 && (
                   <span className="ml-1 text-danger">({depScan.failedMachines} failed)</span>
                 )}
@@ -368,13 +368,13 @@ const RunExpandedContent = ({
       {hasMachineErrors && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium tracking-wider text-label uppercase">
-            Machine Errors
+            Host Errors
           </span>
           <div className="mb-0.5 flex items-center gap-2 rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
             <InfoIcon className="size-4 shrink-0" />
             <span className="whitespace-pre-wrap">
-              Machines without WinRM enabled will fail with &quot;socket hang up&quot;. This is
-              expected for domain controllers and machines not configured for remote management.
+              Hosts without WinRM enabled will fail with &quot;socket hang up&quot;. This is
+              expected for domain controllers and hosts not configured for remote management.
             </span>
           </div>
           <div className="flex flex-col gap-1">
@@ -1079,7 +1079,7 @@ const PageContent = () => {
         </div>
 
         {/* Right Column - Tabbed Content */}
-        <div className="flex w-full min-w-0">
+        <div className="min-w-0 flex-1">
           <Tabs value={selectedTab} onValueChange={handleTabChange} className="w-full">
             <UnstableCard className="py-3">
               <UnstableCardHeader>

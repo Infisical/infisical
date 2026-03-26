@@ -66,7 +66,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
         <div className="flex h-fit w-full flex-col gap-2 p-4">
           {allOptions.map((option) => {
             const details = PAM_RESOURCE_TYPE_MAP[option.resource];
-            const isComingSoon = COMING_SOON_SET.has(option.resource);
 
             return (
               <Button
@@ -82,7 +81,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
                   alt={`${details.name} logo`}
                 />
                 <Label className="pointer-events-none">{details.name}</Label>
-                {isComingSoon && <span className="ml-auto text-xs text-muted">Coming Soon</span>}
               </Button>
             );
           })}

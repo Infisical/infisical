@@ -300,7 +300,7 @@ const PageContent = () => {
         </div>
 
         {/* Right Column - Tabbed Content */}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <Tabs value={selectedTab} onValueChange={handleTabChange}>
             <TabList>
               <Tab value="resources">Resources</Tab>
