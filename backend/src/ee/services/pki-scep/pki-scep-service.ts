@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -166,7 +167,8 @@ export const pkiScepServiceFactory = ({
   type TScepContext = Awaited<ReturnType<typeof loadScepContext>>;
 
   const derToPem = (der: Buffer, label: string): string => {
-    const base64 = der.toString("base64").replace(/(.{64})/g, "$1\n");
+    const re = new RE2("(.{64})", "g");
+    const base64 = re.replace(der.toString("base64"), "$1\n");
     return `-----BEGIN ${label}-----\n${base64}\n-----END ${label}-----`;
   };
 
@@ -382,17 +384,23 @@ export const pkiScepServiceFactory = ({
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + SCEP_TRANSACTION_EXPIRY_HOURS);
+      // If the client retries with the same transactionId (e.g. network hiccup),
+      // return PENDING instead of crashing on unique-constraint violation.
+      const existingTx = await scepTransactionDAL.findByProfileAndTransactionId(profile.id, parsed.transactionId);
+      if (!existingTx) {
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + SCEP_TRANSACTION_EXPIRY_HOURS);
 
-      await scepTransactionDAL.create({
-        profileId: profile.id,
-        transactionId: parsed.transactionId,
-        senderNonce: parsed.senderNonce,
-        signerCertDer: parsed.signerCertDer,
-        certificateRequestId: result.certificateRequestId,
-        expiresAt
-      });
+        await scepTransactionDAL.create({
+          profileId: profile.id,
+          transactionId: parsed.transactionId,
+          senderNonce: parsed.senderNonce,
+          signerCertDer: parsed.signerCertDer,
+          certificateRequestId: result.certificateRequestId,
+          clientCipherOid: parsed.clientCipherOid || null,
+          expiresAt
+        });
+      }
 
       void auditLogService.createAuditLog({
         projectId: profile.projectId,
@@ -542,17 +550,21 @@ export const pkiScepServiceFactory = ({
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + SCEP_TRANSACTION_EXPIRY_HOURS);
+      const existingTx = await scepTransactionDAL.findByProfileAndTransactionId(profile.id, parsed.transactionId);
+      if (!existingTx) {
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + SCEP_TRANSACTION_EXPIRY_HOURS);
 
-      await scepTransactionDAL.create({
-        profileId: profile.id,
-        transactionId: parsed.transactionId,
-        senderNonce: parsed.senderNonce,
-        signerCertDer: parsed.signerCertDer,
-        certificateRequestId: result.certificateRequestId,
-        expiresAt
-      });
+        await scepTransactionDAL.create({
+          profileId: profile.id,
+          transactionId: parsed.transactionId,
+          senderNonce: parsed.senderNonce,
+          signerCertDer: parsed.signerCertDer,
+          certificateRequestId: result.certificateRequestId,
+          clientCipherOid: parsed.clientCipherOid || null,
+          expiresAt
+        });
+      }
 
       return buildCertRepPending({
         raCertDer,
@@ -702,7 +714,8 @@ export const pkiScepServiceFactory = ({
           raCertDer,
           raPrivateKeyDer,
           transactionId: parsed.transactionId,
-          recipientNonce: parsed.senderNonce
+          recipientNonce: parsed.senderNonce,
+          clientCipherOid: transaction.clientCipherOid || undefined
         });
       }
 

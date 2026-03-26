@@ -335,6 +335,7 @@ describe("CertificateProfileService", () => {
           apiConfigId: "api-config-123",
           estConfigId: null,
           acmeConfigId: null,
+          scepConfigId: null,
           projectId: "project-123"
         },
         undefined

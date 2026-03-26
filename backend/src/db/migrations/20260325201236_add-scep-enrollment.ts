@@ -38,6 +38,8 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("certificateRequestId").nullable();
       t.index("certificateRequestId");
 
+      t.string("clientCipherOid", 64).nullable();
+
       t.timestamp("expiresAt").notNullable();
       t.index("expiresAt");
 

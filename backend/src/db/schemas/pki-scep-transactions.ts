@@ -16,6 +16,7 @@ export const PkiScepTransactionsSchema = z.object({
   senderNonce: zodBuffer,
   signerCertDer: zodBuffer,
   certificateRequestId: z.string().uuid().nullable().optional(),
+  clientCipherOid: z.string().nullable().optional(),
   expiresAt: z.date(),
   createdAt: z.date(),
   updatedAt: z.date()
