@@ -105,6 +105,89 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
     }
   }
 
+  if (event.type === WebhookEvents.SecretSecretRotationFailed) {
+    const {
+      projectName,
+      projectId,
+      environment,
+      secretPath,
+      type,
+      rotationName,
+      errorMessage,
+      nextRetryTime,
+      triggeredManually
+    } = event.payload;
+
+    switch (type) {
+      case WebhookType.SLACK:
+        return {
+          text: "A secret rotation has failed.",
+          attachments: [
+            {
+              color: "#E7F256",
+              fields: [
+                {
+                  title: "Rotation Name",
+                  value: rotationName,
+                  short: false
+                },
+                {
+                  title: "Project",
+                  value: projectName,
+                  short: false
+                },
+                {
+                  title: "Environment",
+                  value: environment,
+                  short: false
+                },
+                {
+                  title: "Secret Path",
+                  value: secretPath,
+                  short: false
+                },
+                {
+                  title: "Error Message",
+                  value: errorMessage,
+                  short: false
+                },
+                {
+                  title: "Triggered Manually",
+                  value: triggeredManually ? "Yes" : "No",
+                  short: false
+                },
+                ...(nextRetryTime
+                  ? [
+                      {
+                        title: "Next Retry",
+                        value: nextRetryTime,
+                        short: false
+                      }
+                    ]
+                  : [])
+              ]
+            }
+          ]
+        };
+      case WebhookType.GENERAL:
+      default:
+        return {
+          event: event.type,
+          project: {
+            workspaceId: projectId,
+            projectId,
+            projectName,
+            environment,
+            secretPath,
+            rotationName,
+            errorMessage,
+            nextRetryTime,
+            triggeredManually
+          }
+        };
+    }
+  }
+
   const { projectName, projectId, environment, secretPath, type, reminderNote, secretName } = event.payload;
 
   switch (type) {

@@ -370,7 +370,8 @@ export const rotateSecretsFns = async ({
       jobId: job.id,
       shouldSendNotification: true,
       isFinalAttempt: retryCount === retryLimit,
-      isManualRotation
+      isManualRotation,
+      retryCount
     });
 
     logger.info(`secretRotationV2Queue: Secrets Rotated ${logDetails}`);

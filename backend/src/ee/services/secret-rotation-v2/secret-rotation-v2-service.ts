@@ -83,6 +83,7 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
@@ -931,7 +932,8 @@ export const secretRotationV2ServiceFactory = ({
       jobId,
       shouldSendNotification,
       isFinalAttempt = true,
-      isManualRotation = false
+      isManualRotation = false,
+      retryCount
     }: TSecretRotationRotateGeneratedCredentials = {}
   ) => {
     const {
@@ -1097,6 +1099,36 @@ export const secretRotationV2ServiceFactory = ({
       return updatedRotation;
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
+
+      await queueService.queue(
+        QueueName.SecretWebhook,
+        QueueJobs.SecWebhook,
+        {
+          type: WebhookEvents.SecretSecretRotationFailed,
+          payload: {
+            projectId,
+            environment: environment.slug,
+            secretPath: folder.path,
+            rotationName: secretRotation.name,
+            triggeredManually: isManualRotation,
+            errorMessage,
+            nextRetryTime: isFinalAttempt
+              ? "Maximum retry attempts reached"
+              : new Date(Date.now() + 1000 * 2 ** ((retryCount ?? 1) - 1)).toISOString()
+          }
+        },
+        {
+          jobId: `secret-rotation-webhook-${secretRotation.id}-${Date.now()}`,
+          removeOnFail: { count: 5 },
+          removeOnComplete: true,
+          delay: 1000,
+          attempts: 5,
+          backoff: {
+            type: "exponential",
+            delay: 3000
+          }
+        }
+      );
 
       if (isFinalAttempt) {
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
