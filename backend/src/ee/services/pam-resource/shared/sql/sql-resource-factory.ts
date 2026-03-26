@@ -246,7 +246,8 @@ const makeSqlConnection = (
         ? ""
         : `${encodeURIComponent(actualUsername)}:${encodeURIComponent(actualPassword)}@`;
 
-      const uri = `mongodb://${authPart}localhost:${proxyPort}/${connectionDetails.database}?authSource=${connectionDetails.database}&directConnection=true&serverSelectionTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}&connectTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}`;
+      const encodedDatabase = encodeURIComponent(connectionDetails.database);
+      const uri = `mongodb://${authPart}localhost:${proxyPort}/${encodedDatabase}?authSource=${encodedDatabase}&directConnection=true&serverSelectionTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}&connectTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}`;
 
       const mongoClient = new MongoClient(uri, {
         ...(sslEnabled && {
