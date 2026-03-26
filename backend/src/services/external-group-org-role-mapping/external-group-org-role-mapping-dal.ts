@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import { Tables } from "knex/types/tables";
 
 import { TDbClient } from "@app/db";
@@ -42,5 +43,79 @@ export const externalGroupOrgRoleMappingDALFactory = (db: TDbClient) => {
     return mappings;
   };
 
-  return { ...externalGroupOrgRoleMappingOrm, updateExternalGroupOrgRoleMappingForOrg };
+  /**
+   * Returns all ExternalGroupOrgRoleMappings for a given group name across an
+   * entire org hierarchy (root org + all sub-orgs). Used by $syncNewMembersRoles
+   * to fan out provisioning: one SCIM group event creates memberships in every
+   * org that has a mapping for that group name.
+   */
+  const findMappingsForGroupInOrgHierarchy = async (
+    rootOrgId: string,
+    groupName: string
+  ): Promise<TExternalGroupOrgRoleMappings[]> => {
+    const rows = await db
+      .replicaNode()(TableName.ExternalGroupOrgRoleMapping)
+      .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.ExternalGroupOrgRoleMapping}.orgId`)
+      .where(`${TableName.ExternalGroupOrgRoleMapping}.groupName`, groupName)
+      .where((qb) => {
+        void qb
+          .where(`${TableName.Organization}.id`, rootOrgId)
+          .orWhere(`${TableName.Organization}.rootOrgId`, rootOrgId);
+      })
+      .select<TExternalGroupOrgRoleMappings[]>(`${TableName.ExternalGroupOrgRoleMapping}.*`);
+
+    return rows;
+  };
+
+  /**
+   * Renames all ExternalGroupOrgRoleMappings for a group across the hierarchy.
+   * Called when a SCIM group is renamed so sub-org mappings don't become
+   * orphaned (they'd reference the old name and never match again).
+   */
+  const updateGroupNameForOrgHierarchy = async (
+    rootOrgId: string,
+    oldGroupName: string,
+    newGroupName: string,
+    tx?: Knex
+  ): Promise<void> => {
+    await (tx || db)(TableName.ExternalGroupOrgRoleMapping)
+      .whereIn(
+        "orgId",
+        (tx || db)(TableName.Organization)
+          .where((qb) => {
+            void qb.where("id", rootOrgId).orWhere("rootOrgId", rootOrgId);
+          })
+          .select("id")
+      )
+      .where("groupName", oldGroupName)
+      .update({ groupName: newGroupName });
+  };
+
+  /**
+   * Deletes all ExternalGroupOrgRoleMappings for a group across the hierarchy.
+   * Called when a SCIM group is deleted so sub-org mappings don't persist as
+   * ghost entries that would re-provision users if a new group with the same
+   * name is created later.
+   */
+  const deleteGroupMappingsForOrgHierarchy = async (rootOrgId: string, groupName: string): Promise<void> => {
+    await db(TableName.ExternalGroupOrgRoleMapping)
+      .whereIn(
+        "orgId",
+        db(TableName.Organization)
+          .where((qb) => {
+            void qb.where("id", rootOrgId).orWhere("rootOrgId", rootOrgId);
+          })
+          .select("id")
+      )
+      .where("groupName", groupName)
+      .delete();
+  };
+
+  return {
+    ...externalGroupOrgRoleMappingOrm,
+    updateExternalGroupOrgRoleMappingForOrg,
+    findMappingsForGroupInOrgHierarchy,
+    updateGroupNameForOrgHierarchy,
+    deleteGroupMappingsForOrgHierarchy
+  };
 };
