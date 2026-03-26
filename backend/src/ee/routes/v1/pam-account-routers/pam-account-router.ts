@@ -177,7 +177,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
 
-      return { account };
+      return { account: account as z.infer<typeof SanitizedAccountSchema> };
     }
   });
 
