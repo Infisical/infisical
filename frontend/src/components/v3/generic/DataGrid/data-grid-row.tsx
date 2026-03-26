@@ -192,6 +192,17 @@ function DataGridRowImpl<TData>({
     [row, columnVisibility, columnPinning]
   );
 
+  const isRowNew = tableMeta?.getIsRowNew?.(virtualRowIndex) ?? false;
+
+  const isRowDirty = React.useMemo(() => {
+    if (isRowNew) return false;
+    if (!tableMeta?.getIsCellDirty) return false;
+    return visibleCells.some(
+      (cell) =>
+        cell.column.id !== "select" && tableMeta.getIsCellDirty!(virtualRowIndex, cell.column.id)
+    );
+  }, [isRowNew, visibleCells, tableMeta, virtualRowIndex]);
+
   return (
     <div
       key={row.id}
@@ -206,6 +217,9 @@ function DataGridRowImpl<TData>({
       className={cn(
         "absolute flex w-full border-b border-border",
         !adjustLayout && "will-change-transform",
+        isRowNew && "bg-success/[0.07]",
+        isRowDirty && "bg-warning/[0.07]",
+        isRowSelected && "bg-danger/[0.07]",
         className
       )}
       style={{
@@ -228,7 +242,8 @@ function DataGridRowImpl<TData>({
 
         const isSearchMatch = searchMatchColumns?.has(columnId) ?? false;
         const isActiveSearchMatch = activeSearchMatch?.columnId === columnId;
-        const isCellDirty = tableMeta?.getIsCellDirty?.(virtualRowIndex, columnId) ?? false;
+        const isCellDirty =
+          !isRowNew && (tableMeta?.getIsCellDirty?.(virtualRowIndex, columnId) ?? false);
 
         const nextCell = visibleCells[colIndex + 1];
         const isLastColumn = colIndex === visibleCells.length - 1;
@@ -259,7 +274,7 @@ function DataGridRowImpl<TData>({
             {typeof cell.column.columnDef.header === "function" ? (
               <div
                 className={cn("flex size-full items-center px-3 py-1.5", {
-                  "bg-danger/5": isRowSelected
+                  "bg-danger/[0.07]": isRowSelected
                 })}
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}

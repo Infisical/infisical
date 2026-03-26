@@ -79,6 +79,7 @@ declare module "@tanstack/react-table" {
     getIsSearchMatch?: (rowIndex: number, columnId: string) => boolean;
     getIsActiveSearchMatch?: (rowIndex: number, columnId: string) => boolean;
     getIsCellDirty?: (rowIndex: number, columnId: string) => boolean;
+    getIsRowNew?: (rowIndex: number) => boolean;
     getVisualRowIndex?: (rowId: string) => number | undefined;
     rowHeight?: RowHeightValue;
     onRowHeightChange?: (value: RowHeightValue) => void;

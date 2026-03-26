@@ -576,6 +576,12 @@ export const DataExplorerGrid = ({
     return !cellValuesEqual(row[columnId], original[columnId]);
   }, []);
 
+  const getIsRowNew = useCallback((rowIndex: number) => {
+    const row = currentDataRef.current[rowIndex];
+    if (!row) return false;
+    return Boolean(row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId)));
+  }, []);
+
   // Stable row identity for TanStack Table
   const getRowId = useCallback(
     (row: Record<string, unknown>, index: number) => {
@@ -609,7 +615,7 @@ export const DataExplorerGrid = ({
         selectedRowsRef.current = [];
       }
     },
-    meta: { getIsCellDirty } as Record<string, unknown>
+    meta: { getIsCellDirty, getIsRowNew } as Record<string, unknown>
   });
   gridRef.current = gridProps.table;
 
