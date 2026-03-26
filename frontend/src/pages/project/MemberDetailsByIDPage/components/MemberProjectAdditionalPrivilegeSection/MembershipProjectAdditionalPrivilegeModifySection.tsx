@@ -305,66 +305,66 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                           defaultValue="1h"
                           name="temporaryAccess.temporaryRange"
                           render={({ field, fieldState: { error } }) => (
-                            <Field>
-                              <FieldLabel>
-                                <TtlFormLabel label="Validity" />
-                              </FieldLabel>
-                              <UnstableInput {...field} isError={Boolean(error?.message)} />
-                              {error?.message && <FieldError>{error.message}</FieldError>}
-                            </Field>
+                            <>
+                              <Field>
+                                <FieldLabel>
+                                  <TtlFormLabel label="Validity" />
+                                </FieldLabel>
+                                <UnstableInput {...field} isError={Boolean(error?.message)} />
+                                {error?.message && <FieldError>{error.message}</FieldError>}
+                              </Field>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const temporaryRange = field.value;
+                                    if (!temporaryRange) {
+                                      form.setError(
+                                        "temporaryAccess.temporaryRange",
+                                        { type: "required", message: "Required" },
+                                        { shouldFocus: true }
+                                      );
+                                      return;
+                                    }
+                                    form.clearErrors("temporaryAccess.temporaryRange");
+                                    form.setValue(
+                                      "temporaryAccess",
+                                      {
+                                        isTemporary: true,
+                                        temporaryAccessStartTime: new Date().toISOString(),
+                                        temporaryRange,
+                                        temporaryAccessEndTime: new Date(
+                                          new Date().getTime() + ms(temporaryRange)
+                                        ).toISOString()
+                                      },
+                                      { shouldDirty: true }
+                                    );
+                                  }}
+                                >
+                                  {isTemporary ? "Restart" : "Configure"}
+                                </Button>
+                                {isTemporary && (
+                                  <Button
+                                    size="xs"
+                                    variant="danger"
+                                    onClick={() => {
+                                      form.setValue(
+                                        "temporaryAccess",
+                                        {
+                                          isTemporary: false
+                                        },
+                                        { shouldDirty: true }
+                                      );
+                                    }}
+                                  >
+                                    Remove Duration
+                                  </Button>
+                                )}
+                              </div>
+                            </>
                           )}
                         />
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            onClick={() => {
-                              const temporaryRange = form.getValues(
-                                "temporaryAccess.temporaryRange"
-                              );
-                              if (!temporaryRange) {
-                                form.setError(
-                                  "temporaryAccess.temporaryRange",
-                                  { type: "required", message: "Required" },
-                                  { shouldFocus: true }
-                                );
-                                return;
-                              }
-                              form.clearErrors("temporaryAccess.temporaryRange");
-                              form.setValue(
-                                "temporaryAccess",
-                                {
-                                  isTemporary: true,
-                                  temporaryAccessStartTime: new Date().toISOString(),
-                                  temporaryRange,
-                                  temporaryAccessEndTime: new Date(
-                                    new Date().getTime() + ms(temporaryRange)
-                                  ).toISOString()
-                                },
-                                { shouldDirty: true }
-                              );
-                            }}
-                          >
-                            {isTemporary ? "Restart" : "Configure"}
-                          </Button>
-                          {isTemporary && (
-                            <Button
-                              size="xs"
-                              variant="danger"
-                              onClick={() => {
-                                form.setValue(
-                                  "temporaryAccess",
-                                  {
-                                    isTemporary: false
-                                  },
-                                  { shouldDirty: true }
-                                );
-                              }}
-                            >
-                              Remove Duration
-                            </Button>
-                          )}
-                        </div>
                       </div>
                     </PopoverContent>
                   </Popover>
