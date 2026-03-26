@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy, faInfoCircle, faRedo } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faInfoCircle, faLock, faRedo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
@@ -255,15 +255,7 @@ export const ShareSecretForm = ({
             name="accessType"
             defaultValue={SecretSharingAccessType.Organization}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                helperText={
-                  allowSecretSharingOutsideOrganization ? undefined : (
-                    <span className="text-red-500">Feature enforced by organization</span>
-                  )
-                }
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
+              <FormControl errorText={error?.message} isError={Boolean(error)}>
                 <Switch
                   className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${!allowSecretSharingOutsideOrganization ? "opacity-50" : ""}`}
                   thumbClassName="bg-mineshaft-800"
@@ -280,7 +272,18 @@ export const ShareSecretForm = ({
                   }
                   id="org-access-only"
                 >
-                  Limit access to people within organization
+                  <span className="flex items-center">
+                    Limit access to people within organization
+                    {!allowSecretSharingOutsideOrganization && (
+                      <Tooltip content="Enforced by your organization">
+                        <FontAwesomeIcon
+                          icon={faLock}
+                          size="xs"
+                          className="ml-2 text-mineshaft-400"
+                        />
+                      </Tooltip>
+                    )}
+                  </span>
                 </Switch>
               </FormControl>
             )}
@@ -442,38 +445,39 @@ export const ShareSecretForm = ({
                       field: { onChange, value: isChecked, ...field },
                       fieldState: { error }
                     }) => (
-                      <FormControl
-                        helperText={
-                          !allowSecretSharingOutsideOrganization ? (
-                            <span className="text-red-500">
-                              External sharing is disabled by your organization
+                      <FormControl errorText={error?.message} isError={Boolean(error)}>
+                        <div className="flex items-center">
+                          <Switch
+                            className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${isOrgAccess ? "opacity-50" : ""}`}
+                            thumbClassName="bg-mineshaft-800"
+                            containerClassName={`flex-row-reverse w-fit ${isOrgAccess ? "pointer-events-none opacity-50" : ""}`}
+                            isChecked={isOrgAccess ? false : (isChecked ?? false)}
+                            onCheckedChange={onChange}
+                            isDisabled={isOrgAccess}
+                            id="allow-external-emails"
+                            {...field}
+                          >
+                            <span className="flex items-center">
+                              Allow external recipients
+                              <Tooltip content="When enabled, the defined emails will receive the secret link via email but will need the password to access the secret.">
+                                <FontAwesomeIcon
+                                  icon={faInfoCircle}
+                                  size="xs"
+                                  className="ml-2 text-mineshaft-400"
+                                />
+                              </Tooltip>
                             </span>
-                          ) : undefined
-                        }
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <Switch
-                          className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${isOrgAccess ? "opacity-50" : ""}`}
-                          thumbClassName="bg-mineshaft-800"
-                          containerClassName={`flex-row-reverse w-fit ${isOrgAccess ? "pointer-events-none opacity-50" : ""}`}
-                          isChecked={isOrgAccess ? false : (isChecked ?? false)}
-                          onCheckedChange={onChange}
-                          isDisabled={isOrgAccess}
-                          id="allow-external-emails"
-                          {...field}
-                        >
-                          <span className="flex items-center">
-                            Allow external recipients
-                            <Tooltip content="When enabled, the defined emails will receive the secret link via email but will need the password to access the secret.">
+                          </Switch>
+                          {!allowSecretSharingOutsideOrganization && (
+                            <Tooltip content="External sharing is disabled by your organization">
                               <FontAwesomeIcon
-                                icon={faInfoCircle}
+                                icon={faLock}
                                 size="xs"
-                                className="ml-1 text-mineshaft-400"
+                                className="ml-2 text-mineshaft-400"
                               />
                             </Tooltip>
-                          </span>
-                        </Switch>
+                          )}
+                        </div>
                       </FormControl>
                     )}
                   />
