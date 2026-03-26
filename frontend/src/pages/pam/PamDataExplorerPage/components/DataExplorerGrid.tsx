@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
-
 import { EyeIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";

@@ -153,13 +153,13 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                 <div className="w-full border-t border-mineshaft-600" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-mineshaft-900 px-2 text-mineshaft-400">OR</span>
+                <span className="bg-mineshaft-800 px-2 text-mineshaft-400">OR</span>
               </div>
             </div>
             <div className="py-1">
               <p className="text-sm font-medium text-mineshaft-400">Browser</p>
               <p className="mb-2 text-xs text-mineshaft-400">Connect directly from your browser</p>
-              <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
                 {showDataExplorer && (
                   <Link
                     to={ROUTE_PATHS.Pam.PamDataExplorerPage.path}
@@ -187,10 +187,10 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                     accountId: account.id
                   }}
                   target="_blank"
-                  className="flex w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                  className={`flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${showDataExplorer ? "border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20" : "bg-primary text-black hover:bg-primary/80"}`}
                 >
                   <FontAwesomeIcon icon={faTerminal} />
-                  {showDataExplorer ? "Open Terminal" : "Connect in Browser"}
+                  {showDataExplorer ? "Open Console" : "Connect in Browser"}
                 </Link>
               </div>
             </div>
