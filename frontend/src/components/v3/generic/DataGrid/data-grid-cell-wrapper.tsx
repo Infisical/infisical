@@ -162,7 +162,7 @@ export function DataGridCellWrapper<TData>({
           "bg-yellow-900/30": isSearchMatch && !isActiveSearchMatch,
           "bg-orange-900/50": isActiveSearchMatch,
           "bg-warning/10": isDirty && !isSelected && !isSearchMatch && !isActiveSearchMatch,
-          "bg-danger/[0.07]": isSelected && !isEditing,
+          "bg-foreground/[0.07]": isSelected && !isEditing,
           "cursor-default": !isEditing,
           "**:data-[slot=grid-cell-content]:line-clamp-1 **:data-[slot=grid-cell-content]:break-all":
             !isEditing && rowHeight === "short",

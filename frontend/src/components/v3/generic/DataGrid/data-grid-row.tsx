@@ -272,11 +272,7 @@ function DataGridRowImpl<TData>({
             }}
           >
             {typeof cell.column.columnDef.header === "function" ? (
-              <div
-                className={cn("flex size-full items-center px-3 py-1.5", {
-                  "bg-danger/[0.07]": isRowSelected
-                })}
-              >
+              <div className="flex size-full items-center px-3 py-1.5">
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </div>
             ) : (
@@ -288,7 +284,7 @@ function DataGridRowImpl<TData>({
                 rowHeight={rowHeight}
                 isFocused={isCellFocused}
                 isEditing={isCellEditing}
-                isSelected={isCellSelected}
+                isSelected={isCellSelected && !isRowSelected}
                 isSearchMatch={isSearchMatch}
                 isActiveSearchMatch={isActiveSearchMatch}
                 isDirty={isCellDirty}
