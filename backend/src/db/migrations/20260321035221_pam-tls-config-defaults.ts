@@ -19,12 +19,12 @@ export async function up(knex: Knex): Promise<void> {
     .update({
       discoveryConfiguration: knex.raw(
         `"discoveryConfiguration"::jsonb || '{
-          "ldapPort": 636,
-          "useLdaps": true,
-          "ldapRejectUnauthorized": true,
-          "winrmPort": 5986,
-          "useWinrmHttps": true,
-          "winrmRejectUnauthorized": true,
+          "ldapPort": 389,
+          "useLdaps": false,
+          "ldapRejectUnauthorized": false,
+          "winrmPort": 5985,
+          "useWinrmHttps": false,
+          "winrmRejectUnauthorized": false,
           "discoverDependencies": false
         }'::jsonb`
       )
@@ -65,26 +65,26 @@ export async function up(knex: Knex): Promise<void> {
 
       if (resource.resourceType === "active-directory") {
         if (decrypted.useLdaps === undefined) {
-          decrypted.useLdaps = true;
+          decrypted.useLdaps = false;
           modified = true;
         }
         if (decrypted.ldapRejectUnauthorized === undefined) {
-          decrypted.ldapRejectUnauthorized = true;
+          decrypted.ldapRejectUnauthorized = false;
           modified = true;
         }
       }
 
       if (resource.resourceType === "windows") {
         if (decrypted.winrmPort === undefined) {
-          decrypted.winrmPort = 5986;
+          decrypted.winrmPort = 5985;
           modified = true;
         }
         if (decrypted.useWinrmHttps === undefined) {
-          decrypted.useWinrmHttps = true;
+          decrypted.useWinrmHttps = false;
           modified = true;
         }
         if (decrypted.winrmRejectUnauthorized === undefined) {
-          decrypted.winrmRejectUnauthorized = true;
+          decrypted.winrmRejectUnauthorized = false;
           modified = true;
         }
       }
