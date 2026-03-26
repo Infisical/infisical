@@ -55,8 +55,8 @@ const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedSSHResourceSchema,
   SanitizedKubernetesResourceSchema,
   SanitizedAwsIamResourceSchema,
-  SanitizedRedisResourceSchema,
   SanitizedMongoDBResourceSchema,
+  SanitizedRedisResourceSchema,
   SanitizedWindowsResourceSchema,
   SanitizedActiveDirectoryResourceSchema
 ]);
@@ -73,8 +73,8 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   SSHResourceListItemSchema,
   KubernetesResourceListItemSchema,
   AwsIamResourceListItemSchema,
-  RedisResourceListItemSchema,
   MongoDBResourceListItemSchema,
+  RedisResourceListItemSchema,
   WindowsResourceListItemSchema,
   ActiveDirectoryResourceListItemSchema
 ]);

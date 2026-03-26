@@ -61,10 +61,10 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <MySQLResourceForm onSubmit={onSubmit} />;
     case PamResourceType.MsSQL:
       return <MsSQLResourceForm onSubmit={onSubmit} />;
-    case PamResourceType.Redis:
-      return <RedisResourceForm onSubmit={onSubmit} />;
     case PamResourceType.MongoDB:
       return <MongoDBResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.Redis:
+      return <RedisResourceForm onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SSHResourceForm onSubmit={onSubmit} />;
     case PamResourceType.Kubernetes:
@@ -108,10 +108,10 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <MySQLResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.MsSQL:
       return <MsSQLResourceForm resource={resource} onSubmit={onSubmit} />;
-    case PamResourceType.Redis:
-      return <RedisResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.MongoDB:
       return <MongoDBResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.Redis:
+      return <RedisResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SSHResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.Kubernetes:
