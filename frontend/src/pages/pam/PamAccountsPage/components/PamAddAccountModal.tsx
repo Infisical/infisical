@@ -25,7 +25,7 @@ export const PamAddAccountModal = ({
   resource
 }: Props) => {
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange} modal={false}>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
         <SheetHeader className="border-b">
           <SheetTitle>Create Account</SheetTitle>

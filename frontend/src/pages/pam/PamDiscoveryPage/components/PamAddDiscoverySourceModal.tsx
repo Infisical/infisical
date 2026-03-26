@@ -44,7 +44,6 @@ export const PamAddDiscoverySourceModal = ({ isOpen, onOpenChange, projectId }: 
         onOpenChange(e);
         setSelectedType(null);
       }}
-      modal={false}
     >
       <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
         <SheetHeader className="border-b">
