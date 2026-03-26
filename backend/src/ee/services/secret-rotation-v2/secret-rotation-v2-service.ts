@@ -25,6 +25,7 @@ import {
   expandSecretRotation,
   getNextUtcRotationInterval,
   getSecretRotationRotateSecretJobOptions,
+  getWebhookSanitizedErrorMessage,
   listSecretRotationOptions,
   parseRotationErrorMessage,
   throwOnImmutableParameterUpdate
@@ -1099,6 +1100,7 @@ export const secretRotationV2ServiceFactory = ({
       return updatedRotation;
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
+      const webhookErrorMessage = getWebhookSanitizedErrorMessage(error);
 
       let nextRetryTime: string | undefined;
       if (!isManualRotation) {
@@ -1118,7 +1120,7 @@ export const secretRotationV2ServiceFactory = ({
             secretPath: folder.path,
             rotationName: secretRotation.name,
             triggeredManually: isManualRotation,
-            errorMessage,
+            errorMessage: webhookErrorMessage,
             nextRetryTime
           }
         },

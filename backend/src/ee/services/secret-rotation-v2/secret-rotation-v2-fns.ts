@@ -272,6 +272,36 @@ export const parseRotationErrorMessage = (err: unknown): string => {
     : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
 };
 
+export const getWebhookSanitizedErrorMessage = (err: unknown): string => {
+  let errorCategory = "an unknown error";
+
+  if (err instanceof AxiosError) {
+    const status = err?.response?.status;
+    if (status === 401 || status === 403) {
+      errorCategory = "an authentication/authorization error";
+    } else if (status === 404) {
+      errorCategory = "a not found error";
+    } else if (status === 429) {
+      errorCategory = "a rate limit error";
+    } else if (err.code === "ECONNREFUSED" || err.code === "ECONNRESET" || err.code === "ETIMEDOUT") {
+      errorCategory = "a connection error";
+    } else {
+      errorCategory = `an HTTP error (status ${status ?? "unknown"})`;
+    }
+  } else if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    if (msg.includes("timeout") || msg.includes("etimedout")) {
+      errorCategory = "a timeout error";
+    } else if (msg.includes("econnrefused") || msg.includes("econnreset") || msg.includes("connect")) {
+      errorCategory = "a connection error";
+    } else if (msg.includes("authentication") || msg.includes("unauthorized") || msg.includes("permission")) {
+      errorCategory = "an authentication/authorization error";
+    }
+  }
+
+  return `Credential rotation failed due to ${errorCategory}. Check the rotation status in the dashboard for details.`;
+};
+
 function haveUnequalProperties<T>(obj1: T, obj2: T, properties: (keyof T)[]): boolean {
   return properties.some((prop) => obj1[prop] !== obj2[prop]);
 }
