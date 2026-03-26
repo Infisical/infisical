@@ -9,6 +9,7 @@ import {
   OrgMembershipStatus,
   TableName,
   TOidcConfigs,
+  TOrganizations,
   TSamlConfigs
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -150,6 +151,24 @@ export const orgServiceFactory = ({
   userGroupMembershipDAL,
   additionalPrivilegeDAL
 }: TOrgServiceFactoryDep) => {
+  /**
+   * Given any orgId (root or sub-org), returns the root org.
+   * Useful when callers need orgAuthMethod or the root org id but only have a
+   * sub-org token — e.g. SCIM user provisioning.
+   */
+  const findRootOrg = async (orgId: string): Promise<TOrganizations & { orgAuthMethod?: string }> => {
+    const org = await orgDAL.findOrgById(orgId);
+    if (org) return org;
+
+    const subOrg = await orgDAL.findById(orgId);
+    if (!subOrg?.rootOrgId) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+
+    const rootOrg = await orgDAL.findOrgById(subOrg.rootOrgId);
+    if (!rootOrg) throw new NotFoundError({ message: `Organization with ID '${subOrg.rootOrgId}' not found` });
+
+    return rootOrg;
+  };
+
   /*
    * Get organization details by the organization id
    * */
@@ -431,9 +450,25 @@ export const orgServiceFactory = ({
       orgId,
       actorAuthMethod,
       actorOrgId,
-      scope: OrganizationActionScope.ParentOrganization
+      scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+
+    // Sub-orgs can only toggle scimEnabled. Block all other settings for child orgs.
+    const targetOrg = await orgDAL.findById(orgId);
+    if (targetOrg?.rootOrgId) {
+      const rootOrgOnlyFields = [
+        name, slug, authEnforced, googleSsoAuthEnforced, defaultMembershipRoleSlug,
+        enforceMfa, selectedMfaMethod, allowSecretSharingOutsideOrganization,
+        bypassOrgAuthEnabled, userTokenExpiration, secretsProductEnabled,
+        pkiProductEnabled, kmsProductEnabled, sshProductEnabled, scannerProductEnabled,
+        shareSecretsProductEnabled, maxSharedSecretLifetime, maxSharedSecretViewLimit,
+        blockDuplicateSecretSyncDestinations, secretShareBrandConfig
+      ];
+      if (rootOrgOnlyFields.some((f) => f !== undefined)) {
+        throw new BadRequestError({ message: "Sub-organizations can only update SCIM settings." });
+      }
+    }
 
     if (allowSecretSharingOutsideOrganization !== undefined) {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -450,7 +485,8 @@ export const orgServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(orgId);
-    const currentOrg = await orgDAL.findOrgById(actorOrgId);
+    // findRootOrg handles both root orgs and sub-orgs; orgAuthMethod lives on the root org.
+    const currentOrg = await findRootOrg(actorOrgId);
 
     if (secretShareBrandConfig !== undefined) {
       if (!plan.secretShareExternalBranding) {
@@ -1285,6 +1321,7 @@ export const orgServiceFactory = ({
   };
 
   return {
+    findRootOrg,
     findOrganizationById,
     findAllOrgMembers,
     findAllOrganizationOfUser,
