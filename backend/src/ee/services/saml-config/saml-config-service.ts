@@ -67,7 +67,13 @@ type TSamlConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
+    | "createMembership"
+    | "updateMembershipById"
+    | "findMembership"
+    | "findOrgById"
+    | "findOne"
+    | "updateById"
+    | "acceptSubOrgInvitedMembershipsForUser"
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
@@ -577,6 +583,12 @@ export const samlConfigServiceFactory = ({
           );
         }
 
+        // Accept any Invited sub-org memberships now that the user has authenticated via root org SSO.
+        // We do this unconditionally (not gated on isAccepted) because for new SCIM-provisioned
+        // users, isAccepted is false on their first SSO login, but the sub-org membership should
+        // still be accepted since root org SSO authentication is the authoritative signal.
+        await orgDAL.acceptSubOrgInvitedMembershipsForUser(foundUser.id, orgId, tx);
+
         if (metadata && foundUser.id) {
           await identityMetadataDAL.delete({ userId: foundUser.id, orgId }, tx);
           if (metadata.length) {
@@ -697,6 +709,9 @@ export const samlConfigServiceFactory = ({
             tx
           );
         }
+
+        // Accept any Invited sub-org memberships now that the user has authenticated via root org SSO.
+        await orgDAL.acceptSubOrgInvitedMembershipsForUser(newUser.id, orgId, tx);
 
         if (metadata && newUser.id) {
           await identityMetadataDAL.delete({ userId: newUser.id, orgId }, tx);
