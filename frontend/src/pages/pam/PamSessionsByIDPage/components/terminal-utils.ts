@@ -7,6 +7,21 @@ export const stripAnsiCodes = (text: string): string => {
   return text.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, "").replace(/\x1b\][0-9];[^\x07]*\x07/g, "");
 };
 
+// Check if a string contains mostly printable characters
+const isPrintableText = (text: string): boolean => {
+  if (text.length === 0) return false;
+  let printableCount = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    // Allow printable ASCII, newlines, tabs, and common unicode
+    if ((code >= 32 && code <= 126) || code === 10 || code === 13 || code === 9 || code > 127) {
+      printableCount += 1;
+    }
+  }
+  // Consider it printable if at least 80% of characters are printable
+  return printableCount / text.length >= 0.8;
+};
+
 export type AggregatedTerminalEvent = {
   timestamp: string;
   eventType: string;
@@ -15,21 +30,63 @@ export type AggregatedTerminalEvent = {
   eventCount: number;
 };
 
-// Aggregate consecutive output events to avoid character-by-character display
-export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
-  // Filter to only show output events (input is echoed, so redundant)
+// Decode a single event's base64 data, returning empty string on failure or binary data
+const decodeEventData = (event: TTerminalEvent): string => {
+  try {
+    const decoded = stripAnsiCodes(atob(event.data));
+    if (!isPrintableText(decoded)) {
+      return "";
+    }
+    return decoded;
+  } catch {
+    return "";
+  }
+};
+
+// Check if input is echoed in output (common in interactive terminal sessions)
+const isInputEchoedInOutput = (events: TTerminalEvent[]): boolean => {
+  const inputEvents = events.filter((e) => e.eventType === "input");
   const outputEvents = events.filter((e) => e.eventType === "output");
 
-  if (outputEvents.length === 0) return [];
+  if (inputEvents.length === 0 || outputEvents.length === 0) return false;
 
-  // Decode each event and track character positions to map back to original events
-  const decodedEvents: { text: string; event: TTerminalEvent }[] = outputEvents.map((e) => {
-    try {
-      return { text: stripAnsiCodes(atob(e.data)), event: e };
-    } catch {
-      return { text: "", event: e };
-    }
+  // Decode all output into a single string
+  const allOutput = outputEvents.map((e) => decodeEventData(e)).join("");
+
+  // Check if all non-empty inputs appear in the output (echoed)
+  // If any input is not echoed, return false (likely exec or SFTP)
+  const hasUnechoedInput = inputEvents.some((inputEvent) => {
+    const inputText = decodeEventData(inputEvent).trim();
+    return inputText && !allOutput.includes(inputText);
   });
+
+  return !hasUnechoedInput;
+};
+
+// Aggregate consecutive output events to avoid character-by-character display
+export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTerminalEvent[] => {
+  // Determine if input is echoed in output (interactive terminal vs exec/SFTP)
+  const inputEchoed = isInputEchoedInOutput(events);
+
+  // If input is echoed, only show output to avoid duplication
+  // Otherwise, include both input and output (for exec, SFTP, etc.)
+  let terminalEvents = inputEchoed
+    ? events.filter((e) => e.eventType === "output")
+    : events.filter((e) => e.eventType === "input" || e.eventType === "output");
+
+  // Fall back to input events if no output events (e.g., SFTP with only input messages)
+  if (terminalEvents.length === 0) {
+    terminalEvents = events.filter((e) => e.eventType === "input");
+  }
+
+  if (terminalEvents.length === 0) return [];
+
+  // Decode each event and filter out binary/non-printable data
+  const decodedEvents: { text: string; event: TTerminalEvent }[] = terminalEvents
+    .map((e) => ({ text: decodeEventData(e), event: e }))
+    .filter((e) => e.text.length > 0);
+
+  if (decodedEvents.length === 0) return [];
 
   // Build a character-to-event index mapping
   // This tracks which original event each character came from
@@ -86,7 +143,7 @@ export const aggregateTerminalEvents = (events: TTerminalEvent[]): AggregatedTer
   return validSegments.map((segment) => {
     // Find the original event that corresponds to the start of this segment
     const eventIndex = charToEventIndex[segment.startCharIndex] ?? 0;
-    const originalEvent = decodedEvents[eventIndex]?.event ?? outputEvents[0];
+    const originalEvent = decodedEvents[eventIndex]?.event ?? terminalEvents[0];
 
     return {
       timestamp: originalEvent.timestamp,
