@@ -3518,7 +3518,7 @@ export const SECRET_SHARING = {
     authorizedEmails:
       "An optional array of email addresses to share the secret with. Maximum 100 emails. Organization members in the list get direct access. When allowExternalEmails is enabled, non-member emails are also accepted and recipients will receive the secret link via email, but must use the password to access it.",
     allowExternalEmails:
-      "When true, non-organization-member emails are allowed in the authorizedEmails list. A password is required when this option is enabled. External recipients will receive the secret link via email and must use the password to access it."
+      "When true, allows sharing with email addresses that do not belong to Infisical. A password is required when this option is enabled. External recipients will receive the secret link via email and must enter the password to access it."
   },
   DELETE: {
     id: "The ID of the shared secret to delete."
