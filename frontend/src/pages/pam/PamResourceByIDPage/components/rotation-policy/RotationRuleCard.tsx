@@ -5,8 +5,11 @@ import {
   Field,
   FieldContent,
   FieldLabel,
-  Label,
-  Switch,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   UnstableIconButton,
   UnstableInput
 } from "@app/components/v3";
@@ -84,17 +87,18 @@ export const RotationRuleCard = ({
       <div className="flex w-full flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="mr-1 text-lg font-medium text-muted">{index + 1}</span>
-          <Switch
-            id={`rule-enabled-${rule.id}`}
-            checked={rule.enabled}
-            onCheckedChange={(checked) => onUpdate({ enabled: checked })}
-            variant="project"
-          />
-          {rule.enabled ? (
-            <Label>Rotate</Label>
-          ) : (
-            <Label className="opacity-50">Do Not Rotate</Label>
-          )}
+          <Select
+            value={rule.enabled ? "include" : "exclude"}
+            onValueChange={(value) => onUpdate({ enabled: value === "include" })}
+          >
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="include">Rotate</SelectItem>
+              <SelectItem value="exclude">Do Not Rotate</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Field>
           <FieldLabel>Rule Name</FieldLabel>
