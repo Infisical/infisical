@@ -67,7 +67,14 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
     handler: async (req) => {
       const { body, permission } = req;
 
-      const mappings = server.services.externalGroupOrgRoleMapping.updateExternalGroupOrgRoleMappings(body, permission);
+      const mappings = await server.services.externalGroupOrgRoleMapping.updateExternalGroupOrgRoleMappings(
+        body,
+        permission
+      );
+
+      // Re-sync group membership rows so changes take effect immediately
+      // without waiting for the next SCIM group push from the IdP.
+      await server.services.scim.syncGroupMappingsForOrg(permission.orgId);
 
       await server.services.auditLog.createAuditLog({
         orgId: permission.orgId,
