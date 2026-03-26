@@ -1113,7 +1113,7 @@ export const secretRotationV2ServiceFactory = ({
         QueueName.SecretWebhook,
         QueueJobs.SecWebhook,
         {
-          type: WebhookEvents.SecretSecretRotationFailed,
+          type: WebhookEvents.SecretRotationFailed,
           payload: {
             projectId,
             environment: environment.slug,

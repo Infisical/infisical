@@ -34,7 +34,7 @@ export enum WebhookType {
 export enum WebhookEvents {
   SecretModified = "secrets.modified",
   SecretReminderExpired = "secrets.reminder-expired",
-  SecretSecretRotationFailed = "secrets.rotation-failed",
+  SecretRotationFailed = "secrets.rotation-failed",
   TestEvent = "test"
 }
 
@@ -64,7 +64,7 @@ type TWebhookSecretReminderEventPayload = {
 };
 
 type TWebhookSecretRotationFailedEventPayload = {
-  type: WebhookEvents.SecretSecretRotationFailed;
+  type: WebhookEvents.SecretRotationFailed;
 
   payload: {
     rotationName?: string;

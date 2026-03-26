@@ -105,7 +105,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
     }
   }
 
-  if (event.type === WebhookEvents.SecretSecretRotationFailed) {
+  if (event.type === WebhookEvents.SecretRotationFailed) {
     const {
       projectName,
       projectId,
