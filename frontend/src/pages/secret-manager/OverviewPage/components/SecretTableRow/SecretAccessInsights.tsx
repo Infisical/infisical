@@ -127,7 +127,7 @@ function AccessCard({
                   </UnstableDropdownMenuItem>
                 )}
                 <UnstableDropdownMenuItem asChild>
-                  <Link to={linkTo as "."} params={linkParams}>
+                  <Link to={linkTo as "."} params={linkParams} target="_blank">
                     <ExternalLinkIcon />
                     Manage Access
                   </Link>
