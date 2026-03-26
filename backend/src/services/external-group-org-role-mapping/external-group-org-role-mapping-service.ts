@@ -33,7 +33,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
       orgId: actor.orgId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.ParentOrganization
+      scope: OrganizationActionScope.Any
     });
 
     // TODO: will need to change if we add support for ldap, oidc, etc.
@@ -56,7 +56,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
       orgId: actor.orgId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.ParentOrganization
+      scope: OrganizationActionScope.Any
     });
 
     // TODO: will need to change if we add support for ldap, oidc, etc.
