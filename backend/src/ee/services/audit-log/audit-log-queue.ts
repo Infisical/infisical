@@ -80,6 +80,11 @@ export const auditLogQueueServiceFactory = async ({
 
   queueService.start(QueueName.AuditLog, async (job) => {
     try {
+      if (!job.data) {
+        logger.error({ jobId: job.id }, "audit-log-queue: Received job with empty data, skipping");
+        return;
+      }
+
       const { actor, event, ipAddress, projectId, userAgent, userAgentType } = job.data;
       let { orgId } = job.data;
       let project: TProjects | undefined;
