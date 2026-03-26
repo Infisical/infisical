@@ -24,6 +24,9 @@ import {
   SheetHeader,
   SheetTitle,
   Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
@@ -67,12 +70,14 @@ function AccessCard({
   entry,
   linkTo,
   linkParams,
-  onEdit
+  onEdit,
+  canEdit = true
 }: {
   entry: SecretAccessListEntry;
   linkTo?: string;
   linkParams?: Record<string, string>;
   onEdit?: () => void;
+  canEdit?: boolean;
 }) {
   const cardContent = (
     <>
@@ -115,16 +120,24 @@ function AccessCard({
               </UnstableDropdownMenuTrigger>
               <UnstableDropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                 {onEdit && (
-                  <UnstableDropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onEdit();
-                    }}
-                  >
-                    <PlusIcon />
-                    Add Additional Privilege
-                  </UnstableDropdownMenuItem>
+                  <Tooltip open={canEdit ? false : undefined}>
+                    <TooltipTrigger>
+                      <UnstableDropdownMenuItem
+                        isDisabled={!canEdit}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onEdit();
+                        }}
+                      >
+                        <PlusIcon />
+                        Add Additional Privilege
+                      </UnstableDropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      You do not have permission to perform this action
+                    </TooltipContent>
+                  </Tooltip>
                 )}
                 <UnstableDropdownMenuItem asChild>
                   <Link to={linkTo as "."} params={linkParams} target="_blank">
@@ -169,11 +182,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   const { permission } = useProjectPermission();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [editingPrivilege, setEditingPrivilege] = useState<EditingPrivilege | null>(null);
-
-  const canEditMemberPrivileges = permission.can(
-    ProjectPermissionMemberActions.Edit,
-    ProjectPermissionSub.Member
-  );
 
   const initialPermissions = useMemo(
     () => ({
@@ -265,28 +273,33 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               count={secretAccessList.users.length}
             />
             <ItemGroup>
-              {secretAccessList.users.map((user) => (
-                <AccessCard
-                  key={user.id}
-                  entry={user}
-                  linkTo={`${getProjectBaseURL(currentProject.type)}/members/$membershipId`}
-                  linkParams={{
-                    orgId: currentOrg.id,
-                    projectId: currentProject.id,
-                    membershipId: user.membershipId
-                  }}
-                  onEdit={
-                    canEditMemberPrivileges
-                      ? () =>
-                          setEditingPrivilege({
-                            type: "user",
-                            membershipId: user.membershipId,
-                            name: user.name
-                          })
-                      : undefined
-                  }
-                />
-              ))}
+              {secretAccessList.users.map((user) => {
+                const canAssignMemberPrivileges = permission.can(
+                  ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+                  subject(ProjectPermissionSub.Member, { userEmail: user.name })
+                );
+
+                return (
+                  <AccessCard
+                    key={user.id}
+                    entry={user}
+                    linkTo={`${getProjectBaseURL(currentProject.type)}/members/$membershipId`}
+                    linkParams={{
+                      orgId: currentOrg.id,
+                      projectId: currentProject.id,
+                      membershipId: user.membershipId
+                    }}
+                    canEdit={canAssignMemberPrivileges}
+                    onEdit={() =>
+                      setEditingPrivilege({
+                        type: "user",
+                        membershipId: user.membershipId,
+                        name: user.name
+                      })
+                    }
+                  />
+                );
+              })}
             </ItemGroup>
           </div>
         )}
@@ -300,8 +313,8 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
             />
             <ItemGroup>
               {secretAccessList.identities.map((identity) => {
-                const canEditIdentity = permission.can(
-                  ProjectPermissionIdentityActions.Edit,
+                const canAssignIdentityPrivileges = permission.can(
+                  ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
                   subject(ProjectPermissionSub.Identity, { identityId: identity.id })
                 );
 
@@ -315,16 +328,14 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                       projectId: currentProject.id,
                       identityId: identity.id
                     }}
-                    onEdit={
-                      canEditIdentity
-                        ? () =>
-                            setEditingPrivilege({
-                              type: "identity",
-                              membershipId: identity.membershipId,
-                              identityId: identity.id,
-                              name: identity.name
-                            })
-                        : undefined
+                    canEdit={canAssignIdentityPrivileges}
+                    onEdit={() =>
+                      setEditingPrivilege({
+                        type: "identity",
+                        membershipId: identity.membershipId,
+                        identityId: identity.id,
+                        name: identity.name
+                      })
                     }
                   />
                 );
