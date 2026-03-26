@@ -38,8 +38,7 @@ export const OrgTabGroup = () => {
     {
       name: "Provisioning",
       key: "provisioning-settings",
-      component: OrgProvisioningTab,
-      isHidden: isSubOrganization
+      component: OrgProvisioningTab
     },
     {
       name: "Security",
