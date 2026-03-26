@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { DatabaseIcon, SearchIcon, TableIcon, ViewIcon } from "lucide-react";
 
-import { Select, SelectItem } from "@app/components/v2";
 import { UnstableInput } from "@app/components/v3/generic/Input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3/generic/Select/Select";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { cn } from "@app/components/v3/utils";
 
@@ -52,18 +58,20 @@ export const DataExplorerSidebar = ({
         {isLoadingSchemas ? (
           <Skeleton className="h-8 w-full" />
         ) : (
-          <Select
-            value={selectedSchema}
-            onValueChange={onSchemaChange}
-            className="w-full text-xs"
-            LucideIcon={DatabaseIcon}
-            iconClassName="text-accent"
-          >
-            {schemas.map((s) => (
-              <SelectItem key={s.name} value={s.name}>
-                {s.name}
-              </SelectItem>
-            ))}
+          <Select value={selectedSchema} onValueChange={onSchemaChange}>
+            <SelectTrigger className="h-9 w-full text-xs text-foreground">
+              <span className="flex items-center gap-1.5">
+                <DatabaseIcon className="size-3.5 text-accent" />
+                <SelectValue />
+              </span>
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {schemas.map((s) => (
+                <SelectItem key={s.name} value={s.name}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         )}
         <div className="relative">
@@ -72,7 +80,7 @@ export const DataExplorerSidebar = ({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tables..."
-            className="h-8 pl-7 text-xs text-foreground"
+            className="pl-7 text-xs text-foreground"
           />
         </div>
       </div>
