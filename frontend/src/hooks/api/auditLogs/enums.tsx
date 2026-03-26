@@ -355,5 +355,10 @@ export enum EventType {
   DELETE_DYNAMIC_SECRET_LEASE = "delete-dynamic-secret-lease",
   RENEW_DYNAMIC_SECRET_LEASE = "renew-dynamic-secret-lease",
   LIST_DYNAMIC_SECRET_LEASES = "list-dynamic-secret-leases",
-  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease"
+  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease",
+
+  // Secret Validation Rules
+  SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
+  SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete"
 }

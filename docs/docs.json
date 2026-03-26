@@ -510,7 +510,8 @@
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
                   },
-                  "documentation/platform/webhooks"
+                  "documentation/platform/webhooks",
+                  "documentation/platform/secret-validation-rules"
                 ]
               },
               {
@@ -839,7 +840,8 @@
                   "documentation/platform/kms/overview",
                   "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/kmip"
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/sigstore-cosign"
                 ]
               }
             ]

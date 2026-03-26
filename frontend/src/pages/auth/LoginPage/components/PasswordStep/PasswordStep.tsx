@@ -62,6 +62,27 @@ export const PasswordStep = ({
         providerAuthToken
       });
 
+      if (oauthLogin.isMfaEnabled) {
+        SecurityClient.setMfaToken(oauthLogin.token);
+        if (oauthLogin.mfaMethod) {
+          setRequiredMfaMethod(oauthLogin.mfaMethod);
+        }
+        toggleShowMfa.on();
+        // After MFA verification succeeds, the Mfa component sets the real auth token.
+        // Navigate to org selection as the post-login step (do NOT re-call handleExchange
+        // which would hit the token exchange endpoint and trigger MFA again in a loop).
+        setMfaSuccessCallback(() => async () => {
+          SecurityClient.setProviderAuthToken("");
+          if (callbackPort) {
+            navigateToSelectOrganization(callbackPort, isAdminLogin);
+          } else {
+            navigateToSelectOrganization(undefined, isAdminLogin);
+          }
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // unset provider auth token in case it was used
       SecurityClient.setProviderAuthToken("");
       // set JWT token
