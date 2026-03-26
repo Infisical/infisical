@@ -696,7 +696,11 @@ export enum EventType {
   GET_PKI_SIGNERS = "get-pki-signers",
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
-  PKI_SIGNER_SIGN = "pki-signer-sign"
+  PKI_SIGNER_SIGN = "pki-signer-sign",
+
+  // Secret Export
+  EXPORT_SECRETS = "export-secrets",
+  EXPORT_SECRETS_BLOCKED = "export-secrets-blocked"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -836,6 +840,23 @@ interface GetSecretsEvent {
     environment: string;
     secretPath: string;
     numberOfSecrets: number;
+  };
+}
+
+interface ExportSecretsEvent {
+  type: EventType.EXPORT_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    numberOfSecrets: number;
+  };
+}
+
+interface ExportSecretsBlockedEvent {
+  type: EventType.EXPORT_SECRETS_BLOCKED;
+  metadata: {
+    environment: string;
+    secretPath: string;
   };
 }
 
@@ -5966,4 +5987,6 @@ export type Event =
   | RenewDynamicSecretLeaseEvent
   | GetDynamicSecretLeaseEvent
   | UpdateCertificateCleanupConfigEvent
-  | CertificateCleanupCompletedEvent;
+  | CertificateCleanupCompletedEvent
+  | ExportSecretsEvent
+  | ExportSecretsBlockedEvent;

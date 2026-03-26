@@ -211,13 +211,45 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       // Check export restriction AFTER getSecretsRaw has verified project access/RBAC.
       // This ensures no information leak about export settings for projects the user lacks access to.
       if (req.query.purpose === "export") {
-        const envs = await server.services.projectEnv.getEnvironmentsByProjectId(projectId);
+        const envs = await server.services.projectEnv.getEnvironmentsByProjectId({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod,
+          projectId
+        });
         const targetEnv = envs.find((e) => e.slug === environment);
         if (targetEnv && targetEnv.allowSecretExport === false) {
+          // Audit the blocked export attempt before throwing
+          await server.services.auditLog.createAuditLog({
+            projectId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.EXPORT_SECRETS_BLOCKED,
+              metadata: {
+                environment,
+                secretPath: req.query.secretPath
+              }
+            }
+          });
           throw new ForbiddenRequestError({
             message: "Secret export is disabled for this environment. An administrator has restricted secret downloads."
           });
         }
+
+        // Audit successful export
+        await server.services.auditLog.createAuditLog({
+          projectId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.EXPORT_SECRETS,
+            metadata: {
+              environment,
+              secretPath: req.query.secretPath,
+              numberOfSecrets: secrets.length
+            }
+          }
+        });
       }
 
       await server.services.auditLog.createAuditLog({

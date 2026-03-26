@@ -132,7 +132,7 @@ export type TGetProjectSecretsKey = {
   viewSecretValue?: boolean;
   expandSecretReferences?: boolean;
   recursive?: boolean;
-  purpose?: "view" | "export";
+  purpose?: "export";
 };
 
 export type TGetProjectSecretsDTO = TGetProjectSecretsKey;

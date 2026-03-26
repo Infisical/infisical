@@ -13,7 +13,7 @@ import { logger } from "@app/lib/logger";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
-import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TUpdateEnvDTO } from "./project-env-types";
+import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TGetEnvsByProjectIdDTO, TUpdateEnvDTO } from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
@@ -275,7 +275,24 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const getEnvironmentsByProjectId = async (projectId: string) => {
+  const getEnvironmentsByProjectId = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TGetEnvsByProjectIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+
     return projectEnvDAL.find({ projectId });
   };
 
