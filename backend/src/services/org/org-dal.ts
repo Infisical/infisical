@@ -733,8 +733,15 @@ export const orgDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .leftJoin(TableName.UserAliases, function joinUserAlias() {
+          // Aliases are always scoped to the root org; for sub-org memberships use rootOrgId.
           this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
-            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
+            .andOn(
+              `${TableName.UserAliases}.orgId`,
+              "=",
+              (tx || db).raw(
+                `COALESCE(${TableName.Organization}."rootOrgId", ${TableName.Organization}.id)`
+              )
+            )
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
         .select(
@@ -871,10 +878,17 @@ export const orgDALFactory = (db: TDbClient) => {
         })
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
-        .whereNull(`${TableName.Organization}.rootOrgId`)
         .leftJoin(TableName.UserAliases, function joinUserAlias() {
+          // Aliases are always scoped to the root org, so join via the root org ID:
+          // for root orgs (rootOrgId IS NULL) use the org itself; for sub-orgs use rootOrgId.
           this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
-            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
+            .andOn(
+              `${TableName.UserAliases}.orgId`,
+              "=",
+              (tx || db).raw(
+                `COALESCE(${TableName.Organization}."rootOrgId", ${TableName.Organization}.id)`
+              )
+            )
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
         .select(
@@ -943,6 +957,23 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Accepts all Invited sub-org memberships for a user within a root org's
+   * hierarchy. Called after the user successfully authenticates via root org
+   * SSO so that sub-org access is unblocked in the same login flow.
+   */
+  const acceptSubOrgInvitedMembershipsForUser = async (userId: string, rootOrgId: string, tx?: Knex) => {
+    await (tx || db)(TableName.Membership)
+      .whereIn(
+        `${TableName.Membership}.scopeOrgId`,
+        (tx || db)(TableName.Organization).where({ rootOrgId }).select("id")
+      )
+      .where(`${TableName.Membership}.actorUserId`, userId)
+      .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+      .where(`${TableName.Membership}.status`, OrgMembershipStatus.Invited)
+      .update({ status: OrgMembershipStatus.Accepted });
+  };
+
   return withTransaction(db, {
     ...orgOrm,
     findOrgByProjectId,
@@ -970,6 +1001,7 @@ export const orgDALFactory = (db: TDbClient) => {
     deleteMembershipsById,
     updateMembership,
     findIdentityOrganization,
-    findRootOrgDetails
+    findRootOrgDetails,
+    acceptSubOrgInvitedMembershipsForUser
   });
 };
