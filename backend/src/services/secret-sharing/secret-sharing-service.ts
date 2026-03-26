@@ -210,7 +210,7 @@ export const secretSharingServiceFactory = ({
       ...(actor === ActorType.IDENTITY && { identityId: actorId }),
       orgId,
       accessType,
-      authorizedEmails: orgMemberEmails.length > 0 ? JSON.stringify(orgMemberEmails) : undefined,
+      authorizedEmails: emails && emails.length > 0 ? JSON.stringify(emails) : undefined,
       allowExternalEmails: Boolean(allowExternalEmails)
     });
 
