@@ -909,26 +909,6 @@ export const registerRoutes = async (
     secretTagDAL,
     resourceMetadataDAL
   });
-  const scimService = scimServiceFactory({
-    licenseService,
-    scimDAL,
-    scimEventsDAL,
-    userDAL,
-    userAliasDAL,
-    orgDAL,
-    projectDAL,
-    userGroupMembershipDAL,
-    projectKeyDAL,
-    projectBotDAL,
-    permissionService,
-    smtpService,
-    externalGroupOrgRoleMappingDAL,
-    groupDAL,
-    membershipGroupDAL,
-    membershipRoleDAL,
-    membershipUserDAL,
-    additionalPrivilegeDAL
-  });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
     licenseService,
@@ -1073,6 +1053,28 @@ export const registerRoutes = async (
     membershipUserDAL,
     roleDAL,
     userGroupMembershipDAL,
+    additionalPrivilegeDAL
+  });
+
+  const scimService = scimServiceFactory({
+    licenseService,
+    scimDAL,
+    scimEventsDAL,
+    userDAL,
+    userAliasDAL,
+    orgDAL,
+    orgService,
+    projectDAL,
+    userGroupMembershipDAL,
+    projectKeyDAL,
+    projectBotDAL,
+    permissionService,
+    smtpService,
+    externalGroupOrgRoleMappingDAL,
+    groupDAL,
+    membershipGroupDAL,
+    membershipRoleDAL,
+    membershipUserDAL,
     additionalPrivilegeDAL
   });
 
