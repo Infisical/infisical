@@ -3342,7 +3342,7 @@
         "items": [
           {
             "label": "Infisical Agent",
-            "href": "https://infisical.com/docs/documentation/getting-started/introduction"
+            "href": "https://infisical.com/docs/integrations/platforms/infisical-agent"
           },
           {
             "label": "Infisical Proxy",
