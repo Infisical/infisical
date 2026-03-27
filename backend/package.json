@@ -128,12 +128,15 @@
     "vitest": "^3.0.6"
   },
   "dependencies": {
+    "@aws-sdk/client-acm": "^3.1015.0",
     "@aws-sdk/client-acm-pca": "^3.992.0",
+    "@aws-sdk/client-elastic-load-balancing-v2": "^3.1015.0",
     "@aws-sdk/client-elasticache": "^3.637.0",
     "@aws-sdk/client-iam": "^3.525.0",
     "@aws-sdk/client-kms": "^3.609.0",
     "@aws-sdk/client-route-53": "^3.810.0",
     "@aws-sdk/client-secrets-manager": "^3.504.0",
+    "@aws-sdk/client-ssm": "^3.1015.0",
     "@aws-sdk/client-sts": "^3.600.0",
     "@casl/ability": "^6.5.0",
     "@clickhouse/client": "^1.17.0",
@@ -188,7 +191,6 @@
     "acme-client": "^5.4.0",
     "ajv": "^8.12.0",
     "argon2": "^0.31.2",
-    "aws-sdk": "^2.1553.0",
     "axios": "^1.12.0",
     "axios-ntlm": "^1.4.4",
     "axios-retry": "^4.0.0",
