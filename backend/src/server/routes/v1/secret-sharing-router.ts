@@ -1,4 +1,5 @@
 import fastifyMultipart from "@fastify/multipart";
+import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -29,6 +30,16 @@ const ALLOWED_IMAGE_CONTENT_TYPES = [
   "image/vnd.microsoft.icon",
   "image/webp"
 ];
+
+const sanitizeSvg = (buffer: Buffer): Buffer => {
+  const raw = buffer.toString("utf-8");
+  const clean = DOMPurify.sanitize(raw, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    ADD_TAGS: ["svg"],
+    ADD_ATTR: ["xmlns", "viewBox", "fill", "rx"]
+  });
+  return Buffer.from(clean, "utf-8");
+};
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
@@ -427,6 +438,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       void res.header("Content-Type", asset.contentType);
       void res.header("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+      void res.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
 
       return res.send(asset.data);
     }
@@ -473,10 +485,12 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         });
       }
 
+      const safeBuffer = contentType === "image/svg+xml" ? sanitizeSvg(buffer) : buffer;
+
       await req.server.services.secretSharing.uploadBrandingAsset(
         req.permission.orgId,
         assetType,
-        buffer,
+        safeBuffer,
         contentType,
         req.permission
       );
@@ -591,6 +605,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       void res.header("Content-Type", asset.contentType);
       void res.header("Cache-Control", "private, max-age=300");
+      void res.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
 
       return res.send(asset.data);
     }
