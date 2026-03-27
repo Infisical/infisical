@@ -27,7 +27,7 @@ export const extractDomainFromDN = (dn: string): string | null => {
     .split(",")
     .map((part) => part.trim())
     .filter((part) => part.toLowerCase().startsWith("dc="))
-    .map((part) => part.substring(3));
+    .map((part) => part.substring(3).toLowerCase());
 
   return dcComponents.length > 0 ? dcComponents.join(".") : null;
 };
@@ -59,6 +59,8 @@ const constructLdapUrl = (protocol: string, host: string, port: number): string 
   return `${protocol}://${host}:${port}`;
 };
 
+const IPV4_REGEX = new RE2(/^\d+\.\d+\.\d+\.\d+$/);
+
 /**
  * Extracts the root domain (last two labels) from a hostname.
  * e.g. "dc1.gap.com" → "gap.com", "americas.infisical.local" → "infisical.local"
@@ -67,8 +69,8 @@ const constructLdapUrl = (protocol: string, host: string, port: number): string 
 const getRootDomain = (hostname: string): string | null => {
   const parts = hostname.split(".");
   if (parts.length < 2) return null;
-  if (new RE2(/^\d+\.\d+\.\d+\.\d+$/).test(hostname)) return null;
-  return parts.slice(-2).join(".");
+  if (IPV4_REGEX.test(hostname)) return null;
+  return parts.slice(-2).join(".").toLowerCase();
 };
 
 /**
@@ -82,9 +84,21 @@ const getRootDomain = (hostname: string): string | null => {
 export const buildReferralUrl = (originalUrl: string, targetDomain: string): string => {
   const { protocol, host, port } = parseLdapUrl(originalUrl);
 
+  if (IPV4_REGEX.test(targetDomain)) {
+    throw new Error(
+      `Referral target '${targetDomain}' is an IP address — legitimate AD referrals use FQDNs. Refusing to forward credentials`
+    );
+  }
+
   const originalRoot = getRootDomain(host);
   const targetRoot = getRootDomain(targetDomain);
-  if (originalRoot && (!targetRoot || originalRoot !== targetRoot)) {
+
+  if (!originalRoot) {
+    logger.warn(
+      { originalHost: host, targetDomain },
+      "Cannot validate referral domain boundary — original LDAP URL is not a FQDN"
+    );
+  } else if (!targetRoot || originalRoot !== targetRoot) {
     throw new Error(
       `Referral domain '${targetDomain}' is outside the trust boundary of '${host}' — refusing to forward credentials`
     );
