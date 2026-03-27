@@ -1,13 +1,24 @@
-import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
-import { FormControl, Input, Switch, TextArea, Tooltip } from "@app/components/v2";
-import { Button, SheetFooter } from "@app/components/v3";
+import {
+  Button,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Label,
+  SheetFooter,
+  Switch,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableInput
+} from "@app/components/v3";
 import { PamResourceType, TMongoDBResource } from "@app/hooks/api/pam";
 
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
@@ -42,24 +53,24 @@ type FormData = z.infer<typeof formSchema>;
 
 export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) => {
   const isUpdate = Boolean(resource);
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: resource
       ? {
           ...resource,
+          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined,
           connectionDetails: {
             ...resource.connectionDetails,
-            // Display empty field for SRV hosts (port 0 or undefined)
             port: resource.connectionDetails.port || undefined
           }
         }
       : {
           resourceType: PamResourceType.MongoDB,
+          gateway: undefined,
           connectionDetails: {
             host: "",
-            port: undefined,
+            port: 27017,
             database: "admin",
             sslEnabled: true,
             sslRejectUnauthorized: true,
@@ -80,158 +91,132 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
   return (
     <FormProvider {...form}>
       <form
-        onSubmit={(e) => {
-          setSelectedTabIndex(0);
-          handleSubmit(onSubmit)(e);
-        }}
+        onSubmit={handleSubmit((data) => onSubmit(data as FormData))}
         className="flex flex-1 flex-col overflow-hidden"
       >
         <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
           <GenericResourceFields />
-          <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-              <Tab
-                className={({ selected }) =>
-                  `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
-                    selected
-                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                      : "text-bunker-300"
-                  }`
-                }
-              >
-                Configuration
-              </Tab>
-              <Tab
-                className={({ selected }) =>
-                  `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
-                    selected
-                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                      : "text-bunker-300"
-                  }`
-                }
-              >
-                SSL ({sslEnabled ? "Enabled" : "Disabled"})
-              </Tab>
-            </Tab.List>
-            <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
-              <Tab.Panel>
-                <div className="mt-[0.675rem] flex items-start gap-2">
-                  <Controller
-                    name="connectionDetails.host"
-                    control={control}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        className="flex-1"
-                        errorText={error?.message}
-                        isError={Boolean(error?.message)}
-                        label="Host"
-                      >
-                        <Input {...field} />
-                      </FormControl>
-                    )}
+
+          {/* Connection */}
+          <div className="flex flex-col gap-3">
+            <Label>Connection</Label>
+
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <Controller
+                name="connectionDetails.host"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel>Host</FieldLabel>
+                    <FieldContent>
+                      <UnstableInput
+                        {...field}
+                        placeholder="db.example.com"
+                        isError={Boolean(error)}
+                      />
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              <Controller
+                name="connectionDetails.port"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <Field className="w-24">
+                    <FieldLabel>Port</FieldLabel>
+                    <FieldContent>
+                      <UnstableInput
+                        type="number"
+                        {...field}
+                        value={field.value ?? ""}
+                        isError={Boolean(error)}
+                      />
+                      <FieldDescription>Leave empty for SRV</FieldDescription>
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </div>
+            <Controller
+              name="connectionDetails.database"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>Database Name</FieldLabel>
+                  <FieldContent>
+                    <UnstableInput {...field} isError={Boolean(error)} />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+          </div>
+
+          {/* SSL */}
+          <div className="flex flex-col gap-3">
+            <Label>SSL</Label>
+
+            <Controller
+              name="connectionDetails.sslEnabled"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field orientation="horizontal">
+                  <FieldLabel>Enable SSL</FieldLabel>
+                  <Switch variant="project" checked={value} onCheckedChange={onChange} />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+
+            <Controller
+              name="connectionDetails.sslCertificate"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>CA Certificate</FieldLabel>
+                  <FieldContent>
+                    <TextArea
+                      {...field}
+                      placeholder="-----BEGIN CERTIFICATE-----..."
+                      disabled={!sslEnabled}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+
+            <Controller
+              name="connectionDetails.sslRejectUnauthorized"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field orientation="horizontal">
+                  <FieldLabel>
+                    Reject Unauthorized
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        If enabled, Infisical will only connect to the server if it has a valid,
+                        trusted SSL certificate.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Switch
+                    variant="project"
+                    disabled={!sslEnabled}
+                    checked={sslEnabled ? value : false}
+                    onCheckedChange={onChange}
                   />
-                  <Controller
-                    name="connectionDetails.port"
-                    control={control}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        className="w-36"
-                        errorText={error?.message}
-                        isError={Boolean(error?.message)}
-                        label="Port"
-                        helperText="Leave empty for SRV"
-                        isOptional
-                      >
-                        <Input type="number" {...field} value={field.value ?? ""} />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-                <Controller
-                  name="connectionDetails.database"
-                  control={control}
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      label="Database"
-                    >
-                      <Input {...field} />
-                    </FormControl>
-                  )}
-                />
-              </Tab.Panel>
-              <Tab.Panel>
-                <Controller
-                  name="connectionDetails.sslEnabled"
-                  control={control}
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
-                      <Switch
-                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                        id="ssl-enabled"
-                        thumbClassName="bg-mineshaft-800"
-                        isChecked={value}
-                        onCheckedChange={onChange}
-                      >
-                        Enable SSL
-                      </Switch>
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  name="connectionDetails.sslCertificate"
-                  control={control}
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      className={sslEnabled ? "" : "opacity-50"}
-                      label="Trusted CA SSL Certificate"
-                      isOptional
-                    >
-                      <TextArea className="h-14 resize-none!" {...field} isDisabled={!sslEnabled} />
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  name="connectionDetails.sslRejectUnauthorized"
-                  control={control}
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl
-                      className={sslEnabled ? "" : "opacity-50"}
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <Switch
-                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                        id="ssl-reject-unauthorized"
-                        thumbClassName="bg-mineshaft-800"
-                        isChecked={sslEnabled ? value : false}
-                        onCheckedChange={onChange}
-                        isDisabled={!sslEnabled}
-                      >
-                        <p className="w-38">
-                          Reject Unauthorized
-                          <Tooltip
-                            className="max-w-md"
-                            content={
-                              <p>
-                                If enabled, Infisical will only connect to the server if it has a
-                                valid, trusted SSL certificate.
-                              </p>
-                            }
-                          >
-                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                          </Tooltip>
-                        </p>
-                      </Switch>
-                    </FormControl>
-                  )}
-                />
-              </Tab.Panel>
-            </Tab.Panels>
-          </Tab.Group>
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </div>
+
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">
@@ -243,7 +228,7 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
           >
             {isUpdate ? "Update Details" : "Create Resource"}
           </Button>
-          <Button onClick={() => closeSheet()} variant="outline" className="mr-auto" type="button">
+          <Button onClick={closeSheet} variant="outline" className="mr-auto" type="button">
             Cancel
           </Button>
         </SheetFooter>
