@@ -34,7 +34,7 @@
     caret-color: var(--color-foreground);
     transition: background-color 5000s ease-in-out 0s;
   }
-  
+
   /* NordPass autofill override */
   input[data-np-input-autofilled],
   input[data-np-input-autofilled]:hover,
@@ -300,7 +300,7 @@
     background-color: gray;
   }
   scrollbar-width: thin;
-  scrollbar-color: gray transparent;
+  scrollbar-color: #39393d transparent;
 }
 
 @layer utilities {

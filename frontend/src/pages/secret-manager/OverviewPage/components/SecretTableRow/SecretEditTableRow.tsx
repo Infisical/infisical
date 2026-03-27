@@ -1445,7 +1445,7 @@ export const SecretEditTableRow = ({
                           isDisabled={!secretId || isCreatable || isImportedSecret}
                         >
                           <UsersIcon />
-                          Access Insights
+                          View Access
                         </UnstableDropdownMenuItem>
                       </TooltipTrigger>
                       <TooltipContent side="left">
@@ -1554,7 +1554,7 @@ export const SecretEditTableRow = ({
                   side="right"
                 >
                   <SheetHeader>
-                    <SheetTitle>Access Insights</SheetTitle>
+                    <SheetTitle>Secret Access Insights</SheetTitle>
                     <SheetDescription>
                       View users, groups, and identities with access to this secret
                     </SheetDescription>
