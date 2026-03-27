@@ -191,7 +191,7 @@ export enum EventType {
   MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE = "machine-identity-auth-template-update",
   MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE = "machine-identity-auth-template-delete",
   LOGIN_IDENTITY_UNIVERSAL_AUTH = "login-identity-universal-auth",
-  LOGIN_IDENTITY_UA_AUTH_FAILED = "login-identity-universal-auth-failed",
+  LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED = "login-identity-ua-auth-failed",
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
@@ -1162,7 +1162,7 @@ interface LoginIdentityUniversalAuthEvent {
 }
 
 interface LoginIdentityUniversalAuthFailedEvent {
-  type: EventType.LOGIN_IDENTITY_UA_AUTH_FAILED;
+  type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED;
   metadata: {
     clientId: string;
     identityId: string | null;

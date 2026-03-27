@@ -123,7 +123,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             },
             orgId: error.detail.orgId as string,
             event: {
-              type: EventType.LOGIN_IDENTITY_UA_AUTH_FAILED,
+              type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED,
               metadata: {
                 clientId: req.body.clientId,
                 identityId: error.detail.identityId as string,
