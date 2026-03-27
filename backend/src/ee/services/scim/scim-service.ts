@@ -31,7 +31,6 @@ import { TMembershipUserDALFactory } from "@app/services/membership-user/members
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipsFn } from "@app/services/org/org-fns";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
-import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -100,7 +99,6 @@ type TScimServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  orgService: Pick<TOrgServiceFactory, "findRootOrg">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
@@ -112,7 +110,6 @@ export const scimServiceFactory = ({
   userDAL,
   userAliasDAL,
   orgDAL,
-  orgService,
   projectDAL,
   groupDAL,
   userGroupMembershipDAL,
@@ -374,8 +371,12 @@ export const scimServiceFactory = ({
   }) => {
     if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
 
-    const org = await orgDAL.findById(orgId);
-    if (!org) throw new ScimRequestError({ detail: "Organization not found", status: 404 });
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org)
+      throw new ScimRequestError({
+        detail: "Organization not found",
+        status: 404
+      });
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -399,7 +400,7 @@ export const scimServiceFactory = ({
 
     const userAlias = await userAliasDAL.findOne({
       externalId,
-      orgId: org.id,
+      orgId,
       aliasType
     });
 
@@ -528,7 +529,7 @@ export const scimServiceFactory = ({
             aliasType,
             externalId,
             emails: email ? [email.toLowerCase()] : [],
-            orgId: org.id,
+            orgId,
             isEmailVerified: trustScimEmails
           },
           tx
@@ -644,8 +645,8 @@ export const scimServiceFactory = ({
 
   // partial
   const updateScimUser: TScimServiceFactory["updateScimUser"] = async ({ orgMembershipId, orgId, operations }) => {
-    const rootOrg = await orgService.findRootOrg(orgId);
-    if (!rootOrg.orgAuthMethod) {
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org.orgAuthMethod) {
       throw new ScimRequestError({
         detail: "Neither SAML or OIDC SSO is configured",
         status: 400
@@ -691,7 +692,7 @@ export const scimServiceFactory = ({
 
     const serverCfg = await getServerCfg();
     const trustScimEmails =
-      rootOrg.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
+      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
 
     await userDAL.transaction(async (tx) => {
       await membershipUserDAL.updateById(
@@ -740,8 +741,8 @@ export const scimServiceFactory = ({
     email,
     externalId
   }) => {
-    const rootOrg = await orgService.findRootOrg(orgId);
-    if (!rootOrg.orgAuthMethod) {
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org.orgAuthMethod) {
       throw new ScimRequestError({
         detail: "Neither SAML or OIDC SSO is configured",
         status: 400
@@ -776,12 +777,12 @@ export const scimServiceFactory = ({
     const serverCfg = await getServerCfg();
     const hasEmailChanged = email?.toLowerCase() !== membership.email;
     const defaultEmailVerified =
-      rootOrg.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
+      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
     await userDAL.transaction(async (tx) => {
       await userAliasDAL.update(
         {
-          orgId: rootOrg.id,
-          aliasType: rootOrg.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML,
+          orgId,
+          aliasType: org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML,
           userId: membership.actorUserId as string
         },
         {
@@ -969,13 +970,6 @@ export const scimServiceFactory = ({
     });
   };
 
-  /**
-   * When a SCIM group member list changes, apply org-role mappings for the
-   * affected users. For root-org mappings only newly-invited memberships get
-   * their role updated (preserving manually assigned roles). For sub-org
-   * mappings we create or update a membership in the target sub-org so that
-   * each sub-org can independently configure which SCIM groups grant access.
-   */
   const $syncNewMembersRoles = async (group: TGroups, members: TScimGroup["members"]) => {
     if (!members.length) return;
 
@@ -999,7 +993,7 @@ export const scimServiceFactory = ({
       groupMappings.map(async (mapping) => {
         try {
           if (mapping.orgId === group.orgId) {
-            // Same org: only update role for newly-invited memberships so that
+            // Root org: only update role for newly-invited memberships so that
             // manually assigned roles on existing members are not overwritten.
             const invitedMemberships = rootOrgMemberships.filter((m) => m.status === "invited");
             if (!invitedMemberships.length) return;
@@ -1018,7 +1012,6 @@ export const scimServiceFactory = ({
               scope: AccessScope.Organization,
               $in: { actorUserId: userIds }
             });
-
             if (!existingSubOrgMemberships.length) return;
 
             await membershipRoleDAL.update(
@@ -1124,8 +1117,8 @@ export const scimServiceFactory = ({
       return { group, newMembers: [] };
     });
 
-    // Apply org-role mappings for the initial group members after the transaction
-    // so group creation and membership provisioning have independent lifetimes.
+    // Apply org-role mappings after the transaction so group creation and
+    // membership provisioning have independent lifetimes.
     await $syncNewMembersRoles(newGroup.group, members || []);
 
     const orgMemberships = await orgDAL.findMembership({
@@ -1240,9 +1233,8 @@ export const scimServiceFactory = ({
       let currentGroup: typeof group = group;
 
       if (currentGroupName !== displayName) {
-        // Root org group rename: propagate across the hierarchy so sub-org mappings
-        // stay in sync. Sub-org group rename: update only this org's mapping —
-        // renaming a sub-org's group must not touch the root org's mappings.
+        // Root org rename: propagate across hierarchy so sub-org mappings stay in sync.
+        // Sub-org rename: update only this org's mapping.
         if (rootOrgId === orgId) {
           await externalGroupOrgRoleMappingDAL.updateGroupNameForOrgHierarchy(
             rootOrgId,
