@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -79,7 +79,19 @@ export default function CodeInputStep({
   const { mutateAsync } = useSendVerificationEmail();
   const [isLoading, setIsLoading] = useState(false);
   const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
+  const [localCode, setLocalCode] = useState("");
   const { t } = useTranslation();
+
+  const handleCodeChange = (value: string) => {
+    setLocalCode(value);
+    setCode(value);
+  };
+
+  useEffect(() => {
+    if (localCode.length === 6 && !isCodeInputCheckLoading) {
+      incrementStep();
+    }
+  }, [localCode, isCodeInputCheckLoading, incrementStep]);
 
   const resendVerificationEmail = async () => {
     setIsResendingVerificationEmail(true);
@@ -110,7 +122,8 @@ export default function CodeInputStep({
               inputMode="tel"
               type="text"
               fields={6}
-              onChange={setCode}
+              onChange={handleCodeChange}
+              autoComplete="one-time-code"
               {...codeInputStyle}
               className="code-input-v3 mt-6 mb-2"
             />
@@ -121,7 +134,8 @@ export default function CodeInputStep({
               inputMode="tel"
               type="text"
               fields={6}
-              onChange={setCode}
+              onChange={handleCodeChange}
+              autoComplete="one-time-code"
               {...codeInputStylePhone}
               className="code-input-v3 mt-2 mb-2"
             />
