@@ -61,9 +61,6 @@ export default defineConfig(({ mode }) => {
         return { relative: true };
       }
     },
-    optimizeDeps: {
-      include: ["crypto"]
-    },
     plugins: [
       tsconfigPaths(),
       nodePolyfills({
