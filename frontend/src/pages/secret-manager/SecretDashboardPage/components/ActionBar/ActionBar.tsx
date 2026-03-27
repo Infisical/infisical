@@ -245,14 +245,26 @@ export const ActionBar = ({
     });
   };
 
+  const currentEnvData = currentProject.environments.find((env) => env.slug === environment);
+  const isSecretExportDisabled = currentEnvData?.allowSecretExport === false;
+
   const handleSecretDownload = async () => {
+    if (isSecretExportDisabled) {
+      createNotification({
+        title: "Secret export is disabled",
+        text: "An administrator has disabled secret export for this environment.",
+        type: "error"
+      });
+      return;
+    }
     try {
       const { secrets: localSecrets, imports: localImportedSecrets } = await fetchProjectSecrets({
         projectId,
         expandSecretReferences: true,
         includeImports: true,
         environment,
-        secretPath
+        secretPath,
+        purpose: "export"
       });
       const secretsPicked = new Set<string>();
       const secretsToDownload: { key: string; value?: string; comment?: string }[] = [];
@@ -860,9 +872,22 @@ export const ActionBar = ({
           )}
         </div>
         <div>
-          <IconButton variant="outline_bg" ariaLabel="Download" onClick={handleSecretDownload}>
-            <FontAwesomeIcon icon={faDownload} />
-          </IconButton>
+          <Tooltip
+            content={
+              isSecretExportDisabled
+                ? "Secret export is disabled for this environment"
+                : "Download as .env"
+            }
+          >
+            <IconButton
+              variant="outline_bg"
+              ariaLabel="Download"
+              onClick={handleSecretDownload}
+              isDisabled={isSecretExportDisabled}
+            >
+              <FontAwesomeIcon icon={faDownload} />
+            </IconButton>
+          </Tooltip>
         </div>
         <div>
           <IconButton variant="outline_bg" ariaLabel="Reveal" onClick={onVisibilityToggle}>
@@ -1218,7 +1243,9 @@ export const ActionBar = ({
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={currentProject.slug}
-        environments={[{ slug: environment, name: environment, id: "not-used" }]}
+        environments={[
+          { slug: environment, name: environment, id: "not-used", allowSecretExport: true }
+        ]}
         secretPath={secretPath}
         isSingleEnvironmentMode
       />

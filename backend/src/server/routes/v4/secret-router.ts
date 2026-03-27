@@ -5,7 +5,7 @@ import { SecretApprovalRequestsSchema, SecretType, ServiceTokenScopes } from "@a
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, RAW_SECRETS } from "@app/lib/api-docs";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit } from "@app/server/config/rateLimiter";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
@@ -135,7 +135,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .describe(RAW_SECRETS.LIST.tagSlugs)
           .optional()
           // split by comma and trim the strings
-          .transform((el) => (el ? el.split(",").map((i) => i.trim()) : []))
+          .transform((el) => (el ? el.split(",").map((i) => i.trim()) : [])),
+        purpose: z
+          .literal("export")
+          .optional()
+          .describe(
+            "When set to 'export', the server checks if secret export is allowed for this environment and returns 403 if disabled."
+          )
       }),
       response: {
         200: z.object({
@@ -212,6 +218,44 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       if (notModified) {
         void reply.code(304).send();
         return;
+      }
+
+      // Check export restriction AFTER getSecretsRaw has verified project access/RBAC.
+      // This ensures no information leak about export settings for projects the user lacks access to.
+      if (req.query.purpose === "export") {
+        const envs = await server.services.projectEnv.getEnvironmentsByProjectId(projectId);
+        const targetEnv = envs.find((e) => e.slug === environment);
+        if (targetEnv && targetEnv.allowSecretExport === false) {
+          // Audit the blocked export attempt before throwing
+          await server.services.auditLog.createAuditLog({
+            projectId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.EXPORT_SECRETS_BLOCKED,
+              metadata: {
+                environment,
+                secretPath: req.query.secretPath
+              }
+            }
+          });
+          throw new ForbiddenRequestError({
+            message: "Secret export is disabled for this environment. An administrator has restricted secret downloads."
+          });
+        }
+
+        // Audit successful export
+        await server.services.auditLog.createAuditLog({
+          projectId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.EXPORT_SECRETS,
+            metadata: {
+              environment,
+              secretPath: req.query.secretPath,
+              numberOfSecrets: secrets.length
+            }
+          }
+        });
       }
 
       await server.services.auditLog.createAuditLog({

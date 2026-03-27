@@ -11,6 +11,7 @@ export type TUpdateEnvDTO = {
   name?: string;
   slug?: string;
   position?: number;
+  allowSecretExport?: boolean;
 } & TProjectPermission;
 
 export type TDeleteEnvDTO = {

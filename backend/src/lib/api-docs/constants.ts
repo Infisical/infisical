@@ -1168,7 +1168,8 @@ export const ENVIRONMENTS = {
     id: "The ID of the environment to update.",
     name: "The new name of the environment.",
     slug: "The new slug of the environment.",
-    position: "The new position of the environment. The lowest number will be displayed as the first environment."
+    position: "The new position of the environment. The lowest number will be displayed as the first environment.",
+    allowSecretExport: "Whether users are allowed to export/download secrets as .env files from this environment."
   },
   DELETE: {
     projectId: "The ID of the project to delete the environment from.",

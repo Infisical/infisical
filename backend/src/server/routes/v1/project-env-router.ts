@@ -159,7 +159,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         slug: slugSchema({ max: 64 }).optional().describe(ENVIRONMENTS.UPDATE.slug),
         name: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.name),
-        position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
+        position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position),
+        allowSecretExport: z.boolean().optional().describe(ENVIRONMENTS.UPDATE.allowSecretExport)
       }),
       response: {
         200: z.object({
