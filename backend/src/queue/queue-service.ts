@@ -641,6 +641,22 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     Record<QueueName, Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
   > = {};
 
+  // Remove orphaned job schedulers left in Redis by the QueueInternalRecovery/QueueInternalReconciliation deleted queues.
+  void (async () => {
+    const staleQueueNames = ["queue-internal-recovery", "queue-internal-reconciliation"];
+    await Promise.allSettled(
+      staleQueueNames.map(async (name) => {
+        const staleQueue = new Queue(name, {
+          prefix: isClusterMode ? `{${name}}` : undefined,
+          connection
+        });
+        await staleQueue.obliterate({ force: true });
+        await staleQueue.close();
+        logger.info({ queue: name }, "Cleaned up orphaned internal queue from Redis");
+      })
+    );
+  })();
+
   const start: TQueueServiceFactory["start"] = (name, jobFn, queueSettings) => {
     if (queueContainer[name]) {
       throw new Error(`${name} queue is already initialized`);
