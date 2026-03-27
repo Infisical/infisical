@@ -108,9 +108,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: SanitizedSecretSharingSchema.extend({
-          isPasswordProtected: z.boolean().describe("Whether the shared secret is protected by a password.")
+          isPasswordProtected: z.boolean().describe("Whether the shared secret is protected by a password."),
+          isAuthorizedUser: z
+            .boolean()
+            .describe(
+              "Whether the current user is an authorized org member. If false, the user must provide a password."
+            )
         }).omit({
-          authorizedEmails: true
+          authorizedEmails: true,
+          allowExternalEmails: true
         })
       }
     },
@@ -284,7 +290,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             .max(100)
             .optional()
             .transform((val) => (val ? [...new Set(val)] : undefined))
-            .describe(SECRET_SHARING.CREATE.authorizedEmails)
+            .describe(SECRET_SHARING.CREATE.authorizedEmails),
+          allowExternalEmails: z.boolean().optional().describe(SECRET_SHARING.CREATE.allowExternalEmails)
         })
         .superRefine((data, ctx) => {
           const duration = ms(data.expiresIn);
@@ -312,6 +319,22 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
               path: ["expiresIn"]
             });
           }
+
+          if (data.allowExternalEmails && (!data.authorizedEmails || data.authorizedEmails.length === 0)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Emails are required when allowing external emails",
+              path: ["authorizedEmails"]
+            });
+          }
+
+          if (data.allowExternalEmails && data.accessType === SecretSharingAccessType.Organization) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Cannot allow external emails when access is restricted to organization members",
+              path: ["allowExternalEmails"]
+            });
+          }
         }),
       response: {
         200: SanitizedSecretSharingSchema.extend({
@@ -321,13 +344,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { authorizedEmails, ...restBody } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createSharedSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.body
+        ...restBody,
+        emails: authorizedEmails
       });
 
       await server.services.auditLog.createAuditLog({
