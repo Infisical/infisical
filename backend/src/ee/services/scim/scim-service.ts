@@ -137,7 +137,7 @@ export const scimServiceFactory = ({
     ttlDays
   }) => {
     const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
+      scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
       orgId,
@@ -179,7 +179,7 @@ export const scimServiceFactory = ({
     orgId
   }) => {
     const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
+      scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
       orgId,
@@ -209,7 +209,7 @@ export const scimServiceFactory = ({
     if (!scimToken) throw new NotFoundError({ message: `SCIM token with ID '${scimTokenId}' not found` });
 
     const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
+      scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
       orgId: scimToken.orgId,
@@ -240,7 +240,7 @@ export const scimServiceFactory = ({
     offset = 0
   }) => {
     const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
+      scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
       orgId,
