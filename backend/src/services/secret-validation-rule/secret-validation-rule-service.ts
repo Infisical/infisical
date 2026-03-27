@@ -301,6 +301,8 @@ export const secretValidationRuleServiceFactory = ({
     };
   };
 
+  // trigger
+
   /**
    * Fetch all rules for a project and enforce them against the given secrets.
    * Called by secret write paths before the DB transaction starts.
