@@ -7,7 +7,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
-import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Button, PageHeader, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -125,19 +125,6 @@ export const AccessManagementPage = () => {
           onOpenChange={setIsUpgradePrivilegeSystemModalOpen}
         />
         <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
-          <TabList>
-            {tabSections
-              .filter((el) => !el.isHidden)
-              .map((el) => (
-                <Tab
-                  variant={isSubOrganization ? "namespace" : "org"}
-                  value={el.key}
-                  key={`org-access-tab-${el.key}`}
-                >
-                  {el.label}
-                </Tab>
-              ))}
-          </TabList>
           {tabSections
             .filter((el) => !el.isHidden)
             .map(({ key, component: Component }) => (
