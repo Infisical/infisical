@@ -44,7 +44,7 @@ type TForm = z.infer<typeof formSchema>;
 export const ExternalGroupOrgRoleMappings = () => {
   const { currentOrg } = useOrganization();
   const { data: roles, isPending: isRolesLoading } = useGetOrgRoles(currentOrg.id);
-  const { data: mappings } = useGetExternalGroupOrgRoleMappings();
+  const { data: mappings, isPending: isMappingsLoading } = useGetExternalGroupOrgRoleMappings();
   const updateMappings = useUpdateExternalGroupOrgRoleMappings();
   const { permission } = useOrgPermission();
 
@@ -91,7 +91,7 @@ export const ExternalGroupOrgRoleMappings = () => {
         Assign newly provisioned users a default organization role based on their SCIM group.
       </p>
       <form onSubmit={handleSubmit(handleUpdateMappings)} className="pt-4">
-        {isRolesLoading || isRolesLoading ? (
+        {isRolesLoading || isMappingsLoading ? (
           <Spinner className="self-center" size="sm" />
         ) : (
           <div className="mb-2 flex flex-col space-y-2">
