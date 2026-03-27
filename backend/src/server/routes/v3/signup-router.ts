@@ -104,7 +104,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           providerAuthToken: z.string().trim().optional().nullish(),
           attributionSource: z.string().trim().optional(),
           password: z.string(),
-          hubspotUtk: z.string().trim().optional()
+          hubspotUtk: z.string().trim().max(512).optional()
         })
         .and(
           z.preprocess(
