@@ -1,4 +1,5 @@
 import ldap from "ldapjs";
+import RE2 from "re2";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -37,8 +38,9 @@ export const extractDomainFromDN = (dn: string): string | null => {
  */
 export const isLdapReferralError = (err: unknown): err is Error & { dn: string; code: number } => {
   if (!(err instanceof Error)) return false;
-  const ldapErr = err as Error & { name?: string; code?: number };
-  return ldapErr.name === "ReferralError" || ldapErr.code === 10;
+  const ldapErr = err as Error & { name?: string; code?: number; dn?: unknown };
+  const isReferral = ldapErr.name === "ReferralError" || ldapErr.code === 10;
+  return isReferral && typeof ldapErr.dn === "string";
 };
 
 const parseLdapUrl = (url: string): { protocol: string; host: string; port: number } => {
@@ -58,11 +60,36 @@ const constructLdapUrl = (protocol: string, host: string, port: number): string 
 };
 
 /**
+ * Extracts the root domain (last two labels) from a hostname.
+ * e.g. "dc1.gap.com" → "gap.com", "americas.infisical.local" → "infisical.local"
+ * Returns null for IPs or single-label hostnames where a suffix check isn't meaningful.
+ */
+const getRootDomain = (hostname: string): string | null => {
+  const parts = hostname.split(".");
+  if (parts.length < 2) return null;
+  if (new RE2(/^\d+\.\d+\.\d+\.\d+$/).test(hostname)) return null;
+  return parts.slice(-2).join(".");
+};
+
+/**
  * Constructs a new LDAP URL targeting a different domain/host,
  * preserving the protocol and port from the original URL.
+ *
+ * Validates that the target domain shares the same root domain as the original
+ * host to prevent credential forwarding to attacker-controlled servers via
+ * a crafted referral response.
  */
 export const buildReferralUrl = (originalUrl: string, targetDomain: string): string => {
-  const { protocol, port } = parseLdapUrl(originalUrl);
+  const { protocol, host, port } = parseLdapUrl(originalUrl);
+
+  const originalRoot = getRootDomain(host);
+  const targetRoot = getRootDomain(targetDomain);
+  if (originalRoot && targetRoot && originalRoot !== targetRoot) {
+    throw new Error(
+      `Referral domain '${targetDomain}' is outside the trust boundary of '${host}' — refusing to forward credentials`
+    );
+  }
+
   return constructLdapUrl(protocol, targetDomain, port);
 };
 
