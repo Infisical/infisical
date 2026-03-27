@@ -3,7 +3,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { InfoIcon } from "lucide-react";
 
 import { Td, Tooltip, Tr } from "@app/components/v2";
-import { formatDateTime, Timezone } from "@app/helpers/datetime";
+import {
+  ClockFormat,
+  formatDateTime,
+  getAuditLogTableDateFormat,
+  Timezone
+} from "@app/helpers/datetime";
 import { useToggle } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { AuditLog } from "@app/hooks/api/auditLogs/types";
@@ -12,6 +17,7 @@ type Props = {
   auditLog: AuditLog;
   rowNumber: number;
   timezone: Timezone;
+  clockFormat: ClockFormat;
 };
 
 type TagProps = {
@@ -38,7 +44,7 @@ const Tag = ({ label, value }: TagProps) => {
   );
 };
 
-export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
+export const LogsTableRow = ({ auditLog, rowNumber, timezone, clockFormat }: Props) => {
   const [isOpen, setIsOpen] = useToggle();
 
   return (
@@ -57,7 +63,13 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
           <FontAwesomeIcon icon={isOpen ? faCaretDown : faCaretRight} />
           {rowNumber}
         </Td>
-        <Td className="align-top">{formatDateTime({ timestamp: auditLog.createdAt, timezone })}</Td>
+        <Td className="align-top">
+          {formatDateTime({
+            timestamp: auditLog.createdAt,
+            timezone,
+            dateFormat: getAuditLogTableDateFormat(clockFormat)
+          })}
+        </Td>
         <Td>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Tag label="event" value={auditLog.event.type} />

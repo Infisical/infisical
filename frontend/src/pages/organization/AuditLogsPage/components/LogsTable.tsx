@@ -15,7 +15,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { Timezone } from "@app/helpers/datetime";
+import { ClockFormat, Timezone } from "@app/helpers/datetime";
 import { useFetchServerStatus, useGetAuditLogs } from "@app/hooks/api";
 import { TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 
@@ -25,11 +25,12 @@ type Props = {
   filter: TGetAuditLogsFilter;
   refetchInterval?: number;
   timezone: Timezone;
+  clockFormat: ClockFormat;
 };
 
 const AUDIT_LOG_LIMIT = 30;
 
-export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
+export const LogsTable = ({ filter, refetchInterval, timezone, clockFormat }: Props) => {
   const { data: status } = useFetchServerStatus();
 
   // Determine the project ID for filtering
@@ -75,6 +76,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
                       auditLog={auditLog}
                       key={`audit-log-${auditLog.id}`}
                       timezone={timezone}
+                      clockFormat={clockFormat}
                     />
                   ))}
                 </Fragment>
