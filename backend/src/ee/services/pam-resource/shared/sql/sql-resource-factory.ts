@@ -306,20 +306,17 @@ const makeSqlConnection = (
 };
 
 /**
- * For MongoDB SRV connections (e.g. mongodb+srv:// hosts), the user-provided host
- * is an SRV base domain that doesn't resolve as an A record. We need to do an SRV
- * lookup to discover the actual host and port.
+ * For MongoDB SRV connections, resolve the SRV record to discover the actual host and port.
+ * This is only called when port is absent (undefined), which explicitly indicates an SRV host.
  */
-const resolveMongoSrvHost = async (host: string, port: number): Promise<{ host: string; port: number }> => {
-  try {
-    const records = await resolveSrv(`_mongodb._tcp.${host}`);
-    if (records.length > 0) {
-      return { host: records[0].name, port: records[0].port };
-    }
-  } catch {
-    // SRV lookup failed — host is likely a direct hostname, use as-is
+const resolveMongoSrvHost = async (host: string): Promise<{ host: string; port: number }> => {
+  const records = await resolveSrv(`_mongodb._tcp.${host}`);
+  if (records.length > 0) {
+    return { host: records[0].name, port: records[0].port };
   }
-  return { host, port };
+  throw new BadRequestError({
+    message: `Unable to resolve SRV record for MongoDB host "${host}". Ensure the host is a valid SRV domain, or provide a port for direct connections.`
+  });
 };
 
 export const executeWithGateway = async <T>(
@@ -335,11 +332,12 @@ export const executeWithGateway = async <T>(
 ): Promise<T> => {
   const { connectionDetails, gatewayId } = config;
 
-  // For MongoDB, resolve SRV records to get the actual host and port
+  // For MongoDB without a port, the host is an SRV domain — resolve it to get actual host:port.
+  // If a port is present, use the host directly (no SRV resolution needed).
   let resolvedHost = connectionDetails.host;
-  let resolvedPort = connectionDetails.port;
-  if (config.resourceType === PamResource.MongoDB) {
-    const resolved = await resolveMongoSrvHost(connectionDetails.host, connectionDetails.port);
+  let resolvedPort: number = connectionDetails.port ?? 0;
+  if (config.resourceType === PamResource.MongoDB && !connectionDetails.port) {
+    const resolved = await resolveMongoSrvHost(connectionDetails.host);
     resolvedHost = resolved.host;
     resolvedPort = resolved.port;
   }

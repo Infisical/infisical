@@ -10,10 +10,23 @@ import {
   BaseUpdateGatewayPamResourceSchema,
   BaseUpdatePamAccountSchema
 } from "../pam-resource-schemas";
-import { BaseSqlResourceConnectionDetailsSchema } from "../shared/sql/sql-resource-schemas";
 
 // Resources
-export const MongoDBResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
+// MongoDB has its own connection schema because port is optional (SRV hosts don't use a port).
+// Other databases (Postgres, MySQL, MsSQL) continue to use BaseSqlResourceConnectionDetailsSchema
+// where port is required.
+export const MongoDBResourceConnectionDetailsSchema = z.object({
+  host: z.string().trim().min(1).max(255),
+  port: z.coerce.number().optional(),
+  database: z.string().trim().min(1).max(255),
+  sslEnabled: z.boolean(),
+  sslRejectUnauthorized: z.boolean(),
+  sslCertificate: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .optional()
+});
 
 export const MongoDBAccountCredentialsSchema = z.object({
   username: z.string().trim().min(1).max(256, "Username must be 256 characters or less"),

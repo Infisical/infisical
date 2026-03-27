@@ -23,7 +23,10 @@ const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.MongoDB),
   connectionDetails: z.object({
     host: z.string().trim().min(1, "Host required"),
-    port: z.coerce.number().default(27017),
+    port: z
+      .union([z.literal(""), z.coerce.number()])
+      .optional()
+      .transform((v) => (v === "" || v === 0 ? undefined : v)),
     database: z.string().trim().min(1, "Database required").default("admin"),
     sslEnabled: z.boolean().default(true),
     sslRejectUnauthorized: z.boolean().default(true),
@@ -43,17 +46,26 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: resource ?? {
-      resourceType: PamResourceType.MongoDB,
-      connectionDetails: {
-        host: "",
-        port: 27017,
-        database: "admin",
-        sslEnabled: true,
-        sslRejectUnauthorized: true,
-        sslCertificate: undefined
-      }
-    }
+    defaultValues: resource
+      ? {
+          ...resource,
+          connectionDetails: {
+            ...resource.connectionDetails,
+            // Display empty field for SRV hosts (port 0 or undefined)
+            port: resource.connectionDetails.port || undefined
+          }
+        }
+      : {
+          resourceType: PamResourceType.MongoDB,
+          connectionDetails: {
+            host: "",
+            port: undefined,
+            database: "admin",
+            sslEnabled: true,
+            sslRejectUnauthorized: true,
+            sslCertificate: undefined
+          }
+        }
   });
 
   const {
@@ -127,8 +139,14 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                         errorText={error?.message}
                         isError={Boolean(error?.message)}
                         label="Port"
+                        isOptional
                       >
-                        <Input type="number" {...field} />
+                        <Input
+                          type="number"
+                          placeholder="SRV"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
                       </FormControl>
                     )}
                   />

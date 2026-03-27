@@ -1,7 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import dns from "dns";
 import picomatch from "picomatch";
-import { promisify } from "util";
 
 import { ActionProjectType, OrganizationActionScope, TableName, TPamAccounts, TPamResources } from "@app/db/schemas";
 import {
@@ -106,20 +104,6 @@ type TPamAccountServiceFactoryDep = {
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
 const ROTATION_CONCURRENCY_LIMIT = 10;
-
-const resolveSrv = promisify(dns.resolveSrv);
-
-const resolveMongoSrvHost = async (host: string, port: number): Promise<{ host: string; port: number }> => {
-  try {
-    const records = await resolveSrv(`_mongodb._tcp.${host}`);
-    if (records.length > 0) {
-      return { host: records[0].name, port: records[0].port };
-    }
-  } catch {
-    // SRV lookup failed — host is likely a direct hostname, use as-is
-  }
-  return { host, port };
-};
 
 export const pamAccountServiceFactory = ({
   pamResourceDAL,
@@ -843,13 +827,6 @@ export const pamAccountServiceFactory = ({
             };
           })();
 
-    // For MongoDB, resolve SRV records to get the actual host and port
-    if (resourceType === PamResource.MongoDB) {
-      const resolved = await resolveMongoSrvHost(host, port);
-      host = resolved.host;
-      port = resolved.port;
-    }
-
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
@@ -1061,16 +1038,12 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    // For MongoDB, resolve SRV records so the gateway gets the actual host
-    let sessionConnectionDetails = decryptedResource.connectionDetails;
-    if (decryptedResource.resourceType === PamResource.MongoDB && "host" in sessionConnectionDetails) {
-      const resolved = await resolveMongoSrvHost(sessionConnectionDetails.host, sessionConnectionDetails.port);
-      sessionConnectionDetails = { ...sessionConnectionDetails, host: resolved.host, port: resolved.port };
-    }
-
+    // Pass connection details as-is to the gateway/CLI.
+    // For MongoDB SRV hosts (port is undefined), the CLI receives port=0 (Go zero value)
+    // and handles SRV resolution natively via mongodb+srv://.
     return {
       credentials: {
-        ...sessionConnectionDetails,
+        ...decryptedResource.connectionDetails,
         ...decryptedAccount.credentials
       },
       projectId: project.id,
