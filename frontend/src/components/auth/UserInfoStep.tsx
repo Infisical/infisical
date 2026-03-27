@@ -18,6 +18,7 @@ import {
 } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
+import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { onRequestError } from "@app/hooks/api/reactQuery";
@@ -118,7 +119,8 @@ export default function UserInfoStep({
           lastName: name.split(" ").slice(1).join(" "),
           providerAuthToken,
           organizationName,
-          attributionSource
+          attributionSource,
+          hubspotUtk: getHubSpotUtk()
         });
 
         // unset signup JWT token and set JWT token

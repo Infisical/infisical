@@ -106,7 +106,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     email: string,
     signupMethod: HubSpotSignupMethod,
     firstName?: string,
-    lastName?: string
+    lastName?: string,
+    hubspotUtk?: string
   ) => {
     const instanceType = licenseService.getInstanceType();
     if (
@@ -130,14 +131,22 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           if (value) fields.push({ name, value });
         }
 
+        const context: Record<string, string> = {
+          pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
+          pageName: "App Signup"
+        };
+
+        // Include the HubSpot tracking cookie to link this submission
+        // to the visitor's browsing session for proper attribution
+        if (hubspotUtk) {
+          context.hutk = hubspotUtk;
+        }
+
         await request.post(
           `https://api.hsforms.com/submissions/v3/integration/submit/${appCfg.HUBSPOT_PORTAL_ID}/${appCfg.HUBSPOT_SIGNUP_FORM_ID}`,
           {
             fields,
-            context: {
-              pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
-              pageName: "App Signup"
-            }
+            context
           },
           {
             headers: {
