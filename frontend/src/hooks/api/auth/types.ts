@@ -107,6 +107,7 @@ export type CompleteAccountSignupDTO = CompleteAccountDTO & {
   attributionSource?: string;
   organizationName: string;
   useDefaultOrg?: boolean;
+  hubspotUtk?: string;
 };
 
 export type VerifySignupInviteDTO = {

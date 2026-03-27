@@ -18,6 +18,7 @@ import {
 } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
+import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
@@ -90,7 +91,8 @@ export const UserInfoSSOStep = ({
           providerAuthToken,
           organizationName,
           attributionSource,
-          useDefaultOrg: forceDefaultOrg
+          useDefaultOrg: forceDefaultOrg,
+          hubspotUtk: getHubSpotUtk()
         });
 
         // unset signup JWT token and set JWT token
