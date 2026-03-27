@@ -31,6 +31,7 @@ import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-ser
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { TPamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
@@ -140,6 +141,7 @@ import { TSecretReplicationServiceFactory } from "@app/services/secret-replicati
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSignerServiceFactory } from "@app/services/signer/signer-service";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
@@ -272,6 +274,7 @@ declare module "fastify" {
       secret: TSecretServiceFactory;
       secretReplication: TSecretReplicationServiceFactory;
       secretTag: TSecretTagServiceFactory;
+      secretValidationRule: TSecretValidationRuleServiceFactory;
       secretImport: TSecretImportServiceFactory;
       projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
@@ -375,6 +378,7 @@ declare module "fastify" {
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       pamFolder: TPamFolderServiceFactory;
       pamResource: TPamResourceServiceFactory;
+      pamResourceRotationRules: TPamResourceRotationRulesServiceFactory;
       pamAccount: TPamAccountServiceFactory;
       pamSession: TPamSessionServiceFactory;
       pamWebAccess: TPamWebAccessServiceFactory;

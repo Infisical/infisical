@@ -1,4 +1,5 @@
 import fastifyMultipart from "@fastify/multipart";
+import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -29,6 +30,16 @@ const ALLOWED_IMAGE_CONTENT_TYPES = [
   "image/vnd.microsoft.icon",
   "image/webp"
 ];
+
+const sanitizeSvg = (buffer: Buffer): Buffer => {
+  const raw = buffer.toString("utf-8");
+  const clean = DOMPurify.sanitize(raw, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    ADD_TAGS: ["svg"],
+    ADD_ATTR: ["xmlns", "viewBox", "fill", "rx"]
+  });
+  return Buffer.from(clean, "utf-8");
+};
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
@@ -97,9 +108,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: SanitizedSecretSharingSchema.extend({
-          isPasswordProtected: z.boolean().describe("Whether the shared secret is protected by a password.")
+          isPasswordProtected: z.boolean().describe("Whether the shared secret is protected by a password."),
+          isAuthorizedUser: z
+            .boolean()
+            .describe(
+              "Whether the current user is an authorized org member. If false, the user must provide a password."
+            )
         }).omit({
-          authorizedEmails: true
+          authorizedEmails: true,
+          allowExternalEmails: true
         })
       }
     },
@@ -273,7 +290,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             .max(100)
             .optional()
             .transform((val) => (val ? [...new Set(val)] : undefined))
-            .describe(SECRET_SHARING.CREATE.authorizedEmails)
+            .describe(SECRET_SHARING.CREATE.authorizedEmails),
+          allowExternalEmails: z.boolean().optional().describe(SECRET_SHARING.CREATE.allowExternalEmails)
         })
         .superRefine((data, ctx) => {
           const duration = ms(data.expiresIn);
@@ -301,6 +319,22 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
               path: ["expiresIn"]
             });
           }
+
+          if (data.allowExternalEmails && (!data.authorizedEmails || data.authorizedEmails.length === 0)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Emails are required when allowing external emails",
+              path: ["authorizedEmails"]
+            });
+          }
+
+          if (data.allowExternalEmails && data.accessType === SecretSharingAccessType.Organization) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Cannot allow external emails when access is restricted to organization members",
+              path: ["allowExternalEmails"]
+            });
+          }
         }),
       response: {
         200: SanitizedSecretSharingSchema.extend({
@@ -310,13 +344,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { authorizedEmails, ...restBody } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createSharedSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.body
+        ...restBody,
+        emails: authorizedEmails
       });
 
       await server.services.auditLog.createAuditLog({
@@ -427,6 +463,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       void res.header("Content-Type", asset.contentType);
       void res.header("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+      void res.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
 
       return res.send(asset.data);
     }
@@ -473,10 +510,12 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         });
       }
 
+      const safeBuffer = contentType === "image/svg+xml" ? sanitizeSvg(buffer) : buffer;
+
       await req.server.services.secretSharing.uploadBrandingAsset(
         req.permission.orgId,
         assetType,
-        buffer,
+        safeBuffer,
         contentType,
         req.permission
       );
@@ -591,6 +630,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       void res.header("Content-Type", asset.contentType);
       void res.header("Cache-Control", "private, max-age=300");
+      void res.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
 
       return res.send(asset.data);
     }

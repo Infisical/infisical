@@ -144,6 +144,7 @@ export interface TAccessApprovalPolicyDALFactory
         secretPath: string;
         deletedAt?: Date | null | undefined;
         maxTimePeriod?: string | null;
+        requestExpirationTime?: string | null;
       }
     | undefined
   >;

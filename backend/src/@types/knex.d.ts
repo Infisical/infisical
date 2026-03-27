@@ -703,6 +703,11 @@ import {
   TPamResourceFavoritesInsert,
   TPamResourceFavoritesUpdate
 } from "@app/db/schemas/pam-resource-favorites";
+import {
+  TPamResourceRotationRules,
+  TPamResourceRotationRulesInsert,
+  TPamResourceRotationRulesUpdate
+} from "@app/db/schemas/pam-resource-rotation-rules";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
@@ -726,6 +731,11 @@ import {
   TSecretReminderRecipientsInsert,
   TSecretReminderRecipientsUpdate
 } from "@app/db/schemas/secret-reminder-recipients";
+import {
+  TSecretValidationRules,
+  TSecretValidationRulesInsert,
+  TSecretValidationRulesUpdate
+} from "@app/db/schemas/secret-validation-rules";
 import {
   TUserNotifications,
   TUserNotificationsInsert,
@@ -1599,6 +1609,11 @@ declare module "knex/types/tables" {
       TPamAccountDependenciesInsert,
       TPamAccountDependenciesUpdate
     >;
+    [TableName.PamResourceRotationRule]: KnexOriginal.CompositeTableType<
+      TPamResourceRotationRules,
+      TPamResourceRotationRulesInsert,
+      TPamResourceRotationRulesUpdate
+    >;
 
     [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
     [TableName.MembershipRole]: KnexOriginal.CompositeTableType<
@@ -1719,6 +1734,11 @@ declare module "knex/types/tables" {
       TCertificateCleanupConfigs,
       TCertificateCleanupConfigsInsert,
       TCertificateCleanupConfigsUpdate
+    >;
+    [TableName.SecretValidationRule]: KnexOriginal.CompositeTableType<
+      TSecretValidationRules,
+      TSecretValidationRulesInsert,
+      TSecretValidationRulesUpdate
     >;
   }
 }

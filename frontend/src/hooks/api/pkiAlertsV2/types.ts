@@ -176,7 +176,7 @@ export interface TGetPkiAlertV2MatchingCertificatesResponse {
 export interface TGetPkiAlertV2CurrentMatchingCertificates {
   projectId: string;
   filters: TPkiFilterRuleV2[];
-  alertBefore: string;
+  alertBefore?: string;
   limit?: number;
   offset?: number;
 }
@@ -277,7 +277,7 @@ export const pkiAlertChannelV2Schema = z.discriminatedUnion("channelType", [
   pagerdutyChannelSchema
 ]);
 
-export const createPkiAlertV2Schema = z.object({
+const basePkiAlertV2Schema = z.object({
   projectId: z.string().uuid(),
   name: z
     .string()
@@ -303,4 +303,14 @@ export const createPkiAlertV2Schema = z.object({
     )
 });
 
-export const updatePkiAlertV2Schema = createPkiAlertV2Schema.partial().omit({ projectId: true });
+export const createPkiAlertV2Schema = basePkiAlertV2Schema.superRefine((data, ctx) => {
+  if (data.eventType === PkiAlertEventTypeV2.EXPIRATION && !data.alertBefore) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Alert Before is required for expiration alerts",
+      path: ["alertBefore"]
+    });
+  }
+});
+
+export const updatePkiAlertV2Schema = basePkiAlertV2Schema.partial().omit({ projectId: true });

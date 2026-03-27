@@ -5,10 +5,15 @@ import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
+import { DeleteActionModal, Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -60,7 +65,7 @@ type Props = {
 };
 
 export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: Props) => {
-  const modalContainerRef = useRef<HTMLDivElement>(null);
+  const sheetContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
   const userId = user?.id;
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
@@ -335,16 +340,17 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
           )}
         </UnstableCardContent>
       </UnstableCard>
-      <Modal
-        isOpen={popUp.modifyPrivilege.isOpen}
+      <Sheet
+        open={popUp.modifyPrivilege.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyPrivilege", isOpen)}
       >
-        <ModalContent
-          ref={modalContainerRef}
-          className="max-w-6xl"
-          title="Additional Privileges"
-          subTitle="Additional privileges take precedence over roles when permissions conflict"
-        >
+        <SheetContent ref={sheetContainerRef} className="flex h-full flex-col gap-y-0 sm:max-w-6xl">
+          <SheetHeader className="border-b">
+            <SheetTitle>Additional Privileges</SheetTitle>
+            <SheetDescription>
+              Additional privileges take precedence over roles when permissions conflict
+            </SheetDescription>
+          </SheetHeader>
           <MembershipProjectAdditionalPrivilegeModifySection
             onGoBack={() => handlePopUpClose("modifyPrivilege")}
             projectMembershipId={membershipDetails?.id}
@@ -353,10 +359,10 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
               isOwnProjectMembershipDetails ||
               permission.cannot(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member)
             }
-            menuPortalContainerRef={modalContainerRef}
+            menuPortalContainerRef={sheetContainerRef}
           />
-        </ModalContent>
-      </Modal>
+        </SheetContent>
+      </Sheet>
       <DeleteActionModal
         isOpen={popUp.deletePrivilege.isOpen}
         deleteKey="remove"

@@ -20,6 +20,7 @@ export type TNotification =
         secretPath: string;
         requestId: string;
         projectId: string;
+        projectName: string;
         secretKeys: string[];
         approvalUrl: string;
       };

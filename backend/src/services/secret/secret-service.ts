@@ -53,6 +53,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
@@ -135,6 +136,7 @@ type TSecretServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -159,7 +161,8 @@ export const secretServiceFactory = ({
   secretApprovalRequestService,
   licenseService,
   reminderService,
-  secretVersionV2DAL
+  secretVersionV2DAL,
+  secretV2BridgeDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -1411,11 +1414,12 @@ export const secretServiceFactory = ({
     recursive,
     tagSlugs = [],
     throwOnMissingReadValuePermission = true,
+    ifNoneMatch,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { secrets, imports } = await secretV2BridgeService.getSecrets({
+      const result = await secretV2BridgeService.getSecrets({
         projectId,
         expandSecretReferences,
         personalOverridesBehavior,
@@ -1432,10 +1436,15 @@ export const secretServiceFactory = ({
         actorAuthMethod,
         includeImports,
         tagSlugs,
+        ifNoneMatch,
         ...paramsV2
       });
 
-      return { secrets, imports };
+      if (result.notModified) {
+        return { notModified: true, etag: result.etag, secrets: [], imports: [] };
+      }
+
+      return { secrets: result.secrets, imports: result.imports, etag: result.etag };
     }
 
     if (!botKey)
@@ -2820,6 +2829,7 @@ export const secretServiceFactory = ({
       environmentSlug: environment,
       excludeReplication: true
     });
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
 
     return {
       ...updatedSecret[0],
@@ -2930,6 +2940,7 @@ export const secretServiceFactory = ({
       environmentSlug: environment,
       excludeReplication: true
     });
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
 
     return {
       ...updatedSecret[0],
@@ -3080,6 +3091,7 @@ export const secretServiceFactory = ({
 
     const sourceSecrets = await secretDAL.findManySecretsWithTags({
       type: SecretType.Shared,
+      folderId: sourceFolder.id,
       secretIds
     });
 

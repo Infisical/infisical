@@ -3,12 +3,13 @@ import { z } from "zod";
 import { IdentityAuthMethod, IdentityGcpAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, GCP_AUTH } from "@app/lib/api-docs";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateGcpAuthField } from "@app/services/identity-gcp-auth/identity-gcp-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -41,43 +42,73 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const { identityGcpAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityGcpAuth.login(req.body);
+      try {
+        const { identityGcpAuth, accessToken, identityAccessToken, identity } =
+          await server.services.identityGcpAuth.login(req.body);
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_GCP_AUTH,
-          metadata: {
-            identityId: identityGcpAuth.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identityGcpAuthId: identityGcpAuth.id
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_GCP_AUTH,
+            metadata: {
+              identityId: identityGcpAuth.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identityGcpAuthId: identityGcpAuth.id
+            }
           }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.MachineIdentityLogin,
-          distinctId: `identity-${identityGcpAuth.identityId}`,
-          organizationId: identity.orgId,
-          properties: {
-            identityId: identityGcpAuth.identityId,
-            orgId: identity.orgId,
-            authMethod: IdentityAuthMethod.GCP_AUTH
-          }
-        })
-        .catch((error) => {
-          logger.error(error, `Failed to send telemetry event [identityId=${identityGcpAuth.identityId}]`);
         });
 
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identityGcpAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL
-      };
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${identityGcpAuth.identityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: identityGcpAuth.identityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.GCP_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${identityGcpAuth.identityId}]`);
+          });
+
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identityGcpAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (
+          error instanceof UnauthorizedError &&
+          error.detail?.orgId &&
+          error.detail?.identityId &&
+          error.detail?.identityName
+        ) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: {
+              type: ActorType.IDENTITY,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                name: error.detail.identityName as string
+              }
+            },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_GCP_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reasonCode: error.detail.reasonCode as string,
+                message: error.message
+              }
+            }
+          });
+        }
+        throw error;
+      }
     }
   });
 

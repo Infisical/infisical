@@ -1,10 +1,7 @@
-import { useState } from "react";
-
-import { Modal, ModalContent } from "@app/components/v2";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
 import { PamAccountForm } from "./PamAccountForm/PamAccountForm";
-import { ResourceSelect } from "./ResourceSelect";
 
 type Props = {
   isOpen: boolean;
@@ -12,7 +9,7 @@ type Props = {
   projectId: string;
   onComplete?: (account: TPamAccount) => void;
   currentFolderId: string | null;
-  defaultResource?: {
+  resource: {
     id: string;
     name: string;
     resourceType: PamResourceType;
@@ -25,52 +22,28 @@ export const PamAddAccountModal = ({
   projectId,
   onComplete,
   currentFolderId,
-  defaultResource
+  resource
 }: Props) => {
-  const [selectedResource, setSelectedResource] = useState<{
-    id: string;
-    name: string;
-    resourceType: PamResourceType;
-  } | null>(defaultResource ?? null);
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      // Reset state when modal closes
-      setSelectedResource(defaultResource ?? null);
-    }
-    onOpenChange(open);
-  };
-
   return (
-    <Modal isOpen={isOpen} onOpenChange={handleOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title="Add Account"
-        subTitle={
-          selectedResource
-            ? "Add account under a select resource."
-            : "Select a resource to add an account under."
-        }
-        bodyClassName={selectedResource ? undefined : "overflow-visible"}
-      >
-        {selectedResource ? (
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
+        <SheetHeader className="border-b">
+          <SheetTitle>Create Account</SheetTitle>
+          <SheetDescription>Input account connection credentials</SheetDescription>
+        </SheetHeader>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <PamAccountForm
-            onComplete={(account) => {
-              if (onComplete) onComplete(account);
+            closeSheet={(account) => {
+              if (account && onComplete) onComplete(account);
               onOpenChange(false);
-              setSelectedResource(null);
             }}
-            onBack={defaultResource ? undefined : () => setSelectedResource(null)}
-            resourceId={selectedResource.id}
-            resourceName={selectedResource.name}
-            resourceType={selectedResource.resourceType}
+            resourceId={resource.id}
+            resourceType={resource.resourceType}
             projectId={projectId}
             folderId={currentFolderId ?? undefined}
           />
-        ) : (
-          <ResourceSelect projectId={projectId} onSubmit={(e) => setSelectedResource(e.resource)} />
-        )}
-      </ModalContent>
-    </Modal>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

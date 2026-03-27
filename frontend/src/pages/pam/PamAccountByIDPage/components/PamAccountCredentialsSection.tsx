@@ -107,6 +107,7 @@ const CredentialsContent = ({ account }: { account: TPamAccount }) => {
   switch (resourceType) {
     case PamResourceType.Postgres:
     case PamResourceType.MySQL:
+    case PamResourceType.MsSQL:
     case PamResourceType.Redis:
       return <SqlCredentialsContent credentials={account.credentials as TBaseSqlCredentials} />;
     case PamResourceType.SSH:

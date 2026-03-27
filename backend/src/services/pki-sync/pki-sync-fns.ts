@@ -1,4 +1,4 @@
-import * as handlebars from "handlebars";
+import handlebars from "handlebars";
 import { z, ZodSchema } from "zod";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";

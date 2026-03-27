@@ -510,7 +510,8 @@
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
                   },
-                  "documentation/platform/webhooks"
+                  "documentation/platform/webhooks",
+                  "documentation/platform/secret-validation-rules"
                 ]
               },
               {
@@ -838,7 +839,8 @@
                   "documentation/platform/kms/overview",
                   "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/kmip"
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/sigstore-cosign"
                 ]
               }
             ]
@@ -861,6 +863,7 @@
                           "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/mssql",
                           "documentation/platform/pam/getting-started/resources/mysql",
                           "documentation/platform/pam/getting-started/resources/postgresql",
                           "documentation/platform/pam/getting-started/resources/redis",
@@ -946,6 +949,7 @@
                   "cli/commands/dynamic-secrets",
                   "cli/commands/ssh",
                   "cli/commands/gateway",
+                  "cli/commands/kmip",
                   "cli/commands/relay",
                   "cli/commands/bootstrap",
                   "cli/commands/export",

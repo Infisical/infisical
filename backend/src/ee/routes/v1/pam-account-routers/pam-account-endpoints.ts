@@ -23,8 +23,6 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     folderId?: C["folderId"];
     name: C["name"];
     description?: C["description"];
-    rotationEnabled?: C["rotationEnabled"];
-    rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
     internalMetadata?: Record<string, unknown>;
     metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
@@ -33,8 +31,6 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     credentials?: C["credentials"];
     name?: C["name"];
     description?: C["description"];
-    rotationEnabled?: C["rotationEnabled"];
-    rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
     internalMetadata?: Record<string, unknown>;
     metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
@@ -80,8 +76,6 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
             folderId: req.body.folderId,
             name: req.body.name,
             description: req.body.description,
-            rotationEnabled: req.body.rotationEnabled ?? false,
-            rotationIntervalSeconds: req.body.rotationIntervalSeconds,
             requireMfa: req.body.requireMfa
           }
         }
@@ -132,8 +126,6 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
             resourceType,
             name: req.body.name,
             description: req.body.description,
-            rotationEnabled: req.body.rotationEnabled,
-            rotationIntervalSeconds: req.body.rotationIntervalSeconds,
             requireMfa: req.body.requireMfa
           }
         }

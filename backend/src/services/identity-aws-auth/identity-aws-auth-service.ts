@@ -115,7 +115,10 @@ export const identityAwsAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityAwsAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -159,7 +162,13 @@ export const identityAwsAuthServiceFactory = ({
 
         if (!isAccountAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: AWS account ID not allowed."
+            message: "Access denied: AWS account ID not allowed.",
+            detail: {
+              reasonCode: "account_id_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -185,7 +194,13 @@ export const identityAwsAuthServiceFactory = ({
           );
 
           throw new UnauthorizedError({
-            message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`
+            message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`,
+            detail: {
+              reasonCode: "principal_arn_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -206,7 +221,13 @@ export const identityAwsAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

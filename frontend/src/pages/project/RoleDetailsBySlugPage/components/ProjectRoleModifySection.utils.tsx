@@ -815,6 +815,28 @@ export const projectRoleFormSchema = z.object({
     })
     .partial()
     .optional()
+    .superRefine((permissions, ctx) => {
+      if (!permissions) return;
+
+      const NON_ACTION_KEYS = new Set(["conditions", "inverted"]);
+
+      Object.entries(permissions).forEach(([subject, rules]) => {
+        if (!Array.isArray(rules)) return;
+        rules.forEach((rule, ruleIndex) => {
+          if (!rule || typeof rule !== "object") return;
+          const hasAction = Object.entries(rule).some(
+            ([key, value]) => !NON_ACTION_KEYS.has(key) && value === true
+          );
+          if (!hasAction) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "At least one action is required",
+              path: [subject, ruleIndex, "actionRequired"]
+            });
+          }
+        });
+      });
+    })
 });
 
 export type TFormSchema = z.infer<typeof projectRoleFormSchema>;

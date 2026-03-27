@@ -10,6 +10,7 @@ import {
   TableName,
   TSecretsV2
 } from "@app/db/schemas";
+import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -32,7 +33,8 @@ import {
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy } from "@app/lib/fn";
@@ -61,6 +63,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
   MAX_SECRET_CACHE_BYTES,
@@ -111,6 +114,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionDAL: Pick<TPermissionDALFactory, "getPermissionFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
@@ -133,9 +137,15 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem" | "pgGetIntItem">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem" | "pgGetIntItem" | "hashGet" | "hashSet"
+  >;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
+
+const ETAG_TTL = 900; // 15 minutes in seconds
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
 
@@ -151,6 +161,7 @@ export const secretV2BridgeServiceFactory = ({
   folderCommitService,
   folderDAL,
   permissionService,
+  permissionDAL,
   snapshotService,
   secretQueueService,
   secretImportDAL,
@@ -161,7 +172,8 @@ export const secretV2BridgeServiceFactory = ({
   kmsService,
   resourceMetadataDAL,
   keyStore,
-  reminderService
+  reminderService,
+  secretValidationRuleService
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -345,6 +357,14 @@ export const secretV2BridgeServiceFactory = ({
       ],
       project.secretDetectionIgnoreValues || []
     );
+
+    await secretValidationRuleService.validateSecrets({
+      projectId,
+      environment,
+      envId: folder.envId,
+      secretPath,
+      secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
+    });
 
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
     const allSecretReferences = nestedReferences.concat(
@@ -595,6 +615,18 @@ export const secretV2BridgeServiceFactory = ({
         ],
         project.secretDetectionIgnoreValues || []
       );
+    }
+
+    // Validate against secret validation rules (key rename and/or value change)
+    const finalKey = inputSecret.newSecretName || secretName;
+    if (secretValue || inputSecret.newSecretName) {
+      await secretValidationRuleService.validateSecrets({
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: [{ key: finalKey, value: secretValue }]
+      });
     }
 
     if (secretValue) {
@@ -1120,8 +1152,42 @@ export const secretV2BridgeServiceFactory = ({
       expandPersonalOverrides,
       personalOverridesBehavior,
       throwOnMissingReadValuePermission = true,
+      ifNoneMatch,
       ...params
     } = dto;
+
+    let permissionFingerprint = "";
+
+    if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
+      permissionFingerprint = await permissionDAL.getPermissionFingerprint({
+        projectId,
+        orgId: actorOrgId,
+        actorId,
+        actorType: actor
+      });
+    }
+
+    const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId);
+    const etagField = `${actorId}:${permissionFingerprint}:${generateCacheKeyFromData({
+      environment,
+      path,
+      recursive,
+      includeImports,
+      expandSecretReferences: shouldExpandSecretReferences,
+      expandPersonalOverrides,
+      personalOverridesBehavior,
+      secretImportReferencesBehavior,
+      viewSecretValue,
+      ...params
+    })}`;
+
+    if (ifNoneMatch) {
+      const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
+      if (storedEtag && storedEtag === ifNoneMatch) {
+        return { notModified: true, etag: ifNoneMatch, secrets: [], imports: [] };
+      }
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1159,7 +1225,7 @@ export const secretV2BridgeServiceFactory = ({
           secrets: typeof decryptedSecrets;
           imports: typeof importedSecrets;
         };
-        return {
+        const payload = {
           secrets: secrets.map((el) => ({
             ...el,
             createdAt: new Date(el.createdAt),
@@ -1167,6 +1233,10 @@ export const secretV2BridgeServiceFactory = ({
           })),
           imports
         };
+        const cachedEtag = `"${generateCacheKeyFromData(payload)}"`;
+        await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
+        await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+        return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
         await keyStore.deleteItem(cacheKey);
@@ -1414,7 +1484,10 @@ export const secretV2BridgeServiceFactory = ({
       if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
         await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
-      return payload;
+      const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
+      await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
+      await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+      return { ...payload, etag: computedEtag };
     }
 
     const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
@@ -1483,7 +1556,10 @@ export const secretV2BridgeServiceFactory = ({
     if (encryptedUpdatedCachedSecrets.byteLength < MAX_SECRET_CACHE_BYTES) {
       await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
-    return payload;
+    const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
+    await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
+    await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+    return { ...payload, etag: computedEtag };
   };
 
   const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secretId }: TGetASecretByIdDTO) => {
@@ -1862,6 +1938,14 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
+    await secretValidationRuleService.validateSecrets({
+      projectId,
+      environment,
+      envId: folder.envId,
+      secretPath,
+      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+    });
+
     // get all tags
     const sanitizedTagIds = [...new Set(deduplicatedSecrets.flatMap(({ tagIds = [] }) => tagIds))];
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
@@ -2222,6 +2306,26 @@ export const secretV2BridgeServiceFactory = ({
             })),
           project.secretDetectionIgnoreValues || []
         );
+
+        // Validate against secret validation rules for all secrets being updated or created (upsert)
+        const secretsToValidate = [
+          ...secretsToUpdate
+            .filter((el) => el.secretValue || el.newSecretName)
+            .map((el) => ({ key: el.newSecretName || el.secretKey, value: el.secretValue })),
+          ...(updateMode === SecretUpdateMode.Upsert
+            ? secretsToCreate.map((el) => ({ key: el.secretKey, value: el.secretValue }))
+            : [])
+        ];
+        if (secretsToValidate.length) {
+          // eslint-disable-next-line no-await-in-loop
+          await secretValidationRuleService.validateSecrets({
+            projectId,
+            environment,
+            envId: folder.envId,
+            secretPath,
+            secrets: secretsToValidate
+          });
+        }
 
         const secretKeyUpdates: {
           secretId: string;

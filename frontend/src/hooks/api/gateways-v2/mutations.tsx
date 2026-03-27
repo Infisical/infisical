@@ -15,3 +15,15 @@ export const useDeleteGatewayV2ById = () => {
     }
   });
 };
+
+export const useTriggerGatewayV2Heartbeat = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => {
+      return apiRequest.post(`/api/v2/gateways/${id}/heartbeat`);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+    }
+  });
+};

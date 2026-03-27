@@ -1,5 +1,7 @@
 import net from "node:net";
 
+import { runPowershell } from "winrm-client";
+
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -7,12 +9,15 @@ import { logger } from "@app/lib/logger";
 
 import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
+import { generatePassword } from "../../secret-rotation-v2/shared/utils";
 import { PamResource } from "../pam-resource-enums";
 import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
-  TPamResourceFactoryValidateAccountCredentials
+  TPamResourceFactoryValidateAccountCredentials,
+  TPostRotateContext
 } from "../pam-resource-types";
+import { escapePowershellSingleQuote, syncDependenciesAfterRotation } from "../shared/dependency-sync-fns";
 import {
   TWindowsAccountCredentials,
   TWindowsResourceConnectionDetails,
@@ -116,7 +121,7 @@ export const windowsResourceFactory: TPamResourceFactory<
       });
     } catch (error) {
       throw new BadRequestError({
-        message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+        message: `Unable to validate connection to windows: ${(error as Error).message || String(error)}`
       });
     }
 
@@ -130,11 +135,67 @@ export const windowsResourceFactory: TPamResourceFactory<
     return credentials;
   };
 
-  const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<
-    TWindowsAccountCredentials
-  > = async () => {
-    throw new BadRequestError({
-      message: "Credential rotation is not yet supported for Windows Server resources"
+  const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<TWindowsAccountCredentials> = async (
+    rotationAccountCredentials,
+    currentCredentials
+  ) => {
+    if (!gatewayId) throw new BadRequestError({ message: "Gateway ID is required for Windows credential rotation" });
+
+    const newPassword = generatePassword();
+
+    const escapedNewPassword = escapePowershellSingleQuote(newPassword);
+    const escapedUsername = escapePowershellSingleQuote(currentCredentials.username);
+
+    const { winrmPort } = connectionDetails;
+    const { useWinrmHttps } = connectionDetails;
+
+    await executeWithGateway(
+      { connectionDetails, gatewayId, resourceType, targetPortOverride: winrmPort },
+      gatewayV2Service,
+      async (proxyPort) => {
+        const script = [
+          `$securePassword = ConvertTo-SecureString '${escapedNewPassword}' -AsPlainText -Force`,
+          `Set-LocalUser -Name '${escapedUsername}' -Password $securePassword`
+        ].join("; ");
+
+        await runPowershell(
+          script,
+          "localhost",
+          rotationAccountCredentials.username,
+          rotationAccountCredentials.password,
+          proxyPort,
+          useWinrmHttps,
+          useWinrmHttps ? connectionDetails.winrmRejectUnauthorized : undefined,
+          connectionDetails.winrmCaCert,
+          connectionDetails.winrmTlsServerName
+        );
+
+        logger.info(
+          `[Windows Rotation] Password rotated for local account [username=${currentCredentials.username}] on [hostname=${connectionDetails.hostname}]`
+        );
+      }
+    );
+
+    return { username: currentCredentials.username, password: newPassword };
+  };
+
+  const postRotate = async (
+    accountId: string,
+    newCredentials: TWindowsAccountCredentials,
+    projectId: string,
+    ctx: TPostRotateContext,
+    rotationAccountCredentials: TWindowsAccountCredentials
+  ) => {
+    if (!gatewayId) return;
+
+    await syncDependenciesAfterRotation({
+      accountId,
+      newCredentials,
+      projectId,
+      ctx,
+      gatewayV2Service,
+      rotationCredentials: rotationAccountCredentials,
+      gatewayId
     });
   };
 
@@ -156,6 +217,7 @@ export const windowsResourceFactory: TPamResourceFactory<
     validateConnection,
     validateAccountCredentials,
     rotateAccountCredentials,
+    postRotate,
     handleOverwritePreventionForCensoredValues
   };
 };
