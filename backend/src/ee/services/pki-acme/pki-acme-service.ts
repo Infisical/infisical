@@ -1289,8 +1289,7 @@ export const pkiAcmeServiceFactory = ({
         throw error;
       }
       if (certIssuanceJobData) {
-        // TODO: ideally, this should be done inside the transaction, but the pg-boss queue doesn't support external transactions
-        //       as it seems to be. we need to commit the transaction before queuing the job, otherwise the job will fail (not found error).
+        // We commit the transaction before queuing the job, otherwise the job may fail with a not-found error.
         await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
       }
       order = updatedOrder;

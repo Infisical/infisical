@@ -193,7 +193,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
-import { queueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -527,7 +526,6 @@ export const registerRoutes = async (
 
   const reminderDAL = reminderDALFactory(db);
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
-  const queueJobsDAL = queueJobsDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
@@ -2137,8 +2135,7 @@ export const registerRoutes = async (
     keyValueStoreDAL,
     approvalRequestDAL,
     approvalRequestGrantsDAL,
-    certificateRequestDAL,
-    queueJobsDAL
+    certificateRequestDAL
   });
 
   const healthAlert = healthAlertServiceFactory({

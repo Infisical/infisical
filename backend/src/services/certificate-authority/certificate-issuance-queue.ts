@@ -180,7 +180,7 @@ export const certificateIssuanceQueueFactory = ({
   });
 
   /**
-   * Queue a certificate issuance job using pgBoss
+   * Queue a certificate issuance job.
    */
   const queueCertificateIssuance = async ({
     certificateId,
