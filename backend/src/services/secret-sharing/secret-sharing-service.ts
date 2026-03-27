@@ -164,15 +164,16 @@ export const secretSharingServiceFactory = ({
     if (emails && emails.length > 0) {
       const allOrgMembers = await orgDAL.findAllOrgMembers(orgId);
 
-      for (const email of emails) {
-        const isOrgMember = allOrgMembers.some((v) => v.user.email === email);
+      const orgMemberEmailSet = new Set(allOrgMembers.map((member) => member.user.email));
 
-        if (isOrgMember) {
+      for (const email of emails) {
+        if (orgMemberEmailSet.has(email)) {
           orgMemberEmails.push(email);
-        } else if (
-          !rootOrg.allowSecretSharingOutsideOrganization ||
-          accessType === SecretSharingAccessType.Organization
-        ) {
+        } else if (accessType === SecretSharingAccessType.Organization) {
+          throw new BadRequestError({
+            message: "Your access type does not allow sharing secrets to members outside of this organization"
+          });
+        } else if (!rootOrg.allowSecretSharingOutsideOrganization) {
           throw new BadRequestError({
             message: "Organization does not allow sharing secrets to members outside of this organization"
           });
