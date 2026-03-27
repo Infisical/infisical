@@ -36,6 +36,7 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("signerCertDer").notNullable();
 
       t.uuid("certificateRequestId").nullable();
+      t.foreign("certificateRequestId").references("id").inTable(TableName.CertificateRequests).onDelete("SET NULL");
       t.index("certificateRequestId");
 
       t.string("clientCipherOid", 64).nullable();

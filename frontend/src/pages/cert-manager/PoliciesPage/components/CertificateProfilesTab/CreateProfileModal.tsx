@@ -1621,6 +1621,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                           isRequired={!isEdit}
                           isError={Boolean(error)}
                           errorText={error?.message}
+                          helperText="The challenge password cannot be viewed after creation. Make sure to save it somewhere safe."
                         >
                           <Input
                             {...field}

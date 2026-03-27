@@ -2591,6 +2591,9 @@ export const registerRoutes = async (
     kmsService,
     licenseService,
     certificatePolicyDAL,
+    certificatePolicyService,
+    certificateRequestService,
+    certificateIssuanceQueue,
     auditLogService
   });
 

@@ -1,13 +1,12 @@
-import nodeCrypto from "node:crypto";
-
 import * as asn1js from "asn1js";
 import { Certificate, type CertificateSetItem, ContentInfo, SignedData, type SignerInfo as PkiSignerInfo } from "pkijs";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 import { extractScepAttributes } from "./pki-scep-attributes";
 import { rsaPkcs1Decrypt, rsaVerify, symmetricDecrypt } from "./pki-scep-crypto";
-import { ScepMessageType, TParsedScepMessage } from "./pki-scep-types";
+import { DIGEST_OID_TO_HASH, ScepMessageType, TParsedScepMessage } from "./pki-scep-types";
 
 export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): TParsedScepMessage => {
   // Parse the outer ContentInfo
@@ -49,14 +48,6 @@ export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): T
 
   const scepAttrs = extractScepAttributes(signerInfo.signedAttrs.attributes);
 
-  // Verify messageDigest attribute matches the hash of the encapsulated content (RFC 5652 §11.2)
-  const DIGEST_OID_TO_HASH: Record<string, string> = {
-    "2.16.840.1.101.3.4.2.1": "sha256",
-    "1.3.14.3.2.26": "sha1",
-    "2.16.840.1.101.3.4.2.2": "sha384",
-    "2.16.840.1.101.3.4.2.3": "sha512"
-  };
-
   // RFC 5652 §11.2: messageDigest MUST be present when signedAttrs is present
   const messageDigestAttr = signerInfo.signedAttrs.attributes.find((a) => a.type === "1.2.840.113549.1.9.4");
   if (!messageDigestAttr || messageDigestAttr.values.length === 0) {
@@ -77,7 +68,7 @@ export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): T
       eContentParsed.result instanceof asn1js.OctetString
         ? Buffer.from(eContentParsed.result.getValue())
         : Buffer.from(eContentBer);
-    const computedDigest = nodeCrypto.createHash(hashAlgo).update(eContentBytes).digest();
+    const computedDigest = crypto.nativeCrypto.createHash(hashAlgo).update(eContentBytes).digest();
 
     if (!claimedDigest.equals(computedDigest)) {
       throw new BadRequestError({ message: "SCEP message integrity check failed: messageDigest mismatch" });

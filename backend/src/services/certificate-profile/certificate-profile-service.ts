@@ -9,6 +9,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
+import { generateRaCertificate } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
@@ -420,7 +421,6 @@ export const certificateProfileServiceFactory = ({
       | undefined;
 
     if (data.enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
-      const { generateRaCertificate } = await import("@app/ee/services/pki-scep/pki-scep-fns");
       const raCert = await generateRaCertificate(data.slug);
 
       const certificateManagerKmsId = await getProjectKmsCertificateKeyId({

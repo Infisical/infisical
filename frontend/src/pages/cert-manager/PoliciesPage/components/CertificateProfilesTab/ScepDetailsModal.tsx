@@ -80,7 +80,7 @@ export const ScepDetailsModal = ({ isOpen, onClose, profile }: Props) => {
         <FormLabel
           label="RA Certificate"
           className="mt-4"
-          tooltipText="The Registration Authority certificate used by SCEP clients to encrypt enrollment requests."
+          tooltipText="The Registration Authority certificate used by SCEP clients."
         />
         <div className="flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
           <p className="text-xs text-mineshaft-400">Expires: {raCertExpiresAt}</p>

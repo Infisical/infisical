@@ -1,5 +1,3 @@
-import nodeCrypto from "node:crypto";
-
 import * as asn1js from "asn1js";
 import {
   AlgorithmIdentifier,
@@ -12,6 +10,8 @@ import {
   SignedData,
   SignerInfo
 } from "pkijs";
+
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { buildResponseAttributes } from "./pki-scep-attributes";
 import { rsaPkcs1Encrypt, rsaSign, symmetricEncryptWithOid } from "./pki-scep-crypto";
@@ -53,7 +53,7 @@ export const buildCertRepSuccess = ({
 
   // Step 2: Encrypt the cert payload in an EnvelopedData for the device
   // Extract the device's public key from its self-signed certificate
-  const recipientCert = new nodeCrypto.X509Certificate(recipientCertDer);
+  const recipientCert = new crypto.nativeCrypto.X509Certificate(recipientCertDer);
   const recipientPublicKeyDer = Buffer.from(recipientCert.publicKey.export({ type: "spki", format: "der" }));
 
   const { encryptedContent, key: cek, iv, cipherOid } = symmetricEncryptWithOid(certPayload, clientCipherOid);
@@ -76,7 +76,7 @@ export const buildCertRepSuccess = ({
   const innerContentInfoDer = Buffer.from(innerContentInfo.toBER(false));
 
   // Step 3: Build the outer SignedData
-  const senderNonce = nodeCrypto.randomBytes(16);
+  const senderNonce = crypto.randomBytes(16);
   const responseAttrs = buildResponseAttributes({
     transactionId,
     recipientNonce,
@@ -99,7 +99,7 @@ export const buildCertRepPending = ({
   transactionId: string;
   recipientNonce: Buffer;
 }): Buffer => {
-  const senderNonce = nodeCrypto.randomBytes(16);
+  const senderNonce = crypto.randomBytes(16);
   const responseAttrs = buildResponseAttributes({
     transactionId,
     recipientNonce,
@@ -124,7 +124,7 @@ export const buildCertRepFailure = ({
   recipientNonce: Buffer;
   failInfo: ScepFailInfo;
 }): Buffer => {
-  const senderNonce = nodeCrypto.randomBytes(16);
+  const senderNonce = crypto.randomBytes(16);
   const responseAttrs = buildResponseAttributes({
     transactionId,
     recipientNonce,
@@ -167,7 +167,7 @@ const buildSignedCertRep = (
         type: "1.2.840.113549.1.9.4", // messageDigest
         values: [
           new asn1js.OctetString({
-            valueHex: nodeCrypto
+            valueHex: crypto.nativeCrypto
               .createHash("sha256")
               .update(Buffer.from(innerContent || Buffer.alloc(0)))
               .digest()
