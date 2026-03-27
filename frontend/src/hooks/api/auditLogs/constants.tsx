@@ -295,6 +295,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_DISCOVERY_SOURCE_RUN_GET]: "Get PAM Discovery Source Run",
   [EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST]: "List PAM Discovery Source Resources",
   [EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST]: "List PAM Discovery Source Accounts",
+  [EventType.PAM_RESOURCE_ROTATION_RULE_LIST]: "List PAM Resource Rotation Rules",
+  [EventType.PAM_RESOURCE_ROTATION_RULE_CREATE]: "Create PAM Resource Rotation Rule",
+  [EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE]: "Update PAM Resource Rotation Rule",
+  [EventType.PAM_RESOURCE_ROTATION_RULE_DELETE]: "Delete PAM Resource Rotation Rule",
+  [EventType.PAM_RESOURCE_ROTATION_RULE_REORDER]: "Reorder PAM Resource Rotation Rules",
 
   [EventType.CREATE_CERTIFICATE_PROFILE]: "Create Certificate Profile",
   [EventType.UPDATE_CERTIFICATE_PROFILE]: "Update Certificate Profile",
@@ -358,7 +363,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_DYNAMIC_SECRET_LEASE]: "Delete Dynamic Secret Lease",
   [EventType.RENEW_DYNAMIC_SECRET_LEASE]: "Renew Dynamic Secret Lease",
   [EventType.LIST_DYNAMIC_SECRET_LEASES]: "List Dynamic Secret Leases",
-  [EventType.GET_DYNAMIC_SECRET_LEASE]: "Get Dynamic Secret Lease"
+  [EventType.GET_DYNAMIC_SECRET_LEASE]: "Get Dynamic Secret Lease",
+
+  [EventType.SECRET_VALIDATION_RULE_CREATE]: "Create Secret Validation Rule",
+  [EventType.SECRET_VALIDATION_RULE_UPDATE]: "Update Secret Validation Rule",
+  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -425,7 +434,12 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_DISCOVERY_SOURCE_RUN_LIST,
     EventType.PAM_DISCOVERY_SOURCE_RUN_GET,
     EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST,
-    EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST
+    EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST,
+    EventType.PAM_RESOURCE_ROTATION_RULE_LIST,
+    EventType.PAM_RESOURCE_ROTATION_RULE_CREATE,
+    EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE,
+    EventType.PAM_RESOURCE_ROTATION_RULE_DELETE,
+    EventType.PAM_RESOURCE_ROTATION_RULE_REORDER
   ],
   [ProjectType.AI]: [
     ...sharedProjectEvents,

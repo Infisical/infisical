@@ -609,6 +609,11 @@ export enum EventType {
   PAM_DISCOVERY_SOURCE_RUN_GET = "pam-discovery-source-run-get",
   PAM_DISCOVERY_SOURCE_RESOURCE_LIST = "pam-discovery-source-resource-list",
   PAM_DISCOVERY_SOURCE_ACCOUNT_LIST = "pam-discovery-source-account-list",
+  PAM_RESOURCE_ROTATION_RULE_LIST = "pam-resource-rotation-rule-list",
+  PAM_RESOURCE_ROTATION_RULE_CREATE = "pam-resource-rotation-rule-create",
+  PAM_RESOURCE_ROTATION_RULE_UPDATE = "pam-resource-rotation-rule-update",
+  PAM_RESOURCE_ROTATION_RULE_DELETE = "pam-resource-rotation-rule-delete",
+  PAM_RESOURCE_ROTATION_RULE_REORDER = "pam-resource-rotation-rule-reorder",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -696,7 +701,12 @@ export enum EventType {
   GET_PKI_SIGNERS = "get-pki-signers",
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
-  PKI_SIGNER_SIGN = "pki-signer-sign"
+  PKI_SIGNER_SIGN = "pki-signer-sign",
+
+  // Secret Validation Rules
+  SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
+  SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -4661,8 +4671,6 @@ interface PamAccountCreateEvent {
     folderId?: string | null;
     name: string;
     description?: string | null;
-    rotationEnabled: boolean;
-    rotationIntervalSeconds?: number | null;
     requireMfa?: boolean | null;
   };
 }
@@ -4675,8 +4683,6 @@ interface PamAccountUpdateEvent {
     resourceType: string;
     name?: string;
     description?: string | null;
-    rotationEnabled?: boolean;
-    rotationIntervalSeconds?: number | null;
     requireMfa?: boolean | null;
   };
 }
@@ -4848,6 +4854,61 @@ interface PamDiscoverySourceAccountListEvent {
     sourceName: string;
     discoveryType: string;
     count: number;
+  };
+}
+
+interface PamResourceRotationRuleListEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_LIST;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    count: number;
+  };
+}
+
+interface PamResourceRotationRuleCreateEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_CREATE;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    ruleId: string;
+    ruleName?: string;
+    namePattern: string;
+    enabled: boolean;
+    intervalSeconds?: number | null;
+  };
+}
+
+interface PamResourceRotationRuleUpdateEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    ruleId: string;
+    ruleName?: string | null;
+    namePattern?: string;
+    enabled?: boolean;
+    intervalSeconds?: number | null;
+  };
+}
+
+interface PamResourceRotationRuleDeleteEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_DELETE;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    ruleId: string;
+    ruleName?: string | null;
+    namePattern: string;
+  };
+}
+
+interface PamResourceRotationRuleReorderEvent {
+  type: EventType.PAM_RESOURCE_ROTATION_RULE_REORDER;
+  metadata: {
+    resourceId: string;
+    resourceName: string;
+    ruleIds: string[];
   };
 }
 
@@ -5470,6 +5531,37 @@ interface ListDynamicSecretLeasesEvent {
   };
 }
 
+interface SecretValidationRuleCreateEvent {
+  type: EventType.SECRET_VALIDATION_RULE_CREATE;
+  metadata: {
+    ruleId: string;
+    name: string;
+    type: string;
+    environmentSlug?: string;
+    secretPath: string;
+  };
+}
+
+interface SecretValidationRuleUpdateEvent {
+  type: EventType.SECRET_VALIDATION_RULE_UPDATE;
+  metadata: {
+    ruleId: string;
+    name?: string;
+    type?: string;
+    environmentSlug?: string | null;
+    secretPath?: string;
+    isActive?: boolean;
+  };
+}
+
+interface SecretValidationRuleDeleteEvent {
+  type: EventType.SECRET_VALIDATION_RULE_DELETE;
+  metadata: {
+    ruleId: string;
+    name: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -5899,6 +5991,11 @@ export type Event =
   | PamDiscoverySourceRunGetEvent
   | PamDiscoverySourceResourceListEvent
   | PamDiscoverySourceAccountListEvent
+  | PamResourceRotationRuleListEvent
+  | PamResourceRotationRuleCreateEvent
+  | PamResourceRotationRuleUpdateEvent
+  | PamResourceRotationRuleDeleteEvent
+  | PamResourceRotationRuleReorderEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent
@@ -5966,4 +6063,7 @@ export type Event =
   | RenewDynamicSecretLeaseEvent
   | GetDynamicSecretLeaseEvent
   | UpdateCertificateCleanupConfigEvent
-  | CertificateCleanupCompletedEvent;
+  | CertificateCleanupCompletedEvent
+  | SecretValidationRuleCreateEvent
+  | SecretValidationRuleUpdateEvent
+  | SecretValidationRuleDeleteEvent;

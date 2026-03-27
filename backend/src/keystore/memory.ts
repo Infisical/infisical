@@ -9,6 +9,7 @@ import { TKeyStoreFactory } from "./keystore";
 export const inMemoryKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
   const listStore: Record<string, string[]> = {};
+  const hashStore: Record<string, Record<string, string>> = {};
   const getRegex = (pattern: string) =>
     new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
 
@@ -29,6 +30,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     },
     deleteItem: async (key) => {
       delete store[key];
+      delete hashStore[key];
       return 1;
     },
     deleteItems: async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }) => {
@@ -64,6 +66,14 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       if (typeof value === "number") {
         return Number(value);
       }
+    },
+    hashSet: async (key, field, value) => {
+      if (!hashStore[key]) hashStore[key] = {};
+      hashStore[key][field] = value;
+      return 1;
+    },
+    hashGet: async (key, field) => {
+      return hashStore[key]?.[field] ?? null;
     },
     pgIncrementBy: async () => {
       return 1;

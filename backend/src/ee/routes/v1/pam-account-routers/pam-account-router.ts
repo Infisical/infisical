@@ -65,7 +65,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           dependencies: PamAccountDependenciesSchema.extend({
-            resourceName: z.string().nullable().optional()
+            resourceName: z.string().nullable().optional(),
+            lastSyncMessage: z.string().nullable().optional()
           }).array()
         })
       }
@@ -153,6 +154,32 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       });
 
       return { dependency };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerPamAccountRotation",
+      description: "Manually trigger credential rotation for a PAM account",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          account: SanitizedAccountSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+
+      return { account: account as z.infer<typeof SanitizedAccountSchema> };
     }
   });
 

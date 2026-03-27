@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
-import { FormControl, Input } from "@app/components/v2";
+import { Field, FieldContent, FieldError, FieldLabel, UnstableInput } from "@app/components/v3";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
@@ -16,49 +16,55 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   }, [password]);
 
   return (
-    <div className="flex gap-2">
+    <div className="grid grid-cols-2 gap-2">
       <Controller
         name="credentials.username"
         control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            className="flex-1"
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Username"
-          >
-            <Input {...field} autoComplete="off" />
-          </FormControl>
+          <Field>
+            <FieldLabel>Username</FieldLabel>
+            <FieldContent>
+              <UnstableInput
+                {...field}
+                isError={Boolean(error)}
+                autoComplete="off"
+                placeholder="user"
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
+
       <Controller
         name="credentials.password"
         control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            className="flex-1"
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Password"
-          >
-            <Input
-              {...field}
-              type={showPassword ? "text" : "password"}
-              autoComplete="new-password"
-              onFocus={() => {
-                if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
-                  field.onChange("");
-                }
-                setShowPassword(true);
-              }}
-              onBlur={() => {
-                if (isUpdate && field.value === "") {
-                  field.onChange(UNCHANGED_PASSWORD_SENTINEL);
-                }
-                setShowPassword(false);
-              }}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>Password</FieldLabel>
+            <FieldContent>
+              <UnstableInput
+                {...field}
+                placeholder="••••••"
+                isError={Boolean(error)}
+                autoComplete="new-password"
+                type={showPassword ? "text" : "password"}
+                onFocus={() => {
+                  if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
+                    field.onChange("");
+                  }
+                  setShowPassword(true);
+                }}
+                onBlur={() => {
+                  if (isUpdate && field.value === "") {
+                    field.onChange(UNCHANGED_PASSWORD_SENTINEL);
+                  }
+                  setShowPassword(false);
+                }}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
     </div>

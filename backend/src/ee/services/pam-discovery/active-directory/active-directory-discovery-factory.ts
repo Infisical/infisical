@@ -1,6 +1,5 @@
 import net from "node:net";
 
-import * as dnsPacket from "dns-packet";
 import { Knex } from "knex";
 import ldapjs from "ldapjs";
 import RE2 from "re2";
@@ -27,6 +26,7 @@ import {
 import { TPamResourceDALFactory } from "../../pam-resource/pam-resource-dal";
 import { PamResource } from "../../pam-resource/pam-resource-enums";
 import { encryptResourceConnectionDetails, encryptResourceInternalMetadata } from "../../pam-resource/pam-resource-fns";
+import { resolveDnsTcp } from "../../pam-resource/shared/dns-over-dc";
 import { WindowsAccountType, WindowsProtocol } from "../../pam-resource/windows-server/windows-server-resource-enums";
 import {
   TWindowsAccountCredentials,
@@ -289,56 +289,6 @@ const executeWithGateway = async <T>(
   );
 };
 
-// Resolve a single hostname to an IP via DNS-over-TCP through the gateway proxy
-const resolveDnsTcp = (hostname: string, port: number): Promise<string | null> => {
-  return new Promise((resolve) => {
-    const query = dnsPacket.streamEncode({
-      type: "query",
-      flags: dnsPacket.RECURSION_DESIRED,
-      questions: [{ type: "A", name: hostname }]
-    });
-
-    const socket = net.connect({ host: "127.0.0.1", port }, () => {
-      socket.write(query);
-    });
-
-    // Max legitimate DNS-over-TCP response: 2-byte length prefix + 65535 bytes payload
-    const MAX_DNS_TCP_SIZE = 2 + 65535;
-    let responseData = Buffer.alloc(0);
-
-    socket.on("data", (chunk: Buffer) => {
-      responseData = Buffer.concat([responseData, chunk]);
-
-      if (responseData.length > MAX_DNS_TCP_SIZE) {
-        socket.destroy();
-        resolve(null);
-        return;
-      }
-
-      // DNS-over-TCP frames each message with a 2-byte big-endian length prefix
-      // wait until we have the full frame before decoding
-      if (responseData.length >= 2) {
-        const msgLen = responseData.readUInt16BE(0);
-        if (responseData.length >= 2 + msgLen) {
-          const response = dnsPacket.streamDecode(responseData);
-          const aRecord = response.answers?.find((a) => a.type === "A");
-          socket.destroy();
-          resolve(aRecord && "data" in aRecord ? (aRecord.data as string) : null);
-        }
-      }
-    });
-
-    socket.on("error", () => {
-      resolve(null);
-    });
-
-    socket.setTimeout(5000, () => {
-      socket.destroy();
-      resolve(null);
-    });
-  });
-};
-
 // Resolve AD hostnames to IP addresses by querying DNS over TCP through the DC
 const resolveHostnamesViaDc = async (
   computers: TLdapComputer[],
@@ -417,17 +367,28 @@ const executeLdapEnumeration = async (
         timeout: LDAP_TIMEOUT,
         ...(configuration.useLdaps && {
           tlsOptions: {
-            rejectUnauthorized: !!configuration.caCert,
-            ...(configuration.caCert && { ca: [configuration.caCert] })
+            rejectUnauthorized: configuration.ldapRejectUnauthorized,
+            ...(configuration.ldapCaCert && {
+              ca: [configuration.ldapCaCert],
+              servername: configuration.ldapTlsServerName || configuration.dcAddress
+            })
           }
         })
+      });
+
+      // Capture TLS/connection errors that fire before or during bind
+      // Without this handler, unhandled 'error' events (e.g. TLS cert mismatch) crash the Node.js process
+      let clientError: Error | null = null;
+      client.on("error", (err: Error) => {
+        clientError = err;
       });
 
       try {
         const bindDn = `${credentials.username}@${configuration.domainFQDN}`;
         await new Promise<void>((resolve, reject) => {
           client.bind(bindDn, credentials.password, (err) => {
-            if (err) reject(new Error(`LDAP bind failed: ${err.message}`));
+            if (clientError) reject(clientError);
+            else if (err) reject(new Error(`LDAP bind failed: ${err.message}`));
             else resolve();
           });
         });
@@ -482,7 +443,11 @@ const executeLdapEnumeration = async (
 
         return { computers, users };
       } finally {
-        client.unbind();
+        try {
+          client.unbind();
+        } catch {
+          // client may already be destroyed from a TLS/connection error
+        }
       }
     }
   );
@@ -518,7 +483,11 @@ const upsertAdServerResource = async (
     connectionDetails: {
       domain: configuration.domainFQDN,
       dcAddress: configuration.dcAddress,
-      port: configuration.ldapPort
+      port: configuration.ldapPort,
+      useLdaps: configuration.useLdaps,
+      ldapRejectUnauthorized: configuration.ldapRejectUnauthorized,
+      ldapCaCert: configuration.ldapCaCert,
+      ldapTlsServerName: configuration.ldapTlsServerName
     } as TActiveDirectoryResourceConnectionDetails,
     kmsService
   });
@@ -543,6 +512,12 @@ const upsertWindowsServerResource = async (
   computer: TLdapComputer,
   adServerResourceId: string,
   gatewayId: string,
+  winrmConfig: {
+    winrmPort: number;
+    useWinrmHttps: boolean;
+    winrmRejectUnauthorized: boolean;
+    winrmCaCert?: string;
+  },
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find">,
   tx: Knex
@@ -571,8 +546,9 @@ const upsertWindowsServerResource = async (
       projectId,
       connectionDetails: {
         protocol: WindowsProtocol.RDP,
-        hostname,
-        port: 3389
+        hostname: computer.resolvedIp || hostname,
+        port: 3389,
+        ...winrmConfig
       } as TWindowsResourceConnectionDetails,
       kmsService
     }),
@@ -676,6 +652,8 @@ const executeWinRmLocalAccountEnumeration = async (
   credentials: TAdDiscoveryCredentials,
   winrmPort: number,
   useWinrmHttps: boolean,
+  winrmRejectUnauthorized: boolean,
+  winrmCaCert: string | undefined,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmLocalUser[]> => {
@@ -689,6 +667,7 @@ const executeWinRmLocalAccountEnumeration = async (
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
       const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
       const script = `Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordLastSet, Description, SID | ConvertTo-Json`;
+      // Use machine's DNS hostname as TLS servername for cert verification
       const stdout = await runPowershell(
         script,
         "localhost",
@@ -696,7 +675,9 @@ const executeWinRmLocalAccountEnumeration = async (
         credentials.password,
         proxyPort,
         useWinrmHttps,
-        false
+        winrmRejectUnauthorized,
+        winrmCaCert,
+        hostname
       );
 
       if (!stdout.trim()) {
@@ -715,6 +696,8 @@ const executeWinRmDependencyEnumeration = async (
   credentials: TAdDiscoveryCredentials,
   winrmPort: number,
   useWinrmHttps: boolean,
+  winrmRejectUnauthorized: boolean,
+  winrmCaCert: string | undefined,
   gatewayId: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<TWinRmDependencies> => {
@@ -727,6 +710,7 @@ const executeWinRmDependencyEnumeration = async (
     async (proxyPort) => {
       const netbiosDomain = domainFQDN.split(".")[0].toUpperCase();
       const winrmUsername = `${netbiosDomain}\\${credentials.username}`;
+      // Use machine's DNS hostname as TLS servername for cert verification
       const stdout = await runPowershell(
         DEPENDENCY_ENUMERATION_SCRIPT,
         "localhost",
@@ -734,7 +718,9 @@ const executeWinRmDependencyEnumeration = async (
         credentials.password,
         proxyPort,
         useWinrmHttps,
-        false
+        winrmRejectUnauthorized,
+        winrmCaCert,
+        hostname
       );
 
       if (!stdout.trim()) {
@@ -899,8 +885,11 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               timeout: LDAP_TIMEOUT,
               ...(configuration.useLdaps && {
                 tlsOptions: {
-                  rejectUnauthorized: !!configuration.caCert,
-                  ...(configuration.caCert && { ca: [configuration.caCert] })
+                  rejectUnauthorized: configuration.ldapRejectUnauthorized,
+                  ...(configuration.ldapCaCert && {
+                    ca: [configuration.ldapCaCert],
+                    servername: configuration.ldapTlsServerName || configuration.dcAddress
+                  })
                 }
               })
             });
@@ -914,7 +903,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             client.bind(bindDn, credentials.password, (err) => {
               if (err) {
                 client.unbind();
-                reject(new Error("LDAP bind failed: invalid credentials"));
+                logger.warn(err, "PAM AD discovery LDAP bind failed during connection validation");
+                reject(new Error(`LDAP bind failed: ${err.message}`));
               } else {
                 client.unbind();
                 resolve();
@@ -986,7 +976,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       await pamDiscoveryRunDAL.updateById(run.id, {
         progress: {
           adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
-          dependencyScan: {
+          machineEnumeration: {
             status: PamDiscoveryStepStatus.Running,
             totalMachines: computers.length,
             scannedMachines: 0,
@@ -1031,6 +1021,12 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               computer,
               adServerResource.id,
               gatewayId,
+              {
+                winrmPort: configuration.winrmPort,
+                useWinrmHttps: configuration.useWinrmHttps,
+                winrmRejectUnauthorized: configuration.winrmRejectUnauthorized,
+                winrmCaCert: configuration.winrmCaCert
+              },
               kmsService,
               pamResourceDAL,
               tx
@@ -1117,6 +1113,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               credentials,
               configuration.winrmPort,
               configuration.useWinrmHttps,
+              configuration.winrmRejectUnauthorized,
+              configuration.winrmCaCert,
               gatewayId,
               gatewayV2Service
             );
@@ -1167,6 +1165,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                   credentials,
                   configuration.winrmPort,
                   configuration.useWinrmHttps,
+                  configuration.winrmRejectUnauthorized,
+                  configuration.winrmCaCert,
                   gatewayId,
                   gatewayV2Service
                 );
@@ -1294,7 +1294,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           dependenciesDiscoveredCount,
           progress: {
             adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
-            dependencyScan: {
+            machineEnumeration: {
               status: PamDiscoveryStepStatus.Running,
               totalMachines: computers.length,
               scannedMachines,
@@ -1313,7 +1313,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         const staleDependenciesCount =
           (await pamDiscoverySourceDependenciesDAL.markStaleForRun(discoverySourceId, run.id)) || 0;
 
-        const dependencyScanStatus =
+        const machineEnumerationStatus =
           failedMachines === computers.length && computers.length > 0
             ? PamDiscoveryStepStatus.Failed
             : PamDiscoveryStepStatus.Completed;
@@ -1332,8 +1332,8 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
           completedAt: new Date(),
           progress: {
             adEnumeration: { status: PamDiscoveryStepStatus.Completed, completedAt: new Date().toISOString() },
-            dependencyScan: {
-              status: dependencyScanStatus,
+            machineEnumeration: {
+              status: machineEnumerationStatus,
               totalMachines: computers.length,
               scannedMachines,
               failedMachines,
@@ -1352,7 +1352,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       const progress: TActiveDirectoryDiscoverySourceRunProgress = adEnumerationSucceeded
         ? {
             adEnumeration: { status: PamDiscoveryStepStatus.Completed },
-            dependencyScan: { status: PamDiscoveryStepStatus.Failed, statusMessage: (error as Error).message }
+            machineEnumeration: { status: PamDiscoveryStepStatus.Failed, statusMessage: (error as Error).message }
           }
         : {
             adEnumeration: { status: PamDiscoveryStepStatus.Failed, error: (error as Error).message }

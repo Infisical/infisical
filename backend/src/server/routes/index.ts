@@ -95,6 +95,8 @@ import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal"
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { pamResourceFavoriteDALFactory } from "@app/ee/services/pam-resource/pam-resource-favorite-dal";
+import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-dal";
+import { pamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
@@ -416,6 +418,8 @@ import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-
 import { secretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { secretValidationRuleDALFactory } from "@app/services/secret-validation-rule/secret-validation-rule-dal";
+import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { signerDALFactory, signerServiceFactory, signingOperationDALFactory } from "@app/services/signer";
@@ -509,6 +513,7 @@ export const registerRoutes = async (
 
   const secretDAL = secretDALFactory(db);
   const secretTagDAL = secretTagDALFactory(db);
+  const secretValidationRuleDAL = secretValidationRuleDALFactory(db);
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretImportDAL = secretImportDALFactory(db);
@@ -1568,7 +1573,15 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
+  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
+  const secretValidationRuleService = secretValidationRuleServiceFactory({
+    secretValidationRuleDAL,
+    projectEnvDAL,
+    permissionService,
+    kmsService,
+    folderDAL,
+    secretDAL: secretV2BridgeDAL
+  });
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDAL,
@@ -1609,6 +1622,7 @@ export const registerRoutes = async (
     secretQueueService,
     secretDAL: secretV2BridgeDAL,
     permissionService,
+    permissionDAL,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     secretTagDAL,
     projectEnvDAL,
@@ -1620,7 +1634,8 @@ export const registerRoutes = async (
     snapshotService,
     resourceMetadataDAL,
     reminderService,
-    keyStore
+    keyStore,
+    secretValidationRuleService
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -1677,7 +1692,8 @@ export const registerRoutes = async (
     secretApprovalRequestService,
     licenseService,
     reminderService,
-    secretVersionV2DAL: secretVersionV2BridgeDAL
+    secretVersionV2DAL: secretVersionV2BridgeDAL,
+    secretV2BridgeDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -2733,6 +2749,7 @@ export const registerRoutes = async (
   const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
   const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
   const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
+  const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
@@ -2756,6 +2773,12 @@ export const registerRoutes = async (
     resourceMetadataDAL
   });
 
+  const pamResourceRotationRulesService = pamResourceRotationRulesServiceFactory({
+    pamResourceRotationRulesDAL,
+    pamResourceDAL,
+    permissionService
+  });
+
   const mfaSessionService = mfaSessionServiceFactory({
     keyStore,
     tokenService,
@@ -2770,6 +2793,7 @@ export const registerRoutes = async (
 
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
+    pamResourceRotationRulesDAL,
     gatewayV2Service,
     kmsService,
     pamResourceDAL,
@@ -2975,6 +2999,7 @@ export const registerRoutes = async (
     secret: secretService,
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
+    secretValidationRule: secretValidationRuleService,
     rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,
@@ -3078,6 +3103,7 @@ export const registerRoutes = async (
     notification: notificationService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
+    pamResourceRotationRules: pamResourceRotationRulesService,
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
     pamWebAccess: pamWebAccessService,

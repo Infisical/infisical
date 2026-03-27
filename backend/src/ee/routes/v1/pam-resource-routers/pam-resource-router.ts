@@ -251,7 +251,8 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           dependencies: PamAccountDependenciesSchema.extend({
-            accountName: z.string().nullable()
+            accountName: z.string().nullable(),
+            lastSyncMessage: z.string().nullable().optional()
           }).array()
         })
       }

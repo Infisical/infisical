@@ -1,7 +1,7 @@
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
+import { TPamAccountCredentials, TPamResourceInternalMetadata } from "../pam-resource/pam-resource-types";
 import { SSHAuthMethod } from "../pam-resource/ssh/ssh-resource-enums";
 
 export const encryptAccountCredentials = async ({
@@ -77,19 +77,20 @@ const hasConfiguredCredentials = (credentials: TPamAccountCredentials): boolean 
 };
 
 export const decryptAccount = async <
-  T extends { encryptedCredentials: Buffer; encryptedLastRotationMessage?: Buffer | null }
+  T extends { encryptedCredentials: Buffer; encryptedLastRotationMessage?: Buffer | null; internalMetadata?: unknown }
 >(
   account: T,
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ): Promise<
-  Omit<T, "encryptedCredentials" | "encryptedLastRotationMessage"> & {
+  Omit<T, "encryptedCredentials" | "encryptedLastRotationMessage" | "internalMetadata"> & {
     credentials: TPamAccountCredentials;
     credentialsConfigured: boolean;
     lastRotationMessage: string | null;
+    internalMetadata?: TPamResourceInternalMetadata;
   }
 > => {
-  const { encryptedCredentials, encryptedLastRotationMessage, ...rest } = account;
+  const { encryptedCredentials, encryptedLastRotationMessage, internalMetadata, ...rest } = account;
 
   const credentials = await decryptAccountCredentials({
     encryptedCredentials,
