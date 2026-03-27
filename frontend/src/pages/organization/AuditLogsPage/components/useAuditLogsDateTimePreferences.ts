@@ -50,21 +50,23 @@ const writeStored = (prefs: AuditLogsDateTimePrefs) => {
 export const useAuditLogsDateTimePreferences = () => {
   const [prefs, setPrefs] = useState<AuditLogsDateTimePrefs>(() => readStored());
 
-  const setTimezone = useCallback((timezone: Timezone) => {
-    setPrefs((prev: AuditLogsDateTimePrefs) => {
-      const next = { ...prev, timezone };
+  const setTimezone = useCallback(
+    (timezone: Timezone) => {
+      const next = { ...prefs, timezone };
       writeStored(next);
-      return next;
-    });
-  }, []);
+      setPrefs(next);
+    },
+    [prefs]
+  );
 
-  const setClockFormat = useCallback((clockFormat: ClockFormat) => {
-    setPrefs((prev: AuditLogsDateTimePrefs) => {
-      const next = { ...prev, clockFormat };
+  const setClockFormat = useCallback(
+    (clockFormat: ClockFormat) => {
+      const next = { ...prefs, clockFormat };
       writeStored(next);
-      return next;
-    });
-  }, []);
+      setPrefs(next);
+    },
+    [prefs]
+  );
 
   return {
     timezone: prefs.timezone,
