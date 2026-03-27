@@ -105,7 +105,21 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     const isConnectionRotation = credentials.dn === dn;
     const password = generatePassword(passwordRequirements);
 
+    const rotationContext = {
+      targetDn: dn,
+      connectionDn: credentials.dn,
+      originalUrl: credentials.url,
+      provider: credentials.provider,
+      isConnectionRotation,
+      rotationId: secretRotation.id,
+      connectionId: connection.id,
+      gatewayId: connection.gatewayId ?? null
+    };
+
+    logger.info(rotationContext, "LDAP password rotation starting");
+
     let changes: ldap.Change[] | ldap.Change;
+    let rotationStrategy: string;
 
     switch (credentials.provider) {
       case LdapProvider.ActiveDirectory:
@@ -114,6 +128,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 
           if (isConnectionRotation || currentPassword) {
             const currentEncodedPassword = getEncodedPassword(currentPassword || credentials.password);
+            rotationStrategy = "delete+add (connection principal or current password provided)";
 
             changes = [
               new ldap.Change({
@@ -132,6 +147,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
               })
             ];
           } else {
+            rotationStrategy = "replace (target principal, admin-driven)";
             changes = new ldap.Change({
               operation: "replace",
               modification: {
@@ -146,18 +162,35 @@ export const ldapPasswordRotationFactory: TRotationFactory<
         throw new Error(`Unhandled provider: ${credentials.provider as LdapProvider}`);
     }
 
+    logger.info({ ...rotationContext, rotationStrategy }, "LDAP password rotation — modify strategy determined");
+
     const connectionCredentials = currentPassword ? { ...credentials, password: currentPassword, dn } : credentials;
 
     const performModify = async (targetCredentials: typeof connectionCredentials) => {
+      const modifyUrl = targetCredentials.url;
+      logger.info(
+        { targetDn: dn, url: modifyUrl, bindDn: targetCredentials.dn },
+        "LDAP password rotation — attempting modify operation"
+      );
+
       await executeWithPotentialGateway(
         { ...connection, credentials: targetCredentials },
         gatewayV2Service,
         async (client) => {
           const userDn = await getDN(dn, client);
+
+          logger.info(
+            { inputDn: dn, resolvedDn: userDn, url: modifyUrl },
+            "LDAP password rotation — DN resolved, executing modify"
+          );
+
           await new Promise<void>((resolve, reject) => {
             client.modify(userDn, changes, (err) => {
               if (err) {
-                logger.error(err, "LDAP Password Rotation Failed");
+                logger.debug(
+                  { error: err.message, errorCode: (err as { code?: number }).code, targetDn: userDn, url: modifyUrl },
+                  "LDAP modify returned an error (may be a referral — handled upstream)"
+                );
                 reject(err);
               } else {
                 resolve();
@@ -166,38 +199,125 @@ export const ldapPasswordRotationFactory: TRotationFactory<
           });
         }
       );
+
+      logger.info({ targetDn: dn, url: modifyUrl }, "LDAP password rotation — modify succeeded");
     };
 
+    const MAX_REFERRAL_HOPS = 10;
     let referredUrl: string | undefined;
+    let currentCredentials = connectionCredentials;
 
-    try {
-      await performModify(connectionCredentials);
-    } catch (err) {
-      if (!isLdapReferralError(err)) {
-        throw new Error(`Provider Modify Error: ${(err as Error).message}`);
-      }
-
-      const referralDomain = extractDomainFromDN(err.dn);
-      if (!referralDomain) {
-        throw new Error("Provider Modify Error: Referral received but could not determine target domain");
-      }
-
-      referredUrl = buildReferralUrl(credentials.url, referralDomain);
-      logger.info(
-        { targetDn: dn, referralDomain, referredUrl, matchedDn: err.dn },
-        "LDAP referral detected — chasing to referred domain controller"
-      );
-
+    for (let hop = 0; hop <= MAX_REFERRAL_HOPS; hop += 1) {
       try {
-        await performModify({ ...connectionCredentials, url: referredUrl });
-      } catch (retryErr) {
-        throw new Error(
-          `Provider Modify Error: Referral chase to ${referralDomain} failed — ${(retryErr as Error).message}`
+        // eslint-disable-next-line no-await-in-loop
+        await performModify(currentCredentials);
+        if (hop > 0) {
+          logger.info(
+            { ...rotationContext, totalHops: hop, finalUrl: referredUrl },
+            "LDAP password rotation — modify succeeded after referral chase"
+          );
+        }
+        break;
+      } catch (caughtErr) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        if (!isLdapReferralError(caughtErr)) {
+          const errObj = caughtErr instanceof Error ? caughtErr : new Error(String(caughtErr));
+          const prefix = referredUrl
+            ? `Provider Modify Error: Referral chase to ${referredUrl} failed`
+            : "Provider Modify Error";
+
+          logger.error(
+            {
+              ...rotationContext,
+              hop,
+              lastUrl: currentCredentials.url,
+              referredUrl,
+              errorName: errObj.name,
+              errorMessage: errObj.message
+            },
+            "LDAP password rotation — non-referral error during modify"
+          );
+
+          throw new Error(`${prefix} — ${errObj.message}`);
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        const referralDn = String((caughtErr as { dn: string }).dn);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        const referralCode = Number((caughtErr as { code: number }).code);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        const referralName = String((caughtErr as { name: string }).name);
+
+        if (hop === MAX_REFERRAL_HOPS) {
+          logger.error(
+            {
+              ...rotationContext,
+              maxHops: MAX_REFERRAL_HOPS,
+              lastReferralDn: referralDn,
+              lastUrl: currentCredentials.url
+            },
+            "LDAP password rotation — maximum referral hops exceeded"
+          );
+
+          throw new Error(
+            `Provider Modify Error: Maximum referral hops (${MAX_REFERRAL_HOPS}) exceeded — last referral DN: ${referralDn}`
+          );
+        }
+
+        const referralDomain = extractDomainFromDN(referralDn);
+
+        logger.info(
+          {
+            ...rotationContext,
+            hop: hop + 1,
+            rawErrorDn: referralDn,
+            rawErrorCode: referralCode,
+            rawErrorName: referralName,
+            extractedReferralDomain: referralDomain,
+            currentUrl: currentCredentials.url
+          },
+          "LDAP referral received — inspecting error details"
         );
+
+        if (!referralDomain) {
+          logger.error(
+            { ...rotationContext, rawErrorDn: referralDn },
+            "LDAP password rotation — could not extract domain from referral DN (no DC= components found)"
+          );
+          throw new Error(
+            `Provider Modify Error: Referral received but could not determine target domain from DN: ${referralDn}`
+          );
+        }
+
+        referredUrl = buildReferralUrl(credentials.url, referralDomain);
+        logger.info(
+          {
+            ...rotationContext,
+            hop: hop + 1,
+            referralDomain,
+            referredUrl,
+            matchedDn: referralDn,
+            originalUrl: credentials.url
+          },
+          "LDAP referral detected — chasing to referred domain controller"
+        );
+
+        currentCredentials = { ...connectionCredentials, url: referredUrl };
       }
     }
 
+    const verifyUrl = referredUrl || credentials.url;
+    logger.info(
+      { ...rotationContext, verifyUrl, wasReferred: !!referredUrl },
+      "LDAP password rotation — verifying new credentials"
+    );
+
     await $verifyCredentials({ dn, password, ...(referredUrl ? { url: referredUrl } : {}) });
+
+    logger.info(
+      { ...rotationContext, verifyUrl, wasReferred: !!referredUrl },
+      "LDAP password rotation — credential verification succeeded"
+    );
 
     if (isConnectionRotation) {
       const updatedCredentials: TLdapConnection["credentials"] = {
@@ -213,7 +333,17 @@ export const ldapPasswordRotationFactory: TRotationFactory<
       });
 
       await appConnectionDAL.updateById(connection.id, { encryptedCredentials });
+
+      logger.info(
+        { ...rotationContext },
+        "LDAP password rotation — connection credentials updated (connection principal rotation)"
+      );
     }
+
+    logger.info(
+      { ...rotationContext, wasReferred: !!referredUrl, referredUrl },
+      "LDAP password rotation completed successfully"
+    );
 
     return { dn, password };
   };
