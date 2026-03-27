@@ -1,16 +1,12 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization } from "@app/context";
 
 import { GatewayTab } from "../GatewayTab/GatewayTab";
 import { RelayTab } from "../RelayTab/RelayTab";
 
 export const NetworkingTabGroup = () => {
-  const navigate = useNavigate({
-    from: ROUTE_PATHS.Organization.NetworkingPage.path
-  });
   const selectedTab = useSearch({
     from: ROUTE_PATHS.Organization.NetworkingPage.id,
     select: (el) => el.selectedTab,
@@ -18,27 +14,12 @@ export const NetworkingTabGroup = () => {
   });
 
   const tabs = [
-    { name: "Gateways", key: "gateways", component: GatewayTab },
-    { name: "Relays", key: "relays", component: RelayTab }
+    { key: "gateways", component: GatewayTab },
+    { key: "relays", component: RelayTab }
   ];
 
-  const handleTabChange = (tab: string) => {
-    navigate({
-      search: { selectedTab: tab }
-    });
-  };
-
-  const { isSubOrganization } = useOrganization();
-
   return (
-    <Tabs orientation="vertical" value={selectedTab} onValueChange={handleTabChange}>
-      <TabList>
-        {tabs.map((tab) => (
-          <Tab variant={isSubOrganization ? "namespace" : "org"} value={tab.key} key={tab.key}>
-            {tab.name}
-          </Tab>
-        ))}
-      </TabList>
+    <Tabs orientation="vertical" value={selectedTab}>
       {tabs.map(({ key, component: Component }) => (
         <TabPanel value={key} key={`tab-panel-${key}`}>
           <Component />

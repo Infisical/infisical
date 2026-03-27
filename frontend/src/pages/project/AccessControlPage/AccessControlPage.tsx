@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -59,7 +59,7 @@ const Page = () => {
           </Link>
         </PageHeader>
         <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
-          <TabList>
+          {/* <TabList>
             <Tab variant="project" value={ProjectAccessControlTabs.Member}>
               Users
             </Tab>
@@ -77,7 +77,7 @@ const Page = () => {
             <Tab variant="project" value={ProjectAccessControlTabs.Roles}>
               Roles
             </Tab>
-          </TabList>
+          </TabList> */}
           <TabPanel value={ProjectAccessControlTabs.Member}>
             <MembersTab />
           </TabPanel>
