@@ -91,7 +91,12 @@ const Content = ({
   const currentPermissions = rootForm.watch("permissions");
 
   return (
-    <Command>
+    <Command
+      filter={(_, search, keywords) => {
+        if (keywords?.some((k) => k.toLowerCase().includes(search.toLowerCase()))) return 1;
+        return 0;
+      }}
+    >
       <CommandInput placeholder="Search policies..." />
       <CommandList>
         <CommandEmpty>No policies found.</CommandEmpty>
