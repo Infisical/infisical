@@ -99,6 +99,22 @@ export const main = async ({
       done(error, undefined);
     }
   });
+  server.addContentTypeParser("application/json", { parseAs: "string" }, (_, body, done) => {
+    try {
+      const strBody = body instanceof Buffer ? body.toString() : body;
+
+      if (!strBody || strBody.trim().length === 0) {
+        done(null, {});
+        return;
+      }
+
+      const json: unknown = JSON.parse(strBody);
+      done(null, json);
+    } catch (err) {
+      const error = err as Error;
+      done(error, undefined);
+    }
+  });
 
   try {
     await server.register<FastifyCookieOptions>(cookie, {
