@@ -166,7 +166,7 @@ function Sidebar({
         <div
           data-slot="sidebar"
           className={cn(
-            "to flex h-full w-(--sidebar-width) flex-col border-r border-border bg-gradient-to-r to-transparent text-foreground",
+            "flex h-full w-(--sidebar-width) flex-col border-r border-border bg-gradient-to-r to-transparent text-foreground",
             scope === "project" && "from-project/5",
             scope === "sub-org" && "from-sub-org/5",
             scope === "org" && "from-org/5",
