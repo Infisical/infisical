@@ -458,12 +458,26 @@ export const orgServiceFactory = ({
     const targetOrg = await orgDAL.findById(orgId);
     if (targetOrg?.rootOrgId) {
       const rootOrgOnlyFields = [
-        name, slug, authEnforced, googleSsoAuthEnforced, defaultMembershipRoleSlug,
-        enforceMfa, selectedMfaMethod, allowSecretSharingOutsideOrganization,
-        bypassOrgAuthEnabled, userTokenExpiration, secretsProductEnabled,
-        pkiProductEnabled, kmsProductEnabled, sshProductEnabled, scannerProductEnabled,
-        shareSecretsProductEnabled, maxSharedSecretLifetime, maxSharedSecretViewLimit,
-        blockDuplicateSecretSyncDestinations, secretShareBrandConfig
+        name,
+        slug,
+        authEnforced,
+        googleSsoAuthEnforced,
+        defaultMembershipRoleSlug,
+        enforceMfa,
+        selectedMfaMethod,
+        allowSecretSharingOutsideOrganization,
+        bypassOrgAuthEnabled,
+        userTokenExpiration,
+        secretsProductEnabled,
+        pkiProductEnabled,
+        kmsProductEnabled,
+        sshProductEnabled,
+        scannerProductEnabled,
+        shareSecretsProductEnabled,
+        maxSharedSecretLifetime,
+        maxSharedSecretViewLimit,
+        blockDuplicateSecretSyncDestinations,
+        secretShareBrandConfig
       ];
       if (rootOrgOnlyFields.some((f) => f !== undefined)) {
         throw new BadRequestError({ message: "Sub-organizations can only update SCIM settings." });

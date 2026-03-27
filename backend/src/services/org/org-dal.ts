@@ -738,9 +738,7 @@ export const orgDALFactory = (db: TDbClient) => {
             .andOn(
               `${TableName.UserAliases}.orgId`,
               "=",
-              (tx || db).raw(
-                `COALESCE(${TableName.Organization}."rootOrgId", ${TableName.Organization}.id)`
-              )
+              (tx || db).raw(`COALESCE(${TableName.Organization}."rootOrgId", ${TableName.Organization}.id)`)
             )
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
@@ -885,9 +883,7 @@ export const orgDALFactory = (db: TDbClient) => {
             .andOn(
               `${TableName.UserAliases}.orgId`,
               "=",
-              (tx || db).raw(
-                `COALESCE(${TableName.Organization}."rootOrgId", ${TableName.Organization}.id)`
-              )
+              (tx || db).raw(`COALESCE(${TableName.Organization}."rootOrgId", ${TableName.Organization}.id)`)
             )
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
