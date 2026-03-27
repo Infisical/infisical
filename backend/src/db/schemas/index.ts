@@ -118,6 +118,7 @@ export * from "./pam-discovery-source-runs";
 export * from "./pam-discovery-sources";
 export * from "./pam-folders";
 export * from "./pam-resource-favorites";
+export * from "./pam-resource-rotation-rules";
 export * from "./pam-resources";
 export * from "./pam-sessions";
 export * from "./pki-acme-accounts";

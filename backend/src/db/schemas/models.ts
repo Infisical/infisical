@@ -231,6 +231,7 @@ export enum TableName {
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
   PamAccountDependency = "pam_account_dependencies",
+  PamResourceRotationRule = "pam_resource_rotation_rules",
   PamResourceFavorite = "pam_resource_favorites",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",

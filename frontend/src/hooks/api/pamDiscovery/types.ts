@@ -35,7 +35,7 @@ export type TPamDiscoverySourceRunProgress = {
     completedAt?: string;
     error?: string;
   };
-  dependencyScan?: {
+  machineEnumeration?: {
     status: "running" | "completed" | "failed" | "skipped";
     totalMachines?: number;
     scannedMachines?: number;

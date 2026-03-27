@@ -703,6 +703,11 @@ import {
   TPamResourceFavoritesInsert,
   TPamResourceFavoritesUpdate
 } from "@app/db/schemas/pam-resource-favorites";
+import {
+  TPamResourceRotationRules,
+  TPamResourceRotationRulesInsert,
+  TPamResourceRotationRulesUpdate
+} from "@app/db/schemas/pam-resource-rotation-rules";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
@@ -1603,6 +1608,11 @@ declare module "knex/types/tables" {
       TPamAccountDependencies,
       TPamAccountDependenciesInsert,
       TPamAccountDependenciesUpdate
+    >;
+    [TableName.PamResourceRotationRule]: KnexOriginal.CompositeTableType<
+      TPamResourceRotationRules,
+      TPamResourceRotationRulesInsert,
+      TPamResourceRotationRulesUpdate
     >;
 
     [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;

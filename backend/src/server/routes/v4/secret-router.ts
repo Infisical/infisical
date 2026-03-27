@@ -172,7 +172,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       // just for delivery hero usecase
       let { secretPath, environment, projectId } = req.query;
       if (req.auth.actor === ActorType.SERVICE) {
@@ -187,7 +187,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
-      const { secrets, imports } = await server.services.secret.getSecretsRaw({
+      const result = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -205,8 +205,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         metadataFilter: req.query.metadataFilter,
         includeImports: req.query.includeImports,
         recursive: req.query.recursive,
-        tagSlugs: req.query.tagSlugs
+        tagSlugs: req.query.tagSlugs,
+        ifNoneMatch: req.headers["if-none-match"]
       });
+
+      const { secrets, imports, etag, notModified } = result;
+
+      if (etag) {
+        void reply.header("ETag", etag);
+      }
+
+      if (notModified) {
+        void reply.code(304).send();
+        return;
+      }
 
       // Check export restriction AFTER getSecretsRaw has verified project access/RBAC.
       // This ensures no information leak about export settings for projects the user lacks access to.

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 
-import { Modal, ModalContent } from "@app/components/v2";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { PamDiscoveryType } from "@app/hooks/api/pamDiscovery";
 
 import { PamDiscoverySourceForm } from "./PamDiscoverySourceForm/PamDiscoverySourceForm";
@@ -13,17 +13,17 @@ type Props = {
 };
 
 type ContentProps = {
-  onComplete: () => void;
+  closeSheet: () => void;
   projectId: string;
+  selectedType: PamDiscoveryType | null;
+  setSelectedType: Dispatch<SetStateAction<PamDiscoveryType | null>>;
 };
 
-const Content = ({ onComplete, projectId }: ContentProps) => {
-  const [selectedType, setSelectedType] = useState<PamDiscoveryType | null>(null);
-
+const Content = ({ closeSheet, projectId, selectedType, setSelectedType }: ContentProps) => {
   if (selectedType) {
     return (
       <PamDiscoverySourceForm
-        onComplete={onComplete}
+        closeSheet={closeSheet}
         onBack={() => setSelectedType(null)}
         discoveryType={selectedType}
         projectId={projectId}
@@ -35,15 +35,35 @@ const Content = ({ onComplete, projectId }: ContentProps) => {
 };
 
 export const PamAddDiscoverySourceModal = ({ isOpen, onOpenChange, projectId }: Props) => {
+  const [selectedType, setSelectedType] = useState<PamDiscoveryType | null>(null);
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title="Add Discovery Source"
-        subTitle="Select a discovery source type to add."
-      >
-        <Content projectId={projectId} onComplete={() => onOpenChange(false)} />
-      </ModalContent>
-    </Modal>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(e) => {
+        onOpenChange(e);
+        setSelectedType(null);
+      }}
+    >
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
+        <SheetHeader className="border-b">
+          <SheetTitle>Create Discovery Source</SheetTitle>
+          <SheetDescription>
+            {selectedType
+              ? "Input discovery source connection details"
+              : "Select a discovery source type"}
+          </SheetDescription>
+        </SheetHeader>
+        <Content
+          projectId={projectId}
+          closeSheet={() => {
+            onOpenChange(false);
+            setSelectedType(null);
+          }}
+          selectedType={selectedType}
+          setSelectedType={setSelectedType}
+        />
+      </SheetContent>
+    </Sheet>
   );
 };

@@ -9,6 +9,7 @@ export * from "./Calendar";
 export * from "./Card";
 export * from "./Checkbox";
 export * from "./Command";
+export * from "./DataGrid";
 export * from "./Detail";
 export * from "./Dialog";
 export * from "./Dropdown";
