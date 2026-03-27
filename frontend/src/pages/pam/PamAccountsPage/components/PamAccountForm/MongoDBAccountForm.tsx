@@ -3,7 +3,8 @@ import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
+import { FormControl, Input } from "@app/components/v2";
+import { Button, SheetFooter } from "@app/components/v3";
 import { PamResourceType, TMongoDBAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
@@ -34,9 +35,10 @@ type Props = {
   resourceId?: string;
   resourceType?: PamResourceType;
   onSubmit: (formData: FormData) => Promise<void>;
+  closeSheet: () => void;
 };
 
-export const MongoDBAccountForm = ({ account, onSubmit }: Props) => {
+export const MongoDBAccountForm = ({ account, onSubmit, closeSheet }: Props) => {
   const isUpdate = Boolean(account);
 
   const form = useForm<FormData>({
@@ -49,16 +51,7 @@ export const MongoDBAccountForm = ({ account, onSubmit }: Props) => {
             password: UNCHANGED_PASSWORD_SENTINEL
           }
         }
-      : {
-          name: "",
-          description: "",
-          credentials: {
-            username: "",
-            password: ""
-          },
-          rotationEnabled: false,
-          requireMfa: false
-        }
+      : undefined
   });
 
   const {
@@ -78,77 +71,71 @@ export const MongoDBAccountForm = ({ account, onSubmit }: Props) => {
 
   return (
     <FormProvider {...form}>
-      <form
-        onSubmit={(e) => {
-          handleSubmit(onSubmit)(e);
-        }}
-      >
-        <GenericAccountFields />
-        <div className="mt-4 flex gap-2">
-          <Controller
-            name="credentials.username"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                className="flex-1"
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Username"
-              >
-                <Input {...field} autoComplete="off" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            name="credentials.password"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                className="flex-1"
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Password"
-              >
-                <Input
-                  {...field}
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  onFocus={() => {
-                    if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
-                      field.onChange("");
-                    }
-                    setShowPassword(true);
-                  }}
-                  onBlur={() => {
-                    if (isUpdate && field.value === "") {
-                      field.onChange(UNCHANGED_PASSWORD_SENTINEL);
-                    }
-                    setShowPassword(false);
-                  }}
-                />
-              </FormControl>
-            )}
-          />
+      <form className="flex flex-1 flex-col overflow-hidden" onSubmit={handleSubmit(onSubmit)}>
+        <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
+          <GenericAccountFields />
+          <div className="flex gap-2">
+            <Controller
+              name="credentials.username"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="flex-1"
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Username"
+                >
+                  <Input {...field} autoComplete="off" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              name="credentials.password"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="flex-1"
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Password"
+                >
+                  <Input
+                    {...field}
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    onFocus={() => {
+                      if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
+                        field.onChange("");
+                      }
+                      setShowPassword(true);
+                    }}
+                    onBlur={() => {
+                      if (isUpdate && field.value === "") {
+                        field.onChange(UNCHANGED_PASSWORD_SENTINEL);
+                      }
+                      setShowPassword(false);
+                    }}
+                  />
+                </FormControl>
+              )}
+            />
+          </div>
+          <RequireMfaField />
+          <MetadataFields />
         </div>
-        <RequireMfaField />
-        <MetadataFields />
-        <div className="mt-6 flex items-center">
+        <SheetFooter className="shrink-0 border-t">
           <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
+            variant="neutral"
+            type="submit"
           >
-            {isUpdate ? "Update Account" : "Create Account"}
+            {isUpdate ? "Update Account" : "Add Account"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button onClick={() => closeSheet()} variant="outline" className="mr-auto" type="button">
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

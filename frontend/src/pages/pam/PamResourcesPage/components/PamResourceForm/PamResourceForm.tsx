@@ -123,7 +123,9 @@ const UpdateForm = ({ resource, closeSheet }: UpdateFormProps) => {
     case PamResourceType.MsSQL:
       return <MsSQLResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.MongoDB:
-      return <MongoDBResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />;
+      return (
+        <MongoDBResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.Redis:
       return <RedisResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.SSH:

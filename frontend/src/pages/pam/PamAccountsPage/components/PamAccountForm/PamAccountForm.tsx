@@ -99,6 +99,7 @@ const CreateForm = ({
       return (
         <MongoDBAccountForm
           onSubmit={onSubmit}
+          closeSheet={closeSheet}
           resourceId={resourceId}
           resourceType={resourceType}
         />
@@ -202,7 +203,9 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
         <MsSQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
       );
     case PamResourceType.MongoDB:
-      return <MongoDBAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />;
+      return (
+        <MongoDBAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.Redis:
       return (
         <RedisAccountForm

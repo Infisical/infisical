@@ -1,8 +1,7 @@
-import dns from "dns";
-import { promisify } from "util";
-
 import { ForbiddenError, subject } from "@casl/ability";
+import dns from "dns";
 import picomatch from "picomatch";
+import { promisify } from "util";
 
 import { ActionProjectType, OrganizationActionScope, TableName, TPamAccounts, TPamResources } from "@app/db/schemas";
 import {
@@ -1065,10 +1064,7 @@ export const pamAccountServiceFactory = ({
     // For MongoDB, resolve SRV records so the gateway gets the actual host
     let sessionConnectionDetails = decryptedResource.connectionDetails;
     if (decryptedResource.resourceType === PamResource.MongoDB && "host" in sessionConnectionDetails) {
-      const resolved = await resolveMongoSrvHost(
-        sessionConnectionDetails.host as string,
-        sessionConnectionDetails.port as number
-      );
+      const resolved = await resolveMongoSrvHost(sessionConnectionDetails.host, sessionConnectionDetails.port);
       sessionConnectionDetails = { ...sessionConnectionDetails, host: resolved.host, port: resolved.port };
     }
 
