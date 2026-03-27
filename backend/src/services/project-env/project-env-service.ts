@@ -13,7 +13,7 @@ import { logger } from "@app/lib/logger";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
-import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TGetEnvsByProjectIdDTO, TUpdateEnvDTO } from "./project-env-types";
+import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TUpdateEnvDTO } from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
@@ -275,24 +275,12 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const getEnvironmentsByProjectId = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TGetEnvsByProjectIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
-
+  // This is intentionally a simple lookup without a CASL Environments:Read check.
+  // It is only called from the v4 secret-router AFTER getSecretsRaw has already
+  // verified that the caller has project-level access and Secrets:Read permission.
+  // Adding an Environments:Read gate here would break users with custom roles that
+  // grant Secrets:Read but not Environments:Read.
+  const getEnvironmentsByProjectId = async (projectId: string) => {
     return projectEnvDAL.find({ projectId });
   };
 
