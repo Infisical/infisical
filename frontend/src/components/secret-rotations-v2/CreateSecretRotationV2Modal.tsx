@@ -124,7 +124,7 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
         subTitle={
           selectedRotation ? undefined : "Select a provider to create a secret rotation for."
         }
-        bodyClassName="overflow-visible"
+        bodyClassName="overflow-x-hidden"
       >
         <Content
           onComplete={() => {
