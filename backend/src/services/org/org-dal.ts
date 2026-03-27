@@ -957,23 +957,6 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * Accepts all Invited sub-org memberships for a user within a root org's
-   * hierarchy. Called after the user successfully authenticates via root org
-   * SSO so that sub-org access is unblocked in the same login flow.
-   */
-  const acceptSubOrgInvitedMembershipsForUser = async (userId: string, rootOrgId: string, tx?: Knex) => {
-    await (tx || db)(TableName.Membership)
-      .whereIn(
-        `${TableName.Membership}.scopeOrgId`,
-        (tx || db)(TableName.Organization).where({ rootOrgId }).select("id")
-      )
-      .where(`${TableName.Membership}.actorUserId`, userId)
-      .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-      .where(`${TableName.Membership}.status`, OrgMembershipStatus.Invited)
-      .update({ status: OrgMembershipStatus.Accepted });
-  };
-
   return withTransaction(db, {
     ...orgOrm,
     findOrgByProjectId,
@@ -1001,7 +984,6 @@ export const orgDALFactory = (db: TDbClient) => {
     deleteMembershipsById,
     updateMembership,
     findIdentityOrganization,
-    findRootOrgDetails,
-    acceptSubOrgInvitedMembershipsForUser
+    findRootOrgDetails
   });
 };

@@ -1013,47 +1013,22 @@ export const scimServiceFactory = ({
               { role: mapping.role, customRoleId: mapping.roleId ?? null }
             );
           } else {
-            // Sub-org mapping: create or update each user's membership in the target sub-org.
-            // Batch-fetch existing sub-org memberships to avoid N+1 queries.
+            // Sub-org mapping: update the role on existing sub-org memberships only.
+            // Sub-org membership creation follows the normal invite flow — SCIM only overrides the role.
             const userIds = rootOrgMemberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id));
+            if (!userIds.length) return;
 
-            const existingSubOrgMemberships = userIds.length
-              ? await membershipUserDAL.find({
-                  scopeOrgId: mapping.orgId,
-                  scope: AccessScope.Organization,
-                  $in: { actorUserId: userIds }
-                })
-              : [];
-            const existingByUserId = new Map(existingSubOrgMemberships.map((m) => [m.actorUserId, m]));
+            const existingSubOrgMemberships = await membershipUserDAL.find({
+              scopeOrgId: mapping.orgId,
+              scope: AccessScope.Organization,
+              $in: { actorUserId: userIds }
+            });
 
-            await Promise.all(
-              rootOrgMemberships.map(async (rootMembership) => {
-                if (!rootMembership.actorUserId) return;
-                const existing = existingByUserId.get(rootMembership.actorUserId);
-                if (existing) {
-                  await membershipRoleDAL.update(
-                    { membershipId: existing.id },
-                    { role: mapping.role, customRoleId: mapping.roleId ?? null }
-                  );
-                } else {
-                  await orgDAL.transaction(async (tx) => {
-                    const newMembership = await orgDAL.createMembership(
-                      {
-                        actorUserId: rootMembership.actorUserId as string,
-                        scopeOrgId: mapping.orgId,
-                        scope: AccessScope.Organization,
-                        status: OrgMembershipStatus.Invited,
-                        isActive: true
-                      },
-                      tx
-                    );
-                    await membershipRoleDAL.create(
-                      { membershipId: newMembership.id, role: mapping.role, customRoleId: mapping.roleId ?? null },
-                      tx
-                    );
-                  });
-                }
-              })
+            if (!existingSubOrgMemberships.length) return;
+
+            await membershipRoleDAL.update(
+              { $in: { membershipId: existingSubOrgMemberships.map((m) => m.id) } },
+              { role: mapping.role, customRoleId: mapping.roleId ?? null }
             );
           }
         } catch (err) {
