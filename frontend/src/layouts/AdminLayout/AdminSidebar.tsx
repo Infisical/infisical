@@ -19,11 +19,13 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
+  SidebarTrigger
 } from "@app/components/v3/generic/Sidebar";
 
 type AdminSubmenuItem = {
@@ -199,6 +201,9 @@ export const AdminSidebar = () => {
           )}
         </AnimatePresence>
       </SidebarContent>
+      <SidebarFooter className="border-t border-border p-2">
+        <SidebarTrigger variant="ghost" className="w-full" />
+      </SidebarFooter>
     </Sidebar>
   );
 };

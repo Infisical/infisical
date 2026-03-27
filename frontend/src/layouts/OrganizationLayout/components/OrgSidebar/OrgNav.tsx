@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -171,6 +171,10 @@ export const OrgNavWrapper = () => {
   };
 
   const [activeSubmenu, setActiveSubmenu] = useState<Submenu | null>(getInitialSubmenu);
+
+  useEffect(() => {
+    setActiveSubmenu(getInitialSubmenu());
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);

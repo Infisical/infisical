@@ -13,6 +13,24 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Skeleton } from "../Skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
+const MOBILE_BREAKPOINT = 768;
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState(
+    typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false
+  );
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", onChange);
+    setIsMobile(mql.matches);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return isMobile;
+}
+
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
@@ -62,7 +80,7 @@ function SidebarProvider({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const isMobile = false;
+  const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
 
   // This is the internal state of the sidebar.
@@ -161,21 +179,62 @@ function Sidebar({
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
   if (collapsible === "none") {
+    if (isMobile) {
+      return (
+        <SidebarScopeContext.Provider value={scope}>
+          <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+            <SheetContent
+              dir={dir}
+              data-sidebar="sidebar"
+              data-slot="sidebar"
+              data-mobile="true"
+              className={cn(
+                "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground [&>button]:hidden",
+                scope === "project" && "from-project/5",
+                scope === "sub-org" && "from-sub-org/5",
+                scope === "org" && "from-org/5",
+                scope === "admin" && "from-admin/5"
+              )}
+              style={
+                {
+                  "--sidebar-width": SIDEBAR_WIDTH_MOBILE
+                } as React.CSSProperties
+              }
+              side={side}
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>Sidebar</SheetTitle>
+                <SheetDescription>Navigation sidebar.</SheetDescription>
+              </SheetHeader>
+              <div className="flex h-full w-full flex-col">{children}</div>
+            </SheetContent>
+          </Sheet>
+        </SidebarScopeContext.Provider>
+      );
+    }
+
     return (
       <SidebarScopeContext.Provider value={scope}>
         <div
           data-slot="sidebar"
-          className={cn(
-            "flex h-full w-(--sidebar-width) flex-col border-r border-border bg-gradient-to-r to-transparent text-foreground",
-            scope === "project" && "from-project/5",
-            scope === "sub-org" && "from-sub-org/5",
-            scope === "org" && "from-org/5",
-            scope === "admin" && "from-admin/5",
-            className
-          )}
-          {...props}
+          data-state={state}
+          data-collapsible={state === "collapsed" ? "icon" : ""}
+          className="group"
         >
-          {children}
+          <div
+            className={cn(
+              "flex h-full flex-col border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear overflow-hidden",
+              state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
+              scope === "project" && "from-project/5",
+              scope === "sub-org" && "from-sub-org/5",
+              scope === "org" && "from-org/5",
+              scope === "admin" && "from-admin/5",
+              className
+            )}
+            {...props}
+          >
+            {children}
+          </div>
         </div>
       </SidebarScopeContext.Provider>
     );
@@ -402,7 +461,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "flex h-10 shrink-0 items-center rounded-md px-4 text-xs font-medium text-muted ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 hover:text-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "flex h-10 shrink-0 items-center rounded-md px-4 text-xs font-medium text-muted ring-sidebar-ring outline-hidden transition-[margin,opacity,padding] duration-200 ease-linear group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:[&>span]:hidden hover:text-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         className
       )}
       {...props}
@@ -464,7 +523,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "ring-sidebar-ring cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-foreground/5 active:text-foreground data-active:bg-foreground/5 data-active:text-foreground data-open:hover:bg-foreground/5 data-open:hover:text-foreground gap-2 p-2 text-left text-sm transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! focus-visible:ring-2 data-active:font-medium peer/menu-button group/menu-button px-4 border-l-2 border-transparent flex w-full text-label items-center overflow-hidden outline-hidden disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
+  "ring-sidebar-ring cursor-pointer whitespace-nowrap hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-foreground/5 active:text-foreground data-active:bg-foreground/5 data-active:text-foreground data-open:hover:bg-foreground/5 data-open:hover:text-foreground gap-2 p-2 text-left text-sm transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:[&>span]:hidden group-data-[collapsible=icon]:[&>svg:not(:first-child)]:hidden focus-visible:ring-2 data-active:font-medium peer/menu-button group/menu-button px-4 border-l-2 border-transparent flex w-full text-label items-center overflow-hidden outline-hidden disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
@@ -475,7 +534,7 @@ const sidebarMenuButtonVariants = cva(
       size: {
         default: "h-8 text-sm",
         sm: "h-7 text-xs",
-        lg: "h-10 text-sm group-data-[collapsible=icon]:p-0!"
+        lg: "h-10 text-sm"
       },
       scope: {
         org: "data-active:border-l-org data-active:[&_svg]:text-org",

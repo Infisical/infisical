@@ -33,11 +33,11 @@ export const OrganizationLayout = () => {
   return (
     <>
       <Banner />
-      <div
-        className={`dark ${containerHeight} flex w-full flex-col overflow-hidden bg-bunker-800 transition-all`}
+      <SidebarProvider
+        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-bunker-800 transition-all`}
       >
         <Navbar />
-        <SidebarProvider className="!min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           <OrgSidebar />
           <SidebarInset className="flex flex-col overflow-hidden">
             {!isLoading && !isInsideProject && !serverDetails?.redisConfigured && <RedisBanner />}
@@ -53,8 +53,8 @@ export const OrganizationLayout = () => {
               <Outlet />
             </div>
           </SidebarInset>
-        </SidebarProvider>
-      </div>
+        </div>
+      </SidebarProvider>
       <CreateOrgModal
         isOpen={popUp?.createOrg?.isOpen}
         onClose={() => handlePopUpToggle("createOrg", false)}

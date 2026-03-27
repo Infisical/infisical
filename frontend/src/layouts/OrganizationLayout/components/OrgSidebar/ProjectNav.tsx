@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { DoorOpen, FileKey, Shield } from "lucide-react";
@@ -96,6 +96,10 @@ export const ProjectNav = () => {
   };
 
   const [activeSubmenu, setActiveSubmenu] = useState<Submenu | null>(getInitialProjectSubmenu);
+
+  useEffect(() => {
+    setActiveSubmenu(getInitialProjectSubmenu());
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);

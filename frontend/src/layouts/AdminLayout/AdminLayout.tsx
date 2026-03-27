@@ -22,23 +22,21 @@ export const AdminLayout = () => {
   return (
     <>
       <Banner />
-      <div
-        className={`dark ${containerHeight} flex w-full flex-col overflow-hidden bg-bunker-800 transition-all`}
+      <SidebarProvider
+        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-bunker-800 transition-all`}
       >
         <Navbar />
         {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}
         {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
         {!isLoading && subscription.auditLogs && <AuditLogBanner />}
         {!window.isSecureContext && <InsecureConnectionBanner />}
-        <SidebarProvider>
-          <div className="flex min-h-0 flex-1">
-            <AdminSidebar />
-            <div className="min-h-0 flex-1 overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark">
-              <Outlet />
-            </div>
+        <div className="flex min-h-0 flex-1">
+          <AdminSidebar />
+          <div className="min-h-0 flex-1 overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark">
+            <Outlet />
           </div>
-        </SidebarProvider>
-      </div>
+        </div>
+      </SidebarProvider>
       <Banner />
     </>
   );

@@ -59,6 +59,7 @@ import {
   UnstableDropdownMenuTrigger,
   UnstableIconButton
 } from "@app/components/v3";
+import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { envConfig } from "@app/config/env";
 import {
   OrgPermissionActions,
@@ -343,6 +344,7 @@ export const Navbar = () => {
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
     >
+      <SidebarTrigger variant="ghost" className="ml-2 md:hidden" />
       <div className="mr-auto flex h-full min-w-34 items-center">
         {isServerAdminPanel ? (
           <div className="flex h-full items-center">

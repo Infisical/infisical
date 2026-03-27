@@ -1,6 +1,6 @@
 import { useParams } from "@tanstack/react-router";
 
-import { Sidebar, SidebarContent, SidebarFooter } from "@app/components/v3";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 
 import { OrgNavWrapper } from "./OrgNav";
@@ -23,7 +23,9 @@ export const OrgSidebar = () => {
   return (
     <Sidebar scope={scope} collapsible="none" side="left">
       <SidebarContent>{isInsideProject ? <ProjectNav /> : <OrgNavWrapper />}</SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter className="border-t border-border p-2">
+        <SidebarTrigger variant="ghost" className="w-full" />
+      </SidebarFooter>
     </Sidebar>
   );
 };
