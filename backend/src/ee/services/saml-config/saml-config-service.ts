@@ -638,6 +638,25 @@ export const samlConfigServiceFactory = ({
           newUser = userWithSameUsername;
         }
 
+        // Prevent cross-org account takeover: if an existing user was found by email,
+        // verify they are already a member of this org before binding the SAML identity.
+        if (newUser) {
+          const [existingMembership] = await orgDAL.findMembership(
+            {
+              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+            },
+            { tx }
+          );
+          if (!existingMembership) {
+            throw new ForbiddenRequestError({
+              message:
+                "User is not a member of this organization. Please contact your organization admin to receive an invite."
+            });
+          }
+        }
+
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
           newUser = await userDAL.create(
