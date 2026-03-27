@@ -2975,7 +2975,25 @@ const syncSecretsGitLab = async ({
     }
   }
 
+  // GitLab only allows masking values that match this character set.
+  // Reference: https://docs.gitlab.com/ee/ci/variables/#mask-a-cicd-variable
+  const gitLabMaskedValueRegex = new RE2("^[a-zA-Z0-9+/=@:.~ -]+$");
+
   for await (const key of Object.keys(secrets)) {
+    if (metadata.shouldMaskSecrets) {
+      const val = secrets[key].value;
+      if (val.length < 8) {
+        throw new BadRequestError({
+          message: `GitLab sync error: Secret '${key}' is too short to be masked. GitLab requires a minimum of 8 characters for masked secrets.`
+        });
+      }
+      if (!gitLabMaskedValueRegex.test(val)) {
+        throw new BadRequestError({
+          message: `GitLab sync error: Secret '${key}' contains characters not compatible with GitLab variable masking. Only alphanumeric characters and + / = @ : . ~ - (space) are allowed. Either disable the 'Mask Secrets' option or update the secret value.`
+        });
+      }
+    }
+
     const existingSecret = getSecretsRes.find((s) => s.key === key);
     if (!existingSecret) {
       await request.post(
