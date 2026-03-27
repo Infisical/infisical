@@ -1,3 +1,6 @@
+import dns from "dns";
+import { promisify } from "util";
+
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamResources } from "@app/db/schemas";
@@ -97,6 +100,20 @@ type TPamAccountServiceFactoryDep = {
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
 const ROTATION_CONCURRENCY_LIMIT = 10;
+
+const resolveSrv = promisify(dns.resolveSrv);
+
+const resolveMongoSrvHost = async (host: string, port: number): Promise<{ host: string; port: number }> => {
+  try {
+    const records = await resolveSrv(`_mongodb._tcp.${host}`);
+    if (records.length > 0) {
+      return { host: records[0].name, port: records[0].port };
+    }
+  } catch {
+    // SRV lookup failed — host is likely a direct hostname, use as-is
+  }
+  return { host, port };
+};
 
 export const pamAccountServiceFactory = ({
   pamResourceDAL,
@@ -846,7 +863,7 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
     }
 
-    const { host, port } =
+    let { host, port } =
       resourceType !== PamResource.Kubernetes
         ? connectionDetails
         : (() => {
@@ -862,6 +879,13 @@ export const pamAccountServiceFactory = ({
               port: portNumber
             };
           })();
+
+    // For MongoDB, resolve SRV records to get the actual host and port
+    if (resourceType === PamResource.MongoDB) {
+      const resolved = await resolveMongoSrvHost(host, port);
+      host = resolved.host;
+      port = resolved.port;
+    }
 
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
@@ -1074,9 +1098,19 @@ export const pamAccountServiceFactory = ({
       }
     }
 
+    // For MongoDB, resolve SRV records so the gateway gets the actual host
+    let sessionConnectionDetails = decryptedResource.connectionDetails;
+    if (decryptedResource.resourceType === PamResource.MongoDB && "host" in sessionConnectionDetails) {
+      const resolved = await resolveMongoSrvHost(
+        sessionConnectionDetails.host as string,
+        sessionConnectionDetails.port as number
+      );
+      sessionConnectionDetails = { ...sessionConnectionDetails, host: resolved.host, port: resolved.port };
+    }
+
     return {
       credentials: {
-        ...decryptedResource.connectionDetails,
+        ...sessionConnectionDetails,
         ...decryptedAccount.credentials
       },
       projectId: project.id,

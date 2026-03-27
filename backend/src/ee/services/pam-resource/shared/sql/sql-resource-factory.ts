@@ -1,7 +1,9 @@
+import dns from "dns";
 import knex from "knex";
 import { MongoClient } from "mongodb";
 import mysql, { Connection } from "mysql2/promise";
 import tls, { PeerCertificate } from "tls";
+import { promisify } from "util";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -18,6 +20,8 @@ import {
   TPamResourceInternalMetadata
 } from "../../pam-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "./sql-resource-types";
+
+const resolveSrv = promisify(dns.resolveSrv);
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -253,7 +257,9 @@ const makeSqlConnection = (
         ...(sslEnabled && {
           tls: true,
           tlsAllowInvalidCertificates: !sslRejectUnauthorized,
-          tlsInsecure: !sslRejectUnauthorized,
+          // Override servername for SNI since we connect to localhost via proxy
+          // but need the real hostname for TLS negotiation
+          servername: host,
           checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
             return tls.checkServerIdentity(host, cert);
           }
@@ -299,6 +305,23 @@ const makeSqlConnection = (
   }
 };
 
+/**
+ * For MongoDB SRV connections (e.g. mongodb+srv:// hosts), the user-provided host
+ * is an SRV base domain that doesn't resolve as an A record. We need to do an SRV
+ * lookup to discover the actual host and port.
+ */
+const resolveMongoSrvHost = async (host: string, port: number): Promise<{ host: string; port: number }> => {
+  try {
+    const records = await resolveSrv(`_mongodb._tcp.${host}`);
+    if (records.length > 0) {
+      return { host: records[0].name, port: records[0].port };
+    }
+  } catch {
+    // SRV lookup failed — host is likely a direct hostname, use as-is
+  }
+  return { host, port };
+};
+
 export const executeWithGateway = async <T>(
   config: {
     connectionDetails: TSqlResourceConnectionDetails;
@@ -311,24 +334,40 @@ export const executeWithGateway = async <T>(
   operation: (connection: SqlResourceConnection) => Promise<T>
 ): Promise<T> => {
   const { connectionDetails, gatewayId } = config;
+
+  // For MongoDB, resolve SRV records to get the actual host and port
+  let resolvedHost = connectionDetails.host;
+  let resolvedPort = connectionDetails.port;
+  if (config.resourceType === PamResource.MongoDB) {
+    const resolved = await resolveMongoSrvHost(connectionDetails.host, connectionDetails.port);
+    resolvedHost = resolved.host;
+    resolvedPort = resolved.port;
+  }
+
   const [targetHost] = await verifyHostInputValidity({
-    host: connectionDetails.host,
+    host: resolvedHost,
     isGateway: true,
     isDynamicSecret: false
   });
   const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
     targetHost,
-    targetPort: connectionDetails.port
+    targetPort: resolvedPort
   });
 
   if (!platformConnectionDetails) {
     throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
   }
 
+  // For MongoDB SRV, override the host in connection details so TLS servername matches the resolved host
+  const effectiveConfig =
+    config.resourceType === PamResource.MongoDB && resolvedHost !== connectionDetails.host
+      ? { ...config, connectionDetails: { ...connectionDetails, host: resolvedHost, port: resolvedPort } }
+      : config;
+
   return withGatewayV2Proxy(
     async (proxyPort) => {
-      const connection = makeSqlConnection(proxyPort, config);
+      const connection = makeSqlConnection(proxyPort, effectiveConfig);
       try {
         return await operation(connection);
       } finally {
