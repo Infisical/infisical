@@ -156,7 +156,6 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
         return {
           event: event.type,
           project: {
-            workspaceId: projectId,
             projectId,
             projectName,
             environment,
