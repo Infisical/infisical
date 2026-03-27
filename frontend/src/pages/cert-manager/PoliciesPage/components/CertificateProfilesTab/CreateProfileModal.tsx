@@ -360,7 +360,7 @@ const editSchema = z
       .optional(),
     scepConfig: z
       .object({
-        challengePassword: z.string().optional(),
+        challengePassword: z.string().min(8, "Challenge password must be at least 8 characters"),
         includeCaCertInResponse: z.boolean().optional(),
         allowCertBasedRenewal: z.boolean().optional()
       })
@@ -1618,7 +1618,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       render={({ field, fieldState: { error } }) => (
                         <FormControl
                           label="Challenge Password"
-                          isRequired={!isEdit}
+                          isRequired
                           isError={Boolean(error)}
                           errorText={error?.message}
                           helperText="The challenge password cannot be viewed after creation. Make sure to save it somewhere safe."
