@@ -374,10 +374,7 @@ export const scimServiceFactory = ({
   }) => {
     if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
 
-    // findRootOrg walks up from sub-org to root if needed so we always get
-    // orgAuthMethod (SAML/OIDC config lives on the root org only).
-    const rootOrg = await orgService.findRootOrg(orgId);
-    const org = rootOrg.id === orgId ? rootOrg : await orgDAL.findById(orgId);
+    const org = await orgDAL.findById(orgId);
     if (!org) throw new ScimRequestError({ detail: "Organization not found", status: 404 });
 
     if (!org.scimEnabled)
@@ -386,7 +383,7 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    if (!rootOrg.orgAuthMethod) {
+    if (!org.orgAuthMethod) {
       throw new ScimRequestError({
         detail: "Neither SAML or OIDC SSO is configured",
         status: 400
@@ -396,15 +393,13 @@ export const scimServiceFactory = ({
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 
-    const aliasType = rootOrg.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML;
+    const aliasType = org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML;
     const trustScimEmails =
-      rootOrg.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
+      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
 
-    // Aliases are always scoped to the root org so the user can log in from
-    // the root-org login page regardless of which SCIM token provisioned them.
     const userAlias = await userAliasDAL.findOne({
       externalId,
-      orgId: rootOrg.id,
+      orgId: org.id,
       aliasType
     });
 
@@ -533,7 +528,7 @@ export const scimServiceFactory = ({
             aliasType,
             externalId,
             emails: email ? [email.toLowerCase()] : [],
-            orgId: rootOrg.id,
+            orgId: org.id,
             isEmailVerified: trustScimEmails
           },
           tx
@@ -630,7 +625,7 @@ export const scimServiceFactory = ({
         recipients: [email],
         substitutions: {
           organizationName: org.name,
-          callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/organizations/${rootOrg.slug}`
+          callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/organizations/${org.slug}`
         }
       });
     }
