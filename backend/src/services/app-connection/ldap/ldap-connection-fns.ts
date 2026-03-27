@@ -84,7 +84,7 @@ export const buildReferralUrl = (originalUrl: string, targetDomain: string): str
 
   const originalRoot = getRootDomain(host);
   const targetRoot = getRootDomain(targetDomain);
-  if (originalRoot && targetRoot && originalRoot !== targetRoot) {
+  if (originalRoot && (!targetRoot || originalRoot !== targetRoot)) {
     throw new Error(
       `Referral domain '${targetDomain}' is outside the trust boundary of '${host}' — refusing to forward credentials`
     );
