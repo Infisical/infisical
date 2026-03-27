@@ -1002,51 +1002,62 @@ export const scimServiceFactory = ({
 
     await Promise.all(
       groupMappings.map(async (mapping) => {
-        if (mapping.orgId === group.orgId) {
-          // Same org: only update role for newly-invited memberships so that
-          // manually assigned roles on existing members are not overwritten.
-          const invitedMemberships = rootOrgMemberships.filter((m) => m.status === "invited");
-          if (!invitedMemberships.length) return;
-          await membershipRoleDAL.update(
-            { $in: { membershipId: invitedMemberships.map((m) => m.id) } },
-            { role: mapping.role, customRoleId: mapping.roleId ?? null }
-          );
-        } else {
-          // Sub-org mapping: create or update the user's membership in the
-          // target sub-org so they get the configured role there.
-          await Promise.all(
-            rootOrgMemberships.map(async (rootMembership) => {
-              if (!rootMembership.actorUserId) return;
-              const existing = await membershipUserDAL.findOne({
-                actorUserId: rootMembership.actorUserId,
-                scopeOrgId: mapping.orgId,
-                scope: AccessScope.Organization
-              });
-              if (existing) {
-                await membershipRoleDAL.update(
-                  { membershipId: existing.id },
-                  { role: mapping.role, customRoleId: mapping.roleId ?? null }
-                );
-              } else {
-                await orgDAL.transaction(async (tx) => {
-                  const newMembership = await orgDAL.createMembership(
-                    {
-                      actorUserId: rootMembership.actorUserId as string,
-                      scopeOrgId: mapping.orgId,
-                      scope: AccessScope.Organization,
-                      status: OrgMembershipStatus.Accepted,
-                      isActive: true
-                    },
-                    tx
+        try {
+          if (mapping.orgId === group.orgId) {
+            // Same org: only update role for newly-invited memberships so that
+            // manually assigned roles on existing members are not overwritten.
+            const invitedMemberships = rootOrgMemberships.filter((m) => m.status === "invited");
+            if (!invitedMemberships.length) return;
+            await membershipRoleDAL.update(
+              { $in: { membershipId: invitedMemberships.map((m) => m.id) } },
+              { role: mapping.role, customRoleId: mapping.roleId ?? null }
+            );
+          } else {
+            // Sub-org mapping: create or update each user's membership in the target sub-org.
+            // Batch-fetch existing sub-org memberships to avoid N+1 queries.
+            const userIds = rootOrgMemberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id));
+
+            const existingSubOrgMemberships = userIds.length
+              ? await membershipUserDAL.find({
+                  scopeOrgId: mapping.orgId,
+                  scope: AccessScope.Organization,
+                  $in: { actorUserId: userIds }
+                })
+              : [];
+            const existingByUserId = new Map(existingSubOrgMemberships.map((m) => [m.actorUserId, m]));
+
+            await Promise.all(
+              rootOrgMemberships.map(async (rootMembership) => {
+                if (!rootMembership.actorUserId) return;
+                const existing = existingByUserId.get(rootMembership.actorUserId);
+                if (existing) {
+                  await membershipRoleDAL.update(
+                    { membershipId: existing.id },
+                    { role: mapping.role, customRoleId: mapping.roleId ?? null }
                   );
-                  await membershipRoleDAL.create(
-                    { membershipId: newMembership.id, role: mapping.role, customRoleId: mapping.roleId ?? null },
-                    tx
-                  );
-                });
-              }
-            })
-          );
+                } else {
+                  await orgDAL.transaction(async (tx) => {
+                    const newMembership = await orgDAL.createMembership(
+                      {
+                        actorUserId: rootMembership.actorUserId as string,
+                        scopeOrgId: mapping.orgId,
+                        scope: AccessScope.Organization,
+                        status: OrgMembershipStatus.Accepted,
+                        isActive: true
+                      },
+                      tx
+                    );
+                    await membershipRoleDAL.create(
+                      { membershipId: newMembership.id, role: mapping.role, customRoleId: mapping.roleId ?? null },
+                      tx
+                    );
+                  });
+                }
+              })
+            );
+          }
+        } catch (err) {
+          logger.error(err, `Failed to sync SCIM group mapping for org ${mapping.orgId}`);
         }
       })
     );
@@ -1520,9 +1531,10 @@ export const scimServiceFactory = ({
     }
 
     // Remove orphaned mappings so a future group with the same name doesn't
-    // inherit stale role assignments. Root org delete cascades across the entire
-    // hierarchy; sub-org delete only affects that org's own mapping (matching the
-    // rename boundary: a sub-org group must not touch root or sibling mappings).
+    // inherit stale role assignments.
+    // org.rootOrgId non-null → this is a sub-org: delete only its own mapping.
+    // org.rootOrgId null     → this is a root org: cascade deletion across the hierarchy
+    // so sub-org mappings that reference this group name are also cleaned up.
     if (org.rootOrgId) {
       await externalGroupOrgRoleMappingDAL.delete({ groupName: group.name, orgId });
     } else {
