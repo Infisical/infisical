@@ -15,7 +15,7 @@ import { ExternalGroupOrgRoleMappings } from "./ExternalGroupOrgRoleMappings";
 import { ScimTokenModal } from "./ScimTokenModal";
 
 export const OrgScimSection = () => {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "scimToken",
@@ -58,50 +58,54 @@ export const OrgScimSection = () => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <p className="text-xl font-medium text-gray-200">Provision users via SCIM</p>
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">SCIM</h2>
-          <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Scim}>
-            {(isAllowed) => (
-              <Button
-                onClick={addScimTokenBtnClick}
-                colorSchema="secondary"
-                isDisabled={!isAllowed}
-              >
-                Configure
-              </Button>
-            )}
-          </OrgPermissionCan>
+      {!isSubOrganization && (
+        <div className="py-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-md text-mineshaft-100">SCIM</h2>
+            <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Scim}>
+              {(isAllowed) => (
+                <Button
+                  onClick={addScimTokenBtnClick}
+                  colorSchema="secondary"
+                  isDisabled={!isAllowed}
+                >
+                  Configure
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">Manage SCIM configuration</p>
         </div>
-        <p className="text-sm text-mineshaft-300">Manage SCIM configuration</p>
-      </div>
+      )}
       <ExternalGroupOrgRoleMappings />
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">Enable SCIM</h2>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
-            {(isAllowed) => (
-              <Switch
-                id="enable-scim"
-                onCheckedChange={(value) => {
-                  if (subscription?.scim) {
-                    handleEnableSCIMToggle(value);
-                  } else {
-                    handlePopUpOpen("upgradePlan", {
-                      isEnterpriseFeature: true
-                    });
-                  }
-                }}
-                isChecked={currentOrg?.scimEnabled ?? false}
-                isDisabled={!isAllowed}
-              />
-            )}
-          </OrgPermissionCan>
+      {!isSubOrganization && (
+        <div className="py-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-md text-mineshaft-100">Enable SCIM</h2>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
+              {(isAllowed) => (
+                <Switch
+                  id="enable-scim"
+                  onCheckedChange={(value) => {
+                    if (subscription?.scim) {
+                      handleEnableSCIMToggle(value);
+                    } else {
+                      handlePopUpOpen("upgradePlan", {
+                        isEnterpriseFeature: true
+                      });
+                    }
+                  }}
+                  isChecked={currentOrg?.scimEnabled ?? false}
+                  isDisabled={!isAllowed}
+                />
+              )}
+            </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">
+            Allow member provisioning/deprovisioning with SCIM
+          </p>
         </div>
-        <p className="text-sm text-mineshaft-300">
-          Allow member provisioning/deprovisioning with SCIM
-        </p>
-      </div>
+      )}
       <ScimTokenModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
