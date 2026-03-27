@@ -104,7 +104,12 @@ export const identityJwtAuthServiceFactory = ({
       if (!decodedToken) {
         throw new UnauthorizedError({
           message: "Invalid JWT",
-          detail: { reason: "invalid_jwt", identityId: identity.id, orgId: identity.orgId }
+          detail: {
+            reasonCode: "invalid_jwt",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 
@@ -137,7 +142,12 @@ export const identityJwtAuthServiceFactory = ({
           if (error instanceof jwt.JsonWebTokenError) {
             throw new UnauthorizedError({
               message: `Access denied: ${error.message}`,
-              detail: { reason: "jwt_verification_failed", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "jwt_verification_failed",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 
@@ -164,7 +174,12 @@ export const identityJwtAuthServiceFactory = ({
         if (!isMatchAnyKey) {
           throw new UnauthorizedError({
             message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`,
-            detail: { reason: "jwt_verification_failed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "jwt_verification_failed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -181,7 +196,12 @@ export const identityJwtAuthServiceFactory = ({
         if (!tokenData.sub) {
           throw new UnauthorizedError({
             message: "Access denied: token has no subject field",
-            detail: { reason: "missing_subject", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "missing_subject",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
 
@@ -196,7 +216,12 @@ export const identityJwtAuthServiceFactory = ({
         if (!tokenData.aud) {
           throw new UnauthorizedError({
             message: "Access denied: token has no audience field",
-            detail: { reason: "missing_audience", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "missing_audience",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
 
@@ -207,7 +232,12 @@ export const identityJwtAuthServiceFactory = ({
         ) {
           throw new UnauthorizedError({
             message: "Access denied: token audience not allowed",
-            detail: { reason: "audience_not_allowed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "audience_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -220,7 +250,12 @@ export const identityJwtAuthServiceFactory = ({
           if (!value) {
             throw new UnauthorizedError({
               message: `Access denied: token has no ${claimKey} field`,
-              detail: { reason: "missing_claim", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "missing_claim",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 
@@ -228,7 +263,12 @@ export const identityJwtAuthServiceFactory = ({
           if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
             throw new UnauthorizedError({
               message: `Access denied: claim mismatch for field ${claimKey}`,
-              detail: { reason: "claim_mismatch", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "claim_mismatch",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
         });
@@ -251,7 +291,12 @@ export const identityJwtAuthServiceFactory = ({
           if (!subOrgMembership) {
             throw new UnauthorizedError({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

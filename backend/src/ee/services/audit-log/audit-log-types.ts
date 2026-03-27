@@ -1166,7 +1166,7 @@ interface LoginIdentityUniversalAuthFailedEvent {
   metadata: {
     clientId: string;
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1323,7 +1323,7 @@ interface LoginIdentityKubernetesAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1421,7 +1421,7 @@ interface LoginIdentityGcpAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_GCP_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1483,7 +1483,7 @@ interface LoginIdentityAwsAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_AWS_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1543,7 +1543,7 @@ interface LoginIdentityAliCloudAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1599,7 +1599,7 @@ interface LoginIdentityTlsCertAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1655,7 +1655,7 @@ interface LoginIdentityOciAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_OCI_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1713,7 +1713,7 @@ interface LoginIdentityAzureAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_AZURE_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1771,7 +1771,7 @@ interface LoginIdentityLdapAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_LDAP_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1893,7 +1893,7 @@ interface LoginIdentityOidcAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_OIDC_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -1961,7 +1961,7 @@ interface LoginIdentityJwtAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_JWT_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }
@@ -2031,7 +2031,7 @@ interface LoginIdentitySpiffeAuthFailedEvent {
   type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH_FAILED;
   metadata: {
     identityId: string | null;
-    reason: string;
+    reasonCode: string;
     message: string;
   };
 }

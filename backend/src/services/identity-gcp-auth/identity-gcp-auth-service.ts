@@ -113,7 +113,12 @@ export const identityGcpAuthServiceFactory = ({
         if (!isServiceAccountAllowed)
           throw new UnauthorizedError({
             message: "Access denied: GCP service account not allowed.",
-            detail: { reason: "service_account_not_allowed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "service_account_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -132,7 +137,12 @@ export const identityGcpAuthServiceFactory = ({
         if (!isProjectAllowed)
           throw new UnauthorizedError({
             message: "Access denied: GCP project not allowed.",
-            detail: { reason: "project_not_allowed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "project_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -145,7 +155,12 @@ export const identityGcpAuthServiceFactory = ({
         if (!isZoneAllowed)
           throw new UnauthorizedError({
             message: "Access denied: GCP zone not allowed.",
-            detail: { reason: "zone_not_allowed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "zone_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -166,7 +181,12 @@ export const identityGcpAuthServiceFactory = ({
           if (!subOrgMembership) {
             throw new UnauthorizedError({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

@@ -107,7 +107,12 @@ export const identityAliCloudAuthServiceFactory = ({
         if (!isAccountAllowed)
           throw new UnauthorizedError({
             message: "Access denied: Alibaba Cloud account ARN not allowed.",
-            detail: { reason: "arn_not_allowed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "arn_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -128,7 +133,12 @@ export const identityAliCloudAuthServiceFactory = ({
           if (!subOrgMembership) {
             throw new UnauthorizedError({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                identityName: identity.name,
+                orgId: identity.orgId
+              }
             });
           }
 

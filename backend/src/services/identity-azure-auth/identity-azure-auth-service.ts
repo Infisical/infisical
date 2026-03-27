@@ -92,7 +92,12 @@ export const identityAzureAuthServiceFactory = ({
       if (azureIdentity.tid !== identityAzureAuth.tenantId)
         throw new UnauthorizedError({
           message: "Tenant ID mismatch",
-          detail: { reason: "tenant_id_mismatch", identityId: identity.id, orgId: identity.orgId }
+          detail: {
+            reasonCode: "tenant_id_mismatch",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
 
       if (identityAzureAuth.allowedServicePrincipalIds) {
@@ -106,7 +111,12 @@ export const identityAzureAuthServiceFactory = ({
         if (!isServicePrincipalAllowed) {
           throw new UnauthorizedError({
             message: `Service principal '${azureIdentity.oid}' not allowed`,
-            detail: { reason: "service_principal_not_allowed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "service_principal_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -128,7 +138,12 @@ export const identityAzureAuthServiceFactory = ({
           if (!subOrgMembership) {
             throw new UnauthorizedError({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

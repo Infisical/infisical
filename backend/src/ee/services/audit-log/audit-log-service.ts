@@ -22,34 +22,6 @@ type TAuditLogServiceFactoryDep = {
   auditLogQueue: TAuditLogQueueServiceFactory;
 };
 
-// Events that don't require projectId or orgId (login events where org context may not be available)
-const EVENTS_WITHOUT_ORG_OR_PROJECT = new Set<EventType>([
-  EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
-  EventType.LOGIN_IDENTITY_UA_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
-  EventType.LOGIN_IDENTITY_KUBERNETES_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_GCP_AUTH,
-  EventType.LOGIN_IDENTITY_GCP_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_AWS_AUTH,
-  EventType.LOGIN_IDENTITY_AWS_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_OIDC_AUTH,
-  EventType.LOGIN_IDENTITY_OIDC_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_AZURE_AUTH,
-  EventType.LOGIN_IDENTITY_AZURE_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_JWT_AUTH,
-  EventType.LOGIN_IDENTITY_JWT_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_ALICLOUD_AUTH,
-  EventType.LOGIN_IDENTITY_ALICLOUD_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_TLS_CERT_AUTH,
-  EventType.LOGIN_IDENTITY_TLS_CERT_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_OCI_AUTH,
-  EventType.LOGIN_IDENTITY_OCI_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_LDAP_AUTH,
-  EventType.LOGIN_IDENTITY_LDAP_AUTH_FAILED,
-  EventType.LOGIN_IDENTITY_SPIFFE_AUTH,
-  EventType.LOGIN_IDENTITY_SPIFFE_AUTH_FAILED
-]);
-
 export const auditLogServiceFactory = ({
   auditLogDAL,
   clickhouseAuditLogDAL,
@@ -137,7 +109,8 @@ export const auditLogServiceFactory = ({
     if (appCfg.DISABLE_AUDIT_LOG_GENERATION) {
       return;
     }
-    if (!EVENTS_WITHOUT_ORG_OR_PROJECT.has(data.event.type)) {
+    // Events that don't require projectId or orgId (login events where org context may not be available)
+    if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
       if (!data.projectId && !data.orgId)
         throw new BadRequestError({ message: "Must specify either project id or org id" });
     }

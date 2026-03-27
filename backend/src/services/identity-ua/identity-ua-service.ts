@@ -86,7 +86,7 @@ export const identityUaServiceFactory = ({
     if (!identityUa) {
       throw new UnauthorizedError({
         message: "Invalid credentials",
-        detail: { reason: "client_id_not_found", identityId: null }
+        detail: { reasonCode: "client_id_not_found" }
       });
     }
 
@@ -115,7 +115,12 @@ export const identityUaServiceFactory = ({
       if (lockout && lockout.lockedOut) {
         throw new UnauthorizedError({
           message: "This identity auth method is temporarily locked, please try again later",
-          detail: { reason: "temporarily_locked", identityId: identityUa.identityId, orgId: identity.orgId }
+          detail: {
+            reasonCode: "temporarily_locked",
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 
@@ -160,7 +165,12 @@ export const identityUaServiceFactory = ({
             if (lockout.lockedOut) {
               throw new UnauthorizedError({
                 message: "This identity auth method is temporarily locked, please try again later",
-                detail: { reason: "temporarily_locked", identityId: identityUa.identityId, orgId: identity.orgId }
+                detail: {
+                  reasonCode: "temporarily_locked",
+                  identityId: identityUa.identityId,
+                  orgId: identity.orgId,
+                  identityName: identity.name
+                }
               });
             }
 
@@ -191,7 +201,12 @@ export const identityUaServiceFactory = ({
 
         throw new UnauthorizedError({
           message: "Invalid credentials",
-          detail: { reason: "invalid_client_secret", identityId: identityUa.identityId, orgId: identity.orgId }
+          detail: {
+            reasonCode: "invalid_client_secret",
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       } else if (lockout) {
         // If credentials are valid, clear any existing lockout record
@@ -212,7 +227,12 @@ export const identityUaServiceFactory = ({
 
           throw new UnauthorizedError({
             message: "Access denied due to expired client secret",
-            detail: { reason: "client_secret_expired", identityId: identityUa.identityId, orgId: identity.orgId }
+            detail: {
+              reasonCode: "client_secret_expired",
+              identityId: identityUa.identityId,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -226,9 +246,10 @@ export const identityUaServiceFactory = ({
         throw new UnauthorizedError({
           message: "Access denied due to client secret usage limit reached",
           detail: {
-            reason: "client_secret_usage_limit_reached",
+            reasonCode: "client_secret_usage_limit_reached",
             identityId: identityUa.identityId,
-            orgId: identity.orgId
+            orgId: identity.orgId,
+            identityName: identity.name
           }
         });
       }
@@ -264,7 +285,12 @@ export const identityUaServiceFactory = ({
           if (!subOrgMembership) {
             throw new UnauthorizedError({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: { reason: "sub_org_unauthorized", identityId: identityUa.identityId, orgId: identity.orgId }
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identityUa.identityId,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

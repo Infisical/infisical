@@ -109,16 +109,27 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL
         };
       } catch (error) {
-        if (error instanceof UnauthorizedError && error.detail?.orgId && error.detail?.identityId) {
+        if (
+          error instanceof UnauthorizedError &&
+          error.detail?.orgId &&
+          error.detail?.identityId &&
+          error.detail?.identityName
+        ) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            actor: { type: ActorType.UNKNOWN_USER, metadata: {} },
+            actor: {
+              type: ActorType.IDENTITY,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                name: error.detail.identityName as string
+              }
+            },
             orgId: error.detail.orgId as string,
             event: {
               type: EventType.LOGIN_IDENTITY_OIDC_AUTH_FAILED,
               metadata: {
                 identityId: error.detail.identityId as string,
-                reason: error.detail.reason as string,
+                reasonCode: error.detail.reasonCode as string,
                 message: error.message
               }
             }

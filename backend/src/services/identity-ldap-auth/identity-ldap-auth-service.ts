@@ -199,7 +199,12 @@ export const identityLdapAuthServiceFactory = ({
         if (!subOrgMembership) {
           throw new UnauthorizedError({
             message: `Identity not authorized to access sub organization ${organizationSlug}`,
-            detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "sub_org_unauthorized",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
 
@@ -867,7 +872,7 @@ export const identityLdapAuthServiceFactory = ({
     if (lockout && lockout?.lockedOut) {
       throw new UnauthorizedError({
         message: "This identity auth method is temporarily locked, please try again later",
-        detail: { reason: "temporarily_locked", identityId, orgId }
+        detail: { reasonCode: "temporarily_locked", identityId, orgId, identityName: identity?.name }
       });
     }
 
@@ -887,7 +892,7 @@ export const identityLdapAuthServiceFactory = ({
         if (!identityLdapAuth) {
           throw new UnauthorizedError({
             message: "Invalid credentials",
-            detail: { reason: "ldap_auth_not_found", identityId, orgId }
+            detail: { reasonCode: "ldap_auth_not_found", identityId, orgId, identityName: identity?.name }
           });
         }
 
@@ -914,7 +919,7 @@ export const identityLdapAuthServiceFactory = ({
             if (lockout.lockedOut) {
               throw new UnauthorizedError({
                 message: "This identity auth method is temporarily locked, please try again later",
-                detail: { reason: "temporarily_locked", identityId, orgId }
+                detail: { reasonCode: "temporarily_locked", identityId, orgId, identityName: identity?.name }
               });
             }
 
@@ -945,7 +950,7 @@ export const identityLdapAuthServiceFactory = ({
 
         throw new UnauthorizedError({
           message: "Invalid credentials",
-          detail: { reason: "invalid_credentials", identityId, orgId }
+          detail: { reasonCode: "invalid_credentials", identityId, orgId, identityName: identity?.name }
         });
       }
       throw error;

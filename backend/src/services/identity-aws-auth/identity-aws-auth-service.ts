@@ -163,7 +163,12 @@ export const identityAwsAuthServiceFactory = ({
         if (!isAccountAllowed)
           throw new UnauthorizedError({
             message: "Access denied: AWS account ID not allowed.",
-            detail: { reason: "account_id_not_allowed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "account_id_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -190,7 +195,12 @@ export const identityAwsAuthServiceFactory = ({
 
           throw new UnauthorizedError({
             message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`,
-            detail: { reason: "principal_arn_not_allowed", identityId: identity.id, orgId: identity.orgId }
+            detail: {
+              reasonCode: "principal_arn_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -212,7 +222,12 @@ export const identityAwsAuthServiceFactory = ({
           if (!subOrgMembership) {
             throw new UnauthorizedError({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

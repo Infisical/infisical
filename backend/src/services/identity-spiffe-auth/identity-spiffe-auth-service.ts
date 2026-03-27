@@ -325,9 +325,10 @@ export const identitySpiffeAuthServiceFactory = ({
           } catch (retryError) {
             if (retryError instanceof UnauthorizedError) {
               retryError.detail = {
-                reason: "jwt_svid_verification_failed",
+                reasonCode: "jwt_svid_verification_failed",
                 identityId: identity.id,
-                orgId: identity.orgId
+                orgId: identity.orgId,
+                identityName: identity.name
               };
             }
             throw retryError;
@@ -335,9 +336,10 @@ export const identitySpiffeAuthServiceFactory = ({
         } else {
           if (verifyError instanceof UnauthorizedError) {
             verifyError.detail = {
-              reason: "jwt_svid_verification_failed",
+              reasonCode: "jwt_svid_verification_failed",
               identityId: identity.id,
-              orgId: identity.orgId
+              orgId: identity.orgId,
+              identityName: identity.name
             };
           }
           throw verifyError;
@@ -347,7 +349,12 @@ export const identitySpiffeAuthServiceFactory = ({
       if (!validateSpiffeClaims(tokenData, identitySpiffeAuth)) {
         throw new UnauthorizedError({
           message: "Access denied",
-          detail: { reason: "spiffe_claims_invalid", identityId: identity.id, orgId: identity.orgId }
+          detail: {
+            reasonCode: "spiffe_claims_invalid",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 
@@ -368,7 +375,12 @@ export const identitySpiffeAuthServiceFactory = ({
           if (!subOrgMembership) {
             throw new UnauthorizedError({
               message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: { reason: "sub_org_unauthorized", identityId: identity.id, orgId: identity.orgId }
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 
