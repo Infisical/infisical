@@ -3,10 +3,11 @@ import { z } from "zod";
 import { IdentitySpiffeAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SPIFFE_AUTH } from "@app/lib/api-docs";
+import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { SpiffeTrustBundleProfile } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-types";
 import {
@@ -129,27 +130,57 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
       }
     },
     handler: async (req) => {
-      const { identitySpiffeAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identitySpiffeAuth.login(req.body);
+      try {
+        const { identitySpiffeAuth, accessToken, identityAccessToken, identity } =
+          await server.services.identitySpiffeAuth.login(req.body);
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH,
-          metadata: {
-            identityId: identitySpiffeAuth.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identitySpiffeAuthId: identitySpiffeAuth.id
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH,
+            metadata: {
+              identityId: identitySpiffeAuth.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identitySpiffeAuthId: identitySpiffeAuth.id
+            }
           }
+        });
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identitySpiffeAuth.accessTokenTTL,
+          accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (
+          error instanceof UnauthorizedError &&
+          error.detail?.orgId &&
+          error.detail?.identityId &&
+          error.detail?.identityName
+        ) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: {
+              type: ActorType.IDENTITY,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                name: error.detail.identityName as string
+              }
+            },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reasonCode: error.detail.reasonCode as string,
+                message: error.message
+              }
+            }
+          });
         }
-      });
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identitySpiffeAuth.accessTokenTTL,
-        accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL
-      };
+        throw error;
+      }
     }
   });
 

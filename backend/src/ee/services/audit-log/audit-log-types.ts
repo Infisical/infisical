@@ -191,6 +191,7 @@ export enum EventType {
   MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE = "machine-identity-auth-template-update",
   MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE = "machine-identity-auth-template-delete",
   LOGIN_IDENTITY_UNIVERSAL_AUTH = "login-identity-universal-auth",
+  LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED = "login-identity-universal-auth-failed",
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
@@ -206,24 +207,28 @@ export enum EventType {
   REVOKE_IDENTITY_TOKEN_AUTH = "revoke-identity-token-auth",
 
   LOGIN_IDENTITY_KUBERNETES_AUTH = "login-identity-kubernetes-auth",
+  LOGIN_IDENTITY_KUBERNETES_AUTH_FAILED = "login-identity-kubernetes-auth-failed",
   ADD_IDENTITY_KUBERNETES_AUTH = "add-identity-kubernetes-auth",
   UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
   GET_IDENTITY_KUBERNETES_AUTH = "get-identity-kubernetes-auth",
   REVOKE_IDENTITY_KUBERNETES_AUTH = "revoke-identity-kubernetes-auth",
 
   LOGIN_IDENTITY_OIDC_AUTH = "login-identity-oidc-auth",
+  LOGIN_IDENTITY_OIDC_AUTH_FAILED = "login-identity-oidc-auth-failed",
   ADD_IDENTITY_OIDC_AUTH = "add-identity-oidc-auth",
   UPDATE_IDENTITY_OIDC_AUTH = "update-identity-oidc-auth",
   GET_IDENTITY_OIDC_AUTH = "get-identity-oidc-auth",
   REVOKE_IDENTITY_OIDC_AUTH = "revoke-identity-oidc-auth",
 
   LOGIN_IDENTITY_JWT_AUTH = "login-identity-jwt-auth",
+  LOGIN_IDENTITY_JWT_AUTH_FAILED = "login-identity-jwt-auth-failed",
   ADD_IDENTITY_JWT_AUTH = "add-identity-jwt-auth",
   UPDATE_IDENTITY_JWT_AUTH = "update-identity-jwt-auth",
   GET_IDENTITY_JWT_AUTH = "get-identity-jwt-auth",
   REVOKE_IDENTITY_JWT_AUTH = "revoke-identity-jwt-auth",
 
   LOGIN_IDENTITY_SPIFFE_AUTH = "login-identity-spiffe-auth",
+  LOGIN_IDENTITY_SPIFFE_AUTH_FAILED = "login-identity-spiffe-auth-failed",
   ADD_IDENTITY_SPIFFE_AUTH = "add-identity-spiffe-auth",
   UPDATE_IDENTITY_SPIFFE_AUTH = "update-identity-spiffe-auth",
   GET_IDENTITY_SPIFFE_AUTH = "get-identity-spiffe-auth",
@@ -239,42 +244,49 @@ export enum EventType {
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
 
   LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
+  LOGIN_IDENTITY_GCP_AUTH_FAILED = "login-identity-gcp-auth-failed",
   ADD_IDENTITY_GCP_AUTH = "add-identity-gcp-auth",
   UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
   REVOKE_IDENTITY_GCP_AUTH = "revoke-identity-gcp-auth",
   GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
 
   LOGIN_IDENTITY_ALICLOUD_AUTH = "login-identity-alicloud-auth",
+  LOGIN_IDENTITY_ALICLOUD_AUTH_FAILED = "login-identity-alicloud-auth-failed",
   ADD_IDENTITY_ALICLOUD_AUTH = "add-identity-alicloud-auth",
   UPDATE_IDENTITY_ALICLOUD_AUTH = "update-identity-alicloud-auth",
   REVOKE_IDENTITY_ALICLOUD_AUTH = "revoke-identity-alicloud-auth",
   GET_IDENTITY_ALICLOUD_AUTH = "get-identity-alicloud-auth",
 
   LOGIN_IDENTITY_TLS_CERT_AUTH = "login-identity-tls-cert-auth",
+  LOGIN_IDENTITY_TLS_CERT_AUTH_FAILED = "login-identity-tls-cert-auth-failed",
   ADD_IDENTITY_TLS_CERT_AUTH = "add-identity-tls-cert-auth",
   UPDATE_IDENTITY_TLS_CERT_AUTH = "update-identity-tls-cert-auth",
   REVOKE_IDENTITY_TLS_CERT_AUTH = "revoke-identity-tls-cert-auth",
   GET_IDENTITY_TLS_CERT_AUTH = "get-identity-tls-cert-auth",
 
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
+  LOGIN_IDENTITY_AWS_AUTH_FAILED = "login-identity-aws-auth-failed",
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
   REVOKE_IDENTITY_AWS_AUTH = "revoke-identity-aws-auth",
   GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
 
   LOGIN_IDENTITY_OCI_AUTH = "login-identity-oci-auth",
+  LOGIN_IDENTITY_OCI_AUTH_FAILED = "login-identity-oci-auth-failed",
   ADD_IDENTITY_OCI_AUTH = "add-identity-oci-auth",
   UPDATE_IDENTITY_OCI_AUTH = "update-identity-oci-auth",
   REVOKE_IDENTITY_OCI_AUTH = "revoke-identity-oci-auth",
   GET_IDENTITY_OCI_AUTH = "get-identity-oci-auth",
 
   LOGIN_IDENTITY_AZURE_AUTH = "login-identity-azure-auth",
+  LOGIN_IDENTITY_AZURE_AUTH_FAILED = "login-identity-azure-auth-failed",
   ADD_IDENTITY_AZURE_AUTH = "add-identity-azure-auth",
   UPDATE_IDENTITY_AZURE_AUTH = "update-identity-azure-auth",
   GET_IDENTITY_AZURE_AUTH = "get-identity-azure-auth",
   REVOKE_IDENTITY_AZURE_AUTH = "revoke-identity-azure-auth",
 
   LOGIN_IDENTITY_LDAP_AUTH = "login-identity-ldap-auth",
+  LOGIN_IDENTITY_LDAP_AUTH_FAILED = "login-identity-ldap-auth-failed",
   ADD_IDENTITY_LDAP_AUTH = "add-identity-ldap-auth",
   UPDATE_IDENTITY_LDAP_AUTH = "update-identity-ldap-auth",
   GET_IDENTITY_LDAP_AUTH = "get-identity-ldap-auth",
@@ -1173,6 +1185,16 @@ interface LoginIdentityUniversalAuthEvent {
   };
 }
 
+interface LoginIdentityUniversalAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED;
+  metadata: {
+    clientId: string;
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
+  };
+}
+
 interface MachineIdentityAuthTemplateCreateEvent {
   type: EventType.MACHINE_IDENTITY_AUTH_TEMPLATE_CREATE;
   metadata: {
@@ -1321,6 +1343,15 @@ interface LoginIdentityKubernetesAuthEvent {
   };
 }
 
+interface LoginIdentityKubernetesAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
+  };
+}
+
 interface AddIdentityKubernetesAuthEvent {
   type: EventType.ADD_IDENTITY_KUBERNETES_AUTH;
   metadata: {
@@ -1410,6 +1441,15 @@ interface LoginIdentityGcpAuthEvent {
   };
 }
 
+interface LoginIdentityGcpAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_GCP_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
+  };
+}
+
 interface AddIdentityGcpAuthEvent {
   type: EventType.ADD_IDENTITY_GCP_AUTH;
   metadata: {
@@ -1460,6 +1500,15 @@ interface LoginIdentityAwsAuthEvent {
     identityId: string;
     identityAwsAuthId: string;
     identityAccessTokenId: string;
+  };
+}
+
+interface LoginIdentityAwsAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_AWS_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
   };
 }
 
@@ -1514,6 +1563,15 @@ interface LoginIdentityAliCloudAuthEvent {
   };
 }
 
+interface LoginIdentityAliCloudAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
+  };
+}
+
 interface AddIdentityAliCloudAuthEvent {
   type: EventType.ADD_IDENTITY_ALICLOUD_AUTH;
   metadata: {
@@ -1561,6 +1619,15 @@ interface LoginIdentityTlsCertAuthEvent {
   };
 }
 
+interface LoginIdentityTlsCertAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
+  };
+}
+
 interface AddIdentityTlsCertAuthEvent {
   type: EventType.ADD_IDENTITY_TLS_CERT_AUTH;
   metadata: {
@@ -1605,6 +1672,15 @@ interface LoginIdentityOciAuthEvent {
     identityId: string;
     identityOciAuthId: string;
     identityAccessTokenId: string;
+  };
+}
+
+interface LoginIdentityOciAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_OCI_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
   };
 }
 
@@ -1657,6 +1733,15 @@ interface LoginIdentityAzureAuthEvent {
   };
 }
 
+interface LoginIdentityAzureAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_AZURE_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
+  };
+}
+
 interface AddIdentityAzureAuthEvent {
   type: EventType.ADD_IDENTITY_AZURE_AUTH;
   metadata: {
@@ -1703,6 +1788,15 @@ interface LoginIdentityLdapAuthEvent {
     identityId: string;
     ldapUsername: string;
     ldapEmail?: string;
+  };
+}
+
+interface LoginIdentityLdapAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_LDAP_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
   };
 }
 
@@ -1819,6 +1913,15 @@ interface LoginIdentityOidcAuthEvent {
   };
 }
 
+interface LoginIdentityOidcAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_OIDC_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
+  };
+}
+
 interface AddIdentityOidcAuthEvent {
   type: EventType.ADD_IDENTITY_OIDC_AUTH;
   metadata: {
@@ -1875,6 +1978,15 @@ interface LoginIdentityJwtAuthEvent {
     identityId: string;
     identityJwtAuthId: string;
     identityAccessTokenId: string;
+  };
+}
+
+interface LoginIdentityJwtAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_JWT_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
   };
 }
 
@@ -1936,6 +2048,15 @@ interface LoginIdentitySpiffeAuthEvent {
     identityId: string;
     identitySpiffeAuthId: string;
     identityAccessTokenId: string;
+  };
+}
+
+interface LoginIdentitySpiffeAuthFailedEvent {
+  type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH_FAILED;
+  metadata: {
+    identityId: string | null;
+    reasonCode: string;
+    message: string;
   };
 }
 
@@ -5593,6 +5714,7 @@ export type Event =
   | UpdateIdentityEvent
   | DeleteIdentityEvent
   | LoginIdentityUniversalAuthEvent
+  | LoginIdentityUniversalAuthFailedEvent
   | MachineIdentityAuthTemplateCreateEvent
   | MachineIdentityAuthTemplateUpdateEvent
   | MachineIdentityAuthTemplateDeleteEvent
@@ -5609,6 +5731,7 @@ export type Event =
   | GetIdentityTokenAuthEvent
   | DeleteIdentityTokenAuthEvent
   | LoginIdentityKubernetesAuthEvent
+  | LoginIdentityKubernetesAuthFailedEvent
   | DeleteIdentityKubernetesAuthEvent
   | AddIdentityKubernetesAuthEvent
   | UpdateIdentityKubernetesAuthEvent
@@ -5619,52 +5742,62 @@ export type Event =
   | RevokeIdentityUniversalAuthClientSecretEvent
   | ClearIdentityUniversalAuthLockoutsEvent
   | LoginIdentityGcpAuthEvent
+  | LoginIdentityGcpAuthFailedEvent
   | AddIdentityGcpAuthEvent
   | DeleteIdentityGcpAuthEvent
   | UpdateIdentityGcpAuthEvent
   | GetIdentityGcpAuthEvent
   | LoginIdentityAwsAuthEvent
+  | LoginIdentityAwsAuthFailedEvent
   | AddIdentityAwsAuthEvent
   | UpdateIdentityAwsAuthEvent
   | GetIdentityAwsAuthEvent
   | DeleteIdentityAwsAuthEvent
   | LoginIdentityAliCloudAuthEvent
+  | LoginIdentityAliCloudAuthFailedEvent
   | AddIdentityAliCloudAuthEvent
   | UpdateIdentityAliCloudAuthEvent
   | GetIdentityAliCloudAuthEvent
   | DeleteIdentityAliCloudAuthEvent
   | LoginIdentityTlsCertAuthEvent
+  | LoginIdentityTlsCertAuthFailedEvent
   | AddIdentityTlsCertAuthEvent
   | UpdateIdentityTlsCertAuthEvent
   | GetIdentityTlsCertAuthEvent
   | DeleteIdentityTlsCertAuthEvent
   | LoginIdentityOciAuthEvent
+  | LoginIdentityOciAuthFailedEvent
   | AddIdentityOciAuthEvent
   | UpdateIdentityOciAuthEvent
   | GetIdentityOciAuthEvent
   | DeleteIdentityOciAuthEvent
   | LoginIdentityAzureAuthEvent
+  | LoginIdentityAzureAuthFailedEvent
   | AddIdentityAzureAuthEvent
   | DeleteIdentityAzureAuthEvent
   | UpdateIdentityAzureAuthEvent
   | GetIdentityAzureAuthEvent
   | LoginIdentityOidcAuthEvent
+  | LoginIdentityOidcAuthFailedEvent
   | AddIdentityOidcAuthEvent
   | DeleteIdentityOidcAuthEvent
   | UpdateIdentityOidcAuthEvent
   | GetIdentityOidcAuthEvent
   | LoginIdentityJwtAuthEvent
+  | LoginIdentityJwtAuthFailedEvent
   | AddIdentityJwtAuthEvent
   | UpdateIdentityJwtAuthEvent
   | GetIdentityJwtAuthEvent
   | DeleteIdentityJwtAuthEvent
   | LoginIdentitySpiffeAuthEvent
+  | LoginIdentitySpiffeAuthFailedEvent
   | AddIdentitySpiffeAuthEvent
   | UpdateIdentitySpiffeAuthEvent
   | GetIdentitySpiffeAuthEvent
   | RefreshIdentitySpiffeAuthBundleEvent
   | DeleteIdentitySpiffeAuthEvent
   | LoginIdentityLdapAuthEvent
+  | LoginIdentityLdapAuthFailedEvent
   | AddIdentityLdapAuthEvent
   | UpdateIdentityLdapAuthEvent
   | GetIdentityLdapAuthEvent
