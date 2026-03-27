@@ -183,7 +183,10 @@ export const ldapPasswordRotationFactory: TRotationFactory<
       }
 
       referredUrl = buildReferralUrl(credentials.url, referralDomain);
-      logger.info({ referralDomain, referredUrl }, "LDAP referral detected — chasing to referred domain controller");
+      logger.info(
+        { targetDn: dn, referralDomain, referredUrl, matchedDn: err.dn },
+        "LDAP referral detected — chasing to referred domain controller"
+      );
 
       try {
         await performModify({ ...connectionCredentials, url: referredUrl });
