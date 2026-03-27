@@ -810,7 +810,7 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
     }
 
-    let { host, port } =
+    const { host, port } =
       resourceType !== PamResource.Kubernetes
         ? connectionDetails
         : (() => {

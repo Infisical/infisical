@@ -25,17 +25,19 @@ const SSLStatusBadge = ({ enabled }: { enabled: boolean }) => (
 const SqlConnectionDetails = ({
   connectionDetails
 }: {
-  connectionDetails: { host: string; port: number; database: string; sslEnabled: boolean };
+  connectionDetails: { host: string; port?: number; database: string; sslEnabled: boolean };
 }) => (
   <>
     <Detail>
       <DetailLabel>Host</DetailLabel>
       <DetailValue>{connectionDetails.host}</DetailValue>
     </Detail>
-    <Detail>
-      <DetailLabel>Port</DetailLabel>
-      <DetailValue>{connectionDetails.port}</DetailValue>
-    </Detail>
+    {connectionDetails.port != null && (
+      <Detail>
+        <DetailLabel>Port</DetailLabel>
+        <DetailValue>{connectionDetails.port}</DetailValue>
+      </Detail>
+    )}
     <Detail>
       <DetailLabel>Database</DetailLabel>
       <DetailValue>{connectionDetails.database}</DetailValue>

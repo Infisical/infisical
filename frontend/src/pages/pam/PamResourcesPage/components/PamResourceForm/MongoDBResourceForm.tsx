@@ -135,18 +135,14 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                     control={control}
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        className="w-28"
+                        className="w-36"
                         errorText={error?.message}
                         isError={Boolean(error?.message)}
                         label="Port"
+                        helperText="Leave empty for SRV"
                         isOptional
                       >
-                        <Input
-                          type="number"
-                          placeholder="SRV"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input type="number" {...field} value={field.value ?? ""} />
                       </FormControl>
                     )}
                   />
