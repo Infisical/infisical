@@ -35,8 +35,8 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("senderNonce").notNullable();
       t.binary("signerCertDer").notNullable();
 
+      // No FK — certificate_requests is partitioned (composite PK: id + createdAt) so PostgreSQL cannot enforce a FK referencing just id.
       t.uuid("certificateRequestId").nullable();
-      t.foreign("certificateRequestId").references("id").inTable(TableName.CertificateRequests).onDelete("SET NULL");
       t.index("certificateRequestId");
 
       t.string("clientCipherOid", 64).nullable();
