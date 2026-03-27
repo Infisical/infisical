@@ -15,6 +15,32 @@ import { TLdapConnectionConfig } from "./ldap-connection-types";
 
 const LDAP_TIMEOUT = 15_000;
 
+/**
+ * Extracts the domain from the DC components of a Distinguished Name.
+ * e.g. "dc=us,dc=test,dc=com" → "us.test.com"
+ */
+export const extractDomainFromDN = (dn: string): string | null => {
+  if (!dn) return null;
+
+  const dcComponents = dn
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.toLowerCase().startsWith("dc="))
+    .map((part) => part.substring(3));
+
+  return dcComponents.length > 0 ? dcComponents.join(".") : null;
+};
+
+/**
+ * Checks if an error is an LDAP Referral (code 10).
+ * ldapjs surfaces this as a ReferralError with `dn` set to the matched DN.
+ */
+export const isLdapReferralError = (err: unknown): err is Error & { dn: string; code: number } => {
+  if (!(err instanceof Error)) return false;
+  const ldapErr = err as Error & { name?: string; code?: number };
+  return ldapErr.name === "ReferralError" || ldapErr.code === 10;
+};
+
 const parseLdapUrl = (url: string): { protocol: string; host: string; port: number } => {
   const urlObj = new URL(url);
   const isSSL = urlObj.protocol === "ldaps:";
@@ -29,6 +55,15 @@ const parseLdapUrl = (url: string): { protocol: string; host: string; port: numb
 
 const constructLdapUrl = (protocol: string, host: string, port: number): string => {
   return `${protocol}://${host}:${port}`;
+};
+
+/**
+ * Constructs a new LDAP URL targeting a different domain/host,
+ * preserving the protocol and port from the original URL.
+ */
+export const buildReferralUrl = (originalUrl: string, targetDomain: string): string => {
+  const { protocol, port } = parseLdapUrl(originalUrl);
+  return constructLdapUrl(protocol, targetDomain, port);
 };
 
 const setupLdapClientHandlers = <T>(

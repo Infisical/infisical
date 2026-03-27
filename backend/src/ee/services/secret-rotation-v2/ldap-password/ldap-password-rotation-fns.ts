@@ -10,7 +10,14 @@ import {
 import { logger } from "@app/lib/logger";
 import { DistinguishedNameRegex } from "@app/lib/regex";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
-import { executeWithPotentialGateway, LdapProvider, TLdapConnection } from "@app/services/app-connection/ldap";
+import {
+  buildReferralUrl,
+  executeWithPotentialGateway,
+  extractDomainFromDN,
+  isLdapReferralError,
+  LdapProvider,
+  TLdapConnection
+} from "@app/services/app-connection/ldap";
 
 import { generatePassword } from "../shared/utils";
 import {
@@ -76,10 +83,12 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 
   const { dn, passwordRequirements } = parameters;
 
-  const $verifyCredentials = async (credentials: Pick<TLdapConnection["credentials"], "dn" | "password">) => {
+  const $verifyCredentials = async (
+    verifyOpts: Pick<TLdapConnection["credentials"], "dn" | "password"> & { url?: string }
+  ) => {
     try {
       await executeWithPotentialGateway(
-        { ...connection, credentials: { ...connection.credentials, ...credentials } },
+        { ...connection, credentials: { ...connection.credentials, ...verifyOpts } },
         gatewayV2Service,
         async () => {}
       );
@@ -103,7 +112,6 @@ export const ldapPasswordRotationFactory: TRotationFactory<
         {
           const encodedPassword = getEncodedPassword(password);
 
-          // service account vs personal password rotation require different changes
           if (isConnectionRotation || currentPassword) {
             const currentEncodedPassword = getEncodedPassword(currentPassword || credentials.password);
 
@@ -138,34 +146,55 @@ export const ldapPasswordRotationFactory: TRotationFactory<
         throw new Error(`Unhandled provider: ${credentials.provider as LdapProvider}`);
     }
 
-    await executeWithPotentialGateway(
-      {
-        ...connection,
-        credentials: currentPassword
-          ? {
-              ...credentials,
-              password: currentPassword,
-              dn
-            }
-          : credentials
-      },
-      gatewayV2Service,
-      async (client) => {
-        const userDn = await getDN(dn, client);
-        await new Promise<void>((resolve, reject) => {
-          client.modify(userDn, changes, (err) => {
-            if (err) {
-              logger.error(err, "LDAP Password Rotation Failed");
-              reject(new Error(`Provider Modify Error: ${err.message}`));
-            } else {
-              resolve();
-            }
-          });
-        });
-      }
-    );
+    const connectionCredentials = currentPassword ? { ...credentials, password: currentPassword, dn } : credentials;
 
-    await $verifyCredentials({ dn, password });
+    const performModify = async (targetCredentials: typeof connectionCredentials) => {
+      await executeWithPotentialGateway(
+        { ...connection, credentials: targetCredentials },
+        gatewayV2Service,
+        async (client) => {
+          const userDn = await getDN(dn, client);
+          await new Promise<void>((resolve, reject) => {
+            client.modify(userDn, changes, (err) => {
+              if (err) {
+                logger.error(err, "LDAP Password Rotation Failed");
+                reject(err);
+              } else {
+                resolve();
+              }
+            });
+          });
+        }
+      );
+    };
+
+    let referredUrl: string | undefined;
+
+    try {
+      await performModify(connectionCredentials);
+    } catch (err) {
+      if (!isLdapReferralError(err)) {
+        throw new Error(`Provider Modify Error: ${(err as Error).message}`);
+      }
+
+      const referralDomain = extractDomainFromDN(err.dn);
+      if (!referralDomain) {
+        throw new Error("Provider Modify Error: Referral received but could not determine target domain");
+      }
+
+      referredUrl = buildReferralUrl(credentials.url, referralDomain);
+      logger.info({ referralDomain, referredUrl }, "LDAP referral detected — chasing to referred domain controller");
+
+      try {
+        await performModify({ ...connectionCredentials, url: referredUrl });
+      } catch (retryErr) {
+        throw new Error(
+          `Provider Modify Error: Referral chase to ${referralDomain} failed — ${(retryErr as Error).message}`
+        );
+      }
+    }
+
+    await $verifyCredentials({ dn, password, ...(referredUrl ? { url: referredUrl } : {}) });
 
     if (isConnectionRotation) {
       const updatedCredentials: TLdapConnection["credentials"] = {
