@@ -81,7 +81,6 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   samlSSO: false,
   enforceGoogleSSO: false,
   hsm: false,
-
   oidcSSO: false,
   scim: false,
   ldap: false,
