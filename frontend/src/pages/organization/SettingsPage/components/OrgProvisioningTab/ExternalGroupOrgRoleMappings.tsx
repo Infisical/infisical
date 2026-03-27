@@ -66,7 +66,7 @@ export const ExternalGroupOrgRoleMappings = () => {
         groupName: mapping.groupName,
         roleSlug:
           mapping.role === "custom"
-            ? roles.find((role) => mapping.roleId === role.id)!.slug
+            ? (roles.find((role) => mapping.roleId === role.id)?.slug ?? "")
             : mapping.role
       }))
     });

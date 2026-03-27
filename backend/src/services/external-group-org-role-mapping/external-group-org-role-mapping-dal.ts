@@ -30,7 +30,7 @@ export const externalGroupOrgRoleMappingDALFactory = (db: TDbClient) => {
       await externalGroupOrgRoleMappingOrm.delete({ $in: { id: mappingsToDelete.map((mapping) => mapping.id) } }, tx);
 
       const updatedMappings: TExternalGroupOrgRoleMappings[] = [];
-      for await (const { id, ...mappingData } of mappingsToUpdate) {
+      for (const { id, ...mappingData } of mappingsToUpdate) {
         const updatedMapping = await externalGroupOrgRoleMappingOrm.update({ id }, mappingData, tx);
         updatedMappings.push(updatedMapping[0]);
       }
@@ -97,11 +97,15 @@ export const externalGroupOrgRoleMappingDALFactory = (db: TDbClient) => {
    * ghost entries that would re-provision users if a new group with the same
    * name is created later.
    */
-  const deleteGroupMappingsForOrgHierarchy = async (rootOrgId: string, groupName: string): Promise<void> => {
-    await db(TableName.ExternalGroupOrgRoleMapping)
+  const deleteGroupMappingsForOrgHierarchy = async (
+    rootOrgId: string,
+    groupName: string,
+    tx?: Knex
+  ): Promise<void> => {
+    await (tx || db)(TableName.ExternalGroupOrgRoleMapping)
       .whereIn(
         "orgId",
-        db(TableName.Organization)
+        (tx || db)(TableName.Organization)
           .where((qb) => {
             void qb.where("id", rootOrgId).orWhere("rootOrgId", rootOrgId);
           })

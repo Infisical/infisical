@@ -26,7 +26,7 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const mappings = server.services.externalGroupOrgRoleMapping.listExternalGroupOrgRoleMappings(req.permission);
+      const mappings = await server.services.externalGroupOrgRoleMapping.listExternalGroupOrgRoleMappings(req.permission);
 
       await server.services.auditLog.createAuditLog({
         orgId: req.permission.orgId,

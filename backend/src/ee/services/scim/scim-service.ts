@@ -995,27 +995,30 @@ export const scimServiceFactory = ({
           if (mapping.orgId === group.orgId) {
             // Root org: only update role for newly-invited memberships so that
             // manually assigned roles on existing members are not overwritten.
-            const invitedMemberships = rootOrgMemberships.filter((m) => m.status === "invited");
+            const invitedMemberships = rootOrgMemberships.filter(
+              (m) => m.status === OrgMembershipStatus.Invited
+            );
             if (!invitedMemberships.length) return;
             await membershipRoleDAL.update(
               { $in: { membershipId: invitedMemberships.map((m) => m.id) } },
               { role: mapping.role, customRoleId: mapping.roleId ?? null }
             );
           } else {
-            // Sub-org mapping: update the role on existing sub-org memberships only.
-            // Sub-org membership creation follows the normal invite flow — SCIM only overrides the role.
+            // Sub-org mapping: only update invited sub-org memberships so that
+            // manually assigned roles on existing members are not overwritten.
             const userIds = rootOrgMemberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id));
             if (!userIds.length) return;
 
-            const existingSubOrgMemberships = await membershipUserDAL.find({
+            const invitedSubOrgMemberships = await membershipUserDAL.find({
               scopeOrgId: mapping.orgId,
               scope: AccessScope.Organization,
+              status: OrgMembershipStatus.Invited,
               $in: { actorUserId: userIds }
             });
-            if (!existingSubOrgMemberships.length) return;
+            if (!invitedSubOrgMemberships.length) return;
 
             await membershipRoleDAL.update(
-              { $in: { membershipId: existingSubOrgMemberships.map((m) => m.id) } },
+              { $in: { membershipId: invitedSubOrgMemberships.map((m) => m.id) } },
               { role: mapping.role, customRoleId: mapping.roleId ?? null }
             );
           }
@@ -1480,9 +1483,27 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const [group] = await groupDAL.delete({
-      id: groupId,
-      orgId
+    const group = await groupDAL.transaction(async (tx) => {
+      const [deletedGroup] = await groupDAL.delete({ id: groupId, orgId }, tx);
+
+      if (!deletedGroup) {
+        throw new ScimRequestError({
+          detail: "Group Not Found",
+          status: 404
+        });
+      }
+
+      // Remove orphaned mappings atomically with the group deletion so a future
+      // group with the same name doesn't inherit stale role assignments.
+      // org.rootOrgId non-null → sub-org: delete only its own mapping.
+      // org.rootOrgId null     → root org: cascade across the hierarchy.
+      if (org.rootOrgId) {
+        await externalGroupOrgRoleMappingDAL.delete({ groupName: deletedGroup.name, orgId }, tx);
+      } else {
+        await externalGroupOrgRoleMappingDAL.deleteGroupMappingsForOrgHierarchy(org.id, deletedGroup.name, tx);
+      }
+
+      return deletedGroup;
     });
 
     if (!group) {
@@ -1490,17 +1511,6 @@ export const scimServiceFactory = ({
         detail: "Group Not Found",
         status: 404
       });
-    }
-
-    // Remove orphaned mappings so a future group with the same name doesn't
-    // inherit stale role assignments.
-    // org.rootOrgId non-null → this is a sub-org: delete only its own mapping.
-    // org.rootOrgId null     → this is a root org: cascade deletion across the hierarchy
-    // so sub-org mappings that reference this group name are also cleaned up.
-    if (org.rootOrgId) {
-      await externalGroupOrgRoleMappingDAL.delete({ groupName: group.name, orgId });
-    } else {
-      await externalGroupOrgRoleMappingDAL.deleteGroupMappingsForOrgHierarchy(org.id, group.name);
     }
 
     await scimEventsDAL.create({

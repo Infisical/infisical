@@ -733,13 +733,8 @@ export const orgDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .leftJoin(TableName.UserAliases, function joinUserAlias() {
-          // Aliases are always scoped to the root org; for sub-org memberships use rootOrgId.
           this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
-            .andOn(
-              `${TableName.UserAliases}.orgId`,
-              "=",
-              (tx || db).raw(`COALESCE(${TableName.Organization}."rootOrgId", ${TableName.Organization}.id)`)
-            )
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Organization}.id`)
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
         .select(
@@ -877,14 +872,8 @@ export const orgDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .leftJoin(TableName.UserAliases, function joinUserAlias() {
-          // Aliases are always scoped to the root org, so join via the root org ID:
-          // for root orgs (rootOrgId IS NULL) use the org itself; for sub-orgs use rootOrgId.
           this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
-            .andOn(
-              `${TableName.UserAliases}.orgId`,
-              "=",
-              (tx || db).raw(`COALESCE(${TableName.Organization}."rootOrgId", ${TableName.Organization}.id)`)
-            )
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Organization}.id`)
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
         .select(
