@@ -17,7 +17,7 @@
     "sha.js": "2.4.12"
   },
   "dependencies": {
-    "@casl/ability": "^6.7.2",
+    "@casl/ability": "^6.7.5",
     "@casl/react": "^4.0.0",
     "@dagrejs/dagre": "^1.1.4",
     "@dnd-kit/core": "^6.3.1",
