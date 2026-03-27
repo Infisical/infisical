@@ -234,5 +234,4 @@ export type TScimServiceFactory = {
     orgId: string;
   }>;
   notifyExpiringTokens: () => Promise<number>;
-  syncGroupMappingsForOrg: (orgId: string) => Promise<void>;
 };

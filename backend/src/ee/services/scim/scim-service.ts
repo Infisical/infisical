@@ -75,7 +75,6 @@ type TScimServiceFactoryDep = {
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
-    | "find"
     | "findOne"
     | "findAllGroupPossibleUsers"
     | "delete"
@@ -84,7 +83,7 @@ type TScimServiceFactoryDep = {
     | "updateById"
     | "update"
   >;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "delete" | "transaction">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   membershipRoleDAL: TMembershipRoleDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -976,123 +975,81 @@ export const scimServiceFactory = ({
   };
 
   /**
-   * Reconciles group-level membership rows for a group based on configured
-   * ExternalGroupOrgRoleMappings. This is the correct mechanism for cross-org
-   * SCIM group provisioning: instead of creating individual per-user sub-org
-   * memberships, we maintain a single `{actorGroupId, scopeOrgId}` row per
-   * mapping target. `findEffectiveOrgMembership` resolves user access via
-   * UserGroupMembership, so adding/removing a user from the Infisical group is
-   * the only operation needed — no sub-org membership rows change.
-   *
-   * Also handles isolated sub-org groups: a sub-org's own group mapping updates
-   * only that group's same-org membership row role.
+   * When a SCIM group member list changes, apply org-role mappings for the
+   * affected users. For root-org mappings only newly-invited memberships get
+   * their role updated (preserving manually assigned roles). For sub-org
+   * mappings we create or update a membership in the target sub-org so that
+   * each sub-org can independently configure which SCIM groups grant access.
    */
-  const $syncGroupMappings = async (group: TGroups) => {
-    // Determine whether the group lives in a root org or a sub-org.
+  const $syncNewMembersRoles = async (group: TGroups, members: TScimGroup["members"]) => {
+    if (!members.length) return;
+
     const orgRow = await orgDAL.findById(group.orgId);
     const rootOrgId = orgRow?.rootOrgId ?? group.orgId;
-    const groupIsInRootOrg = !orgRow?.rootOrgId;
 
     const groupMappings = await externalGroupOrgRoleMappingDAL.findMappingsForGroupInOrgHierarchy(
       rootOrgId,
       group.name
     );
+    if (!groupMappings.length) return;
 
-    // --- Same-org mapping: update the group's own membership row role ---
-    // Every group has exactly one membership row in its own org (created with
-    // NoAccess by createScimGroup). If a same-org mapping exists, update that
-    // row's role so all group members inherit the correct org role.
-    const sameOrgMapping = groupMappings.find((m) => m.orgId === group.orgId);
-    const groupOwnMembership = await membershipGroupDAL.findOne({
-      actorGroupId: group.id,
-      scopeOrgId: group.orgId,
-      scope: AccessScope.Organization
+    // member.value is the root-org membership ID (set by buildScimGroup)
+    const rootOrgMemberships = await membershipUserDAL.find({
+      scope: AccessScope.Organization,
+      $in: { id: members.map((m) => m.value) }
     });
-    if (groupOwnMembership) {
-      await membershipRoleDAL.update(
-        { membershipId: groupOwnMembership.id },
-        {
-          role: sameOrgMapping?.role ?? OrgMembershipRole.NoAccess,
-          customRoleId: sameOrgMapping?.roleId ?? null
-        }
-      );
-    }
-
-    // --- Cross-org mappings: only allowed from root org → direct sub-orgs ---
-    // Sub-org groups are isolated — they never cascade to siblings or the root.
-    if (!groupIsInRootOrg) return;
-
-    const crossOrgMappings = groupMappings.filter((m) => m.orgId !== group.orgId);
-
-    // Reconcile: find existing cross-org group membership rows for this group
-    // and delete any whose mapping was removed.
-    const existingCrossOrgRows = (
-      await membershipGroupDAL.find({
-        actorGroupId: group.id,
-        scope: AccessScope.Organization
-      })
-    ).filter((r) => r.scopeOrgId !== group.orgId);
-
-    const mappedOrgIds = new Set(crossOrgMappings.map((m) => m.orgId));
-    const staleRows = existingCrossOrgRows.filter((r) => !mappedOrgIds.has(r.scopeOrgId));
-    if (staleRows.length) {
-      await membershipGroupDAL.delete({ $in: { id: staleRows.map((r) => r.id) } });
-    }
-
-    if (!crossOrgMappings.length) return;
-
-    const existingByOrgId = new Map(existingCrossOrgRows.map((r) => [r.scopeOrgId, r]));
-    const targetOrgRows = await orgDAL.find({ $in: { id: crossOrgMappings.map((m) => m.orgId) } });
-    const targetOrgById = new Map(targetOrgRows.map((o) => [o.id, o]));
+    if (!rootOrgMemberships.length) return;
 
     await Promise.all(
-      crossOrgMappings.map(async (mapping) => {
-        const targetOrg = targetOrgById.get(mapping.orgId);
-        // Only cascade to scimEnabled direct sub-orgs of the root org.
-        if (!targetOrg?.scimEnabled || targetOrg.rootOrgId !== group.orgId) return;
-
-        const existing = existingByOrgId.get(mapping.orgId);
-        if (existing) {
-          // Mapping role may have changed — keep the row's role in sync.
+      groupMappings.map(async (mapping) => {
+        if (mapping.orgId === group.orgId) {
+          // Same org: only update role for newly-invited memberships so that
+          // manually assigned roles on existing members are not overwritten.
+          const invitedMemberships = rootOrgMemberships.filter((m) => m.status === "invited");
+          if (!invitedMemberships.length) return;
           await membershipRoleDAL.update(
-            { membershipId: existing.id },
+            { $in: { membershipId: invitedMemberships.map((m) => m.id) } },
             { role: mapping.role, customRoleId: mapping.roleId ?? null }
           );
         } else {
-          // First time this mapping is seen for this group: create the group
-          // membership row in the target sub-org so all group members get access.
-          await membershipGroupDAL.transaction(async (tx) => {
-            const newMembership = await membershipGroupDAL.create(
-              {
-                scope: AccessScope.Organization,
-                actorGroupId: group.id,
+          // Sub-org mapping: create or update the user's membership in the
+          // target sub-org so they get the configured role there.
+          await Promise.all(
+            rootOrgMemberships.map(async (rootMembership) => {
+              if (!rootMembership.actorUserId) return;
+              const existing = await membershipUserDAL.findOne({
+                actorUserId: rootMembership.actorUserId,
                 scopeOrgId: mapping.orgId,
-                isActive: true
-              },
-              tx
-            );
-            await membershipRoleDAL.create(
-              {
-                membershipId: newMembership.id,
-                role: mapping.role,
-                customRoleId: mapping.roleId ?? null
-              },
-              tx
-            );
-          });
+                scope: AccessScope.Organization
+              });
+              if (existing) {
+                await membershipRoleDAL.update(
+                  { membershipId: existing.id },
+                  { role: mapping.role, customRoleId: mapping.roleId ?? null }
+                );
+              } else {
+                await orgDAL.transaction(async (tx) => {
+                  const newMembership = await orgDAL.createMembership(
+                    {
+                      actorUserId: rootMembership.actorUserId as string,
+                      scopeOrgId: mapping.orgId,
+                      scope: AccessScope.Organization,
+                      status: OrgMembershipStatus.Accepted,
+                      isActive: true
+                    },
+                    tx
+                  );
+                  await membershipRoleDAL.create(
+                    { membershipId: newMembership.id, role: mapping.role, customRoleId: mapping.roleId ?? null },
+                    tx
+                  );
+                });
+              }
+            })
+          );
         }
       })
     );
-  };
-
-  /**
-   * Public entrypoint for syncing all group membership rows for an org.
-   * Called after ExternalGroupOrgRoleMappings are updated so the new mapping
-   * configuration is immediately reflected in group access rows.
-   */
-  const syncGroupMappingsForOrg = async (orgId: string) => {
-    const groups = await groupDAL.find({ orgId });
-    await Promise.all(groups.map((group) => $syncGroupMappings(group)));
   };
 
   const createScimGroup: TScimServiceFactory["createScimGroup"] = async ({ displayName, orgId, members }) => {
@@ -1186,9 +1143,9 @@ export const scimServiceFactory = ({
       return { group, newMembers: [] };
     });
 
-    // Sync group membership rows after the transaction commits so group creation
-    // and mapping row upserts have independent lifetimes.
-    await $syncGroupMappings(newGroup.group);
+    // Apply org-role mappings for the initial group members after the transaction
+    // so group creation and membership provisioning have independent lifetimes.
+    await $syncNewMembersRoles(newGroup.group, members || []);
 
     const orgMemberships = await orgDAL.findMembership({
       [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
@@ -1404,7 +1361,7 @@ export const scimServiceFactory = ({
       return currentGroup;
     });
 
-    await $syncGroupMappings(updatedGroup);
+    await $syncNewMembersRoles(updatedGroup, members);
 
     return updatedGroup;
   };
@@ -1688,7 +1645,6 @@ export const scimServiceFactory = ({
     replaceScimGroup,
     updateScimGroup,
     fnValidateScimToken,
-    notifyExpiringTokens,
-    syncGroupMappingsForOrg
+    notifyExpiringTokens
   };
 };
