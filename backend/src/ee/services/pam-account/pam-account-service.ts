@@ -851,6 +851,7 @@ export const pamAccountServiceFactory = ({
       case PamResource.Postgres:
       case PamResource.MySQL:
       case PamResource.MsSQL:
+      case PamResource.MongoDB:
         {
           const connectionCredentials = (await decryptResourceConnectionDetails({
             encryptedConnectionDetails: resource.encryptedConnectionDetails,
@@ -1037,6 +1038,9 @@ export const pamAccountServiceFactory = ({
       }
     }
 
+    // Pass connection details as-is to the gateway/CLI.
+    // For MongoDB SRV hosts (port is undefined), the CLI receives port=0 (Go zero value)
+    // and handles SRV resolution natively via mongodb+srv://.
     return {
       credentials: {
         ...decryptedResource.connectionDetails,

@@ -7,6 +7,7 @@ import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/
 import { SanitizedActiveDirectoryAccountWithResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import { SanitizedMongoDBAccountWithResourceSchema } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
 import { SanitizedMsSQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
@@ -31,6 +32,7 @@ const SanitizedAccountSchema = z
     SanitizedPostgresAccountWithResourceSchema,
     SanitizedMySQLAccountWithResourceSchema,
     SanitizedMsSQLAccountWithResourceSchema,
+    SanitizedMongoDBAccountWithResourceSchema,
     SanitizedRedisAccountWithResourceSchema,
     SanitizedAwsIamAccountWithResourceSchema,
     SanitizedWindowsAccountWithResourceSchema,
@@ -392,6 +394,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MsSQL) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MongoDB) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),

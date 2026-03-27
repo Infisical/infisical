@@ -1,6 +1,9 @@
+import dns from "dns";
 import knex from "knex";
+import { MongoClient } from "mongodb";
 import mysql, { Connection } from "mysql2/promise";
 import tls, { PeerCertificate } from "tls";
+import { promisify } from "util";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -17,6 +20,8 @@ import {
   TPamResourceInternalMetadata
 } from "../../pam-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "./sql-resource-types";
+
+const resolveSrv = promisify(dns.resolveSrv);
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -239,11 +244,79 @@ const makeSqlConnection = (
         close: () => client.destroy()
       };
     }
+    case PamResource.MongoDB: {
+      const isTestConnection = actualUsername === TEST_CONNECTION_USERNAME;
+      const authPart = isTestConnection
+        ? ""
+        : `${encodeURIComponent(actualUsername)}:${encodeURIComponent(actualPassword)}@`;
+
+      const encodedDatabase = encodeURIComponent(connectionDetails.database);
+      const uri = `mongodb://${authPart}localhost:${proxyPort}/${encodedDatabase}?authSource=admin&directConnection=true&serverSelectionTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}&connectTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}`;
+
+      const mongoClient = new MongoClient(uri, {
+        ...(sslEnabled && {
+          tls: true,
+          tlsAllowInvalidCertificates: !sslRejectUnauthorized,
+          // Override servername for SNI since we connect to localhost via proxy
+          // but need the real hostname for TLS negotiation
+          servername: host,
+          checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
+            return tls.checkServerIdentity(host, cert);
+          }
+        }),
+        ...(sslEnabled && sslCertificate && { ca: sslCertificate })
+      });
+
+      return {
+        validate: async (connectOnly) => {
+          try {
+            await mongoClient.connect();
+            await mongoClient.db(connectionDetails.database).command({ ping: 1 });
+          } catch (error) {
+            if (
+              connectOnly &&
+              error instanceof Error &&
+              (error.message.includes("Authentication failed") ||
+                error.message.includes("auth") ||
+                error.message.includes("SCRAM") ||
+                error.message.includes("unauthorized"))
+            ) {
+              return;
+            }
+            throw new BadRequestError({
+              message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+            });
+          }
+        },
+        rotateCredentials: async () => {
+          throw new BadRequestError({
+            message: "Credential rotation is not yet supported for MongoDB resources"
+          });
+        },
+        close: async () => {
+          await mongoClient.close();
+        }
+      };
+    }
     default:
       throw new BadRequestError({
         message: `Unhandled SQL Resource Connection Config: ${resourceType as PamResource}`
       });
   }
+};
+
+/**
+ * For MongoDB SRV connections, resolve the SRV record to discover the actual host and port.
+ * This is only called when port is absent (undefined), which explicitly indicates an SRV host.
+ */
+const resolveMongoSrvHost = async (host: string): Promise<{ host: string; port: number }> => {
+  const records = await resolveSrv(`_mongodb._tcp.${host}`);
+  if (records.length > 0) {
+    return { host: records[0].name, port: records[0].port };
+  }
+  throw new BadRequestError({
+    message: `Unable to resolve SRV record for MongoDB host "${host}". Ensure the host is a valid SRV domain, or provide a port for direct connections.`
+  });
 };
 
 export const executeWithGateway = async <T>(
@@ -258,24 +331,41 @@ export const executeWithGateway = async <T>(
   operation: (connection: SqlResourceConnection) => Promise<T>
 ): Promise<T> => {
   const { connectionDetails, gatewayId } = config;
+
+  // For MongoDB without a port, the host is an SRV domain — resolve it to get actual host:port.
+  // If a port is present, use the host directly (no SRV resolution needed).
+  let resolvedHost = connectionDetails.host;
+  let resolvedPort: number = connectionDetails.port ?? 0;
+  if (config.resourceType === PamResource.MongoDB && !connectionDetails.port) {
+    const resolved = await resolveMongoSrvHost(connectionDetails.host);
+    resolvedHost = resolved.host;
+    resolvedPort = resolved.port;
+  }
+
   const [targetHost] = await verifyHostInputValidity({
-    host: connectionDetails.host,
+    host: resolvedHost,
     isGateway: true,
     isDynamicSecret: false
   });
   const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
     targetHost,
-    targetPort: connectionDetails.port
+    targetPort: resolvedPort
   });
 
   if (!platformConnectionDetails) {
     throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
   }
 
+  // For MongoDB SRV, override the host in connection details so TLS servername matches the resolved host
+  const effectiveConfig =
+    config.resourceType === PamResource.MongoDB && resolvedHost !== connectionDetails.host
+      ? { ...config, connectionDetails: { ...connectionDetails, host: resolvedHost, port: resolvedPort } }
+      : config;
+
   return withGatewayV2Proxy(
     async (proxyPort) => {
-      const connection = makeSqlConnection(proxyPort, config);
+      const connection = makeSqlConnection(proxyPort, effectiveConfig);
       try {
         return await operation(connection);
       } finally {
@@ -346,7 +436,9 @@ export const sqlResourceFactory: TPamResourceFactory<
       if (error instanceof BadRequestError) {
         if (
           error.message === `password authentication failed for user "${credentials.username}"` ||
-          error.message === `role "${credentials.username}" does not exist`
+          error.message === `role "${credentials.username}" does not exist` ||
+          error.message.includes("Authentication failed") ||
+          error.message.includes("SCRAM")
         ) {
           throw new BadRequestError({
             message: "Account credentials invalid: Username or password incorrect"

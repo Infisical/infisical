@@ -425,7 +425,7 @@ export const gatewayV2ServiceFactory = ({
     resourceType: PamResource;
     duration?: number;
     host: string;
-    port: number;
+    port?: number;
     actorMetadata: { id: string; type: ActorType; name: string };
   }) => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
@@ -494,7 +494,7 @@ export const gatewayV2ServiceFactory = ({
 
     const routingInfo = {
       targetHost: host,
-      targetPort: port
+      targetPort: port ?? 0
     };
 
     const routingExtension = new x509.Extension(
