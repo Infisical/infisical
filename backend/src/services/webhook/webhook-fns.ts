@@ -106,17 +106,8 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
   }
 
   if (event.type === WebhookEvents.SecretRotationFailed) {
-    const {
-      projectName,
-      projectId,
-      environment,
-      secretPath,
-      type,
-      rotationName,
-      errorMessage,
-      nextRetryTime,
-      triggeredManually
-    } = event.payload;
+    const { projectName, projectId, environment, secretPath, type, rotationName, errorMessage, triggeredManually } =
+      event.payload;
 
     switch (type) {
       case WebhookType.SLACK:
@@ -155,16 +146,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                   title: "Triggered Manually",
                   value: triggeredManually ? "Yes" : "No",
                   short: false
-                },
-                ...(nextRetryTime
-                  ? [
-                      {
-                        title: "Next Retry",
-                        value: nextRetryTime,
-                        short: false
-                      }
-                    ]
-                  : [])
+                }
               ]
             }
           ]
@@ -181,7 +163,6 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             secretPath,
             rotationName,
             errorMessage,
-            nextRetryTime,
             triggeredManually
           }
         };

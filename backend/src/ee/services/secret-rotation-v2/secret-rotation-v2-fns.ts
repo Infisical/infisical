@@ -273,7 +273,7 @@ export const parseRotationErrorMessage = (err: unknown): string => {
 };
 
 export const getWebhookSanitizedErrorMessage = (err: unknown): string => {
-  let errorCategory = "an unknown error";
+  let errorCategory = null;
 
   if (err instanceof AxiosError) {
     const status = err?.response?.status;
@@ -299,7 +299,9 @@ export const getWebhookSanitizedErrorMessage = (err: unknown): string => {
     }
   }
 
-  return `Credential rotation failed due to ${errorCategory}. Check the rotation status in the dashboard for details.`;
+  return errorCategory
+    ? `Credential rotation failed due to ${errorCategory}. Check the rotation status in the dashboard for more details.`
+    : `Credential rotation failed. Check the rotation status in the dashboard for more details.`;
 };
 
 function haveUnequalProperties<T>(obj1: T, obj2: T, properties: (keyof T)[]): boolean {
@@ -400,8 +402,7 @@ export const rotateSecretsFns = async ({
       jobId: job.id,
       shouldSendNotification: true,
       isFinalAttempt: retryCount === retryLimit,
-      isManualRotation,
-      retryCount
+      isManualRotation
     });
 
     logger.info(`secretRotationV2Queue: Secrets Rotated ${logDetails}`);

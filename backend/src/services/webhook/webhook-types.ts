@@ -72,7 +72,6 @@ type TWebhookSecretRotationFailedEventPayload = {
     projectId: string;
     environment: string;
     secretPath?: string;
-    nextRetryTime?: string;
     triggeredManually?: boolean;
     errorMessage?: string;
     type?: string | null;

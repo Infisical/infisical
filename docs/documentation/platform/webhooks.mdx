@@ -27,45 +27,44 @@ If the signature in the header matches the signature that you generated, then yo
 
 ```json
 {
-  "event": "secrets.modified",
-  "project": {
-    "workspaceId": "the workspace id",
-    "environment": "project environment",
-    "secretPath": "project folder path"
-  },
-  "timestamp": ""
+	"event": "secrets.modified",
+	"project": {
+		"workspaceId": "the workspace id",
+		"environment": "project environment",
+		"secretPath": "project folder path"
+	},
+	"timestamp": ""
 }
 ```
 
 ```json
 {
-  "event": "secrets.reminder-expired",
-  "project": {
-    "workspaceId": "the workspace id",
-    "environment": "project environment",
-    "secretPath": "project folder path",
-    "secretName": "name of the secret",
-    "secretId": "id of the secret",
-    "reminderNote": "reminder note of the secret"
-  },
-  "timestamp": ""
+	"event": "secrets.reminder-expired",
+	"project": {
+		"workspaceId": "the workspace id",
+		"environment": "project environment",
+		"secretPath": "project folder path",
+		"secretName": "name of the secret",
+		"secretId": "id of the secret",
+		"reminderNote": "reminder note of the secret"
+	},
+	"timestamp": ""
 }
 ```
 
 ```json
 {
-  "event": "secrets.rotation-failed",
-  "project": {
-    "workspaceId": "the workspace id",
-    "projectId": "the project id",
-    "projectName": "the project name",
-    "environment": "project environment",
-    "secretPath": "project folder path",
-    "rotationName": "name of the failed rotation",
-    "errorMessage": "error details",
-    "nextRetryTime": "next retry timestamp (if applicable)",
-    "triggeredManually": false
-  },
-  "timestamp": ""
+	"event": "secrets.rotation-failed",
+	"project": {
+		"workspaceId": "the workspace id",
+		"projectId": "the project id",
+		"projectName": "the project name",
+		"environment": "project environment",
+		"secretPath": "project folder path",
+		"rotationName": "name of the failed rotation",
+		"errorMessage": "error details",
+		"triggeredManually": false
+	},
+	"timestamp": ""
 }
 ```

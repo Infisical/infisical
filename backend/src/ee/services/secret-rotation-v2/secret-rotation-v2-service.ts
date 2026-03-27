@@ -926,6 +926,44 @@ export const secretRotationV2ServiceFactory = ({
     return expandSecretRotation(secretRotation, kmsService);
   };
 
+  const triggerFailedWebhook = async (
+    projectId: string,
+    environment: { slug: string; name: string; id: string },
+    error: unknown,
+    folder: { id: string; path: string },
+    secretRotation: TSecretRotationV2Raw,
+    isManualRotation: boolean
+  ) => {
+    const webhookErrorMessage = getWebhookSanitizedErrorMessage(error);
+
+    await queueService.queue(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      {
+        type: WebhookEvents.SecretRotationFailed,
+        payload: {
+          projectId,
+          environment: environment.slug,
+          secretPath: folder.path,
+          rotationName: secretRotation.name,
+          triggeredManually: isManualRotation,
+          errorMessage: webhookErrorMessage
+        }
+      },
+      {
+        jobId: `secret-rotation-webhook-${secretRotation.id}-${Date.now()}`,
+        removeOnFail: { count: 5 },
+        removeOnComplete: true,
+        delay: 1000,
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        }
+      }
+    );
+  };
+
   const rotateGeneratedCredentials = async (
     secretRotation: TSecretRotationV2Raw,
     {
@@ -933,8 +971,7 @@ export const secretRotationV2ServiceFactory = ({
       jobId,
       shouldSendNotification,
       isFinalAttempt = true,
-      isManualRotation = false,
-      retryCount
+      isManualRotation = false
     }: TSecretRotationRotateGeneratedCredentials = {}
   ) => {
     const {
@@ -1100,42 +1137,10 @@ export const secretRotationV2ServiceFactory = ({
       return updatedRotation;
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
-      const webhookErrorMessage = getWebhookSanitizedErrorMessage(error);
 
-      let nextRetryTime: string | undefined;
-      if (!isManualRotation) {
-        nextRetryTime = isFinalAttempt
-          ? "Maximum retry attempts reached"
-          : new Date(Date.now() + 1000 * 2 ** ((retryCount ?? 1) - 1)).toISOString();
+      if (isManualRotation) {
+        await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);
       }
-
-      await queueService.queue(
-        QueueName.SecretWebhook,
-        QueueJobs.SecWebhook,
-        {
-          type: WebhookEvents.SecretRotationFailed,
-          payload: {
-            projectId,
-            environment: environment.slug,
-            secretPath: folder.path,
-            rotationName: secretRotation.name,
-            triggeredManually: isManualRotation,
-            errorMessage: webhookErrorMessage,
-            nextRetryTime
-          }
-        },
-        {
-          jobId: `secret-rotation-webhook-${secretRotation.id}-${Date.now()}`,
-          removeOnFail: { count: 5 },
-          removeOnComplete: true,
-          delay: 1000,
-          attempts: 5,
-          backoff: {
-            type: "exponential",
-            delay: 3000
-          }
-        }
-      );
 
       if (isFinalAttempt) {
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -1157,6 +1162,7 @@ export const secretRotationV2ServiceFactory = ({
 
         if (shouldSendNotification) {
           await $queueSendSecretRotationStatusNotification(updatedRotation);
+          await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);
         }
       }
 
