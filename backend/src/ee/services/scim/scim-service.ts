@@ -1042,7 +1042,7 @@ export const scimServiceFactory = ({
                         actorUserId: rootMembership.actorUserId as string,
                         scopeOrgId: mapping.orgId,
                         scope: AccessScope.Organization,
-                        status: OrgMembershipStatus.Accepted,
+                        status: OrgMembershipStatus.Invited,
                         isActive: true
                       },
                       tx
