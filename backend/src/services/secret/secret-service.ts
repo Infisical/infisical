@@ -3091,6 +3091,7 @@ export const secretServiceFactory = ({
 
     const sourceSecrets = await secretDAL.findManySecretsWithTags({
       type: SecretType.Shared,
+      folderId: sourceFolder.id,
       secretIds
     });
 
