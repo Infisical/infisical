@@ -190,8 +190,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // Resolve org name: prefer explicit value, fall back to request context
       const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
 
-      // capture posthog only when its cloud or signup event happens in self-hosted
-      if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
+      // capture posthog only for cloud and dedicated cloud (INFISICAL_CLOUD) instances
+      if (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD) {
         if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
           const eventKey = createTelemetryEventKey(event.event, event.distinctId);
           await keyStore.setItemWithExpiry(
@@ -442,7 +442,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   ) => {
     if (postHog && distinctId) {
       const instanceType = licenseService.getInstanceType();
-      if (instanceType === InstanceType.Cloud) {
+      if (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD) {
         if (!skipDedup) {
           try {
             const cacheKey = `${TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX}:${distinctId}`;
@@ -482,7 +482,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   ) => {
     if (postHog && identityId) {
       const instanceType = licenseService.getInstanceType();
-      if (instanceType === InstanceType.Cloud) {
+      if (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD) {
         const dedupKey = `${identityId}-${properties.authMethod ?? ""}`;
         try {
           const cacheKey = KeyStorePrefixes.TelemetryIdentifyIdentity(dedupKey);
