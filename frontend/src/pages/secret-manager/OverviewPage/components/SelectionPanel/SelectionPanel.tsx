@@ -88,7 +88,17 @@ const BulkDeleteDialog = ({
 
   const hasAffectedResources =
     (usedBySecretSyncsFiltered && usedBySecretSyncsFiltered.length > 0) ||
-    (importedBy && importedBy.some((element) => element.folders.length > 0));
+    (importedBy &&
+      importedBy.some((element) =>
+        element.folders.some(
+          (folder) =>
+            folder.isImported ||
+            (folder.secrets?.some((secret) =>
+              secretsToDeleteKeys.includes(secret.referencedSecretKey)
+            ) ??
+              false)
+        )
+      ));
 
   const selectedResources = useMemo(() => {
     const items: { type: "folder" | "secret"; name: string; envSlugs: Set<string> }[] = [];
