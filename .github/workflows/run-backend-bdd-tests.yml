@@ -45,6 +45,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install sscep (SCEP client for BDD tests)
+        run: sudo apt-get update && sudo apt-get install -y sscep
       - name: Install dependencies
         run: npm install
         working-directory: backend
@@ -64,8 +66,9 @@ jobs:
           # We are not using FIPS mode, need a different encryption key for BDD tests
           NEW_ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
           sed -i "s#ENCRYPTION_KEY=.*#ENCRYPTION_KEY=$NEW_ENCRYPTION_KEY#" .env
-          # Enable ACME feature in license for BDD tests
+          # Enable ACME and SCEP features in license for BDD tests
           sed -i 's/pkiAcme: .*/pkiAcme: true,/g' backend/src/ee/services/license/license-fns.ts
+          sed -i 's/pkiScep: .*/pkiScep: true,/g' backend/src/ee/services/license/license-fns.ts
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
