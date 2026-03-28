@@ -31,6 +31,87 @@ Redis serves as both a **caching layer** and a **persistent job queue** in Infis
   Redis **active-active geo-replication** is not supported. If you need multi-region deployments, refer to Infisical's [replication architecture](/self-hosting/guides/replication) which uses independent Redis instances per region instead.
 </Warning>
 
+## Configuration
+
+Configure Redis connectivity by setting the following environment variables on your Infisical instance.
+
+<Tabs>
+  <Tab title="Redis Standalone">
+    <ParamField query="REDIS_URL" type="string" default="none" required>
+      Redis connection string. For SSL/TLS connections, use the `rediss://` protocol (note the double 's').
+
+      Examples:
+      - Without SSL: `redis://localhost:6379`
+      - With SSL: `rediss://localhost:6379`
+      - With authentication: `redis://:password@localhost:6379`
+      - With SSL and authentication: `rediss://:password@localhost:6379`
+    </ParamField>
+  </Tab>
+  <Tab title="Redis Sentinel">
+    <ParamField query="REDIS_SENTINEL_HOSTS" type="string" default="none" required>
+      Comma-separated list of Sentinel host:port pairs. ```
+      192.168.65.254:26379,192.168.65.254:26380 ```
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_MASTER_NAME" type="string" default="mymaster">
+      The name of the Redis master set monitored by Sentinel
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_ENABLE_TLS" type="bool" default="false">
+      Whether to use TLS/SSL for Redis Sentinel connection
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_USERNAME" type="string" default="none">
+      Authentication username for Redis Sentinel
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_PASSWORD" type="string" default="none">
+      Authentication password for Redis Sentinel
+    </ParamField>
+    <ParamField query="REDIS_USERNAME" type="string" default="none">
+      Authentication username for Redis Node
+    </ParamField>
+    <ParamField query="REDIS_PASSWORD" type="string" default="none">
+      Authentication password for Redis Node
+    </ParamField>
+  </Tab>
+  <Tab title="Redis Cluster">
+    <ParamField query="REDIS_CLUSTER_HOSTS" type="string" default="none" required>
+      Comma-separated list of Redis Cluster host:port pairs. ```
+      192.168.65.254:26379,192.168.65.254:26380 ```
+    </ParamField>
+    <ParamField query="REDIS_CLUSTER_ENABLE_TLS" type="boolean" default="false">
+      Enable Redis TLS encryption on connection.
+    </ParamField>
+    <ParamField query="REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE" type="boolean" default="false">
+      Enable this if you are using AWS encrypt on transit for Elasticache cluster. For more information refer ![here](https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls).
+    </ParamField>
+    <ParamField query="REDIS_USERNAME" type="string" default="none">
+      Authentication username for Redis Node
+    </ParamField>
+    <ParamField query="REDIS_PASSWORD" type="string" default="none">
+      Authentication password for Redis Node
+    </ParamField>
+  </Tab>
+  <Tab title="Redis Read Replica">
+    <ParamField query="REDIS_READ_REPLICAS" type="string" default="none" optional>
+      Comma-separated list of Redis read replicas host:port pairs. ```
+      192.168.65.254:26379,192.168.65.254:26380 ```
+    </ParamField>
+
+    The parameters like username, password, TLS, and Redis type of the primary instance will be inherited.
+  </Tab>
+</Tabs>
+
+### SSL/TLS
+
+To connect to Redis with SSL/TLS, use the `rediss://` protocol (note the double 's') in your connection string.
+
+If your Redis server uses a certificate signed by a private CA or a self-signed certificate, set the `NODE_EXTRA_CA_CERTS` environment variable to the path of your CA certificate file:
+
+```bash
+REDIS_URL=rediss://your-redis-host:6379
+NODE_EXTRA_CA_CERTS=/path/to/ca.crt
+```
+
+For Redis Sentinel or Cluster mode, use the `REDIS_SENTINEL_ENABLE_TLS` or `REDIS_CLUSTER_ENABLE_TLS` environment variables respectively.
+
 ## Impact of data loss
 
 Redis data loss is **disruptive but recoverable**. Unlike PostgreSQL, Redis does not hold the source of truth — secrets and configurations remain safe in PostgreSQL. However, the impact depends on what was in Redis at the time:
@@ -40,7 +121,7 @@ Redis data loss is **disruptive but recoverable**. Unlike PostgreSQL, Redis does
 
 ## Why persistence is required
 
-Infisical uses Redis (backed by Redis) to manage background job queues. These queues handle operations that must eventually complete:
+Infisical uses Redis to manage background job queues. These queues handle operations that must eventually complete:
 
 - Syncing secrets to external providers (AWS Secrets Manager, GCP Secret Manager, etc.)
 - Rotating credentials on a schedule
