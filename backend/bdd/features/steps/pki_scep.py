@@ -17,13 +17,12 @@ logger = logging.getLogger(__name__)
 faker = Faker()
 
 RSA_KEY_SIZE = 2048
-_enroll_counter = 0
 
 
-def _next_enroll_name() -> str:
-    global _enroll_counter
-    _enroll_counter += 1
-    return f"enroll-{_enroll_counter}"
+def _next_enroll_name(context: Context) -> str:
+    counter = getattr(context, "_enroll_counter", 0) + 1
+    context._enroll_counter = counter
+    return f"enroll-{counter}"
 
 
 class ScepProfile:
@@ -55,10 +54,6 @@ class SscepHelper:
             )
         return result
 
-    def getcaps(self) -> str:
-        result = self._run(["sscep", "getcaps", "-u", self.scep_url])
-        return result.stdout
-
     def getca(self) -> list[x509.Certificate]:
         self._run([
             "sscep", "getca",
@@ -66,7 +61,8 @@ class SscepHelper:
             "-c", self.ca_cert_prefix,
         ])
         certs = []
-        for i in range(10):
+        i = 0
+        while True:
             cert_path = f"{self.ca_cert_prefix}-{i}"
             if not os.path.exists(cert_path):
                 break
@@ -77,6 +73,7 @@ class SscepHelper:
             except Exception:
                 cert = x509.load_der_x509_certificate(cert_data)
             certs.append(cert)
+            i += 1
         return certs
 
     def generate_key(self, name: str = "device") -> str:
@@ -238,6 +235,11 @@ def _get_sscep_helper(context: Context, profile_var: str) -> SscepHelper:
     return context.vars[helper_key]
 
 
+def _ensure_ca_certs(context: Context, helper: SscepHelper):
+    if "scep_ca_certs" not in context.vars:
+        context.vars["scep_ca_certs"] = helper.getca()
+
+
 @given('I have a SCEP cert profile with challenge password "{password}" as "{profile_var}"')
 def step_impl(context: Context, password: str, profile_var: str):
     context.vars[profile_var] = _create_scep_profile(context, challenge_password=password)
@@ -289,11 +291,9 @@ def step_impl(context: Context, profile_var: str):
 @when('I enroll via SCEP for CN "{cn}" with challenge "{password}" on profile "{profile_var}"')
 def step_impl(context: Context, cn: str, password: str, profile_var: str):
     helper = _get_sscep_helper(context, profile_var)
+    _ensure_ca_certs(context, helper)
 
-    if not os.path.exists(f"{helper.ca_cert_prefix}-0"):
-        context.vars["scep_ca_certs"] = helper.getca()
-
-    name = _next_enroll_name()
+    name = _next_enroll_name(context)
     key_path = helper.generate_key(name)
     csr_path = helper.generate_csr(key_path, cn, challenge_password=password, name=name)
     result, cert_path = helper.enroll(key_path, csr_path, name=name, check=False)
@@ -309,11 +309,9 @@ def step_impl(context: Context, cn: str, password: str, profile_var: str):
 @when('I enroll via SCEP for CN "{cn}" without challenge password on profile "{profile_var}"')
 def step_impl(context: Context, cn: str, profile_var: str):
     helper = _get_sscep_helper(context, profile_var)
+    _ensure_ca_certs(context, helper)
 
-    if not os.path.exists(f"{helper.ca_cert_prefix}-0"):
-        context.vars["scep_ca_certs"] = helper.getca()
-
-    name = _next_enroll_name()
+    name = _next_enroll_name(context)
     key_path = helper.generate_key(name)
     csr_path = helper.generate_csr(key_path, cn, challenge_password=None, name=name)
     result, cert_path = helper.enroll(key_path, csr_path, name=name, check=False)
@@ -356,9 +354,7 @@ def step_impl(context: Context, cn: str, profile_var: str):
 @given('I perform a successful SCEP enrollment for CN "{cn}" with challenge "{password}" on profile "{profile_var}"')
 def step_impl(context: Context, cn: str, password: str, profile_var: str):
     helper = _get_sscep_helper(context, profile_var)
-
-    if not os.path.exists(f"{helper.ca_cert_prefix}-0"):
-        context.vars["scep_ca_certs"] = helper.getca()
+    _ensure_ca_certs(context, helper)
 
     key_path = helper.generate_key("initial")
     csr_path = helper.generate_csr(key_path, cn, challenge_password=password, name="initial")

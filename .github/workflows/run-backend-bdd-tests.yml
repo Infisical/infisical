@@ -46,7 +46,12 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install sscep (SCEP client for BDD tests)
-        run: sudo apt-get update && sudo apt-get install -y sscep
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake libssl-dev build-essential
+          git clone https://github.com/certnanny/sscep.git /tmp/sscep-build
+          cmake -S /tmp/sscep-build -B /tmp/sscep-build/build
+          make -C /tmp/sscep-build/build -j$(nproc)
+          sudo cp /tmp/sscep-build/build/sscep /usr/local/bin/sscep
       - name: Install dependencies
         run: npm install
         working-directory: backend
