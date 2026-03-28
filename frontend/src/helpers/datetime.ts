@@ -5,6 +5,17 @@ export enum Timezone {
   UTC = "UTC"
 }
 
+export enum ClockFormat {
+  TwelveHour = "12",
+  TwentyFourHour = "24"
+}
+
+export const getAuditLogTableDateFormat = (clock: ClockFormat) =>
+  clock === ClockFormat.TwentyFourHour ? "MMM do yyyy, HH:mm" : "MMM do yyyy, hh:mm a";
+
+export const getAuditLogRangeDateFormat = (clock: ClockFormat) =>
+  clock === ClockFormat.TwentyFourHour ? "yyyy/MM/dd HH:mm" : "yyyy/MM/dd hh:mm a";
+
 export const formatDateTime = ({
   timezone,
   timestamp,

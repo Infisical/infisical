@@ -17,7 +17,12 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { formatDateTime, Timezone } from "@app/helpers/datetime";
+import {
+  ClockFormat,
+  formatDateTime,
+  getAuditLogRangeDateFormat,
+  Timezone
+} from "@app/helpers/datetime";
 
 import {
   auditLogDateFilterFormSchema,
@@ -30,6 +35,8 @@ type Props = {
   filter: TAuditLogDateFilterFormData;
   setTimezone: (timezone: Timezone) => void;
   timezone: Timezone;
+  clockFormat: ClockFormat;
+  setClockFormat: (clockFormat: ClockFormat) => void;
 };
 const RELATIVE_VALUES = ["5m", "30m", "1h", "3h", "12h"];
 
@@ -40,7 +47,15 @@ const RELATIVE_OPTIONS = [
   { label: "Weeks", unit: "w", values: [1, 2, 3, 4] }
 ];
 
-export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Props) => {
+export const LogsDateFilter = ({
+  setFilter,
+  filter,
+  timezone,
+  setTimezone,
+  clockFormat,
+  setClockFormat
+}: Props) => {
+  const rangeDateFormat = getAuditLogRangeDateFormat(clockFormat);
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
   const [isPopupOpen, setIsPopOpen] = useState(false);
@@ -98,22 +113,22 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
               ))}
             </>
           ) : (
-            <div className="flex w-[19.1rem] items-center justify-between rounded-l-md border border-transparent bg-mineshaft-600 px-5 py-2 text-sm text-bunker-200">
-              <div>
+            <div className="flex min-w-[19.1rem] max-w-[26rem] flex-1 items-center justify-between gap-2 rounded-l-md border border-transparent bg-mineshaft-600 px-4 py-2 text-sm text-bunker-200">
+              <div className="truncate">
                 {formatDateTime({
                   timezone,
                   timestamp: filter.startDate,
-                  dateFormat: "yyyy/MM/dd HH:mm"
+                  dateFormat: rangeDateFormat
                 })}
               </div>
-              <div>
+              <div className="shrink-0">
                 <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faChevronRight} />
               </div>
-              <div>
+              <div className="truncate">
                 {formatDateTime({
                   timezone,
                   timestamp: filter.endDate,
-                  dateFormat: "yyyy/MM/dd HH:mm"
+                  dateFormat: rangeDateFormat
                 })}
               </div>
             </div>
@@ -336,6 +351,19 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
             {tz} Timezone
           </SelectItem>
         ))}
+      </Select>
+      <Select
+        value={clockFormat}
+        onValueChange={(val) => setClockFormat(val as ClockFormat)}
+        className="w-[10.6rem] border border-mineshaft-500! bg-mineshaft-600!"
+        dropdownContainerClassName="max-w-none"
+        position="popper"
+        dropdownContainerStyle={{
+          width: "100%"
+        }}
+      >
+        <SelectItem value={ClockFormat.TwelveHour}>12-hour</SelectItem>
+        <SelectItem value={ClockFormat.TwentyFourHour}>24-hour</SelectItem>
       </Select>
     </>
   );

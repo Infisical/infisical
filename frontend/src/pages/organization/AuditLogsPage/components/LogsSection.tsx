@@ -10,7 +10,6 @@ import {
   ProjectPermissionSub,
   useSubscription
 } from "@app/context";
-import { Timezone } from "@app/helpers/datetime";
 import { withPermission, withProjectPermission } from "@app/hoc";
 import { Project } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -24,6 +23,7 @@ import {
 import { LogsDateFilter } from "./LogsDateFilter";
 import { LogsFilter } from "./LogsFilter";
 import { LogsTable } from "./LogsTable";
+import { useAuditLogsDateTimePreferences } from "./useAuditLogsDateTimePreferences";
 import {
   AuditLogDateFilterType,
   Presets,
@@ -53,7 +53,7 @@ const LogsSectionComponent = ({
     actor: presets?.actorId,
     eventMetadata: presets?.eventMetadata
   });
-  const [timezone, setTimezone] = useState<Timezone>(Timezone.Local);
+  const { timezone, clockFormat, setTimezone, setClockFormat } = useAuditLogsDateTimePreferences();
 
   const [searchFilters, setSearchFilters] = useState<AppliedFilter[]>(() =>
     logFilterToAppliedFilters({
@@ -102,6 +102,8 @@ const LogsSectionComponent = ({
                 setFilter={setDateFilter}
                 timezone={timezone}
                 setTimezone={setTimezone}
+                clockFormat={clockFormat}
+                setClockFormat={setClockFormat}
               />
             )}
           </div>
@@ -140,6 +142,7 @@ const LogsSectionComponent = ({
               limit: 15
             }}
             timezone={timezone}
+            clockFormat={clockFormat}
           />
           <UpgradePlanModal
             isOpen={popUp.upgradePlan.isOpen}
@@ -161,6 +164,8 @@ const LogsSectionComponent = ({
             setFilter={setDateFilter}
             timezone={timezone}
             setTimezone={setTimezone}
+            clockFormat={clockFormat}
+            setClockFormat={setClockFormat}
           />
         )}
         {showFilters && (
@@ -184,6 +189,7 @@ const LogsSectionComponent = ({
           actor: logFilter?.actor
         }}
         timezone={timezone}
+        clockFormat={clockFormat}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
