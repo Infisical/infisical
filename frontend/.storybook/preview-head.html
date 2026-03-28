@@ -1,0 +1,10 @@
+<style>
+  /*
+   * Add styling here instead of a custom decorator because it is a document-level override for Storybook's iframe and
+   * not story behavior. The app's global base styles set `html` to `overflow: hidden`, but Storybook needs
+   * `overflow: visible` for floating UI to escape the preview viewport
+   */
+  html {
+    overflow: visible;
+  }
+</style>

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { Checkbox } from "./Checkbox";
+import { Checkbox, checkboxVariantOptions } from "./Checkbox";
 
 /**
  * Checkboxes allow users to select one or more items from a set.
@@ -17,17 +17,7 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: [
-        "outline",
-        "neutral",
-        "success",
-        "info",
-        "warning",
-        "danger",
-        "project",
-        "org",
-        "sub-org"
-      ]
+      options: checkboxVariantOptions
     },
     isChecked: {
       control: "boolean"
