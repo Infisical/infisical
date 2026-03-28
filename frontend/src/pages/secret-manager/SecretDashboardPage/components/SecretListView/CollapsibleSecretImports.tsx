@@ -1,10 +1,18 @@
 /* eslint-disable no-nested-ternary */
 import React, { useMemo } from "react";
-import { faFileImport, faKey, faSync, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AlertTriangleIcon, ImportIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
 
-import { Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
-import { useProject } from "@app/context";
+import {
+  UnstableAlert,
+  UnstableAlertTitle,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
+import { useOrganization, useProject } from "@app/context";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 
 enum ItemType {
@@ -22,6 +30,7 @@ interface FlatItem {
   environment: { name: string; slug: string };
   tooltipText?: string;
   destination?: string;
+  syncName?: string;
 }
 
 interface CollapsibleSecretImportsProps {
@@ -38,13 +47,44 @@ interface CollapsibleSecretImportsProps {
   onlyReferences?: boolean;
 }
 
+const getResourceLabel = (item: FlatItem) => {
+  switch (item.type) {
+    case ItemType.Secret:
+      return (
+        <span className="inline-flex items-center gap-2">
+          <KeyIcon className="size-4 shrink-0 text-secret" />
+          Secret Reference
+        </span>
+      );
+    case ItemType.Folder:
+      return (
+        <span className="inline-flex items-center gap-2">
+          <ImportIcon className="size-4 shrink-0 text-import" />
+          Secret Import
+        </span>
+      );
+    case ItemType.SecretSync:
+      return (
+        <span className="inline-flex items-center gap-2">
+          <RefreshCwIcon className="size-4 shrink-0 text-secret-rotation" />
+          Secret Sync{item.syncName && `: ${item.syncName}`}
+        </span>
+      );
+    default:
+      return null;
+  }
+};
+
 export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> = ({
   importedBy = [],
   usedBySecretSyncs = [],
   secretsToDelete,
   onlyReferences
 }) => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+
+  const projectBase = `/organizations/${currentOrg.id}/projects/secret-management/${currentProject.id}`;
 
   const truncatePath = (path: string, maxLength = 24): string => {
     if (path.length <= maxLength) return path;
@@ -62,25 +102,33 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
   const handlePathClick = (item: FlatItem) => {
     if (item.type === ItemType.SecretSync) {
       window.open(
-        `/secret-manager/${currentProject.id}/integrations/secret-syncs/${item.destination}/${item.id}`,
+        `${projectBase}/integrations/secret-syncs/${item.destination}/${item.id}`,
         "_blank",
         "noopener,noreferrer"
       );
       return;
     }
 
-    let pathToNavigate;
+    const params = new URLSearchParams();
+    params.set("environments", JSON.stringify([item.environment.slug]));
+
     if (item.type === ItemType.Folder) {
-      pathToNavigate = item.path;
+      // Import: navigate to the folder path, filter to imports
+      params.set("secretPath", item.path);
+      params.set("filterBy", "import");
     } else {
-      const lastSlashIndex = item.path.lastIndexOf("/");
-      pathToNavigate = lastSlashIndex > 0 ? item.path.substring(0, lastSlashIndex) : "/";
+      // Secret reference: navigate to the folder containing the secret, search for the key
+      const segments = item.path.split("/").filter(Boolean);
+      const keyName = segments.pop() || "";
+      const folderPath = segments.length > 0 ? `/${segments.join("/")}` : "/";
+      params.set("secretPath", folderPath);
+      params.set("filterBy", "secret");
+      if (keyName) {
+        params.set("search", keyName);
+      }
     }
-    const encodedPath = encodeURIComponent(pathToNavigate);
-    window.open(
-      `/secret-manager/${currentProject.id}/secrets/${item.environment.slug}?secretPath=${encodedPath}`,
-      "_blank"
-    );
+
+    window.open(`${projectBase}/overview?${params.toString()}`, "_blank");
   };
 
   const flattenedItems = useMemo(() => {
@@ -130,7 +178,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
         id: syncItem.id,
         reference: "Secret Sync",
         environment: { name: syncItem.environment, slug: "" },
-        tooltipText: `Currently used by Secret Sync: ${syncItem.name}`
+        syncName: syncItem.name
       });
     });
 
@@ -178,86 +226,47 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     return null;
   }
 
-  const alertColors = onlyReferences
-    ? {
-        border: "border-yellow-700/30",
-        bg: "bg-yellow-900/20",
-        text: "text-yellow-500"
-      }
-    : {
-        border: "border-red-700/30",
-        bg: "bg-red-900/20",
-        text: "text-red-500"
-      };
-
   return (
     <div className="mb-4 w-full">
-      <div className={`mb-4 rounded-md border ${alertColors.border} ${alertColors.bg}`}>
-        <div className="flex items-start gap-3 p-4">
-          <div className={`mt-0.5 shrink-0 ${alertColors.text}`}>
-            <FontAwesomeIcon icon={faWarning} className="h-5 w-5" aria-hidden="true" />
-          </div>
-          <div className="w-full">
-            <p className={`text-sm font-medium ${alertColors.text}`}>
-              The following resources will be affected by this change
-            </p>
-          </div>
-        </div>
-      </div>
+      <UnstableAlert className="mb-4" variant="warning">
+        <AlertTriangleIcon className="size-4" />
+        <UnstableAlertTitle>
+          The following resources will be affected by this change
+        </UnstableAlertTitle>
+      </UnstableAlert>
 
-      <div className="max-h-64 overflow-y-auto rounded-md border border-mineshaft-700">
-        <Table>
-          <THead className="sticky -top-1 bg-bunker-800">
-            <Th className="px-4">Type</Th>
-            <Th className="px-4">Environment</Th>
-            <Th className="truncate px-4">Path</Th>
-            <Th className="px-4">Usage</Th>
-          </THead>
-          <TBody>
-            {flattenedItems.map((item) => (
-              <Tr
-                key={item.id}
-                onClick={() => handlePathClick(item)}
-                className="cursor-pointer hover:bg-mineshaft-700"
-                title={
-                  item.type === ItemType.SecretSync
-                    ? "Navigate to Secret Sync"
-                    : `Navigate to ${item.path}`
-                }
-              >
-                <Td>
-                  <Tooltip
-                    className="max-w-md"
-                    content={item.tooltipText}
-                    isDisabled={!item.tooltipText}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        item.type === ItemType.Secret
-                          ? faKey
-                          : item.type === ItemType.Folder
-                            ? faFileImport
-                            : faSync
-                      }
-                      className={`h-4 w-4 ${
-                        item.type === ItemType.Secret
-                          ? "text-gray-400"
-                          : item.type === ItemType.Folder
-                            ? "text-green-700"
-                            : "text-mineshaft-300"
-                      }`}
-                      aria-hidden="true"
-                    />
-                  </Tooltip>
-                </Td>
-                <Td className="px-4">{item.environment.name}</Td>
-                <Td className="truncate px-4">{truncatePath(item.path)}</Td>
-                <Td className="px-4">{item.reference}</Td>
-              </Tr>
-            ))}
-          </TBody>
-        </Table>
-      </div>
+      <UnstableTable containerClassName="max-h-64 overflow-y-auto">
+        <UnstableTableHeader className="sticky -top-px z-10 bg-container [&_tr]:border-b-0">
+          <UnstableTableRow>
+            <UnstableTableHead className="border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+              Resource
+            </UnstableTableHead>
+            <UnstableTableHead className="border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+              Environment
+            </UnstableTableHead>
+            <UnstableTableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+              Path
+            </UnstableTableHead>
+          </UnstableTableRow>
+        </UnstableTableHeader>
+        <UnstableTableBody>
+          {flattenedItems.map((item) => (
+            <UnstableTableRow
+              key={item.id}
+              onClick={() => handlePathClick(item)}
+              title={
+                item.type === ItemType.SecretSync
+                  ? "Navigate to Secret Sync"
+                  : `Navigate to ${item.path}`
+              }
+            >
+              <UnstableTableCell className="border-r">{getResourceLabel(item)}</UnstableTableCell>
+              <UnstableTableCell className="border-r">{item.environment.name}</UnstableTableCell>
+              <UnstableTableCell isTruncatable>{truncatePath(item.path)}</UnstableTableCell>
+            </UnstableTableRow>
+          ))}
+        </UnstableTableBody>
+      </UnstableTable>
     </div>
   );
 };
