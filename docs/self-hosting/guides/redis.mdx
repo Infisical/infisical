@@ -1,0 +1,60 @@
+---
+title: "Redis"
+description: "Understand the role Redis plays in Infisical, why persistence is required, and how to operate it safely."
+---
+
+Redis serves as both a **caching layer** and a **persistent job queue** in Infisical. Unlike typical cache-only use cases, Infisical relies on Redis to durably store background job data, making persistence a hard requirement.
+
+<Warning>
+  Redis **must be configured with persistence enabled** (AOF, RDB, or both). Infisical uses Redis-backed queues for background processing. A non-persistent Redis instance that restarts will lose all pending and in-progress jobs.
+</Warning>
+
+## What it stores
+
+| Data | Description |
+|------|-------------|
+| Cache | Frequently accessed data and configurations, reducing load on PostgreSQL |
+| Background Job Queues | Jobs for secret syncs to third-party integrations, secret rotations, scheduled tasks, webhook deliveries, and audit log processing |
+| Job State | Metadata for in-progress, completed, and failed jobs including retry information |
+| Session Data | Active user session tokens and ephemeral authentication state |
+
+## Supported modes
+
+| Mode | Supported |
+|------|-----------|
+| Standalone (Single Node) | Yes |
+| Sentinel (High Availability) | Yes |
+| Cluster | Yes |
+| Active-Active Geo-Replication | No |
+
+<Warning>
+  Redis **active-active geo-replication** is not supported. If you need multi-region deployments, refer to Infisical's [replication architecture](/self-hosting/guides/replication) which uses independent Redis instances per region instead.
+</Warning>
+
+## Impact of data loss
+
+Redis data loss is **disruptive but recoverable**. Unlike PostgreSQL, Redis does not hold the source of truth — secrets and configurations remain safe in PostgreSQL. However, the impact depends on what was in Redis at the time:
+
+- **Cache loss**: No lasting impact. The cache repopulates automatically as read requests come in. You may see a temporary spike in PostgreSQL load until the cache warms up.
+- **Queue loss**: Pending background jobs are lost. In-flight operations such as secret syncs to third-party integrations, pending secret rotations, or scheduled webhook deliveries will not complete. These operations will need to be re-triggered manually or will recover on the next scheduled cycle.
+
+## Why persistence is required
+
+Infisical uses Redis (backed by Redis) to manage background job queues. These queues handle operations that must eventually complete:
+
+- Syncing secrets to external providers (AWS Secrets Manager, GCP Secret Manager, etc.)
+- Rotating credentials on a schedule
+- Delivering webhooks
+- Processing audit logs
+
+If Redis is running without persistence and restarts, all queued and in-progress jobs disappear silently. There is no mechanism to replay these jobs from PostgreSQL. This can result in secrets being out of sync with third-party integrations, missed rotations, or lost webhook deliveries — with no indication that anything went wrong.
+
+## Recommendations
+
+- **Enable persistence** using AOF (`appendonly yes`) with `appendfsync everysec` for a good balance between durability and performance. RDB snapshots can be used as an additional safety net.
+- **Set eviction policy to `noeviction`** to prevent Redis from silently dropping queue data under memory pressure.
+- **Use Redis 6.2+**. Infisical supports Redis versions 6.x and 7.x, with 6.2 as the minimum recommended version.
+- **High availability**: Use Redis Sentinel or a managed Redis service with automatic failover.
+- **Monitor memory usage**. Because `noeviction` is required, Redis will reject new writes if it runs out of memory rather than evicting data. Ensure sufficient memory is provisioned for your workload.
+
+For hardware sizing, see [hardware requirements](/self-hosting/configuration/requirements).

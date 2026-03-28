@@ -1,0 +1,54 @@
+---
+title: "PostgreSQL"
+description: "Understand the role PostgreSQL plays in Infisical, what data it stores, and how to operate it safely."
+---
+
+PostgreSQL is the **authoritative datastore** for all persistent data in Infisical. Every piece of long-lived state — secrets, users, configurations, audit history — is stored in PostgreSQL. It is the single source of truth for the entire platform.
+
+## What it stores
+
+| Data | Description |
+|------|-------------|
+| Secrets | All secrets and their full version history |
+| Identities & Users | User accounts, machine identities, and their credentials |
+| Projects & Organizations | Project configurations, organization settings, and memberships |
+| Access Control | Roles, permissions, and access policies |
+| Audit Logs | Records of all actions taken within the platform |
+| Integrations | Configuration for third-party integrations and sync targets |
+| Certificates & PKI | Certificate authorities, certificates, and PKI configurations |
+| Encryption Keys | Encrypted project keys used for secret encryption |
+
+## Supported modes
+
+| Mode | Supported |
+|------|-----------|
+| Standalone (Single Instance) | Yes |
+| Read Replicas (Streaming Replication) | Yes |
+
+For multi-region deployments with read replicas, see the [replication guide](/self-hosting/guides/replication).
+
+## Impact of data loss
+
+PostgreSQL data loss is **critical and unrecoverable without a backup**. Because PostgreSQL is the sole source of truth for all persistent state, losing this data means losing:
+
+- All secrets and their version history
+- User accounts, identities, and credentials
+- Project and organization configurations
+- Audit logs and compliance records
+- Integration settings and encryption keys
+
+There is no way to reconstruct this data from other components. Redis caches are ephemeral and do not contain the full dataset.
+
+<Warning>
+  Always maintain regular PostgreSQL backups and test your restore process. Without a working backup, PostgreSQL data loss is **permanent**.
+</Warning>
+
+## Recommendations
+
+- **Use a managed service** (e.g., AWS RDS, Google Cloud SQL, Azure Database for PostgreSQL) for automated backups, failover, and maintenance.
+- **Enable point-in-time recovery (PITR)** for granular restore capabilities.
+- **Test restores regularly**. A backup that has never been tested is not a backup.
+- **High availability**: Configure streaming replication with automatic failover to minimize downtime.
+- **Version**: Infisical supports PostgreSQL versions 14+, with version 16 being the most extensively tested.
+
+For hardware sizing, see [hardware requirements](/self-hosting/configuration/requirements).
