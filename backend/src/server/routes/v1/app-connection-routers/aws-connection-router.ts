@@ -94,12 +94,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
         req.permission
       );
 
-      return {
-        iamUsers: iamUsers.map((user) => ({
-          UserName: user.UserName ?? "",
-          Arn: user.Arn ?? ""
-        }))
-      };
+      return { iamUsers };
     }
   });
 };

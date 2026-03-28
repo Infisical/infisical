@@ -1,16 +1,6 @@
-import {
-  DescribeListenersCommand,
-  DescribeLoadBalancersCommand,
-  ElasticLoadBalancingV2Client
-} from "@aws-sdk/client-elastic-load-balancing-v2";
-import { IAMClient, ListUsersCommand, type User } from "@aws-sdk/client-iam";
-import {
-  type AliasListEntry,
-  DescribeKeyCommand,
-  type KeyMetadata,
-  KMSClient,
-  ListAliasesCommand
-} from "@aws-sdk/client-kms";
+import ELBv2 from "aws-sdk/clients/elbv2.js";
+import IAM from "aws-sdk/clients/iam.js";
+import KMS from "aws-sdk/clients/kms.js";
 
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -37,24 +27,24 @@ const listAwsKmsKeys = async (
 ) => {
   const { credentials } = await getAwsConnectionConfig(appConnection, region);
 
-  const awsKms = new KMSClient({
+  const awsKms = new KMS({
     credentials,
     region
   });
 
-  const aliasEntries: AliasListEntry[] = [];
+  const aliasEntries: KMS.AliasList = [];
   let aliasMarker: string | undefined;
   do {
     // eslint-disable-next-line no-await-in-loop
-    const response = await awsKms.send(new ListAliasesCommand({ Limit: 100, Marker: aliasMarker }));
+    const response = await awsKms.listAliases({ Limit: 100, Marker: aliasMarker }).promise();
     aliasEntries.push(...(response.Aliases || []));
     aliasMarker = response.NextMarker;
   } while (aliasMarker);
 
-  const keyMetadataRecord: Record<string, KeyMetadata | undefined> = {};
+  const keyMetadataRecord: Record<string, KMS.KeyMetadata | undefined> = {};
   for await (const aliasEntry of aliasEntries) {
     if (aliasEntry.TargetKeyId) {
-      const keyDescription = await awsKms.send(new DescribeKeyCommand({ KeyId: aliasEntry.TargetKeyId }));
+      const keyDescription = await awsKms.describeKey({ KeyId: aliasEntry.TargetKeyId }).promise();
 
       keyMetadataRecord[aliasEntry.TargetKeyId] = keyDescription.KeyMetadata;
     }
@@ -89,15 +79,15 @@ const listAwsKmsKeys = async (
 };
 
 const listAwsIamUsers = async (appConnection: TAwsConnection) => {
-  const { region, credentials } = await getAwsConnectionConfig(appConnection);
+  const { credentials } = await getAwsConnectionConfig(appConnection);
 
-  const iam = new IAMClient({ credentials, region });
+  const iam = new IAM({ credentials });
 
-  const userEntries: User[] = [];
+  const userEntries: IAM.User[] = [];
   let userMarker: string | undefined;
   do {
     // eslint-disable-next-line no-await-in-loop
-    const response = await iam.send(new ListUsersCommand({ MaxItems: 100, Marker: userMarker }));
+    const response = await iam.listUsers({ MaxItems: 100, Marker: userMarker }).promise();
     userEntries.push(...(response.Users || []));
     userMarker = response.Marker;
   } while (userMarker);
@@ -133,7 +123,7 @@ const listAwsLoadBalancers = async (
 ): Promise<TAwsLoadBalancerInfo[]> => {
   const { credentials } = await getAwsConnectionConfig(appConnection, region);
 
-  const elbClient = new ElasticLoadBalancingV2Client({
+  const elbClient = new ELBv2({
     credentials,
     region
   });
@@ -143,11 +133,11 @@ const listAwsLoadBalancers = async (
 
   do {
     // eslint-disable-next-line no-await-in-loop
-    const response = await elbClient.send(
-      new DescribeLoadBalancersCommand({
+    const response = await elbClient
+      .describeLoadBalancers({
         Marker: marker
       })
-    );
+      .promise();
 
     if (response.LoadBalancers) {
       for (const lb of response.LoadBalancers) {
@@ -179,7 +169,7 @@ const listAwsListeners = async (
 ): Promise<TAwsListenerInfo[]> => {
   const { credentials } = await getAwsConnectionConfig(appConnection, region);
 
-  const elbClient = new ElasticLoadBalancingV2Client({
+  const elbClient = new ELBv2({
     credentials,
     region
   });
@@ -189,12 +179,12 @@ const listAwsListeners = async (
 
   do {
     // eslint-disable-next-line no-await-in-loop
-    const response = await elbClient.send(
-      new DescribeListenersCommand({
+    const response = await elbClient
+      .describeListeners({
         LoadBalancerArn: loadBalancerArn,
         Marker: marker
       })
-    );
+      .promise();
 
     if (response.Listeners) {
       for (const listener of response.Listeners) {

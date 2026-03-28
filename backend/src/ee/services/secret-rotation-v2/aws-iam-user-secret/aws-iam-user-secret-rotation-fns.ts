@@ -1,10 +1,4 @@
-import {
-  type AccessKeyMetadata,
-  CreateAccessKeyCommand,
-  DeleteAccessKeyCommand,
-  IAMClient,
-  ListAccessKeysCommand
-} from "@aws-sdk/client-iam";
+import IAM from "aws-sdk/clients/iam.js";
 
 import {
   TAwsIamUserSecretRotationGeneratedCredentials,
@@ -19,7 +13,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 
-const getCreateDate = (key: AccessKeyMetadata): number => {
+const getCreateDate = (key: IAM.AccessKeyMetadata): number => {
   return key.CreateDate ? new Date(key.CreateDate).getTime() : 0;
 };
 
@@ -35,9 +29,9 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
 
   const $rotateClientSecret = async () => {
     const { credentials } = await getAwsConnectionConfig(connection, region);
-    const iam = new IAMClient({ credentials, region });
+    const iam = new IAM({ credentials });
 
-    const { AccessKeyMetadata } = await iam.send(new ListAccessKeysCommand({ UserName: userName }));
+    const { AccessKeyMetadata } = await iam.listAccessKeys({ UserName: userName }).promise();
 
     if (AccessKeyMetadata && AccessKeyMetadata.length > 0) {
       // Sort keys by creation date (oldest first)
@@ -47,21 +41,21 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
       if (sortedKeys.length >= 2) {
         const accessId = sortedKeys[0].AccessKeyId || sortedKeys[1].AccessKeyId;
         if (accessId) {
-          await iam.send(
-            new DeleteAccessKeyCommand({
+          await iam
+            .deleteAccessKey({
               UserName: userName,
               AccessKeyId: accessId
             })
-          );
+            .promise();
         }
       }
     }
 
-    const { AccessKey } = await iam.send(new CreateAccessKeyCommand({ UserName: userName }));
+    const { AccessKey } = await iam.createAccessKey({ UserName: userName }).promise();
 
     return {
-      accessKeyId: AccessKey?.AccessKeyId ?? "",
-      secretAccessKey: AccessKey?.SecretAccessKey ?? ""
+      accessKeyId: AccessKey.AccessKeyId,
+      secretAccessKey: AccessKey.SecretAccessKey
     };
   };
 
@@ -78,16 +72,16 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     callback
   ) => {
     const { credentials } = await getAwsConnectionConfig(connection, region);
-    const iam = new IAMClient({ credentials, region });
+    const iam = new IAM({ credentials });
 
     await Promise.all(
       generatedCredentials.map((generatedCredential) =>
-        iam.send(
-          new DeleteAccessKeyCommand({
+        iam
+          .deleteAccessKey({
             UserName: userName,
             AccessKeyId: generatedCredential.accessKeyId
           })
-        )
+          .promise()
       )
     );
 
