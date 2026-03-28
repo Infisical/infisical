@@ -1,27 +1,7 @@
-import {
-  AccessDeniedException,
-  AddTagsToResourceCommand,
-  type AddTagsToResourceCommandInput,
-  type AddTagsToResourceCommandOutput,
-  DeleteParametersCommand,
-  type DeleteParametersCommandOutput,
-  DescribeParametersCommand,
-  GetParametersByPathCommand,
-  ListTagsForResourceCommand,
-  type Parameter,
-  type ParameterMetadata,
-  PutParameterCommand,
-  type PutParameterCommandInput,
-  type PutParameterCommandOutput,
-  RemoveTagsFromResourceCommand,
-  type RemoveTagsFromResourceCommandInput,
-  type RemoveTagsFromResourceCommandOutput,
-  SSMClient,
-  type Tag
-} from "@aws-sdk/client-ssm";
+import type { AWSError } from "aws-sdk";
+import SSM from "aws-sdk/clients/ssm.js";
 import handlebars from "handlebars";
 
-import { isAwsError } from "@app/lib/aws/error";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -29,8 +9,8 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsParameterStoreSyncWithCredentials } from "./aws-parameter-store-sync-types";
 
-type TAWSParameterStoreRecord = Record<string, Parameter>;
-type TAWSParameterStoreMetadataRecord = Record<string, ParameterMetadata>;
+type TAWSParameterStoreRecord = Record<string, SSM.Parameter>;
+type TAWSParameterStoreMetadataRecord = Record<string, SSM.ParameterMetadata>;
 type TAWSParameterStoreTagsRecord = Record<string, Record<string, string>>;
 
 const MAX_RETRIES = 10;
@@ -41,10 +21,14 @@ const getSSM = async (secretSync: TAwsParameterStoreSyncWithCredentials) => {
 
   const config = await getAwsConnectionConfig(connection, destinationConfig.region);
 
-  return new SSMClient({
-    region: destinationConfig.region,
-    credentials: config.credentials
+  const ssm = new SSM({
+    apiVersion: "2014-11-06",
+    region: destinationConfig.region
   });
+
+  ssm.config.update(config);
+
+  return ssm;
 };
 
 const sleep = async () =>
@@ -79,7 +63,7 @@ const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema
 };
 
 const getParametersByPath = async (
-  ssm: SSMClient,
+  ssm: SSM,
   path: string,
   keySchema: string | undefined,
   environment: string
@@ -94,15 +78,15 @@ const getParametersByPath = async (
   while (hasNext) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const parameters = await ssm.send(
-        new GetParametersByPathCommand({
+      const parameters = await ssm
+        .getParametersByPath({
           Path: fullPath,
           Recursive: false,
           WithDecryption: true,
           MaxResults: BATCH_SIZE,
           NextToken: nextToken
         })
-      );
+        .promise();
 
       attempt = 0;
 
@@ -119,7 +103,7 @@ const getParametersByPath = async (
       hasNext = Boolean(parameters.NextToken);
       nextToken = parameters.NextToken;
     } catch (e) {
-      if (isAwsError(e, "ThrottlingException") && attempt < MAX_RETRIES) {
+      if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
         attempt += 1;
         // eslint-disable-next-line no-await-in-loop
         await sleep();
@@ -135,7 +119,7 @@ const getParametersByPath = async (
 };
 
 const getParameterMetadataByPath = async (
-  ssm: SSMClient,
+  ssm: SSM,
   path: string,
   keySchema: string | undefined,
   environment: string
@@ -150,8 +134,8 @@ const getParameterMetadataByPath = async (
   while (hasNext) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const parameters = await ssm.send(
-        new DescribeParametersCommand({
+      const parameters = await ssm
+        .describeParameters({
           MaxResults: 10,
           NextToken: nextToken,
           ParameterFilters: [
@@ -162,7 +146,7 @@ const getParameterMetadataByPath = async (
             }
           ]
         })
-      );
+        .promise();
 
       attempt = 0;
 
@@ -179,7 +163,7 @@ const getParameterMetadataByPath = async (
       hasNext = Boolean(parameters.NextToken);
       nextToken = parameters.NextToken;
     } catch (e) {
-      if (isAwsError(e, "ThrottlingException") && attempt < MAX_RETRIES) {
+      if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
         attempt += 1;
         // eslint-disable-next-line no-await-in-loop
         await sleep();
@@ -195,7 +179,7 @@ const getParameterMetadataByPath = async (
 };
 
 const getParameterStoreTagsRecord = async (
-  ssm: SSMClient,
+  ssm: SSM,
   awsParameterStoreSecretsRecord: TAWSParameterStoreRecord,
   needsTagsPermissions: boolean
 ): Promise<{ shouldManageTags: boolean; awsParameterStoreTagsRecord: TAWSParameterStoreTagsRecord }> => {
@@ -210,20 +194,18 @@ const getParameterStoreTagsRecord = async (
     }
 
     try {
-      const tags = await ssm.send(
-        new ListTagsForResourceCommand({
+      const tags = await ssm
+        .listTagsForResource({
           ResourceType: "Parameter",
           ResourceId: parameter.Name
         })
-      );
+        .promise();
 
-      awsParameterStoreTagsRecord[key] = Object.fromEntries(
-        tags.TagList?.map((tag) => [tag.Key ?? "", tag.Value ?? ""]) ?? []
-      );
+      awsParameterStoreTagsRecord[key] = Object.fromEntries(tags.TagList?.map((tag) => [tag.Key, tag.Value]) ?? []);
     } catch (e) {
       // users aren't required to provide tag permissions to use sync so we handle gracefully if unauthorized
       // and they aren't trying to configure tags
-      if (e instanceof AccessDeniedException) {
+      if ((e as AWSError).code === "AccessDeniedException") {
         if (!needsTagsPermissions) {
           return { shouldManageTags: false, awsParameterStoreTagsRecord: {} };
         }
@@ -249,7 +231,7 @@ const processParameterTags = ({
   syncTagsRecord: Record<string, string>;
   awsTagsRecord: Record<string, string>;
 }) => {
-  const tagsToAdd: Tag[] = [];
+  const tagsToAdd: SSM.TagList = [];
   const tagKeysToRemove: string[] = [];
 
   for (const syncEntry of Object.entries(syncTagsRecord)) {
@@ -267,14 +249,14 @@ const processParameterTags = ({
 };
 
 const putParameter = async (
-  ssm: SSMClient,
-  params: PutParameterCommandInput,
+  ssm: SSM,
+  params: SSM.PutParameterRequest,
   attempt = 0
-): Promise<PutParameterCommandOutput> => {
+): Promise<SSM.PutParameterResult> => {
   try {
-    return await ssm.send(new PutParameterCommand(params));
+    return await ssm.putParameter(params).promise();
   } catch (error) {
-    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
+    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -285,14 +267,14 @@ const putParameter = async (
 };
 
 const addTagsToParameter = async (
-  ssm: SSMClient,
-  params: Omit<AddTagsToResourceCommandInput, "ResourceType">,
+  ssm: SSM,
+  params: Omit<SSM.AddTagsToResourceRequest, "ResourceType">,
   attempt = 0
-): Promise<AddTagsToResourceCommandOutput> => {
+): Promise<SSM.AddTagsToResourceResult> => {
   try {
-    return await ssm.send(new AddTagsToResourceCommand({ ...params, ResourceType: "Parameter" }));
+    return await ssm.addTagsToResource({ ...params, ResourceType: "Parameter" }).promise();
   } catch (error) {
-    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
+    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -303,14 +285,14 @@ const addTagsToParameter = async (
 };
 
 const removeTagsFromParameter = async (
-  ssm: SSMClient,
-  params: Omit<RemoveTagsFromResourceCommandInput, "ResourceType">,
+  ssm: SSM,
+  params: Omit<SSM.RemoveTagsFromResourceRequest, "ResourceType">,
   attempt = 0
-): Promise<RemoveTagsFromResourceCommandOutput> => {
+): Promise<SSM.RemoveTagsFromResourceResult> => {
   try {
-    return await ssm.send(new RemoveTagsFromResourceCommand({ ...params, ResourceType: "Parameter" }));
+    return await ssm.removeTagsFromResource({ ...params, ResourceType: "Parameter" }).promise();
   } catch (error) {
-    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
+    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -321,11 +303,11 @@ const removeTagsFromParameter = async (
 };
 
 const deleteParametersBatch = async (
-  ssm: SSMClient,
-  parameters: Parameter[],
+  ssm: SSM,
+  parameters: SSM.Parameter[],
   attempt = 0
-): Promise<DeleteParametersCommandOutput[]> => {
-  const results: DeleteParametersCommandOutput[] = [];
+): Promise<SSM.DeleteParameterResult[]> => {
+  const results: SSM.DeleteParameterResult[] = [];
   let remainingParams = [...parameters];
 
   while (remainingParams.length > 0) {
@@ -333,11 +315,11 @@ const deleteParametersBatch = async (
 
     try {
       // eslint-disable-next-line no-await-in-loop
-      const result = await ssm.send(new DeleteParametersCommand({ Names: batch.map((param) => param.Name!) }));
+      const result = await ssm.deleteParameters({ Names: batch.map((param) => param.Name!) }).promise();
       results.push(result);
       remainingParams = remainingParams.slice(BATCH_SIZE);
     } catch (error) {
-      if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
+      if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
         // eslint-disable-next-line no-await-in-loop
         await sleep();
 
@@ -460,7 +442,7 @@ export const AwsParameterStoreSyncFns = {
 
     if (syncOptions.disableSecretDeletion) return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
 
-    const parametersToDelete: Parameter[] = [];
+    const parametersToDelete: SSM.Parameter[] = [];
 
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, parameter] = entry;
@@ -506,7 +488,7 @@ export const AwsParameterStoreSyncFns = {
       environment!.slug
     );
 
-    const parametersToDelete: Parameter[] = [];
+    const parametersToDelete: SSM.Parameter[] = [];
 
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, param] = entry;
