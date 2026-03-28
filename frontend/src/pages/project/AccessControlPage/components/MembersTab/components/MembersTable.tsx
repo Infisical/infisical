@@ -270,7 +270,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
             </UnstableTableHeader>
             <UnstableTableBody>
               {isMembersLoading &&
-                Array.from({ length: perPage }).map((_, i) => (
+                Array.from({ length: 10 }).map((_, i) => (
                   <UnstableTableRow key={`skeleton-${i + 1}`}>
                     <UnstableTableCell>
                       <Skeleton className="h-4 w-full" />
