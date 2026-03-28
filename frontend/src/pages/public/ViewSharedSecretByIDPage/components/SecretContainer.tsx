@@ -60,10 +60,10 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
         }`}
         style={secretDisplayStyle}
       >
-        <p className="break-all whitespace-pre-wrap">
+        <p className="min-w-0 break-all whitespace-pre-wrap">
           {isVisible ? secret.secretValue : hiddenSecret}
         </p>
-        <div className="flex">
+        <div className="flex shrink-0">
           <IconButton
             ariaLabel="copy icon"
             colorSchema="secondary"
