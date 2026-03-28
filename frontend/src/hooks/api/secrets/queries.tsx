@@ -303,7 +303,7 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
         groups: SecretAccessListEntry[];
         identities: SecretAccessListEntry[];
         users: SecretAccessListEntry[];
-      }>(`/api/v1/secrets/${dto.secretKey}/access-list`, {
+      }>(`/api/v1/secrets/${encodeURIComponent(dto.secretKey)}/access-list`, {
         params: {
           projectId: dto.projectId,
           environment: dto.environment,
@@ -322,7 +322,7 @@ const fetchSecretReferenceTree = async ({
   environmentSlug
 }: TGetSecretReferenceTreeDTO) => {
   const { data } = await apiRequest.get<{ tree: TSecretReferenceTraceNode; value: string }>(
-    `/api/v4/secrets/${secretKey}/secret-reference-tree`,
+    `/api/v4/secrets/${encodeURIComponent(secretKey)}/secret-reference-tree`,
     {
       params: {
         secretPath,
