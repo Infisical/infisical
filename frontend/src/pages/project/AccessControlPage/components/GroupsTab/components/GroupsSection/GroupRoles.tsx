@@ -163,7 +163,7 @@ const IdentityTemporaryRoleForm = ({
                   })()
                 }
               >
-                Grant access
+                Configure Duration
               </Button>
             ) : (
               <Button
@@ -478,7 +478,7 @@ export const GroupRoles = ({
               <EditIcon />
             </UnstableIconButton>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-0" onClick={(e) => e.stopPropagation()}>
+          <PopoverContent side="right" className="w-72 p-0" onClick={(e) => e.stopPropagation()}>
             {isRolesLoading ? (
               <div className="flex h-8 w-full items-center justify-center">
                 <Spinner />
