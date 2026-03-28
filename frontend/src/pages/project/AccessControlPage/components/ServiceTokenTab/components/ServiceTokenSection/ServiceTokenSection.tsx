@@ -1,11 +1,19 @@
 import { useTranslation } from "react-i18next";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  DocumentationLinkBadge,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
@@ -40,36 +48,40 @@ export const ServiceTokenSection = withProjectPermission(
     };
 
     return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">Service Tokens</p>
+      <>
+        <UnstableCard>
+          <UnstableCardHeader>
+            <UnstableCardTitle>
+              Service Tokens
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/token" />
-            </div>
-            <p className="text-sm text-bunker-300">
+            </UnstableCardTitle>
+            <UnstableCardDescription>
               {t("section.token.service-tokens-description")}
-            </p>
-          </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.ServiceTokens}
-          >
-            {(isAllowed) => (
-              <Button
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => {
-                  handlePopUpOpen("createAPIToken");
-                }}
-                isDisabled={!isAllowed}
+            </UnstableCardDescription>
+            <UnstableCardAction>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Create}
+                a={ProjectPermissionSub.ServiceTokens}
               >
-                Create Token
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </div>
-        <ServiceTokenTable handlePopUpOpen={handlePopUpOpen} />
+                {(isAllowed) => (
+                  <Button
+                    variant="project"
+                    onClick={() => {
+                      handlePopUpOpen("createAPIToken");
+                    }}
+                    isDisabled={!isAllowed}
+                  >
+                    <PlusIcon />
+                    Create Token
+                  </Button>
+                )}
+              </ProjectPermissionCan>
+            </UnstableCardAction>
+          </UnstableCardHeader>
+          <UnstableCardContent>
+            <ServiceTokenTable handlePopUpOpen={handlePopUpOpen} />
+          </UnstableCardContent>
+        </UnstableCard>
         <AddServiceTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteAPITokenConfirmation.isOpen}
@@ -81,7 +93,7 @@ export const ServiceTokenSection = withProjectPermission(
           onClose={() => handlePopUpClose("deleteAPITokenConfirmation")}
           onDeleteApproved={onDeleteApproved}
         />
-      </div>
+      </>
     );
   },
   { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.ServiceTokens }
