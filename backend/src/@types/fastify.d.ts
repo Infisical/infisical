@@ -40,6 +40,7 @@ import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
 import { TPkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
 import { TPkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
+import { TPkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { TProjectEventsSSEService } from "@app/ee/services/project-events/project-events-sse-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
@@ -325,6 +326,7 @@ declare module "fastify" {
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
       pkiAcme: TPkiAcmeServiceFactory;
+      pkiScep: TPkiScepServiceFactory;
       certificateEstV3: TCertificateEstV3ServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;
