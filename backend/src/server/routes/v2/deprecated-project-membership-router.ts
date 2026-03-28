@@ -3,9 +3,12 @@ import { z } from "zod";
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
+import { ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ORG_AUTH_ENFORCED_ERROR_MESSAGE } from "@app/services/membership-user/membership-user-types";
 
 export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -52,17 +55,43 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     handler: async (req) => {
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
 
-      await server.services.membershipUser.createMembership({
-        permission: req.permission,
-        scopeData: {
-          scope: AccessScope.Organization,
-          orgId: req.permission.orgId
-        },
-        data: {
-          roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
-          usernames: usernamesAndEmails
+      try {
+        await server.services.membershipUser.createMembership({
+          permission: req.permission,
+          scopeData: {
+            scope: AccessScope.Organization,
+            orgId: req.permission.orgId
+          },
+          data: {
+            roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
+            usernames: usernamesAndEmails
+          }
+        });
+      } catch (error) {
+        // When org-level auth is enforced (e.g. SSO/SAML), creating new org memberships
+        // is blocked. If the users are already org members, we can safely proceed to add
+        // them to the project — the project membership guard will verify org membership.
+        // If they are NOT org members, the project membership creation will fail with
+        // a clear "Users not part of organization" error.
+        //
+        // We only swallow ForbiddenRequestError that is NOT a PermissionBoundaryError
+        // (which extends ForbiddenRequestError) and only when the message matches the
+        // specific auth-enforcement error. All other errors are re-thrown.
+        const isAuthEnforcedError =
+          error instanceof ForbiddenRequestError &&
+          !(error instanceof PermissionBoundaryError) &&
+          error.message === ORG_AUTH_ENFORCED_ERROR_MESSAGE;
+
+        if (!isAuthEnforcedError) {
+          throw error;
         }
-      });
+
+        logger.info(
+          "Suppressed org-level auth enforcement error during project invite; proceeding to project membership guard [orgId=%s, projectId=%s]",
+          req.permission.orgId,
+          req.params.projectId
+        );
+      }
 
       const { memberships } = await server.services.membershipUser.createMembership({
         permission: req.permission,
