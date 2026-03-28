@@ -190,233 +190,231 @@ export const ProjectRoleList = () => {
           </UnstableCardAction>
         </UnstableCardHeader>
         <UnstableCardContent>
-          <div>
-            <div className="mb-4">
-              <InputGroup>
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search project roles..."
-                />
-              </InputGroup>
-            </div>
-            {!isRolesLoading && !filteredRoles?.length ? (
-              <UnstableEmpty className="border">
-                <UnstableEmptyHeader>
-                  <UnstableEmptyTitle>
-                    {roles?.length
-                      ? "No project roles match search"
-                      : "This project does not have any roles"}
-                  </UnstableEmptyTitle>
-                  <UnstableEmptyDescription>
-                    {roles?.length ? "Adjust your search criteria." : "Add a role to get started."}
-                  </UnstableEmptyDescription>
-                </UnstableEmptyHeader>
-              </UnstableEmpty>
-            ) : (
-              <>
-                <UnstableTable>
-                  <UnstableTableHeader>
-                    <UnstableTableRow>
-                      <UnstableTableHead
-                        className="w-1/3"
-                        onClick={() => handleSort(RolesOrderBy.Name)}
-                      >
-                        Name
-                        <ChevronDownIcon
-                          className={twMerge(
-                            "transition-transform",
-                            orderDirection === OrderByDirection.DESC &&
-                              orderBy === RolesOrderBy.Name &&
-                              "rotate-180",
-                            orderBy !== RolesOrderBy.Name && "opacity-30"
-                          )}
-                        />
-                      </UnstableTableHead>
-                      <UnstableTableHead
-                        className="w-1/3"
-                        onClick={() => handleSort(RolesOrderBy.Slug)}
-                      >
-                        Slug
-                        <ChevronDownIcon
-                          className={twMerge(
-                            "transition-transform",
-                            orderDirection === OrderByDirection.DESC &&
-                              orderBy === RolesOrderBy.Slug &&
-                              "rotate-180",
-                            orderBy !== RolesOrderBy.Slug && "opacity-30"
-                          )}
-                        />
-                      </UnstableTableHead>
-                      <UnstableTableHead onClick={() => handleSort(RolesOrderBy.Type)}>
-                        Type
-                        <ChevronDownIcon
-                          className={twMerge(
-                            "transition-transform",
-                            orderDirection === OrderByDirection.DESC &&
-                              orderBy === RolesOrderBy.Type &&
-                              "rotate-180",
-                            orderBy !== RolesOrderBy.Type && "opacity-30"
-                          )}
-                        />
-                      </UnstableTableHead>
-                      <UnstableTableHead className="w-5" />
-                    </UnstableTableRow>
-                  </UnstableTableHeader>
-                  <UnstableTableBody>
-                    {isRolesLoading &&
-                      Array.from({ length: perPage }).map((_, i) => (
-                        <UnstableTableRow key={`skeleton-${i + 1}`}>
-                          <UnstableTableCell>
-                            <Skeleton className="h-4 w-full" />
-                          </UnstableTableCell>
-                          <UnstableTableCell>
-                            <Skeleton className="h-4 w-full" />
-                          </UnstableTableCell>
-                          <UnstableTableCell>
-                            <Skeleton className="h-4 w-full" />
-                          </UnstableTableCell>
-                          <UnstableTableCell>
-                            <Skeleton className="h-4 w-4" />
-                          </UnstableTableCell>
-                        </UnstableTableRow>
-                      ))}
-                    {filteredRolesPage.map((role) => {
-                      const { id, name, slug } = role;
-                      const isNonMutatable = Object.values(ProjectMembershipRole).includes(
-                        slug as ProjectMembershipRole
-                      );
-
-                      return (
-                        <UnstableTableRow
-                          key={`role-list-${id}`}
-                          className="cursor-pointer"
-                          onClick={() =>
-                            navigate({
-                              to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                              params: {
-                                projectId: currentProject.id,
-                                roleSlug: slug
-                              }
-                            })
-                          }
-                        >
-                          <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
-                          <UnstableTableCell isTruncatable>{slug}</UnstableTableCell>
-                          <UnstableTableCell>
-                            <Badge variant="ghost">
-                              {isCustomProjectRole(slug) ? (
-                                <>
-                                  <WrenchIcon />
-                                  Custom
-                                </>
-                              ) : (
-                                <>
-                                  <ServerIcon />
-                                  Platform
-                                </>
-                              )}
-                            </Badge>
-                          </UnstableTableCell>
-                          <UnstableTableCell>
-                            <UnstableDropdownMenu>
-                              <UnstableDropdownMenuTrigger asChild>
-                                <UnstableIconButton
-                                  variant="ghost"
-                                  size="xs"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <MoreHorizontalIcon />
-                                </UnstableIconButton>
-                              </UnstableDropdownMenuTrigger>
-                              <UnstableDropdownMenuContent
-                                className="min-w-48"
-                                sideOffset={2}
-                                align="end"
-                              >
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionActions.Edit}
-                                  a={ProjectPermissionSub.Role}
-                                >
-                                  {(isAllowed) => (
-                                    <UnstableDropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate({
-                                          to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                                          params: {
-                                            projectId: currentProject.id,
-                                            roleSlug: slug
-                                          }
-                                        });
-                                      }}
-                                      isDisabled={!isAllowed}
-                                    >
-                                      {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
-                                      {`${isNonMutatable ? "View" : "Edit"} Role`}
-                                    </UnstableDropdownMenuItem>
-                                  )}
-                                </ProjectPermissionCan>
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionActions.Create}
-                                  a={ProjectPermissionSub.Role}
-                                >
-                                  {(isAllowed) => (
-                                    <UnstableDropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("duplicateRole", role);
-                                      }}
-                                      isDisabled={!isAllowed}
-                                    >
-                                      <CopyIcon />
-                                      Duplicate Role
-                                    </UnstableDropdownMenuItem>
-                                  )}
-                                </ProjectPermissionCan>
-                                {!isNonMutatable && (
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionActions.Delete}
-                                    a={ProjectPermissionSub.Role}
-                                  >
-                                    {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
-                                        variant="danger"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handlePopUpOpen("deleteRole", role);
-                                        }}
-                                        isDisabled={!isAllowed}
-                                      >
-                                        <TrashIcon />
-                                        Delete Role
-                                      </UnstableDropdownMenuItem>
-                                    )}
-                                  </ProjectPermissionCan>
-                                )}
-                              </UnstableDropdownMenuContent>
-                            </UnstableDropdownMenu>
-                          </UnstableTableCell>
-                        </UnstableTableRow>
-                      );
-                    })}
-                  </UnstableTableBody>
-                </UnstableTable>
-                {Boolean(filteredRoles?.length) && (
-                  <UnstablePagination
-                    count={filteredRoles!.length}
-                    page={page}
-                    perPage={perPage}
-                    onChangePage={setPage}
-                    onChangePerPage={handlePerPageChange}
-                  />
-                )}
-              </>
-            )}
+          <div className="mb-4">
+            <InputGroup>
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search project roles..."
+              />
+            </InputGroup>
           </div>
+          {!isRolesLoading && !filteredRoles?.length ? (
+            <UnstableEmpty className="border">
+              <UnstableEmptyHeader>
+                <UnstableEmptyTitle>
+                  {roles?.length
+                    ? "No project roles match search"
+                    : "This project does not have any roles"}
+                </UnstableEmptyTitle>
+                <UnstableEmptyDescription>
+                  {roles?.length ? "Adjust your search criteria." : "Add a role to get started."}
+                </UnstableEmptyDescription>
+              </UnstableEmptyHeader>
+            </UnstableEmpty>
+          ) : (
+            <>
+              <UnstableTable>
+                <UnstableTableHeader>
+                  <UnstableTableRow>
+                    <UnstableTableHead
+                      className="w-1/3"
+                      onClick={() => handleSort(RolesOrderBy.Name)}
+                    >
+                      Name
+                      <ChevronDownIcon
+                        className={twMerge(
+                          "transition-transform",
+                          orderDirection === OrderByDirection.DESC &&
+                            orderBy === RolesOrderBy.Name &&
+                            "rotate-180",
+                          orderBy !== RolesOrderBy.Name && "opacity-30"
+                        )}
+                      />
+                    </UnstableTableHead>
+                    <UnstableTableHead
+                      className="w-1/3"
+                      onClick={() => handleSort(RolesOrderBy.Slug)}
+                    >
+                      Slug
+                      <ChevronDownIcon
+                        className={twMerge(
+                          "transition-transform",
+                          orderDirection === OrderByDirection.DESC &&
+                            orderBy === RolesOrderBy.Slug &&
+                            "rotate-180",
+                          orderBy !== RolesOrderBy.Slug && "opacity-30"
+                        )}
+                      />
+                    </UnstableTableHead>
+                    <UnstableTableHead onClick={() => handleSort(RolesOrderBy.Type)}>
+                      Type
+                      <ChevronDownIcon
+                        className={twMerge(
+                          "transition-transform",
+                          orderDirection === OrderByDirection.DESC &&
+                            orderBy === RolesOrderBy.Type &&
+                            "rotate-180",
+                          orderBy !== RolesOrderBy.Type && "opacity-30"
+                        )}
+                      />
+                    </UnstableTableHead>
+                    <UnstableTableHead className="w-5" />
+                  </UnstableTableRow>
+                </UnstableTableHeader>
+                <UnstableTableBody>
+                  {isRolesLoading &&
+                    Array.from({ length: perPage }).map((_, i) => (
+                      <UnstableTableRow key={`skeleton-${i + 1}`}>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-full" />
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-full" />
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-full" />
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <Skeleton className="h-4 w-4" />
+                        </UnstableTableCell>
+                      </UnstableTableRow>
+                    ))}
+                  {filteredRolesPage.map((role) => {
+                    const { id, name, slug } = role;
+                    const isNonMutatable = Object.values(ProjectMembershipRole).includes(
+                      slug as ProjectMembershipRole
+                    );
+
+                    return (
+                      <UnstableTableRow
+                        key={`role-list-${id}`}
+                        className="cursor-pointer"
+                        onClick={() =>
+                          navigate({
+                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                            params: {
+                              projectId: currentProject.id,
+                              roleSlug: slug
+                            }
+                          })
+                        }
+                      >
+                        <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
+                        <UnstableTableCell isTruncatable>{slug}</UnstableTableCell>
+                        <UnstableTableCell>
+                          <Badge variant="ghost">
+                            {isCustomProjectRole(slug) ? (
+                              <>
+                                <WrenchIcon />
+                                Custom
+                              </>
+                            ) : (
+                              <>
+                                <ServerIcon />
+                                Platform
+                              </>
+                            )}
+                          </Badge>
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <UnstableDropdownMenu>
+                            <UnstableDropdownMenuTrigger asChild>
+                              <UnstableIconButton
+                                variant="ghost"
+                                size="xs"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontalIcon />
+                              </UnstableIconButton>
+                            </UnstableDropdownMenuTrigger>
+                            <UnstableDropdownMenuContent
+                              className="min-w-48"
+                              sideOffset={2}
+                              align="end"
+                            >
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Edit}
+                                a={ProjectPermissionSub.Role}
+                              >
+                                {(isAllowed) => (
+                                  <UnstableDropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate({
+                                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                                        params: {
+                                          projectId: currentProject.id,
+                                          roleSlug: slug
+                                        }
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
+                                    {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                  </UnstableDropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Create}
+                                a={ProjectPermissionSub.Role}
+                              >
+                                {(isAllowed) => (
+                                  <UnstableDropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("duplicateRole", role);
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    <CopyIcon />
+                                    Duplicate Role
+                                  </UnstableDropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                              {!isNonMutatable && (
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Delete}
+                                  a={ProjectPermissionSub.Role}
+                                >
+                                  {(isAllowed) => (
+                                    <UnstableDropdownMenuItem
+                                      variant="danger"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("deleteRole", role);
+                                      }}
+                                      isDisabled={!isAllowed}
+                                    >
+                                      <TrashIcon />
+                                      Delete Role
+                                    </UnstableDropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                              )}
+                            </UnstableDropdownMenuContent>
+                          </UnstableDropdownMenu>
+                        </UnstableTableCell>
+                      </UnstableTableRow>
+                    );
+                  })}
+                </UnstableTableBody>
+              </UnstableTable>
+              {Boolean(filteredRoles?.length) && (
+                <UnstablePagination
+                  count={filteredRoles!.length}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={setPage}
+                  onChangePerPage={handlePerPageChange}
+                />
+              )}
+            </>
+          )}
         </UnstableCardContent>
       </UnstableCard>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
