@@ -26,9 +26,7 @@ const useLocalStorageSubscribe = (callback: (e: StorageEvent) => void) => {
   // Ignore cross-tab native storage events (storageArea is set) to prevent
   // other tabs from updating this tab's state.
   const handler = (e: StorageEvent) => {
-    console.log("storage event", e.storageArea);
     if (!e.storageArea) {
-      console.log("called callback");
       callback(e);
     }
   };
