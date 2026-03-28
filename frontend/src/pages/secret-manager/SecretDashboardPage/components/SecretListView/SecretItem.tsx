@@ -1,6 +1,7 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable simple-import-sort/imports */
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { getKeyValue } from "@app/helpers/parseEnvVar";
 import {
   Button,
   Checkbox,
@@ -462,10 +463,21 @@ export const SecretItem = memo(
                     autoComplete="off"
                     isReadOnly={isReadOnly || isRotatedSecret}
                     autoCapitalization={currentProject?.autoCapitalization}
+
                     variant="plain"
                     isDisabled={isOverridden}
                     placeholder={error?.message}
                     isError={Boolean(error)}
+                    onPaste={(e: React.ClipboardEvent<HTMLInputElement>) => {
+                      const delimitters = [":", "="];
+                      const pastedContent = e.clipboardData.getData("text");
+                      const { key } = getKeyValue(pastedContent, delimitters);
+                      if (key) {
+                        const keyStr = currentProject?.autoCapitalization ? key.toUpperCase() : key;
+                        e.preventDefault();
+                        field.onChange(keyStr);
+                      }
+                    }}
                     onKeyUp={() => trigger("key")}
                     warning={
                       field?.value !== (originalSecret.originalKey || originalSecret.key) &&
