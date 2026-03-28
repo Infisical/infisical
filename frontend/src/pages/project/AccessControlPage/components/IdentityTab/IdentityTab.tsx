@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -125,6 +125,23 @@ export const IdentityTab = withProjectPermission(
       setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
+    const { data: projectRoles } = useGetProjectRoles(projectId);
+
+    const [filterRoles, setFilterRoles] = useState<string[]>([]);
+    const isTableFiltered = Boolean(filterRoles.length);
+
+    const handleRoleToggle = useCallback(
+      (roleSlug: string) =>
+        setFilterRoles((prev) => {
+          const next = prev.includes(roleSlug)
+            ? prev.filter((r) => r !== roleSlug)
+            : [...prev, roleSlug];
+          setPage(1);
+          return next;
+        }),
+      []
+    );
+
     const { data, isPending, isFetching } = useListProjectIdentityMemberships(
       {
         projectId,
@@ -132,7 +149,8 @@ export const IdentityTab = withProjectPermission(
         limit,
         orderDirection,
         orderBy,
-        search: debouncedSearch
+        search: debouncedSearch,
+        roles: filterRoles
       },
       { placeholderData: (prevData) => prevData }
     );
@@ -144,29 +162,6 @@ export const IdentityTab = withProjectPermission(
       offset,
       setPage
     });
-
-    const { data: projectRoles } = useGetProjectRoles(projectId);
-
-    const [filterRoles, setFilterRoles] = useState<string[]>([]);
-    const isTableFiltered = Boolean(filterRoles.length);
-
-    const handleRoleToggle = useCallback(
-      (roleSlug: string) =>
-        setFilterRoles((prev) =>
-          prev.includes(roleSlug) ? prev.filter((r) => r !== roleSlug) : [...prev, roleSlug]
-        ),
-      []
-    );
-
-    const filteredIdentityMemberships = useMemo(() => {
-      if (!filterRoles.length) return data?.identityMemberships ?? [];
-      return (data?.identityMemberships ?? []).filter((member) =>
-        member.roles.some(({ role, customRoleName }) => {
-          const effectiveSlug = role === "custom" ? customRoleName : role;
-          return effectiveSlug && filterRoles.includes(effectiveSlug);
-        })
-      );
-    }, [data?.identityMemberships, filterRoles]);
 
     const { mutateAsync: deleteMembershipMutateAsync } = useDeleteProjectIdentityMembership();
     const { mutateAsync: deleteProjectIdentity } = useDeleteProjectIdentity();
@@ -270,9 +265,7 @@ export const IdentityTab = withProjectPermission(
                     </UnstableIconButton>
                   </UnstableDropdownMenuTrigger>
                   <UnstableDropdownMenuContent align="end">
-                    <UnstableDropdownMenuLabel>
-                      Filter by Project Role
-                    </UnstableDropdownMenuLabel>
+                    <UnstableDropdownMenuLabel>Filter by Project Role</UnstableDropdownMenuLabel>
                     {projectRoles?.map(({ id, slug, name }) => (
                       <UnstableDropdownMenuCheckboxItem
                         key={id}
@@ -288,10 +281,7 @@ export const IdentityTab = withProjectPermission(
                   </UnstableDropdownMenuContent>
                 </UnstableDropdownMenu>
               </div>
-              {!isPending &&
-              data &&
-              filteredIdentityMemberships.length === 0 &&
-              (data.totalCount === 0 || isTableFiltered) ? (
+              {!isPending && data && data.totalCount === 0 ? (
                 <UnstableEmpty className="border">
                   <UnstableEmptyHeader>
                     <UnstableEmptyTitle>
@@ -335,7 +325,7 @@ export const IdentityTab = withProjectPermission(
                     </UnstableTableHeader>
                     <UnstableTableBody>
                       {isPending &&
-                        Array.from({ length: perPage }).map((_, i) => (
+                        Array.from({ length: 10 }).map((_, i) => (
                           <UnstableTableRow key={`skeleton-${i + 1}`}>
                             <UnstableTableCell>
                               <Skeleton className="h-4 w-full" />
@@ -353,8 +343,8 @@ export const IdentityTab = withProjectPermission(
                         ))}
                       {!isPending &&
                         data &&
-                        filteredIdentityMemberships.length > 0 &&
-                        filteredIdentityMemberships.map((identityMember) => {
+                        (data.identityMemberships ?? []).length > 0 &&
+                        (data.identityMemberships ?? []).map((identityMember) => {
                           const {
                             identity: {
                               id,

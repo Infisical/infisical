@@ -166,6 +166,7 @@ export type TListProjectIdentitiesDTO = {
   orderBy?: ProjectIdentityOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
+  roles?: string[];
 };
 
 export enum ProjectIdentityOrderBy {
